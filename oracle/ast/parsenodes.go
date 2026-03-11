@@ -654,7 +654,8 @@ func (n *SampleClause) nodeTag() {}
 // PivotClause represents a PIVOT clause.
 type PivotClause struct {
 	AggFuncs *List    // aggregate functions
-	ForCol   ExprNode // FOR column
+	ForCol   ExprNode // FOR column (single column)
+	ForCols  *List    // FOR (col1, col2, ...) multi-column
 	InList   *List    // IN list
 	Alias    *Alias   // optional alias
 	Loc      Loc

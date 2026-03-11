@@ -72,6 +72,13 @@ func (p *Parser) parseSelectStmt() *nodes.SelectStmt {
 		sel.FromClause = p.parseFromClause()
 	}
 
+	// PIVOT / UNPIVOT (parsed after FROM, before WHERE)
+	if p.cur.Type == kwPIVOT {
+		sel.Pivot = p.parsePivotClause()
+	} else if p.cur.Type == kwUNPIVOT {
+		sel.Unpivot = p.parseUnpivotClause()
+	}
+
 	// WHERE
 	if p.cur.Type == kwWHERE {
 		p.advance()
@@ -743,4 +750,263 @@ func (p *Parser) parseCTE() *nodes.CTE {
 
 	cte.Loc.End = p.pos()
 	return cte
+}
+
+// parsePivotClause parses a PIVOT clause.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/SELECT.html
+//
+//	pivot_clause ::=
+//	    PIVOT (
+//	        aggregate_function ( expr ) [ [ AS ] c_alias ]
+//	        [, aggregate_function ( expr ) [ [ AS ] c_alias ] ] ...
+//	        FOR { column | ( column [, column ] ... ) }
+//	        IN ( { { expr | ( expr [, expr] ... ) } [ [ AS ] c_alias ] } [, ...] )
+//	    )
+func (p *Parser) parsePivotClause() *nodes.PivotClause {
+	start := p.pos()
+	p.advance() // consume PIVOT
+
+	pc := &nodes.PivotClause{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	if p.cur.Type != '(' {
+		pc.Loc.End = p.pos()
+		return pc
+	}
+	p.advance() // consume '('
+
+	// Parse aggregate function list (before FOR keyword)
+	pc.AggFuncs = &nodes.List{}
+	for {
+		agg := p.parseResTarget()
+		if agg != nil {
+			pc.AggFuncs.Items = append(pc.AggFuncs.Items, agg)
+		}
+		if p.cur.Type != ',' {
+			break
+		}
+		// Peek ahead to see if this comma separates aggregates (before FOR)
+		// or if we've reached the FOR keyword
+		if p.cur.Type == kwFOR {
+			break
+		}
+		p.advance() // consume ','
+		// If the next token is FOR, we went too far — this shouldn't happen
+		// because FOR is not an expression start, but be safe
+		if p.cur.Type == kwFOR {
+			break
+		}
+	}
+
+	// FOR column | ( column, column, ... )
+	if p.cur.Type == kwFOR {
+		p.advance() // consume FOR
+		if p.cur.Type == '(' {
+			// Multi-column: ( col1, col2, ... )
+			p.advance() // consume '('
+			colList := &nodes.List{}
+			for {
+				col := p.parseColumnRef()
+				if col != nil {
+					colList.Items = append(colList.Items, col)
+				}
+				if p.cur.Type != ',' {
+					break
+				}
+				p.advance()
+			}
+			if p.cur.Type == ')' {
+				p.advance()
+			}
+			if len(colList.Items) == 1 {
+				if e, ok := colList.Items[0].(nodes.ExprNode); ok {
+					pc.ForCol = e
+				}
+			} else {
+				pc.ForCols = colList
+			}
+		} else {
+			// Single column reference (not a full expression, to avoid consuming IN)
+			pc.ForCol = p.parseColumnRef()
+		}
+	}
+
+	// IN ( ... )
+	if p.cur.Type == kwIN {
+		p.advance() // consume IN
+		if p.cur.Type == '(' {
+			p.advance() // consume '('
+			pc.InList = p.parsePivotInList()
+			if p.cur.Type == ')' {
+				p.advance()
+			}
+		}
+	}
+
+	if p.cur.Type == ')' {
+		p.advance() // consume outer ')'
+	}
+
+	pc.Loc.End = p.pos()
+	return pc
+}
+
+// parsePivotInList parses the IN list of a PIVOT clause.
+// Each item is: expr [ [ AS ] c_alias ] | ( expr, expr, ... ) [ [ AS ] c_alias ]
+func (p *Parser) parsePivotInList() *nodes.List {
+	list := &nodes.List{}
+	for {
+		start := p.pos()
+		var expr nodes.ExprNode
+
+		if p.cur.Type == '(' {
+			// Tuple value: ( expr, expr, ... )
+			p.advance() // consume '('
+			tupleList := p.parseExprList()
+			if p.cur.Type == ')' {
+				p.advance()
+			}
+			// Wrap tuple as a ParenExpr containing the first item
+			// For multi-value, store as a List via a special representation
+			if tupleList.Len() == 1 {
+				if e, ok := tupleList.Items[0].(nodes.ExprNode); ok {
+					expr = &nodes.ParenExpr{Expr: e, Loc: nodes.Loc{Start: start, End: p.pos()}}
+				}
+			} else {
+				// Use a FuncCallExpr with empty name to represent a row/tuple
+				args := &nodes.List{Items: tupleList.Items}
+				expr = &nodes.FuncCallExpr{
+					FuncName: &nodes.ObjectName{Name: "", Loc: nodes.Loc{Start: start}},
+					Args:     args,
+					Loc:      nodes.Loc{Start: start, End: p.pos()},
+				}
+			}
+		} else {
+			expr = p.parseExpr()
+		}
+
+		if expr == nil {
+			break
+		}
+
+		rt := &nodes.ResTarget{
+			Expr: expr,
+			Loc:  nodes.Loc{Start: start},
+		}
+
+		// Optional alias: [ AS ] c_alias
+		if p.cur.Type == kwAS {
+			p.advance()
+			rt.Name = p.parseIdentifier()
+		} else if p.isAliasCandidate() {
+			rt.Name = p.parseIdentifier()
+		}
+
+		rt.Loc.End = p.pos()
+		list.Items = append(list.Items, rt)
+
+		if p.cur.Type != ',' {
+			break
+		}
+		p.advance()
+	}
+	return list
+}
+
+// parseUnpivotClause parses an UNPIVOT clause.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/SELECT.html
+//
+//	unpivot_clause ::=
+//	    UNPIVOT [ { INCLUDE | EXCLUDE } NULLS ]
+//	    (
+//	        column
+//	        FOR column
+//	        IN ( column [ [ AS ] literal ] [, column [ [ AS ] literal ] ] ... )
+//	    )
+func (p *Parser) parseUnpivotClause() *nodes.UnpivotClause {
+	start := p.pos()
+	p.advance() // consume UNPIVOT
+
+	uc := &nodes.UnpivotClause{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// [ INCLUDE | EXCLUDE ] NULLS
+	if p.cur.Type == kwINCLUDE {
+		p.advance()
+		if p.cur.Type == kwNULLS {
+			p.advance()
+		}
+		uc.IncludeNulls = true
+	} else if p.isIdentLikeStr("EXCLUDE") {
+		p.advance()
+		if p.cur.Type == kwNULLS {
+			p.advance()
+		}
+		// IncludeNulls stays false (EXCLUDE is the default)
+	}
+
+	if p.cur.Type != '(' {
+		uc.Loc.End = p.pos()
+		return uc
+	}
+	p.advance() // consume '('
+
+	// Value column(s)
+	uc.ValueCol = p.parseColumnRef()
+
+	// FOR pivot_column(s)
+	if p.cur.Type == kwFOR {
+		p.advance()
+		uc.PivotCol = p.parseColumnRef()
+	}
+
+	// IN ( column [ AS literal ], ... )
+	if p.cur.Type == kwIN {
+		p.advance()
+		if p.cur.Type == '(' {
+			p.advance()
+			uc.InList = &nodes.List{}
+			for {
+				start := p.pos()
+				col := p.parseColumnRef()
+				if col == nil || col.Column == "" {
+					break
+				}
+				rt := &nodes.ResTarget{
+					Expr: col,
+					Loc:  nodes.Loc{Start: start},
+				}
+				// Optional AS alias (can be identifier or string literal)
+				if p.cur.Type == kwAS {
+					p.advance()
+					if p.cur.Type == tokSCONST {
+						rt.Name = p.cur.Str
+						p.advance()
+					} else {
+						rt.Name = p.parseIdentifier()
+					}
+				}
+				rt.Loc.End = p.pos()
+				uc.InList.Items = append(uc.InList.Items, rt)
+				if p.cur.Type != ',' {
+					break
+				}
+				p.advance()
+			}
+			if p.cur.Type == ')' {
+				p.advance()
+			}
+		}
+	}
+
+	if p.cur.Type == ')' {
+		p.advance() // consume outer ')'
+	}
+
+	uc.Loc.End = p.pos()
+	return uc
 }

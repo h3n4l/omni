@@ -30,7 +30,7 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 	case kwSEQUENCE:
 		return p.parseAlterGeneric(start, nodes.OBJECT_SEQUENCE)
 	case kwTABLE:
-		return p.parseAlterGeneric(start, nodes.OBJECT_TABLE)
+		return p.parseAlterTableStmt(start)
 	default:
 		// Unknown ALTER target — skip to semicolon or EOF.
 		p.skipToSemicolon()

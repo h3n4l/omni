@@ -238,6 +238,54 @@ func TestLexerNumbers(t *testing.T) {
 }
 
 // TestNodeToString tests AST serialization.
+// TestParseSelectPivot tests PIVOT clause parsing.
+func TestParseSelectPivot(t *testing.T) {
+	tests := []string{
+		// Basic PIVOT with single aggregate
+		`SELECT * FROM sales PIVOT (SUM(amount) FOR quarter IN ('Q1', 'Q2', 'Q3', 'Q4'))`,
+		// PIVOT with aliased aggregate
+		`SELECT * FROM sales PIVOT (SUM(amount) AS total FOR quarter IN ('Q1' AS q1, 'Q2' AS q2))`,
+		// PIVOT with multiple aggregates
+		`SELECT * FROM sales PIVOT (SUM(amount) AS total, COUNT(*) AS cnt FOR quarter IN ('Q1', 'Q2'))`,
+		// PIVOT from subquery
+		`SELECT * FROM (SELECT dept_id, quarter, amount FROM sales) PIVOT (SUM(amount) FOR quarter IN ('Q1', 'Q2'))`,
+		// PIVOT with multi-column FOR
+		`SELECT * FROM sales PIVOT (SUM(amount) FOR (year, quarter) IN ((2023, 'Q1'), (2023, 'Q2')))`,
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			result := ParseAndCheck(t, sql)
+			if result.Len() != 1 {
+				t.Fatalf("expected 1 statement, got %d", result.Len())
+			}
+		})
+	}
+}
+
+// TestParseSelectUnpivot tests UNPIVOT clause parsing.
+func TestParseSelectUnpivot(t *testing.T) {
+	tests := []string{
+		// Basic UNPIVOT
+		`SELECT * FROM quarterly_sales UNPIVOT (sales FOR quarter IN (q1, q2, q3, q4))`,
+		// UNPIVOT INCLUDE NULLS
+		`SELECT * FROM quarterly_sales UNPIVOT INCLUDE NULLS (sales FOR quarter IN (q1, q2, q3, q4))`,
+		// UNPIVOT EXCLUDE NULLS
+		`SELECT * FROM quarterly_sales UNPIVOT EXCLUDE NULLS (sales FOR quarter IN (q1, q2, q3, q4))`,
+		// UNPIVOT with aliases
+		`SELECT * FROM quarterly_sales UNPIVOT (sales FOR quarter IN (q1 AS 'Quarter 1', q2 AS 'Quarter 2'))`,
+		// UNPIVOT from subquery
+		`SELECT * FROM (SELECT id, q1, q2, q3, q4 FROM data) UNPIVOT (val FOR qtr IN (q1, q2, q3, q4))`,
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			result := ParseAndCheck(t, sql)
+			if result.Len() != 1 {
+				t.Fatalf("expected 1 statement, got %d", result.Len())
+			}
+		})
+	}
+}
+
 func TestNodeToString(t *testing.T) {
 	n := &ast.NumberLiteral{Val: "42", Ival: 42, Loc: ast.Loc{Start: 0, End: -1}}
 	s := ast.NodeToString(n)

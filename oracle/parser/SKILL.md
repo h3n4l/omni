@@ -30,36 +30,72 @@ If all batches are `"done"`, output `ALL_BATCHES_COMPLETE` and stop.
 
 ## Implementation Steps for Each Batch
 
-### Step 1: Read References
+### Step 1: Fetch Complete BNF from Official Documentation (MANDATORY)
+
+**This is the most critical step. Do NOT skip it. Do NOT write BNF from memory.**
+
+For every grammar rule in the batch, you MUST:
+
+1. **Fetch the official Oracle 23c SQL/PL-SQL documentation page** using the WebFetch tool
+   - SQL Reference: `https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/{command}.html`
+     - e.g., `ALTER-TABLE.html`, `CREATE-TRIGGER.html`, `MERGE.html`
+   - PL/SQL Reference: `https://docs.oracle.com/en/database/oracle/oracle-database/23/lnpls/{topic}.html`
+2. **Extract the COMPLETE BNF/syntax diagram** from the page — every branch, every option, every sub-clause
+3. **Do NOT abbreviate** — never write `...` or truncate the BNF. If a statement has 50 lines of BNF, write all 50 lines
+4. **For sub-clauses that have their own doc page**, fetch those too (e.g., CREATE TABLE's `column_definition`, `constraint_clause`, `partitioning_clause` etc. each link to separate pages)
+
+If WebFetch fails, use WebSearch to find the correct URL, then fetch it.
+
+### Step 2: Read AST and Existing Code
 
 - Read the AST node definitions from `oracle/ast/parsenodes.go` (and `node.go`)
 - Read the existing parser code in `oracle/parser/` to understand available helpers
-- Read Oracle documentation BNF for each statement type
+- If the existing AST types don't cover all BNF branches, add new node types / fields to `parsenodes.go`
 
-### Step 2: Fetch Oracle Documentation BNF
+### Step 3: Write Tests FIRST (Test-Driven Development)
 
-- For each major statement type, search the Oracle 23c documentation for its syntax
-- URL pattern: `https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/{command}.html`
+**TEST-DRIVEN**: Write tests FIRST, then implement.
 
-### Step 3: Write Parse Functions
+**Every branch of the BNF must have at least one test case.** For example, if ALTER TABLE has ADD, MODIFY, DROP COLUMN, DROP CONSTRAINT, RENAME, ENABLE CONSTRAINT, DISABLE CONSTRAINT, MOVE, SPLIT PARTITION, EXCHANGE PARTITION — then you need at least 10 test cases, one per branch.
+
+Add test cases to `compare_test.go` using SQL strings relevant to the batch's grammar rules.
+Add a new `TestParse{BatchName}` function.
+
+### Step 4: Write Parse Functions
 
 Create or update the target file (e.g., `oracle/parser/select.go`).
 
-**Every parse function MUST have this comment format:**
+**Every parse function MUST have the COMPLETE BNF in its comment. This is a hard requirement.**
 
 ```go
-// parseSelectStmt parses a SELECT statement.
+// parseCreateTableStmt parses a CREATE TABLE statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/SELECT.html
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/CREATE-TABLE.html
 //
-//	SELECT [ hint ] [ ALL | DISTINCT | UNIQUE ]
-//	    select_list
-//	    [ FROM table_reference [, ...] ]
-//	    [ WHERE condition ]
-//	    [ hierarchical_query_clause ]
-//	    ...
-func (p *Parser) parseSelectStmt() *ast.SelectStmt {
+//  CREATE [ GLOBAL TEMPORARY | PRIVATE TEMPORARY | SHARDED | DUPLICATED ]
+//      TABLE [ schema. ] table_name
+//      [ SHARING = { METADATA | DATA | EXTENDED DATA | NONE } ]
+//      { relational_table | object_table | XMLType_table }
+//      [ MEMOPTIMIZE FOR READ ] [ MEMOPTIMIZE FOR WRITE ]
+//      [ PARENT [ schema. ] table ] ;
+//
+//  relational_table:
+//      [ ( relational_properties ) ]
+//      [ DEFAULT COLLATION collation_name ]
+//      [ ON COMMIT { DROP | PRESERVE | DELETE } ROWS ]
+//      [ physical_properties ]
+//      [ table_properties ]
+//
+//  relational_properties:
+//      { column_definition | virtual_column_definition
+//        | period_definition
+//        | { out_of_line_constraint | out_of_line_ref_constraint }
+//        | supplemental_logging_props }
+//      [, ...]
+func (p *Parser) parseCreateTableStmt() *ast.CreateTableStmt {
 ```
+
+**The comment BNF must match the official docs exactly. No abbreviation, no `...` for omitted branches. Every branch in the BNF must have a corresponding code path in the function.**
 
 **Return type conventions:**
 - Expression parsers return `ExprNode` (e.g., `parseExpr() ast.ExprNode`)
@@ -69,6 +105,8 @@ func (p *Parser) parseSelectStmt() *ast.SelectStmt {
 **Rules for parse function implementation:**
 
 1. **Use the existing AST types** from `oracle/ast/` — do NOT create new node types unless absolutely necessary
+1a. **Every branch in the BNF comment MUST have a corresponding implementation.** If the BNF says `{ ADD | MODIFY | DROP | RENAME | ENABLE | DISABLE | MOVE | SPLIT | MERGE | EXCHANGE }`, you must handle ALL of them, not just a subset. If a branch requires a new AST node type or field, add it to `parsenodes.go` and `outfuncs.go`.
+1b. **Sub-clauses must be recursively complete.** If a statement's BNF references `column_definition`, and `column_definition` itself has a full BNF (with DEFAULT, IDENTITY, ENCRYPT, inline_constraint, etc.), you must fetch that sub-clause's BNF and implement it completely too.
 2. **Record positions** on EVERY AST node that has a `Loc` field.
    Set `Loc: nodes.Loc{Start: p.pos()}` at the beginning of parsing a node.
    Set `node.Loc.End = p.pos()` at the end of parsing a node.
@@ -81,10 +119,6 @@ func (p *Parser) parseSelectStmt() *ast.SelectStmt {
 6. **Operator precedence** in expressions: use Pratt parsing (precedence climbing)
 7. **Serialization**: When implementing a new batch, you MUST also add serialization to `oracle/ast/outfuncs.go` for any new node types used. Every node type that has a `nodeTag()` method must have a corresponding case in `writeNode` and a `writeXxx` function.
 8. **Incremental dispatch**: The `parseStmt` dispatch in `parser.go` should be extended incrementally as each statement batch is implemented. Do not wait until batch 23 — wire in each statement parser as it is completed.
-
-### Step 4: Test
-
-**TEST-DRIVEN**: Write tests FIRST, then implement. Every BNF branch must have a test.
 
 Run these commands in order:
 
@@ -149,9 +183,39 @@ Edit `PROGRESS.json`:
 - No dollar-quoted strings
 - No backtick identifiers
 - ROWID, ROWNUM, LEVEL pseudo-columns
-- FLASHBACK queries (AS OF)
-- MODEL clause
-- SAMPLE clause
+- FLASHBACK queries (AS OF SCN/TIMESTAMP, VERSIONS BETWEEN)
+- MODEL clause (spreadsheet-like calculations)
+- SAMPLE clause (random row sampling)
+- Analytic functions with OVER, KEEP (DENSE_RANK FIRST/LAST), WITHIN GROUP
+- GROUPING SETS / CUBE / ROLLUP extensions to GROUP BY
+- LATERAL inline views
+- XMLTABLE / JSON_TABLE as table sources
+- XML expressions (XMLELEMENT, XMLFOREST, XMLAGG)
+- JSON expressions (JSON_OBJECT, JSON_ARRAY, JSON_VALUE, JSON_EXISTS, IS JSON)
+- Cursor expressions: CURSOR(subquery)
+- MULTISET operations (MULTISET UNION/INTERSECT/EXCEPT)
+- TREAT expression for object type casting
+- FORALL / BULK COLLECT / PIPE ROW in PL/SQL
+- PRAGMA directives (AUTONOMOUS_TRANSACTION, EXCEPTION_INIT, etc.)
+- PL/SQL CASE statement (distinct from CASE expression)
+- PL/SQL EXIT [WHEN] / CONTINUE [WHEN]
+- PL/SQL collection types in DECLARE (TABLE OF, VARRAY, RECORD, REF CURSOR)
+- Named parameter notation (param => value)
+- LOCK TABLE, CALL, RENAME statements
+- SET ROLE, SET CONSTRAINT(S) session control
+- AUDIT / NOAUDIT
+- ASSOCIATE / DISASSOCIATE STATISTICS
+- Compound triggers (multiple timing sections)
+- DDL and database event triggers
+
+### Known Gaps in Existing Batches (tracked as new batches)
+- Batch 4 (select): PIVOT, UNPIVOT, MODEL, SAMPLE, FLASHBACK query clauses are listed in rules but not implemented
+- Batch 3 (expressions): EXISTS skips subquery content instead of parsing it; parenthesized subquery detection missing
+- Batch 8 (create_table): Partitioning, storage, LOB storage listed but implemented as stubs only
+- Batch 14 (create_trigger): Compound triggers and DDL/database event triggers not implemented
+- Batch 17 (alter_misc): ALTER INDEX/VIEW/SEQUENCE use skipToSemicolon stub returning placeholder node
+- Batch 18 (grant): CREATE/ALTER/DROP USER/ROLE listed in rules but only GRANT/REVOKE are implemented
+- Batch 21 (plsql_block): Procedure calls return nil; EXIT/CONTINUE missing
 
 ## Expression Parsing Strategy
 

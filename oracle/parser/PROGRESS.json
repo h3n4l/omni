@@ -1,7 +1,7 @@
 {
   "version": 1,
   "target": "Oracle PL/SQL recursive descent parser",
-  "status": "done",
+  "status": "in_progress",
   "batches": [
     {
       "id": 0,
@@ -322,6 +322,443 @@
       "rules": ["stmt_dispatch"],
       "depends_on": [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
       "tests": ["integration"]
+    },
+    {
+      "id": 24,
+      "name": "select_pivot_unpivot",
+      "file": "select.go",
+      "status": "done",
+      "description": "Fix batch 4 gap: PIVOT and UNPIVOT clauses are listed in batch 4 rules but not implemented. PIVOT rotates rows into columns; UNPIVOT does the reverse. These are Oracle-specific SELECT clauses parsed after FROM.",
+      "rules": [
+        "pivot_clause", "pivot_for_clause", "pivot_in_clause",
+        "unpivot_clause", "unpivot_for_clause", "unpivot_in_clause"
+      ],
+      "depends_on": [4],
+      "tests": ["select_pivot", "select_unpivot"]
+    },
+    {
+      "id": 25,
+      "name": "select_model",
+      "file": "select.go",
+      "status": "pending",
+      "description": "Fix batch 4 gap: MODEL clause is listed in batch 4 rules but not implemented. The MODEL clause enables spreadsheet-like calculations in SQL with PARTITION BY, DIMENSION BY, MEASURES, and RULES.",
+      "rules": [
+        "model_clause", "model_partition", "model_dimension",
+        "model_measures", "model_rules", "model_rule"
+      ],
+      "depends_on": [4],
+      "tests": ["select_model"]
+    },
+    {
+      "id": 26,
+      "name": "select_sample_flashback",
+      "file": "select.go",
+      "status": "pending",
+      "description": "Fix batch 4 gap: SAMPLE clause and FLASHBACK query (AS OF SCN/TIMESTAMP, VERSIONS BETWEEN) are listed in batch 4 rules but not implemented. SAMPLE returns a random sample of rows. FLASHBACK queries retrieve historical data.",
+      "rules": [
+        "sample_clause", "flashback_query_clause",
+        "as_of_clause", "versions_between_clause"
+      ],
+      "depends_on": [4],
+      "tests": ["select_sample", "select_flashback_query"]
+    },
+    {
+      "id": 27,
+      "name": "analytic_functions",
+      "file": "expr.go",
+      "status": "pending",
+      "description": "Analytic/window functions: OVER clause with PARTITION BY, ORDER BY, and windowing (ROWS/RANGE BETWEEN). Also KEEP (DENSE_RANK FIRST/LAST) and WITHIN GROUP for aggregate functions like LISTAGG.",
+      "rules": [
+        "over_clause", "window_partition", "window_order",
+        "window_frame", "window_frame_bound",
+        "keep_clause", "within_group_clause"
+      ],
+      "depends_on": [3],
+      "tests": ["analytic_over", "analytic_keep", "analytic_within_group", "analytic_window_frame"]
+    },
+    {
+      "id": 28,
+      "name": "grouping_extensions",
+      "file": "select.go",
+      "status": "pending",
+      "description": "GROUP BY extensions: GROUPING SETS, CUBE, ROLLUP. These are Oracle extensions for multi-dimensional aggregation within the GROUP BY clause.",
+      "rules": [
+        "grouping_sets_clause", "cube_clause", "rollup_clause",
+        "grouping_function", "grouping_id_function"
+      ],
+      "depends_on": [4],
+      "tests": ["grouping_sets", "cube", "rollup"]
+    },
+    {
+      "id": 29,
+      "name": "lateral_xmltable_jsontable",
+      "file": "select.go",
+      "status": "pending",
+      "description": "LATERAL inline views, XMLTABLE, and JSON_TABLE as table sources in FROM clause. LATERAL allows correlated subqueries in FROM. XMLTABLE/JSON_TABLE convert XML/JSON data to relational rows.",
+      "rules": [
+        "lateral_clause", "xmltable_clause", "xmltable_column",
+        "json_table_clause", "json_table_column"
+      ],
+      "depends_on": [4],
+      "tests": ["lateral_view", "xmltable", "json_table"]
+    },
+    {
+      "id": 30,
+      "name": "oracle_join_syntax",
+      "file": "expr.go",
+      "status": "pending",
+      "description": "Oracle legacy (+) outer join syntax in WHERE clause conditions. The (+) operator after a column reference indicates the side that may have nulls.",
+      "rules": [
+        "outer_join_indicator"
+      ],
+      "depends_on": [3],
+      "tests": ["oracle_plus_join"]
+    },
+    {
+      "id": 31,
+      "name": "cursor_expressions",
+      "file": "expr.go",
+      "status": "pending",
+      "description": "Cursor expressions: CURSOR(subquery) in SELECT list. Also MULTISET operations (MULTISET UNION, MULTISET INTERSECT, MULTISET EXCEPT) and TREAT expression for type casting in object hierarchies.",
+      "rules": [
+        "cursor_expr", "multiset_op", "treat_expr"
+      ],
+      "depends_on": [3, 4],
+      "tests": ["cursor_expr", "multiset_ops", "treat_expr"]
+    },
+    {
+      "id": 32,
+      "name": "xml_expressions",
+      "file": "expr.go",
+      "status": "pending",
+      "description": "XML expression functions: XMLELEMENT, XMLFOREST, XMLAGG, XMLROOT, XMLPARSE, XMLSERIALIZE. These generate or transform XML data within SQL expressions.",
+      "rules": [
+        "xmlelement_expr", "xmlforest_expr", "xmlagg_expr",
+        "xmlroot_expr", "xmlparse_expr", "xmlserialize_expr"
+      ],
+      "depends_on": [3],
+      "tests": ["xmlelement", "xmlforest", "xmlagg"]
+    },
+    {
+      "id": 33,
+      "name": "json_expressions",
+      "file": "expr.go",
+      "status": "pending",
+      "description": "JSON expression functions: JSON_OBJECT, JSON_ARRAY, JSON_QUERY, JSON_VALUE, JSON_EXISTS, JSON_MERGEPATCH, IS JSON condition. Oracle 23c JSON features.",
+      "rules": [
+        "json_object_expr", "json_array_expr", "json_query_expr",
+        "json_value_expr", "json_exists_condition", "is_json_condition"
+      ],
+      "depends_on": [3],
+      "tests": ["json_object", "json_array", "json_value", "json_exists"]
+    },
+    {
+      "id": 34,
+      "name": "lock_table",
+      "file": "utility.go",
+      "status": "pending",
+      "description": "LOCK TABLE statement: LOCK TABLE table IN {ROW SHARE|ROW EXCLUSIVE|SHARE|SHARE ROW EXCLUSIVE|EXCLUSIVE} MODE [NOWAIT|WAIT n].",
+      "rules": [
+        "lock_table_stmt", "lock_mode"
+      ],
+      "depends_on": [1],
+      "tests": ["lock_table"]
+    },
+    {
+      "id": 35,
+      "name": "call_stmt",
+      "file": "utility.go",
+      "status": "pending",
+      "description": "CALL statement for invoking stored procedures/functions: CALL [schema.]routine_name([args]) [INTO :bind_variable].",
+      "rules": [
+        "call_stmt"
+      ],
+      "depends_on": [3],
+      "tests": ["call_stmt"]
+    },
+    {
+      "id": 36,
+      "name": "rename_stmt",
+      "file": "utility.go",
+      "status": "pending",
+      "description": "RENAME statement: RENAME old_name TO new_name. Top-level DDL statement for renaming tables, views, sequences, and synonyms.",
+      "rules": [
+        "rename_stmt"
+      ],
+      "depends_on": [1],
+      "tests": ["rename"]
+    },
+    {
+      "id": 37,
+      "name": "set_role_set_constraint",
+      "file": "session.go",
+      "status": "pending",
+      "description": "SET ROLE and SET CONSTRAINT(S) session control statements. SET ROLE enables/disables roles. SET CONSTRAINT(S) changes deferrable constraint behavior.",
+      "rules": [
+        "set_role_stmt", "set_constraints_stmt"
+      ],
+      "depends_on": [1],
+      "tests": ["set_role", "set_constraints"]
+    },
+    {
+      "id": 38,
+      "name": "audit_noaudit",
+      "file": "utility.go",
+      "status": "pending",
+      "description": "AUDIT and NOAUDIT statements for unified and traditional auditing. AUDIT tracks SQL operations; NOAUDIT disables auditing.",
+      "rules": [
+        "audit_stmt", "noaudit_stmt"
+      ],
+      "depends_on": [1],
+      "tests": ["audit", "noaudit"]
+    },
+    {
+      "id": 39,
+      "name": "associate_statistics",
+      "file": "utility.go",
+      "status": "pending",
+      "description": "ASSOCIATE STATISTICS and DISASSOCIATE STATISTICS statements for binding statistics types to database objects.",
+      "rules": [
+        "associate_statistics_stmt", "disassociate_statistics_stmt"
+      ],
+      "depends_on": [1],
+      "tests": ["associate_stats", "disassociate_stats"]
+    },
+    {
+      "id": 40,
+      "name": "create_user_role_profile",
+      "file": "security.go",
+      "status": "pending",
+      "description": "Fix batch 18 gap: CREATE/ALTER/DROP USER, ROLE, PROFILE are listed in batch 18 rules but not implemented (only GRANT/REVOKE are). Full CREATE USER with IDENTIFIED BY, DEFAULT TABLESPACE, etc. CREATE ROLE, ALTER ROLE, DROP ROLE. CREATE/ALTER/DROP PROFILE with resource limits.",
+      "rules": [
+        "create_user_stmt", "alter_user_stmt", "drop_user_stmt",
+        "create_role_stmt", "alter_role_stmt", "drop_role_stmt",
+        "create_profile_stmt", "alter_profile_stmt", "drop_profile_stmt"
+      ],
+      "depends_on": [1],
+      "tests": ["create_user", "alter_user", "drop_user", "create_role", "drop_role", "create_profile"]
+    },
+    {
+      "id": 41,
+      "name": "create_tablespace_directory",
+      "file": "create_admin.go",
+      "status": "pending",
+      "description": "CREATE/ALTER/DROP TABLESPACE, CREATE/DROP DIRECTORY, CREATE/DROP CONTEXT. Administrative DDL for storage and namespace management.",
+      "rules": [
+        "create_tablespace_stmt", "alter_tablespace_stmt", "drop_tablespace_stmt",
+        "create_directory_stmt", "drop_directory_stmt",
+        "create_context_stmt", "drop_context_stmt"
+      ],
+      "depends_on": [1],
+      "tests": ["create_tablespace", "create_directory", "create_context"]
+    },
+    {
+      "id": 42,
+      "name": "create_cluster_dimension",
+      "file": "create_admin.go",
+      "status": "pending",
+      "description": "CREATE/ALTER/DROP CLUSTER (table clustering), CREATE/ALTER/DROP DIMENSION (OLAP dimension objects), CREATE/DROP FLASHBACK ARCHIVE.",
+      "rules": [
+        "create_cluster_stmt", "alter_cluster_stmt", "drop_cluster_stmt",
+        "create_dimension_stmt", "alter_dimension_stmt", "drop_dimension_stmt",
+        "create_flashback_archive_stmt", "drop_flashback_archive_stmt"
+      ],
+      "depends_on": [1, 2],
+      "tests": ["create_cluster", "create_dimension", "create_flashback_archive"]
+    },
+    {
+      "id": 43,
+      "name": "create_java_library",
+      "file": "create_admin.go",
+      "status": "pending",
+      "description": "CREATE/ALTER/DROP JAVA (Java source/class/resource), CREATE/ALTER/DROP LIBRARY (external C library). Less common DDL for external code integration.",
+      "rules": [
+        "create_java_stmt", "drop_java_stmt",
+        "create_library_stmt", "drop_library_stmt"
+      ],
+      "depends_on": [1],
+      "tests": ["create_java", "create_library"]
+    },
+    {
+      "id": 44,
+      "name": "create_mview_log",
+      "file": "create_view.go",
+      "status": "pending",
+      "description": "CREATE/ALTER/DROP MATERIALIZED VIEW LOG. MV logs track changes to base tables enabling fast refresh of materialized views.",
+      "rules": [
+        "create_mview_log_stmt", "alter_mview_log_stmt", "drop_mview_log_stmt",
+        "mview_log_options"
+      ],
+      "depends_on": [11],
+      "tests": ["create_mview_log", "drop_mview_log"]
+    },
+    {
+      "id": 45,
+      "name": "alter_plsql_objects",
+      "file": "alter_misc.go",
+      "status": "pending",
+      "description": "ALTER PROCEDURE, ALTER FUNCTION, ALTER TRIGGER, ALTER TYPE, ALTER PACKAGE, ALTER MATERIALIZED VIEW, ALTER DATABASE LINK, ALTER SYNONYM. Currently ALTER INDEX/VIEW/SEQUENCE use a generic skip-to-semicolon stub; these need proper object-specific parsing.",
+      "rules": [
+        "alter_procedure_stmt", "alter_function_stmt",
+        "alter_trigger_stmt", "alter_type_stmt", "alter_package_stmt",
+        "alter_mview_stmt", "alter_dblink_stmt", "alter_synonym_stmt"
+      ],
+      "depends_on": [17],
+      "tests": ["alter_procedure", "alter_trigger", "alter_type", "alter_mview"]
+    },
+    {
+      "id": 46,
+      "name": "drop_extended",
+      "file": "drop.go",
+      "status": "pending",
+      "description": "Fix batch 16 gap: extend DROP to handle DROP USER, DROP ROLE, DROP PROFILE, DROP TABLESPACE, DROP DIRECTORY, DROP CONTEXT, DROP CLUSTER, DROP DIMENSION, DROP FLASHBACK ARCHIVE, DROP JAVA, DROP LIBRARY, DROP MATERIALIZED VIEW LOG, DROP DATABASE.",
+      "rules": [
+        "drop_user", "drop_role", "drop_profile",
+        "drop_tablespace", "drop_directory", "drop_context",
+        "drop_cluster", "drop_dimension", "drop_flashback_archive",
+        "drop_java", "drop_library", "drop_mview_log", "drop_database"
+      ],
+      "depends_on": [16],
+      "tests": ["drop_user", "drop_role", "drop_tablespace", "drop_directory"]
+    },
+    {
+      "id": 47,
+      "name": "plsql_forall_bulk",
+      "file": "plsql_block.go",
+      "status": "pending",
+      "description": "PL/SQL FORALL statement for bulk DML operations, and BULK COLLECT INTO in SELECT INTO. Also EXIT [WHEN] and CONTINUE [WHEN] loop control statements which are missing from batch 21.",
+      "rules": [
+        "forall_statement", "bulk_collect_into",
+        "exit_statement", "continue_statement"
+      ],
+      "depends_on": [21],
+      "tests": ["plsql_forall", "plsql_bulk_collect_select", "plsql_exit", "plsql_continue"]
+    },
+    {
+      "id": 48,
+      "name": "plsql_pipe_pragma",
+      "file": "plsql_block.go",
+      "status": "pending",
+      "description": "PL/SQL PIPE ROW statement for pipelined table functions, and PRAGMA directives (AUTONOMOUS_TRANSACTION, EXCEPTION_INIT, RESTRICT_REFERENCES, SERIALLY_REUSABLE, UDF, INLINE). Also PL/SQL CASE statement (distinct from CASE expression).",
+      "rules": [
+        "pipe_row_statement", "pragma_declaration",
+        "pragma_autonomous_transaction", "pragma_exception_init",
+        "plsql_case_statement"
+      ],
+      "depends_on": [21],
+      "tests": ["plsql_pipe_row", "plsql_pragma", "plsql_case_stmt"]
+    },
+    {
+      "id": 49,
+      "name": "plsql_collections_records",
+      "file": "plsql_block.go",
+      "status": "pending",
+      "description": "PL/SQL collection type declarations in DECLARE: TYPE name IS TABLE OF, TYPE name IS VARRAY, TYPE name IS RECORD. Also associative array (INDEX BY) and REF CURSOR declarations.",
+      "rules": [
+        "type_table_of_decl", "type_varray_decl", "type_record_decl",
+        "type_ref_cursor_decl", "index_by_clause"
+      ],
+      "depends_on": [21, 2],
+      "tests": ["plsql_type_table", "plsql_type_varray", "plsql_type_record", "plsql_ref_cursor"]
+    },
+    {
+      "id": 50,
+      "name": "plsql_procedure_call",
+      "file": "plsql_block.go",
+      "status": "pending",
+      "description": "Fix batch 21 gap: PL/SQL procedure call statements currently return nil in parsePLSQLAssignOrCall. Need a PLSQLCall AST node for standalone procedure invocations, and support for named parameter notation (param => value).",
+      "rules": [
+        "plsql_call_stmt", "named_param_notation"
+      ],
+      "depends_on": [21],
+      "tests": ["plsql_call", "plsql_named_params"]
+    },
+    {
+      "id": 51,
+      "name": "create_table_partitioning",
+      "file": "create_table.go",
+      "status": "pending",
+      "description": "Fix batch 8 gap: partitioning (PARTITION BY RANGE/LIST/HASH), storage clause, LOB storage are listed in batch 8 rules but implemented only as stubs. Full RANGE/LIST/HASH/COMPOSITE partitioning syntax with VALUES LESS THAN, VALUES, subpartitions.",
+      "rules": [
+        "partition_by_range", "partition_by_list", "partition_by_hash",
+        "subpartition_template", "partition_values_clause",
+        "storage_clause_full", "lob_storage_clause"
+      ],
+      "depends_on": [8],
+      "tests": ["partition_range", "partition_list", "partition_hash", "subpartition"]
+    },
+    {
+      "id": 52,
+      "name": "alter_index_view_sequence_full",
+      "file": "alter_misc.go",
+      "status": "pending",
+      "description": "Fix batch 17 gap: ALTER INDEX, ALTER VIEW, ALTER SEQUENCE currently use parseAlterGeneric which skips to semicolon and returns a placeholder AlterSessionStmt. Need proper AST nodes and parsing for ALTER INDEX REBUILD/RENAME/MONITORING, ALTER VIEW COMPILE, ALTER SEQUENCE options.",
+      "rules": [
+        "alter_index_rebuild", "alter_index_rename", "alter_index_monitoring",
+        "alter_view_compile", "alter_view_add_constraint",
+        "alter_sequence_options"
+      ],
+      "depends_on": [17],
+      "tests": ["alter_index_rebuild", "alter_view_compile", "alter_sequence_full"]
+    },
+    {
+      "id": 53,
+      "name": "create_schema",
+      "file": "create_admin.go",
+      "status": "pending",
+      "description": "CREATE SCHEMA statement which allows creating multiple tables, views, and grants in a single transaction.",
+      "rules": [
+        "create_schema_stmt"
+      ],
+      "depends_on": [8, 11, 18],
+      "tests": ["create_schema"]
+    },
+    {
+      "id": 54,
+      "name": "flashback_database",
+      "file": "utility.go",
+      "status": "pending",
+      "description": "FLASHBACK DATABASE statement: FLASHBACK DATABASE TO {SCN|TIMESTAMP|RESTORE POINT}. Distinct from FLASHBACK TABLE (batch 22).",
+      "rules": [
+        "flashback_database_stmt"
+      ],
+      "depends_on": [22],
+      "tests": ["flashback_database"]
+    },
+    {
+      "id": 55,
+      "name": "exists_subquery_fix",
+      "file": "expr.go",
+      "status": "pending",
+      "description": "Fix batch 3 gap: EXISTS expression currently skips parenthesized content with a depth counter instead of properly parsing the subquery. Need to parse the inner SELECT statement and store it in ExistsExpr.Subquery. Also fix parseParenExpr to detect and delegate subquery expressions to parseSelectStmt.",
+      "rules": [
+        "exists_subquery_parse", "paren_subquery_detect"
+      ],
+      "depends_on": [3, 4],
+      "tests": ["exists_subquery", "scalar_subquery"]
+    },
+    {
+      "id": 56,
+      "name": "compound_trigger",
+      "file": "create_trigger.go",
+      "status": "pending",
+      "description": "Fix batch 14 gap: compound triggers (BEFORE STATEMENT, BEFORE EACH ROW, AFTER EACH ROW, AFTER STATEMENT sections) and DDL/database event triggers (ON DATABASE/SCHEMA) are listed in batch 14 description but not implemented.",
+      "rules": [
+        "compound_trigger_body", "compound_trigger_section",
+        "ddl_trigger", "database_event_trigger"
+      ],
+      "depends_on": [14],
+      "tests": ["compound_trigger", "ddl_trigger"]
+    },
+    {
+      "id": 57,
+      "name": "stmt_dispatch_extended",
+      "file": "parser.go",
+      "status": "pending",
+      "description": "Wire up new statement types in parseStmt dispatcher: LOCK TABLE, CALL, RENAME, SET ROLE, SET CONSTRAINTS, AUDIT, NOAUDIT.",
+      "rules": ["stmt_dispatch_extended"],
+      "depends_on": [34, 35, 36, 37, 38],
+      "tests": ["integration_extended"]
     }
   ]
 }

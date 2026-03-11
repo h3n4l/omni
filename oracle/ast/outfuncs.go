@@ -794,6 +794,10 @@ func writePivotClause(sb *strings.Builder, n *PivotClause) {
 		sb.WriteString(" :forCol ")
 		writeNode(sb, n.ForCol)
 	}
+	if n.ForCols != nil {
+		sb.WriteString(" :forCols ")
+		writeNode(sb, n.ForCols)
+	}
 	if n.InList != nil {
 		sb.WriteString(" :inList ")
 		writeNode(sb, n.InList)
