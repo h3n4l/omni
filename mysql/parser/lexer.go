@@ -1,0 +1,1046 @@
+// Package parser implements a recursive descent SQL parser for MySQL.
+package parser
+
+import (
+	"strconv"
+	"strings"
+	"unicode"
+	"unicode/utf8"
+)
+
+// Token type constants for literals and operators.
+const (
+	tokEOF = 0
+
+	// Literal tokens (600+)
+	tokICONST = 600 + iota
+	tokFCONST
+	tokSCONST
+	tokBCONST // bit string b'...'
+	tokXCONST // hex string X'...'
+	tokIDENT
+
+	// Operators
+	tokLessEq     // <=
+	tokGreaterEq  // >=
+	tokNotEq      // != or <>
+	tokNullSafeEq // <=>
+	tokShiftLeft  // <<
+	tokShiftRight // >>
+	tokAssign     // :=
+	tokColonColon // :: (not MySQL, but for compat)
+)
+
+// Keyword token constants. Values start at 700.
+const (
+	kwSELECT = 700 + iota
+	kwINSERT
+	kwUPDATE
+	kwDELETE
+	kwFROM
+	kwWHERE
+	kwSET
+	kwINTO
+	kwVALUES
+	kwCREATE
+	kwALTER
+	kwDROP
+	kwTABLE
+	kwINDEX
+	kwVIEW
+	kwDATABASE
+	kwSCHEMA
+	kwIF
+	kwNOT
+	_ // was kwEXISTS — use kwEXISTS_KW instead (mapped to "exists")
+	kwNULL
+	kwTRUE
+	kwFALSE
+	kwAND
+	kwOR
+	kwIS
+	kwIN
+	kwBETWEEN
+	kwLIKE
+	kwREGEXP
+	kwRLIKE
+	kwCASE
+	kwWHEN
+	kwTHEN
+	kwELSE
+	kwEND
+	kwAS
+	kwON
+	kwUSING
+	kwJOIN
+	kwINNER
+	kwLEFT
+	kwRIGHT
+	kwCROSS
+	kwNATURAL
+	kwOUTER
+	kwFULL
+	kwORDER
+	kwBY
+	kwGROUP
+	kwHAVING
+	kwLIMIT
+	kwOFFSET
+	kwUNION
+	kwINTERSECT
+	kwEXCEPT
+	kwALL
+	kwDISTINCT
+	kwASC
+	kwDESC
+	kwNULLS
+	kwFIRST
+	kwLAST
+	kwFOR
+	kwSHARE
+	kwLOCK
+	kwNOWAIT
+	kwSKIP
+	kwLOCKED
+	kwPRIMARY
+	kwKEY
+	kwUNIQUE
+	kwCHECK
+	kwCONSTRAINT
+	kwREFERENCES
+	kwFOREIGN
+	kwDEFAULT
+	kwAUTO_INCREMENT
+	kwCOMMENT
+	kwCOLUMN
+	kwADD
+	kwMODIFY
+	kwCHANGE
+	kwRENAME
+	kwTO
+	kwTRUNCATE
+	kwTEMPORARY
+	kwCASCADE
+	kwRESTRICT
+	kwENGINE
+	kwCHARSET
+	kwCHARACTER
+	kwCOLLATE
+	kwINT
+	kwINTEGER
+	kwSMALLINT
+	kwTINYINT
+	kwMEDIUMINT
+	kwBIGINT
+	kwFLOAT
+	kwDOUBLE
+	kwDECIMAL
+	kwNUMERIC
+	kwVARCHAR
+	kwCHAR
+	kwTEXT
+	kwTINYTEXT
+	kwMEDIUMTEXT
+	kwLONGTEXT
+	kwBLOB
+	kwTINYBLOB
+	kwMEDIUMBLOB
+	kwLONGBLOB
+	kwDATE
+	kwDATETIME
+	kwTIMESTAMP
+	kwTIME
+	kwYEAR
+	kwBOOL
+	kwBOOLEAN
+	kwENUM
+	kwJSON
+	kwUNSIGNED
+	kwZEROFILL
+	kwBINARY
+	kwVARBINARY
+	kwBIT
+	kwFULLTEXT
+	kwSPATIAL
+	kwBTREE
+	kwHASH
+	kwCAST
+	kwCONVERT
+	kwINTERVAL
+	kwCOALESCE
+	kwNULLIF
+	kwGREATEST
+	kwLEAST
+	_ // was kwIF_FUNC — unused, IF is handled via kwIF contextually
+	kwCONCAT
+	kwSUBSTRING
+	kwTRIM
+	kwPOSITION
+	kwEXTRACT
+	kwCOUNT
+	kwMAX
+	kwMIN
+	kwSUM
+	kwAVG
+	kwGROUP_CONCAT
+	kwOVER
+	kwPARTITION
+	kwROW
+	kwROWS
+	kwRANGE
+	kwGROUPS
+	kwUNBOUNDED
+	kwPRECEDING
+	kwFOLLOWING
+	kwCURRENT
+	kwWINDOW
+	kwREPLACE
+	kwIGNORE
+	kwDUPLICATE
+	kwLOW_PRIORITY
+	kwDELAYED
+	kwHIGH_PRIORITY
+	kwSTRAIGHT_JOIN
+	kwSQL_CALC_FOUND_ROWS
+	kwDIV
+	kwMOD
+	kwXOR
+	kwCURRENT_DATE
+	kwCURRENT_TIME
+	kwCURRENT_TIMESTAMP
+	kwCURRENT_USER
+	kwLOCALTIME
+	kwLOCALTIMESTAMP
+	kwUSE
+	kwSHOW
+	kwDESCRIBE
+	kwEXPLAIN
+	kwBEGIN
+	kwCOMMIT
+	kwROLLBACK
+	kwSAVEPOINT
+	kwSTART
+	kwTRANSACTION
+	kwGRANT
+	kwREVOKE
+	kwFUNCTION
+	kwPROCEDURE
+	kwTRIGGER
+	kwEVENT
+	kwLOAD
+	kwDATA
+	kwINFILE
+	kwPREPARE
+	kwEXECUTE
+	kwDEALLOCATE
+	kwANALYZE
+	kwOPTIMIZE
+	kwFLUSH
+	kwRESET
+	kwKILL
+	kwDO
+	kwESCAPE
+	kwMATCH
+	kwAGAINST
+	kwEXISTS_KW
+	kwOUTFILE
+	kwDUMPFILE
+	kwLINES
+	kwFIELDS
+	kwTERMINATED
+	kwENCLOSED
+	kwESCAPED
+	kwSTARTING
+	kwOPTIONALLY
+	kwLOCAL
+	kwGLOBAL
+	kwSESSION
+	kwREAD
+	kwWRITE
+	kwONLY
+	kwREPEATABLE
+	kwCOMMITTED
+	kwUNCOMMITTED
+	kwSERIALIZABLE
+	kwISOLATION
+	kwLEVEL
+	kwUNLOCK
+	kwTABLES
+	kwREPAIR
+	kwQUICK
+	kwEXTENDED
+	kwWITH
+	kwROLLUP
+	kwDATABASES
+	kwCOLUMNS
+	kwSTATUS
+	kwVARIABLES
+	kwWARNINGS
+	kwERRORS
+	kwPROCESSLIST
+	_ // was kwCREATES — unused, not mapped in keywords
+	kwAFTER
+	kwBEFORE
+	kwEACH
+	kwFOLLOWS
+	kwPRECEDES
+	kwDETERMINISTIC
+	kwCONTAINS
+	kwSQL
+	kwNO
+	kwMODIFIES
+	kwREADS
+	kwRETURNS
+	kwLANGUAGE
+	kwDEFINER
+	kwINVOKER
+	kwSECURITY
+	kwALGORITHM
+	kwUNDEFINED
+	kwMERGE
+	kwTEMPTABLE
+	kwCASCADED
+	_ // was kwCHECKED — unused, not mapped in keywords
+	kwUSER
+	kwIDENTIFIED
+	kwPASSWORD
+	kwNONE
+	kwROLE
+	_ // was kwSEP — unused duplicate, use kwSEPARATOR
+	kwSEPARATOR
+	kwBOTH
+	kwLEADING
+	kwTRAILING
+	kwOVERLAY
+	kwPLACING
+	kwSTORED
+	kwVIRTUAL
+	kwGENERATED
+	kwALWAYS
+	_ // was kwPARTITIONING — unused, not mapped in keywords
+	kwLINEAR
+	kwSUBPARTITION
+	kwFIXED
+	kwDYNAMIC
+	kwCOMPRESSED
+	kwREDUNDANT
+	kwCOMPACT
+	kwROW_FORMAT
+	kwHANDLER
+	kwOPEN
+	kwCLOSE
+	kwNEXT
+	kwPREV
+	kwQUERY
+	kwCONNECTION
+	kwBINLOG
+	kwMASTER
+	kwSLAVE
+	kwCHAIN
+	kwRELEASE
+	kwCONSISTENT
+	kwSNAPSHOT
+	_ // was kwON_KW — duplicate of kwON
+	kwSIGNAL
+	kwRESIGNAL
+	kwGET
+	kwDIAGNOSTICS
+	kwCONDITION
+	kwFORCE
+	_ // was kwBY_KW — duplicate of kwBY
+	kwTYPE
+)
+
+// keywords maps lowercase keyword strings to their token types.
+var keywords = map[string]int{
+	"select":              kwSELECT,
+	"insert":              kwINSERT,
+	"update":              kwUPDATE,
+	"delete":              kwDELETE,
+	"from":                kwFROM,
+	"where":               kwWHERE,
+	"set":                 kwSET,
+	"into":                kwINTO,
+	"values":              kwVALUES,
+	"create":              kwCREATE,
+	"alter":               kwALTER,
+	"drop":                kwDROP,
+	"table":               kwTABLE,
+	"index":               kwINDEX,
+	"view":                kwVIEW,
+	"database":            kwDATABASE,
+	"schema":              kwSCHEMA,
+	"if":                  kwIF,
+	"not":                 kwNOT,
+	"exists":              kwEXISTS_KW,
+	"null":                kwNULL,
+	"true":                kwTRUE,
+	"false":               kwFALSE,
+	"and":                 kwAND,
+	"or":                  kwOR,
+	"is":                  kwIS,
+	"in":                  kwIN,
+	"between":             kwBETWEEN,
+	"like":                kwLIKE,
+	"regexp":              kwREGEXP,
+	"rlike":               kwRLIKE,
+	"case":                kwCASE,
+	"when":                kwWHEN,
+	"then":                kwTHEN,
+	"else":                kwELSE,
+	"end":                 kwEND,
+	"as":                  kwAS,
+	"on":                  kwON,
+	"using":               kwUSING,
+	"join":                kwJOIN,
+	"inner":               kwINNER,
+	"left":                kwLEFT,
+	"right":               kwRIGHT,
+	"cross":               kwCROSS,
+	"natural":             kwNATURAL,
+	"outer":               kwOUTER,
+	"full":                kwFULL,
+	"order":               kwORDER,
+	"by":                  kwBY,
+	"group":               kwGROUP,
+	"having":              kwHAVING,
+	"limit":               kwLIMIT,
+	"offset":              kwOFFSET,
+	"union":               kwUNION,
+	"intersect":           kwINTERSECT,
+	"except":              kwEXCEPT,
+	"all":                 kwALL,
+	"distinct":            kwDISTINCT,
+	"asc":                 kwASC,
+	"desc":                kwDESC,
+	"nulls":               kwNULLS,
+	"first":               kwFIRST,
+	"last":                kwLAST,
+	"for":                 kwFOR,
+	"share":               kwSHARE,
+	"lock":                kwLOCK,
+	"nowait":              kwNOWAIT,
+	"skip":                kwSKIP,
+	"locked":              kwLOCKED,
+	"primary":             kwPRIMARY,
+	"key":                 kwKEY,
+	"unique":              kwUNIQUE,
+	"check":               kwCHECK,
+	"constraint":          kwCONSTRAINT,
+	"references":          kwREFERENCES,
+	"foreign":             kwFOREIGN,
+	"default":             kwDEFAULT,
+	"auto_increment":      kwAUTO_INCREMENT,
+	"comment":             kwCOMMENT,
+	"column":              kwCOLUMN,
+	"add":                 kwADD,
+	"modify":              kwMODIFY,
+	"change":              kwCHANGE,
+	"rename":              kwRENAME,
+	"to":                  kwTO,
+	"truncate":            kwTRUNCATE,
+	"temporary":           kwTEMPORARY,
+	"cascade":             kwCASCADE,
+	"restrict":            kwRESTRICT,
+	"engine":              kwENGINE,
+	"charset":             kwCHARSET,
+	"character":           kwCHARACTER,
+	"collate":             kwCOLLATE,
+	"int":                 kwINT,
+	"integer":             kwINTEGER,
+	"smallint":            kwSMALLINT,
+	"tinyint":             kwTINYINT,
+	"mediumint":           kwMEDIUMINT,
+	"bigint":              kwBIGINT,
+	"float":               kwFLOAT,
+	"double":              kwDOUBLE,
+	"decimal":             kwDECIMAL,
+	"numeric":             kwNUMERIC,
+	"varchar":             kwVARCHAR,
+	"char":                kwCHAR,
+	"text":                kwTEXT,
+	"tinytext":            kwTINYTEXT,
+	"mediumtext":          kwMEDIUMTEXT,
+	"longtext":            kwLONGTEXT,
+	"blob":                kwBLOB,
+	"tinyblob":            kwTINYBLOB,
+	"mediumblob":          kwMEDIUMBLOB,
+	"longblob":            kwLONGBLOB,
+	"date":                kwDATE,
+	"datetime":            kwDATETIME,
+	"timestamp":           kwTIMESTAMP,
+	"time":                kwTIME,
+	"year":                kwYEAR,
+	"bool":                kwBOOL,
+	"boolean":             kwBOOLEAN,
+	"enum":                kwENUM,
+	"json":                kwJSON,
+	"unsigned":            kwUNSIGNED,
+	"zerofill":            kwZEROFILL,
+	"binary":              kwBINARY,
+	"varbinary":           kwVARBINARY,
+	"bit":                 kwBIT,
+	"fulltext":            kwFULLTEXT,
+	"spatial":             kwSPATIAL,
+	"btree":               kwBTREE,
+	"hash":                kwHASH,
+	"cast":                kwCAST,
+	"convert":             kwCONVERT,
+	"interval":            kwINTERVAL,
+	"coalesce":            kwCOALESCE,
+	"nullif":              kwNULLIF,
+	"greatest":            kwGREATEST,
+	"least":               kwLEAST,
+	"concat":              kwCONCAT,
+	"substring":           kwSUBSTRING,
+	"trim":                kwTRIM,
+	"position":            kwPOSITION,
+	"extract":             kwEXTRACT,
+	"count":               kwCOUNT,
+	"max":                 kwMAX,
+	"min":                 kwMIN,
+	"sum":                 kwSUM,
+	"avg":                 kwAVG,
+	"group_concat":        kwGROUP_CONCAT,
+	"over":                kwOVER,
+	"partition":           kwPARTITION,
+	"row":                 kwROW,
+	"rows":                kwROWS,
+	"range":               kwRANGE,
+	"groups":              kwGROUPS,
+	"unbounded":           kwUNBOUNDED,
+	"preceding":           kwPRECEDING,
+	"following":           kwFOLLOWING,
+	"current":             kwCURRENT,
+	"window":              kwWINDOW,
+	"replace":             kwREPLACE,
+	"ignore":              kwIGNORE,
+	"duplicate":           kwDUPLICATE,
+	"low_priority":        kwLOW_PRIORITY,
+	"delayed":             kwDELAYED,
+	"high_priority":       kwHIGH_PRIORITY,
+	"straight_join":       kwSTRAIGHT_JOIN,
+	"sql_calc_found_rows": kwSQL_CALC_FOUND_ROWS,
+	"div":                 kwDIV,
+	"mod":                 kwMOD,
+	"xor":                 kwXOR,
+	"current_date":        kwCURRENT_DATE,
+	"current_time":        kwCURRENT_TIME,
+	"current_timestamp":   kwCURRENT_TIMESTAMP,
+	"current_user":        kwCURRENT_USER,
+	"localtime":           kwLOCALTIME,
+	"localtimestamp":      kwLOCALTIMESTAMP,
+	"use":                 kwUSE,
+	"show":                kwSHOW,
+	"describe":            kwDESCRIBE,
+	"explain":             kwEXPLAIN,
+	"begin":               kwBEGIN,
+	"commit":              kwCOMMIT,
+	"rollback":            kwROLLBACK,
+	"savepoint":           kwSAVEPOINT,
+	"start":               kwSTART,
+	"transaction":         kwTRANSACTION,
+	"grant":               kwGRANT,
+	"revoke":              kwREVOKE,
+	"function":            kwFUNCTION,
+	"procedure":           kwPROCEDURE,
+	"trigger":             kwTRIGGER,
+	"event":               kwEVENT,
+	"load":                kwLOAD,
+	"data":                kwDATA,
+	"infile":              kwINFILE,
+	"prepare":             kwPREPARE,
+	"execute":             kwEXECUTE,
+	"deallocate":          kwDEALLOCATE,
+	"analyze":             kwANALYZE,
+	"optimize":            kwOPTIMIZE,
+	"flush":               kwFLUSH,
+	"reset":               kwRESET,
+	"kill":                kwKILL,
+	"do":                  kwDO,
+	"escape":              kwESCAPE,
+	"match":               kwMATCH,
+	"against":             kwAGAINST,
+	"outfile":             kwOUTFILE,
+	"dumpfile":            kwDUMPFILE,
+	"lines":               kwLINES,
+	"fields":              kwFIELDS,
+	"terminated":          kwTERMINATED,
+	"enclosed":            kwENCLOSED,
+	"escaped":             kwESCAPED,
+	"starting":            kwSTARTING,
+	"optionally":          kwOPTIONALLY,
+	"local":               kwLOCAL,
+	"global":              kwGLOBAL,
+	"session":             kwSESSION,
+	"read":                kwREAD,
+	"write":               kwWRITE,
+	"only":                kwONLY,
+	"repeatable":          kwREPEATABLE,
+	"committed":           kwCOMMITTED,
+	"uncommitted":         kwUNCOMMITTED,
+	"serializable":        kwSERIALIZABLE,
+	"isolation":           kwISOLATION,
+	"level":               kwLEVEL,
+	"unlock":              kwUNLOCK,
+	"tables":              kwTABLES,
+	"repair":              kwREPAIR,
+	"quick":               kwQUICK,
+	"extended":            kwEXTENDED,
+	"with":                kwWITH,
+	"rollup":              kwROLLUP,
+	"databases":           kwDATABASES,
+	"columns":             kwCOLUMNS,
+	"status":              kwSTATUS,
+	"variables":           kwVARIABLES,
+	"warnings":            kwWARNINGS,
+	"errors":              kwERRORS,
+	"processlist":         kwPROCESSLIST,
+	"after":               kwAFTER,
+	"before":              kwBEFORE,
+	"each":                kwEACH,
+	"follows":             kwFOLLOWS,
+	"precedes":            kwPRECEDES,
+	"deterministic":       kwDETERMINISTIC,
+	"contains":            kwCONTAINS,
+	"sql":                 kwSQL,
+	"no":                  kwNO,
+	"modifies":            kwMODIFIES,
+	"reads":               kwREADS,
+	"returns":             kwRETURNS,
+	"language":            kwLANGUAGE,
+	"definer":             kwDEFINER,
+	"invoker":             kwINVOKER,
+	"security":            kwSECURITY,
+	"algorithm":           kwALGORITHM,
+	"undefined":           kwUNDEFINED,
+	"merge":               kwMERGE,
+	"temptable":           kwTEMPTABLE,
+	"cascaded":            kwCASCADED,
+	"user":                kwUSER,
+	"identified":          kwIDENTIFIED,
+	"password":            kwPASSWORD,
+	"none":                kwNONE,
+	"role":                kwROLE,
+	"separator":           kwSEPARATOR,
+	"both":                kwBOTH,
+	"leading":             kwLEADING,
+	"trailing":            kwTRAILING,
+	"overlay":             kwOVERLAY,
+	"placing":             kwPLACING,
+	"stored":              kwSTORED,
+	"virtual":             kwVIRTUAL,
+	"generated":           kwGENERATED,
+	"always":              kwALWAYS,
+	"linear":              kwLINEAR,
+	"subpartition":        kwSUBPARTITION,
+	"fixed":               kwFIXED,
+	"dynamic":             kwDYNAMIC,
+	"compressed":          kwCOMPRESSED,
+	"redundant":           kwREDUNDANT,
+	"compact":             kwCOMPACT,
+	"row_format":          kwROW_FORMAT,
+	"handler":             kwHANDLER,
+	"open":                kwOPEN,
+	"close":               kwCLOSE,
+	"next":                kwNEXT,
+	"prev":                kwPREV,
+	"query":               kwQUERY,
+	"connection":          kwCONNECTION,
+	"binlog":              kwBINLOG,
+	"master":              kwMASTER,
+	"slave":               kwSLAVE,
+	"chain":               kwCHAIN,
+	"release":             kwRELEASE,
+	"consistent":          kwCONSISTENT,
+	"snapshot":            kwSNAPSHOT,
+	"signal":              kwSIGNAL,
+	"resignal":            kwRESIGNAL,
+	"get":                 kwGET,
+	"diagnostics":         kwDIAGNOSTICS,
+	"condition":           kwCONDITION,
+	"force":               kwFORCE,
+	"type":                kwTYPE,
+}
+
+// Token represents a lexical token.
+type Token struct {
+	Type int    // token type
+	Str  string // string value for identifiers, operators, string literals
+	Ival int64  // integer value for ICONST
+	Loc  int    // byte offset in source text
+}
+
+// Lexer implements a MySQL SQL lexer.
+type Lexer struct {
+	input string
+	pos   int
+	start int
+}
+
+// NewLexer creates a new MySQL lexer for the given input.
+func NewLexer(input string) *Lexer {
+	return &Lexer{input: input}
+}
+
+// NextToken returns the next token from the input.
+func (l *Lexer) NextToken() Token {
+	l.skipWhitespaceAndComments()
+
+	if l.pos >= len(l.input) {
+		return Token{Type: tokEOF, Loc: l.pos}
+	}
+
+	l.start = l.pos
+	ch := l.input[l.pos]
+
+	// User variable @name or system variable @@name
+	if ch == '@' {
+		return l.scanVariable()
+	}
+
+	// Backtick-quoted identifier
+	if ch == '`' {
+		return l.scanBacktickIdent()
+	}
+
+	// String literals (single or double quoted)
+	if ch == '\'' {
+		return l.scanString('\'')
+	}
+	if ch == '"' {
+		return l.scanString('"')
+	}
+
+	// Hex literal: 0x or X'...'
+	if ch == 'X' || ch == 'x' {
+		if l.pos+1 < len(l.input) && l.input[l.pos+1] == '\'' {
+			l.pos++ // skip X
+			tok := l.scanString('\'')
+			tok.Type = tokXCONST
+			tok.Loc = l.start
+			return tok
+		}
+	}
+
+	// Bit literal: b'...' or B'...'
+	if (ch == 'b' || ch == 'B') && l.pos+1 < len(l.input) && l.input[l.pos+1] == '\'' {
+		l.pos++ // skip b/B
+		tok := l.scanString('\'')
+		tok.Type = tokBCONST
+		tok.Loc = l.start
+		return tok
+	}
+
+	// Number: 0x hex, 0b binary, or decimal/float
+	if ch >= '0' && ch <= '9' {
+		return l.scanNumber()
+	}
+	// Also handle .N float (e.g., .5)
+	if ch == '.' && l.pos+1 < len(l.input) && l.input[l.pos+1] >= '0' && l.input[l.pos+1] <= '9' {
+		return l.scanNumber()
+	}
+
+	// Identifiers and keywords (including _charset prefix)
+	if isIdentStart(ch) {
+		return l.scanIdentOrKeyword()
+	}
+
+	// Multi-character operators
+	if l.pos+1 < len(l.input) {
+		next := l.input[l.pos+1]
+		switch {
+		case ch == '<' && next == '=':
+			if l.pos+2 < len(l.input) && l.input[l.pos+2] == '>' {
+				l.pos += 3
+				return Token{Type: tokNullSafeEq, Str: "<=>", Loc: l.start}
+			}
+			l.pos += 2
+			return Token{Type: tokLessEq, Str: "<=", Loc: l.start}
+		case ch == '>' && next == '=':
+			l.pos += 2
+			return Token{Type: tokGreaterEq, Str: ">=", Loc: l.start}
+		case ch == '<' && next == '>':
+			l.pos += 2
+			return Token{Type: tokNotEq, Str: "<>", Loc: l.start}
+		case ch == '!' && next == '=':
+			l.pos += 2
+			return Token{Type: tokNotEq, Str: "!=", Loc: l.start}
+		case ch == '<' && next == '<':
+			l.pos += 2
+			return Token{Type: tokShiftLeft, Str: "<<", Loc: l.start}
+		case ch == '>' && next == '>':
+			l.pos += 2
+			return Token{Type: tokShiftRight, Str: ">>", Loc: l.start}
+		case ch == ':' && next == '=':
+			l.pos += 2
+			return Token{Type: tokAssign, Str: ":=", Loc: l.start}
+		}
+	}
+
+	// Single-character tokens
+	l.pos++
+	return Token{Type: int(ch), Str: string(ch), Loc: l.start}
+}
+
+func (l *Lexer) skipWhitespaceAndComments() {
+	for l.pos < len(l.input) {
+		ch := l.input[l.pos]
+
+		// Whitespace
+		if ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' {
+			l.pos++
+			continue
+		}
+
+		// Line comment: -- must be followed by a space, tab, newline, or end-of-input (per MySQL spec).
+		if ch == '-' && l.pos+1 < len(l.input) && l.input[l.pos+1] == '-' {
+			// Check third character: must be space, tab, newline, or end of input.
+			if l.pos+2 >= len(l.input) || l.input[l.pos+2] == ' ' || l.input[l.pos+2] == '\t' || l.input[l.pos+2] == '\n' || l.input[l.pos+2] == '\r' {
+				l.pos += 2
+				for l.pos < len(l.input) && l.input[l.pos] != '\n' {
+					l.pos++
+				}
+				continue
+			}
+			// Not a comment; break and let the main scanner handle '-' as a token.
+			break
+		}
+
+		// Line comment: #
+		if ch == '#' {
+			l.pos++
+			for l.pos < len(l.input) && l.input[l.pos] != '\n' {
+				l.pos++
+			}
+			continue
+		}
+
+		// Block comment: /* ... */
+		if ch == '/' && l.pos+1 < len(l.input) && l.input[l.pos+1] == '*' {
+			l.pos += 2
+			// Handle MySQL optimizer hints /*+ ... */ and conditional comments /*! ... */
+			depth := 1
+			for l.pos < len(l.input) && depth > 0 {
+				if l.input[l.pos] == '*' && l.pos+1 < len(l.input) && l.input[l.pos+1] == '/' {
+					depth--
+					l.pos += 2
+				} else if l.input[l.pos] == '/' && l.pos+1 < len(l.input) && l.input[l.pos+1] == '*' {
+					depth++
+					l.pos += 2
+				} else {
+					l.pos++
+				}
+			}
+			continue
+		}
+
+		break
+	}
+}
+
+func (l *Lexer) scanVariable() Token {
+	start := l.pos
+	l.pos++ // skip first @
+	system := false
+	if l.pos < len(l.input) && l.input[l.pos] == '@' {
+		system = true
+		l.pos++ // skip second @
+	}
+
+	// Scan variable name: can be backtick-quoted or identifier chars
+	var name string
+	if l.pos < len(l.input) && l.input[l.pos] == '`' {
+		l.pos++ // skip opening backtick
+		nameStart := l.pos
+		for l.pos < len(l.input) && l.input[l.pos] != '`' {
+			l.pos++
+		}
+		name = l.input[nameStart:l.pos]
+		if l.pos < len(l.input) {
+			l.pos++ // skip closing backtick
+		}
+	} else {
+		nameStart := l.pos
+		for l.pos < len(l.input) {
+			ch := l.input[l.pos]
+			if isIdentChar(ch) || ch == '.' {
+				l.pos++
+			} else {
+				break
+			}
+		}
+		name = l.input[nameStart:l.pos]
+	}
+
+	prefix := "@"
+	if system {
+		prefix = "@@"
+	}
+	return Token{Type: tokIDENT, Str: prefix + name, Loc: start}
+}
+
+func (l *Lexer) scanBacktickIdent() Token {
+	start := l.pos
+	l.pos++ // skip opening backtick
+	var sb strings.Builder
+	for l.pos < len(l.input) {
+		if l.input[l.pos] == '`' {
+			// Double backtick is an escape
+			if l.pos+1 < len(l.input) && l.input[l.pos+1] == '`' {
+				sb.WriteByte('`')
+				l.pos += 2
+			} else {
+				l.pos++ // skip closing backtick
+				break
+			}
+		} else {
+			sb.WriteByte(l.input[l.pos])
+			l.pos++
+		}
+	}
+	return Token{Type: tokIDENT, Str: sb.String(), Loc: start}
+}
+
+func (l *Lexer) scanString(quote byte) Token {
+	start := l.pos
+	l.pos++ // skip opening quote
+	var sb strings.Builder
+	for l.pos < len(l.input) {
+		ch := l.input[l.pos]
+		if ch == quote {
+			// Double quote is an escape
+			if l.pos+1 < len(l.input) && l.input[l.pos+1] == quote {
+				sb.WriteByte(quote)
+				l.pos += 2
+			} else {
+				l.pos++ // skip closing quote
+				break
+			}
+		} else if ch == '\\' {
+			l.pos++
+			if l.pos < len(l.input) {
+				esc := l.input[l.pos]
+				switch esc {
+				case 'n':
+					sb.WriteByte('\n')
+				case 't':
+					sb.WriteByte('\t')
+				case 'r':
+					sb.WriteByte('\r')
+				case '0':
+					sb.WriteByte(0)
+				case '\\':
+					sb.WriteByte('\\')
+				case '\'':
+					sb.WriteByte('\'')
+				case '"':
+					sb.WriteByte('"')
+				default:
+					sb.WriteByte(esc)
+				}
+				l.pos++
+			}
+		} else {
+			sb.WriteByte(ch)
+			l.pos++
+		}
+	}
+	return Token{Type: tokSCONST, Str: sb.String(), Loc: start}
+}
+
+func (l *Lexer) scanNumber() Token {
+	start := l.pos
+
+	// Handle 0x hex literals
+	if l.input[l.pos] == '0' && l.pos+1 < len(l.input) && (l.input[l.pos+1] == 'x' || l.input[l.pos+1] == 'X') {
+		l.pos += 2
+		for l.pos < len(l.input) && isHexDigit(l.input[l.pos]) {
+			l.pos++
+		}
+		return Token{Type: tokXCONST, Str: l.input[start:l.pos], Loc: start}
+	}
+
+	// Handle 0b binary literals
+	if l.input[l.pos] == '0' && l.pos+1 < len(l.input) && (l.input[l.pos+1] == 'b' || l.input[l.pos+1] == 'B') {
+		l.pos += 2
+		for l.pos < len(l.input) && (l.input[l.pos] == '0' || l.input[l.pos] == '1') {
+			l.pos++
+		}
+		return Token{Type: tokBCONST, Str: l.input[start:l.pos], Loc: start}
+	}
+
+	// Integer part (or start of float)
+	isFloat := false
+	if l.input[l.pos] == '.' {
+		isFloat = true
+	}
+	for l.pos < len(l.input) && l.input[l.pos] >= '0' && l.input[l.pos] <= '9' {
+		l.pos++
+	}
+
+	// Decimal point
+	if l.pos < len(l.input) && l.input[l.pos] == '.' {
+		isFloat = true
+		l.pos++
+		for l.pos < len(l.input) && l.input[l.pos] >= '0' && l.input[l.pos] <= '9' {
+			l.pos++
+		}
+	}
+
+	// Exponent
+	if l.pos < len(l.input) && (l.input[l.pos] == 'e' || l.input[l.pos] == 'E') {
+		isFloat = true
+		l.pos++
+		if l.pos < len(l.input) && (l.input[l.pos] == '+' || l.input[l.pos] == '-') {
+			l.pos++
+		}
+		for l.pos < len(l.input) && l.input[l.pos] >= '0' && l.input[l.pos] <= '9' {
+			l.pos++
+		}
+	}
+
+	s := l.input[start:l.pos]
+	if isFloat {
+		return Token{Type: tokFCONST, Str: s, Loc: start}
+	}
+
+	ival, _ := strconv.ParseInt(s, 10, 64)
+	return Token{Type: tokICONST, Str: s, Ival: ival, Loc: start}
+}
+
+func (l *Lexer) scanIdentOrKeyword() Token {
+	start := l.pos
+	for l.pos < len(l.input) && isIdentChar(l.input[l.pos]) {
+		l.pos++
+	}
+	word := l.input[start:l.pos]
+	lower := strings.ToLower(word)
+
+	if kwType, ok := keywords[lower]; ok {
+		return Token{Type: kwType, Str: word, Loc: start}
+	}
+
+	return Token{Type: tokIDENT, Str: word, Loc: start}
+}
+
+func isIdentStart(ch byte) bool {
+	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '_' || ch == '$' || ch > 127
+}
+
+func isIdentChar(ch byte) bool {
+	return isIdentStart(ch) || (ch >= '0' && ch <= '9')
+}
+
+func isHexDigit(ch byte) bool {
+	return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')
+}
+
+// isIdentRune checks if a rune is a valid identifier character (for multi-byte chars).
+func isIdentRune(r rune) bool {
+	return unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' || r == '$'
+}
+
+// These functions exist to ensure the imports are used.
+var _ = utf8.RuneLen
+var _ = isIdentRune

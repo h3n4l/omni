@@ -1,0 +1,308 @@
+{
+  "version": 1,
+  "target": "100% MySQL 8.0 grammar coverage with recursive descent parser",
+  "status": "in_progress",
+  "batches": [
+    {
+      "id": 0,
+      "name": "infrastructure",
+      "file": "parser.go",
+      "status": "done",
+      "description": "Parser struct, advance/peek/match/expect/pos helpers, Lexer, Token types, keyword map",
+      "rules": [],
+      "depends_on": [],
+      "tests": []
+    },
+    {
+      "id": 1,
+      "name": "names",
+      "file": "name.go",
+      "status": "done",
+      "description": "Identifiers, qualified names (db.table.col), backtick-quoted identifiers, variable refs (@user, @@system)",
+      "rules": [
+        "identifier", "qualified_name", "column_ref", "table_ref",
+        "backtick_ident", "user_variable", "system_variable"
+      ],
+      "depends_on": [0],
+      "tests": ["TestParseIdentifiers", "TestParseQualifiedNames", "TestParseVariableRefs"]
+    },
+    {
+      "id": 2,
+      "name": "types",
+      "file": "type.go",
+      "status": "pending",
+      "description": "Data types: INT, VARCHAR(N), DECIMAL(M,D), ENUM, SET, JSON, BLOB, DATE/TIME types, UNSIGNED, ZEROFILL",
+      "rules": [
+        "data_type", "numeric_type", "string_type", "date_type",
+        "blob_type", "enum_type", "set_type", "json_type",
+        "type_length", "type_precision", "unsigned", "zerofill",
+        "character_set", "collate"
+      ],
+      "depends_on": [1],
+      "tests": ["TestParseDataTypes"]
+    },
+    {
+      "id": 3,
+      "name": "expressions",
+      "file": "expr.go",
+      "status": "pending",
+      "description": "Operators, precedence (Pratt parsing), CASE, BETWEEN, IN, LIKE, REGEXP, IS, functions, CAST, CONVERT, INTERVAL",
+      "rules": [
+        "expr", "primary_expr", "unary_expr", "binary_expr",
+        "comparison_expr", "logical_expr", "arithmetic_expr",
+        "case_expr", "between_expr", "in_expr", "like_expr",
+        "regexp_expr", "is_expr", "exists_expr", "cast_expr",
+        "convert_expr", "interval_expr", "collate_expr",
+        "match_expr", "func_call", "subquery_expr",
+        "paren_expr", "literal", "column_ref_expr"
+      ],
+      "depends_on": [1, 2],
+      "tests": ["TestParseArithmetic", "TestParseComparison", "TestParseLogical", "TestParseCaseExpr", "TestParseBetween", "TestParseIn", "TestParseLike", "TestParseIs", "TestParseCast", "TestParseFuncCall"]
+    },
+    {
+      "id": 4,
+      "name": "select",
+      "file": "select.go",
+      "status": "pending",
+      "description": "SELECT with all clauses including MySQL-specific: SQL_CALC_FOUND_ROWS, INTO, HIGH_PRIORITY, STRAIGHT_JOIN, UNION/INTERSECT/EXCEPT",
+      "rules": [
+        "select_stmt", "select_options", "select_expr_list", "select_expr",
+        "from_clause", "table_references", "table_reference", "table_factor",
+        "join_clause", "join_condition",
+        "where_clause", "group_by_clause", "having_clause",
+        "order_by_clause", "limit_clause", "for_update_clause",
+        "window_clause", "into_clause",
+        "set_operation", "subquery"
+      ],
+      "depends_on": [3],
+      "tests": ["TestParseSimpleSelect", "TestParseSelectFrom", "TestParseSelectJoin", "TestParseSelectGroupBy", "TestParseSelectOrderBy", "TestParseSelectLimit", "TestParseSelectUnion", "TestParseSelectForUpdate"]
+    },
+    {
+      "id": 5,
+      "name": "insert",
+      "file": "insert.go",
+      "status": "pending",
+      "description": "INSERT, REPLACE, ON DUPLICATE KEY UPDATE",
+      "rules": [
+        "insert_stmt", "replace_stmt", "insert_values", "insert_set",
+        "insert_select", "on_duplicate_key_update",
+        "insert_priority", "insert_ignore"
+      ],
+      "depends_on": [4],
+      "tests": ["TestParseInsertValues", "TestParseInsertSelect", "TestParseInsertSet", "TestParseReplace", "TestParseInsertOnDupKey"]
+    },
+    {
+      "id": 6,
+      "name": "update_delete",
+      "file": "update_delete.go",
+      "status": "pending",
+      "description": "UPDATE (single and multi-table), DELETE (single and multi-table)",
+      "rules": [
+        "update_stmt", "single_table_update", "multi_table_update",
+        "delete_stmt", "single_table_delete", "multi_table_delete"
+      ],
+      "depends_on": [4],
+      "tests": ["TestParseUpdate", "TestParseMultiTableUpdate", "TestParseDelete", "TestParseMultiTableDelete"]
+    },
+    {
+      "id": 7,
+      "name": "create_table",
+      "file": "create_table.go",
+      "status": "pending",
+      "description": "CREATE TABLE, column defs, constraints, table options, partitions, LIKE, CREATE TABLE AS SELECT",
+      "rules": [
+        "create_table_stmt", "column_definition", "column_constraint",
+        "table_constraint", "table_option", "partition_clause",
+        "partition_definition", "create_table_like", "create_table_as_select",
+        "reference_definition", "reference_action"
+      ],
+      "depends_on": [2, 3],
+      "tests": ["TestParseCreateTable", "TestParseCreateTableConstraints", "TestParseCreateTableOptions", "TestParseCreateTableLike"]
+    },
+    {
+      "id": 8,
+      "name": "alter_table",
+      "file": "alter_table.go",
+      "status": "pending",
+      "description": "ALTER TABLE with all MySQL-specific operations: ADD/DROP/MODIFY/CHANGE COLUMN, ADD/DROP INDEX, RENAME, etc.",
+      "rules": [
+        "alter_table_stmt", "alter_table_action",
+        "add_column", "drop_column", "modify_column", "change_column",
+        "add_constraint", "drop_constraint", "add_index", "drop_index",
+        "rename_table", "rename_column", "rename_index",
+        "alter_column_default", "convert_charset", "table_option_alter",
+        "algorithm_option", "lock_option"
+      ],
+      "depends_on": [7],
+      "tests": ["TestParseAlterTableAddColumn", "TestParseAlterTableDropColumn", "TestParseAlterTableModifyColumn", "TestParseAlterTableAddIndex", "TestParseAlterTableRename"]
+    },
+    {
+      "id": 9,
+      "name": "create_index",
+      "file": "create_index.go",
+      "status": "pending",
+      "description": "CREATE INDEX, including UNIQUE, FULLTEXT, SPATIAL index types",
+      "rules": [
+        "create_index_stmt", "index_type", "index_column_list",
+        "index_column", "index_option"
+      ],
+      "depends_on": [3],
+      "tests": ["TestParseCreateIndex", "TestParseCreateUniqueIndex", "TestParseCreateFulltextIndex"]
+    },
+    {
+      "id": 10,
+      "name": "create_view",
+      "file": "create_view.go",
+      "status": "pending",
+      "description": "CREATE VIEW, ALTER VIEW, CREATE OR REPLACE VIEW",
+      "rules": [
+        "create_view_stmt", "view_algorithm", "view_definer",
+        "view_sql_security", "view_check_option"
+      ],
+      "depends_on": [4],
+      "tests": ["TestParseCreateView", "TestParseCreateOrReplaceView"]
+    },
+    {
+      "id": 11,
+      "name": "create_database",
+      "file": "create_database.go",
+      "status": "pending",
+      "description": "CREATE/ALTER/DROP DATABASE, CREATE/ALTER/DROP SCHEMA",
+      "rules": [
+        "create_database_stmt", "alter_database_stmt", "drop_database_stmt",
+        "database_option"
+      ],
+      "depends_on": [1],
+      "tests": ["TestParseCreateDatabase", "TestParseAlterDatabase", "TestParseDropDatabase"]
+    },
+    {
+      "id": 12,
+      "name": "drop",
+      "file": "drop.go",
+      "status": "pending",
+      "description": "DROP TABLE/INDEX/VIEW/DATABASE, TRUNCATE TABLE, RENAME TABLE",
+      "rules": [
+        "drop_table_stmt", "drop_index_stmt", "drop_view_stmt",
+        "truncate_stmt", "rename_table_stmt"
+      ],
+      "depends_on": [1],
+      "tests": ["TestParseDropTable", "TestParseDropIndex", "TestParseDropView", "TestParseTruncate", "TestParseRenameTable"]
+    },
+    {
+      "id": 13,
+      "name": "set_show",
+      "file": "set_show.go",
+      "status": "pending",
+      "description": "SET, SHOW, USE, DESCRIBE/EXPLAIN statements",
+      "rules": [
+        "set_stmt", "show_stmt", "use_stmt", "describe_stmt", "explain_stmt",
+        "show_databases", "show_tables", "show_columns", "show_create",
+        "show_variables", "show_status", "show_warnings", "show_errors"
+      ],
+      "depends_on": [3],
+      "tests": ["TestParseSet", "TestParseShow", "TestParseUse", "TestParseExplain"]
+    },
+    {
+      "id": 14,
+      "name": "transaction",
+      "file": "transaction.go",
+      "status": "pending",
+      "description": "BEGIN, START TRANSACTION, COMMIT, ROLLBACK, SAVEPOINT, LOCK/UNLOCK TABLES",
+      "rules": [
+        "begin_stmt", "start_transaction_stmt", "commit_stmt", "rollback_stmt",
+        "savepoint_stmt", "release_savepoint_stmt",
+        "lock_tables_stmt", "unlock_tables_stmt"
+      ],
+      "depends_on": [1],
+      "tests": ["TestParseBegin", "TestParseCommit", "TestParseRollback", "TestParseSavepoint", "TestParseLockTables"]
+    },
+    {
+      "id": 15,
+      "name": "grant",
+      "file": "grant.go",
+      "status": "pending",
+      "description": "GRANT, REVOKE, CREATE/DROP/ALTER USER",
+      "rules": [
+        "grant_stmt", "revoke_stmt", "create_user_stmt", "drop_user_stmt",
+        "alter_user_stmt", "privilege_list", "grant_target", "user_spec"
+      ],
+      "depends_on": [1],
+      "tests": ["TestParseGrant", "TestParseRevoke", "TestParseCreateUser", "TestParseDropUser"]
+    },
+    {
+      "id": 16,
+      "name": "create_function",
+      "file": "create_function.go",
+      "status": "pending",
+      "description": "CREATE FUNCTION/PROCEDURE, stored routines",
+      "rules": [
+        "create_function_stmt", "create_procedure_stmt",
+        "func_param_list", "func_param", "routine_body",
+        "routine_characteristic"
+      ],
+      "depends_on": [2, 4],
+      "tests": ["TestParseCreateFunction", "TestParseCreateProcedure"]
+    },
+    {
+      "id": 17,
+      "name": "trigger",
+      "file": "trigger.go",
+      "status": "pending",
+      "description": "CREATE TRIGGER, CREATE EVENT",
+      "rules": [
+        "create_trigger_stmt", "trigger_time", "trigger_event",
+        "trigger_order", "create_event_stmt", "event_schedule"
+      ],
+      "depends_on": [3],
+      "tests": ["TestParseCreateTrigger", "TestParseCreateEvent"]
+    },
+    {
+      "id": 18,
+      "name": "load_data",
+      "file": "load_data.go",
+      "status": "pending",
+      "description": "LOAD DATA INFILE, LOAD XML",
+      "rules": [
+        "load_data_stmt", "load_data_options",
+        "fields_clause", "lines_clause"
+      ],
+      "depends_on": [1],
+      "tests": ["TestParseLoadData"]
+    },
+    {
+      "id": 19,
+      "name": "prepare",
+      "file": "prepare.go",
+      "status": "pending",
+      "description": "PREPARE, EXECUTE, DEALLOCATE PREPARE",
+      "rules": [
+        "prepare_stmt", "execute_stmt", "deallocate_stmt"
+      ],
+      "depends_on": [1],
+      "tests": ["TestParsePrepare", "TestParseExecute", "TestParseDeallocate"]
+    },
+    {
+      "id": 20,
+      "name": "utility",
+      "file": "utility.go",
+      "status": "pending",
+      "description": "ANALYZE TABLE, OPTIMIZE TABLE, CHECK TABLE, REPAIR TABLE, FLUSH, RESET, KILL, DO",
+      "rules": [
+        "analyze_table_stmt", "optimize_table_stmt", "check_table_stmt",
+        "repair_table_stmt", "flush_stmt", "reset_stmt", "kill_stmt", "do_stmt"
+      ],
+      "depends_on": [3],
+      "tests": ["TestParseAnalyze", "TestParseOptimize", "TestParseKill", "TestParseDo"]
+    },
+    {
+      "id": 21,
+      "name": "stmt_dispatch",
+      "file": "stmt.go",
+      "status": "pending",
+      "description": "Top-level statement dispatch, semicolon-separated list, wire up Parse() entry point",
+      "rules": ["stmt_list", "stmt"],
+      "depends_on": [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+      "tests": ["TestParseMultipleStatements", "TestParseEmptyInput"]
+    }
+  ]
+}
