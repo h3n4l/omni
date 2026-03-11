@@ -128,7 +128,7 @@
       "id": 9,
       "name": "alter_table",
       "file": "alter_table.go",
-      "status": "pending",
+      "status": "done",
       "description": "ALTER TABLE, ADD/MODIFY/DROP/RENAME COLUMN, constraints, partitions",
       "rules": [
         "alter_table_stmt", "alter_table_action",
@@ -181,7 +181,7 @@
       "id": 13,
       "name": "create_proc",
       "file": "create_proc.go",
-      "status": "pending",
+      "status": "done",
       "description": "CREATE PROCEDURE/FUNCTION, packages: CREATE PACKAGE / PACKAGE BODY",
       "rules": [
         "create_procedure_stmt", "create_function_stmt",
@@ -196,7 +196,7 @@
       "id": 14,
       "name": "create_trigger",
       "file": "create_trigger.go",
-      "status": "pending",
+      "status": "done",
       "description": "CREATE TRIGGER: DML, DDL, system, compound, INSTEAD OF",
       "rules": [
         "create_trigger_stmt", "trigger_timing", "trigger_event",

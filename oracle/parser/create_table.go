@@ -68,6 +68,14 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 		return p.parseCreateDatabaseLinkStmt(start, public)
 	case kwTYPE:
 		return p.parseCreateTypeStmt(start, orReplace)
+	case kwPROCEDURE:
+		return p.parseCreateProcedureStmt(start, orReplace)
+	case kwFUNCTION:
+		return p.parseCreateFunctionStmt(start, orReplace)
+	case kwPACKAGE:
+		return p.parseCreatePackageStmt(start, orReplace)
+	case kwTRIGGER:
+		return p.parseCreateTriggerStmt(start, orReplace)
 	default:
 		// Check for "NO FORCE VIEW"
 		if p.isIdentLikeStr("NO") || p.cur.Type == kwNOT {
