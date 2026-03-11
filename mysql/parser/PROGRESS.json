@@ -45,7 +45,7 @@
       "id": 3,
       "name": "expressions",
       "file": "expr.go",
-      "status": "pending",
+      "status": "done",
       "description": "Operators, precedence (Pratt parsing), CASE, BETWEEN, IN, LIKE, REGEXP, IS, functions, CAST, CONVERT, INTERVAL",
       "rules": [
         "expr", "primary_expr", "unary_expr", "binary_expr",

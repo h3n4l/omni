@@ -1311,9 +1311,92 @@ func writeRawStmt(sb *strings.Builder, n *RawStmt) {
 // Expression writers
 // -----------------------------------------------------------------------
 
+func binaryOpStr(op BinaryOp) string {
+	switch op {
+	case BinOpAdd:
+		return "+"
+	case BinOpSub:
+		return "-"
+	case BinOpMul:
+		return "*"
+	case BinOpDiv:
+		return "/"
+	case BinOpMod:
+		return "%%"
+	case BinOpEq:
+		return "="
+	case BinOpNe:
+		return "<>"
+	case BinOpLt:
+		return "<"
+	case BinOpGt:
+		return ">"
+	case BinOpLe:
+		return "<="
+	case BinOpGe:
+		return ">="
+	case BinOpAnd:
+		return "AND"
+	case BinOpOr:
+		return "OR"
+	case BinOpBitAnd:
+		return "&"
+	case BinOpBitOr:
+		return "|"
+	case BinOpBitXor:
+		return "^"
+	case BinOpShiftLeft:
+		return "<<"
+	case BinOpShiftRight:
+		return ">>"
+	case BinOpDivInt:
+		return "DIV"
+	case BinOpRegexp:
+		return "REGEXP"
+	case BinOpLikeEscape:
+		return "LIKE_ESCAPE"
+	case BinOpNullSafeEq:
+		return "<=>"
+	case BinOpAssign:
+		return ":="
+	default:
+		return fmt.Sprintf("?%d", op)
+	}
+}
+
+func unaryOpStr(op UnaryOp) string {
+	switch op {
+	case UnaryMinus:
+		return "-"
+	case UnaryPlus:
+		return "+"
+	case UnaryNot:
+		return "NOT"
+	case UnaryBitNot:
+		return "~"
+	default:
+		return fmt.Sprintf("?%d", op)
+	}
+}
+
+func isTestStr(t IsTestType) string {
+	switch t {
+	case IsNull:
+		return "NULL"
+	case IsTrue:
+		return "TRUE"
+	case IsFalse:
+		return "FALSE"
+	case IsUnknown:
+		return "UNKNOWN"
+	default:
+		return fmt.Sprintf("?%d", t)
+	}
+}
+
 func writeBinaryExpr(sb *strings.Builder, n *BinaryExpr) {
 	sb.WriteString("{BINEXPR")
-	fmt.Fprintf(sb, " :op %d :loc %d :left ", n.Op, n.Loc.Start)
+	fmt.Fprintf(sb, " :op %s :left ", binaryOpStr(n.Op))
 	writeNode(sb, n.Left)
 	sb.WriteString(" :right ")
 	writeNode(sb, n.Right)
@@ -1321,14 +1404,14 @@ func writeBinaryExpr(sb *strings.Builder, n *BinaryExpr) {
 }
 
 func writeUnaryExpr(sb *strings.Builder, n *UnaryExpr) {
-	sb.WriteString("{UNARYEXPR")
-	fmt.Fprintf(sb, " :op %d :loc %d :operand ", n.Op, n.Loc.Start)
+	sb.WriteString("{UNARY")
+	fmt.Fprintf(sb, " :op %s :operand ", unaryOpStr(n.Op))
 	writeNode(sb, n.Operand)
 	sb.WriteString("}")
 }
 
 func writeFuncCallExpr(sb *strings.Builder, n *FuncCallExpr) {
-	sb.WriteString("{FUNC_CALL")
+	sb.WriteString("{FUNCCALL")
 	fmt.Fprintf(sb, " :name %s :loc %d", n.Name, n.Loc.Start)
 	if n.Schema != "" {
 		fmt.Fprintf(sb, " :schema %s", n.Schema)
@@ -1452,13 +1535,12 @@ func writeLikeExpr(sb *strings.Builder, n *LikeExpr) {
 
 func writeIsExpr(sb *strings.Builder, n *IsExpr) {
 	sb.WriteString("{IS")
-	fmt.Fprintf(sb, " :loc %d", n.Loc.Start)
 	if n.Not {
 		sb.WriteString(" :not true")
 	}
+	fmt.Fprintf(sb, " :test %s", isTestStr(n.Test))
 	sb.WriteString(" :expr ")
 	writeNode(sb, n.Expr)
-	fmt.Fprintf(sb, " :test %d", n.Test)
 	sb.WriteString("}")
 }
 

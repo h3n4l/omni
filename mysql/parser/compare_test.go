@@ -586,6 +586,377 @@ func TestParseDataTypeError(t *testing.T) {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// Batch 3: expressions
+// ---------------------------------------------------------------------------
+
+// helper to parse an expression from a string
+func parseExpr(t *testing.T, input string) ast.ExprNode {
+	t.Helper()
+	p := &Parser{lexer: NewLexer(input)}
+	p.advance()
+	expr, err := p.parseExpr()
+	if err != nil {
+		t.Fatalf("parseExpr(%q) error: %v", input, err)
+	}
+	return expr
+}
+
+// TestParseArithmetic tests arithmetic expression parsing.
+func TestParseArithmetic(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"1 + 2", "{BINEXPR :op + :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 4}}"},
+		{"1 - 2", "{BINEXPR :op - :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 4}}"},
+		{"1 * 2", "{BINEXPR :op * :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 4}}"},
+		{"1 / 2", "{BINEXPR :op / :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 4}}"},
+		{"10 DIV 3", "{BINEXPR :op DIV :left {INT_LIT :val 10 :loc 0} :right {INT_LIT :val 3 :loc 7}}"},
+		{"10 % 3", "{BINEXPR :op %% :left {INT_LIT :val 10 :loc 0} :right {INT_LIT :val 3 :loc 5}}"},
+		{"10 MOD 3", "{BINEXPR :op %% :left {INT_LIT :val 10 :loc 0} :right {INT_LIT :val 3 :loc 7}}"},
+		{"-1", "{UNARY :op - :operand {INT_LIT :val 1 :loc 1}}"},
+		{"~5", "{UNARY :op ~ :operand {INT_LIT :val 5 :loc 1}}"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			expr := parseExpr(t, tt.input)
+			got := ast.NodeToString(expr)
+			if got != tt.want {
+				t.Errorf("parseExpr(%q):\n  got:  %s\n  want: %s", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestParseComparison tests comparison expression parsing.
+func TestParseComparison(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"1 = 2", "{BINEXPR :op = :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 4}}"},
+		{"1 <> 2", "{BINEXPR :op <> :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 5}}"},
+		{"1 != 2", "{BINEXPR :op <> :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 5}}"},
+		{"1 < 2", "{BINEXPR :op < :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 4}}"},
+		{"1 > 2", "{BINEXPR :op > :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 4}}"},
+		{"1 <= 2", "{BINEXPR :op <= :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 5}}"},
+		{"1 >= 2", "{BINEXPR :op >= :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 5}}"},
+		{"1 <=> 2", "{BINEXPR :op <=> :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 6}}"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			expr := parseExpr(t, tt.input)
+			got := ast.NodeToString(expr)
+			if got != tt.want {
+				t.Errorf("parseExpr(%q):\n  got:  %s\n  want: %s", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestParseLogical tests logical expression parsing.
+func TestParseLogical(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"1 AND 2", "{BINEXPR :op AND :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 6}}"},
+		{"1 OR 2", "{BINEXPR :op OR :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 5}}"},
+		{"NOT 1", "{UNARY :op NOT :operand {INT_LIT :val 1 :loc 4}}"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			expr := parseExpr(t, tt.input)
+			got := ast.NodeToString(expr)
+			if got != tt.want {
+				t.Errorf("parseExpr(%q):\n  got:  %s\n  want: %s", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestParseCaseExpr tests CASE expression parsing.
+func TestParseCaseExpr(t *testing.T) {
+	// Use a simpler comparison approach: just verify parsing succeeds
+	// and spot-check key properties
+	cases := []string{
+		"CASE WHEN 1 THEN 'one' ELSE 'other' END",
+		"CASE x WHEN 1 THEN 'one' END",
+		"CASE WHEN 1 THEN 'a' WHEN 2 THEN 'b' ELSE 'c' END",
+	}
+
+	for _, input := range cases {
+		t.Run(input, func(t *testing.T) {
+			expr := parseExpr(t, input)
+			ce, ok := expr.(*ast.CaseExpr)
+			if !ok {
+				t.Fatalf("parseExpr(%q) expected *ast.CaseExpr, got %T", input, expr)
+			}
+			if len(ce.Whens) == 0 {
+				t.Errorf("parseExpr(%q) has no WHEN clauses", input)
+			}
+		})
+	}
+}
+
+// TestParseBetween tests BETWEEN expression parsing.
+func TestParseBetween(t *testing.T) {
+	cases := []struct {
+		input string
+		not   bool
+	}{
+		{"x BETWEEN 1 AND 10", false},
+		{"x NOT BETWEEN 1 AND 10", true},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.input, func(t *testing.T) {
+			expr := parseExpr(t, tt.input)
+			be, ok := expr.(*ast.BetweenExpr)
+			if !ok {
+				t.Fatalf("expected *ast.BetweenExpr, got %T", expr)
+			}
+			if be.Not != tt.not {
+				t.Errorf("Not = %v, want %v", be.Not, tt.not)
+			}
+		})
+	}
+}
+
+// TestParseIn tests IN expression parsing.
+func TestParseIn(t *testing.T) {
+	cases := []struct {
+		input string
+		not   bool
+		count int
+	}{
+		{"x IN (1, 2, 3)", false, 3},
+		{"x NOT IN (1)", true, 1},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.input, func(t *testing.T) {
+			expr := parseExpr(t, tt.input)
+			ie, ok := expr.(*ast.InExpr)
+			if !ok {
+				t.Fatalf("expected *ast.InExpr, got %T", expr)
+			}
+			if ie.Not != tt.not {
+				t.Errorf("Not = %v, want %v", ie.Not, tt.not)
+			}
+			if len(ie.List) != tt.count {
+				t.Errorf("list len = %d, want %d", len(ie.List), tt.count)
+			}
+		})
+	}
+}
+
+// TestParseLike tests LIKE expression parsing.
+func TestParseLike(t *testing.T) {
+	cases := []struct {
+		input string
+		not   bool
+	}{
+		{"x LIKE '%test%'", false},
+		{"x NOT LIKE '%test%'", true},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.input, func(t *testing.T) {
+			expr := parseExpr(t, tt.input)
+			le, ok := expr.(*ast.LikeExpr)
+			if !ok {
+				t.Fatalf("expected *ast.LikeExpr, got %T", expr)
+			}
+			if le.Not != tt.not {
+				t.Errorf("Not = %v, want %v", le.Not, tt.not)
+			}
+		})
+	}
+}
+
+// TestParseIs tests IS expression parsing.
+func TestParseIs(t *testing.T) {
+	cases := []struct {
+		input string
+		not   bool
+		test  ast.IsTestType
+	}{
+		{"x IS NULL", false, ast.IsNull},
+		{"x IS NOT NULL", true, ast.IsNull},
+		{"x IS TRUE", false, ast.IsTrue},
+		{"x IS FALSE", false, ast.IsFalse},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.input, func(t *testing.T) {
+			expr := parseExpr(t, tt.input)
+			ie, ok := expr.(*ast.IsExpr)
+			if !ok {
+				t.Fatalf("expected *ast.IsExpr, got %T", expr)
+			}
+			if ie.Not != tt.not {
+				t.Errorf("Not = %v, want %v", ie.Not, tt.not)
+			}
+			if ie.Test != tt.test {
+				t.Errorf("Test = %v, want %v", ie.Test, tt.test)
+			}
+		})
+	}
+}
+
+// TestParseCast tests CAST expression parsing.
+func TestParseCast(t *testing.T) {
+	cases := []struct {
+		input    string
+		typeName string
+	}{
+		{"CAST(x AS INT)", "INT"},
+		{"CAST('123' AS DECIMAL(10,2))", "DECIMAL"},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.input, func(t *testing.T) {
+			expr := parseExpr(t, tt.input)
+			ce, ok := expr.(*ast.CastExpr)
+			if !ok {
+				t.Fatalf("expected *ast.CastExpr, got %T", expr)
+			}
+			if ce.TypeName.Name != tt.typeName {
+				t.Errorf("TypeName = %s, want %s", ce.TypeName.Name, tt.typeName)
+			}
+		})
+	}
+}
+
+// TestParseFuncCall tests function call parsing.
+func TestParseFuncCall(t *testing.T) {
+	cases := []struct {
+		input    string
+		name     string
+		star     bool
+		distinct bool
+		argCount int
+	}{
+		{"NOW()", "NOW", false, false, 0},
+		{"COUNT(*)", "COUNT", true, false, 0},
+		{"COUNT(DISTINCT x)", "COUNT", false, true, 1},
+		{"COALESCE(a, b, c)", "COALESCE", false, false, 3},
+		{"CONCAT('a', 'b')", "CONCAT", false, false, 2},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.input, func(t *testing.T) {
+			expr := parseExpr(t, tt.input)
+			fc, ok := expr.(*ast.FuncCallExpr)
+			if !ok {
+				t.Fatalf("expected *ast.FuncCallExpr, got %T", expr)
+			}
+			if fc.Name != tt.name {
+				t.Errorf("Name = %s, want %s", fc.Name, tt.name)
+			}
+			if fc.Star != tt.star {
+				t.Errorf("Star = %v, want %v", fc.Star, tt.star)
+			}
+			if fc.Distinct != tt.distinct {
+				t.Errorf("Distinct = %v, want %v", fc.Distinct, tt.distinct)
+			}
+			if len(fc.Args) != tt.argCount {
+				t.Errorf("arg count = %d, want %d", len(fc.Args), tt.argCount)
+			}
+		})
+	}
+}
+
+// TestParseLiterals tests literal parsing.
+func TestParseLiterals(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"42", "{INT_LIT :val 42 :loc 0}"},
+		{"3.14", "{FLOAT_LIT :val 3.14 :loc 0}"},
+		{"'hello'", "{STRING_LIT :val \"hello\" :loc 0}"},
+		{"TRUE", "{BOOL_LIT :val true :loc 0}"},
+		{"FALSE", "{BOOL_LIT :val false :loc 0}"},
+		{"NULL", "{NULL_LIT :loc 0}"},
+		{"DEFAULT", "{DEFAULT :loc 0}"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			expr := parseExpr(t, tt.input)
+			got := ast.NodeToString(expr)
+			if got != tt.want {
+				t.Errorf("parseExpr(%q):\n  got:  %s\n  want: %s", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestParseParenExpr tests parenthesized expression parsing.
+func TestParseParenExpr(t *testing.T) {
+	expr := parseExpr(t, "(1 + 2)")
+	pe, ok := expr.(*ast.ParenExpr)
+	if !ok {
+		t.Fatalf("expected *ast.ParenExpr, got %T", expr)
+	}
+	be, ok := pe.Expr.(*ast.BinaryExpr)
+	if !ok {
+		t.Fatalf("expected *ast.BinaryExpr inside paren, got %T", pe.Expr)
+	}
+	if be.Op != ast.BinOpAdd {
+		t.Errorf("Op = %v, want BinOpAdd", be.Op)
+	}
+}
+
+// TestParsePrecedence tests operator precedence.
+func TestParsePrecedence(t *testing.T) {
+	// 1 + 2 * 3 should parse as 1 + (2 * 3)
+	expr := parseExpr(t, "1 + 2 * 3")
+	be, ok := expr.(*ast.BinaryExpr)
+	if !ok {
+		t.Fatalf("expected *ast.BinaryExpr, got %T", expr)
+	}
+	if be.Op != ast.BinOpAdd {
+		t.Errorf("outer Op = %v, want BinOpAdd", be.Op)
+	}
+	inner, ok := be.Right.(*ast.BinaryExpr)
+	if !ok {
+		t.Fatalf("right side: expected *ast.BinaryExpr, got %T", be.Right)
+	}
+	if inner.Op != ast.BinOpMul {
+		t.Errorf("inner Op = %v, want BinOpMul", inner.Op)
+	}
+}
+
+// TestParseConvert tests CONVERT expression parsing.
+func TestParseConvert(t *testing.T) {
+	// CONVERT with USING
+	expr1 := parseExpr(t, "CONVERT(x USING utf8)")
+	cv1, ok := expr1.(*ast.ConvertExpr)
+	if !ok {
+		t.Fatalf("expected *ast.ConvertExpr, got %T", expr1)
+	}
+	if cv1.Charset != "utf8" {
+		t.Errorf("Charset = %s, want utf8", cv1.Charset)
+	}
+
+	// CONVERT with type
+	expr2 := parseExpr(t, "CONVERT('123', DECIMAL(10,2))")
+	cv2, ok := expr2.(*ast.ConvertExpr)
+	if !ok {
+		t.Fatalf("expected *ast.ConvertExpr, got %T", expr2)
+	}
+	if cv2.TypeName == nil || cv2.TypeName.Name != "DECIMAL" {
+		t.Errorf("TypeName.Name = %v, want DECIMAL", cv2.TypeName)
+	}
+}
+
 // TestParseEmpty tests parsing empty input.
 func TestParseEmpty(t *testing.T) {
 	result, err := Parse("")
