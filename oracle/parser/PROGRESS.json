@@ -43,7 +43,7 @@
       "id": 3,
       "name": "expressions",
       "file": "expr.go",
-      "status": "pending",
+      "status": "done",
       "description": "Operators, CASE, DECODE, BETWEEN, IN, LIKE/LIKEC, IS, NVL, NVL2, COALESCE, NULLIF, CAST, MULTISET",
       "rules": [
         "expression", "or_expr", "and_expr", "not_expr", "comparison_expr",
