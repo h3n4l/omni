@@ -81,6 +81,14 @@ const (
 	OBJECT_USER
 	OBJECT_ROLE
 	OBJECT_TABLESPACE
+	OBJECT_PROFILE
+	OBJECT_DIRECTORY
+	OBJECT_CONTEXT
+	OBJECT_CLUSTER
+	OBJECT_DIMENSION
+	OBJECT_FLASHBACK_ARCHIVE
+	OBJECT_JAVA
+	OBJECT_LIBRARY
 )
 
 // ConstraintType represents constraint types.
@@ -1975,6 +1983,65 @@ type RenameStmt struct {
 
 func (n *RenameStmt) nodeTag()  {}
 func (n *RenameStmt) stmtNode() {}
+
+// CreateUserStmt represents a CREATE USER statement.
+//
+//	CREATE USER name IDENTIFIED BY password [DEFAULT TABLESPACE ts] [QUOTA ...] [PROFILE p]
+type CreateUserStmt struct {
+	Name       *ObjectName // user name
+	IdentifyBy string      // IDENTIFIED BY password or IDENTIFIED EXTERNALLY/GLOBALLY
+	Options    []string    // other options collected as strings
+	Loc        Loc
+}
+
+func (n *CreateUserStmt) nodeTag()  {}
+func (n *CreateUserStmt) stmtNode() {}
+
+// AlterUserStmt represents an ALTER USER statement.
+type AlterUserStmt struct {
+	Name    *ObjectName // user name
+	Options []string    // options collected as strings
+	Loc     Loc
+}
+
+func (n *AlterUserStmt) nodeTag()  {}
+func (n *AlterUserStmt) stmtNode() {}
+
+// CreateRoleStmt represents a CREATE ROLE statement.
+type CreateRoleStmt struct {
+	Name       *ObjectName // role name
+	IdentifyBy string      // optional IDENTIFIED BY/USING/EXTERNALLY
+	Loc        Loc
+}
+
+func (n *CreateRoleStmt) nodeTag()  {}
+func (n *CreateRoleStmt) stmtNode() {}
+
+// CreateProfileStmt represents a CREATE PROFILE statement.
+type CreateProfileStmt struct {
+	Name   *ObjectName // profile name
+	Limits []string    // resource limit specifications
+	Loc    Loc
+}
+
+func (n *CreateProfileStmt) nodeTag()  {}
+func (n *CreateProfileStmt) stmtNode() {}
+
+// AdminDDLStmt is a generic statement node for administrative DDL statements
+// (CREATE/ALTER/DROP TABLESPACE, DIRECTORY, CONTEXT, CLUSTER, DIMENSION,
+// FLASHBACK ARCHIVE, JAVA, LIBRARY) that captures the DDL action, object type,
+// and name without detailed parsing of all options.
+type AdminDDLStmt struct {
+	Action     string      // CREATE, ALTER, DROP
+	ObjectType ObjectType  // OBJECT_TABLESPACE, OBJECT_DIRECTORY, etc.
+	Name       *ObjectName // object name
+	OrReplace  bool        // OR REPLACE
+	IfExists   bool        // IF EXISTS (for DROP)
+	Loc        Loc
+}
+
+func (n *AdminDDLStmt) nodeTag()  {}
+func (n *AdminDDLStmt) stmtNode() {}
 
 // SetRoleStmt represents a SET ROLE statement.
 //

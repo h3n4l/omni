@@ -31,7 +31,20 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 		return p.parseAlterGeneric(start, nodes.OBJECT_SEQUENCE)
 	case kwTABLE:
 		return p.parseAlterTableStmt(start)
+	case kwUSER, kwROLE, kwPROFILE,
+		kwTABLESPACE, kwCLUSTER, kwJAVA, kwLIBRARY:
+		if adminStmt := p.parseAlterAdminObject(start); adminStmt != nil {
+			return adminStmt
+		}
+		p.skipToSemicolon()
+		return nil
 	default:
+		// Check for DIMENSION (identifier)
+		if p.isIdentLike() {
+			if adminStmt := p.parseAlterAdminObject(start); adminStmt != nil {
+				return adminStmt
+			}
+		}
 		// Unknown ALTER target — skip to semicolon or EOF.
 		p.skipToSemicolon()
 		return nil

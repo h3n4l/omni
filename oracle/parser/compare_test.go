@@ -873,3 +873,166 @@ func TestParseDisassociateStatistics(t *testing.T) {
 		})
 	}
 }
+
+func TestParseCreateUser(t *testing.T) {
+	tests := []string{
+		"CREATE USER scott IDENTIFIED BY tiger",
+		"CREATE USER app_user IDENTIFIED BY password123",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseAlterUser(t *testing.T) {
+	tests := []string{
+		"ALTER USER scott IDENTIFIED BY newpass",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseDropUser(t *testing.T) {
+	tests := []string{
+		"DROP USER scott",
+		"DROP USER scott CASCADE",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseCreateRole(t *testing.T) {
+	tests := []string{
+		"CREATE ROLE admin_role",
+		"CREATE ROLE secure_role IDENTIFIED BY secret",
+		"CREATE ROLE open_role NOT IDENTIFIED",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseDropRole(t *testing.T) {
+	tests := []string{
+		"DROP ROLE admin_role",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseCreateProfile(t *testing.T) {
+	tests := []string{
+		"CREATE PROFILE app_profile LIMIT SESSIONS_PER_USER 5",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseCreateTablespace(t *testing.T) {
+	tests := []string{
+		"CREATE TABLESPACE users DATAFILE '/u01/users01.dbf' SIZE 100M",
+		"DROP TABLESPACE temp_ts",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseCreateDirectory(t *testing.T) {
+	tests := []string{
+		"CREATE DIRECTORY data_dir AS '/u01/data'",
+		"DROP DIRECTORY data_dir",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseCreateContext(t *testing.T) {
+	tests := []string{
+		"CREATE CONTEXT app_ctx USING ctx_pkg",
+		"DROP CONTEXT app_ctx",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseCreateCluster(t *testing.T) {
+	tests := []string{
+		"CREATE CLUSTER emp_dept (dept_id NUMBER)",
+		"DROP CLUSTER emp_dept",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseCreateDimension(t *testing.T) {
+	tests := []string{
+		"CREATE DIMENSION time_dim LEVEL day IS t.day",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseCreateFlashbackArchive(t *testing.T) {
+	tests := []string{
+		"CREATE FLASHBACK ARCHIVE default_archive TABLESPACE ts1 RETENTION 1 YEAR",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseCreateJava(t *testing.T) {
+	tests := []string{
+		"CREATE JAVA SOURCE NAMED my_java AS 'public class Foo {}'",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseCreateLibrary(t *testing.T) {
+	tests := []string{
+		"CREATE LIBRARY my_lib AS '/usr/lib/mylib.so'",
+		"DROP LIBRARY my_lib",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}

@@ -89,7 +89,20 @@ func (p *Parser) parseDropStmt() nodes.StmtNode {
 			}
 			stmt.ObjectType = nodes.OBJECT_DATABASE_LINK
 		}
+	case kwUSER, kwROLE, kwPROFILE,
+		kwTABLESPACE, kwDIRECTORY, kwCONTEXT,
+		kwCLUSTER, kwJAVA, kwLIBRARY:
+		if adminStmt := p.parseDropAdminObject(start); adminStmt != nil {
+			return adminStmt
+		}
+		stmt.ObjectType = nodes.OBJECT_TABLE
 	default:
+		// Check for DIMENSION, FLASHBACK ARCHIVE
+		if p.isIdentLike() {
+			if adminStmt := p.parseDropAdminObject(start); adminStmt != nil {
+				return adminStmt
+			}
+		}
 		// Unknown object type; consume as identifier
 		stmt.ObjectType = nodes.OBJECT_TABLE
 		p.advance()

@@ -76,10 +76,18 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 		return p.parseCreatePackageStmt(start, orReplace)
 	case kwTRIGGER:
 		return p.parseCreateTriggerStmt(start, orReplace)
+	case kwUSER, kwROLE, kwPROFILE,
+		kwTABLESPACE, kwDIRECTORY, kwCONTEXT,
+		kwCLUSTER, kwJAVA, kwLIBRARY:
+		return p.parseCreateAdminObject(start)
 	default:
 		// Check for "NO FORCE VIEW"
 		if p.isIdentLikeStr("NO") || p.cur.Type == kwNOT {
 			return p.parseCreateViewStmt(start, orReplace)
+		}
+		// Check for DIMENSION, FLASHBACK ARCHIVE
+		if adminStmt := p.parseCreateAdminObject(start); adminStmt != nil {
+			return adminStmt
 		}
 		return nil
 	}

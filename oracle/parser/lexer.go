@@ -830,6 +830,13 @@ var oracleKeywords = map[string]int{
 	"SUCCESSFUL":   kwSUCCESSFUL,
 	"WHENEVER":     kwWHENEVER,
 
+	// Admin DDL keywords
+	"CONTEXT":   kwCONTEXT,
+	"DIRECTORY": kwDIRECTORY,
+	"JAVA":      kwJAVA,
+	"LIBRARY":   kwLIBRARY,
+	"PROFILE":   kwPROFILE,
+
 	// JSON expression keywords
 	"FORMAT":         kwFORMAT,
 	"JSON":           kwJSON,
@@ -1185,6 +1192,13 @@ const (
 	kwSTATISTICS
 	kwSUCCESSFUL
 	kwWHENEVER
+
+	// Admin DDL keywords
+	kwCONTEXT
+	kwDIRECTORY
+	kwJAVA
+	kwLIBRARY
+	kwPROFILE
 
 	// JSON expression keywords
 	kwFORMAT

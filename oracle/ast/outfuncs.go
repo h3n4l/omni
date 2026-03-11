@@ -306,6 +306,16 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeCallStmt(sb, n)
 	case *RenameStmt:
 		writeRenameStmt(sb, n)
+	case *CreateUserStmt:
+		writeCreateUserStmt(sb, n)
+	case *AlterUserStmt:
+		writeAlterUserStmt(sb, n)
+	case *CreateRoleStmt:
+		writeCreateRoleStmt(sb, n)
+	case *CreateProfileStmt:
+		writeCreateProfileStmt(sb, n)
+	case *AdminDDLStmt:
+		writeAdminDDLStmt(sb, n)
 	case *SetRoleStmt:
 		writeSetRoleStmt(sb, n)
 	case *SetConstraintsStmt:
@@ -2674,6 +2684,79 @@ func writeRenameStmt(sb *strings.Builder, n *RenameStmt) {
 	if n.NewName != nil {
 		sb.WriteString(" :newName ")
 		writeNode(sb, n.NewName)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeCreateUserStmt(sb *strings.Builder, n *CreateUserStmt) {
+	sb.WriteString("{CREATE_USER")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.IdentifyBy != "" {
+		sb.WriteString(fmt.Sprintf(" :identifiedBy %q", n.IdentifyBy))
+	}
+	for _, opt := range n.Options {
+		sb.WriteString(fmt.Sprintf(" :option %q", opt))
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeAlterUserStmt(sb *strings.Builder, n *AlterUserStmt) {
+	sb.WriteString("{ALTER_USER")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	for _, opt := range n.Options {
+		sb.WriteString(fmt.Sprintf(" :option %q", opt))
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeCreateRoleStmt(sb *strings.Builder, n *CreateRoleStmt) {
+	sb.WriteString("{CREATE_ROLE")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.IdentifyBy != "" {
+		sb.WriteString(fmt.Sprintf(" :identifiedBy %q", n.IdentifyBy))
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeCreateProfileStmt(sb *strings.Builder, n *CreateProfileStmt) {
+	sb.WriteString("{CREATE_PROFILE")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	for _, lim := range n.Limits {
+		sb.WriteString(fmt.Sprintf(" :limit %q", lim))
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeAdminDDLStmt(sb *strings.Builder, n *AdminDDLStmt) {
+	sb.WriteString("{ADMIN_DDL")
+	sb.WriteString(fmt.Sprintf(" :action %q", n.Action))
+	sb.WriteString(fmt.Sprintf(" :objectType %d", n.ObjectType))
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.OrReplace {
+		sb.WriteString(" :orReplace true")
+	}
+	if n.IfExists {
+		sb.WriteString(" :ifExists true")
 	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

@@ -528,7 +528,7 @@
       "id": 40,
       "name": "create_user_role_profile",
       "file": "security.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 18 gap: CREATE/ALTER/DROP USER, ROLE, PROFILE are listed in batch 18 rules but not implemented (only GRANT/REVOKE are). Full CREATE USER with IDENTIFIED BY, DEFAULT TABLESPACE, etc. CREATE ROLE, ALTER ROLE, DROP ROLE. CREATE/ALTER/DROP PROFILE with resource limits.",
       "rules": [
         "create_user_stmt", "alter_user_stmt", "drop_user_stmt",
@@ -542,7 +542,7 @@
       "id": 41,
       "name": "create_tablespace_directory",
       "file": "create_admin.go",
-      "status": "pending",
+      "status": "done",
       "description": "CREATE/ALTER/DROP TABLESPACE, CREATE/DROP DIRECTORY, CREATE/DROP CONTEXT. Administrative DDL for storage and namespace management.",
       "rules": [
         "create_tablespace_stmt", "alter_tablespace_stmt", "drop_tablespace_stmt",
@@ -556,7 +556,7 @@
       "id": 42,
       "name": "create_cluster_dimension",
       "file": "create_admin.go",
-      "status": "pending",
+      "status": "done",
       "description": "CREATE/ALTER/DROP CLUSTER (table clustering), CREATE/ALTER/DROP DIMENSION (OLAP dimension objects), CREATE/DROP FLASHBACK ARCHIVE.",
       "rules": [
         "create_cluster_stmt", "alter_cluster_stmt", "drop_cluster_stmt",
@@ -570,7 +570,7 @@
       "id": 43,
       "name": "create_java_library",
       "file": "create_admin.go",
-      "status": "pending",
+      "status": "done",
       "description": "CREATE/ALTER/DROP JAVA (Java source/class/resource), CREATE/ALTER/DROP LIBRARY (external C library). Less common DDL for external code integration.",
       "rules": [
         "create_java_stmt", "drop_java_stmt",
