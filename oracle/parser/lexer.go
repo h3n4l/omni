@@ -818,6 +818,16 @@ var oracleKeywords = map[string]int{
 	"XMLPARSE":     kwXMLPARSE,
 	"XMLROOT":      kwXMLROOT,
 	"XMLSERIALIZE": kwXMLSERIALIZE,
+
+	// JSON expression keywords
+	"FORMAT":         kwFORMAT,
+	"JSON":           kwJSON,
+	"JSON_ARRAY":     kwJSON_ARRAY,
+	"JSON_EXISTS":    kwJSON_EXISTS,
+	"JSON_MERGEPATCH": kwJSON_MERGEPATCH,
+	"JSON_OBJECT":    kwJSON_OBJECT,
+	"JSON_QUERY":     kwJSON_QUERY,
+	"JSON_VALUE":     kwJSON_VALUE,
 }
 
 // Keyword token constants.
@@ -1153,4 +1163,14 @@ const (
 	kwXMLPARSE
 	kwXMLROOT
 	kwXMLSERIALIZE
+
+	// JSON expression keywords
+	kwFORMAT
+	kwJSON
+	kwJSON_ARRAY
+	kwJSON_EXISTS
+	kwJSON_MERGEPATCH
+	kwJSON_OBJECT
+	kwJSON_QUERY
+	kwJSON_VALUE
 )

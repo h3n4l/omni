@@ -709,3 +709,36 @@ func TestNodeToString(t *testing.T) {
 		t.Error("NodeToString returned empty string")
 	}
 }
+
+func TestParseJsonExpressions(t *testing.T) {
+	tests := []string{
+		// JSON_OBJECT
+		"SELECT JSON_OBJECT('name', e.name, 'salary', e.salary) FROM employees e",
+		// JSON_ARRAY
+		"SELECT JSON_ARRAY(1, 2, 3) FROM dual",
+		// JSON_VALUE
+		"SELECT JSON_VALUE(json_col, '$.name') FROM json_data",
+		// JSON_VALUE with RETURNING
+		"SELECT JSON_VALUE(json_col, '$.id' RETURNING NUMBER) FROM json_data",
+		// JSON_QUERY
+		"SELECT JSON_QUERY(json_col, '$.address') FROM json_data",
+		// JSON_EXISTS
+		"SELECT * FROM json_data WHERE JSON_EXISTS(json_col, '$.name')",
+		// JSON_MERGEPATCH
+		"SELECT JSON_MERGEPATCH(json_col, '{}') FROM json_data",
+		// IS JSON condition
+		"SELECT * FROM t WHERE col IS JSON",
+		// IS NOT JSON condition
+		"SELECT * FROM t WHERE col IS NOT JSON",
+	}
+
+	for _, sql := range tests {
+		name := sql
+		if len(name) > 60 {
+			name = name[:60]
+		}
+		t.Run(name, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}

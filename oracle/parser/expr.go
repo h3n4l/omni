@@ -295,6 +295,19 @@ func (p *Parser) parsePrimary() nodes.ExprNode {
 	case kwXMLSERIALIZE:
 		return p.parseXmlSerialize()
 
+	case kwJSON_OBJECT:
+		return p.parseJsonObjectOrArray("JSON_OBJECT")
+	case kwJSON_ARRAY:
+		return p.parseJsonObjectOrArray("JSON_ARRAY")
+	case kwJSON_VALUE:
+		return p.parseJsonPathFunc("JSON_VALUE")
+	case kwJSON_QUERY:
+		return p.parseJsonPathFunc("JSON_QUERY")
+	case kwJSON_EXISTS:
+		return p.parseJsonPathFunc("JSON_EXISTS")
+	case kwJSON_MERGEPATCH:
+		return p.parseJsonPathFunc("JSON_MERGEPATCH")
+
 	default:
 		// Pseudo columns
 		if p.isPseudoColumn() {
@@ -1019,6 +1032,9 @@ func (p *Parser) parseIsExpr(left nodes.ExprNode) nodes.ExprNode {
 	case kwNULL:
 		test = "NULL"
 		p.advance()
+	case kwJSON:
+		test = "JSON"
+		p.advance()
 	default:
 		if p.isIdentLike() {
 			test = p.cur.Str
@@ -1423,6 +1439,128 @@ func (p *Parser) parseXmlContentFunc(name string) nodes.ExprNode {
 	arg := p.parseExpr()
 	if arg != nil {
 		fc.Args.Items = append(fc.Args.Items, arg)
+	}
+
+	if p.cur.Type == ')' {
+		p.advance()
+	}
+
+	return p.parseFuncCallPostfix(fc)
+}
+
+// parseJsonObjectOrArray parses JSON_OBJECT or JSON_ARRAY expressions.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/JSON_OBJECT.html
+//
+//	JSON_OBJECT ( [ key_expr VALUE value_expr | key:value ] [, ...] )
+//	JSON_ARRAY ( [ expr [, ...] ] )
+func (p *Parser) parseJsonObjectOrArray(name string) nodes.ExprNode {
+	start := p.pos()
+	p.advance() // consume keyword
+
+	fc := &nodes.FuncCallExpr{
+		FuncName: &nodes.ObjectName{Name: name},
+		Args:     &nodes.List{},
+		Loc:      nodes.Loc{Start: start},
+	}
+
+	if p.cur.Type != '(' {
+		fc.Loc.End = p.pos()
+		return fc
+	}
+	p.advance() // consume '('
+
+	for p.cur.Type != ')' && p.cur.Type != tokEOF {
+		arg := p.parseExpr()
+		if arg != nil {
+			fc.Args.Items = append(fc.Args.Items, arg)
+		}
+		// Skip VALUE keyword (JSON_OBJECT key VALUE val syntax)
+		if p.isIdentLikeStr("VALUE") {
+			p.advance()
+			val := p.parseExpr()
+			if val != nil {
+				fc.Args.Items = append(fc.Args.Items, val)
+			}
+		}
+		// Skip FORMAT JSON
+		if p.cur.Type == kwFORMAT {
+			p.advance()
+			if p.cur.Type == kwJSON {
+				p.advance()
+			}
+		}
+		if p.cur.Type != ',' {
+			break
+		}
+		p.advance()
+	}
+
+	// Skip trailing keywords: NULL ON NULL, ABSENT ON NULL, RETURNING clause, STRICT/LAX
+	for p.cur.Type != ')' && p.cur.Type != tokEOF {
+		p.advance()
+	}
+
+	if p.cur.Type == ')' {
+		p.advance()
+	}
+
+	return p.parseFuncCallPostfix(fc)
+}
+
+// parseJsonPathFunc parses JSON path functions: JSON_VALUE, JSON_QUERY, JSON_EXISTS, JSON_MERGEPATCH.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/JSON_VALUE.html
+//
+//	JSON_VALUE ( expr, path_string [ RETURNING type ] [ error_clause ] )
+//	JSON_QUERY ( expr, path_string [ RETURNING type ] [ wrapper_clause ] [ error_clause ] )
+//	JSON_EXISTS ( expr, path_string [ error_clause ] )
+//	JSON_MERGEPATCH ( expr, expr [ RETURNING type ] )
+func (p *Parser) parseJsonPathFunc(name string) nodes.ExprNode {
+	start := p.pos()
+	p.advance() // consume keyword
+
+	fc := &nodes.FuncCallExpr{
+		FuncName: &nodes.ObjectName{Name: name},
+		Args:     &nodes.List{},
+		Loc:      nodes.Loc{Start: start},
+	}
+
+	if p.cur.Type != '(' {
+		fc.Loc.End = p.pos()
+		return fc
+	}
+	p.advance() // consume '('
+
+	// First argument (JSON expr)
+	arg := p.parseExpr()
+	if arg != nil {
+		fc.Args.Items = append(fc.Args.Items, arg)
+	}
+
+	if p.cur.Type == ',' {
+		p.advance()
+		// Second argument (path or patch expr)
+		arg2 := p.parseExpr()
+		if arg2 != nil {
+			fc.Args.Items = append(fc.Args.Items, arg2)
+		}
+	}
+
+	// Skip trailing keywords: RETURNING type, error clauses, wrapper clauses
+	// These may include keywords like RETURNING, ERROR, NULL, DEFAULT, EMPTY, etc.
+	// We consume everything until the closing paren.
+	depth := 0
+	for p.cur.Type != tokEOF {
+		if p.cur.Type == '(' {
+			depth++
+		} else if p.cur.Type == ')' {
+			if depth == 0 {
+				break
+			}
+			depth--
+		}
+		p.advance()
 	}
 
 	if p.cur.Type == ')' {

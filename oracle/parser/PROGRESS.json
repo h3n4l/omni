@@ -443,7 +443,7 @@
       "id": 33,
       "name": "json_expressions",
       "file": "expr.go",
-      "status": "pending",
+      "status": "done",
       "description": "JSON expression functions: JSON_OBJECT, JSON_ARRAY, JSON_QUERY, JSON_VALUE, JSON_EXISTS, JSON_MERGEPATCH, IS JSON condition. Oracle 23c JSON features.",
       "rules": [
         "json_object_expr", "json_array_expr", "json_query_expr",
