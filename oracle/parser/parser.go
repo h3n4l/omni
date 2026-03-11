@@ -61,12 +61,11 @@ func Parse(sql string) (*nodes.List, error) {
 }
 
 // parseStmt dispatches to statement-specific parsers.
-// Minimal implementation for batch 0 (infrastructure).
-// Full dispatch will be wired in batch 23.
+// Each batch wires in its statement parsers incrementally.
 func (p *Parser) parseStmt() nodes.StmtNode {
 	switch p.cur.Type {
-	case kwSELECT:
-		return nil // placeholder: will be implemented in batch 4
+	case kwSELECT, kwWITH:
+		return p.parseSelectStmt()
 	default:
 		return nil
 	}

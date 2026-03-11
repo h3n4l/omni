@@ -1,0 +1,746 @@
+package parser
+
+import (
+	nodes "github.com/bytebase/omni/oracle/ast"
+)
+
+// parseSelectStmt parses a SELECT statement.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/SELECT.html
+//
+//	[ with_clause ]
+//	SELECT [ hint ] [ ALL | DISTINCT | UNIQUE ]
+//	    select_list
+//	    [ FROM table_reference [, ...] ]
+//	    [ WHERE condition ]
+//	    [ hierarchical_query_clause ]
+//	    [ GROUP BY expr [, ...] ]
+//	    [ HAVING condition ]
+//	    [ ORDER BY sort_key [, ...] ]
+//	    [ FOR UPDATE ... ]
+//	    [ { UNION [ALL] | INTERSECT | MINUS } select ]
+//	    [ OFFSET n { ROW | ROWS } ]
+//	    [ FETCH { FIRST | NEXT } n { ROW | ROWS } { ONLY | WITH TIES } ]
+func (p *Parser) parseSelectStmt() *nodes.SelectStmt {
+	start := p.pos()
+	sel := &nodes.SelectStmt{
+		TargetList: &nodes.List{},
+		Loc:        nodes.Loc{Start: start},
+	}
+
+	// WITH clause
+	if p.cur.Type == kwWITH {
+		sel.WithClause = p.parseWithClause()
+	}
+
+	if p.cur.Type != kwSELECT {
+		sel.Loc.End = p.pos()
+		return sel
+	}
+	p.advance() // consume SELECT
+
+	// Hints
+	if p.cur.Type == tokHINT {
+		sel.Hints = &nodes.List{}
+		sel.Hints.Items = append(sel.Hints.Items, &nodes.Hint{
+			Text: p.cur.Str,
+			Loc:  nodes.Loc{Start: p.pos(), End: p.pos()},
+		})
+		p.advance()
+	}
+
+	// ALL | DISTINCT | UNIQUE
+	switch p.cur.Type {
+	case kwALL:
+		sel.All = true
+		p.advance()
+	case kwDISTINCT:
+		sel.Distinct = true
+		p.advance()
+	case kwUNIQUE:
+		sel.UniqueKw = true
+		sel.Distinct = true
+		p.advance()
+	}
+
+	// Select list
+	sel.TargetList = p.parseSelectList()
+
+	// FROM
+	if p.cur.Type == kwFROM {
+		p.advance()
+		sel.FromClause = p.parseFromClause()
+	}
+
+	// WHERE
+	if p.cur.Type == kwWHERE {
+		p.advance()
+		sel.WhereClause = p.parseExpr()
+	}
+
+	// START WITH / CONNECT BY (either order)
+	if p.cur.Type == kwSTART || p.cur.Type == kwCONNECT {
+		sel.Hierarchical = p.parseHierarchicalClause()
+	}
+
+	// GROUP BY
+	if p.cur.Type == kwGROUP {
+		p.advance()
+		if p.cur.Type == kwBY {
+			p.advance()
+		}
+		sel.GroupClause = p.parseExprList()
+	}
+
+	// HAVING
+	if p.cur.Type == kwHAVING {
+		p.advance()
+		sel.HavingClause = p.parseExpr()
+	}
+
+	// ORDER BY
+	if p.cur.Type == kwORDER {
+		p.advance()
+		if p.cur.Type == kwBY {
+			p.advance()
+		}
+		sel.OrderBy = p.parseOrderByList()
+	}
+
+	// FOR UPDATE
+	if p.cur.Type == kwFOR {
+		sel.ForUpdate = p.parseForUpdateClause()
+	}
+
+	// OFFSET / FETCH FIRST
+	if p.cur.Type == kwOFFSET || p.cur.Type == kwFETCH {
+		sel.FetchFirst = p.parseFetchFirstClause()
+	}
+
+	// Set operations: UNION, INTERSECT, MINUS
+	switch p.cur.Type {
+	case kwUNION:
+		p.advance()
+		sel.Op = nodes.SETOP_UNION
+		if p.cur.Type == kwALL {
+			sel.SetAll = true
+			p.advance()
+		}
+		sel.Rarg = p.parseSelectStmt()
+	case kwINTERSECT:
+		p.advance()
+		sel.Op = nodes.SETOP_INTERSECT
+		if p.cur.Type == kwALL {
+			sel.SetAll = true
+			p.advance()
+		}
+		sel.Rarg = p.parseSelectStmt()
+	case kwMINUS:
+		p.advance()
+		sel.Op = nodes.SETOP_MINUS
+		sel.Rarg = p.parseSelectStmt()
+	}
+
+	sel.Loc.End = p.pos()
+	return sel
+}
+
+// parseSelectList parses the select list (target expressions).
+func (p *Parser) parseSelectList() *nodes.List {
+	list := &nodes.List{}
+
+	for {
+		rt := p.parseResTarget()
+		if rt != nil {
+			list.Items = append(list.Items, rt)
+		}
+		if p.cur.Type != ',' {
+			break
+		}
+		p.advance() // consume ','
+	}
+
+	return list
+}
+
+// parseResTarget parses a single target expression (with optional alias).
+func (p *Parser) parseResTarget() *nodes.ResTarget {
+	start := p.pos()
+	expr := p.parseExpr()
+	if expr == nil {
+		return nil
+	}
+
+	rt := &nodes.ResTarget{
+		Expr: expr,
+		Loc:  nodes.Loc{Start: start},
+	}
+
+	// Optional alias: AS name or just name
+	if p.cur.Type == kwAS {
+		p.advance()
+		rt.Name = p.parseIdentifier()
+	} else if p.isAliasCandidate() {
+		rt.Name = p.parseIdentifier()
+	}
+
+	rt.Loc.End = p.pos()
+	return rt
+}
+
+// isAliasCandidate returns true if the current token can be an implicit alias.
+// We exclude keywords that start clauses to avoid consuming FROM, WHERE, etc. as aliases.
+func (p *Parser) isAliasCandidate() bool {
+	if p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+		return true
+	}
+	// Disallow clause-starting keywords as implicit aliases
+	switch p.cur.Type {
+	case kwFROM, kwWHERE, kwGROUP, kwHAVING, kwORDER, kwUNION, kwINTERSECT,
+		kwMINUS, kwFOR, kwCONNECT, kwSTART, kwFETCH, kwOFFSET, kwON,
+		kwLEFT, kwRIGHT, kwINNER, kwOUTER, kwCROSS, kwFULL, kwNATURAL,
+		kwJOIN, kwWHEN, kwTHEN, kwELSE, kwEND, kwAND, kwOR, kwNOT,
+		kwIS, kwIN, kwBETWEEN, kwLIKE, kwLIKEC, kwLIKE2, kwLIKE4,
+		kwINTO, kwVALUES, kwSET, kwRETURNING, kwPIVOT, kwUNPIVOT,
+		kwMODEL, kwWITH, kwKEEP, kwOVER:
+		return false
+	}
+	return false
+}
+
+// parseExprList parses a comma-separated list of expressions.
+func (p *Parser) parseExprList() *nodes.List {
+	list := &nodes.List{}
+	for {
+		expr := p.parseExpr()
+		if expr == nil {
+			break
+		}
+		list.Items = append(list.Items, expr)
+		if p.cur.Type != ',' {
+			break
+		}
+		p.advance()
+	}
+	return list
+}
+
+// parseFromClause parses a FROM clause (comma-separated table references).
+func (p *Parser) parseFromClause() *nodes.List {
+	list := &nodes.List{}
+
+	for {
+		tref := p.parseTableRef()
+		if tref == nil {
+			break
+		}
+
+		// Check for JOINs
+		tref = p.parseJoinContinuation(tref)
+
+		list.Items = append(list.Items, tref)
+
+		if p.cur.Type != ',' {
+			break
+		}
+		p.advance()
+	}
+
+	return list
+}
+
+// parseTableRef parses a single table reference.
+func (p *Parser) parseTableRef() nodes.TableExpr {
+	start := p.pos()
+
+	// Subquery: ( SELECT ... )
+	if p.cur.Type == '(' {
+		return p.parseSubqueryRef(start)
+	}
+
+	// Table name
+	if !p.isIdentLike() {
+		return nil
+	}
+
+	name := p.parseObjectName()
+	tr := &nodes.TableRef{
+		Name: name,
+		Loc:  nodes.Loc{Start: start},
+	}
+
+	// Optional alias
+	if p.cur.Type == kwAS {
+		p.advance()
+		tr.Alias = &nodes.Alias{Name: p.parseIdentifier()}
+	} else if p.isTableAliasCandidate() {
+		tr.Alias = &nodes.Alias{Name: p.parseIdentifier()}
+	}
+
+	tr.Loc.End = p.pos()
+	return tr
+}
+
+// isTableAliasCandidate checks if current token can be a table alias.
+func (p *Parser) isTableAliasCandidate() bool {
+	if p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+		return true
+	}
+	return false
+}
+
+// parseSubqueryRef parses a subquery in FROM: ( SELECT ... ) alias.
+func (p *Parser) parseSubqueryRef(start int) nodes.TableExpr {
+	p.advance() // consume '('
+
+	subSel := p.parseSelectStmt()
+
+	if p.cur.Type == ')' {
+		p.advance()
+	}
+
+	ref := &nodes.SubqueryRef{
+		Subquery: subSel,
+		Loc:      nodes.Loc{Start: start},
+	}
+
+	// Optional alias
+	if p.cur.Type == kwAS {
+		p.advance()
+		ref.Alias = &nodes.Alias{Name: p.parseIdentifier()}
+	} else if p.isTableAliasCandidate() {
+		ref.Alias = &nodes.Alias{Name: p.parseIdentifier()}
+	}
+
+	ref.Loc.End = p.pos()
+	return ref
+}
+
+// parseJoinContinuation parses any JOIN clauses that follow a table reference.
+func (p *Parser) parseJoinContinuation(left nodes.TableExpr) nodes.TableExpr {
+	for {
+		jt, ok := p.matchJoinType()
+		if !ok {
+			break
+		}
+
+		right := p.parseTableRef()
+
+		jc := &nodes.JoinClause{
+			Type:  jt,
+			Left:  left,
+			Right: right,
+			Loc:   nodes.Loc{Start: p.pos()},
+		}
+
+		// ON condition
+		if p.cur.Type == kwON {
+			p.advance()
+			jc.On = p.parseExpr()
+		}
+
+		// USING ( col1, col2, ... )
+		if p.cur.Type == kwUSING {
+			p.advance()
+			if p.cur.Type == '(' {
+				p.advance()
+				jc.Using = &nodes.List{}
+				for {
+					name := p.parseIdentifier()
+					if name != "" {
+						jc.Using.Items = append(jc.Using.Items, &nodes.String{Str: name})
+					}
+					if p.cur.Type != ',' {
+						break
+					}
+					p.advance()
+				}
+				if p.cur.Type == ')' {
+					p.advance()
+				}
+			}
+		}
+
+		jc.Loc.End = p.pos()
+		left = jc
+	}
+	return left
+}
+
+// matchJoinType tries to match a JOIN keyword sequence.
+// Returns the JoinType and true if matched, or false if no JOIN found.
+func (p *Parser) matchJoinType() (nodes.JoinType, bool) {
+	natural := false
+	if p.cur.Type == kwNATURAL {
+		natural = true
+		p.advance()
+	}
+
+	switch p.cur.Type {
+	case kwJOIN:
+		p.advance()
+		if natural {
+			return nodes.JOIN_NATURAL_INNER, true
+		}
+		return nodes.JOIN_INNER, true
+
+	case kwINNER:
+		p.advance()
+		if p.cur.Type == kwJOIN {
+			p.advance()
+		}
+		if natural {
+			return nodes.JOIN_NATURAL_INNER, true
+		}
+		return nodes.JOIN_INNER, true
+
+	case kwLEFT:
+		p.advance()
+		if p.cur.Type == kwOUTER {
+			p.advance()
+		}
+		if p.cur.Type == kwJOIN {
+			p.advance()
+		}
+		if natural {
+			return nodes.JOIN_NATURAL_LEFT, true
+		}
+		return nodes.JOIN_LEFT, true
+
+	case kwRIGHT:
+		p.advance()
+		if p.cur.Type == kwOUTER {
+			p.advance()
+		}
+		if p.cur.Type == kwJOIN {
+			p.advance()
+		}
+		if natural {
+			return nodes.JOIN_NATURAL_RIGHT, true
+		}
+		return nodes.JOIN_RIGHT, true
+
+	case kwFULL:
+		p.advance()
+		if p.cur.Type == kwOUTER {
+			p.advance()
+		}
+		if p.cur.Type == kwJOIN {
+			p.advance()
+		}
+		if natural {
+			return nodes.JOIN_NATURAL_FULL, true
+		}
+		return nodes.JOIN_FULL, true
+
+	case kwCROSS:
+		p.advance()
+		if p.cur.Type == kwJOIN {
+			p.advance()
+		}
+		return nodes.JOIN_CROSS, true
+	}
+
+	if natural {
+		// NATURAL without a recognized join keyword — treat as NATURAL INNER JOIN
+		return nodes.JOIN_NATURAL_INNER, true
+	}
+
+	return 0, false
+}
+
+// parseHierarchicalClause parses START WITH / CONNECT BY clauses (either order).
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/Hierarchical-Queries.html
+//
+//	[ START WITH condition ] CONNECT BY [ NOCYCLE ] condition
+//	CONNECT BY [ NOCYCLE ] condition [ START WITH condition ]
+func (p *Parser) parseHierarchicalClause() *nodes.HierarchicalClause {
+	start := p.pos()
+	hc := &nodes.HierarchicalClause{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// START WITH first, then CONNECT BY
+	if p.cur.Type == kwSTART {
+		p.advance() // START
+		if p.cur.Type == kwWITH {
+			p.advance() // WITH
+		}
+		hc.StartWith = p.parseExpr()
+	}
+
+	if p.cur.Type == kwCONNECT {
+		p.advance() // CONNECT
+		if p.cur.Type == kwBY {
+			p.advance() // BY
+		}
+		if p.isIdentLikeStr("NOCYCLE") {
+			hc.IsNocycle = true
+			p.advance()
+		}
+		hc.ConnectBy = p.parseExpr()
+	}
+
+	// START WITH may come after CONNECT BY
+	if hc.StartWith == nil && p.cur.Type == kwSTART {
+		p.advance()
+		if p.cur.Type == kwWITH {
+			p.advance()
+		}
+		hc.StartWith = p.parseExpr()
+	}
+
+	hc.Loc.End = p.pos()
+	return hc
+}
+
+// parseOrderByList parses a comma-separated list of ORDER BY items.
+func (p *Parser) parseOrderByList() *nodes.List {
+	list := &nodes.List{}
+
+	for {
+		sb := p.parseSortBy()
+		if sb == nil {
+			break
+		}
+		list.Items = append(list.Items, sb)
+		if p.cur.Type != ',' {
+			break
+		}
+		p.advance()
+	}
+
+	return list
+}
+
+// parseSortBy parses a single ORDER BY item.
+//
+//	sort_key [ ASC | DESC ] [ NULLS { FIRST | LAST } ]
+func (p *Parser) parseSortBy() *nodes.SortBy {
+	start := p.pos()
+	expr := p.parseExpr()
+	if expr == nil {
+		return nil
+	}
+
+	sb := &nodes.SortBy{
+		Expr: expr,
+		Loc:  nodes.Loc{Start: start},
+	}
+
+	// ASC | DESC
+	switch p.cur.Type {
+	case kwASC:
+		sb.Dir = nodes.SORTBY_ASC
+		p.advance()
+	case kwDESC:
+		sb.Dir = nodes.SORTBY_DESC
+		p.advance()
+	}
+
+	// NULLS FIRST | NULLS LAST
+	if p.cur.Type == kwNULLS {
+		p.advance()
+		switch p.cur.Type {
+		case kwFIRST:
+			sb.NullOrder = nodes.SORTBY_NULLS_FIRST
+			p.advance()
+		case kwLAST:
+			sb.NullOrder = nodes.SORTBY_NULLS_LAST
+			p.advance()
+		}
+	}
+
+	sb.Loc.End = p.pos()
+	return sb
+}
+
+// parseForUpdateClause parses FOR UPDATE [OF ...] [NOWAIT | WAIT n | SKIP LOCKED].
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/SELECT.html#GUID-CFA006CA-6FF1-4972-821E-6996142A51C6
+func (p *Parser) parseForUpdateClause() *nodes.ForUpdateClause {
+	start := p.pos()
+	p.advance() // consume FOR
+
+	if p.cur.Type == kwUPDATE {
+		p.advance()
+	}
+
+	fu := &nodes.ForUpdateClause{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// OF table_list
+	if p.cur.Type == kwOF {
+		p.advance()
+		fu.Tables = p.parseExprList()
+	}
+
+	// NOWAIT | WAIT n | SKIP LOCKED
+	switch p.cur.Type {
+	case kwNOWAIT:
+		fu.NoWait = true
+		p.advance()
+	case kwWAIT:
+		p.advance()
+		fu.Wait = p.parseExpr()
+	case kwSKIP:
+		p.advance()
+		if p.cur.Type == kwLOCKED {
+			fu.SkipLocked = true
+			p.advance()
+		}
+	}
+
+	fu.Loc.End = p.pos()
+	return fu
+}
+
+// parseFetchFirstClause parses OFFSET/FETCH FIRST clause.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/SELECT.html
+//
+//	[ OFFSET n { ROW | ROWS } ]
+//	FETCH { FIRST | NEXT } [ n [ PERCENT ] ] { ROW | ROWS } { ONLY | WITH TIES }
+func (p *Parser) parseFetchFirstClause() *nodes.FetchFirstClause {
+	start := p.pos()
+	fc := &nodes.FetchFirstClause{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// OFFSET n ROWS
+	if p.cur.Type == kwOFFSET {
+		p.advance()
+		fc.Offset = p.parseExpr()
+		// ROW | ROWS
+		if p.cur.Type == kwROW || p.cur.Type == kwROWS {
+			p.advance()
+		}
+	}
+
+	// FETCH FIRST|NEXT
+	if p.cur.Type == kwFETCH {
+		p.advance()
+		// FIRST | NEXT
+		if p.cur.Type == kwFIRST || p.cur.Type == kwNEXT {
+			p.advance()
+		}
+
+		// count expression
+		if p.cur.Type != kwROW && p.cur.Type != kwROWS {
+			fc.Count = p.parseExpr()
+		}
+
+		// PERCENT
+		if p.cur.Type == kwPERCENT {
+			fc.Percent = true
+			p.advance()
+		}
+
+		// ROW | ROWS
+		if p.cur.Type == kwROW || p.cur.Type == kwROWS {
+			p.advance()
+		}
+
+		// ONLY | WITH TIES
+		if p.cur.Type == kwONLY {
+			p.advance()
+		} else if p.cur.Type == kwWITH {
+			p.advance()
+			if p.cur.Type == kwTIES {
+				fc.WithTies = true
+				p.advance()
+			}
+		}
+	}
+
+	fc.Loc.End = p.pos()
+	return fc
+}
+
+// parseWithClause parses a WITH clause (common table expressions).
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/SELECT.html
+//
+//	WITH [ RECURSIVE ] cte_name [ ( col1, col2, ... ) ] AS ( subquery ) [, ...]
+func (p *Parser) parseWithClause() *nodes.WithClause {
+	start := p.pos()
+	p.advance() // consume WITH
+
+	wc := &nodes.WithClause{
+		CTEs: &nodes.List{},
+		Loc:  nodes.Loc{Start: start},
+	}
+
+	if p.cur.Type == kwRECURSIVE {
+		wc.Recursive = true
+		p.advance()
+	}
+
+	for {
+		cte := p.parseCTE()
+		if cte == nil {
+			break
+		}
+		wc.CTEs.Items = append(wc.CTEs.Items, cte)
+		if p.cur.Type != ',' {
+			break
+		}
+		p.advance()
+	}
+
+	wc.Loc.End = p.pos()
+	return wc
+}
+
+// parseCTE parses a single common table expression.
+func (p *Parser) parseCTE() *nodes.CTE {
+	if !p.isIdentLike() {
+		return nil
+	}
+
+	start := p.pos()
+	name := p.parseIdentifier()
+
+	cte := &nodes.CTE{
+		Name: name,
+		Loc:  nodes.Loc{Start: start},
+	}
+
+	// Optional column list
+	if p.cur.Type == '(' {
+		p.advance()
+		cte.Columns = &nodes.List{}
+		for {
+			col := p.parseIdentifier()
+			if col != "" {
+				cte.Columns.Items = append(cte.Columns.Items, &nodes.String{Str: col})
+			}
+			if p.cur.Type != ',' {
+				break
+			}
+			p.advance()
+		}
+		if p.cur.Type == ')' {
+			p.advance()
+		}
+	}
+
+	// AS
+	if p.cur.Type == kwAS {
+		p.advance()
+	}
+
+	// ( subquery )
+	if p.cur.Type == '(' {
+		p.advance()
+		cte.Query = p.parseSelectStmt()
+		if p.cur.Type == ')' {
+			p.advance()
+		}
+	}
+
+	cte.Loc.End = p.pos()
+	return cte
+}

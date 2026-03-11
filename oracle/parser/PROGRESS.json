@@ -58,7 +58,7 @@
       "id": 4,
       "name": "select",
       "file": "select.go",
-      "status": "pending",
+      "status": "done",
       "description": "SELECT with CONNECT BY, START WITH, PIVOT/UNPIVOT, FLASHBACK, SAMPLE, FOR UPDATE, FETCH FIRST",
       "rules": [
         "select_stmt", "select_list", "from_clause", "where_clause",
