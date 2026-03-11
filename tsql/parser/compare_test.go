@@ -571,6 +571,293 @@ func TestParseTypes(t *testing.T) {
 	})
 }
 
+// TestParseExpressions tests expression parsing (batch 3).
+func TestParseExpressions(t *testing.T) {
+	t.Run("arithmetic", func(t *testing.T) {
+		tests := []string{
+			"SELECT 1 + 2 * 3",
+			"SELECT (1 + 2) * 3",
+			"SELECT 10 / 2 - 1",
+			"SELECT 10 % 3",
+			"SELECT -1 + +2",
+			"SELECT ~0",
+			"SELECT 1 & 2",
+			"SELECT 1 | 2",
+			"SELECT 1 ^ 2",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("comparison", func(t *testing.T) {
+		tests := []string{
+			"SELECT 1 = 1",
+			"SELECT 1 <> 2",
+			"SELECT 1 != 2",
+			"SELECT 1 < 2",
+			"SELECT 1 > 2",
+			"SELECT 1 <= 2",
+			"SELECT 1 >= 2",
+			"SELECT 1 !< 2",
+			"SELECT 1 !> 2",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("logical", func(t *testing.T) {
+		tests := []string{
+			"SELECT 1 = 1 AND 2 = 2",
+			"SELECT 1 = 1 OR 2 = 2",
+			"SELECT NOT 1 = 1",
+			"SELECT 1 = 1 AND 2 = 2 OR 3 = 3",
+			"SELECT NOT (1 = 1 AND 2 = 2)",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("between", func(t *testing.T) {
+		tests := []string{
+			"SELECT 5 BETWEEN 1 AND 10",
+			"SELECT 5 NOT BETWEEN 1 AND 10",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				result := ParseAndCheck(t, sql)
+				stmt := result.Items[0].(*ast.SelectStmt)
+				target := stmt.TargetList.Items[0].(*ast.ResTarget)
+				_, ok := target.Val.(*ast.BetweenExpr)
+				if !ok {
+					t.Fatalf("expected *BetweenExpr, got %T", target.Val)
+				}
+			})
+		}
+	})
+
+	t.Run("in", func(t *testing.T) {
+		tests := []string{
+			"SELECT 1 IN (1, 2, 3)",
+			"SELECT 1 NOT IN (1, 2, 3)",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				result := ParseAndCheck(t, sql)
+				stmt := result.Items[0].(*ast.SelectStmt)
+				target := stmt.TargetList.Items[0].(*ast.ResTarget)
+				_, ok := target.Val.(*ast.InExpr)
+				if !ok {
+					t.Fatalf("expected *InExpr, got %T", target.Val)
+				}
+			})
+		}
+	})
+
+	t.Run("like", func(t *testing.T) {
+		tests := []string{
+			"SELECT 'foo' LIKE 'f%'",
+			"SELECT 'foo' NOT LIKE 'f%'",
+			"SELECT 'foo' LIKE 'f%' ESCAPE '\\'",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("is_null", func(t *testing.T) {
+		tests := []string{
+			"SELECT NULL IS NULL",
+			"SELECT 1 IS NOT NULL",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				result := ParseAndCheck(t, sql)
+				stmt := result.Items[0].(*ast.SelectStmt)
+				target := stmt.TargetList.Items[0].(*ast.ResTarget)
+				_, ok := target.Val.(*ast.IsExpr)
+				if !ok {
+					t.Fatalf("expected *IsExpr, got %T", target.Val)
+				}
+			})
+		}
+	})
+
+	t.Run("case_searched", func(t *testing.T) {
+		sql := "SELECT CASE WHEN 1 = 1 THEN 'yes' WHEN 2 = 2 THEN 'maybe' ELSE 'no' END"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		target := stmt.TargetList.Items[0].(*ast.ResTarget)
+		ce, ok := target.Val.(*ast.CaseExpr)
+		if !ok {
+			t.Fatalf("expected *CaseExpr, got %T", target.Val)
+		}
+		if ce.Arg != nil {
+			t.Error("searched CASE should have nil Arg")
+		}
+		if ce.WhenList.Len() != 2 {
+			t.Errorf("expected 2 WHEN clauses, got %d", ce.WhenList.Len())
+		}
+		if ce.ElseExpr == nil {
+			t.Error("expected non-nil ElseExpr")
+		}
+	})
+
+	t.Run("case_simple", func(t *testing.T) {
+		sql := "SELECT CASE col1 WHEN 1 THEN 'one' WHEN 2 THEN 'two' END"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		target := stmt.TargetList.Items[0].(*ast.ResTarget)
+		ce, ok := target.Val.(*ast.CaseExpr)
+		if !ok {
+			t.Fatalf("expected *CaseExpr, got %T", target.Val)
+		}
+		if ce.Arg == nil {
+			t.Error("simple CASE should have non-nil Arg")
+		}
+	})
+
+	t.Run("cast_convert", func(t *testing.T) {
+		tests := []string{
+			"SELECT CAST(1 AS varchar(10))",
+			"SELECT TRY_CAST(1 AS int)",
+			"SELECT CONVERT(varchar, 123)",
+			"SELECT CONVERT(varchar(10), 123, 1)",
+			"SELECT TRY_CONVERT(int, '123')",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("special_functions", func(t *testing.T) {
+		tests := []string{
+			"SELECT COALESCE(NULL, 1, 2)",
+			"SELECT NULLIF(1, 2)",
+			"SELECT IIF(1 = 1, 'yes', 'no')",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("exists", func(t *testing.T) {
+		sql := "SELECT EXISTS (SELECT 1)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		target := stmt.TargetList.Items[0].(*ast.ResTarget)
+		_, ok := target.Val.(*ast.ExistsExpr)
+		if !ok {
+			t.Fatalf("expected *ExistsExpr, got %T", target.Val)
+		}
+	})
+
+	t.Run("function_calls", func(t *testing.T) {
+		tests := []string{
+			"SELECT COUNT(*)",
+			"SELECT COUNT(DISTINCT col1)",
+			"SELECT SUM(col1)",
+			"SELECT GETDATE()",
+			"SELECT LEN('hello')",
+			"SELECT SUBSTRING('hello', 1, 3)",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("window_functions", func(t *testing.T) {
+		tests := []string{
+			"SELECT ROW_NUMBER() OVER (ORDER BY col1)",
+			"SELECT SUM(col1) OVER (PARTITION BY col2 ORDER BY col3)",
+			"SELECT COUNT(*) OVER (PARTITION BY col1)",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				result := ParseAndCheck(t, sql)
+				stmt := result.Items[0].(*ast.SelectStmt)
+				target := stmt.TargetList.Items[0].(*ast.ResTarget)
+				fc, ok := target.Val.(*ast.FuncCallExpr)
+				if !ok {
+					t.Fatalf("expected *FuncCallExpr, got %T", target.Val)
+				}
+				if fc.Over == nil {
+					t.Error("expected non-nil Over")
+				}
+			})
+		}
+	})
+
+	t.Run("parenthesized", func(t *testing.T) {
+		tests := []string{
+			"SELECT (1)",
+			"SELECT (1 + 2)",
+			"SELECT ((1 + 2) * 3)",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("literals", func(t *testing.T) {
+		tests := []string{
+			"SELECT 42",
+			"SELECT 3.14",
+			"SELECT 'hello'",
+			"SELECT N'unicode'",
+			"SELECT NULL",
+			"SELECT DEFAULT",
+			"SELECT 0x1A2B",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("string_concatenation", func(t *testing.T) {
+		sql := "SELECT 'hello' + ' ' + 'world'"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("alias", func(t *testing.T) {
+		tests := []string{
+			"SELECT 1 AS col1",
+			"SELECT 1 col1",
+			"SELECT col1 AS [My Column]",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				result := ParseAndCheck(t, sql)
+				stmt := result.Items[0].(*ast.SelectStmt)
+				target := stmt.TargetList.Items[0].(*ast.ResTarget)
+				if target.Name == "" {
+					t.Error("expected non-empty alias Name")
+				}
+			})
+		}
+	})
+}
+
 // TestParseLexerBracketed tests bracketed identifier lexing.
 func TestParseLexerBracketed(t *testing.T) {
 	l := NewLexer("[my column]")

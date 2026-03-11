@@ -206,11 +206,17 @@ func (p *Parser) parseFuncCallWithSchema(schema, funcName string, loc int) nodes
 		p.advance()
 		fc.Star = true
 		_, _ = p.expect(')')
+		if p.cur.Type == kwOVER {
+			fc.Over = p.parseOverClause()
+		}
 		return fc
 	}
 
 	if p.cur.Type == ')' {
 		p.advance()
+		if p.cur.Type == kwOVER {
+			fc.Over = p.parseOverClause()
+		}
 		return fc
 	}
 

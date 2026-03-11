@@ -43,7 +43,7 @@
       "id": 3,
       "name": "expressions",
       "file": "expr.go",
-      "status": "pending",
+      "status": "done",
       "description": "All expression types: operators, CASE, BETWEEN, IN, LIKE, IS, IIF, COALESCE, NULLIF, CONVERT, CAST, TRY_CAST",
       "rules": [
         "expr", "or_expr", "and_expr", "not_expr", "comparison_expr",
