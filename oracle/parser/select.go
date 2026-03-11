@@ -105,6 +105,11 @@ func (p *Parser) parseSelectStmt() *nodes.SelectStmt {
 		sel.HavingClause = p.parseExpr()
 	}
 
+	// MODEL clause
+	if p.cur.Type == kwMODEL {
+		sel.ModelClause = p.parseModelClause()
+	}
+
 	// ORDER BY
 	if p.cur.Type == kwORDER {
 		p.advance()
@@ -1009,4 +1014,442 @@ func (p *Parser) parseUnpivotClause() *nodes.UnpivotClause {
 
 	uc.Loc.End = p.pos()
 	return uc
+}
+
+// parseModelClause parses an Oracle MODEL clause.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/SELECT.html
+//
+//	model_clause ::=
+//	    MODEL
+//	      [ cell_reference_options ]
+//	      [ return_rows_clause ]
+//	      [ reference_model ]...
+//	      main_model
+//
+//	cell_reference_options ::=
+//	    { IGNORE NAV | KEEP NAV }
+//	    { UNIQUE DIMENSION | UNIQUE SINGLE REFERENCE }
+//
+//	return_rows_clause ::=
+//	    RETURN { UPDATED | ALL } ROWS
+//
+//	reference_model ::=
+//	    REFERENCE reference_model_name ON ( subquery )
+//	        model_column_clauses
+//	        [ cell_reference_options ]
+//
+//	main_model ::=
+//	    [ MAIN main_model_name ]
+//	        model_column_clauses
+//	        [ cell_reference_options ]
+//	        model_rules_clause
+//
+//	model_column_clauses ::=
+//	    [ PARTITION BY ( expr [ [ AS ] c_alias ] [, ...] ) ]
+//	    DIMENSION BY ( expr [ [ AS ] c_alias ] [, ...] )
+//	    MEASURES ( expr [ [ AS ] c_alias ] [, ...] )
+//
+//	model_rules_clause ::=
+//	    [ RULES ]
+//	    [ { UPDATE | UPSERT [ ALL ] } ]
+//	    [ { AUTOMATIC | SEQUENTIAL } ORDER ]
+//	    [ model_iterate_clause ]
+//	    ( cell_assignment [, ...] )
+//
+//	model_iterate_clause ::=
+//	    ITERATE ( number ) [ UNTIL ( condition ) ]
+//
+//	cell_assignment ::=
+//	    measure_column [ dimension_subscripts ] = expr
+//
+//	single_column_for_loop ::=
+//	    FOR dimension_column
+//	      { IN ( { literal [, ...] | subquery } )
+//	      | [ LIKE pattern ] FROM literal TO literal { INCREMENT | DECREMENT } literal
+//	      }
+//
+//	multi_column_for_loop ::=
+//	    FOR ( dimension_column [, ...] ) IN
+//	      ( ( literal [, ...] ) [, ( literal [, ...] ) ]...
+//	      | subquery
+//	      )
+func (p *Parser) parseModelClause() *nodes.ModelClause {
+	start := p.pos()
+	p.advance() // consume MODEL
+
+	mc := &nodes.ModelClause{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// cell_reference_options (optional, before RETURN/REFERENCE/MAIN/PARTITION/DIMENSION)
+	mc.CellRefOptions = p.parseModelCellRefOptions()
+
+	// RETURN { UPDATED | ALL } ROWS
+	if p.cur.Type == kwRETURN {
+		p.advance() // consume RETURN
+		if p.cur.Type == kwUPDATED {
+			mc.ReturnRows = "UPDATED"
+			p.advance()
+		} else if p.cur.Type == kwALL {
+			mc.ReturnRows = "ALL"
+			p.advance()
+		}
+		if p.cur.Type == kwROWS {
+			p.advance()
+		}
+	}
+
+	// REFERENCE models (zero or more)
+	for p.cur.Type == kwREFERENCE {
+		ref := p.parseModelRefModel()
+		mc.RefModels = append(mc.RefModels, ref)
+	}
+
+	// main_model
+	mc.MainModel = p.parseModelMainModel()
+
+	mc.Loc.End = p.pos()
+	return mc
+}
+
+// parseModelCellRefOptions parses optional cell_reference_options.
+func (p *Parser) parseModelCellRefOptions() *nodes.ModelCellRefOptions {
+	opts := &nodes.ModelCellRefOptions{Loc: nodes.Loc{Start: p.pos()}}
+	found := false
+
+	// IGNORE NAV | KEEP NAV
+	if p.isIdentLikeStr("IGNORE") {
+		p.advance()
+		if p.cur.Type == kwNAV {
+			p.advance()
+		}
+		opts.IgnoreNav = true
+		found = true
+	} else if p.isIdentLikeStr("KEEP") {
+		p.advance()
+		if p.cur.Type == kwNAV {
+			p.advance()
+		}
+		opts.KeepNav = true
+		found = true
+	}
+
+	// UNIQUE DIMENSION | UNIQUE SINGLE REFERENCE
+	if p.cur.Type == kwUNIQUE {
+		p.advance()
+		if p.cur.Type == kwDIMENSION {
+			opts.UniqueDimension = true
+			p.advance()
+			found = true
+		} else if p.isIdentLikeStr("SINGLE") {
+			p.advance()
+			if p.cur.Type == kwREFERENCE {
+				p.advance()
+			}
+			opts.UniqueSingleRef = true
+			found = true
+		}
+	}
+
+	if !found {
+		return nil
+	}
+
+	opts.Loc.End = p.pos()
+	return opts
+}
+
+// parseModelRefModel parses a REFERENCE model.
+func (p *Parser) parseModelRefModel() *nodes.ModelRefModel {
+	start := p.pos()
+	p.advance() // consume REFERENCE
+
+	ref := &nodes.ModelRefModel{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// reference_model_name
+	ref.Name = p.parseIdentifier()
+
+	// ON ( subquery )
+	if p.cur.Type == kwON {
+		p.advance()
+		if p.cur.Type == '(' {
+			p.advance()
+			ref.Subquery = p.parseSelectStmt()
+			if p.cur.Type == ')' {
+				p.advance()
+			}
+		}
+	}
+
+	// model_column_clauses
+	ref.ColumnClauses = p.parseModelColumnClauses()
+
+	// optional cell_reference_options
+	ref.CellRefOptions = p.parseModelCellRefOptions()
+
+	ref.Loc.End = p.pos()
+	return ref
+}
+
+// parseModelMainModel parses the main_model.
+func (p *Parser) parseModelMainModel() *nodes.ModelMainModel {
+	start := p.pos()
+	mm := &nodes.ModelMainModel{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// [ MAIN main_model_name ]
+	if p.cur.Type == kwMAIN {
+		p.advance()
+		mm.Name = p.parseIdentifier()
+	}
+
+	// model_column_clauses
+	mm.ColumnClauses = p.parseModelColumnClauses()
+
+	// optional cell_reference_options
+	mm.CellRefOptions = p.parseModelCellRefOptions()
+
+	// model_rules_clause
+	mm.RulesClause = p.parseModelRulesClause()
+
+	mm.Loc.End = p.pos()
+	return mm
+}
+
+// parseModelColumnClauses parses PARTITION BY / DIMENSION BY / MEASURES.
+func (p *Parser) parseModelColumnClauses() *nodes.ModelColumnClauses {
+	start := p.pos()
+	cc := &nodes.ModelColumnClauses{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// [ PARTITION BY ( expr [AS alias], ... ) ]
+	if p.cur.Type == kwPARTITION {
+		p.advance() // PARTITION
+		if p.cur.Type == kwBY {
+			p.advance() // BY
+		}
+		if p.cur.Type == '(' {
+			p.advance()
+			cc.PartitionBy = p.parseModelColumnList()
+			if p.cur.Type == ')' {
+				p.advance()
+			}
+		}
+	}
+
+	// DIMENSION BY ( expr [AS alias], ... )
+	if p.cur.Type == kwDIMENSION {
+		p.advance() // DIMENSION
+		if p.cur.Type == kwBY {
+			p.advance() // BY
+		}
+		if p.cur.Type == '(' {
+			p.advance()
+			cc.DimensionBy = p.parseModelColumnList()
+			if p.cur.Type == ')' {
+				p.advance()
+			}
+		}
+	}
+
+	// MEASURES ( expr [AS alias], ... )
+	if p.cur.Type == kwMEASURES {
+		p.advance() // MEASURES
+		if p.cur.Type == '(' {
+			p.advance()
+			cc.Measures = p.parseModelColumnList()
+			if p.cur.Type == ')' {
+				p.advance()
+			}
+		}
+	}
+
+	cc.Loc.End = p.pos()
+	return cc
+}
+
+// parseModelColumnList parses a comma-separated list of expr [ [AS] alias ] for MODEL clauses.
+func (p *Parser) parseModelColumnList() *nodes.List {
+	list := &nodes.List{}
+	for {
+		rt := p.parseResTarget()
+		if rt == nil {
+			break
+		}
+		list.Items = append(list.Items, rt)
+		if p.cur.Type != ',' {
+			break
+		}
+		p.advance()
+	}
+	return list
+}
+
+// parseModelRulesClause parses the model_rules_clause.
+func (p *Parser) parseModelRulesClause() *nodes.ModelRulesClause {
+	start := p.pos()
+	rc := &nodes.ModelRulesClause{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// [ RULES ]
+	if p.cur.Type == kwRULES {
+		p.advance()
+	}
+
+	// [ UPDATE | UPSERT [ALL] ]
+	if p.cur.Type == kwUPDATE {
+		rc.UpdateMode = "UPDATE"
+		p.advance()
+	} else if p.cur.Type == kwUPSERT {
+		p.advance()
+		if p.cur.Type == kwALL {
+			rc.UpdateMode = "UPSERT ALL"
+			p.advance()
+		} else {
+			rc.UpdateMode = "UPSERT"
+		}
+	}
+
+	// [ AUTOMATIC | SEQUENTIAL ] ORDER
+	if p.cur.Type == kwAUTOMATIC {
+		rc.OrderMode = "AUTOMATIC"
+		p.advance()
+		if p.cur.Type == kwORDER {
+			p.advance()
+		}
+	} else if p.cur.Type == kwSEQUENTIAL {
+		rc.OrderMode = "SEQUENTIAL"
+		p.advance()
+		if p.cur.Type == kwORDER {
+			p.advance()
+		}
+	}
+
+	// [ ITERATE ( number ) [ UNTIL ( condition ) ] ]
+	if p.cur.Type == kwITERATE {
+		p.advance()
+		if p.cur.Type == '(' {
+			p.advance()
+			rc.Iterate = p.parseExpr()
+			if p.cur.Type == ')' {
+				p.advance()
+			}
+		}
+		// [ UNTIL ( condition ) ]
+		if p.cur.Type == kwUNTIL {
+			p.advance()
+			if p.cur.Type == '(' {
+				p.advance()
+				rc.Until = p.parseExpr()
+				if p.cur.Type == ')' {
+					p.advance()
+				}
+			}
+		}
+	}
+
+	// ( cell_assignment [, ...] )
+	if p.cur.Type == '(' {
+		p.advance()
+		rc.Rules = &nodes.List{}
+		for {
+			rule := p.parseModelRule()
+			if rule == nil {
+				break
+			}
+			rc.Rules.Items = append(rc.Rules.Items, rule)
+			if p.cur.Type != ',' {
+				break
+			}
+			p.advance()
+		}
+		if p.cur.Type == ')' {
+			p.advance()
+		}
+	}
+
+	rc.Loc.End = p.pos()
+	return rc
+}
+
+// parseModelRule parses a single cell_assignment: measure_column[dim1, dim2] = expr.
+func (p *Parser) parseModelRule() *nodes.ModelRule {
+	start := p.pos()
+
+	// Parse the left side: measure_column [ dim_subscripts ]
+	// The left side is an identifier (possibly qualified) followed by [ subscripts ]
+	cellRef := p.parseModelCellRef()
+	if cellRef == nil {
+		return nil
+	}
+
+	rule := &nodes.ModelRule{
+		CellRef: cellRef,
+		Loc:     nodes.Loc{Start: start},
+	}
+
+	// = expr
+	if p.cur.Type == '=' {
+		p.advance()
+		rule.Expr = p.parseExpr()
+	}
+
+	rule.Loc.End = p.pos()
+	return rule
+}
+
+// parseModelCellRef parses a model cell reference: measure[dim1, dim2, ...].
+// Dimension subscripts can be expressions, ANY, or FOR loops (single/multi column).
+func (p *Parser) parseModelCellRef() nodes.ExprNode {
+	start := p.pos()
+
+	// Parse the measure column name as a column reference
+	if !p.isIdentLike() {
+		return nil
+	}
+	name := p.parseIdentifier()
+	col := &nodes.ColumnRef{
+		Column: name,
+		Loc:    nodes.Loc{Start: start, End: p.pos()},
+	}
+
+	// [ dim_subscripts ]
+	if p.cur.Type != '[' {
+		return col
+	}
+	p.advance() // consume '['
+
+	// Parse subscript expressions (comma-separated)
+	args := &nodes.List{}
+	for {
+		if p.cur.Type == ']' {
+			break
+		}
+		expr := p.parseExpr()
+		if expr == nil {
+			break
+		}
+		args.Items = append(args.Items, expr)
+		if p.cur.Type != ',' {
+			break
+		}
+		p.advance()
+	}
+
+	if p.cur.Type == ']' {
+		p.advance()
+	}
+
+	// Represent as a FuncCallExpr with the column name and subscript args
+	return &nodes.FuncCallExpr{
+		FuncName: &nodes.ObjectName{Name: name, Loc: nodes.Loc{Start: start}},
+		Args:     args,
+		Loc:      nodes.Loc{Start: start, End: p.pos()},
+	}
 }

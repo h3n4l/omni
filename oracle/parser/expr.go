@@ -41,6 +41,9 @@ func (p *Parser) parseExprPrec(minPrec int) nodes.ExprNode {
 		return nil
 	}
 
+	// Handle MODEL cell reference subscript: expr[dim1, dim2, ...]
+	left = p.parseSubscriptIfPresent(left)
+
 	for {
 		prec, op, isBool := p.infixInfo()
 		if prec < minPrec {
@@ -356,6 +359,55 @@ func (p *Parser) parseIdentExpr() nodes.ExprNode {
 	return &nodes.ColumnRef{
 		Column: name1,
 		Loc:    nodes.Loc{Start: start, End: p.pos()},
+	}
+}
+
+// parseSubscriptIfPresent checks if the current token is '[' and parses a
+// MODEL cell reference subscript: expr[dim1, dim2, ...].
+// Returns the original expression if no '[' is found.
+func (p *Parser) parseSubscriptIfPresent(expr nodes.ExprNode) nodes.ExprNode {
+	if p.cur.Type != '[' {
+		return expr
+	}
+
+	// Determine start position and function name from the expression
+	var start int
+	funcName := ""
+	switch e := expr.(type) {
+	case *nodes.ColumnRef:
+		funcName = e.Column
+		start = e.Loc.Start
+	default:
+		start = p.pos()
+	}
+	p.advance() // consume '['
+
+	args := &nodes.List{}
+	for {
+		if p.cur.Type == ']' {
+			break
+		}
+		arg := p.parseExpr()
+		if arg == nil {
+			break
+		}
+		args.Items = append(args.Items, arg)
+		if p.cur.Type != ',' {
+			break
+		}
+		p.advance()
+	}
+
+	if p.cur.Type == ']' {
+		p.advance()
+	}
+
+	// Represent subscript access as a FuncCallExpr (reusing the existing node type).
+	// This is a MODEL cell reference: measure[dim1, dim2]
+	return &nodes.FuncCallExpr{
+		FuncName: &nodes.ObjectName{Name: funcName, Loc: nodes.Loc{Start: start}},
+		Args:     args,
+		Loc:      nodes.Loc{Start: start, End: p.pos()},
 	}
 }
 

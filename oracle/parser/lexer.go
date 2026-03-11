@@ -762,6 +762,21 @@ var oracleKeywords = map[string]int{
 	"SEED":                kwSEED,
 	"SYS_CONNECT_BY_PATH": kwSYS_CONNECT_BY_PATH,
 	"UNDER":               kwUNDER,
+
+	// MODEL clause keywords
+	"AUTOMATIC": kwAUTOMATIC,
+	"DECREMENT": kwDECREMENT,
+	"DIMENSION": kwDIMENSION,
+	"ITERATE":   kwITERATE,
+	"MAIN":      kwMAIN,
+	"MEASURES":  kwMEASURES,
+	"NAV":       kwNAV,
+	"REFERENCE": kwREFERENCE,
+	"RULES":     kwRULES,
+	"SEQUENTIAL": kwSEQUENTIAL,
+	"UNTIL":     kwUNTIL,
+	"UPDATED":   kwUPDATED,
+	"UPSERT":    kwUPSERT,
 }
 
 // Keyword token constants.
@@ -1041,4 +1056,19 @@ const (
 	kwWORK
 	kwWRITE
 	kwZONE
+
+	// MODEL clause keywords
+	kwAUTOMATIC
+	kwDECREMENT
+	kwDIMENSION
+	kwITERATE
+	kwMAIN
+	kwMEASURES
+	kwNAV
+	kwREFERENCE
+	kwRULES
+	kwSEQUENTIAL
+	kwUNTIL
+	kwUPDATED
+	kwUPSERT
 )

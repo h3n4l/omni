@@ -286,6 +286,153 @@ func TestParseSelectUnpivot(t *testing.T) {
 	}
 }
 
+// TestParseSelectModel tests MODEL clause parsing.
+func TestParseSelectModel(t *testing.T) {
+	tests := []string{
+		// Basic MODEL with DIMENSION BY and MEASURES
+		`SELECT country, year, sales FROM sales_data
+		 MODEL
+		   DIMENSION BY (country, year)
+		   MEASURES (sales)
+		   RULES (sales['US', 2024] = sales['US', 2023] * 1.1)`,
+
+		// MODEL with PARTITION BY
+		`SELECT country, product, year, sales FROM sales_data
+		 MODEL
+		   PARTITION BY (country)
+		   DIMENSION BY (product, year)
+		   MEASURES (sales)
+		   RULES (sales['Widget', 2024] = sales['Widget', 2023] + 100)`,
+
+		// MODEL with RETURN UPDATED ROWS
+		`SELECT country, year, sales FROM sales_data
+		 MODEL
+		   RETURN UPDATED ROWS
+		   DIMENSION BY (country, year)
+		   MEASURES (sales)
+		   RULES (sales['US', 2024] = 1000)`,
+
+		// MODEL with RETURN ALL ROWS
+		`SELECT country, year, sales FROM sales_data
+		 MODEL
+		   RETURN ALL ROWS
+		   DIMENSION BY (country, year)
+		   MEASURES (sales)
+		   RULES (sales['US', 2024] = 1000)`,
+
+		// MODEL with IGNORE NAV
+		`SELECT country, year, sales FROM sales_data
+		 MODEL
+		   IGNORE NAV
+		   DIMENSION BY (country, year)
+		   MEASURES (sales)
+		   RULES (sales['US', 2024] = 1000)`,
+
+		// MODEL with KEEP NAV
+		`SELECT country, year, sales FROM sales_data
+		 MODEL
+		   KEEP NAV
+		   DIMENSION BY (country, year)
+		   MEASURES (sales)
+		   RULES (sales['US', 2024] = 1000)`,
+
+		// MODEL with UNIQUE DIMENSION
+		`SELECT country, year, sales FROM sales_data
+		 MODEL
+		   UNIQUE DIMENSION
+		   DIMENSION BY (country, year)
+		   MEASURES (sales)
+		   RULES (sales['US', 2024] = 1000)`,
+
+		// MODEL with RULES UPDATE
+		`SELECT country, year, sales FROM sales_data
+		 MODEL
+		   DIMENSION BY (country, year)
+		   MEASURES (sales)
+		   RULES UPDATE (sales['US', 2024] = 1000)`,
+
+		// MODEL with RULES UPSERT ALL
+		`SELECT country, year, sales FROM sales_data
+		 MODEL
+		   DIMENSION BY (country, year)
+		   MEASURES (sales)
+		   RULES UPSERT ALL (sales['US', 2024] = 1000)`,
+
+		// MODEL with AUTOMATIC ORDER
+		`SELECT country, year, sales FROM sales_data
+		 MODEL
+		   DIMENSION BY (country, year)
+		   MEASURES (sales)
+		   RULES AUTOMATIC ORDER (sales['US', 2024] = 1000)`,
+
+		// MODEL with SEQUENTIAL ORDER
+		`SELECT country, year, sales FROM sales_data
+		 MODEL
+		   DIMENSION BY (country, year)
+		   MEASURES (sales)
+		   RULES SEQUENTIAL ORDER (sales['US', 2024] = 1000)`,
+
+		// MODEL with ITERATE
+		`SELECT country, year, sales FROM sales_data
+		 MODEL
+		   DIMENSION BY (country, year)
+		   MEASURES (sales)
+		   RULES ITERATE (100) (sales['US', 2024] = sales['US', 2024] + 1)`,
+
+		// MODEL with ITERATE and UNTIL
+		`SELECT country, year, sales FROM sales_data
+		 MODEL
+		   DIMENSION BY (country, year)
+		   MEASURES (sales)
+		   RULES ITERATE (1000) UNTIL (sales['US', 2024] > 10000)
+		   (sales['US', 2024] = sales['US', 2024] * 1.1)`,
+
+		// MODEL with multiple rules
+		`SELECT country, year, sales, cost FROM sales_data
+		 MODEL
+		   DIMENSION BY (country, year)
+		   MEASURES (sales, cost)
+		   RULES (
+		     sales['US', 2024] = sales['US', 2023] * 1.1,
+		     cost['US', 2024] = cost['US', 2023] * 0.9
+		   )`,
+
+		// MODEL with MAIN model name
+		`SELECT country, year, sales FROM sales_data
+		 MODEL
+		   MAIN my_model
+		   DIMENSION BY (country, year)
+		   MEASURES (sales)
+		   RULES (sales['US', 2024] = 1000)`,
+
+		// MODEL with REFERENCE model
+		`SELECT country, year, sales FROM sales_data
+		 MODEL
+		   REFERENCE ref_model ON (SELECT country, rate FROM exchange_rates)
+		     DIMENSION BY (country)
+		     MEASURES (rate)
+		   MAIN main_model
+		   DIMENSION BY (country, year)
+		   MEASURES (sales)
+		   RULES (sales['US', 2024] = 1000)`,
+
+		// MODEL with aliased MEASURES and DIMENSION BY
+		`SELECT country, year, sales FROM sales_data
+		 MODEL
+		   DIMENSION BY (country AS c, year AS y)
+		   MEASURES (amount AS sales)
+		   RULES (sales['US', 2024] = 1000)`,
+	}
+	for _, sql := range tests {
+		t.Run(sql[:40], func(t *testing.T) {
+			result := ParseAndCheck(t, sql)
+			if result.Len() != 1 {
+				t.Fatalf("expected 1 statement, got %d", result.Len())
+			}
+		})
+	}
+}
+
 func TestNodeToString(t *testing.T) {
 	n := &ast.NumberLiteral{Val: "42", Ival: 42, Loc: ast.Loc{Start: 0, End: -1}}
 	s := ast.NodeToString(n)

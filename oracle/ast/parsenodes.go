@@ -770,13 +770,140 @@ type FetchFirstClause struct {
 func (n *FetchFirstClause) nodeTag() {}
 
 // ModelClause represents an Oracle MODEL clause.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/SELECT.html
+//
+//	model_clause ::=
+//	    MODEL
+//	      [ cell_reference_options ]
+//	      [ return_rows_clause ]
+//	      [ reference_model ]...
+//	      main_model
 type ModelClause struct {
-	// Simplified representation for now
-	Text string // raw MODEL clause text
-	Loc  Loc
+	CellRefOptions *ModelCellRefOptions // IGNORE NAV / KEEP NAV, UNIQUE DIMENSION / UNIQUE SINGLE REFERENCE
+	ReturnRows     string               // "" (default), "UPDATED", "ALL"
+	RefModels      []*ModelRefModel     // REFERENCE models
+	MainModel      *ModelMainModel      // MAIN model
+	Loc            Loc
 }
 
 func (n *ModelClause) nodeTag() {}
+
+// ModelCellRefOptions represents cell_reference_options.
+//
+//	cell_reference_options ::=
+//	    { IGNORE NAV | KEEP NAV }
+//	    { UNIQUE DIMENSION | UNIQUE SINGLE REFERENCE }
+type ModelCellRefOptions struct {
+	IgnoreNav       bool // IGNORE NAV (vs KEEP NAV)
+	KeepNav         bool // KEEP NAV
+	UniqueDimension bool // UNIQUE DIMENSION
+	UniqueSingleRef bool // UNIQUE SINGLE REFERENCE
+	Loc             Loc
+}
+
+func (n *ModelCellRefOptions) nodeTag() {}
+
+// ModelRefModel represents a REFERENCE model.
+//
+//	reference_model ::=
+//	    REFERENCE reference_model_name ON ( subquery )
+//	        model_column_clauses
+//	        [ cell_reference_options ]
+type ModelRefModel struct {
+	Name           string               // reference model name
+	Subquery       *SelectStmt          // ON ( subquery )
+	ColumnClauses  *ModelColumnClauses   // PARTITION BY, DIMENSION BY, MEASURES
+	CellRefOptions *ModelCellRefOptions  // optional cell ref options
+	Loc            Loc
+}
+
+func (n *ModelRefModel) nodeTag() {}
+
+// ModelMainModel represents the main_model.
+//
+//	main_model ::=
+//	    [ MAIN main_model_name ]
+//	        model_column_clauses
+//	        [ cell_reference_options ]
+//	        model_rules_clause
+type ModelMainModel struct {
+	Name           string               // optional main model name
+	ColumnClauses  *ModelColumnClauses   // PARTITION BY, DIMENSION BY, MEASURES
+	CellRefOptions *ModelCellRefOptions  // optional cell ref options
+	RulesClause    *ModelRulesClause     // RULES clause
+	Loc            Loc
+}
+
+func (n *ModelMainModel) nodeTag() {}
+
+// ModelColumnClauses represents model_column_clauses.
+//
+//	model_column_clauses ::=
+//	    [ PARTITION BY ( expr [ [ AS ] c_alias ] [, ...] ) ]
+//	    DIMENSION BY ( expr [ [ AS ] c_alias ] [, ...] )
+//	    MEASURES ( expr [ [ AS ] c_alias ] [, ...] )
+type ModelColumnClauses struct {
+	PartitionBy *List // list of *ResTarget (may be nil)
+	DimensionBy *List // list of *ResTarget
+	Measures    *List // list of *ResTarget
+	Loc         Loc
+}
+
+func (n *ModelColumnClauses) nodeTag() {}
+
+// ModelRulesClause represents model_rules_clause.
+//
+//	model_rules_clause ::=
+//	    [ RULES ]
+//	    [ { UPDATE | UPSERT [ ALL ] } ]
+//	    [ { AUTOMATIC | SEQUENTIAL } ORDER ]
+//	    [ model_iterate_clause ]
+//	    ( cell_assignment [, ...] )
+type ModelRulesClause struct {
+	UpdateMode string // "", "UPDATE", "UPSERT", "UPSERT ALL"
+	OrderMode  string // "", "AUTOMATIC", "SEQUENTIAL"
+	Iterate    ExprNode // iteration count expression
+	Until      ExprNode // UNTIL condition
+	Rules      *List    // list of *ModelRule
+	Loc        Loc
+}
+
+func (n *ModelRulesClause) nodeTag() {}
+
+// ModelRule represents a single cell_assignment rule.
+//
+//	cell_assignment ::=
+//	    measure_column [ dimension_conditions ] = expr
+type ModelRule struct {
+	CellRef ExprNode // left side (cell reference with dimension subscripts)
+	Expr    ExprNode // right side value expression
+	Loc     Loc
+}
+
+func (n *ModelRule) nodeTag() {}
+
+// ModelForLoop represents FOR loop in model cell assignment.
+//
+//	single_column_for_loop ::=
+//	    FOR dimension_column
+//	      { IN ( { literal [, ...] | subquery } )
+//	      | [ LIKE pattern ] FROM literal TO literal { INCREMENT | DECREMENT } literal
+//	      }
+type ModelForLoop struct {
+	Column    string      // dimension column name
+	InList    *List       // IN ( values ) - list of ExprNode
+	Subquery  *SelectStmt // IN ( subquery )
+	LikePattern ExprNode  // LIKE pattern (for FROM..TO)
+	FromExpr  ExprNode    // FROM literal
+	ToExpr    ExprNode    // TO literal
+	Increment bool        // true = INCREMENT, false = DECREMENT
+	IncrExpr  ExprNode    // increment/decrement value
+	Loc       Loc
+}
+
+func (n *ModelForLoop) nodeTag()  {}
+func (n *ModelForLoop) exprNode() {}
 
 // FlashbackClause represents a flashback query (AS OF).
 type FlashbackClause struct {

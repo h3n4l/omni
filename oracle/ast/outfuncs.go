@@ -156,6 +156,20 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeFetchFirstClause(sb, n)
 	case *ModelClause:
 		writeModelClause(sb, n)
+	case *ModelCellRefOptions:
+		writeModelCellRefOptions(sb, n)
+	case *ModelRefModel:
+		writeModelRefModel(sb, n)
+	case *ModelMainModel:
+		writeModelMainModel(sb, n)
+	case *ModelColumnClauses:
+		writeModelColumnClauses(sb, n)
+	case *ModelRulesClause:
+		writeModelRulesClause(sb, n)
+	case *ModelRule:
+		writeModelRule(sb, n)
+	case *ModelForLoop:
+		writeModelForLoop(sb, n)
 	case *FlashbackClause:
 		writeFlashbackClause(sb, n)
 	case *SortBy:
@@ -926,8 +940,172 @@ func writeFetchFirstClause(sb *strings.Builder, n *FetchFirstClause) {
 
 func writeModelClause(sb *strings.Builder, n *ModelClause) {
 	sb.WriteString("{MODEL")
-	if n.Text != "" {
-		sb.WriteString(fmt.Sprintf(" :text %q", n.Text))
+	if n.CellRefOptions != nil {
+		sb.WriteString(" :cellRefOptions ")
+		writeNode(sb, n.CellRefOptions)
+	}
+	if n.ReturnRows != "" {
+		sb.WriteString(fmt.Sprintf(" :returnRows %q", n.ReturnRows))
+	}
+	for _, ref := range n.RefModels {
+		sb.WriteString(" :refModel ")
+		writeNode(sb, ref)
+	}
+	if n.MainModel != nil {
+		sb.WriteString(" :mainModel ")
+		writeNode(sb, n.MainModel)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeModelCellRefOptions(sb *strings.Builder, n *ModelCellRefOptions) {
+	sb.WriteString("{MODEL_CELL_REF_OPTIONS")
+	if n.IgnoreNav {
+		sb.WriteString(" :ignoreNav true")
+	}
+	if n.KeepNav {
+		sb.WriteString(" :keepNav true")
+	}
+	if n.UniqueDimension {
+		sb.WriteString(" :uniqueDimension true")
+	}
+	if n.UniqueSingleRef {
+		sb.WriteString(" :uniqueSingleRef true")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeModelRefModel(sb *strings.Builder, n *ModelRefModel) {
+	sb.WriteString("{MODEL_REF")
+	if n.Name != "" {
+		sb.WriteString(fmt.Sprintf(" :name %q", n.Name))
+	}
+	if n.Subquery != nil {
+		sb.WriteString(" :subquery ")
+		writeNode(sb, n.Subquery)
+	}
+	if n.ColumnClauses != nil {
+		sb.WriteString(" :columnClauses ")
+		writeNode(sb, n.ColumnClauses)
+	}
+	if n.CellRefOptions != nil {
+		sb.WriteString(" :cellRefOptions ")
+		writeNode(sb, n.CellRefOptions)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeModelMainModel(sb *strings.Builder, n *ModelMainModel) {
+	sb.WriteString("{MODEL_MAIN")
+	if n.Name != "" {
+		sb.WriteString(fmt.Sprintf(" :name %q", n.Name))
+	}
+	if n.ColumnClauses != nil {
+		sb.WriteString(" :columnClauses ")
+		writeNode(sb, n.ColumnClauses)
+	}
+	if n.CellRefOptions != nil {
+		sb.WriteString(" :cellRefOptions ")
+		writeNode(sb, n.CellRefOptions)
+	}
+	if n.RulesClause != nil {
+		sb.WriteString(" :rulesClause ")
+		writeNode(sb, n.RulesClause)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeModelColumnClauses(sb *strings.Builder, n *ModelColumnClauses) {
+	sb.WriteString("{MODEL_COLUMNS")
+	if n.PartitionBy != nil {
+		sb.WriteString(" :partitionBy ")
+		writeNode(sb, n.PartitionBy)
+	}
+	if n.DimensionBy != nil {
+		sb.WriteString(" :dimensionBy ")
+		writeNode(sb, n.DimensionBy)
+	}
+	if n.Measures != nil {
+		sb.WriteString(" :measures ")
+		writeNode(sb, n.Measures)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeModelRulesClause(sb *strings.Builder, n *ModelRulesClause) {
+	sb.WriteString("{MODEL_RULES")
+	if n.UpdateMode != "" {
+		sb.WriteString(fmt.Sprintf(" :updateMode %q", n.UpdateMode))
+	}
+	if n.OrderMode != "" {
+		sb.WriteString(fmt.Sprintf(" :orderMode %q", n.OrderMode))
+	}
+	if n.Iterate != nil {
+		sb.WriteString(" :iterate ")
+		writeNode(sb, n.Iterate)
+	}
+	if n.Until != nil {
+		sb.WriteString(" :until ")
+		writeNode(sb, n.Until)
+	}
+	if n.Rules != nil {
+		sb.WriteString(" :rules ")
+		writeNode(sb, n.Rules)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeModelRule(sb *strings.Builder, n *ModelRule) {
+	sb.WriteString("{MODEL_RULE")
+	if n.CellRef != nil {
+		sb.WriteString(" :cellRef ")
+		writeNode(sb, n.CellRef)
+	}
+	if n.Expr != nil {
+		sb.WriteString(" :expr ")
+		writeNode(sb, n.Expr)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeModelForLoop(sb *strings.Builder, n *ModelForLoop) {
+	sb.WriteString("{MODEL_FOR_LOOP")
+	if n.Column != "" {
+		sb.WriteString(fmt.Sprintf(" :column %q", n.Column))
+	}
+	if n.InList != nil {
+		sb.WriteString(" :inList ")
+		writeNode(sb, n.InList)
+	}
+	if n.Subquery != nil {
+		sb.WriteString(" :subquery ")
+		writeNode(sb, n.Subquery)
+	}
+	if n.LikePattern != nil {
+		sb.WriteString(" :likePattern ")
+		writeNode(sb, n.LikePattern)
+	}
+	if n.FromExpr != nil {
+		sb.WriteString(" :from ")
+		writeNode(sb, n.FromExpr)
+	}
+	if n.ToExpr != nil {
+		sb.WriteString(" :to ")
+		writeNode(sb, n.ToExpr)
+	}
+	if n.Increment {
+		sb.WriteString(" :increment true")
+	}
+	if n.IncrExpr != nil {
+		sb.WriteString(" :incrExpr ")
+		writeNode(sb, n.IncrExpr)
 	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

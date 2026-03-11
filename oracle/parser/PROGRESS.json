@@ -340,7 +340,7 @@
       "id": 25,
       "name": "select_model",
       "file": "select.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 4 gap: MODEL clause is listed in batch 4 rules but not implemented. The MODEL clause enables spreadsheet-like calculations in SQL with PARTITION BY, DIMENSION BY, MEASURES, and RULES.",
       "rules": [
         "model_clause", "model_partition", "model_dimension",
