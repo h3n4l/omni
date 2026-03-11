@@ -356,6 +356,9 @@ func writeColumnRef(sb *strings.Builder, n *ColumnRef) {
 		sb.WriteString(fmt.Sprintf(" :table %q", n.Table))
 	}
 	sb.WriteString(fmt.Sprintf(" :column %q", n.Column))
+	if n.OuterJoin {
+		sb.WriteString(" :outerJoin true")
+	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
 }

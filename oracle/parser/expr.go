@@ -44,6 +44,9 @@ func (p *Parser) parseExprPrec(minPrec int) nodes.ExprNode {
 	// Handle MODEL cell reference subscript: expr[dim1, dim2, ...]
 	left = p.parseSubscriptIfPresent(left)
 
+	// Oracle legacy outer join: column_ref(+)
+	left = p.parseOuterJoinIfPresent(left)
+
 	for {
 		prec, op, isBool := p.infixInfo()
 		if prec < minPrec {
@@ -409,6 +412,30 @@ func (p *Parser) parseSubscriptIfPresent(expr nodes.ExprNode) nodes.ExprNode {
 		Args:     args,
 		Loc:      nodes.Loc{Start: start, End: p.pos()},
 	}
+}
+
+// parseOuterJoinIfPresent checks for Oracle legacy outer join syntax: column_ref(+).
+// If the current tokens are '(' '+' ')', marks the ColumnRef with OuterJoin=true.
+func (p *Parser) parseOuterJoinIfPresent(expr nodes.ExprNode) nodes.ExprNode {
+	cr, ok := expr.(*nodes.ColumnRef)
+	if !ok {
+		return expr
+	}
+	if p.cur.Type != '(' {
+		return expr
+	}
+	next := p.peekNext()
+	if next.Type != '+' {
+		return expr
+	}
+	p.advance() // consume '('
+	p.advance() // consume '+'
+	if p.cur.Type == ')' {
+		p.advance() // consume ')'
+	}
+	cr.OuterJoin = true
+	cr.Loc.End = p.pos()
+	return cr
 }
 
 // parseFuncCall parses a function call after the name has been consumed.

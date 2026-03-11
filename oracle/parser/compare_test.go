@@ -601,6 +601,25 @@ func TestParseJsonTable(t *testing.T) {
 	}
 }
 
+func TestParseOraclePlusJoin(t *testing.T) {
+	tests := []string{
+		"SELECT * FROM t1, t2 WHERE t1.id = t2.id(+)",
+		"SELECT * FROM t1, t2 WHERE t1.id(+) = t2.id",
+		"SELECT * FROM emp, dept WHERE emp.dept_id = dept.id(+) AND dept.name(+) = 'Sales'",
+		"SELECT * FROM t1, t2 WHERE t1.col(+) IS NULL",
+	}
+
+	for _, sql := range tests {
+		name := sql
+		if len(name) > 60 {
+			name = name[:60]
+		}
+		t.Run(name, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
 func TestNodeToString(t *testing.T) {
 	n := &ast.NumberLiteral{Val: "42", Ival: 42, Loc: ast.Loc{Start: 0, End: -1}}
 	s := ast.NodeToString(n)

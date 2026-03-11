@@ -241,10 +241,11 @@ func (n *ObjectName) nodeTag() {}
 
 // ColumnRef represents a column reference (possibly qualified).
 type ColumnRef struct {
-	Table  string // optional table/alias
-	Column string // column name, or "*"
-	Schema string // optional schema prefix
-	Loc    Loc
+	Table     string // optional table/alias
+	Column    string // column name, or "*"
+	Schema    string // optional schema prefix
+	OuterJoin bool   // true if followed by (+) — Oracle legacy outer join syntax
+	Loc       Loc
 }
 
 func (n *ColumnRef) nodeTag()  {}
