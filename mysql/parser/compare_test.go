@@ -1511,3 +1511,287 @@ func TestParseInsertOnDupKey(t *testing.T) {
 		})
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Batch 6: update_delete
+// ---------------------------------------------------------------------------
+
+// helper to parse an UPDATE statement directly
+func parseUpdate(t *testing.T, input string) *ast.UpdateStmt {
+	t.Helper()
+	p := &Parser{lexer: NewLexer(input)}
+	p.advance()
+	stmt, err := p.parseUpdateStmt()
+	if err != nil {
+		t.Fatalf("parseUpdateStmt(%q) error: %v", input, err)
+	}
+	return stmt
+}
+
+// helper to parse a DELETE statement directly
+func parseDelete(t *testing.T, input string) *ast.DeleteStmt {
+	t.Helper()
+	p := &Parser{lexer: NewLexer(input)}
+	p.advance()
+	stmt, err := p.parseDeleteStmt()
+	if err != nil {
+		t.Fatalf("parseDeleteStmt(%q) error: %v", input, err)
+	}
+	return stmt
+}
+
+// TestParseUpdate tests single-table UPDATE statements.
+func TestParseUpdate(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		stmt := parseUpdate(t, "UPDATE users SET name = 'alice'")
+		if len(stmt.Tables) != 1 {
+			t.Fatalf("tables count = %d, want 1", len(stmt.Tables))
+		}
+		tr, ok := stmt.Tables[0].(*ast.TableRef)
+		if !ok {
+			t.Fatalf("expected *ast.TableRef, got %T", stmt.Tables[0])
+		}
+		if tr.Name != "users" {
+			t.Errorf("table name = %s, want users", tr.Name)
+		}
+		if len(stmt.SetList) != 1 {
+			t.Fatalf("set list count = %d, want 1", len(stmt.SetList))
+		}
+		if stmt.SetList[0].Column.Column != "name" {
+			t.Errorf("set column = %s, want name", stmt.SetList[0].Column.Column)
+		}
+		if stmt.Where != nil {
+			t.Error("expected no WHERE clause")
+		}
+		if stmt.Loc.Start < 0 {
+			t.Error("Loc.Start should be >= 0")
+		}
+	})
+
+	t.Run("with WHERE", func(t *testing.T) {
+		stmt := parseUpdate(t, "UPDATE users SET age = 30 WHERE id = 1")
+		if stmt.Where == nil {
+			t.Fatal("expected WHERE clause")
+		}
+		if len(stmt.SetList) != 1 {
+			t.Fatalf("set list count = %d, want 1", len(stmt.SetList))
+		}
+	})
+
+	t.Run("with ORDER BY and LIMIT", func(t *testing.T) {
+		stmt := parseUpdate(t, "UPDATE users SET score = 0 ORDER BY score ASC LIMIT 10")
+		if len(stmt.OrderBy) != 1 {
+			t.Fatalf("order_by count = %d, want 1", len(stmt.OrderBy))
+		}
+		if stmt.Limit == nil {
+			t.Fatal("expected LIMIT clause")
+		}
+	})
+
+	t.Run("multiple assignments", func(t *testing.T) {
+		stmt := parseUpdate(t, "UPDATE users SET name = 'bob', age = 25, active = TRUE WHERE id = 1")
+		if len(stmt.SetList) != 3 {
+			t.Fatalf("set list count = %d, want 3", len(stmt.SetList))
+		}
+		if stmt.SetList[0].Column.Column != "name" {
+			t.Errorf("first set column = %s, want name", stmt.SetList[0].Column.Column)
+		}
+		if stmt.SetList[1].Column.Column != "age" {
+			t.Errorf("second set column = %s, want age", stmt.SetList[1].Column.Column)
+		}
+		if stmt.SetList[2].Column.Column != "active" {
+			t.Errorf("third set column = %s, want active", stmt.SetList[2].Column.Column)
+		}
+	})
+
+	t.Run("LOW_PRIORITY IGNORE", func(t *testing.T) {
+		stmt := parseUpdate(t, "UPDATE LOW_PRIORITY IGNORE users SET name = 'test'")
+		if !stmt.LowPriority {
+			t.Error("expected LowPriority = true")
+		}
+		if !stmt.Ignore {
+			t.Error("expected Ignore = true")
+		}
+	})
+
+	t.Run("qualified column", func(t *testing.T) {
+		stmt := parseUpdate(t, "UPDATE users SET users.name = 'test'")
+		if len(stmt.SetList) != 1 {
+			t.Fatalf("set list count = %d, want 1", len(stmt.SetList))
+		}
+		if stmt.SetList[0].Column.Table != "users" {
+			t.Errorf("set column table = %s, want users", stmt.SetList[0].Column.Table)
+		}
+		if stmt.SetList[0].Column.Column != "name" {
+			t.Errorf("set column name = %s, want name", stmt.SetList[0].Column.Column)
+		}
+	})
+}
+
+// TestParseMultiTableUpdate tests multi-table UPDATE statements.
+func TestParseMultiTableUpdate(t *testing.T) {
+	t.Run("two tables with join", func(t *testing.T) {
+		stmt := parseUpdate(t, "UPDATE users JOIN orders ON users.id = orders.user_id SET users.name = 'test' WHERE orders.total > 100")
+		if len(stmt.Tables) != 1 {
+			t.Fatalf("tables count = %d, want 1 (join clause)", len(stmt.Tables))
+		}
+		jc, ok := stmt.Tables[0].(*ast.JoinClause)
+		if !ok {
+			t.Fatalf("expected *ast.JoinClause, got %T", stmt.Tables[0])
+		}
+		if jc.Type != ast.JoinInner {
+			t.Errorf("join type = %d, want JoinInner", jc.Type)
+		}
+		if len(stmt.SetList) != 1 {
+			t.Fatalf("set list count = %d, want 1", len(stmt.SetList))
+		}
+		if stmt.Where == nil {
+			t.Fatal("expected WHERE clause")
+		}
+	})
+
+	t.Run("comma-separated tables", func(t *testing.T) {
+		stmt := parseUpdate(t, "UPDATE t1, t2 SET t1.a = t2.b WHERE t1.id = t2.id")
+		if len(stmt.Tables) != 2 {
+			t.Fatalf("tables count = %d, want 2", len(stmt.Tables))
+		}
+		tr1, ok := stmt.Tables[0].(*ast.TableRef)
+		if !ok {
+			t.Fatalf("expected *ast.TableRef for tables[0], got %T", stmt.Tables[0])
+		}
+		if tr1.Name != "t1" {
+			t.Errorf("table[0] name = %s, want t1", tr1.Name)
+		}
+		tr2, ok := stmt.Tables[1].(*ast.TableRef)
+		if !ok {
+			t.Fatalf("expected *ast.TableRef for tables[1], got %T", stmt.Tables[1])
+		}
+		if tr2.Name != "t2" {
+			t.Errorf("table[1] name = %s, want t2", tr2.Name)
+		}
+	})
+}
+
+// TestParseDelete tests single-table DELETE statements.
+func TestParseDelete(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		stmt := parseDelete(t, "DELETE FROM users")
+		if len(stmt.Tables) != 1 {
+			t.Fatalf("tables count = %d, want 1", len(stmt.Tables))
+		}
+		tr, ok := stmt.Tables[0].(*ast.TableRef)
+		if !ok {
+			t.Fatalf("expected *ast.TableRef, got %T", stmt.Tables[0])
+		}
+		if tr.Name != "users" {
+			t.Errorf("table name = %s, want users", tr.Name)
+		}
+		if stmt.Where != nil {
+			t.Error("expected no WHERE clause")
+		}
+		if stmt.Loc.Start < 0 {
+			t.Error("Loc.Start should be >= 0")
+		}
+	})
+
+	t.Run("with WHERE", func(t *testing.T) {
+		stmt := parseDelete(t, "DELETE FROM users WHERE id = 1")
+		if stmt.Where == nil {
+			t.Fatal("expected WHERE clause")
+		}
+	})
+
+	t.Run("with ORDER BY and LIMIT", func(t *testing.T) {
+		stmt := parseDelete(t, "DELETE FROM users ORDER BY created_at ASC LIMIT 100")
+		if len(stmt.OrderBy) != 1 {
+			t.Fatalf("order_by count = %d, want 1", len(stmt.OrderBy))
+		}
+		if stmt.Limit == nil {
+			t.Fatal("expected LIMIT clause")
+		}
+	})
+
+	t.Run("modifiers", func(t *testing.T) {
+		stmt := parseDelete(t, "DELETE LOW_PRIORITY QUICK IGNORE FROM users WHERE id = 1")
+		if !stmt.LowPriority {
+			t.Error("expected LowPriority = true")
+		}
+		if !stmt.Quick {
+			t.Error("expected Quick = true")
+		}
+		if !stmt.Ignore {
+			t.Error("expected Ignore = true")
+		}
+	})
+}
+
+// TestParseMultiTableDelete tests multi-table DELETE statements.
+func TestParseMultiTableDelete(t *testing.T) {
+	t.Run("syntax1: DELETE t1 FROM t1 JOIN t2", func(t *testing.T) {
+		stmt := parseDelete(t, "DELETE t1 FROM t1 JOIN t2 ON t1.id = t2.id WHERE t2.status = 0")
+		if len(stmt.Tables) != 1 {
+			t.Fatalf("tables count = %d, want 1", len(stmt.Tables))
+		}
+		tr, ok := stmt.Tables[0].(*ast.TableRef)
+		if !ok {
+			t.Fatalf("expected *ast.TableRef, got %T", stmt.Tables[0])
+		}
+		if tr.Name != "t1" {
+			t.Errorf("table name = %s, want t1", tr.Name)
+		}
+		if len(stmt.Using) != 1 {
+			t.Fatalf("using count = %d, want 1 (join clause)", len(stmt.Using))
+		}
+		_, ok = stmt.Using[0].(*ast.JoinClause)
+		if !ok {
+			t.Fatalf("expected *ast.JoinClause in Using, got %T", stmt.Using[0])
+		}
+		if stmt.Where == nil {
+			t.Fatal("expected WHERE clause")
+		}
+	})
+
+	t.Run("syntax1: DELETE t1, t2 FROM ...", func(t *testing.T) {
+		stmt := parseDelete(t, "DELETE t1, t2 FROM t1 JOIN t2 ON t1.id = t2.ref_id")
+		if len(stmt.Tables) != 2 {
+			t.Fatalf("tables count = %d, want 2", len(stmt.Tables))
+		}
+		if len(stmt.Using) != 1 {
+			t.Fatalf("using count = %d, want 1", len(stmt.Using))
+		}
+	})
+
+	t.Run("syntax2: DELETE FROM t1 USING t1 JOIN t2", func(t *testing.T) {
+		stmt := parseDelete(t, "DELETE FROM t1 USING t1 JOIN t2 ON t1.id = t2.id WHERE t2.active = 0")
+		if len(stmt.Tables) != 1 {
+			t.Fatalf("tables count = %d, want 1", len(stmt.Tables))
+		}
+		tr, ok := stmt.Tables[0].(*ast.TableRef)
+		if !ok {
+			t.Fatalf("expected *ast.TableRef, got %T", stmt.Tables[0])
+		}
+		if tr.Name != "t1" {
+			t.Errorf("table name = %s, want t1", tr.Name)
+		}
+		if len(stmt.Using) != 1 {
+			t.Fatalf("using count = %d, want 1", len(stmt.Using))
+		}
+		if stmt.Where == nil {
+			t.Fatal("expected WHERE clause")
+		}
+	})
+
+	t.Run("with .* suffix", func(t *testing.T) {
+		stmt := parseDelete(t, "DELETE t1.* FROM t1 JOIN t2 ON t1.id = t2.id")
+		if len(stmt.Tables) != 1 {
+			t.Fatalf("tables count = %d, want 1", len(stmt.Tables))
+		}
+		tr, ok := stmt.Tables[0].(*ast.TableRef)
+		if !ok {
+			t.Fatalf("expected *ast.TableRef, got %T", stmt.Tables[0])
+		}
+		if tr.Name != "t1" {
+			t.Errorf("table name = %s, want t1", tr.Name)
+		}
+	})
+}

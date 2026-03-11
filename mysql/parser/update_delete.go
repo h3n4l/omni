@@ -253,12 +253,55 @@ func (p *Parser) parseDeleteTableList() ([]nodes.TableExpr, error) {
 	var tables []nodes.TableExpr
 
 	for {
-		ref, err := p.parseTableRef()
+		ref, err := p.parseDeleteTableName()
 		if err != nil {
 			return nil, err
 		}
 
-		// Skip optional .* suffix (multi-table delete syntax)
+		tables = append(tables, ref)
+		if p.cur.Type != ',' {
+			break
+		}
+		p.advance()
+	}
+
+	return tables, nil
+}
+
+// parseDeleteTableName parses a single table name for DELETE,
+// handling the optional .* suffix and schema.table.* form.
+func (p *Parser) parseDeleteTableName() (*nodes.TableRef, error) {
+	start := p.pos()
+	name, _, err := p.parseIdentifier()
+	if err != nil {
+		return nil, err
+	}
+
+	ref := &nodes.TableRef{
+		Loc:  nodes.Loc{Start: start},
+		Name: name,
+	}
+
+	// Check for dot: could be schema.table or name.*
+	if p.cur.Type == '.' {
+		next := p.peekNext()
+		if next.Type == '*' {
+			// name.* -- skip the .* suffix
+			p.advance() // consume '.'
+			p.advance() // consume '*'
+			ref.Loc.End = p.pos()
+			return ref, nil
+		}
+		// schema.table or schema.table.*
+		p.advance() // consume '.'
+		name2, _, err := p.parseIdentifier()
+		if err != nil {
+			return nil, err
+		}
+		ref.Schema = name
+		ref.Name = name2
+
+		// Check for .* after schema.table
 		if p.cur.Type == '.' {
 			next := p.peekNext()
 			if next.Type == '*' {
@@ -266,15 +309,8 @@ func (p *Parser) parseDeleteTableList() ([]nodes.TableExpr, error) {
 				p.advance() // consume '*'
 			}
 		}
-
-		tables = append(tables, ref)
-		if p.cur.Type != ',' {
-			break
-		}
-		// Peek ahead to see if the next identifier is followed by FROM or USING,
-		// which would mean this comma is NOT part of the table list.
-		p.advance()
 	}
 
-	return tables, nil
+	ref.Loc.End = p.pos()
+	return ref, nil
 }
