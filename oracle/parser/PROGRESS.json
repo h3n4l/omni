@@ -100,7 +100,7 @@
       "id": 7,
       "name": "merge",
       "file": "merge.go",
-      "status": "pending",
+      "status": "done",
       "description": "MERGE INTO",
       "rules": [
         "merge_stmt", "merge_when_matched", "merge_when_not_matched",
