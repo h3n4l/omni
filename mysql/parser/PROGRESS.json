@@ -220,7 +220,7 @@
       "id": 15,
       "name": "grant",
       "file": "grant.go",
-      "status": "pending",
+      "status": "done",
       "description": "GRANT, REVOKE, CREATE/DROP/ALTER USER",
       "rules": [
         "grant_stmt", "revoke_stmt", "create_user_stmt", "drop_user_stmt",
@@ -233,7 +233,7 @@
       "id": 16,
       "name": "create_function",
       "file": "create_function.go",
-      "status": "pending",
+      "status": "done",
       "description": "CREATE FUNCTION/PROCEDURE, stored routines",
       "rules": [
         "create_function_stmt", "create_procedure_stmt",
@@ -247,7 +247,7 @@
       "id": 17,
       "name": "trigger",
       "file": "trigger.go",
-      "status": "pending",
+      "status": "done",
       "description": "CREATE TRIGGER, CREATE EVENT",
       "rules": [
         "create_trigger_stmt", "trigger_time", "trigger_event",
@@ -260,7 +260,7 @@
       "id": 18,
       "name": "load_data",
       "file": "load_data.go",
-      "status": "pending",
+      "status": "done",
       "description": "LOAD DATA INFILE, LOAD XML",
       "rules": [
         "load_data_stmt", "load_data_options",
@@ -273,7 +273,7 @@
       "id": 19,
       "name": "prepare",
       "file": "prepare.go",
-      "status": "pending",
+      "status": "done",
       "description": "PREPARE, EXECUTE, DEALLOCATE PREPARE",
       "rules": [
         "prepare_stmt", "execute_stmt", "deallocate_stmt"
@@ -285,7 +285,7 @@
       "id": 20,
       "name": "utility",
       "file": "utility.go",
-      "status": "pending",
+      "status": "done",
       "description": "ANALYZE TABLE, OPTIMIZE TABLE, CHECK TABLE, REPAIR TABLE, FLUSH, RESET, KILL, DO",
       "rules": [
         "analyze_table_stmt", "optimize_table_stmt", "check_table_stmt",

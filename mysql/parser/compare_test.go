@@ -3714,3 +3714,440 @@ func TestParseExplain(t *testing.T) {
 		}
 	})
 }
+
+// ============================================================================
+// Batch 15: GRANT, REVOKE, CREATE/DROP USER
+// ============================================================================
+
+func TestParseGrant(t *testing.T) {
+	t.Run("all privileges", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("GRANT ALL PRIVILEGES ON *.* TO root")}
+		p.advance()
+		stmt, err := p.parseGrantStmt()
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		if !stmt.AllPriv {
+			t.Errorf("AllPriv = false, want true")
+		}
+		if stmt.On == nil || stmt.On.Name == nil {
+			t.Fatal("On is nil")
+		}
+	})
+
+	t.Run("specific privileges", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("GRANT SELECT, INSERT ON mydb.* TO app_user")}
+		p.advance()
+		stmt, err := p.parseGrantStmt()
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		if len(stmt.Privileges) != 2 {
+			t.Fatalf("Privileges count = %d, want 2", len(stmt.Privileges))
+		}
+	})
+
+	t.Run("with grant option", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("GRANT ALL ON *.* TO admin WITH GRANT OPTION")}
+		p.advance()
+		stmt, err := p.parseGrantStmt()
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		if !stmt.WithGrant {
+			t.Errorf("WithGrant = false, want true")
+		}
+	})
+}
+
+func TestParseRevoke(t *testing.T) {
+	p := &Parser{lexer: NewLexer("REVOKE SELECT ON mydb.* FROM app_user")}
+	p.advance()
+	stmt, err := p.parseRevokeStmt()
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	if len(stmt.Privileges) != 1 {
+		t.Fatalf("Privileges count = %d, want 1", len(stmt.Privileges))
+	}
+	if len(stmt.From) != 1 {
+		t.Fatalf("From count = %d, want 1", len(stmt.From))
+	}
+}
+
+func TestParseCreateUser(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("CREATE USER testuser")}
+		p.advance()
+		p.advance() // skip CREATE
+		stmt, err := p.parseCreateUserStmt()
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		if len(stmt.Users) != 1 {
+			t.Fatalf("Users count = %d, want 1", len(stmt.Users))
+		}
+		if stmt.Users[0].Name != "testuser" {
+			t.Errorf("Name = %s, want testuser", stmt.Users[0].Name)
+		}
+	})
+
+	t.Run("if not exists", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("CREATE USER IF NOT EXISTS testuser")}
+		p.advance()
+		p.advance() // skip CREATE
+		stmt, err := p.parseCreateUserStmt()
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		if !stmt.IfNotExists {
+			t.Errorf("IfNotExists = false, want true")
+		}
+	})
+
+	t.Run("identified by", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("CREATE USER testuser IDENTIFIED BY 'secret'")}
+		p.advance()
+		p.advance() // skip CREATE
+		stmt, err := p.parseCreateUserStmt()
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		if stmt.Users[0].Password != "secret" {
+			t.Errorf("Password = %s, want secret", stmt.Users[0].Password)
+		}
+	})
+}
+
+func TestParseDropUser(t *testing.T) {
+	p := &Parser{lexer: NewLexer("DROP USER testuser")}
+	p.advance()
+	p.advance() // skip DROP
+	stmt, err := p.parseDropUserStmt()
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	if len(stmt.Users) != 1 {
+		t.Fatalf("Users count = %d, want 1", len(stmt.Users))
+	}
+}
+
+// ============================================================================
+// Batch 16: CREATE FUNCTION/PROCEDURE
+// ============================================================================
+
+func TestParseCreateFunction(t *testing.T) {
+	t.Run("simple function", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("CREATE FUNCTION myfunc(a INT) RETURNS INT RETURN a + 1")}
+		p.advance()
+		p.advance() // skip CREATE
+		stmt, err := p.parseCreateFunctionStmt(false)
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		if stmt.Name == nil || stmt.Name.Name != "myfunc" {
+			t.Errorf("Name = %v, want myfunc", stmt.Name)
+		}
+		if len(stmt.Params) != 1 {
+			t.Fatalf("Params count = %d, want 1", len(stmt.Params))
+		}
+		if stmt.Params[0].Name != "a" {
+			t.Errorf("Param name = %s, want a", stmt.Params[0].Name)
+		}
+		if stmt.Returns == nil {
+			t.Fatal("Returns is nil")
+		}
+	})
+
+	t.Run("function no params", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("CREATE FUNCTION myfunc() RETURNS INT RETURN 1")}
+		p.advance()
+		p.advance() // skip CREATE
+		stmt, err := p.parseCreateFunctionStmt(false)
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		if len(stmt.Params) != 0 {
+			t.Errorf("Params count = %d, want 0", len(stmt.Params))
+		}
+	})
+}
+
+func TestParseCreateProcedure(t *testing.T) {
+	t.Run("simple procedure", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("CREATE PROCEDURE myproc(IN x INT, OUT y INT) BEGIN SELECT x INTO y; END")}
+		p.advance()
+		p.advance() // skip CREATE
+		stmt, err := p.parseCreateFunctionStmt(true)
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		if !stmt.IsProcedure {
+			t.Errorf("IsProcedure = false, want true")
+		}
+		if len(stmt.Params) != 2 {
+			t.Fatalf("Params count = %d, want 2", len(stmt.Params))
+		}
+		if stmt.Params[0].Direction != "IN" {
+			t.Errorf("Param[0].Direction = %s, want IN", stmt.Params[0].Direction)
+		}
+		if stmt.Params[1].Direction != "OUT" {
+			t.Errorf("Param[1].Direction = %s, want OUT", stmt.Params[1].Direction)
+		}
+	})
+}
+
+// ============================================================================
+// Batch 17: CREATE TRIGGER, CREATE EVENT
+// ============================================================================
+
+func TestParseCreateTrigger(t *testing.T) {
+	t.Run("simple trigger", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("CREATE TRIGGER trg BEFORE INSERT ON t FOR EACH ROW SET @a = 1")}
+		p.advance()
+		p.advance() // skip CREATE
+		stmt, err := p.parseCreateTriggerStmt()
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		if stmt.Name != "trg" {
+			t.Errorf("Name = %s, want trg", stmt.Name)
+		}
+		if stmt.Timing != "BEFORE" {
+			t.Errorf("Timing = %s, want BEFORE", stmt.Timing)
+		}
+		if stmt.Event != "INSERT" {
+			t.Errorf("Event = %s, want INSERT", stmt.Event)
+		}
+		if stmt.Table == nil || stmt.Table.Name != "t" {
+			t.Errorf("Table = %v, want t", stmt.Table)
+		}
+	})
+
+	t.Run("after update", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("CREATE TRIGGER trg AFTER UPDATE ON t FOR EACH ROW SET @a = 1")}
+		p.advance()
+		p.advance()
+		stmt, err := p.parseCreateTriggerStmt()
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		if stmt.Timing != "AFTER" {
+			t.Errorf("Timing = %s, want AFTER", stmt.Timing)
+		}
+		if stmt.Event != "UPDATE" {
+			t.Errorf("Event = %s, want UPDATE", stmt.Event)
+		}
+	})
+}
+
+func TestParseCreateEvent(t *testing.T) {
+	t.Run("at schedule", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("CREATE EVENT myevent ON SCHEDULE AT '2025-01-01 00:00:00' DO SELECT 1")}
+		p.advance()
+		p.advance() // skip CREATE
+		stmt, err := p.parseCreateEventStmt()
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		if stmt.Name != "myevent" {
+			t.Errorf("Name = %s, want myevent", stmt.Name)
+		}
+		if stmt.Schedule == nil {
+			t.Fatal("Schedule is nil")
+		}
+	})
+
+	t.Run("if not exists", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("CREATE EVENT IF NOT EXISTS myevent ON SCHEDULE AT '2025-01-01' DO SELECT 1")}
+		p.advance()
+		p.advance()
+		stmt, err := p.parseCreateEventStmt()
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		if !stmt.IfNotExists {
+			t.Errorf("IfNotExists = false, want true")
+		}
+	})
+}
+
+// ============================================================================
+// Batch 18: LOAD DATA
+// ============================================================================
+
+func TestParseLoadData(t *testing.T) {
+	t.Run("basic", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("LOAD DATA INFILE '/tmp/data.csv' INTO TABLE t")}
+		p.advance()
+		stmt, err := p.parseLoadDataStmt()
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		if stmt.Infile != "/tmp/data.csv" {
+			t.Errorf("Infile = %s, want /tmp/data.csv", stmt.Infile)
+		}
+		if stmt.Table == nil || stmt.Table.Name != "t" {
+			t.Errorf("Table = %v, want t", stmt.Table)
+		}
+	})
+
+	t.Run("local", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("LOAD DATA LOCAL INFILE '/tmp/data.csv' INTO TABLE t")}
+		p.advance()
+		stmt, err := p.parseLoadDataStmt()
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		if !stmt.Local {
+			t.Errorf("Local = false, want true")
+		}
+	})
+
+	t.Run("replace", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("LOAD DATA INFILE '/tmp/data.csv' REPLACE INTO TABLE t")}
+		p.advance()
+		stmt, err := p.parseLoadDataStmt()
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		if !stmt.Replace {
+			t.Errorf("Replace = false, want true")
+		}
+	})
+
+	t.Run("fields terminated", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("LOAD DATA INFILE '/tmp/data.csv' INTO TABLE t FIELDS TERMINATED BY ','")}
+		p.advance()
+		stmt, err := p.parseLoadDataStmt()
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		if stmt.FieldsTerminatedBy != "," {
+			t.Errorf("FieldsTerminatedBy = %s, want ,", stmt.FieldsTerminatedBy)
+		}
+	})
+}
+
+// ============================================================================
+// Batch 19: PREPARE, EXECUTE, DEALLOCATE
+// ============================================================================
+
+func TestParsePrepare(t *testing.T) {
+	p := &Parser{lexer: NewLexer("PREPARE stmt FROM 'SELECT * FROM t WHERE id = ?'")}
+	p.advance()
+	stmt, err := p.parsePrepareStmt()
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	if stmt.Name != "stmt" {
+		t.Errorf("Name = %s, want stmt", stmt.Name)
+	}
+	if stmt.Stmt != "SELECT * FROM t WHERE id = ?" {
+		t.Errorf("Stmt = %s, want 'SELECT * FROM t WHERE id = ?'", stmt.Stmt)
+	}
+}
+
+func TestParseExecute(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("EXECUTE stmt")}
+		p.advance()
+		stmt, err := p.parseExecuteStmt()
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		if stmt.Name != "stmt" {
+			t.Errorf("Name = %s, want stmt", stmt.Name)
+		}
+	})
+
+	t.Run("with using", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("EXECUTE stmt USING @a, @b")}
+		p.advance()
+		stmt, err := p.parseExecuteStmt()
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		if len(stmt.Params) != 2 {
+			t.Fatalf("Params count = %d, want 2", len(stmt.Params))
+		}
+	})
+}
+
+func TestParseDeallocate(t *testing.T) {
+	p := &Parser{lexer: NewLexer("DEALLOCATE PREPARE stmt")}
+	p.advance()
+	stmt, err := p.parseDeallocateStmt()
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	if stmt.Name != "stmt" {
+		t.Errorf("Name = %s, want stmt", stmt.Name)
+	}
+}
+
+// ============================================================================
+// Batch 20: ANALYZE, OPTIMIZE, KILL, DO
+// ============================================================================
+
+func TestParseAnalyze(t *testing.T) {
+	p := &Parser{lexer: NewLexer("ANALYZE TABLE t1, t2")}
+	p.advance()
+	stmt, err := p.parseAnalyzeTableStmt()
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	if len(stmt.Tables) != 2 {
+		t.Fatalf("Tables count = %d, want 2", len(stmt.Tables))
+	}
+}
+
+func TestParseOptimize(t *testing.T) {
+	p := &Parser{lexer: NewLexer("OPTIMIZE TABLE t1")}
+	p.advance()
+	stmt, err := p.parseOptimizeTableStmt()
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	if len(stmt.Tables) != 1 {
+		t.Fatalf("Tables count = %d, want 1", len(stmt.Tables))
+	}
+}
+
+func TestParseKill(t *testing.T) {
+	t.Run("connection", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("KILL 123")}
+		p.advance()
+		stmt, err := p.parseKillStmt()
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		if stmt.ConnectionID == nil {
+			t.Fatal("ConnectionID is nil")
+		}
+	})
+
+	t.Run("query", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("KILL QUERY 123")}
+		p.advance()
+		stmt, err := p.parseKillStmt()
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		if !stmt.Query {
+			t.Errorf("Query = false, want true")
+		}
+	})
+}
+
+func TestParseDo(t *testing.T) {
+	p := &Parser{lexer: NewLexer("DO 1 + 2, 3 + 4")}
+	p.advance()
+	stmt, err := p.parseDoStmt()
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	if len(stmt.Exprs) != 2 {
+		t.Fatalf("Exprs count = %d, want 2", len(stmt.Exprs))
+	}
+}

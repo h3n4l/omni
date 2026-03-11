@@ -292,6 +292,9 @@ const (
 	kwREADS
 	kwRETURNS
 	kwLANGUAGE
+	kwOUT
+	kwINOUT
+	kwAT
 	kwDEFINER
 	kwINVOKER
 	kwSECURITY
@@ -610,6 +613,9 @@ var keywords = map[string]int{
 	"reads":               kwREADS,
 	"returns":             kwRETURNS,
 	"language":            kwLANGUAGE,
+	"out":                 kwOUT,
+	"inout":               kwINOUT,
+	"at":                  kwAT,
 	"definer":             kwDEFINER,
 	"invoker":             kwINVOKER,
 	"security":            kwSECURITY,
