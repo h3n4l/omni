@@ -804,6 +804,10 @@ var oracleKeywords = map[string]int{
 	"PASSING":    kwPASSING,
 	"PATH":       kwPATH,
 	"XMLTABLE":   kwXMLTABLE,
+
+	// Cursor / MULTISET / TREAT keywords
+	"EXCEPT": kwEXCEPT,
+	"TREAT":  kwTREAT,
 }
 
 // Keyword token constants.
@@ -1125,4 +1129,8 @@ const (
 	kwPASSING
 	kwPATH
 	kwXMLTABLE
+
+	// Cursor / MULTISET / TREAT keywords
+	kwEXCEPT
+	kwTREAT
 )

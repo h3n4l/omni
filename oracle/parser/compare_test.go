@@ -620,6 +620,60 @@ func TestParseOraclePlusJoin(t *testing.T) {
 	}
 }
 
+func TestParseCursorExpr(t *testing.T) {
+	tests := []string{
+		"SELECT CURSOR(SELECT * FROM employees) FROM dual",
+		"SELECT CURSOR(SELECT dept_id, name FROM departments WHERE active = 1) FROM dual",
+	}
+
+	for _, sql := range tests {
+		name := sql
+		if len(name) > 60 {
+			name = name[:60]
+		}
+		t.Run(name, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseMultisetOps(t *testing.T) {
+	tests := []string{
+		"SELECT col1 MULTISET UNION col2 FROM t",
+		"SELECT col1 MULTISET UNION ALL col2 FROM t",
+		"SELECT col1 MULTISET UNION DISTINCT col2 FROM t",
+		"SELECT col1 MULTISET INTERSECT col2 FROM t",
+		"SELECT col1 MULTISET EXCEPT col2 FROM t",
+	}
+
+	for _, sql := range tests {
+		name := sql
+		if len(name) > 60 {
+			name = name[:60]
+		}
+		t.Run(name, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseTreatExpr(t *testing.T) {
+	tests := []string{
+		"SELECT TREAT(val AS NUMBER) FROM t",
+		"SELECT TREAT(obj AS employee_type) FROM objects",
+	}
+
+	for _, sql := range tests {
+		name := sql
+		if len(name) > 60 {
+			name = name[:60]
+		}
+		t.Run(name, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
 func TestNodeToString(t *testing.T) {
 	n := &ast.NumberLiteral{Val: "42", Ival: 42, Loc: ast.Loc{Start: 0, End: -1}}
 	s := ast.NodeToString(n)

@@ -418,7 +418,7 @@
       "id": 31,
       "name": "cursor_expressions",
       "file": "expr.go",
-      "status": "pending",
+      "status": "done",
       "description": "Cursor expressions: CURSOR(subquery) in SELECT list. Also MULTISET operations (MULTISET UNION, MULTISET INTERSECT, MULTISET EXCEPT) and TREAT expression for type casting in object hierarchies.",
       "rules": [
         "cursor_expr", "multiset_op", "treat_expr"

@@ -102,6 +102,10 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeCastExpr(sb, n)
 	case *MultisetExpr:
 		writeMultisetExpr(sb, n)
+	case *CursorExpr:
+		writeCursorExpr(sb, n)
+	case *TreatExpr:
+		writeTreatExpr(sb, n)
 	case *IntervalExpr:
 		writeIntervalExpr(sb, n)
 	case *BetweenExpr:
@@ -570,6 +574,30 @@ func writeMultisetExpr(sb *strings.Builder, n *MultisetExpr) {
 	writeNode(sb, n.Right)
 	if n.All {
 		sb.WriteString(" :all true")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeCursorExpr(sb *strings.Builder, n *CursorExpr) {
+	sb.WriteString("{CURSOR")
+	if n.Subquery != nil {
+		sb.WriteString(" :subquery ")
+		writeNode(sb, n.Subquery)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeTreatExpr(sb *strings.Builder, n *TreatExpr) {
+	sb.WriteString("{TREAT")
+	if n.Expr != nil {
+		sb.WriteString(" :expr ")
+		writeNode(sb, n.Expr)
+	}
+	if n.TypeName != nil {
+		sb.WriteString(" :typeName ")
+		writeNode(sb, n.TypeName)
 	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

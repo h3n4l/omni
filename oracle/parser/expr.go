@@ -63,6 +63,11 @@ func (p *Parser) parseExprPrec(minPrec int) nodes.ExprNode {
 	// Check for postfix operators: IS, BETWEEN, IN, LIKE, NOT BETWEEN/IN/LIKE
 	left = p.parsePostfix(left)
 
+	// MULTISET UNION/INTERSECT/EXCEPT
+	if p.cur.Type == kwMULTISET {
+		left = p.parseMultisetOp(left)
+	}
+
 	return left
 }
 
@@ -270,6 +275,12 @@ func (p *Parser) parsePrimary() nodes.ExprNode {
 
 	case kwEXISTS:
 		return p.parseExistsExpr()
+
+	case kwCURSOR:
+		return p.parseCursorExpr()
+
+	case kwTREAT:
+		return p.parseTreatExpr()
 
 	default:
 		// Pseudo columns
@@ -1097,5 +1108,112 @@ func (p *Parser) parseLikeExpr(left nodes.ExprNode, not bool, likeType nodes.Lik
 		Not:     not,
 		Type:    likeType,
 		Loc:     nodes.Loc{Start: start, End: p.pos()},
+	}
+}
+
+// parseCursorExpr parses a CURSOR(subquery) expression.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/CURSOR-Expressions.html
+//
+//	CURSOR ( subquery )
+func (p *Parser) parseCursorExpr() nodes.ExprNode {
+	start := p.pos()
+	p.advance() // consume CURSOR
+
+	if p.cur.Type != '(' {
+		return &nodes.CursorExpr{Loc: nodes.Loc{Start: start, End: p.pos()}}
+	}
+	p.advance() // consume '('
+
+	subSel := p.parseSelectStmt()
+
+	if p.cur.Type == ')' {
+		p.advance()
+	}
+
+	return &nodes.CursorExpr{
+		Subquery: subSel,
+		Loc:      nodes.Loc{Start: start, End: p.pos()},
+	}
+}
+
+// parseTreatExpr parses a TREAT(expr AS type) expression.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/TREAT.html
+//
+//	TREAT ( expr AS [ REF ] type )
+func (p *Parser) parseTreatExpr() nodes.ExprNode {
+	start := p.pos()
+	p.advance() // consume TREAT
+
+	if p.cur.Type != '(' {
+		return &nodes.TreatExpr{Loc: nodes.Loc{Start: start, End: p.pos()}}
+	}
+	p.advance() // consume '('
+
+	expr := p.parseExpr()
+
+	if p.cur.Type == kwAS {
+		p.advance()
+	}
+
+	// Skip optional REF
+	if p.cur.Type == kwREF {
+		p.advance()
+	}
+
+	typeName := p.parseTypeName()
+
+	if p.cur.Type == ')' {
+		p.advance()
+	}
+
+	return &nodes.TreatExpr{
+		Expr:     expr,
+		TypeName: typeName,
+		Loc:      nodes.Loc{Start: start, End: p.pos()},
+	}
+}
+
+// parseMultisetOp parses MULTISET UNION/INTERSECT/EXCEPT operations.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/MULTISET-UNION.html
+//
+//	expr MULTISET { UNION | INTERSECT | EXCEPT } [ ALL | DISTINCT ] expr
+func (p *Parser) parseMultisetOp(left nodes.ExprNode) nodes.ExprNode {
+	start := p.pos()
+	p.advance() // consume MULTISET
+
+	op := ""
+	switch p.cur.Type {
+	case kwUNION:
+		op = "UNION"
+		p.advance()
+	case kwINTERSECT:
+		op = "INTERSECT"
+		p.advance()
+	case kwEXCEPT:
+		op = "EXCEPT"
+		p.advance()
+	default:
+		return left
+	}
+
+	all := false
+	if p.cur.Type == kwALL {
+		all = true
+		p.advance()
+	} else if p.cur.Type == kwDISTINCT {
+		p.advance()
+	}
+
+	right := p.parseExprPrec(precComp)
+
+	return &nodes.MultisetExpr{
+		Op:    op,
+		Left:  left,
+		Right: right,
+		All:   all,
+		Loc:   nodes.Loc{Start: start, End: p.pos()},
 	}
 }

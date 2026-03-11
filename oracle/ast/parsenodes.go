@@ -473,6 +473,25 @@ type MultisetExpr struct {
 func (n *MultisetExpr) nodeTag()  {}
 func (n *MultisetExpr) exprNode() {}
 
+// CursorExpr represents a CURSOR(subquery) expression.
+type CursorExpr struct {
+	Subquery StmtNode // the subquery
+	Loc      Loc
+}
+
+func (n *CursorExpr) nodeTag()  {}
+func (n *CursorExpr) exprNode() {}
+
+// TreatExpr represents a TREAT(expr AS type) expression.
+type TreatExpr struct {
+	Expr     ExprNode  // expression to treat
+	TypeName *TypeName // target type
+	Loc      Loc
+}
+
+func (n *TreatExpr) nodeTag()  {}
+func (n *TreatExpr) exprNode() {}
+
 // SubqueryExpr represents a scalar subquery expression.
 type SubqueryExpr struct {
 	Subquery StmtNode // the subquery (a *SelectStmt)
