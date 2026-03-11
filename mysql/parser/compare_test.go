@@ -466,6 +466,126 @@ func TestParseVariableRefError(t *testing.T) {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// Batch 2: types — data type parsing
+// ---------------------------------------------------------------------------
+
+// TestParseDataTypes tests parsing of MySQL data types.
+func TestParseDataTypes(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		// Integer types
+		{"INT", "{DATATYPE :loc 0 :name INT}"},
+		{"INTEGER", "{DATATYPE :loc 0 :name INT}"},
+		{"INT(11)", "{DATATYPE :loc 0 :name INT :len 11}"},
+		{"INT UNSIGNED", "{DATATYPE :loc 0 :name INT :unsigned true}"},
+		{"INT(11) UNSIGNED ZEROFILL", "{DATATYPE :loc 0 :name INT :len 11 :unsigned true :zerofill true}"},
+		{"TINYINT", "{DATATYPE :loc 0 :name TINYINT}"},
+		{"SMALLINT", "{DATATYPE :loc 0 :name SMALLINT}"},
+		{"MEDIUMINT", "{DATATYPE :loc 0 :name MEDIUMINT}"},
+		{"BIGINT", "{DATATYPE :loc 0 :name BIGINT}"},
+		{"BIGINT(20) UNSIGNED", "{DATATYPE :loc 0 :name BIGINT :len 20 :unsigned true}"},
+
+		// Float types
+		{"FLOAT", "{DATATYPE :loc 0 :name FLOAT}"},
+		{"FLOAT(10)", "{DATATYPE :loc 0 :name FLOAT :len 10}"},
+		{"FLOAT(10,2)", "{DATATYPE :loc 0 :name FLOAT :len 10 :scale 2}"},
+		{"DOUBLE", "{DATATYPE :loc 0 :name DOUBLE}"},
+		{"DOUBLE(10,2)", "{DATATYPE :loc 0 :name DOUBLE :len 10 :scale 2}"},
+		{"DOUBLE UNSIGNED", "{DATATYPE :loc 0 :name DOUBLE :unsigned true}"},
+
+		// Decimal types
+		{"DECIMAL", "{DATATYPE :loc 0 :name DECIMAL}"},
+		{"DECIMAL(10)", "{DATATYPE :loc 0 :name DECIMAL :len 10}"},
+		{"DECIMAL(10,2)", "{DATATYPE :loc 0 :name DECIMAL :len 10 :scale 2}"},
+		{"NUMERIC(10,2)", "{DATATYPE :loc 0 :name NUMERIC :len 10 :scale 2}"},
+
+		// Boolean
+		{"BOOL", "{DATATYPE :loc 0 :name BOOLEAN}"},
+		{"BOOLEAN", "{DATATYPE :loc 0 :name BOOLEAN}"},
+
+		// String types
+		{"CHAR", "{DATATYPE :loc 0 :name CHAR}"},
+		{"CHAR(10)", "{DATATYPE :loc 0 :name CHAR :len 10}"},
+		{"CHAR(10) CHARACTER SET utf8", "{DATATYPE :loc 0 :name CHAR :len 10 :charset utf8}"},
+		{"VARCHAR(255)", "{DATATYPE :loc 0 :name VARCHAR :len 255}"},
+		{"VARCHAR(255) CHARSET utf8mb4 COLLATE utf8mb4_unicode_ci", "{DATATYPE :loc 0 :name VARCHAR :len 255 :charset utf8mb4 :collate utf8mb4_unicode_ci}"},
+		{"TEXT", "{DATATYPE :loc 0 :name TEXT}"},
+		{"TINYTEXT", "{DATATYPE :loc 0 :name TINYTEXT}"},
+		{"MEDIUMTEXT", "{DATATYPE :loc 0 :name MEDIUMTEXT}"},
+		{"LONGTEXT", "{DATATYPE :loc 0 :name LONGTEXT}"},
+
+		// Date/time types
+		{"DATE", "{DATATYPE :loc 0 :name DATE}"},
+		{"TIME", "{DATATYPE :loc 0 :name TIME}"},
+		{"TIME(3)", "{DATATYPE :loc 0 :name TIME :len 3}"},
+		{"DATETIME", "{DATATYPE :loc 0 :name DATETIME}"},
+		{"DATETIME(6)", "{DATATYPE :loc 0 :name DATETIME :len 6}"},
+		{"TIMESTAMP", "{DATATYPE :loc 0 :name TIMESTAMP}"},
+		{"TIMESTAMP(6)", "{DATATYPE :loc 0 :name TIMESTAMP :len 6}"},
+		{"YEAR", "{DATATYPE :loc 0 :name YEAR}"},
+
+		// Blob types
+		{"BLOB", "{DATATYPE :loc 0 :name BLOB}"},
+		{"BLOB(1000)", "{DATATYPE :loc 0 :name BLOB :len 1000}"},
+		{"TINYBLOB", "{DATATYPE :loc 0 :name TINYBLOB}"},
+		{"MEDIUMBLOB", "{DATATYPE :loc 0 :name MEDIUMBLOB}"},
+		{"LONGBLOB", "{DATATYPE :loc 0 :name LONGBLOB}"},
+
+		// Binary types
+		{"BINARY", "{DATATYPE :loc 0 :name BINARY}"},
+		{"BINARY(16)", "{DATATYPE :loc 0 :name BINARY :len 16}"},
+		{"VARBINARY(255)", "{DATATYPE :loc 0 :name VARBINARY :len 255}"},
+
+		// Bit type
+		{"BIT", "{DATATYPE :loc 0 :name BIT}"},
+		{"BIT(8)", "{DATATYPE :loc 0 :name BIT :len 8}"},
+
+		// ENUM and SET
+		{"ENUM('a', 'b', 'c')", "{DATATYPE :loc 0 :name ENUM :enum_values a, b, c}"},
+		{"ENUM('x') CHARACTER SET utf8", "{DATATYPE :loc 0 :name ENUM :charset utf8 :enum_values x}"},
+
+		// JSON
+		{"JSON", "{DATATYPE :loc 0 :name JSON}"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			p := &Parser{lexer: NewLexer(tt.input)}
+			p.advance()
+			dt, err := p.parseDataType()
+			if err != nil {
+				t.Fatalf("parseDataType(%q) error: %v", tt.input, err)
+			}
+			got := ast.NodeToString(dt)
+			if got != tt.want {
+				t.Errorf("parseDataType(%q):\n  got:  %s\n  want: %s", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestParseDataTypeError tests that invalid data type inputs produce errors.
+func TestParseDataTypeError(t *testing.T) {
+	inputs := []string{
+		"123",
+		"'string'",
+		"(",
+	}
+	for _, input := range inputs {
+		t.Run(input, func(t *testing.T) {
+			p := &Parser{lexer: NewLexer(input)}
+			p.advance()
+			_, err := p.parseDataType()
+			if err == nil {
+				t.Errorf("parseDataType(%q) expected error, got nil", input)
+			}
+		})
+	}
+}
+
 // TestParseEmpty tests parsing empty input.
 func TestParseEmpty(t *testing.T) {
 	result, err := Parse("")

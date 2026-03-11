@@ -30,7 +30,7 @@
       "id": 2,
       "name": "types",
       "file": "type.go",
-      "status": "pending",
+      "status": "done",
       "description": "Data types: INT, VARCHAR(N), DECIMAL(M,D), ENUM, SET, JSON, BLOB, DATE/TIME types, UNSIGNED, ZEROFILL",
       "rules": [
         "data_type", "numeric_type", "string_type", "date_type",
