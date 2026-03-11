@@ -102,47 +102,138 @@ func (p *Parser) parseVariableDecl() *nodes.VariableDecl {
 // parseSetStmt parses a SET statement.
 //
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/set-local-variable-transact-sql
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/set-statements-transact-sql
 //
-//	SET @var = expr
-//	SET option ON|OFF
-func (p *Parser) parseSetStmt() *nodes.SetStmt {
+//	SET @var { = | += | -= | *= | /= | %= | &= | ^= | |= } expr
+//	SET option_name { ON | OFF }
+//	SET IDENTITY_INSERT table { ON | OFF }
+//	SET TRANSACTION ISOLATION LEVEL level_name
+//	SET LANGUAGE language
+//	SET DATEFORMAT format
+//	SET DATEFIRST number
+//	SET LOCK_TIMEOUT timeout_period
+//	SET ROWCOUNT { number | @number_var }
+//	SET TEXTSIZE { number | @number_var }
+//	SET ARITHABORT { ON | OFF }
+//	SET ANSI_NULLS { ON | OFF }
+//	SET ANSI_PADDING { ON | OFF }
+//	SET ANSI_WARNINGS { ON | OFF }
+//	SET QUOTED_IDENTIFIER { ON | OFF }
+//	SET NOCOUNT { ON | OFF }
+//	SET XACT_ABORT { ON | OFF }
+//	SET CONCAT_NULL_YIELDS_NULL { ON | OFF }
+//	SET NUMERIC_ROUNDABORT { ON | OFF }
+func (p *Parser) parseSetStmt() nodes.StmtNode {
 	loc := p.pos()
 	p.advance() // consume SET
 
-	stmt := &nodes.SetStmt{
-		Loc: nodes.Loc{Start: loc},
-	}
-
 	if p.cur.Type == tokVARIABLE {
 		// SET @var = expr
+		stmt := &nodes.SetStmt{
+			Loc: nodes.Loc{Start: loc},
+		}
 		stmt.Variable = p.cur.Str
 		p.advance()
 		if _, err := p.expect('='); err == nil {
 			stmt.Value = p.parseExpr()
 		}
-	} else {
-		// SET option ON|OFF (e.g., SET NOCOUNT ON, SET XACT_ABORT ON)
-		if p.isIdentLike() || p.cur.Type == kwNOCOUNT || p.cur.Type == kwXACT_ABORT ||
-			p.cur.Type == kwROWCOUNT || p.cur.Type == kwTEXTSIZE ||
-			p.cur.Type == kwSTATISTICS || p.cur.Type == kwIDENTITY_INSERT {
-			stmt.Variable = strings.ToUpper(p.cur.Str)
-			p.advance()
+		stmt.Loc.End = p.pos()
+		return stmt
+	}
 
-			// Handle SET IDENTITY_INSERT table ON|OFF
-			// For now, just consume ON/OFF
-			if p.cur.Type == kwON {
-				// Store "ON" as a literal
-				onLoc := p.pos()
-				p.advance()
-				stmt.Value = &nodes.ColumnRef{Column: "ON", Loc: nodes.Loc{Start: onLoc}}
-			} else if p.cur.Type == kwOFF {
-				offLoc := p.pos()
-				p.advance()
-				stmt.Value = &nodes.ColumnRef{Column: "OFF", Loc: nodes.Loc{Start: offLoc}}
-			} else {
-				// Could be SET ROWCOUNT n or other SET options with values
-				stmt.Value = p.parseExpr()
+	// SET session option
+	return p.parseSetOptionStmt(loc)
+}
+
+// parseSetOptionStmt parses SET session option statements.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/set-statements-transact-sql
+func (p *Parser) parseSetOptionStmt(loc int) *nodes.SetOptionStmt {
+	stmt := &nodes.SetOptionStmt{
+		Loc: nodes.Loc{Start: loc},
+	}
+
+	// TRANSACTION ISOLATION LEVEL
+	if p.cur.Type == kwTRANSACTION || (p.isIdentLike() && matchesKeywordCI(p.cur.Str, "TRANSACTION")) {
+		p.advance() // consume TRANSACTION
+		// ISOLATION
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "ISOLATION") {
+			p.advance()
+		}
+		// LEVEL
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LEVEL") {
+			p.advance()
+		}
+		// isolation level name: READ UNCOMMITTED / READ COMMITTED / REPEATABLE READ / SNAPSHOT / SERIALIZABLE
+		var level strings.Builder
+		for p.isIdentLike() || p.cur.Type == kwREAD {
+			if level.Len() > 0 {
+				level.WriteString(" ")
 			}
+			level.WriteString(strings.ToUpper(p.cur.Str))
+			p.advance()
+		}
+		stmt.Option = "TRANSACTION ISOLATION LEVEL"
+		valLoc := p.pos()
+		stmt.Value = &nodes.ColumnRef{Column: level.String(), Loc: nodes.Loc{Start: valLoc}}
+		stmt.Loc.End = p.pos()
+		return stmt
+	}
+
+	// IDENTITY_INSERT table ON|OFF
+	if p.cur.Type == kwIDENTITY_INSERT {
+		p.advance() // consume IDENTITY_INSERT
+		stmt.Option = "IDENTITY_INSERT"
+		// table name
+		tableRef := p.parseTableRef()
+		// ON or OFF
+		var onoff string
+		if p.cur.Type == kwON {
+			onoff = "ON"
+			p.advance()
+		} else if p.cur.Type == kwOFF {
+			onoff = "OFF"
+			p.advance()
+		}
+		valLoc := p.pos()
+		// Store "table ON/OFF" as option value
+		var tableName string
+		if tableRef != nil {
+			if tableRef.Schema != "" {
+				tableName = tableRef.Schema + "." + tableRef.Object
+			} else {
+				tableName = tableRef.Object
+			}
+		}
+		stmt.Value = &nodes.ColumnRef{Column: tableName + " " + onoff, Loc: nodes.Loc{Start: valLoc}}
+		stmt.Loc.End = p.pos()
+		return stmt
+	}
+
+	// Generic option name
+	if p.isIdentLike() || p.cur.Type == kwNOCOUNT || p.cur.Type == kwXACT_ABORT ||
+		p.cur.Type == kwROWCOUNT || p.cur.Type == kwTEXTSIZE ||
+		p.cur.Type == kwSTATISTICS {
+		stmt.Option = strings.ToUpper(p.cur.Str)
+		p.advance()
+
+		// STATISTICS IO|TIME|PROFILE|XML (multi-word option)
+		if strings.EqualFold(stmt.Option, "STATISTICS") && p.isIdentLike() {
+			stmt.Option = stmt.Option + " " + strings.ToUpper(p.cur.Str)
+			p.advance()
+		}
+
+		if p.cur.Type == kwON {
+			onLoc := p.pos()
+			p.advance()
+			stmt.Value = &nodes.ColumnRef{Column: "ON", Loc: nodes.Loc{Start: onLoc}}
+		} else if p.cur.Type == kwOFF {
+			offLoc := p.pos()
+			p.advance()
+			stmt.Value = &nodes.ColumnRef{Column: "OFF", Loc: nodes.Loc{Start: offLoc}}
+		} else if p.cur.Type != ';' && p.cur.Type != tokEOF && p.cur.Type != kwGO {
+			// Could be SET ROWCOUNT n, SET LANGUAGE ..., SET DATEFORMAT ..., etc.
+			stmt.Value = p.parseExpr()
 		}
 	}
 

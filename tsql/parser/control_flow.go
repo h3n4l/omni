@@ -65,8 +65,13 @@ func (p *Parser) parseBeginStmt() nodes.StmtNode {
 		return p.parseTryCatchStmt()
 	}
 
+	// Check for BEGIN DISTRIBUTED TRAN/TRANSACTION
+	if next.Type == kwDISTRIBUTED {
+		return p.parseBeginDistributedTransStmt()
+	}
+
 	// Check for BEGIN TRAN/TRANSACTION
-	if next.Type == kwTRAN || next.Type == kwTRANSACTION || next.Type == kwDISTRIBUTED {
+	if next.Type == kwTRAN || next.Type == kwTRANSACTION {
 		return p.parseBeginTransStmt()
 	}
 

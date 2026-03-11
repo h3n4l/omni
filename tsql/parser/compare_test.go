@@ -1760,9 +1760,11 @@ func TestParseDeclareSet(t *testing.T) {
 		for _, sql := range tests {
 			t.Run(sql, func(t *testing.T) {
 				result := ParseAndCheck(t, sql)
-				_, ok := result.Items[0].(*ast.SetStmt)
-				if !ok {
-					t.Fatalf("expected *SetStmt, got %T", result.Items[0])
+				// SET session options return SetOptionStmt
+				_, okOpt := result.Items[0].(*ast.SetOptionStmt)
+				_, okSet := result.Items[0].(*ast.SetStmt)
+				if !okOpt && !okSet {
+					t.Fatalf("expected *SetOptionStmt or *SetStmt, got %T", result.Items[0])
 				}
 			})
 		}
@@ -2371,6 +2373,1277 @@ func TestParseCursorCreateTrigger(t *testing.T) {
 					t.Errorf("stmt[%d] serialization not deterministic:\n  s1: %s\n  s2: %s", i, s1, s2)
 				}
 			}
+		})
+	}
+}
+
+// TestParseAlterObjects tests ALTER DATABASE, ALTER INDEX, ALTER VIEW,
+// ALTER PROCEDURE, and ALTER FUNCTION (batch 29).
+func TestParseAlterObjects(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		// ALTER DATABASE - SET option
+		{
+			name: "alter_database_set",
+			sql:  "ALTER DATABASE mydb SET RECOVERY FULL",
+		},
+		// ALTER DATABASE - SET with ON
+		{
+			name: "alter_database_set_on",
+			sql:  "ALTER DATABASE mydb SET AUTO_CLOSE ON",
+		},
+		// ALTER DATABASE - SET with OFF
+		{
+			name: "alter_database_set_off",
+			sql:  "ALTER DATABASE mydb SET AUTO_SHRINK OFF",
+		},
+		// ALTER DATABASE - MODIFY FILE
+		{
+			name: "alter_database_modify_file",
+			sql:  "ALTER DATABASE mydb MODIFY FILE (NAME = myfile, SIZE = 100MB)",
+		},
+		// ALTER DATABASE - ADD FILE
+		{
+			name: "alter_database_add_file",
+			sql:  "ALTER DATABASE mydb ADD FILE (NAME = newfile, FILENAME = 'C:\\data\\newfile.ndf')",
+		},
+		// ALTER DATABASE - COLLATE
+		{
+			name: "alter_database_collate",
+			sql:  "ALTER DATABASE mydb COLLATE Latin1_General_CI_AS",
+		},
+		// ALTER DATABASE - CURRENT
+		{
+			name: "alter_database_current",
+			sql:  "ALTER DATABASE CURRENT SET COMPATIBILITY_LEVEL = 150",
+		},
+		// ALTER INDEX - REBUILD
+		{
+			name: "alter_index_rebuild",
+			sql:  "ALTER INDEX idx_emp_name ON dbo.employees REBUILD",
+		},
+		// ALTER INDEX - REBUILD ALL
+		{
+			name: "alter_index_rebuild_all",
+			sql:  "ALTER INDEX ALL ON dbo.employees REBUILD",
+		},
+		// ALTER INDEX - REORGANIZE
+		{
+			name: "alter_index_reorganize",
+			sql:  "ALTER INDEX idx_emp_name ON employees REORGANIZE",
+		},
+		// ALTER INDEX - DISABLE
+		{
+			name: "alter_index_disable",
+			sql:  "ALTER INDEX idx_emp_name ON employees DISABLE",
+		},
+		// ALTER INDEX - SET
+		{
+			name: "alter_index_set",
+			sql:  "ALTER INDEX idx_emp_name ON employees SET (ALLOW_ROW_LOCKS = ON)",
+		},
+		// ALTER INDEX - REBUILD WITH options
+		{
+			name: "alter_index_rebuild_with",
+			sql:  "ALTER INDEX idx_emp ON dbo.employees REBUILD WITH (FILLFACTOR = 80)",
+		},
+		// ALTER VIEW
+		{
+			name: "alter_view_simple",
+			sql:  "ALTER VIEW dbo.v_employees AS SELECT id, name FROM employees",
+		},
+		// ALTER VIEW with SCHEMABINDING
+		{
+			name: "alter_view_schemabinding",
+			sql:  "ALTER VIEW dbo.v_emp WITH SCHEMABINDING AS SELECT id, name FROM dbo.employees",
+		},
+		// ALTER PROCEDURE
+		{
+			name: "alter_procedure_simple",
+			sql:  "ALTER PROCEDURE dbo.usp_get_emp @id INT AS BEGIN SELECT * FROM employees WHERE id = @id END",
+		},
+		// ALTER PROC (short form)
+		{
+			name: "alter_proc_short",
+			sql:  "ALTER PROC dbo.usp_get_emp @id INT AS BEGIN SELECT 1 END",
+		},
+		// ALTER FUNCTION - scalar
+		{
+			name: "alter_function_scalar",
+			sql:  "ALTER FUNCTION dbo.fn_add(@a INT, @b INT) RETURNS INT AS BEGIN RETURN @a + @b END",
+		},
+		// ALTER FUNCTION - inline TVF
+		{
+			name: "alter_function_tvf",
+			sql:  "ALTER FUNCTION dbo.fn_emp(@dept INT) RETURNS TABLE AS RETURN SELECT * FROM employees WHERE dept_id = @dept",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() == 0 {
+				t.Fatalf("Parse(%q): no statements returned", tt.sql)
+			}
+			for i, item := range result.Items {
+				s1 := ast.NodeToString(item)
+				s2 := ast.NodeToString(item)
+				if s1 != s2 {
+					t.Errorf("stmt[%d] serialization not deterministic:\n  s1: %s\n  s2: %s", i, s1, s2)
+				}
+			}
+		})
+	}
+}
+
+// TestParseDbcc tests DBCC statement parsing (batch 32).
+func TestParseDbcc(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		// DBCC CHECKDB - no args
+		{
+			name: "checkdb_no_args",
+			sql:  "DBCC CHECKDB",
+		},
+		// DBCC CHECKDB with database name
+		{
+			name: "checkdb_with_db",
+			sql:  "DBCC CHECKDB('AdventureWorks')",
+		},
+		// DBCC CHECKDB with WITH option
+		{
+			name: "checkdb_no_infomsgs",
+			sql:  "DBCC CHECKDB('AdventureWorks') WITH NO_INFOMSGS",
+		},
+		// DBCC CHECKDB with multiple WITH options
+		{
+			name: "checkdb_multiple_options",
+			sql:  "DBCC CHECKDB WITH NO_INFOMSGS, ALL_ERRORMSGS",
+		},
+		// DBCC CHECKTABLE
+		{
+			name: "checktable",
+			sql:  "DBCC CHECKTABLE('dbo.Orders')",
+		},
+		// DBCC SHRINKDATABASE
+		{
+			name: "shrinkdatabase",
+			sql:  "DBCC SHRINKDATABASE('AdventureWorks', 10)",
+		},
+		// DBCC SHRINKFILE
+		{
+			name: "shrinkfile",
+			sql:  "DBCC SHRINKFILE(AdventureWorks_log, 1)",
+		},
+		// DBCC FREEPROCCACHE - no args
+		{
+			name: "freeproccache_no_args",
+			sql:  "DBCC FREEPROCCACHE",
+		},
+		// DBCC FREEPROCCACHE with plan handle
+		{
+			name: "freeproccache_with_arg",
+			sql:  "DBCC FREEPROCCACHE(0x06000500)",
+		},
+		// DBCC DROPCLEANBUFFERS
+		{
+			name: "dropcleanbuffers",
+			sql:  "DBCC DROPCLEANBUFFERS",
+		},
+		// DBCC SHOW_STATISTICS
+		{
+			name: "show_statistics",
+			sql:  "DBCC SHOW_STATISTICS('AdventureWorks.Person.Address', AK_Address_rowguid)",
+		},
+		// DBCC INPUTBUFFER
+		{
+			name: "inputbuffer",
+			sql:  "DBCC INPUTBUFFER(52)",
+		},
+		// DBCC OPENTRAN
+		{
+			name: "opentran_no_args",
+			sql:  "DBCC OPENTRAN",
+		},
+		// DBCC OPENTRAN with db name
+		{
+			name: "opentran_with_db",
+			sql:  "DBCC OPENTRAN('AdventureWorks')",
+		},
+		// DBCC CHECKIDENT
+		{
+			name: "checkident",
+			sql:  "DBCC CHECKIDENT('dbo.Orders', RESEED, 0)",
+		},
+		// DBCC UPDATEUSAGE
+		{
+			name: "updateusage",
+			sql:  "DBCC UPDATEUSAGE(0)",
+		},
+		// DBCC SQLPERF
+		{
+			name: "sqlperf",
+			sql:  "DBCC SQLPERF(LOGSPACE)",
+		},
+		// DBCC TRACEON
+		{
+			name: "traceon",
+			sql:  "DBCC TRACEON(3604)",
+		},
+		// DBCC TRACEOFF
+		{
+			name: "traceoff",
+			sql:  "DBCC TRACEOFF(3604)",
+		},
+		// DBCC TRACESTATUS
+		{
+			name: "tracestatus",
+			sql:  "DBCC TRACESTATUS",
+		},
+		// DBCC with WITH TABLERESULTS
+		{
+			name: "checkdb_tableresults",
+			sql:  "DBCC CHECKDB WITH TABLERESULTS",
+		},
+		// DBCC CHECKALLOC
+		{
+			name: "checkalloc",
+			sql:  "DBCC CHECKALLOC",
+		},
+		// DBCC CHECKCATALOG
+		{
+			name: "checkcatalog",
+			sql:  "DBCC CHECKCATALOG",
+		},
+		// DBCC MEMORYSTATUS
+		{
+			name: "memorystatus",
+			sql:  "DBCC MEMORYSTATUS",
+		},
+		// DBCC PROCCACHE
+		{
+			name: "proccache",
+			sql:  "DBCC PROCCACHE",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() == 0 {
+				t.Fatalf("Parse(%q): no statements returned", tt.sql)
+			}
+			stmt, ok := result.Items[0].(*ast.DbccStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *ast.DbccStmt, got %T", tt.sql, result.Items[0])
+			}
+			if stmt.Command == "" {
+				t.Errorf("Parse(%q): DbccStmt.Command is empty", tt.sql)
+			}
+			checkLocation(t, tt.sql, "DbccStmt", stmt.Loc)
+			// Verify deterministic serialization
+			s1 := ast.NodeToString(stmt)
+			s2 := ast.NodeToString(stmt)
+			if s1 != s2 {
+				t.Errorf("serialization not deterministic:\n  s1: %s\n  s2: %s", s1, s2)
+			}
+		})
+	}
+}
+
+// TestParseBulkInsert tests BULK INSERT statement parsing (batch 33).
+func TestParseBulkInsert(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		sql := "BULK INSERT dbo.mytable FROM 'C:\\data\\file.csv'"
+		result := ParseAndCheck(t, sql)
+		if result.Len() == 0 {
+			t.Fatalf("Parse(%q): no statements returned", sql)
+		}
+		stmt, ok := result.Items[0].(*ast.BulkInsertStmt)
+		if !ok {
+			t.Fatalf("expected *BulkInsertStmt, got %T", result.Items[0])
+		}
+		if stmt.Table == nil {
+			t.Fatal("expected non-nil Table")
+		}
+		if stmt.DataFile != `C:\data\file.csv` {
+			t.Errorf("expected DataFile %q, got %q", `C:\data\file.csv`, stmt.DataFile)
+		}
+		if stmt.Options != nil {
+			t.Errorf("expected nil Options, got %v", stmt.Options)
+		}
+	})
+
+	t.Run("with_options", func(t *testing.T) {
+		sql := "BULK INSERT Sales.Orders FROM '/data/orders.csv' WITH (FIELDTERMINATOR = ',', ROWTERMINATOR = '\\n', FIRSTROW = 2, TABLOCK)"
+		result := ParseAndCheck(t, sql)
+		if result.Len() == 0 {
+			t.Fatalf("Parse(%q): no statements returned", sql)
+		}
+		stmt, ok := result.Items[0].(*ast.BulkInsertStmt)
+		if !ok {
+			t.Fatalf("expected *BulkInsertStmt, got %T", result.Items[0])
+		}
+		if stmt.Table == nil {
+			t.Fatal("expected non-nil Table")
+		}
+		if stmt.DataFile != "/data/orders.csv" {
+			t.Errorf("expected DataFile /data/orders.csv, got %q", stmt.DataFile)
+		}
+		if stmt.Options == nil {
+			t.Fatal("expected non-nil Options")
+		}
+		if stmt.Options.Len() != 4 {
+			t.Errorf("expected 4 options, got %d", stmt.Options.Len())
+		}
+	})
+
+	t.Run("serialization_deterministic", func(t *testing.T) {
+		sqls := []string{
+			"BULK INSERT dbo.t FROM 'C:\\data\\file.csv'",
+			"BULK INSERT dbo.orders FROM '/tmp/data.txt' WITH (FIELDTERMINATOR = ',', TABLOCK, KEEPNULLS)",
+			"BULK INSERT mydb.dbo.sales FROM 'https://storage/data.csv' WITH (BATCHSIZE = 1000, CHECK_CONSTRAINTS)",
+		}
+		for _, sql := range sqls {
+			result := ParseAndCheck(t, sql)
+			if result.Len() == 0 {
+				t.Fatalf("Parse(%q): no statements returned", sql)
+			}
+			s1 := ast.NodeToString(result.Items[0])
+			s2 := ast.NodeToString(result.Items[0])
+			if s1 != s2 {
+				t.Errorf("serialization not deterministic for %q:\n  s1: %s\n  s2: %s", sql, s1, s2)
+			}
+		}
+	})
+}
+
+// TestParseBackupRestore tests BACKUP and RESTORE statement parsing (batch 34).
+func TestParseBackupRestore(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		// BACKUP DATABASE - basic
+		{
+			name: "backup_database_basic",
+			sql:  "BACKUP DATABASE mydb TO DISK = '/backup/mydb.bak'",
+		},
+		// BACKUP DATABASE - with WITH options
+		{
+			name: "backup_database_with_options",
+			sql:  "BACKUP DATABASE mydb TO DISK = '/backup/mydb.bak' WITH COMPRESSION, STATS = 10",
+		},
+		// BACKUP DATABASE - TO URL (Azure Blob)
+		{
+			name: "backup_database_to_url",
+			sql:  "BACKUP DATABASE mydb TO URL = 'https://mystorageaccount.blob.core.windows.net/mycontainer/mydb.bak'",
+		},
+		// BACKUP LOG - basic
+		{
+			name: "backup_log_basic",
+			sql:  "BACKUP LOG mydb TO DISK = '/backup/mydb_log.bak'",
+		},
+		// BACKUP LOG - with NORECOVERY
+		{
+			name: "backup_log_norecovery",
+			sql:  "BACKUP LOG mydb TO DISK = '/backup/mydb_log.bak' WITH NORECOVERY",
+		},
+		// BACKUP DATABASE - with FORMAT and INIT
+		{
+			name: "backup_database_format_init",
+			sql:  "BACKUP DATABASE mydb TO DISK = 'C:\\backup\\mydb.bak' WITH FORMAT, INIT, NAME = 'Full backup'",
+		},
+		// RESTORE DATABASE - basic
+		{
+			name: "restore_database_basic",
+			sql:  "RESTORE DATABASE mydb FROM DISK = '/backup/mydb.bak'",
+		},
+		// RESTORE DATABASE - with NORECOVERY
+		{
+			name: "restore_database_norecovery",
+			sql:  "RESTORE DATABASE mydb FROM DISK = '/backup/mydb.bak' WITH NORECOVERY",
+		},
+		// RESTORE DATABASE - with RECOVERY
+		{
+			name: "restore_database_recovery",
+			sql:  "RESTORE DATABASE mydb FROM DISK = '/backup/mydb.bak' WITH RECOVERY",
+		},
+		// RESTORE LOG - basic
+		{
+			name: "restore_log_basic",
+			sql:  "RESTORE LOG mydb FROM DISK = '/backup/mydb_log.bak'",
+		},
+		// RESTORE HEADERONLY
+		{
+			name: "restore_headeronly",
+			sql:  "RESTORE HEADERONLY FROM DISK = '/backup/mydb.bak'",
+		},
+		// RESTORE FILELISTONLY
+		{
+			name: "restore_filelistonly",
+			sql:  "RESTORE FILELISTONLY FROM DISK = '/backup/mydb.bak'",
+		},
+		// RESTORE VERIFYONLY
+		{
+			name: "restore_verifyonly",
+			sql:  "RESTORE VERIFYONLY FROM DISK = '/backup/mydb.bak'",
+		},
+		// RESTORE DATABASE - FROM URL
+		{
+			name: "restore_database_from_url",
+			sql:  "RESTORE DATABASE mydb FROM URL = 'https://mystorageaccount.blob.core.windows.net/mycontainer/mydb.bak'",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() == 0 {
+				t.Fatalf("Parse(%q): no statements returned", tt.sql)
+			}
+			s1 := ast.NodeToString(result.Items[0])
+			s2 := ast.NodeToString(result.Items[0])
+			if s1 != s2 {
+				t.Errorf("stmt serialization not deterministic:\n  s1: %s\n  s2: %s", s1, s2)
+			}
+		})
+	}
+
+	// Type-specific checks
+	t.Run("backup_database_type_check", func(t *testing.T) {
+		result := ParseAndCheck(t, "BACKUP DATABASE mydb TO DISK = '/backup/mydb.bak'")
+		stmt, ok := result.Items[0].(*ast.BackupStmt)
+		if !ok {
+			t.Fatalf("expected *ast.BackupStmt, got %T", result.Items[0])
+		}
+		if stmt.Type != "DATABASE" {
+			t.Errorf("expected Type DATABASE, got %q", stmt.Type)
+		}
+		if stmt.Database != "mydb" {
+			t.Errorf("expected Database mydb, got %q", stmt.Database)
+		}
+		if stmt.Target != "/backup/mydb.bak" {
+			t.Errorf("expected Target /backup/mydb.bak, got %q", stmt.Target)
+		}
+	})
+
+	t.Run("backup_log_type_check", func(t *testing.T) {
+		result := ParseAndCheck(t, "BACKUP LOG mydb TO DISK = '/backup/mydb_log.bak'")
+		stmt, ok := result.Items[0].(*ast.BackupStmt)
+		if !ok {
+			t.Fatalf("expected *ast.BackupStmt, got %T", result.Items[0])
+		}
+		if stmt.Type != "LOG" {
+			t.Errorf("expected Type LOG, got %q", stmt.Type)
+		}
+		if stmt.Database != "mydb" {
+			t.Errorf("expected Database mydb, got %q", stmt.Database)
+		}
+	})
+
+	t.Run("restore_database_type_check", func(t *testing.T) {
+		result := ParseAndCheck(t, "RESTORE DATABASE mydb FROM DISK = '/backup/mydb.bak'")
+		stmt, ok := result.Items[0].(*ast.RestoreStmt)
+		if !ok {
+			t.Fatalf("expected *ast.RestoreStmt, got %T", result.Items[0])
+		}
+		if stmt.Type != "DATABASE" {
+			t.Errorf("expected Type DATABASE, got %q", stmt.Type)
+		}
+		if stmt.Database != "mydb" {
+			t.Errorf("expected Database mydb, got %q", stmt.Database)
+		}
+		if stmt.Source != "/backup/mydb.bak" {
+			t.Errorf("expected Source /backup/mydb.bak, got %q", stmt.Source)
+		}
+	})
+
+	t.Run("restore_headeronly_type_check", func(t *testing.T) {
+		result := ParseAndCheck(t, "RESTORE HEADERONLY FROM DISK = '/backup/mydb.bak'")
+		stmt, ok := result.Items[0].(*ast.RestoreStmt)
+		if !ok {
+			t.Fatalf("expected *ast.RestoreStmt, got %T", result.Items[0])
+		}
+		if stmt.Type != "HEADERONLY" {
+			t.Errorf("expected Type HEADERONLY, got %q", stmt.Type)
+		}
+		if stmt.Database != "" {
+			t.Errorf("expected empty Database, got %q", stmt.Database)
+		}
+	})
+}
+
+// TestParseSecurityPrincipals tests CREATE/ALTER/DROP USER, LOGIN, ROLE,
+// APPLICATION ROLE, and ADD/DROP ROLE MEMBER parsing (batch 30).
+func TestParseSecurityPrincipals(t *testing.T) {
+	type secCheck struct {
+		action     string
+		objectType string
+		name       string
+	}
+
+	tests := []struct {
+		name  string
+		sql   string
+		check secCheck
+	}{
+		// --- USER ---
+		{
+			name:  "create_user_simple",
+			sql:   "CREATE USER alice",
+			check: secCheck{"CREATE", "USER", "alice"},
+		},
+		{
+			name:  "create_user_for_login",
+			sql:   "CREATE USER alice FOR LOGIN alice_login",
+			check: secCheck{"CREATE", "USER", "alice"},
+		},
+		{
+			name:  "create_user_from_login",
+			sql:   "CREATE USER bob FROM LOGIN bob_login",
+			check: secCheck{"CREATE", "USER", "bob"},
+		},
+		{
+			name:  "create_user_with_options",
+			sql:   "CREATE USER carol WITH DEFAULT_SCHEMA = dbo",
+			check: secCheck{"CREATE", "USER", "carol"},
+		},
+		{
+			name:  "alter_user_rename",
+			sql:   "ALTER USER alice WITH NAME = alice2",
+			check: secCheck{"ALTER", "USER", "alice"},
+		},
+		{
+			name:  "drop_user_simple",
+			sql:   "DROP USER alice",
+			check: secCheck{"DROP", "USER", "alice"},
+		},
+		{
+			name:  "drop_user_if_exists",
+			sql:   "DROP USER IF EXISTS alice",
+			check: secCheck{"DROP", "USER", "alice"},
+		},
+
+		// --- LOGIN ---
+		{
+			name:  "create_login_with_password",
+			sql:   "CREATE LOGIN mylogin WITH PASSWORD = 'secret123'",
+			check: secCheck{"CREATE", "LOGIN", "mylogin"},
+		},
+		{
+			name:  "create_login_from_windows",
+			sql:   "CREATE LOGIN [DOMAIN\\user] FROM WINDOWS",
+			check: secCheck{"CREATE", "LOGIN", `DOMAIN\user`},
+		},
+		{
+			name:  "alter_login_enable",
+			sql:   "ALTER LOGIN mylogin ENABLE",
+			check: secCheck{"ALTER", "LOGIN", "mylogin"},
+		},
+		{
+			name:  "alter_login_disable",
+			sql:   "ALTER LOGIN mylogin DISABLE",
+			check: secCheck{"ALTER", "LOGIN", "mylogin"},
+		},
+		{
+			name:  "alter_login_password",
+			sql:   "ALTER LOGIN mylogin WITH PASSWORD = 'newpassword'",
+			check: secCheck{"ALTER", "LOGIN", "mylogin"},
+		},
+		{
+			name:  "drop_login_simple",
+			sql:   "DROP LOGIN mylogin",
+			check: secCheck{"DROP", "LOGIN", "mylogin"},
+		},
+
+		// --- ROLE ---
+		{
+			name:  "create_role_simple",
+			sql:   "CREATE ROLE myrole",
+			check: secCheck{"CREATE", "ROLE", "myrole"},
+		},
+		{
+			name:  "create_role_authorization",
+			sql:   "CREATE ROLE myrole AUTHORIZATION dbo",
+			check: secCheck{"CREATE", "ROLE", "myrole"},
+		},
+		{
+			name:  "alter_role_add_member",
+			sql:   "ALTER ROLE myrole ADD MEMBER alice",
+			check: secCheck{"ALTER", "ROLE", "myrole"},
+		},
+		{
+			name:  "alter_role_drop_member",
+			sql:   "ALTER ROLE myrole DROP MEMBER alice",
+			check: secCheck{"ALTER", "ROLE", "myrole"},
+		},
+		{
+			name:  "alter_role_rename",
+			sql:   "ALTER ROLE myrole WITH NAME = newrole",
+			check: secCheck{"ALTER", "ROLE", "myrole"},
+		},
+		{
+			name:  "drop_role_simple",
+			sql:   "DROP ROLE myrole",
+			check: secCheck{"DROP", "ROLE", "myrole"},
+		},
+		{
+			name:  "drop_role_if_exists",
+			sql:   "DROP ROLE IF EXISTS myrole",
+			check: secCheck{"DROP", "ROLE", "myrole"},
+		},
+
+		// --- APPLICATION ROLE ---
+		{
+			name:  "create_application_role",
+			sql:   "CREATE APPLICATION ROLE approle1 WITH PASSWORD = 'MyPass1'",
+			check: secCheck{"CREATE", "APPLICATION ROLE", "approle1"},
+		},
+		{
+			name:  "alter_application_role_rename",
+			sql:   "ALTER APPLICATION ROLE approle1 WITH NAME = approle2",
+			check: secCheck{"ALTER", "APPLICATION ROLE", "approle1"},
+		},
+		{
+			name:  "drop_application_role",
+			sql:   "DROP APPLICATION ROLE approle1",
+			check: secCheck{"DROP", "APPLICATION ROLE", "approle1"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() == 0 {
+				t.Fatalf("Parse(%q): no statements returned", tt.sql)
+			}
+			stmt, ok := result.Items[0].(*ast.SecurityStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *ast.SecurityStmt, got %T", tt.sql, result.Items[0])
+			}
+			if stmt.Action != tt.check.action {
+				t.Errorf("Parse(%q): Action = %q, want %q", tt.sql, stmt.Action, tt.check.action)
+			}
+			if stmt.ObjectType != tt.check.objectType {
+				t.Errorf("Parse(%q): ObjectType = %q, want %q", tt.sql, stmt.ObjectType, tt.check.objectType)
+			}
+			if stmt.Name != tt.check.name {
+				t.Errorf("Parse(%q): Name = %q, want %q", tt.sql, stmt.Name, tt.check.name)
+			}
+			checkLocation(t, tt.sql, "SecurityStmt", stmt.Loc)
+			// Verify deterministic serialization
+			s1 := ast.NodeToString(stmt)
+			s2 := ast.NodeToString(stmt)
+			if s1 != s2 {
+				t.Errorf("Parse(%q): serialization not deterministic:\n  s1: %s\n  s2: %s", tt.sql, s1, s2)
+			}
+		})
+	}
+}
+
+// TestParseBeginDistributedTransaction tests BEGIN DISTRIBUTED TRANSACTION (batch 39).
+func TestParseBeginDistributedTransaction(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		{
+			name: "begin_distributed_tran",
+			sql:  "BEGIN DISTRIBUTED TRAN",
+		},
+		{
+			name: "begin_distributed_transaction",
+			sql:  "BEGIN DISTRIBUTED TRANSACTION",
+		},
+		{
+			name: "begin_distributed_tran_named",
+			sql:  "BEGIN DISTRIBUTED TRANSACTION myTran",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() == 0 {
+				t.Fatalf("Parse(%q): no statements returned", tt.sql)
+			}
+			stmt, ok := result.Items[0].(*ast.BeginDistributedTransStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *ast.BeginDistributedTransStmt, got %T", tt.sql, result.Items[0])
+			}
+			checkLocation(t, tt.sql, "BeginDistributedTransStmt", stmt.Loc)
+		})
+	}
+}
+
+// TestParseCreateStatistics tests CREATE/UPDATE/DROP STATISTICS (batch 40).
+func TestParseCreateStatistics(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		{
+			name: "create_statistics_simple",
+			sql:  "CREATE STATISTICS stat1 ON dbo.Orders (OrderDate)",
+		},
+		{
+			name: "create_statistics_fullscan",
+			sql:  "CREATE STATISTICS stat2 ON dbo.Orders (CustomerID, OrderDate) WITH FULLSCAN",
+		},
+		{
+			name: "create_statistics_sample",
+			sql:  "CREATE STATISTICS stat3 ON Products (Price) WITH SAMPLE 30 PERCENT",
+		},
+		{
+			name: "create_statistics_norecompute",
+			sql:  "CREATE STATISTICS stat4 ON Products (Price) WITH NORECOMPUTE",
+		},
+		{
+			name: "update_statistics_table",
+			sql:  "UPDATE STATISTICS dbo.Orders",
+		},
+		{
+			name: "update_statistics_named",
+			sql:  "UPDATE STATISTICS dbo.Orders stat1",
+		},
+		{
+			name: "update_statistics_fullscan",
+			sql:  "UPDATE STATISTICS dbo.Orders WITH FULLSCAN",
+		},
+		{
+			name: "drop_statistics",
+			sql:  "DROP STATISTICS dbo.Orders.stat1",
+		},
+		{
+			name: "drop_statistics_multiple",
+			sql:  "DROP STATISTICS dbo.Orders.stat1, dbo.Products.stat2",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() == 0 {
+				t.Fatalf("Parse(%q): no statements returned", tt.sql)
+			}
+			// Verify deterministic serialization
+			s1 := ast.NodeToString(result.Items[0])
+			s2 := ast.NodeToString(result.Items[0])
+			if s1 != s2 {
+				t.Errorf("Parse(%q): serialization not deterministic", tt.sql)
+			}
+		})
+	}
+}
+
+// TestParseSetOptions tests SET session options (batch 41).
+func TestParseSetOptions(t *testing.T) {
+	tests := []struct {
+		name   string
+		sql    string
+		option string
+	}{
+		{
+			name:   "set_nocount_on",
+			sql:    "SET NOCOUNT ON",
+			option: "NOCOUNT",
+		},
+		{
+			name:   "set_nocount_off",
+			sql:    "SET NOCOUNT OFF",
+			option: "NOCOUNT",
+		},
+		{
+			name:   "set_ansi_nulls_on",
+			sql:    "SET ANSI_NULLS ON",
+			option: "ANSI_NULLS",
+		},
+		{
+			name:   "set_quoted_identifier_on",
+			sql:    "SET QUOTED_IDENTIFIER ON",
+			option: "QUOTED_IDENTIFIER",
+		},
+		{
+			name:   "set_xact_abort_on",
+			sql:    "SET XACT_ABORT ON",
+			option: "XACT_ABORT",
+		},
+		{
+			name:   "set_arithabort_on",
+			sql:    "SET ARITHABORT ON",
+			option: "ARITHABORT",
+		},
+		{
+			name:   "set_identity_insert",
+			sql:    "SET IDENTITY_INSERT dbo.Orders ON",
+			option: "IDENTITY_INSERT",
+		},
+		{
+			name:   "set_transaction_isolation_level",
+			sql:    "SET TRANSACTION ISOLATION LEVEL READ COMMITTED",
+			option: "TRANSACTION ISOLATION LEVEL",
+		},
+		{
+			name:   "set_transaction_isolation_serializable",
+			sql:    "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE",
+			option: "TRANSACTION ISOLATION LEVEL",
+		},
+		{
+			name:   "set_rowcount",
+			sql:    "SET ROWCOUNT 100",
+			option: "ROWCOUNT",
+		},
+		{
+			name:   "set_language",
+			sql:    "SET LANGUAGE us_english",
+			option: "LANGUAGE",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() == 0 {
+				t.Fatalf("Parse(%q): no statements returned", tt.sql)
+			}
+			stmt, ok := result.Items[0].(*ast.SetOptionStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *ast.SetOptionStmt, got %T", tt.sql, result.Items[0])
+			}
+			if stmt.Option != tt.option {
+				t.Errorf("Parse(%q): Option = %q, want %q", tt.sql, stmt.Option, tt.option)
+			}
+			checkLocation(t, tt.sql, "SetOptionStmt", stmt.Loc)
+		})
+	}
+}
+
+// TestParsePartition tests CREATE/ALTER PARTITION FUNCTION/SCHEME (batch 42).
+func TestParsePartition(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		{
+			name: "create_partition_function_left",
+			sql:  "CREATE PARTITION FUNCTION myRangePF1 (int) AS RANGE LEFT FOR VALUES (1, 100, 1000)",
+		},
+		{
+			name: "create_partition_function_right",
+			sql:  "CREATE PARTITION FUNCTION myRangePF2 (datetime) AS RANGE RIGHT FOR VALUES ('2020-01-01', '2021-01-01')",
+		},
+		{
+			name: "create_partition_function_empty",
+			sql:  "CREATE PARTITION FUNCTION pfEmpty (int) AS RANGE LEFT FOR VALUES ()",
+		},
+		{
+			name: "alter_partition_function_split",
+			sql:  "ALTER PARTITION FUNCTION myRangePF1 () SPLIT RANGE (500)",
+		},
+		{
+			name: "alter_partition_function_merge",
+			sql:  "ALTER PARTITION FUNCTION myRangePF1 () MERGE RANGE (1)",
+		},
+		{
+			name: "create_partition_scheme_to",
+			sql:  "CREATE PARTITION SCHEME myRangePS1 AS PARTITION myRangePF1 TO (fg1, fg2, fg3, fg4)",
+		},
+		{
+			name: "create_partition_scheme_all",
+			sql:  "CREATE PARTITION SCHEME myRangePS2 AS PARTITION myRangePF1 ALL TO ([PRIMARY])",
+		},
+		{
+			name: "alter_partition_scheme",
+			sql:  "ALTER PARTITION SCHEME myRangePS1 NEXT USED [PRIMARY]",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() == 0 {
+				t.Fatalf("Parse(%q): no statements returned", tt.sql)
+			}
+			s1 := ast.NodeToString(result.Items[0])
+			s2 := ast.NodeToString(result.Items[0])
+			if s1 != s2 {
+				t.Errorf("Parse(%q): serialization not deterministic", tt.sql)
+			}
+		})
+	}
+}
+
+// TestParseFulltext tests CREATE/ALTER FULLTEXT INDEX and CATALOG (batch 43).
+func TestParseFulltext(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		{
+			name: "create_fulltext_index",
+			sql:  "CREATE FULLTEXT INDEX ON dbo.Products (Name, Description) KEY INDEX PK_Products",
+		},
+		{
+			name: "create_fulltext_index_catalog",
+			sql:  "CREATE FULLTEXT INDEX ON dbo.Products (Name) KEY INDEX PK_Products ON MyCatalog",
+		},
+		{
+			name: "create_fulltext_index_with_options",
+			sql:  "CREATE FULLTEXT INDEX ON dbo.Products (Name) KEY INDEX PK_Products WITH CHANGE_TRACKING = AUTO",
+		},
+		{
+			name: "alter_fulltext_index_enable",
+			sql:  "ALTER FULLTEXT INDEX ON dbo.Products ENABLE",
+		},
+		{
+			name: "alter_fulltext_index_disable",
+			sql:  "ALTER FULLTEXT INDEX ON dbo.Products DISABLE",
+		},
+		{
+			name: "create_fulltext_catalog",
+			sql:  "CREATE FULLTEXT CATALOG MyCatalog",
+		},
+		{
+			name: "create_fulltext_catalog_options",
+			sql:  "CREATE FULLTEXT CATALOG MyCatalog WITH ACCENT_SENSITIVITY = ON",
+		},
+		{
+			name: "alter_fulltext_catalog_rebuild",
+			sql:  "ALTER FULLTEXT CATALOG MyCatalog REBUILD",
+		},
+		{
+			name: "alter_fulltext_catalog_as_default",
+			sql:  "ALTER FULLTEXT CATALOG MyCatalog AS DEFAULT",
+		},
+		{
+			name: "drop_fulltext_index",
+			sql:  "DROP FULLTEXT INDEX ON dbo.Products",
+		},
+		{
+			name: "drop_fulltext_catalog",
+			sql:  "DROP FULLTEXT CATALOG MyCatalog",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() == 0 {
+				t.Fatalf("Parse(%q): no statements returned", tt.sql)
+			}
+			s1 := ast.NodeToString(result.Items[0])
+			s2 := ast.NodeToString(result.Items[0])
+			if s1 != s2 {
+				t.Errorf("Parse(%q): serialization not deterministic", tt.sql)
+			}
+		})
+	}
+}
+
+// TestParseXmlSchemaCollection tests CREATE/ALTER/DROP XML SCHEMA COLLECTION (batch 44).
+func TestParseXmlSchemaCollection(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		{
+			name: "create_xml_schema_collection",
+			sql:  `CREATE XML SCHEMA COLLECTION dbo.myCollection AS '<schema xmlns="http://www.w3.org/2001/XMLSchema"><element name="root"/></schema>'`,
+		},
+		{
+			name: "create_xml_schema_collection_variable",
+			sql:  "CREATE XML SCHEMA COLLECTION dbo.myCol AS @schemaVar",
+		},
+		{
+			name: "alter_xml_schema_collection",
+			sql:  `ALTER XML SCHEMA COLLECTION dbo.myCollection ADD '<schema xmlns="http://www.w3.org/2001/XMLSchema"><element name="extra"/></schema>'`,
+		},
+		{
+			name: "drop_xml_schema_collection",
+			sql:  "DROP XML SCHEMA COLLECTION dbo.myCollection",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() == 0 {
+				t.Fatalf("Parse(%q): no statements returned", tt.sql)
+			}
+			s1 := ast.NodeToString(result.Items[0])
+			s2 := ast.NodeToString(result.Items[0])
+			if s1 != s2 {
+				t.Errorf("Parse(%q): serialization not deterministic", tt.sql)
+			}
+		})
+	}
+}
+
+// TestParseAssembly tests CREATE/ALTER/DROP ASSEMBLY (batch 45).
+func TestParseAssembly(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		{
+			name: "create_assembly",
+			sql:  "CREATE ASSEMBLY myAssembly FROM 'C:\\myAssembly.dll' WITH PERMISSION_SET = SAFE",
+		},
+		{
+			name: "create_assembly_authorization",
+			sql:  "CREATE ASSEMBLY myAssembly AUTHORIZATION dbo FROM 'C:\\myAssembly.dll'",
+		},
+		{
+			name: "create_assembly_unsafe",
+			sql:  "CREATE ASSEMBLY myAssembly FROM 'C:\\myAssembly.dll' WITH PERMISSION_SET = UNSAFE",
+		},
+		{
+			name: "alter_assembly_from",
+			sql:  "ALTER ASSEMBLY myAssembly FROM 'C:\\newAssembly.dll'",
+		},
+		{
+			name: "alter_assembly_with",
+			sql:  "ALTER ASSEMBLY myAssembly WITH PERMISSION_SET = EXTERNAL_ACCESS",
+		},
+		{
+			name: "drop_assembly",
+			sql:  "DROP ASSEMBLY myAssembly",
+		},
+		{
+			name: "drop_assembly_if_exists",
+			sql:  "DROP ASSEMBLY IF EXISTS myAssembly",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() == 0 {
+				t.Fatalf("Parse(%q): no statements returned", tt.sql)
+			}
+			s1 := ast.NodeToString(result.Items[0])
+			s2 := ast.NodeToString(result.Items[0])
+			if s1 != s2 {
+				t.Errorf("Parse(%q): serialization not deterministic", tt.sql)
+			}
+		})
+	}
+}
+
+// TestParseServiceBroker tests Service Broker statements (batch 46).
+func TestParseServiceBroker(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		{
+			name: "create_message_type",
+			sql:  "CREATE MESSAGE TYPE [//MyApp/RequestMsg] VALIDATION = NONE",
+		},
+		{
+			name: "create_message_type_wellformed",
+			sql:  "CREATE MESSAGE TYPE [//MyApp/ReplyMsg] VALIDATION = WELL_FORMED_XML",
+		},
+		{
+			name: "create_contract",
+			sql:  "CREATE CONTRACT [//MyApp/MyContract] ([//MyApp/RequestMsg] SENT BY INITIATOR)",
+		},
+		{
+			name: "create_queue_simple",
+			sql:  "CREATE QUEUE MyQueue",
+		},
+		{
+			name: "create_service_simple",
+			sql:  "CREATE SERVICE [//MyApp/MyService] ON QUEUE MyQueue",
+		},
+		{
+			name: "send_on_conversation",
+			sql:  "SEND ON CONVERSATION @handle MESSAGE TYPE [//MyApp/RequestMsg] (N'Hello')",
+		},
+		{
+			name: "end_conversation",
+			sql:  "END CONVERSATION @handle",
+		},
+		{
+			name: "end_conversation_with_cleanup",
+			sql:  "END CONVERSATION @handle WITH CLEANUP",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() == 0 {
+				t.Fatalf("Parse(%q): no statements returned", tt.sql)
+			}
+			s1 := ast.NodeToString(result.Items[0])
+			s2 := ast.NodeToString(result.Items[0])
+			if s1 != s2 {
+				t.Errorf("Parse(%q): serialization not deterministic", tt.sql)
+			}
+		})
+	}
+}
+
+// TestParseMiscUtility tests CHECKPOINT, RECONFIGURE, SHUTDOWN, KILL, READTEXT,
+// WRITETEXT, UPDATETEXT (batch 47).
+func TestParseMiscUtility(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		{
+			name: "checkpoint",
+			sql:  "CHECKPOINT",
+		},
+		{
+			name: "checkpoint_duration",
+			sql:  "CHECKPOINT 5",
+		},
+		{
+			name: "reconfigure",
+			sql:  "RECONFIGURE",
+		},
+		{
+			name: "reconfigure_with_override",
+			sql:  "RECONFIGURE WITH OVERRIDE",
+		},
+		{
+			name: "shutdown",
+			sql:  "SHUTDOWN",
+		},
+		{
+			name: "shutdown_nowait",
+			sql:  "SHUTDOWN WITH NOWAIT",
+		},
+		{
+			name: "kill_session",
+			sql:  "KILL 52",
+		},
+		{
+			name: "kill_with_statusonly",
+			sql:  "KILL 52 WITH STATUSONLY",
+		},
+		{
+			name: "readtext",
+			sql:  "READTEXT pub_info.pr_info @ptrval 0 10",
+		},
+		{
+			name: "writetext",
+			sql:  "WRITETEXT pub_info.pr_info @ptrval 'New content'",
+		},
+		{
+			name: "updatetext",
+			sql:  "UPDATETEXT pub_info.pr_info @ptrval NULL NULL 'New content'",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() == 0 {
+				t.Fatalf("Parse(%q): no statements returned", tt.sql)
+			}
+			s1 := ast.NodeToString(result.Items[0])
+			s2 := ast.NodeToString(result.Items[0])
+			if s1 != s2 {
+				t.Errorf("Parse(%q): serialization not deterministic", tt.sql)
+			}
+		})
+	}
+}
+
+// TestParseDropExtended tests extended DROP support (batch 48).
+func TestParseDropExtended(t *testing.T) {
+	tests := []struct {
+		name     string
+		sql      string
+		dropType ast.DropObjectType
+	}{
+		{
+			name:     "drop_sequence",
+			sql:      "DROP SEQUENCE dbo.mySeq",
+			dropType: ast.DropSequence,
+		},
+		{
+			name:     "drop_synonym",
+			sql:      "DROP SYNONYM dbo.mySyn",
+			dropType: ast.DropSynonym,
+		},
+		{
+			name:     "drop_assembly",
+			sql:      "DROP ASSEMBLY myAssembly",
+			dropType: ast.DropAssembly,
+		},
+		{
+			name:     "drop_partition_function",
+			sql:      "DROP PARTITION FUNCTION myPF",
+			dropType: ast.DropPartitionFunction,
+		},
+		{
+			name:     "drop_partition_scheme",
+			sql:      "DROP PARTITION SCHEME myPS",
+			dropType: ast.DropPartitionScheme,
+		},
+		{
+			name:     "drop_xml_schema_collection",
+			sql:      "DROP XML SCHEMA COLLECTION dbo.myCol",
+			dropType: ast.DropXmlSchemaCollection,
+		},
+		{
+			name:     "drop_fulltext_index",
+			sql:      "DROP FULLTEXT INDEX ON dbo.Products",
+			dropType: ast.DropFulltextIndex,
+		},
+		{
+			name:     "drop_fulltext_catalog",
+			sql:      "DROP FULLTEXT CATALOG MyCatalog",
+			dropType: ast.DropFulltextCatalog,
+		},
+		{
+			name:     "drop_rule",
+			sql:      "DROP RULE dbo.myRule",
+			dropType: ast.DropRule,
+		},
+		{
+			name:     "drop_default",
+			sql:      "DROP DEFAULT dbo.myDefault",
+			dropType: ast.DropDefault,
+		},
+		{
+			name:     "drop_statistics",
+			sql:      "DROP STATISTICS dbo.Orders.stat1",
+			dropType: ast.DropStatistics,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() == 0 {
+				t.Fatalf("Parse(%q): no statements returned", tt.sql)
+			}
+			// DROP STATISTICS returns a DropStatisticsStmt, not DropStmt
+			if tt.dropType == ast.DropStatistics {
+				_, ok := result.Items[0].(*ast.DropStatisticsStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected *ast.DropStatisticsStmt, got %T", tt.sql, result.Items[0])
+				}
+				return
+			}
+			stmt, ok := result.Items[0].(*ast.DropStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *ast.DropStmt, got %T", tt.sql, result.Items[0])
+			}
+			if stmt.ObjectType != tt.dropType {
+				t.Errorf("Parse(%q): ObjectType = %v, want %v", tt.sql, stmt.ObjectType, tt.dropType)
+			}
+			checkLocation(t, tt.sql, "DropStmt", stmt.Loc)
 		})
 	}
 }

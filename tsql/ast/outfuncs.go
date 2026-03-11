@@ -66,6 +66,10 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeCreateProcedureStmt(sb, n)
 	case *CreateDatabaseStmt:
 		writeCreateDatabaseStmt(sb, n)
+	case *AlterDatabaseStmt:
+		writeAlterDatabaseStmt(sb, n)
+	case *AlterIndexStmt:
+		writeAlterIndexStmt(sb, n)
 	case *TruncateStmt:
 		writeTruncateStmt(sb, n)
 	case *DeclareStmt:
@@ -112,6 +116,20 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeRollbackTransStmt(sb, n)
 	case *SaveTransStmt:
 		sb.WriteString(fmt.Sprintf("{SAVETRANS :name \"%s\" :loc %d %d}", escapeString(n.Name), n.Loc.Start, n.Loc.End))
+	case *SecurityStmt:
+		writeSecurityStmt(sb, n)
+	case *CreateSchemaStmt:
+		writeCreateSchemaStmt(sb, n)
+	case *AlterSchemaStmt:
+		writeAlterSchemaStmt(sb, n)
+	case *CreateTypeStmt:
+		writeCreateTypeStmt(sb, n)
+	case *CreateSequenceStmt:
+		writeCreateSequenceStmt(sb, n)
+	case *AlterSequenceStmt:
+		writeAlterSequenceStmt(sb, n)
+	case *CreateSynonymStmt:
+		writeCreateSynonymStmt(sb, n)
 	case *GrantStmt:
 		writeGrantStmt(sb, n)
 	case *BinaryExpr:
@@ -238,6 +256,66 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeCloseCursorStmt(sb, n)
 	case *DeallocateCursorStmt:
 		writeDeallocateCursorStmt(sb, n)
+	case *BulkInsertStmt:
+		writeBulkInsertStmt(sb, n)
+	case *DbccStmt:
+		writeDbccStmt(sb, n)
+	case *BackupStmt:
+		writeBackupStmt(sb, n)
+	case *RestoreStmt:
+		writeRestoreStmt(sb, n)
+	case *SecurityKeyStmt:
+		writeSecurityKeyStmt(sb, n)
+	case *BeginDistributedTransStmt:
+		fmt.Fprintf(sb, "{BEGINDISTRIBUTEDTRANS :name \"%s\" :loc %d %d}", escapeString(n.Name), n.Loc.Start, n.Loc.End)
+	case *CreateStatisticsStmt:
+		writeCreateStatisticsStmt(sb, n)
+	case *UpdateStatisticsStmt:
+		writeUpdateStatisticsStmt(sb, n)
+	case *DropStatisticsStmt:
+		writeDropStatisticsStmt(sb, n)
+	case *SetOptionStmt:
+		writeSetOptionStmt(sb, n)
+	case *CreatePartitionFunctionStmt:
+		writeCreatePartitionFunctionStmt(sb, n)
+	case *AlterPartitionFunctionStmt:
+		writeAlterPartitionFunctionStmt(sb, n)
+	case *CreatePartitionSchemeStmt:
+		writeCreatePartitionSchemeStmt(sb, n)
+	case *AlterPartitionSchemeStmt:
+		fmt.Fprintf(sb, "{ALTERPARTITIONSCHEME :name \"%s\" :filegroup \"%s\" :loc %d %d}", escapeString(n.Name), escapeString(n.FileGroup), n.Loc.Start, n.Loc.End)
+	case *CreateFulltextIndexStmt:
+		writeCreateFulltextIndexStmt(sb, n)
+	case *AlterFulltextIndexStmt:
+		writeAlterFulltextIndexStmt(sb, n)
+	case *CreateFulltextCatalogStmt:
+		writeCreateFulltextCatalogStmt(sb, n)
+	case *AlterFulltextCatalogStmt:
+		fmt.Fprintf(sb, "{ALTERFULLTEXTCATALOG :name \"%s\" :action \"%s\" :loc %d %d}", escapeString(n.Name), escapeString(n.Action), n.Loc.Start, n.Loc.End)
+	case *CreateXmlSchemaCollectionStmt:
+		writeCreateXmlSchemaCollectionStmt(sb, n)
+	case *AlterXmlSchemaCollectionStmt:
+		writeAlterXmlSchemaCollectionStmt(sb, n)
+	case *CreateAssemblyStmt:
+		writeCreateAssemblyStmt(sb, n)
+	case *AlterAssemblyStmt:
+		writeAlterAssemblyStmt(sb, n)
+	case *ServiceBrokerStmt:
+		writeServiceBrokerStmt(sb, n)
+	case *CheckpointStmt:
+		writeCheckpointStmt(sb, n)
+	case *ReconfigureStmt:
+		fmt.Fprintf(sb, "{RECONFIGURE :withOverride %v :loc %d %d}", n.WithOverride, n.Loc.Start, n.Loc.End)
+	case *ShutdownStmt:
+		fmt.Fprintf(sb, "{SHUTDOWN :withNoWait %v :loc %d %d}", n.WithNoWait, n.Loc.Start, n.Loc.End)
+	case *KillStmt:
+		writeKillStmt(sb, n)
+	case *ReadtextStmt:
+		writeReadtextStmt(sb, n)
+	case *WritetextStmt:
+		writeWritetextStmt(sb, n)
+	case *UpdatetextStmt:
+		writeUpdatetextStmt(sb, n)
 	default:
 		sb.WriteString("{UNKNOWN}")
 	}
@@ -864,6 +942,175 @@ func writeRollbackTransStmt(sb *strings.Builder, n *RollbackTransStmt) {
 		sb.WriteString(fmt.Sprintf(" :savepoint \"%s\"", escapeString(n.Savepoint)))
 	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeSecurityStmt(sb *strings.Builder, n *SecurityStmt) {
+	sb.WriteString("{SECURITY")
+	fmt.Fprintf(sb, " :action \"%s\"", escapeString(n.Action))
+	fmt.Fprintf(sb, " :objectType \"%s\"", escapeString(n.ObjectType))
+	fmt.Fprintf(sb, " :name \"%s\"", escapeString(n.Name))
+	if n.Options != nil && len(n.Options.Items) > 0 {
+		sb.WriteString(" :options ")
+		writeNode(sb, n.Options)
+	}
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
+	sb.WriteString("}")
+}
+
+func writeCreateSchemaStmt(sb *strings.Builder, n *CreateSchemaStmt) {
+	sb.WriteString("{CREATESCHEMA")
+	fmt.Fprintf(sb, " :name \"%s\"", escapeString(n.Name))
+	if n.Authorization != "" {
+		fmt.Fprintf(sb, " :authorization \"%s\"", escapeString(n.Authorization))
+	}
+	if n.Elements != nil && len(n.Elements.Items) > 0 {
+		sb.WriteString(" :elements ")
+		writeNode(sb, n.Elements)
+	}
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
+	sb.WriteString("}")
+}
+
+func writeAlterSchemaStmt(sb *strings.Builder, n *AlterSchemaStmt) {
+	sb.WriteString("{ALTERSCHEMA")
+	fmt.Fprintf(sb, " :name \"%s\"", escapeString(n.Name))
+	if n.TransferType != "" {
+		fmt.Fprintf(sb, " :transferType \"%s\"", escapeString(n.TransferType))
+	}
+	if n.TransferEntity != "" {
+		fmt.Fprintf(sb, " :transferEntity \"%s\"", escapeString(n.TransferEntity))
+	}
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
+	sb.WriteString("}")
+}
+
+func writeCreateTypeStmt(sb *strings.Builder, n *CreateTypeStmt) {
+	sb.WriteString("{CREATETYPE")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.BaseType != nil {
+		sb.WriteString(" :baseType ")
+		writeNode(sb, n.BaseType)
+	}
+	if n.Nullable != nil {
+		fmt.Fprintf(sb, " :nullable %v", *n.Nullable)
+	}
+	if n.ExternalName != "" {
+		fmt.Fprintf(sb, " :externalName \"%s\"", escapeString(n.ExternalName))
+	}
+	if n.TableDef != nil && len(n.TableDef.Items) > 0 {
+		sb.WriteString(" :tableDef ")
+		writeNode(sb, n.TableDef)
+	}
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
+	sb.WriteString("}")
+}
+
+func writeCreateSequenceStmt(sb *strings.Builder, n *CreateSequenceStmt) {
+	sb.WriteString("{CREATESEQUENCE")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.DataType != nil {
+		sb.WriteString(" :dataType ")
+		writeNode(sb, n.DataType)
+	}
+	if n.Start != nil {
+		sb.WriteString(" :start ")
+		writeNode(sb, n.Start)
+	}
+	if n.Increment != nil {
+		sb.WriteString(" :increment ")
+		writeNode(sb, n.Increment)
+	}
+	if n.MinValue != nil {
+		sb.WriteString(" :minValue ")
+		writeNode(sb, n.MinValue)
+	}
+	if n.NoMinVal {
+		sb.WriteString(" :noMinVal true")
+	}
+	if n.MaxValue != nil {
+		sb.WriteString(" :maxValue ")
+		writeNode(sb, n.MaxValue)
+	}
+	if n.NoMaxVal {
+		sb.WriteString(" :noMaxVal true")
+	}
+	if n.Cycle != nil {
+		fmt.Fprintf(sb, " :cycle %t", *n.Cycle)
+	}
+	if n.Cache != nil {
+		sb.WriteString(" :cache ")
+		writeNode(sb, n.Cache)
+	}
+	if n.NoCache {
+		sb.WriteString(" :noCache true")
+	}
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
+	sb.WriteString("}")
+}
+
+func writeAlterSequenceStmt(sb *strings.Builder, n *AlterSequenceStmt) {
+	sb.WriteString("{ALTERSEQUENCE")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.Restart {
+		sb.WriteString(" :restart true")
+	}
+	if n.RestartWith != nil {
+		sb.WriteString(" :restartWith ")
+		writeNode(sb, n.RestartWith)
+	}
+	if n.Increment != nil {
+		sb.WriteString(" :increment ")
+		writeNode(sb, n.Increment)
+	}
+	if n.MinValue != nil {
+		sb.WriteString(" :minValue ")
+		writeNode(sb, n.MinValue)
+	}
+	if n.NoMinVal {
+		sb.WriteString(" :noMinVal true")
+	}
+	if n.MaxValue != nil {
+		sb.WriteString(" :maxValue ")
+		writeNode(sb, n.MaxValue)
+	}
+	if n.NoMaxVal {
+		sb.WriteString(" :noMaxVal true")
+	}
+	if n.Cycle != nil {
+		fmt.Fprintf(sb, " :cycle %t", *n.Cycle)
+	}
+	if n.Cache != nil {
+		sb.WriteString(" :cache ")
+		writeNode(sb, n.Cache)
+	}
+	if n.NoCache {
+		sb.WriteString(" :noCache true")
+	}
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
+	sb.WriteString("}")
+}
+
+func writeCreateSynonymStmt(sb *strings.Builder, n *CreateSynonymStmt) {
+	sb.WriteString("{CREATESYNONYM")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.Target != nil {
+		sb.WriteString(" :target ")
+		writeNode(sb, n.Target)
+	}
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
 	sb.WriteString("}")
 }
 
@@ -1874,6 +2121,384 @@ func writeDeallocateCursorStmt(sb *strings.Builder, n *DeallocateCursorStmt) {
 	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
+}
+
+func writeAlterDatabaseStmt(sb *strings.Builder, n *AlterDatabaseStmt) {
+	sb.WriteString("{ALTERDATABASE")
+	fmt.Fprintf(sb, " :name \"%s\"", escapeString(n.Name))
+	fmt.Fprintf(sb, " :action \"%s\"", escapeString(n.Action))
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
+	sb.WriteString("}")
+}
+
+func writeAlterIndexStmt(sb *strings.Builder, n *AlterIndexStmt) {
+	sb.WriteString("{ALTERINDEX")
+	fmt.Fprintf(sb, " :indexName \"%s\"", escapeString(n.IndexName))
+	if n.Table != nil {
+		sb.WriteString(" :table ")
+		writeNode(sb, n.Table)
+	}
+	fmt.Fprintf(sb, " :action \"%s\"", escapeString(n.Action))
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
+	sb.WriteString("}")
+}
+
+func writeBulkInsertStmt(sb *strings.Builder, n *BulkInsertStmt) {
+	sb.WriteString("{BULKINSERT")
+	if n.Table != nil {
+		sb.WriteString(" :table ")
+		writeNode(sb, n.Table)
+	}
+	fmt.Fprintf(sb, " :dataFile \"%s\"", escapeString(n.DataFile))
+	if n.Options != nil {
+		sb.WriteString(" :options ")
+		writeNode(sb, n.Options)
+	}
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
+	sb.WriteString("}")
+}
+
+func writeDbccStmt(sb *strings.Builder, n *DbccStmt) {
+	sb.WriteString("{DBCC")
+	fmt.Fprintf(sb, " :command \"%s\"", escapeString(n.Command))
+	if n.Args != nil {
+		sb.WriteString(" :args ")
+		writeNode(sb, n.Args)
+	}
+	if n.Options != nil {
+		sb.WriteString(" :options ")
+		writeNode(sb, n.Options)
+	}
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
+	sb.WriteString("}")
+}
+
+func writeBackupStmt(sb *strings.Builder, n *BackupStmt) {
+	sb.WriteString("{BACKUP")
+	fmt.Fprintf(sb, " :type \"%s\"", escapeString(n.Type))
+	fmt.Fprintf(sb, " :database \"%s\"", escapeString(n.Database))
+	fmt.Fprintf(sb, " :target \"%s\"", escapeString(n.Target))
+	if n.Options != nil {
+		sb.WriteString(" :options ")
+		writeNode(sb, n.Options)
+	}
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
+	sb.WriteString("}")
+}
+
+func writeRestoreStmt(sb *strings.Builder, n *RestoreStmt) {
+	sb.WriteString("{RESTORE")
+	fmt.Fprintf(sb, " :type \"%s\"", escapeString(n.Type))
+	fmt.Fprintf(sb, " :database \"%s\"", escapeString(n.Database))
+	fmt.Fprintf(sb, " :source \"%s\"", escapeString(n.Source))
+	if n.Options != nil {
+		sb.WriteString(" :options ")
+		writeNode(sb, n.Options)
+	}
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
+	sb.WriteString("}")
+}
+
+func writeSecurityKeyStmt(sb *strings.Builder, n *SecurityKeyStmt) {
+	sb.WriteString("{SECURITYKEY")
+	fmt.Fprintf(sb, " :action \"%s\"", escapeString(n.Action))
+	fmt.Fprintf(sb, " :objectType \"%s\"", escapeString(n.ObjectType))
+	if n.Name != "" {
+		fmt.Fprintf(sb, " :name \"%s\"", escapeString(n.Name))
+	}
+	if n.Options != nil {
+		sb.WriteString(" :options ")
+		writeNode(sb, n.Options)
+	}
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
+	sb.WriteString("}")
+}
+
+// ---------- Batch 39-48 write functions ----------
+
+func writeCreateStatisticsStmt(sb *strings.Builder, n *CreateStatisticsStmt) {
+	sb.WriteString("{CREATESTATISTICS")
+	fmt.Fprintf(sb, " :name \"%s\"", escapeString(n.Name))
+	if n.Table != nil {
+		sb.WriteString(" :table ")
+		writeNode(sb, n.Table)
+	}
+	if n.Columns != nil {
+		sb.WriteString(" :columns ")
+		writeNode(sb, n.Columns)
+	}
+	if n.Options != nil {
+		sb.WriteString(" :options ")
+		writeNode(sb, n.Options)
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeUpdateStatisticsStmt(sb *strings.Builder, n *UpdateStatisticsStmt) {
+	sb.WriteString("{UPDATESTATISTICS")
+	if n.Table != nil {
+		sb.WriteString(" :table ")
+		writeNode(sb, n.Table)
+	}
+	if n.Name != "" {
+		fmt.Fprintf(sb, " :name \"%s\"", escapeString(n.Name))
+	}
+	if n.Options != nil {
+		sb.WriteString(" :options ")
+		writeNode(sb, n.Options)
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeDropStatisticsStmt(sb *strings.Builder, n *DropStatisticsStmt) {
+	sb.WriteString("{DROPSTATISTICS")
+	if n.Names != nil {
+		sb.WriteString(" :names ")
+		writeNode(sb, n.Names)
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeSetOptionStmt(sb *strings.Builder, n *SetOptionStmt) {
+	sb.WriteString("{SETOPTION")
+	fmt.Fprintf(sb, " :option \"%s\"", escapeString(n.Option))
+	if n.Value != nil {
+		sb.WriteString(" :value ")
+		writeNode(sb, n.Value)
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeCreatePartitionFunctionStmt(sb *strings.Builder, n *CreatePartitionFunctionStmt) {
+	sb.WriteString("{CREATEPARTITIONFUNCTION")
+	fmt.Fprintf(sb, " :name \"%s\"", escapeString(n.Name))
+	if n.InputType != nil {
+		sb.WriteString(" :inputType ")
+		writeNode(sb, n.InputType)
+	}
+	fmt.Fprintf(sb, " :range \"%s\"", escapeString(n.Range))
+	if n.Values != nil {
+		sb.WriteString(" :values ")
+		writeNode(sb, n.Values)
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeAlterPartitionFunctionStmt(sb *strings.Builder, n *AlterPartitionFunctionStmt) {
+	sb.WriteString("{ALTERPARTITIONFUNCTION")
+	fmt.Fprintf(sb, " :name \"%s\"", escapeString(n.Name))
+	fmt.Fprintf(sb, " :action \"%s\"", escapeString(n.Action))
+	if n.BoundaryValue != nil {
+		sb.WriteString(" :boundaryValue ")
+		writeNode(sb, n.BoundaryValue)
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeCreatePartitionSchemeStmt(sb *strings.Builder, n *CreatePartitionSchemeStmt) {
+	sb.WriteString("{CREATEPARTITIONSCHEME")
+	fmt.Fprintf(sb, " :name \"%s\"", escapeString(n.Name))
+	fmt.Fprintf(sb, " :functionName \"%s\"", escapeString(n.FunctionName))
+	if n.AllToFileGroup != "" {
+		fmt.Fprintf(sb, " :allTo \"%s\"", escapeString(n.AllToFileGroup))
+	}
+	if n.FileGroups != nil {
+		sb.WriteString(" :fileGroups ")
+		writeNode(sb, n.FileGroups)
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeCreateFulltextIndexStmt(sb *strings.Builder, n *CreateFulltextIndexStmt) {
+	sb.WriteString("{CREATEFULLTEXTINDEX")
+	if n.Table != nil {
+		sb.WriteString(" :table ")
+		writeNode(sb, n.Table)
+	}
+	if n.Columns != nil {
+		sb.WriteString(" :columns ")
+		writeNode(sb, n.Columns)
+	}
+	fmt.Fprintf(sb, " :keyIndex \"%s\"", escapeString(n.KeyIndex))
+	if n.CatalogName != "" {
+		fmt.Fprintf(sb, " :catalog \"%s\"", escapeString(n.CatalogName))
+	}
+	if n.Options != nil {
+		sb.WriteString(" :options ")
+		writeNode(sb, n.Options)
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeAlterFulltextIndexStmt(sb *strings.Builder, n *AlterFulltextIndexStmt) {
+	sb.WriteString("{ALTERFULLTEXTINDEX")
+	if n.Table != nil {
+		sb.WriteString(" :table ")
+		writeNode(sb, n.Table)
+	}
+	fmt.Fprintf(sb, " :action \"%s\"", escapeString(n.Action))
+	if n.Options != nil {
+		sb.WriteString(" :options ")
+		writeNode(sb, n.Options)
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeCreateFulltextCatalogStmt(sb *strings.Builder, n *CreateFulltextCatalogStmt) {
+	sb.WriteString("{CREATEFULLTEXTCATALOG")
+	fmt.Fprintf(sb, " :name \"%s\"", escapeString(n.Name))
+	if n.Options != nil {
+		sb.WriteString(" :options ")
+		writeNode(sb, n.Options)
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeCreateXmlSchemaCollectionStmt(sb *strings.Builder, n *CreateXmlSchemaCollectionStmt) {
+	sb.WriteString("{CREATEXMLSCHEMACOLLECTION")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.XmlSchemaNamespaces != nil {
+		sb.WriteString(" :schema ")
+		writeNode(sb, n.XmlSchemaNamespaces)
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeAlterXmlSchemaCollectionStmt(sb *strings.Builder, n *AlterXmlSchemaCollectionStmt) {
+	sb.WriteString("{ALTERXMLSCHEMACOLLECTION")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.XmlSchemaNamespaces != nil {
+		sb.WriteString(" :schema ")
+		writeNode(sb, n.XmlSchemaNamespaces)
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeCreateAssemblyStmt(sb *strings.Builder, n *CreateAssemblyStmt) {
+	sb.WriteString("{CREATEASSEMBLY")
+	fmt.Fprintf(sb, " :name \"%s\"", escapeString(n.Name))
+	if n.Authorization != "" {
+		fmt.Fprintf(sb, " :authorization \"%s\"", escapeString(n.Authorization))
+	}
+	if n.FromFiles != nil {
+		sb.WriteString(" :fromFiles ")
+		writeNode(sb, n.FromFiles)
+	}
+	if n.PermissionSet != "" {
+		fmt.Fprintf(sb, " :permissionSet \"%s\"", escapeString(n.PermissionSet))
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeAlterAssemblyStmt(sb *strings.Builder, n *AlterAssemblyStmt) {
+	sb.WriteString("{ALTERASSEMBLY")
+	fmt.Fprintf(sb, " :name \"%s\"", escapeString(n.Name))
+	if n.Actions != nil {
+		sb.WriteString(" :actions ")
+		writeNode(sb, n.Actions)
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeServiceBrokerStmt(sb *strings.Builder, n *ServiceBrokerStmt) {
+	sb.WriteString("{SERVICEBROKER")
+	fmt.Fprintf(sb, " :action \"%s\"", escapeString(n.Action))
+	fmt.Fprintf(sb, " :objectType \"%s\"", escapeString(n.ObjectType))
+	if n.Name != "" {
+		fmt.Fprintf(sb, " :name \"%s\"", escapeString(n.Name))
+	}
+	if n.Options != nil {
+		sb.WriteString(" :options ")
+		writeNode(sb, n.Options)
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeCheckpointStmt(sb *strings.Builder, n *CheckpointStmt) {
+	sb.WriteString("{CHECKPOINT")
+	if n.Duration != nil {
+		sb.WriteString(" :duration ")
+		writeNode(sb, n.Duration)
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeKillStmt(sb *strings.Builder, n *KillStmt) {
+	sb.WriteString("{KILL")
+	if n.SessionID != nil {
+		sb.WriteString(" :sessionId ")
+		writeNode(sb, n.SessionID)
+	}
+	fmt.Fprintf(sb, " :statusOnly %v :loc %d %d}", n.StatusOnly, n.Loc.Start, n.Loc.End)
+}
+
+func writeReadtextStmt(sb *strings.Builder, n *ReadtextStmt) {
+	sb.WriteString("{READTEXT")
+	if n.Column != nil {
+		sb.WriteString(" :column ")
+		writeNode(sb, n.Column)
+	}
+	if n.TextPtr != nil {
+		sb.WriteString(" :textPtr ")
+		writeNode(sb, n.TextPtr)
+	}
+	if n.Offset != nil {
+		sb.WriteString(" :offset ")
+		writeNode(sb, n.Offset)
+	}
+	if n.Size != nil {
+		sb.WriteString(" :size ")
+		writeNode(sb, n.Size)
+	}
+	fmt.Fprintf(sb, " :holdLock %v :loc %d %d}", n.HoldLock, n.Loc.Start, n.Loc.End)
+}
+
+func writeWritetextStmt(sb *strings.Builder, n *WritetextStmt) {
+	sb.WriteString("{WRITETEXT")
+	if n.Column != nil {
+		sb.WriteString(" :column ")
+		writeNode(sb, n.Column)
+	}
+	if n.TextPtr != nil {
+		sb.WriteString(" :textPtr ")
+		writeNode(sb, n.TextPtr)
+	}
+	if n.Data != nil {
+		sb.WriteString(" :data ")
+		writeNode(sb, n.Data)
+	}
+	fmt.Fprintf(sb, " :withLog %v :loc %d %d}", n.WithLog, n.Loc.Start, n.Loc.End)
+}
+
+func writeUpdatetextStmt(sb *strings.Builder, n *UpdatetextStmt) {
+	sb.WriteString("{UPDATETEXT")
+	if n.DestColumn != nil {
+		sb.WriteString(" :destColumn ")
+		writeNode(sb, n.DestColumn)
+	}
+	if n.DestTextPtr != nil {
+		sb.WriteString(" :destTextPtr ")
+		writeNode(sb, n.DestTextPtr)
+	}
+	if n.InsertOffset != nil {
+		sb.WriteString(" :insertOffset ")
+		writeNode(sb, n.InsertOffset)
+	}
+	if n.DeleteLength != nil {
+		sb.WriteString(" :deleteLength ")
+		writeNode(sb, n.DeleteLength)
+	}
+	if n.InsertedData != nil {
+		sb.WriteString(" :insertedData ")
+		writeNode(sb, n.InsertedData)
+	}
+	fmt.Fprintf(sb, " :withLog %v :loc %d %d}", n.WithLog, n.Loc.Start, n.Loc.End)
 }
 
 func escapeString(s string) string {

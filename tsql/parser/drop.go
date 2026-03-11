@@ -49,6 +49,66 @@ func (p *Parser) parseDropStmt() *nodes.DropStmt {
 	case kwTYPE:
 		stmt.ObjectType = nodes.DropType
 		p.advance()
+	case kwSTATISTICS:
+		// DROP STATISTICS is handled specially below
+		stmt.ObjectType = nodes.DropStatistics
+		p.advance()
+	case kwRULE:
+		stmt.ObjectType = nodes.DropRule
+		p.advance()
+	default:
+		if p.isIdentLike() {
+			switch strings.ToUpper(p.cur.Str) {
+			case "SEQUENCE":
+				stmt.ObjectType = nodes.DropSequence
+				p.advance()
+			case "SYNONYM":
+				stmt.ObjectType = nodes.DropSynonym
+				p.advance()
+			case "ASSEMBLY":
+				stmt.ObjectType = nodes.DropAssembly
+				p.advance()
+			case "DEFAULT":
+				stmt.ObjectType = nodes.DropDefault
+				p.advance()
+			}
+		}
+		// Check for PARTITION FUNCTION/SCHEME
+		if p.cur.Type == kwPARTITION {
+			p.advance() // consume PARTITION
+			if p.isIdentLike() {
+				switch strings.ToUpper(p.cur.Str) {
+				case "FUNCTION":
+					stmt.ObjectType = nodes.DropPartitionFunction
+					p.advance()
+				case "SCHEME":
+					stmt.ObjectType = nodes.DropPartitionScheme
+					p.advance()
+				}
+			}
+		}
+		// Check for FULLTEXT INDEX/CATALOG
+		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "FULLTEXT") {
+			p.advance()
+			if p.cur.Type == kwINDEX {
+				stmt.ObjectType = nodes.DropFulltextIndex
+				p.advance()
+			} else if p.isIdentLike() && strings.EqualFold(p.cur.Str, "CATALOG") {
+				stmt.ObjectType = nodes.DropFulltextCatalog
+				p.advance()
+			}
+		}
+		// Check for XML SCHEMA COLLECTION
+		if p.cur.Type == kwXML {
+			p.advance()
+			if p.isIdentLike() && strings.EqualFold(p.cur.Str, "SCHEMA") {
+				p.advance()
+				if p.isIdentLike() && strings.EqualFold(p.cur.Str, "COLLECTION") {
+					stmt.ObjectType = nodes.DropXmlSchemaCollection
+					p.advance()
+				}
+			}
+		}
 	}
 
 	// IF EXISTS
@@ -63,20 +123,31 @@ func (p *Parser) parseDropStmt() *nodes.DropStmt {
 
 	// Names (comma-separated)
 	var names []nodes.Node
-	for {
-		name := p.parseTableRef()
-		if name == nil {
-			break
-		}
-		// For DROP INDEX: index_name ON table_name
-		if stmt.ObjectType == nodes.DropIndex {
-			if _, ok := p.match(kwON); ok {
-				p.parseTableRef() // consume table name
+
+	// DROP FULLTEXT INDEX ON table does not have a "name" per se - the table IS the target
+	if stmt.ObjectType == nodes.DropFulltextIndex {
+		// ON table_name
+		if _, ok := p.match(kwON); ok {
+			if ref := p.parseTableRef(); ref != nil {
+				names = append(names, ref)
 			}
 		}
-		names = append(names, name)
-		if _, ok := p.match(','); !ok {
-			break
+	} else {
+		for {
+			name := p.parseTableRef()
+			if name == nil {
+				break
+			}
+			// For DROP INDEX: index_name ON table_name
+			if stmt.ObjectType == nodes.DropIndex {
+				if _, ok := p.match(kwON); ok {
+					p.parseTableRef() // consume table name
+				}
+			}
+			names = append(names, name)
+			if _, ok := p.match(','); !ok {
+				break
+			}
 		}
 	}
 	stmt.Names = &nodes.List{Items: names}

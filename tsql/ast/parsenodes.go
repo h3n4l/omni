@@ -383,6 +383,17 @@ const (
 	DropSchema
 	DropTrigger
 	DropType
+	DropSequence
+	DropSynonym
+	DropAssembly
+	DropPartitionFunction
+	DropPartitionScheme
+	DropStatistics
+	DropDefault
+	DropRule
+	DropXmlSchemaCollection
+	DropFulltextIndex
+	DropFulltextCatalog
 )
 
 // CreateIndexStmt represents a CREATE INDEX statement.
@@ -485,6 +496,23 @@ type CreateTriggerStmt struct {
 func (n *CreateTriggerStmt) nodeTag()  {}
 func (n *CreateTriggerStmt) stmtNode() {}
 
+// BulkInsertStmt represents a BULK INSERT statement.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/bulk-insert-transact-sql
+//
+//	BULK INSERT [ database_name . [ schema_name ] . | schema_name . ] table_name
+//	    FROM 'data_file'
+//	    [ WITH ( option [,...n] ) ]
+type BulkInsertStmt struct {
+	Table    *TableRef
+	DataFile string // 'file_path'
+	Options  *List  // WITH options as key=value or flag strings
+	Loc      Loc
+}
+
+func (n *BulkInsertStmt) nodeTag()  {}
+func (n *BulkInsertStmt) stmtNode() {}
+
 // CreateFunctionStmt represents a CREATE FUNCTION statement.
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-function-transact-sql
 type CreateFunctionStmt struct {
@@ -546,6 +574,35 @@ type CreateDatabaseStmt struct {
 
 func (n *CreateDatabaseStmt) nodeTag()  {}
 func (n *CreateDatabaseStmt) stmtNode() {}
+
+// AlterDatabaseStmt represents an ALTER DATABASE statement.
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-transact-sql
+//
+//	ALTER DATABASE { database_name | CURRENT }
+//	    { SET ... | MODIFY FILE ... | ADD FILE ... | ... }
+type AlterDatabaseStmt struct {
+	Name   string // database name or "CURRENT"
+	Action string // SET, MODIFY, ADD, REMOVE, COLLATE, etc.
+	Loc    Loc
+}
+
+func (n *AlterDatabaseStmt) nodeTag()  {}
+func (n *AlterDatabaseStmt) stmtNode() {}
+
+// AlterIndexStmt represents an ALTER INDEX statement.
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-index-transact-sql
+//
+//	ALTER INDEX { index_name | ALL } ON <object>
+//	    { REBUILD | REORGANIZE | DISABLE | SET ( ... ) }
+type AlterIndexStmt struct {
+	IndexName string    // index name or "ALL"
+	Table     *TableRef // ON table_name
+	Action    string    // REBUILD, REORGANIZE, DISABLE, SET
+	Loc       Loc
+}
+
+func (n *AlterIndexStmt) nodeTag()  {}
+func (n *AlterIndexStmt) stmtNode() {}
 
 // TruncateStmt represents a TRUNCATE TABLE statement.
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/truncate-table-transact-sql
@@ -806,6 +863,120 @@ func (n *SaveTransStmt) nodeTag()  {}
 func (n *SaveTransStmt) stmtNode() {}
 
 // ---------- Security statements ----------
+
+// SecurityStmt represents CREATE/ALTER/DROP USER, LOGIN, ROLE, APPLICATION ROLE,
+// and ADD/DROP ROLE MEMBER statements.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-user-transact-sql
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-login-transact-sql
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-role-transact-sql
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-application-role-transact-sql
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-role-transact-sql
+type SecurityStmt struct {
+	Action     string // CREATE, ALTER, DROP, ADD
+	ObjectType string // USER, LOGIN, ROLE, APPLICATION ROLE
+	Name       string // principal name
+	Options    *List  // generic list of key=value or String option nodes
+	Loc        Loc
+}
+
+func (n *SecurityStmt) nodeTag()  {}
+func (n *SecurityStmt) stmtNode() {}
+
+// CreateSchemaStmt represents CREATE SCHEMA.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-schema-transact-sql
+type CreateSchemaStmt struct {
+	Name          string // schema name (may be empty if AUTHORIZATION only)
+	Authorization string // AUTHORIZATION owner_name (may be empty)
+	Elements      *List  // optional schema elements (CREATE/GRANT/REVOKE/DENY)
+	Loc           Loc
+}
+
+func (n *CreateSchemaStmt) nodeTag()  {}
+func (n *CreateSchemaStmt) stmtNode() {}
+
+// AlterSchemaStmt represents ALTER SCHEMA.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-schema-transact-sql
+type AlterSchemaStmt struct {
+	Name           string // schema name
+	TransferType   string // OBJECT, TYPE, XML SCHEMA COLLECTION, or ""
+	TransferEntity string // dot-qualified entity name
+	Loc            Loc
+}
+
+func (n *AlterSchemaStmt) nodeTag()  {}
+func (n *AlterSchemaStmt) stmtNode() {}
+
+// CreateTypeStmt represents CREATE TYPE.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-type-transact-sql
+type CreateTypeStmt struct {
+	Name         *TableRef // [schema.]type_name
+	BaseType     *DataType // FROM base_type (alias type)
+	Nullable     *bool     // NULL / NOT NULL for alias type
+	ExternalName string    // EXTERNAL NAME assembly.class
+	TableDef     *List     // AS TABLE (...) column/constraint definitions
+	Loc          Loc
+}
+
+func (n *CreateTypeStmt) nodeTag()  {}
+func (n *CreateTypeStmt) stmtNode() {}
+
+// CreateSequenceStmt represents CREATE SEQUENCE.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-sequence-transact-sql
+type CreateSequenceStmt struct {
+	Name     *TableRef // [schema.]sequence_name
+	DataType *DataType // AS integer_type (optional)
+	Start    ExprNode  // START WITH constant
+	Increment ExprNode // INCREMENT BY constant
+	MinValue ExprNode  // MINVALUE constant
+	MaxValue ExprNode  // MAXVALUE constant
+	NoMinVal bool      // NO MINVALUE
+	NoMaxVal bool      // NO MAXVALUE
+	Cycle    *bool     // CYCLE (true) / NO CYCLE (false) / nil (unset)
+	Cache    ExprNode  // CACHE n
+	NoCache  bool      // NO CACHE
+	Loc      Loc
+}
+
+func (n *CreateSequenceStmt) nodeTag()  {}
+func (n *CreateSequenceStmt) stmtNode() {}
+
+// AlterSequenceStmt represents ALTER SEQUENCE.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-sequence-transact-sql
+type AlterSequenceStmt struct {
+	Name        *TableRef // [schema.]sequence_name
+	Restart     bool      // RESTART
+	RestartWith ExprNode  // RESTART WITH constant
+	Increment   ExprNode  // INCREMENT BY constant
+	MinValue    ExprNode  // MINVALUE constant
+	MaxValue    ExprNode  // MAXVALUE constant
+	NoMinVal    bool      // NO MINVALUE
+	NoMaxVal    bool      // NO MAXVALUE
+	Cycle       *bool     // CYCLE / NO CYCLE
+	Cache       ExprNode  // CACHE n
+	NoCache     bool      // NO CACHE
+	Loc         Loc
+}
+
+func (n *AlterSequenceStmt) nodeTag()  {}
+func (n *AlterSequenceStmt) stmtNode() {}
+
+// CreateSynonymStmt represents CREATE SYNONYM.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-synonym-transact-sql
+type CreateSynonymStmt struct {
+	Name   *TableRef // [schema.]synonym_name
+	Target *TableRef // FOR [server.][database.][schema.]object
+	Loc    Loc
+}
+
+func (n *CreateSynonymStmt) nodeTag()  {}
+func (n *CreateSynonymStmt) stmtNode() {}
 
 // GrantStmt represents GRANT/REVOKE/DENY.
 type GrantStmt struct {
@@ -1427,6 +1598,418 @@ type DeallocateCursorStmt struct {
 
 func (n *DeallocateCursorStmt) nodeTag()  {}
 func (n *DeallocateCursorStmt) stmtNode() {}
+
+// ---------- DBCC ----------
+
+// DbccStmt represents a DBCC (Database Console Command) statement.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/database-console-commands/dbcc-transact-sql
+//
+//	DBCC command_name [ ( arg [, ...] ) ] [ WITH option [, ...] ]
+type DbccStmt struct {
+	Command string // e.g. CHECKDB, SHRINKDATABASE, FREEPROCCACHE, etc.
+	Args    *List  // optional arguments inside parentheses
+	Options *List  // optional WITH options (list of String nodes)
+	Loc     Loc
+}
+
+func (n *DbccStmt) nodeTag()  {}
+func (n *DbccStmt) stmtNode() {}
+
+// ---------- Backup / Restore ----------
+
+// BackupStmt represents a BACKUP DATABASE or BACKUP LOG statement.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/backup-transact-sql
+//
+//	BACKUP { DATABASE | LOG } database_name TO { DISK | URL } = 'path' [WITH ...]
+type BackupStmt struct {
+	Type     string // "DATABASE" or "LOG"
+	Database string // database name
+	Target   string // TO DISK/URL path value
+	Options  *List  // WITH options (as String nodes)
+	Loc      Loc
+}
+
+func (n *BackupStmt) nodeTag()  {}
+func (n *BackupStmt) stmtNode() {}
+
+// RestoreStmt represents a RESTORE DATABASE / LOG / HEADERONLY / FILELISTONLY statement.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/restore-statements-transact-sql
+//
+//	RESTORE { DATABASE | LOG | HEADERONLY | FILELISTONLY | ... } [database_name]
+//	    FROM { DISK | URL } = 'path' [WITH ...]
+type RestoreStmt struct {
+	Type     string // "DATABASE", "LOG", "HEADERONLY", "FILELISTONLY", etc.
+	Database string // database name (may be empty for HEADERONLY/FILELISTONLY)
+	Source   string // FROM DISK/URL path value
+	Options  *List  // WITH options (as String nodes)
+	Loc      Loc
+}
+
+func (n *RestoreStmt) nodeTag()  {}
+func (n *RestoreStmt) stmtNode() {}
+
+// ---------- Security keys/certs ----------
+
+// SecurityKeyStmt represents a CREATE/ALTER/DROP/OPEN/CLOSE/BACKUP statement
+// for security objects: MASTER KEY, SYMMETRIC KEY, ASYMMETRIC KEY, CERTIFICATE, CREDENTIAL.
+type SecurityKeyStmt struct {
+	Action     string // CREATE, ALTER, DROP, OPEN, CLOSE, BACKUP
+	ObjectType string // MASTER KEY, SYMMETRIC KEY, ASYMMETRIC KEY, CERTIFICATE, CREDENTIAL
+	Name       string // object name (may be empty for MASTER KEY)
+	Options    *List  // generic list of String nodes for options/clauses
+	Loc        Loc
+}
+
+func (n *SecurityKeyStmt) nodeTag()  {}
+func (n *SecurityKeyStmt) stmtNode() {}
+
+// ---------- Batch 39: BEGIN DISTRIBUTED TRANSACTION ----------
+
+// BeginDistributedTransStmt represents BEGIN DISTRIBUTED TRAN[SACTION] [name].
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/begin-distributed-transaction-transact-sql
+type BeginDistributedTransStmt struct {
+	Name string // optional transaction name
+	Loc  Loc
+}
+
+func (n *BeginDistributedTransStmt) nodeTag()  {}
+func (n *BeginDistributedTransStmt) stmtNode() {}
+
+// ---------- Batch 40: CREATE/UPDATE/DROP STATISTICS ----------
+
+// CreateStatisticsStmt represents CREATE STATISTICS statement.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-statistics-transact-sql
+type CreateStatisticsStmt struct {
+	Name    string     // statistics name
+	Table   *TableRef  // table or indexed view
+	Columns *List      // column name list
+	Options *List      // WITH options as String nodes
+	Loc     Loc
+}
+
+func (n *CreateStatisticsStmt) nodeTag()  {}
+func (n *CreateStatisticsStmt) stmtNode() {}
+
+// UpdateStatisticsStmt represents UPDATE STATISTICS statement.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/update-statistics-transact-sql
+type UpdateStatisticsStmt struct {
+	Table   *TableRef // table or indexed view
+	Name    string    // statistics name (optional)
+	Options *List     // WITH options as String nodes
+	Loc     Loc
+}
+
+func (n *UpdateStatisticsStmt) nodeTag()  {}
+func (n *UpdateStatisticsStmt) stmtNode() {}
+
+// DropStatisticsStmt represents DROP STATISTICS statement.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-statistics-transact-sql
+type DropStatisticsStmt struct {
+	// Each item is "table.stats_name" as a String node
+	Names *List
+	Loc   Loc
+}
+
+func (n *DropStatisticsStmt) nodeTag()  {}
+func (n *DropStatisticsStmt) stmtNode() {}
+
+// ---------- Batch 41: SET session options ----------
+
+// SetOptionStmt represents SET session options like SET NOCOUNT ON/OFF,
+// SET ANSI_NULLS ON/OFF, SET TRANSACTION ISOLATION LEVEL, etc.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/set-statements-transact-sql
+type SetOptionStmt struct {
+	Option string   // option name (e.g., "NOCOUNT", "ANSI_NULLS", "TRANSACTION ISOLATION LEVEL READ COMMITTED")
+	Value  ExprNode // ON/OFF or other value; may be a ColumnRef("ON"/"OFF") or literal
+	Loc    Loc
+}
+
+func (n *SetOptionStmt) nodeTag()  {}
+func (n *SetOptionStmt) stmtNode() {}
+
+// ---------- Batch 42: PARTITION FUNCTION/SCHEME ----------
+
+// CreatePartitionFunctionStmt represents CREATE PARTITION FUNCTION.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-partition-function-transact-sql
+type CreatePartitionFunctionStmt struct {
+	Name      string    // partition function name
+	InputType *DataType // input parameter type
+	Range     string    // LEFT or RIGHT
+	Values    *List     // boundary values as expressions
+	Loc       Loc
+}
+
+func (n *CreatePartitionFunctionStmt) nodeTag()  {}
+func (n *CreatePartitionFunctionStmt) stmtNode() {}
+
+// AlterPartitionFunctionStmt represents ALTER PARTITION FUNCTION ... SPLIT/MERGE RANGE.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-partition-function-transact-sql
+type AlterPartitionFunctionStmt struct {
+	Name      string   // partition function name
+	Action    string   // SPLIT or MERGE
+	BoundaryValue ExprNode // boundary value
+	Loc       Loc
+}
+
+func (n *AlterPartitionFunctionStmt) nodeTag()  {}
+func (n *AlterPartitionFunctionStmt) stmtNode() {}
+
+// CreatePartitionSchemeStmt represents CREATE PARTITION SCHEME.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-partition-scheme-transact-sql
+type CreatePartitionSchemeStmt struct {
+	Name            string // partition scheme name
+	FunctionName    string // partition function name
+	FileGroups      *List  // file group names as String nodes; "ALL" if single [ALL TO]
+	AllToFileGroup  string // if ALL TO filegroup, stores the filegroup name
+	Loc             Loc
+}
+
+func (n *CreatePartitionSchemeStmt) nodeTag()  {}
+func (n *CreatePartitionSchemeStmt) stmtNode() {}
+
+// AlterPartitionSchemeStmt represents ALTER PARTITION SCHEME ... NEXT USED filegroup.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-partition-scheme-transact-sql
+type AlterPartitionSchemeStmt struct {
+	Name      string // partition scheme name
+	FileGroup string // NEXT USED filegroup name
+	Loc       Loc
+}
+
+func (n *AlterPartitionSchemeStmt) nodeTag()  {}
+func (n *AlterPartitionSchemeStmt) stmtNode() {}
+
+// ---------- Batch 43: FULLTEXT ----------
+
+// CreateFulltextIndexStmt represents CREATE FULLTEXT INDEX.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-fulltext-index-transact-sql
+type CreateFulltextIndexStmt struct {
+	Columns      *List  // fulltext index columns
+	Table        *TableRef
+	KeyIndex     string // unique index name
+	CatalogName  string // fulltext catalog (optional)
+	Options      *List  // WITH options as String nodes
+	Loc          Loc
+}
+
+func (n *CreateFulltextIndexStmt) nodeTag()  {}
+func (n *CreateFulltextIndexStmt) stmtNode() {}
+
+// AlterFulltextIndexStmt represents ALTER FULLTEXT INDEX ON table action.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-fulltext-index-transact-sql
+type AlterFulltextIndexStmt struct {
+	Table   *TableRef
+	Action  string // ENABLE, DISABLE, START UPDATE POPULATION, etc.
+	Options *List  // additional options as String nodes
+	Loc     Loc
+}
+
+func (n *AlterFulltextIndexStmt) nodeTag()  {}
+func (n *AlterFulltextIndexStmt) stmtNode() {}
+
+// CreateFulltextCatalogStmt represents CREATE FULLTEXT CATALOG.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-fulltext-catalog-transact-sql
+type CreateFulltextCatalogStmt struct {
+	Name    string
+	Options *List // WITH options as String nodes
+	Loc     Loc
+}
+
+func (n *CreateFulltextCatalogStmt) nodeTag()  {}
+func (n *CreateFulltextCatalogStmt) stmtNode() {}
+
+// AlterFulltextCatalogStmt represents ALTER FULLTEXT CATALOG name action.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-fulltext-catalog-transact-sql
+type AlterFulltextCatalogStmt struct {
+	Name   string
+	Action string // REBUILD, REORGANIZE, AS DEFAULT
+	Loc    Loc
+}
+
+func (n *AlterFulltextCatalogStmt) nodeTag()  {}
+func (n *AlterFulltextCatalogStmt) stmtNode() {}
+
+// ---------- Batch 44: XML SCHEMA COLLECTION ----------
+
+// CreateXmlSchemaCollectionStmt represents CREATE XML SCHEMA COLLECTION.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-xml-schema-collection-transact-sql
+type CreateXmlSchemaCollectionStmt struct {
+	Name           *TableRef // relational_schema.sql_identifier
+	XmlSchemaNamespaces ExprNode  // xml_Schema_namespace expression
+	Loc            Loc
+}
+
+func (n *CreateXmlSchemaCollectionStmt) nodeTag()  {}
+func (n *CreateXmlSchemaCollectionStmt) stmtNode() {}
+
+// AlterXmlSchemaCollectionStmt represents ALTER XML SCHEMA COLLECTION.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-xml-schema-collection-transact-sql
+type AlterXmlSchemaCollectionStmt struct {
+	Name                *TableRef
+	XmlSchemaNamespaces ExprNode
+	Loc                 Loc
+}
+
+func (n *AlterXmlSchemaCollectionStmt) nodeTag()  {}
+func (n *AlterXmlSchemaCollectionStmt) stmtNode() {}
+
+// ---------- Batch 45: ASSEMBLY ----------
+
+// CreateAssemblyStmt represents CREATE ASSEMBLY.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-assembly-transact-sql
+type CreateAssemblyStmt struct {
+	Name          string
+	Authorization string   // AUTHORIZATION owner_name
+	FromFiles     *List    // file paths as String nodes
+	PermissionSet string   // SAFE, EXTERNAL_ACCESS, UNSAFE
+	Loc           Loc
+}
+
+func (n *CreateAssemblyStmt) nodeTag()  {}
+func (n *CreateAssemblyStmt) stmtNode() {}
+
+// AlterAssemblyStmt represents ALTER ASSEMBLY.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-assembly-transact-sql
+type AlterAssemblyStmt struct {
+	Name    string
+	Actions *List // list of actions as String nodes
+	Loc     Loc
+}
+
+func (n *AlterAssemblyStmt) nodeTag()  {}
+func (n *AlterAssemblyStmt) stmtNode() {}
+
+// ---------- Batch 46: SERVICE BROKER ----------
+
+// ServiceBrokerStmt is a generic Service Broker statement node.
+// It covers CREATE/ALTER/DROP MESSAGE TYPE, CONTRACT, QUEUE, SERVICE, ROUTE,
+// SEND, RECEIVE, BEGIN/END CONVERSATION, GET CONVERSATION GROUP.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/service-broker-statements
+type ServiceBrokerStmt struct {
+	Action     string   // CREATE, ALTER, DROP, SEND, RECEIVE, BEGIN, END, GET
+	ObjectType string   // MESSAGE TYPE, CONTRACT, QUEUE, SERVICE, ROUTE, CONVERSATION, etc.
+	Name       string   // object name (may be empty for some forms)
+	Options    *List    // options as String nodes
+	Loc        Loc
+}
+
+func (n *ServiceBrokerStmt) nodeTag()  {}
+func (n *ServiceBrokerStmt) stmtNode() {}
+
+// ---------- Batch 47: MISC UTILITY ----------
+
+// CheckpointStmt represents CHECKPOINT [checkpoint_duration].
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/checkpoint-transact-sql
+type CheckpointStmt struct {
+	Duration ExprNode // optional checkpoint duration
+	Loc      Loc
+}
+
+func (n *CheckpointStmt) nodeTag()  {}
+func (n *CheckpointStmt) stmtNode() {}
+
+// ReconfigureStmt represents RECONFIGURE [WITH OVERRIDE].
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/reconfigure-transact-sql
+type ReconfigureStmt struct {
+	WithOverride bool
+	Loc          Loc
+}
+
+func (n *ReconfigureStmt) nodeTag()  {}
+func (n *ReconfigureStmt) stmtNode() {}
+
+// ShutdownStmt represents SHUTDOWN [WITH NOWAIT].
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/shutdown-transact-sql
+type ShutdownStmt struct {
+	WithNoWait bool
+	Loc        Loc
+}
+
+func (n *ShutdownStmt) nodeTag()  {}
+func (n *ShutdownStmt) stmtNode() {}
+
+// KillStmt represents KILL { session_id | UOW } [WITH STATUSONLY].
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/kill-transact-sql
+type KillStmt struct {
+	SessionID  ExprNode // session ID or UOW
+	StatusOnly bool
+	Loc        Loc
+}
+
+func (n *KillStmt) nodeTag()  {}
+func (n *KillStmt) stmtNode() {}
+
+// ReadtextStmt represents READTEXT table.column textpointer offset size [HOLDLOCK].
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/queries/readtext-transact-sql
+type ReadtextStmt struct {
+	Column    *ColumnRef
+	TextPtr   ExprNode
+	Offset    ExprNode
+	Size      ExprNode
+	HoldLock  bool
+	Loc       Loc
+}
+
+func (n *ReadtextStmt) nodeTag()  {}
+func (n *ReadtextStmt) stmtNode() {}
+
+// WritetextStmt represents WRITETEXT table.column textpointer [WITH LOG] data.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/queries/writetext-transact-sql
+type WritetextStmt struct {
+	Column  *ColumnRef
+	TextPtr ExprNode
+	WithLog bool
+	Data    ExprNode
+	Loc     Loc
+}
+
+func (n *WritetextStmt) nodeTag()  {}
+func (n *WritetextStmt) stmtNode() {}
+
+// UpdatetextStmt represents UPDATETEXT table.column textpointer deleteoffset deletelength [WITH LOG] inserteddata.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/queries/updatetext-transact-sql
+type UpdatetextStmt struct {
+	DestColumn   *ColumnRef
+	DestTextPtr  ExprNode
+	InsertOffset ExprNode
+	DeleteLength ExprNode
+	WithLog      bool
+	InsertedData ExprNode
+	Loc          Loc
+}
+
+func (n *UpdatetextStmt) nodeTag()  {}
+func (n *UpdatetextStmt) stmtNode() {}
+
+// ---------- Batch 48: DROP extended ----------
+// (Uses existing DropStmt with extended DropObjectType constants below)
 
 // ---------- Method call ----------
 

@@ -149,6 +149,290 @@ func (p *Parser) parseThrowStmt() *nodes.ThrowStmt {
 	return stmt
 }
 
+// parseCheckpointStmt parses a CHECKPOINT statement.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/checkpoint-transact-sql
+//
+//	CHECKPOINT [ checkpoint_duration ]
+func (p *Parser) parseCheckpointStmt() *nodes.CheckpointStmt {
+	loc := p.pos()
+	p.advance() // consume CHECKPOINT
+
+	stmt := &nodes.CheckpointStmt{
+		Loc: nodes.Loc{Start: loc},
+	}
+
+	// Optional duration
+	if p.cur.Type == tokICONST || p.cur.Type == tokVARIABLE {
+		stmt.Duration = p.parseExpr()
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseReconfigureStmt parses a RECONFIGURE statement.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/reconfigure-transact-sql
+//
+//	RECONFIGURE [ WITH OVERRIDE ]
+func (p *Parser) parseReconfigureStmt() *nodes.ReconfigureStmt {
+	loc := p.pos()
+	p.advance() // consume RECONFIGURE
+
+	stmt := &nodes.ReconfigureStmt{
+		Loc: nodes.Loc{Start: loc},
+	}
+
+	// WITH OVERRIDE
+	if p.cur.Type == kwWITH {
+		next := p.peekNext()
+		if next.Str != "" && strings.EqualFold(next.Str, "OVERRIDE") {
+			p.advance() // WITH
+			p.advance() // OVERRIDE
+			stmt.WithOverride = true
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseShutdownStmt parses a SHUTDOWN statement.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/shutdown-transact-sql
+//
+//	SHUTDOWN [ WITH NOWAIT ]
+func (p *Parser) parseShutdownStmt() *nodes.ShutdownStmt {
+	loc := p.pos()
+	p.advance() // consume SHUTDOWN
+
+	stmt := &nodes.ShutdownStmt{
+		Loc: nodes.Loc{Start: loc},
+	}
+
+	// WITH NOWAIT
+	if p.cur.Type == kwWITH {
+		p.advance()
+		if p.cur.Type == kwNOWAIT {
+			p.advance()
+			stmt.WithNoWait = true
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseKillStmt parses a KILL statement.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/kill-transact-sql
+//
+//	KILL { session_id | UOW } [ WITH STATUSONLY ]
+//	KILL STATS JOB job_id
+func (p *Parser) parseKillStmt() *nodes.KillStmt {
+	loc := p.pos()
+	p.advance() // consume KILL
+
+	stmt := &nodes.KillStmt{
+		Loc: nodes.Loc{Start: loc},
+	}
+
+	// session_id or STATS JOB n or UOW
+	stmt.SessionID = p.parseExpr()
+
+	// WITH STATUSONLY
+	if p.cur.Type == kwWITH {
+		p.advance()
+		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "STATUSONLY") {
+			p.advance()
+			stmt.StatusOnly = true
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseReadtextStmt parses a READTEXT statement.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/queries/readtext-transact-sql
+//
+//	READTEXT { table.column text_ptr offset size } [ HOLDLOCK ]
+func (p *Parser) parseReadtextStmt() *nodes.ReadtextStmt {
+	loc := p.pos()
+	p.advance() // consume READTEXT
+
+	stmt := &nodes.ReadtextStmt{
+		Loc: nodes.Loc{Start: loc},
+	}
+
+	// table.column - parse as column ref
+	if p.isIdentLike() {
+		colLoc := p.pos()
+		table := p.cur.Str
+		p.advance()
+		if p.cur.Type == '.' {
+			p.advance() // consume .
+			col := ""
+			if p.isIdentLike() {
+				col = p.cur.Str
+				p.advance()
+			}
+			stmt.Column = &nodes.ColumnRef{
+				Table:  table,
+				Column: col,
+				Loc:    nodes.Loc{Start: colLoc, End: p.pos()},
+			}
+		} else {
+			stmt.Column = &nodes.ColumnRef{
+				Column: table,
+				Loc:    nodes.Loc{Start: colLoc, End: p.pos()},
+			}
+		}
+	}
+
+	// text_ptr
+	stmt.TextPtr = p.parseExpr()
+	// offset
+	stmt.Offset = p.parseExpr()
+	// size
+	stmt.Size = p.parseExpr()
+
+	// HOLDLOCK
+	if p.cur.Type == kwHOLDLOCK {
+		p.advance()
+		stmt.HoldLock = true
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseWritetextStmt parses a WRITETEXT statement.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/queries/writetext-transact-sql
+//
+//	WRITETEXT { table.column text_ptr } [ WITH LOG ] { data }
+func (p *Parser) parseWritetextStmt() *nodes.WritetextStmt {
+	loc := p.pos()
+	p.advance() // consume WRITETEXT
+
+	stmt := &nodes.WritetextStmt{
+		Loc: nodes.Loc{Start: loc},
+	}
+
+	// table.column
+	if p.isIdentLike() {
+		table := p.cur.Str
+		p.advance()
+		if p.cur.Type == '.' {
+			p.advance() // .
+			col := ""
+			if p.isIdentLike() {
+				col = p.cur.Str
+				p.advance()
+			}
+			stmt.Column = &nodes.ColumnRef{
+				Table:  table,
+				Column: col,
+				Loc:    nodes.Loc{Start: loc},
+			}
+		} else {
+			stmt.Column = &nodes.ColumnRef{
+				Column: table,
+				Loc:    nodes.Loc{Start: loc},
+			}
+		}
+	}
+
+	// text_ptr
+	stmt.TextPtr = p.parseExpr()
+
+	// WITH LOG
+	if p.cur.Type == kwWITH {
+		next := p.peekNext()
+		if next.Str != "" && strings.EqualFold(next.Str, "LOG") {
+			p.advance() // WITH
+			p.advance() // LOG
+			stmt.WithLog = true
+		}
+	}
+
+	// data
+	stmt.Data = p.parseExpr()
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseUpdatetextStmt parses an UPDATETEXT statement.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/queries/updatetext-transact-sql
+//
+//	UPDATETEXT { table_name.dest_column_name dest_text_ptr }
+//	    { NULL | insert_offset }
+//	    { NULL | delete_length }
+//	    [ WITH LOG ]
+//	    [ inserted_data | { table_name.src_column_name src_text_ptr } ]
+func (p *Parser) parseUpdatetextStmt() *nodes.UpdatetextStmt {
+	loc := p.pos()
+	p.advance() // consume UPDATETEXT
+
+	stmt := &nodes.UpdatetextStmt{
+		Loc: nodes.Loc{Start: loc},
+	}
+
+	// dest_table.dest_column dest_text_ptr
+	if p.isIdentLike() {
+		table := p.cur.Str
+		p.advance()
+		if p.cur.Type == '.' {
+			p.advance()
+			col := ""
+			if p.isIdentLike() {
+				col = p.cur.Str
+				p.advance()
+			}
+			stmt.DestColumn = &nodes.ColumnRef{
+				Table:  table,
+				Column: col,
+				Loc:    nodes.Loc{Start: loc},
+			}
+		} else {
+			stmt.DestColumn = &nodes.ColumnRef{
+				Column: table,
+				Loc:    nodes.Loc{Start: loc},
+			}
+		}
+	}
+
+	// dest_text_ptr
+	stmt.DestTextPtr = p.parseExpr()
+	// insert_offset (NULL or n)
+	stmt.InsertOffset = p.parseExpr()
+	// delete_length (NULL or n)
+	stmt.DeleteLength = p.parseExpr()
+
+	// WITH LOG
+	if p.cur.Type == kwWITH {
+		next := p.peekNext()
+		if next.Str != "" && strings.EqualFold(next.Str, "LOG") {
+			p.advance()
+			p.advance()
+			stmt.WithLog = true
+		}
+	}
+
+	// inserted_data
+	if p.cur.Type != ';' && p.cur.Type != tokEOF && p.cur.Type != kwGO {
+		stmt.InsertedData = p.parseExpr()
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
 // parseTruncateStmt parses a TRUNCATE TABLE statement.
 //
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/truncate-table-transact-sql
