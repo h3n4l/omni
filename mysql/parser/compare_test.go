@@ -3353,3 +3353,136 @@ func TestParseAlterTableRename(t *testing.T) {
 		}
 	})
 }
+
+// ============================================================================
+// Batch 9: CREATE INDEX
+// ============================================================================
+
+func parseCreateIndex(t *testing.T, input string) *ast.CreateIndexStmt {
+	t.Helper()
+	p := &Parser{lexer: NewLexer(input)}
+	p.advance() // prime lexer
+	p.advance() // skip CREATE
+	unique := false
+	fulltext := false
+	spatial := false
+	if p.cur.Type == kwUNIQUE {
+		p.advance()
+		unique = true
+	} else if p.cur.Type == kwFULLTEXT {
+		p.advance()
+		fulltext = true
+	} else if p.cur.Type == kwSPATIAL {
+		p.advance()
+		spatial = true
+	}
+	stmt, err := p.parseCreateIndexStmt(unique, fulltext, spatial)
+	if err != nil {
+		t.Fatalf("parseCreateIndexStmt(%q) error: %v", input, err)
+	}
+	return stmt
+}
+
+func TestParseCreateIndex(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		stmt := parseCreateIndex(t, "CREATE INDEX idx_name ON t (name)")
+		if stmt.IndexName != "idx_name" {
+			t.Errorf("IndexName = %s, want idx_name", stmt.IndexName)
+		}
+		if stmt.Table == nil || stmt.Table.Name != "t" {
+			t.Errorf("Table = %v, want t", stmt.Table)
+		}
+		if len(stmt.Columns) != 1 {
+			t.Fatalf("Columns count = %d, want 1", len(stmt.Columns))
+		}
+	})
+
+	t.Run("multiple columns", func(t *testing.T) {
+		stmt := parseCreateIndex(t, "CREATE INDEX idx_ab ON t (a, b)")
+		if len(stmt.Columns) != 2 {
+			t.Fatalf("Columns count = %d, want 2", len(stmt.Columns))
+		}
+	})
+
+	t.Run("prefix length", func(t *testing.T) {
+		stmt := parseCreateIndex(t, "CREATE INDEX idx_name ON t (name(10))")
+		if stmt.Columns[0].Length != 10 {
+			t.Errorf("Length = %d, want 10", stmt.Columns[0].Length)
+		}
+	})
+
+	t.Run("desc order", func(t *testing.T) {
+		stmt := parseCreateIndex(t, "CREATE INDEX idx_id ON t (id DESC)")
+		if !stmt.Columns[0].Desc {
+			t.Errorf("Desc = false, want true")
+		}
+	})
+
+	t.Run("using btree", func(t *testing.T) {
+		stmt := parseCreateIndex(t, "CREATE INDEX idx_id USING BTREE ON t (id)")
+		if stmt.IndexType != "BTREE" {
+			t.Errorf("IndexType = %s, want BTREE", stmt.IndexType)
+		}
+	})
+
+	t.Run("schema qualified table", func(t *testing.T) {
+		stmt := parseCreateIndex(t, "CREATE INDEX idx_id ON mydb.t (id)")
+		if stmt.Table.Schema != "mydb" {
+			t.Errorf("Schema = %s, want mydb", stmt.Table.Schema)
+		}
+	})
+
+	t.Run("if not exists", func(t *testing.T) {
+		stmt := parseCreateIndex(t, "CREATE INDEX IF NOT EXISTS idx_id ON t (id)")
+		if !stmt.IfNotExists {
+			t.Errorf("IfNotExists = false, want true")
+		}
+	})
+
+	t.Run("with comment", func(t *testing.T) {
+		stmt := parseCreateIndex(t, "CREATE INDEX idx_id ON t (id) COMMENT 'test index'")
+		found := false
+		for _, opt := range stmt.Options {
+			if opt.Name == "COMMENT" {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("COMMENT option not found")
+		}
+	})
+
+	t.Run("algorithm lock", func(t *testing.T) {
+		stmt := parseCreateIndex(t, "CREATE INDEX idx_id ON t (id) ALGORITHM=INPLACE LOCK=NONE")
+		if stmt.Algorithm != "INPLACE" {
+			t.Errorf("Algorithm = %s, want INPLACE", stmt.Algorithm)
+		}
+		if stmt.Lock != "NONE" {
+			t.Errorf("Lock = %s, want NONE", stmt.Lock)
+		}
+	})
+}
+
+func TestParseCreateUniqueIndex(t *testing.T) {
+	stmt := parseCreateIndex(t, "CREATE UNIQUE INDEX idx_email ON users (email)")
+	if !stmt.Unique {
+		t.Errorf("Unique = false, want true")
+	}
+	if stmt.IndexName != "idx_email" {
+		t.Errorf("IndexName = %s, want idx_email", stmt.IndexName)
+	}
+}
+
+func TestParseCreateFulltextIndex(t *testing.T) {
+	stmt := parseCreateIndex(t, "CREATE FULLTEXT INDEX ft_content ON articles (content)")
+	if !stmt.Fulltext {
+		t.Errorf("Fulltext = false, want true")
+	}
+
+	t.Run("spatial", func(t *testing.T) {
+		stmt := parseCreateIndex(t, "CREATE SPATIAL INDEX sp_geo ON places (location)")
+		if !stmt.Spatial {
+			t.Errorf("Spatial = false, want true")
+		}
+	})
+}

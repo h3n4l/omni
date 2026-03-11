@@ -140,7 +140,7 @@
       "id": 9,
       "name": "create_index",
       "file": "create_index.go",
-      "status": "pending",
+      "status": "done",
       "description": "CREATE INDEX, including UNIQUE, FULLTEXT, SPATIAL index types",
       "rules": [
         "create_index_stmt", "index_type", "index_column_list",
