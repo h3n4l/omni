@@ -1897,6 +1897,106 @@ type PLSQLClose struct {
 func (n *PLSQLClose) nodeTag()  {}
 func (n *PLSQLClose) stmtNode() {}
 
+// PLSQLForall represents a FORALL statement.
+//
+//	FORALL index IN lower..upper [SAVE EXCEPTIONS] dml_statement
+type PLSQLForall struct {
+	Index string   // index variable
+	Lower ExprNode // lower bound
+	Upper ExprNode // upper bound
+	Body  StmtNode // DML statement
+	Loc   Loc
+}
+
+func (n *PLSQLForall) nodeTag()  {}
+func (n *PLSQLForall) stmtNode() {}
+
+// PLSQLExit represents an EXIT [label] [WHEN condition] statement.
+type PLSQLExit struct {
+	Label     string   // optional label
+	Condition ExprNode // WHEN condition
+	Loc       Loc
+}
+
+func (n *PLSQLExit) nodeTag()  {}
+func (n *PLSQLExit) stmtNode() {}
+
+// PLSQLContinue represents a CONTINUE [label] [WHEN condition] statement.
+type PLSQLContinue struct {
+	Label     string   // optional label
+	Condition ExprNode // WHEN condition
+	Loc       Loc
+}
+
+func (n *PLSQLContinue) nodeTag()  {}
+func (n *PLSQLContinue) stmtNode() {}
+
+// PLSQLPipeRow represents a PIPE ROW statement for pipelined functions.
+type PLSQLPipeRow struct {
+	Row ExprNode // the row expression
+	Loc Loc
+}
+
+func (n *PLSQLPipeRow) nodeTag()  {}
+func (n *PLSQLPipeRow) stmtNode() {}
+
+// PLSQLPragma represents a PRAGMA directive.
+type PLSQLPragma struct {
+	Name string // AUTONOMOUS_TRANSACTION, EXCEPTION_INIT, etc.
+	Args *List  // optional arguments
+	Loc  Loc
+}
+
+func (n *PLSQLPragma) nodeTag() {}
+
+// PLSQLCase represents a PL/SQL CASE statement (distinct from CASE expression).
+type PLSQLCase struct {
+	Expr  ExprNode    // search expression (nil for searched CASE)
+	Whens []*PLSQLWhen // WHEN clauses
+	Else  []StmtNode  // ELSE statements
+	Loc   Loc
+}
+
+func (n *PLSQLCase) nodeTag()  {}
+func (n *PLSQLCase) stmtNode() {}
+
+// PLSQLWhen represents a WHEN clause in a PL/SQL CASE statement.
+type PLSQLWhen struct {
+	Expr  ExprNode   // WHEN expression
+	Stmts []StmtNode // THEN statements
+	Loc   Loc
+}
+
+func (n *PLSQLWhen) nodeTag() {}
+
+// PLSQLTypeDecl represents a PL/SQL TYPE declaration.
+//
+//	TYPE name IS TABLE OF type [INDEX BY type]
+//	TYPE name IS VARRAY(n) OF type
+//	TYPE name IS RECORD (field type [,...])
+//	TYPE name IS REF CURSOR [RETURN type]
+type PLSQLTypeDecl struct {
+	Name      string    // type name
+	Kind      string    // TABLE, VARRAY, RECORD, REF_CURSOR
+	ElementType *TypeName // element type (TABLE OF/VARRAY OF)
+	IndexBy   *TypeName // INDEX BY type (associative arrays)
+	Limit     ExprNode  // VARRAY limit
+	Fields    *List     // RECORD fields
+	ReturnType *TypeName // REF CURSOR RETURN type
+	Loc       Loc
+}
+
+func (n *PLSQLTypeDecl) nodeTag() {}
+
+// PLSQLCall represents a PL/SQL standalone procedure call statement.
+type PLSQLCall struct {
+	Name ExprNode // procedure/function reference (could be dotted name)
+	Loc  Loc
+}
+
+func (n *PLSQLCall) nodeTag()  {}
+func (n *PLSQLCall) stmtNode() {}
+
 // ---------------------------------------------------------------------------
 // Utility statements
 // ---------------------------------------------------------------------------

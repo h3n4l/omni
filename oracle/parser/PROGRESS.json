@@ -625,7 +625,7 @@
       "id": 47,
       "name": "plsql_forall_bulk",
       "file": "plsql_block.go",
-      "status": "pending",
+      "status": "done",
       "description": "PL/SQL FORALL statement for bulk DML operations, and BULK COLLECT INTO in SELECT INTO. Also EXIT [WHEN] and CONTINUE [WHEN] loop control statements which are missing from batch 21.",
       "rules": [
         "forall_statement", "bulk_collect_into",
@@ -638,7 +638,7 @@
       "id": 48,
       "name": "plsql_pipe_pragma",
       "file": "plsql_block.go",
-      "status": "pending",
+      "status": "done",
       "description": "PL/SQL PIPE ROW statement for pipelined table functions, and PRAGMA directives (AUTONOMOUS_TRANSACTION, EXCEPTION_INIT, RESTRICT_REFERENCES, SERIALLY_REUSABLE, UDF, INLINE). Also PL/SQL CASE statement (distinct from CASE expression).",
       "rules": [
         "pipe_row_statement", "pragma_declaration",
@@ -652,7 +652,7 @@
       "id": 49,
       "name": "plsql_collections_records",
       "file": "plsql_block.go",
-      "status": "pending",
+      "status": "done",
       "description": "PL/SQL collection type declarations in DECLARE: TYPE name IS TABLE OF, TYPE name IS VARRAY, TYPE name IS RECORD. Also associative array (INDEX BY) and REF CURSOR declarations.",
       "rules": [
         "type_table_of_decl", "type_varray_decl", "type_record_decl",
@@ -665,7 +665,7 @@
       "id": 50,
       "name": "plsql_procedure_call",
       "file": "plsql_block.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 21 gap: PL/SQL procedure call statements currently return nil in parsePLSQLAssignOrCall. Need a PLSQLCall AST node for standalone procedure invocations, and support for named parameter notation (param => value).",
       "rules": [
         "plsql_call_stmt", "named_param_notation"

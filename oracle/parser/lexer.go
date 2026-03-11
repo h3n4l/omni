@@ -837,6 +837,9 @@ var oracleKeywords = map[string]int{
 	"LIBRARY":   kwLIBRARY,
 	"PROFILE":   kwPROFILE,
 
+	// PL/SQL additional keywords
+	"PIPE": kwPIPE,
+
 	// JSON expression keywords
 	"FORMAT":         kwFORMAT,
 	"JSON":           kwJSON,
@@ -1192,6 +1195,9 @@ const (
 	kwSTATISTICS
 	kwSUCCESSFUL
 	kwWHENEVER
+
+	// PL/SQL additional keywords
+	kwPIPE
 
 	// Admin DDL keywords
 	kwCONTEXT

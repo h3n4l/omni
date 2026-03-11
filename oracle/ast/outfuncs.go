@@ -362,6 +362,24 @@ func writeNode(sb *strings.Builder, node Node) {
 		writePLSQLFetch(sb, n)
 	case *PLSQLClose:
 		writePLSQLClose(sb, n)
+	case *PLSQLForall:
+		writePLSQLForall(sb, n)
+	case *PLSQLExit:
+		writePLSQLExit(sb, n)
+	case *PLSQLContinue:
+		writePLSQLContinue(sb, n)
+	case *PLSQLPipeRow:
+		writePLSQLPipeRow(sb, n)
+	case *PLSQLPragma:
+		writePLSQLPragma(sb, n)
+	case *PLSQLCase:
+		writePLSQLCase(sb, n)
+	case *PLSQLWhen:
+		writePLSQLWhen(sb, n)
+	case *PLSQLTypeDecl:
+		writePLSQLTypeDecl(sb, n)
+	case *PLSQLCall:
+		writePLSQLCall(sb, n)
 
 	default:
 		sb.WriteString("{UNKNOWN_NODE}")
@@ -3162,6 +3180,160 @@ func writePLSQLFetch(sb *strings.Builder, n *PLSQLFetch) {
 func writePLSQLClose(sb *strings.Builder, n *PLSQLClose) {
 	sb.WriteString("{PLSQLCLOSE")
 	sb.WriteString(fmt.Sprintf(" :cursor %q", n.Cursor))
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writePLSQLForall(sb *strings.Builder, n *PLSQLForall) {
+	sb.WriteString("{PLSQLFORALL")
+	sb.WriteString(fmt.Sprintf(" :index %q", n.Index))
+	if n.Lower != nil {
+		sb.WriteString(" :lower ")
+		writeNode(sb, n.Lower)
+	}
+	if n.Upper != nil {
+		sb.WriteString(" :upper ")
+		writeNode(sb, n.Upper)
+	}
+	if n.Body != nil {
+		sb.WriteString(" :body ")
+		writeNode(sb, n.Body)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writePLSQLExit(sb *strings.Builder, n *PLSQLExit) {
+	sb.WriteString("{PLSQLEXIT")
+	if n.Label != "" {
+		sb.WriteString(fmt.Sprintf(" :label %q", n.Label))
+	}
+	if n.Condition != nil {
+		sb.WriteString(" :when ")
+		writeNode(sb, n.Condition)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writePLSQLContinue(sb *strings.Builder, n *PLSQLContinue) {
+	sb.WriteString("{PLSQLCONTINUE")
+	if n.Label != "" {
+		sb.WriteString(fmt.Sprintf(" :label %q", n.Label))
+	}
+	if n.Condition != nil {
+		sb.WriteString(" :when ")
+		writeNode(sb, n.Condition)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writePLSQLPipeRow(sb *strings.Builder, n *PLSQLPipeRow) {
+	sb.WriteString("{PLSQLPIPEROW")
+	if n.Row != nil {
+		sb.WriteString(" :row ")
+		writeNode(sb, n.Row)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writePLSQLPragma(sb *strings.Builder, n *PLSQLPragma) {
+	sb.WriteString("{PLSQLPRAGMA")
+	sb.WriteString(fmt.Sprintf(" :name %q", n.Name))
+	if n.Args != nil && len(n.Args.Items) > 0 {
+		sb.WriteString(" :args ")
+		writeNode(sb, n.Args)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writePLSQLCase(sb *strings.Builder, n *PLSQLCase) {
+	sb.WriteString("{PLSQLCASE")
+	if n.Expr != nil {
+		sb.WriteString(" :expr ")
+		writeNode(sb, n.Expr)
+	}
+	if len(n.Whens) > 0 {
+		sb.WriteString(" :whens (")
+		for i, w := range n.Whens {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, w)
+		}
+		sb.WriteString(")")
+	}
+	if len(n.Else) > 0 {
+		sb.WriteString(" :else (")
+		for i, s := range n.Else {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, s)
+		}
+		sb.WriteString(")")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writePLSQLWhen(sb *strings.Builder, n *PLSQLWhen) {
+	sb.WriteString("{PLSQLWHEN")
+	if n.Expr != nil {
+		sb.WriteString(" :expr ")
+		writeNode(sb, n.Expr)
+	}
+	if len(n.Stmts) > 0 {
+		sb.WriteString(" :stmts (")
+		for i, s := range n.Stmts {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, s)
+		}
+		sb.WriteString(")")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writePLSQLTypeDecl(sb *strings.Builder, n *PLSQLTypeDecl) {
+	sb.WriteString("{PLSQLTYPEDECL")
+	sb.WriteString(fmt.Sprintf(" :name %q", n.Name))
+	sb.WriteString(fmt.Sprintf(" :kind %q", n.Kind))
+	if n.ElementType != nil {
+		sb.WriteString(" :elementType ")
+		writeNode(sb, n.ElementType)
+	}
+	if n.IndexBy != nil {
+		sb.WriteString(" :indexBy ")
+		writeNode(sb, n.IndexBy)
+	}
+	if n.Limit != nil {
+		sb.WriteString(" :limit ")
+		writeNode(sb, n.Limit)
+	}
+	if n.Fields != nil && len(n.Fields.Items) > 0 {
+		sb.WriteString(" :fields ")
+		writeNode(sb, n.Fields)
+	}
+	if n.ReturnType != nil {
+		sb.WriteString(" :returnType ")
+		writeNode(sb, n.ReturnType)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writePLSQLCall(sb *strings.Builder, n *PLSQLCall) {
+	sb.WriteString("{PLSQLCALL")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
 }

@@ -1065,3 +1065,100 @@ func TestParseAlterProcedure(t *testing.T) {
 		})
 	}
 }
+
+func TestParsePLSQLExit(t *testing.T) {
+	tests := []string{
+		"BEGIN EXIT; END;",
+		"BEGIN EXIT WHEN x > 10; END;",
+		"BEGIN EXIT outer_loop; END;",
+		"BEGIN EXIT outer_loop WHEN done; END;",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParsePLSQLContinue(t *testing.T) {
+	tests := []string{
+		"BEGIN CONTINUE; END;",
+		"BEGIN CONTINUE WHEN x < 5; END;",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParsePLSQLForall(t *testing.T) {
+	tests := []string{
+		"BEGIN FORALL i IN 1..tab.COUNT INSERT INTO t VALUES (tab(i)); END;",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParsePLSQLPipeRow(t *testing.T) {
+	tests := []string{
+		"BEGIN PIPE ROW (out_rec); END;",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParsePLSQLPragma(t *testing.T) {
+	tests := []string{
+		"DECLARE PRAGMA AUTONOMOUS_TRANSACTION; BEGIN NULL; END;",
+		"DECLARE PRAGMA EXCEPTION_INIT(e_custom, -20001); BEGIN NULL; END;",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParsePLSQLCaseStmt(t *testing.T) {
+	tests := []string{
+		"BEGIN CASE x WHEN 1 THEN y := 10; WHEN 2 THEN y := 20; ELSE y := 0; END CASE; END;",
+		"BEGIN CASE WHEN x > 0 THEN y := 1; ELSE y := 0; END CASE; END;",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParsePLSQLTypeDecl(t *testing.T) {
+	tests := []string{
+		"DECLARE TYPE t_tab IS TABLE OF VARCHAR2(100); BEGIN NULL; END;",
+		"DECLARE TYPE t_arr IS VARRAY(10) OF NUMBER; BEGIN NULL; END;",
+		"DECLARE TYPE t_cur IS REF CURSOR; BEGIN NULL; END;",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParsePLSQLCall(t *testing.T) {
+	tests := []string{
+		"BEGIN dbms_output.put_line('hello'); END;",
+		"BEGIN my_proc(1, 2); END;",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}

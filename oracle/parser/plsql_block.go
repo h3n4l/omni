@@ -81,6 +81,19 @@ func (p *Parser) parsePLSQLDeclaration() nodes.Node {
 		return p.parsePLSQLCursorDecl()
 	}
 
+	// PRAGMA directive
+	if p.cur.Type == kwPRAGMA {
+		return p.parsePLSQLPragma()
+	}
+
+	// TYPE declaration
+	if p.cur.Type == kwTYPE {
+		next := p.peekNext()
+		if next.Type != kwBODY { // not CREATE TYPE BODY
+			return p.parsePLSQLTypeDecl()
+		}
+	}
+
 	// Variable declaration: name [CONSTANT] type [NOT NULL] [:= | DEFAULT expr] ;
 	if p.isIdentLike() {
 		return p.parsePLSQLVarDecl()
@@ -283,6 +296,28 @@ func (p *Parser) parsePLSQLStatement() nodes.StmtNode {
 	case kwCLOSE:
 		return p.parsePLSQLClose()
 
+	case kwEXIT:
+		return p.parsePLSQLExit()
+
+	case kwCONTINUE:
+		return p.parsePLSQLContinue()
+
+	case kwFORALL:
+		return p.parsePLSQLForall()
+
+	case kwPIPE:
+		return p.parsePLSQLPipeRow()
+
+	case kwCASE:
+		return p.parsePLSQLCaseStmt()
+
+	case kwMERGE:
+		stmt := p.parseMergeStmt()
+		if p.cur.Type == ';' {
+			p.advance()
+		}
+		return stmt
+
 	// DML statements
 	case kwSELECT, kwWITH:
 		stmt := p.parseSelectStmt()
@@ -351,10 +386,10 @@ func (p *Parser) parsePLSQLAssignOrCall() nodes.StmtNode {
 		p.advance()
 	}
 
-	// Wrap in an assign with nil value to indicate procedure call
-	// Actually, we just skip it - it was a procedure call expression
-	// For now return nil since we don't have a PLSQLCall node
-	return nil
+	return &nodes.PLSQLCall{
+		Name: target,
+		Loc:  nodes.Loc{Start: start, End: p.pos()},
+	}
 }
 
 // parsePLSQLIf parses an IF/ELSIF/ELSE/END IF statement.
@@ -832,4 +867,372 @@ func (p *Parser) parsePLSQLArgList() *nodes.List {
 	}
 
 	return args
+}
+
+// parsePLSQLExit parses an EXIT [label] [WHEN condition] ; statement.
+func (p *Parser) parsePLSQLExit() nodes.StmtNode {
+	start := p.pos()
+	p.advance() // consume EXIT
+
+	stmt := &nodes.PLSQLExit{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// Optional label (before WHEN or ;)
+	if p.isIdentLike() && p.cur.Type != kwWHEN {
+		stmt.Label = p.cur.Str
+		p.advance()
+	}
+
+	// WHEN condition
+	if p.cur.Type == kwWHEN {
+		p.advance()
+		stmt.Condition = p.parseExpr()
+	}
+
+	if p.cur.Type == ';' {
+		p.advance()
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parsePLSQLContinue parses a CONTINUE [label] [WHEN condition] ; statement.
+func (p *Parser) parsePLSQLContinue() nodes.StmtNode {
+	start := p.pos()
+	p.advance() // consume CONTINUE
+
+	stmt := &nodes.PLSQLContinue{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// Optional label
+	if p.isIdentLike() && p.cur.Type != kwWHEN {
+		stmt.Label = p.cur.Str
+		p.advance()
+	}
+
+	// WHEN condition
+	if p.cur.Type == kwWHEN {
+		p.advance()
+		stmt.Condition = p.parseExpr()
+	}
+
+	if p.cur.Type == ';' {
+		p.advance()
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parsePLSQLForall parses a FORALL statement.
+//
+//	FORALL index IN lower..upper [SAVE EXCEPTIONS] dml_statement ;
+func (p *Parser) parsePLSQLForall() nodes.StmtNode {
+	start := p.pos()
+	p.advance() // consume FORALL
+
+	stmt := &nodes.PLSQLForall{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// Index variable
+	if p.isIdentLike() {
+		stmt.Index = p.cur.Str
+		p.advance()
+	}
+
+	// IN
+	if p.cur.Type == kwIN {
+		p.advance()
+	}
+
+	// lower..upper or VALUES OF or INDICES OF
+	if p.isIdentLike() && (p.cur.Str == "VALUES" || p.cur.Str == "INDICES") {
+		// VALUES OF / INDICES OF - skip to DML
+		p.advance()
+		if p.cur.Type == kwOF {
+			p.advance()
+		}
+		// collection name
+		stmt.Lower = p.parseExpr()
+	} else {
+		stmt.Lower = p.parseExpr()
+		if p.cur.Type == tokDOTDOT {
+			p.advance()
+			stmt.Upper = p.parseExpr()
+		}
+	}
+
+	// Optional SAVE EXCEPTIONS
+	if p.isIdentLike() && p.cur.Str == "SAVE" {
+		p.advance()
+		if p.cur.Type == kwEXCEPTION || p.isIdentLike() {
+			p.advance()
+		}
+	}
+
+	// DML statement body
+	stmt.Body = p.parsePLSQLStatement()
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parsePLSQLPipeRow parses a PIPE ROW statement.
+//
+//	PIPE ROW (expression) ;
+func (p *Parser) parsePLSQLPipeRow() nodes.StmtNode {
+	start := p.pos()
+	p.advance() // consume PIPE
+
+	// ROW
+	if p.cur.Type == kwROW || (p.isIdentLike() && p.cur.Str == "ROW") {
+		p.advance()
+	}
+
+	stmt := &nodes.PLSQLPipeRow{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// (expression)
+	if p.cur.Type == '(' {
+		p.advance()
+		stmt.Row = p.parseExpr()
+		if p.cur.Type == ')' {
+			p.advance()
+		}
+	}
+
+	if p.cur.Type == ';' {
+		p.advance()
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parsePLSQLPragma parses a PRAGMA directive.
+//
+//	PRAGMA AUTONOMOUS_TRANSACTION ;
+//	PRAGMA EXCEPTION_INIT ( exception, error_code ) ;
+//	PRAGMA RESTRICT_REFERENCES ( ... ) ;
+func (p *Parser) parsePLSQLPragma() *nodes.PLSQLPragma {
+	start := p.pos()
+	p.advance() // consume PRAGMA
+
+	pragma := &nodes.PLSQLPragma{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// Pragma name
+	if p.isIdentLike() {
+		pragma.Name = p.cur.Str
+		p.advance()
+	}
+
+	// Optional arguments in parentheses
+	if p.cur.Type == '(' {
+		p.advance()
+		pragma.Args = &nodes.List{}
+		for p.cur.Type != ')' && p.cur.Type != tokEOF {
+			arg := p.parseExpr()
+			if arg != nil {
+				pragma.Args.Items = append(pragma.Args.Items, arg)
+			}
+			if p.cur.Type != ',' {
+				break
+			}
+			p.advance()
+		}
+		if p.cur.Type == ')' {
+			p.advance()
+		}
+	}
+
+	if p.cur.Type == ';' {
+		p.advance()
+	}
+
+	pragma.Loc.End = p.pos()
+	return pragma
+}
+
+// parsePLSQLCaseStmt parses a PL/SQL CASE statement (distinct from CASE expression).
+//
+//	CASE [expr]
+//	  WHEN expr THEN statements ...
+//	  [ELSE statements]
+//	END CASE ;
+func (p *Parser) parsePLSQLCaseStmt() nodes.StmtNode {
+	start := p.pos()
+	p.advance() // consume CASE
+
+	stmt := &nodes.PLSQLCase{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// Optional search expression (simple CASE vs searched CASE)
+	// If next is WHEN, it's a searched CASE
+	if p.cur.Type != kwWHEN {
+		stmt.Expr = p.parseExpr()
+	}
+
+	// WHEN clauses
+	for p.cur.Type == kwWHEN {
+		whenStart := p.pos()
+		p.advance() // consume WHEN
+		when := &nodes.PLSQLWhen{
+			Loc: nodes.Loc{Start: whenStart},
+		}
+		when.Expr = p.parseExpr()
+		if p.cur.Type == kwTHEN {
+			p.advance()
+		}
+		// Statements until next WHEN, ELSE, or END
+		for p.cur.Type != kwWHEN && p.cur.Type != kwELSE && p.cur.Type != kwEND && p.cur.Type != tokEOF {
+			s := p.parsePLSQLStatement()
+			if s == nil {
+				break
+			}
+			when.Stmts = append(when.Stmts, s)
+		}
+		when.Loc.End = p.pos()
+		stmt.Whens = append(stmt.Whens, when)
+	}
+
+	// ELSE
+	if p.cur.Type == kwELSE {
+		p.advance()
+		for p.cur.Type != kwEND && p.cur.Type != tokEOF {
+			s := p.parsePLSQLStatement()
+			if s == nil {
+				break
+			}
+			stmt.Else = append(stmt.Else, s)
+		}
+	}
+
+	// END CASE ;
+	if p.cur.Type == kwEND {
+		p.advance()
+	}
+	if p.cur.Type == kwCASE {
+		p.advance()
+	}
+	if p.cur.Type == ';' {
+		p.advance()
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parsePLSQLTypeDecl parses a PL/SQL TYPE declaration.
+//
+//	TYPE name IS TABLE OF type [INDEX BY type] ;
+//	TYPE name IS VARRAY(n) OF type ;
+//	TYPE name IS RECORD (field type [,...]) ;
+//	TYPE name IS REF CURSOR [RETURN type] ;
+func (p *Parser) parsePLSQLTypeDecl() *nodes.PLSQLTypeDecl {
+	start := p.pos()
+	p.advance() // consume TYPE
+
+	decl := &nodes.PLSQLTypeDecl{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// Type name
+	if p.isIdentLike() {
+		decl.Name = p.cur.Str
+		p.advance()
+	}
+
+	// IS
+	if p.cur.Type == kwIS {
+		p.advance()
+	}
+
+	// TABLE OF / VARRAY / RECORD / REF CURSOR
+	switch {
+	case p.cur.Type == kwTABLE:
+		decl.Kind = "TABLE"
+		p.advance()
+		if p.cur.Type == kwOF {
+			p.advance()
+		}
+		decl.ElementType = p.parseTypeName()
+		// INDEX BY
+		if p.cur.Type == kwINDEX {
+			p.advance()
+			if p.cur.Type == kwBY {
+				p.advance()
+			}
+			decl.IndexBy = p.parseTypeName()
+		}
+
+	case p.isIdentLike() && p.cur.Str == "VARRAY" || p.isIdentLike() && p.cur.Str == "VARYING":
+		decl.Kind = "VARRAY"
+		p.advance()
+		// Optional ARRAY keyword
+		if p.isIdentLike() && p.cur.Str == "ARRAY" {
+			p.advance()
+		}
+		// (limit)
+		if p.cur.Type == '(' {
+			p.advance()
+			decl.Limit = p.parseExpr()
+			if p.cur.Type == ')' {
+				p.advance()
+			}
+		}
+		if p.cur.Type == kwOF {
+			p.advance()
+		}
+		decl.ElementType = p.parseTypeName()
+
+	case p.isIdentLike() && p.cur.Str == "RECORD":
+		decl.Kind = "RECORD"
+		p.advance()
+		// (field_name type [,...])
+		if p.cur.Type == '(' {
+			p.advance()
+			decl.Fields = &nodes.List{}
+			for p.cur.Type != ')' && p.cur.Type != tokEOF {
+				field := p.parsePLSQLVarDecl()
+				if field != nil {
+					decl.Fields.Items = append(decl.Fields.Items, field)
+				}
+				if p.cur.Type == ',' {
+					p.advance()
+				} else {
+					break
+				}
+			}
+			if p.cur.Type == ')' {
+				p.advance()
+			}
+		}
+
+	case p.cur.Type == kwREF:
+		decl.Kind = "REF_CURSOR"
+		p.advance()
+		if p.cur.Type == kwCURSOR {
+			p.advance()
+		}
+		// RETURN type
+		if p.cur.Type == kwRETURN {
+			p.advance()
+			decl.ReturnType = p.parseTypeName()
+		}
+	}
+
+	if p.cur.Type == ';' {
+		p.advance()
+	}
+
+	decl.Loc.End = p.pos()
+	return decl
 }
