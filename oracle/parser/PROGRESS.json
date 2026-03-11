@@ -30,7 +30,7 @@
       "id": 2,
       "name": "types",
       "file": "type.go",
-      "status": "pending",
+      "status": "done",
       "description": "NUMBER, VARCHAR2, CLOB, BLOB, DATE, TIMESTAMP, INTERVAL, user-defined object types, %TYPE, %ROWTYPE",
       "rules": [
         "datatype", "number_type", "char_type", "lob_type", "datetime_type",
