@@ -1795,3 +1795,1202 @@ func TestParseMultiTableDelete(t *testing.T) {
 		}
 	})
 }
+
+// ============================================================================
+// Batch 11: CREATE/ALTER/DROP DATABASE
+// ============================================================================
+
+func parseCreateDatabase(t *testing.T, input string) *ast.CreateDatabaseStmt {
+	t.Helper()
+	p := &Parser{lexer: NewLexer(input)}
+	p.advance()
+	p.advance() // consume CREATE
+	stmt, err := p.parseCreateDatabaseStmt()
+	if err != nil {
+		t.Fatalf("parseCreateDatabaseStmt(%q) error: %v", input, err)
+	}
+	return stmt
+}
+
+func TestParseCreateDatabase(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		stmt := parseCreateDatabase(t, "CREATE DATABASE mydb")
+		if stmt.Name != "mydb" {
+			t.Errorf("Name = %s, want mydb", stmt.Name)
+		}
+		if stmt.IfNotExists {
+			t.Error("IfNotExists should be false")
+		}
+	})
+
+	t.Run("if not exists", func(t *testing.T) {
+		stmt := parseCreateDatabase(t, "CREATE DATABASE IF NOT EXISTS mydb")
+		if stmt.Name != "mydb" {
+			t.Errorf("Name = %s, want mydb", stmt.Name)
+		}
+		if !stmt.IfNotExists {
+			t.Error("IfNotExists should be true")
+		}
+	})
+
+	t.Run("with charset", func(t *testing.T) {
+		stmt := parseCreateDatabase(t, "CREATE DATABASE mydb CHARACTER SET utf8mb4")
+		if stmt.Name != "mydb" {
+			t.Errorf("Name = %s, want mydb", stmt.Name)
+		}
+		if len(stmt.Options) != 1 {
+			t.Fatalf("Options count = %d, want 1", len(stmt.Options))
+		}
+		if stmt.Options[0].Name != "CHARACTER SET" {
+			t.Errorf("option name = %s, want CHARACTER SET", stmt.Options[0].Name)
+		}
+		if stmt.Options[0].Value != "utf8mb4" {
+			t.Errorf("option value = %s, want utf8mb4", stmt.Options[0].Value)
+		}
+	})
+
+	t.Run("schema keyword", func(t *testing.T) {
+		stmt := parseCreateDatabase(t, "CREATE SCHEMA mydb")
+		if stmt.Name != "mydb" {
+			t.Errorf("Name = %s, want mydb", stmt.Name)
+		}
+	})
+}
+
+func parseAlterDatabase(t *testing.T, input string) *ast.AlterDatabaseStmt {
+	t.Helper()
+	p := &Parser{lexer: NewLexer(input)}
+	p.advance()
+	p.advance() // consume ALTER
+	stmt, err := p.parseAlterDatabaseStmt()
+	if err != nil {
+		t.Fatalf("parseAlterDatabaseStmt(%q) error: %v", input, err)
+	}
+	return stmt
+}
+
+func TestParseAlterDatabase(t *testing.T) {
+	t.Run("charset", func(t *testing.T) {
+		stmt := parseAlterDatabase(t, "ALTER DATABASE mydb CHARACTER SET utf8mb4")
+		if stmt.Name != "mydb" {
+			t.Errorf("Name = %s, want mydb", stmt.Name)
+		}
+		if len(stmt.Options) != 1 {
+			t.Fatalf("Options count = %d, want 1", len(stmt.Options))
+		}
+	})
+
+	t.Run("collate", func(t *testing.T) {
+		stmt := parseAlterDatabase(t, "ALTER DATABASE mydb COLLATE utf8mb4_general_ci")
+		if stmt.Name != "mydb" {
+			t.Errorf("Name = %s, want mydb", stmt.Name)
+		}
+		if len(stmt.Options) != 1 {
+			t.Fatalf("Options count = %d, want 1", len(stmt.Options))
+		}
+		if stmt.Options[0].Name != "COLLATE" {
+			t.Errorf("option name = %s, want COLLATE", stmt.Options[0].Name)
+		}
+	})
+}
+
+func parseDropDatabase(t *testing.T, input string) *ast.DropDatabaseStmt {
+	t.Helper()
+	p := &Parser{lexer: NewLexer(input)}
+	p.advance()
+	p.advance() // consume DROP
+	stmt, err := p.parseDropDatabaseStmt()
+	if err != nil {
+		t.Fatalf("parseDropDatabaseStmt(%q) error: %v", input, err)
+	}
+	return stmt
+}
+
+func TestParseDropDatabase(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		stmt := parseDropDatabase(t, "DROP DATABASE mydb")
+		if stmt.Name != "mydb" {
+			t.Errorf("Name = %s, want mydb", stmt.Name)
+		}
+		if stmt.IfExists {
+			t.Error("IfExists should be false")
+		}
+	})
+
+	t.Run("if exists", func(t *testing.T) {
+		stmt := parseDropDatabase(t, "DROP DATABASE IF EXISTS mydb")
+		if stmt.Name != "mydb" {
+			t.Errorf("Name = %s, want mydb", stmt.Name)
+		}
+		if !stmt.IfExists {
+			t.Error("IfExists should be true")
+		}
+	})
+}
+
+// ============================================================================
+// Batch 12: DROP TABLE/INDEX/VIEW, TRUNCATE, RENAME
+// ============================================================================
+
+func parseDropTable(t *testing.T, input string) *ast.DropTableStmt {
+	t.Helper()
+	p := &Parser{lexer: NewLexer(input)}
+	p.advance() // p.cur = DROP
+	p.advance() // p.cur = TABLE or TEMPORARY
+	temporary := false
+	if p.cur.Type == kwTEMPORARY {
+		temporary = true
+		p.advance() // p.cur = TABLE
+	}
+	stmt, err := p.parseDropTableStmt(temporary)
+	if err != nil {
+		t.Fatalf("parseDropTableStmt(%q) error: %v", input, err)
+	}
+	return stmt
+}
+
+func TestParseDropTable(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		stmt := parseDropTable(t, "DROP TABLE users")
+		if len(stmt.Tables) != 1 {
+			t.Fatalf("Tables count = %d, want 1", len(stmt.Tables))
+		}
+		if stmt.Tables[0].Name != "users" {
+			t.Errorf("table = %s, want users", stmt.Tables[0].Name)
+		}
+	})
+
+	t.Run("multiple if exists cascade", func(t *testing.T) {
+		stmt := parseDropTable(t, "DROP TABLE IF EXISTS t1, t2 CASCADE")
+		if !stmt.IfExists {
+			t.Error("IfExists should be true")
+		}
+		if len(stmt.Tables) != 2 {
+			t.Fatalf("Tables count = %d, want 2", len(stmt.Tables))
+		}
+		if !stmt.Cascade {
+			t.Error("Cascade should be true")
+		}
+	})
+}
+
+func parseDropIndex(t *testing.T, input string) *ast.DropIndexStmt {
+	t.Helper()
+	p := &Parser{lexer: NewLexer(input)}
+	p.advance()
+	p.advance() // consume DROP, now at INDEX
+	stmt, err := p.parseDropIndexStmt()
+	if err != nil {
+		t.Fatalf("parseDropIndexStmt(%q) error: %v", input, err)
+	}
+	return stmt
+}
+
+func TestParseDropIndex(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		stmt := parseDropIndex(t, "DROP INDEX idx_name ON users")
+		if stmt.Name != "idx_name" {
+			t.Errorf("Name = %s, want idx_name", stmt.Name)
+		}
+		if stmt.Table.Name != "users" {
+			t.Errorf("Table = %s, want users", stmt.Table.Name)
+		}
+	})
+}
+
+func parseDropView(t *testing.T, input string) *ast.DropViewStmt {
+	t.Helper()
+	p := &Parser{lexer: NewLexer(input)}
+	p.advance()
+	p.advance() // consume DROP, now at VIEW
+	stmt, err := p.parseDropViewStmt()
+	if err != nil {
+		t.Fatalf("parseDropViewStmt(%q) error: %v", input, err)
+	}
+	return stmt
+}
+
+func TestParseDropView(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		stmt := parseDropView(t, "DROP VIEW my_view")
+		if len(stmt.Views) != 1 {
+			t.Fatalf("Views count = %d, want 1", len(stmt.Views))
+		}
+		if stmt.Views[0].Name != "my_view" {
+			t.Errorf("view = %s, want my_view", stmt.Views[0].Name)
+		}
+	})
+
+	t.Run("if exists", func(t *testing.T) {
+		stmt := parseDropView(t, "DROP VIEW IF EXISTS v1, v2")
+		if !stmt.IfExists {
+			t.Error("IfExists should be true")
+		}
+		if len(stmt.Views) != 2 {
+			t.Fatalf("Views count = %d, want 2", len(stmt.Views))
+		}
+	})
+}
+
+func parseTruncate(t *testing.T, input string) *ast.TruncateStmt {
+	t.Helper()
+	p := &Parser{lexer: NewLexer(input)}
+	p.advance() // now at TRUNCATE
+	stmt, err := p.parseTruncateStmt()
+	if err != nil {
+		t.Fatalf("parseTruncateStmt(%q) error: %v", input, err)
+	}
+	return stmt
+}
+
+func TestParseTruncate(t *testing.T) {
+	t.Run("with TABLE keyword", func(t *testing.T) {
+		stmt := parseTruncate(t, "TRUNCATE TABLE users")
+		if len(stmt.Tables) != 1 {
+			t.Fatalf("Tables count = %d, want 1", len(stmt.Tables))
+		}
+		if stmt.Tables[0].Name != "users" {
+			t.Errorf("table = %s, want users", stmt.Tables[0].Name)
+		}
+	})
+
+	t.Run("without TABLE keyword", func(t *testing.T) {
+		stmt := parseTruncate(t, "TRUNCATE users")
+		if len(stmt.Tables) != 1 {
+			t.Fatalf("Tables count = %d, want 1", len(stmt.Tables))
+		}
+		if stmt.Tables[0].Name != "users" {
+			t.Errorf("table = %s, want users", stmt.Tables[0].Name)
+		}
+	})
+}
+
+func parseRenameTable(t *testing.T, input string) *ast.RenameTableStmt {
+	t.Helper()
+	p := &Parser{lexer: NewLexer(input)}
+	p.advance()
+	p.advance() // consume RENAME, now at TABLE
+	stmt, err := p.parseRenameTableStmt()
+	if err != nil {
+		t.Fatalf("parseRenameTableStmt(%q) error: %v", input, err)
+	}
+	return stmt
+}
+
+func TestParseRenameTable(t *testing.T) {
+	t.Run("single", func(t *testing.T) {
+		stmt := parseRenameTable(t, "RENAME TABLE old_t TO new_t")
+		if len(stmt.Pairs) != 1 {
+			t.Fatalf("Pairs count = %d, want 1", len(stmt.Pairs))
+		}
+		if stmt.Pairs[0].Old.Name != "old_t" {
+			t.Errorf("Old = %s, want old_t", stmt.Pairs[0].Old.Name)
+		}
+		if stmt.Pairs[0].New.Name != "new_t" {
+			t.Errorf("New = %s, want new_t", stmt.Pairs[0].New.Name)
+		}
+	})
+
+	t.Run("multiple", func(t *testing.T) {
+		stmt := parseRenameTable(t, "RENAME TABLE a TO b, c TO d")
+		if len(stmt.Pairs) != 2 {
+			t.Fatalf("Pairs count = %d, want 2", len(stmt.Pairs))
+		}
+	})
+}
+
+// ============================================================================
+// Batch 14: Transaction statements
+// ============================================================================
+
+func parseBegin(t *testing.T, input string) *ast.BeginStmt {
+	t.Helper()
+	p := &Parser{lexer: NewLexer(input)}
+	p.advance()
+	stmt, err := p.parseBeginStmt()
+	if err != nil {
+		t.Fatalf("parseBeginStmt(%q) error: %v", input, err)
+	}
+	return stmt
+}
+
+func TestParseBegin(t *testing.T) {
+	t.Run("simple BEGIN", func(t *testing.T) {
+		stmt := parseBegin(t, "BEGIN")
+		if stmt.ReadOnly || stmt.ReadWrite || stmt.WithConsistentSnapshot {
+			t.Error("all flags should be false for simple BEGIN")
+		}
+	})
+
+	t.Run("BEGIN WORK", func(t *testing.T) {
+		stmt := parseBegin(t, "BEGIN WORK")
+		if stmt.ReadOnly || stmt.ReadWrite || stmt.WithConsistentSnapshot {
+			t.Error("all flags should be false for BEGIN WORK")
+		}
+	})
+
+	t.Run("START TRANSACTION READ ONLY", func(t *testing.T) {
+		stmt := parseBegin(t, "START TRANSACTION READ ONLY")
+		if !stmt.ReadOnly {
+			t.Error("ReadOnly should be true")
+		}
+	})
+
+	t.Run("START TRANSACTION WITH CONSISTENT SNAPSHOT", func(t *testing.T) {
+		stmt := parseBegin(t, "START TRANSACTION WITH CONSISTENT SNAPSHOT")
+		if !stmt.WithConsistentSnapshot {
+			t.Error("WithConsistentSnapshot should be true")
+		}
+	})
+}
+
+func parseCommit(t *testing.T, input string) *ast.CommitStmt {
+	t.Helper()
+	p := &Parser{lexer: NewLexer(input)}
+	p.advance()
+	stmt, err := p.parseCommitStmt()
+	if err != nil {
+		t.Fatalf("parseCommitStmt(%q) error: %v", input, err)
+	}
+	return stmt
+}
+
+func TestParseCommit(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		stmt := parseCommit(t, "COMMIT")
+		if stmt.Chain || stmt.Release {
+			t.Error("Chain and Release should be false")
+		}
+	})
+
+	t.Run("and chain", func(t *testing.T) {
+		stmt := parseCommit(t, "COMMIT AND CHAIN")
+		if !stmt.Chain {
+			t.Error("Chain should be true")
+		}
+	})
+
+	t.Run("release", func(t *testing.T) {
+		stmt := parseCommit(t, "COMMIT RELEASE")
+		if !stmt.Release {
+			t.Error("Release should be true")
+		}
+	})
+}
+
+func parseRollback(t *testing.T, input string) *ast.RollbackStmt {
+	t.Helper()
+	p := &Parser{lexer: NewLexer(input)}
+	p.advance()
+	stmt, err := p.parseRollbackStmt()
+	if err != nil {
+		t.Fatalf("parseRollbackStmt(%q) error: %v", input, err)
+	}
+	return stmt
+}
+
+func TestParseRollback(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		stmt := parseRollback(t, "ROLLBACK")
+		if stmt.Savepoint != "" {
+			t.Error("Savepoint should be empty")
+		}
+	})
+
+	t.Run("to savepoint", func(t *testing.T) {
+		stmt := parseRollback(t, "ROLLBACK TO SAVEPOINT sp1")
+		if stmt.Savepoint != "sp1" {
+			t.Errorf("Savepoint = %s, want sp1", stmt.Savepoint)
+		}
+	})
+
+	t.Run("and chain", func(t *testing.T) {
+		stmt := parseRollback(t, "ROLLBACK AND CHAIN")
+		if !stmt.Chain {
+			t.Error("Chain should be true")
+		}
+	})
+}
+
+func parseSavepoint(t *testing.T, input string) *ast.SavepointStmt {
+	t.Helper()
+	p := &Parser{lexer: NewLexer(input)}
+	p.advance()
+	stmt, err := p.parseSavepointStmt()
+	if err != nil {
+		t.Fatalf("parseSavepointStmt(%q) error: %v", input, err)
+	}
+	return stmt
+}
+
+func TestParseSavepoint(t *testing.T) {
+	stmt := parseSavepoint(t, "SAVEPOINT sp1")
+	if stmt.Name != "sp1" {
+		t.Errorf("Name = %s, want sp1", stmt.Name)
+	}
+}
+
+func parseLockTables(t *testing.T, input string) *ast.LockTablesStmt {
+	t.Helper()
+	p := &Parser{lexer: NewLexer(input)}
+	p.advance()
+	p.advance() // consume LOCK, now at TABLES
+	stmt, err := p.parseLockTablesStmt()
+	if err != nil {
+		t.Fatalf("parseLockTablesStmt(%q) error: %v", input, err)
+	}
+	return stmt
+}
+
+func TestParseLockTables(t *testing.T) {
+	t.Run("read lock", func(t *testing.T) {
+		stmt := parseLockTables(t, "LOCK TABLES users READ")
+		if len(stmt.Tables) != 1 {
+			t.Fatalf("Tables count = %d, want 1", len(stmt.Tables))
+		}
+		if stmt.Tables[0].Table.Name != "users" {
+			t.Errorf("table = %s, want users", stmt.Tables[0].Table.Name)
+		}
+		if stmt.Tables[0].LockType != "READ" {
+			t.Errorf("LockType = %s, want READ", stmt.Tables[0].LockType)
+		}
+	})
+
+	t.Run("write lock", func(t *testing.T) {
+		stmt := parseLockTables(t, "LOCK TABLES users WRITE")
+		if len(stmt.Tables) != 1 {
+			t.Fatalf("Tables count = %d, want 1", len(stmt.Tables))
+		}
+		if stmt.Tables[0].LockType != "WRITE" {
+			t.Errorf("LockType = %s, want WRITE", stmt.Tables[0].LockType)
+		}
+	})
+
+	t.Run("multiple tables", func(t *testing.T) {
+		stmt := parseLockTables(t, "LOCK TABLES t1 READ, t2 WRITE")
+		if len(stmt.Tables) != 2 {
+			t.Fatalf("Tables count = %d, want 2", len(stmt.Tables))
+		}
+		if stmt.Tables[0].LockType != "READ" {
+			t.Errorf("table[0] LockType = %s, want READ", stmt.Tables[0].LockType)
+		}
+		if stmt.Tables[1].LockType != "WRITE" {
+			t.Errorf("table[1] LockType = %s, want WRITE", stmt.Tables[1].LockType)
+		}
+	})
+}
+
+// ============================================================================
+// Batch 10: CREATE VIEW
+// ============================================================================
+
+func parseCreateView(t *testing.T, input string, orReplace bool) *ast.CreateViewStmt {
+	t.Helper()
+	p := &Parser{lexer: NewLexer(input)}
+	p.advance() // prime lexer
+	p.advance() // skip CREATE
+	if orReplace {
+		p.advance() // OR
+		p.advance() // REPLACE
+	}
+	stmt, err := p.parseCreateViewStmt(orReplace)
+	if err != nil {
+		t.Fatalf("parseCreateViewStmt(%q) error: %v", input, err)
+	}
+	return stmt
+}
+
+func TestParseCreateView(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		stmt := parseCreateView(t, "CREATE VIEW v AS SELECT 1", false)
+		if stmt.Name == nil || stmt.Name.Name != "v" {
+			t.Errorf("Name = %v, want v", stmt.Name)
+		}
+		if stmt.OrReplace {
+			t.Errorf("OrReplace = true, want false")
+		}
+		if stmt.Select == nil {
+			t.Fatal("Select is nil")
+		}
+		if len(stmt.Columns) != 0 {
+			t.Errorf("Columns = %v, want empty", stmt.Columns)
+		}
+	})
+
+	t.Run("with columns", func(t *testing.T) {
+		stmt := parseCreateView(t, "CREATE VIEW v (a, b, c) AS SELECT 1, 2, 3", false)
+		if stmt.Name == nil || stmt.Name.Name != "v" {
+			t.Errorf("Name = %v, want v", stmt.Name)
+		}
+		if len(stmt.Columns) != 3 {
+			t.Fatalf("Columns count = %d, want 3", len(stmt.Columns))
+		}
+		if stmt.Columns[0] != "a" || stmt.Columns[1] != "b" || stmt.Columns[2] != "c" {
+			t.Errorf("Columns = %v, want [a b c]", stmt.Columns)
+		}
+	})
+
+	t.Run("or replace", func(t *testing.T) {
+		stmt := parseCreateView(t, "CREATE OR REPLACE VIEW v AS SELECT 1", true)
+		if !stmt.OrReplace {
+			t.Errorf("OrReplace = false, want true")
+		}
+		if stmt.Name == nil || stmt.Name.Name != "v" {
+			t.Errorf("Name = %v, want v", stmt.Name)
+		}
+	})
+}
+
+func TestParseCreateOrReplaceView(t *testing.T) {
+	stmt := parseCreateView(t, "CREATE OR REPLACE VIEW v AS SELECT 1", true)
+	if !stmt.OrReplace {
+		t.Errorf("OrReplace = false, want true")
+	}
+	if stmt.Name == nil || stmt.Name.Name != "v" {
+		t.Errorf("Name = %v, want v", stmt.Name)
+	}
+	if stmt.Select == nil {
+		t.Fatal("Select is nil")
+	}
+}
+
+// ============================================================================
+// Batch 7: CREATE TABLE
+// ============================================================================
+
+// helper to parse a CREATE TABLE statement directly
+func parseCreateTable(t *testing.T, input string) *ast.CreateTableStmt {
+	t.Helper()
+	p := &Parser{lexer: NewLexer(input)}
+	p.advance() // prime lexer
+	p.advance() // skip CREATE
+	temporary := false
+	// handle CREATE TEMPORARY TABLE
+	if p.cur.Type == kwTEMPORARY {
+		p.advance()
+		temporary = true
+	}
+	stmt, err := p.parseCreateTableStmt(temporary)
+	if err != nil {
+		t.Fatalf("parseCreateTableStmt(%q) error: %v", input, err)
+	}
+	return stmt
+}
+
+func TestParseCreateTable(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT)")
+		if stmt.Table == nil || stmt.Table.Name != "t" {
+			t.Errorf("Table = %v, want t", stmt.Table)
+		}
+		if len(stmt.Columns) != 1 {
+			t.Fatalf("Columns count = %d, want 1", len(stmt.Columns))
+		}
+		if stmt.Columns[0].Name != "id" {
+			t.Errorf("Column name = %s, want id", stmt.Columns[0].Name)
+		}
+		if stmt.Columns[0].TypeName == nil || stmt.Columns[0].TypeName.Name != "INT" {
+			t.Errorf("Column type = %v, want INT", stmt.Columns[0].TypeName)
+		}
+	})
+
+	t.Run("multiple columns", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE users (id INT, name VARCHAR(100), email VARCHAR(255))")
+		if len(stmt.Columns) != 3 {
+			t.Fatalf("Columns count = %d, want 3", len(stmt.Columns))
+		}
+		if stmt.Columns[0].Name != "id" {
+			t.Errorf("Col[0] = %s, want id", stmt.Columns[0].Name)
+		}
+		if stmt.Columns[1].Name != "name" {
+			t.Errorf("Col[1] = %s, want name", stmt.Columns[1].Name)
+		}
+		if stmt.Columns[2].Name != "email" {
+			t.Errorf("Col[2] = %s, want email", stmt.Columns[2].Name)
+		}
+	})
+
+	t.Run("if not exists", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE IF NOT EXISTS t (id INT)")
+		if !stmt.IfNotExists {
+			t.Errorf("IfNotExists = false, want true")
+		}
+	})
+
+	t.Run("temporary", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TEMPORARY TABLE t (id INT)")
+		if !stmt.Temporary {
+			t.Errorf("Temporary = false, want true")
+		}
+	})
+
+	t.Run("schema qualified", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE mydb.t (id INT)")
+		if stmt.Table == nil || stmt.Table.Schema != "mydb" || stmt.Table.Name != "t" {
+			t.Errorf("Table = %v, want mydb.t", stmt.Table)
+		}
+	})
+
+	t.Run("column not null", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT NOT NULL)")
+		if len(stmt.Columns) != 1 {
+			t.Fatalf("Columns count = %d, want 1", len(stmt.Columns))
+		}
+		col := stmt.Columns[0]
+		found := false
+		for _, c := range col.Constraints {
+			if c.Type == ast.ColConstrNotNull {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("NOT NULL constraint not found")
+		}
+	})
+
+	t.Run("column null", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT NULL)")
+		col := stmt.Columns[0]
+		found := false
+		for _, c := range col.Constraints {
+			if c.Type == ast.ColConstrNull {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("NULL constraint not found")
+		}
+	})
+
+	t.Run("column default", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (status INT DEFAULT 0)")
+		col := stmt.Columns[0]
+		if col.DefaultValue == nil {
+			t.Fatal("DefaultValue is nil")
+		}
+	})
+
+	t.Run("column auto increment", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT AUTO_INCREMENT)")
+		if !stmt.Columns[0].AutoIncrement {
+			t.Errorf("AutoIncrement = false, want true")
+		}
+	})
+
+	t.Run("column primary key", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT PRIMARY KEY)")
+		col := stmt.Columns[0]
+		found := false
+		for _, c := range col.Constraints {
+			if c.Type == ast.ColConstrPrimaryKey {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("PRIMARY KEY constraint not found")
+		}
+	})
+
+	t.Run("column unique", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (email VARCHAR(255) UNIQUE)")
+		col := stmt.Columns[0]
+		found := false
+		for _, c := range col.Constraints {
+			if c.Type == ast.ColConstrUnique {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("UNIQUE constraint not found")
+		}
+	})
+
+	t.Run("column comment", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT COMMENT 'primary key')")
+		if stmt.Columns[0].Comment != "primary key" {
+			t.Errorf("Comment = %q, want 'primary key'", stmt.Columns[0].Comment)
+		}
+	})
+
+	t.Run("column on update", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+		col := stmt.Columns[0]
+		if col.OnUpdate == nil {
+			t.Fatal("OnUpdate is nil")
+		}
+	})
+
+	t.Run("column references", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (user_id INT REFERENCES users(id))")
+		col := stmt.Columns[0]
+		found := false
+		for _, c := range col.Constraints {
+			if c.Type == ast.ColConstrReferences {
+				found = true
+				if c.RefTable == nil || c.RefTable.Name != "users" {
+					t.Errorf("RefTable = %v, want users", c.RefTable)
+				}
+				if len(c.RefColumns) != 1 || c.RefColumns[0] != "id" {
+					t.Errorf("RefColumns = %v, want [id]", c.RefColumns)
+				}
+			}
+		}
+		if !found {
+			t.Errorf("REFERENCES constraint not found")
+		}
+	})
+
+	t.Run("column check", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (age INT CHECK (age > 0))")
+		col := stmt.Columns[0]
+		found := false
+		for _, c := range col.Constraints {
+			if c.Type == ast.ColConstrCheck {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("CHECK constraint not found")
+		}
+	})
+
+	t.Run("generated column virtual", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (a INT, b INT, c INT GENERATED ALWAYS AS (a + b) VIRTUAL)")
+		col := stmt.Columns[2]
+		if col.Generated == nil {
+			t.Fatal("Generated is nil")
+		}
+		if col.Generated.Stored {
+			t.Errorf("Stored = true, want false")
+		}
+	})
+
+	t.Run("generated column stored", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (a INT, b INT, c INT GENERATED ALWAYS AS (a + b) STORED)")
+		col := stmt.Columns[2]
+		if col.Generated == nil {
+			t.Fatal("Generated is nil")
+		}
+		if !col.Generated.Stored {
+			t.Errorf("Stored = false, want true")
+		}
+	})
+
+	t.Run("column collate on varchar", func(t *testing.T) {
+		// COLLATE on VARCHAR is consumed by the data type parser, not as a column constraint
+		stmt := parseCreateTable(t, "CREATE TABLE t (name VARCHAR(100) COLLATE utf8mb4_unicode_ci)")
+		col := stmt.Columns[0]
+		if col.TypeName == nil || col.TypeName.Collate != "utf8mb4_unicode_ci" {
+			t.Errorf("TypeName.Collate = %v, want utf8mb4_unicode_ci", col.TypeName)
+		}
+	})
+
+	t.Run("column collate on int", func(t *testing.T) {
+		// COLLATE on non-string type is parsed as a column constraint
+		stmt := parseCreateTable(t, "CREATE TABLE t (name INT COLLATE utf8mb4_unicode_ci)")
+		col := stmt.Columns[0]
+		found := false
+		for _, c := range col.Constraints {
+			if c.Type == ast.ColConstrCollate {
+				found = true
+				if c.Name != "utf8mb4_unicode_ci" {
+					t.Errorf("Collation = %s, want utf8mb4_unicode_ci", c.Name)
+				}
+			}
+		}
+		if !found {
+			t.Errorf("COLLATE constraint not found")
+		}
+	})
+
+	t.Run("full column definition", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT 'pk')")
+		col := stmt.Columns[0]
+		if col.TypeName == nil || col.TypeName.Name != "BIGINT" {
+			t.Errorf("TypeName = %v, want BIGINT", col.TypeName)
+		}
+		if !col.TypeName.Unsigned {
+			t.Errorf("Unsigned = false, want true")
+		}
+		if !col.AutoIncrement {
+			t.Errorf("AutoIncrement = false, want true")
+		}
+		if col.Comment != "pk" {
+			t.Errorf("Comment = %q, want 'pk'", col.Comment)
+		}
+	})
+}
+
+func TestParseCreateTableConstraints(t *testing.T) {
+	t.Run("primary key", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT, PRIMARY KEY (id))")
+		if len(stmt.Constraints) != 1 {
+			t.Fatalf("Constraints count = %d, want 1", len(stmt.Constraints))
+		}
+		if stmt.Constraints[0].Type != ast.ConstrPrimaryKey {
+			t.Errorf("Type = %d, want ConstrPrimaryKey", stmt.Constraints[0].Type)
+		}
+		if len(stmt.Constraints[0].Columns) != 1 || stmt.Constraints[0].Columns[0] != "id" {
+			t.Errorf("Columns = %v, want [id]", stmt.Constraints[0].Columns)
+		}
+	})
+
+	t.Run("composite primary key", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (a INT, b INT, PRIMARY KEY (a, b))")
+		if len(stmt.Constraints[0].Columns) != 2 {
+			t.Fatalf("PK columns = %d, want 2", len(stmt.Constraints[0].Columns))
+		}
+	})
+
+	t.Run("named constraint", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT, CONSTRAINT pk_t PRIMARY KEY (id))")
+		if stmt.Constraints[0].Name != "pk_t" {
+			t.Errorf("Name = %s, want pk_t", stmt.Constraints[0].Name)
+		}
+	})
+
+	t.Run("unique index", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (email VARCHAR(255), UNIQUE KEY idx_email (email))")
+		if len(stmt.Constraints) != 1 {
+			t.Fatalf("Constraints count = %d, want 1", len(stmt.Constraints))
+		}
+		if stmt.Constraints[0].Type != ast.ConstrUnique {
+			t.Errorf("Type = %d, want ConstrUnique", stmt.Constraints[0].Type)
+		}
+		if stmt.Constraints[0].Name != "idx_email" {
+			t.Errorf("Name = %s, want idx_email", stmt.Constraints[0].Name)
+		}
+	})
+
+	t.Run("index", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (name VARCHAR(100), INDEX idx_name (name))")
+		if stmt.Constraints[0].Type != ast.ConstrIndex {
+			t.Errorf("Type = %d, want ConstrIndex", stmt.Constraints[0].Type)
+		}
+	})
+
+	t.Run("key alias", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (name VARCHAR(100), KEY idx_name (name))")
+		if stmt.Constraints[0].Type != ast.ConstrIndex {
+			t.Errorf("Type = %d, want ConstrIndex", stmt.Constraints[0].Type)
+		}
+	})
+
+	t.Run("fulltext index", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (content TEXT, FULLTEXT INDEX ft_content (content))")
+		if stmt.Constraints[0].Type != ast.ConstrFulltextIndex {
+			t.Errorf("Type = %d, want ConstrFulltextIndex", stmt.Constraints[0].Type)
+		}
+	})
+
+	t.Run("spatial index", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (geo GEOMETRY, SPATIAL INDEX sp_geo (geo))")
+		if stmt.Constraints[0].Type != ast.ConstrSpatialIndex {
+			t.Errorf("Type = %d, want ConstrSpatialIndex", stmt.Constraints[0].Type)
+		}
+	})
+
+	t.Run("foreign key", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE orders (id INT, user_id INT, FOREIGN KEY (user_id) REFERENCES users(id))")
+		fk := stmt.Constraints[0]
+		if fk.Type != ast.ConstrForeignKey {
+			t.Errorf("Type = %d, want ConstrForeignKey", fk.Type)
+		}
+		if len(fk.Columns) != 1 || fk.Columns[0] != "user_id" {
+			t.Errorf("Columns = %v, want [user_id]", fk.Columns)
+		}
+		if fk.RefTable == nil || fk.RefTable.Name != "users" {
+			t.Errorf("RefTable = %v, want users", fk.RefTable)
+		}
+		if len(fk.RefColumns) != 1 || fk.RefColumns[0] != "id" {
+			t.Errorf("RefColumns = %v, want [id]", fk.RefColumns)
+		}
+	})
+
+	t.Run("foreign key with actions", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE orders (id INT, user_id INT, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE SET NULL)")
+		fk := stmt.Constraints[0]
+		if fk.OnDelete != ast.RefActCascade {
+			t.Errorf("OnDelete = %d, want RefActCascade", fk.OnDelete)
+		}
+		if fk.OnUpdate != ast.RefActSetNull {
+			t.Errorf("OnUpdate = %d, want RefActSetNull", fk.OnUpdate)
+		}
+	})
+
+	t.Run("named foreign key", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT, pid INT, CONSTRAINT fk_parent FOREIGN KEY (pid) REFERENCES parent(id))")
+		if stmt.Constraints[0].Name != "fk_parent" {
+			t.Errorf("Name = %s, want fk_parent", stmt.Constraints[0].Name)
+		}
+	})
+
+	t.Run("check constraint", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (age INT, CHECK (age >= 0))")
+		if stmt.Constraints[0].Type != ast.ConstrCheck {
+			t.Errorf("Type = %d, want ConstrCheck", stmt.Constraints[0].Type)
+		}
+		if stmt.Constraints[0].Expr == nil {
+			t.Fatal("Check expr is nil")
+		}
+	})
+
+	t.Run("using btree", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT, INDEX idx_id USING BTREE (id))")
+		if stmt.Constraints[0].IndexType != "BTREE" {
+			t.Errorf("IndexType = %s, want BTREE", stmt.Constraints[0].IndexType)
+		}
+	})
+
+	t.Run("multiple constraints", func(t *testing.T) {
+		stmt := parseCreateTable(t, `CREATE TABLE t (
+			id INT,
+			name VARCHAR(100),
+			email VARCHAR(255),
+			PRIMARY KEY (id),
+			UNIQUE KEY idx_email (email),
+			INDEX idx_name (name)
+		)`)
+		if len(stmt.Constraints) != 3 {
+			t.Fatalf("Constraints count = %d, want 3", len(stmt.Constraints))
+		}
+	})
+}
+
+func TestParseCreateTableOptions(t *testing.T) {
+	t.Run("engine", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT) ENGINE=InnoDB")
+		if len(stmt.Options) < 1 {
+			t.Fatalf("Options count = %d, want >= 1", len(stmt.Options))
+		}
+		if stmt.Options[0].Name != "ENGINE" || stmt.Options[0].Value != "InnoDB" {
+			t.Errorf("Option = %s=%s, want ENGINE=InnoDB", stmt.Options[0].Name, stmt.Options[0].Value)
+		}
+	})
+
+	t.Run("charset", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT) DEFAULT CHARSET=utf8mb4")
+		found := false
+		for _, opt := range stmt.Options {
+			if opt.Name == "CHARSET" && opt.Value == "utf8mb4" {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("CHARSET=utf8mb4 option not found, opts=%v", stmt.Options)
+		}
+	})
+
+	t.Run("collate", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT) COLLATE=utf8mb4_unicode_ci")
+		found := false
+		for _, opt := range stmt.Options {
+			if opt.Name == "COLLATE" && opt.Value == "utf8mb4_unicode_ci" {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("COLLATE option not found")
+		}
+	})
+
+	t.Run("comment", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT) COMMENT='test table'")
+		found := false
+		for _, opt := range stmt.Options {
+			if opt.Name == "COMMENT" && opt.Value == "test table" {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("COMMENT option not found")
+		}
+	})
+
+	t.Run("auto increment value", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT) AUTO_INCREMENT=100")
+		found := false
+		for _, opt := range stmt.Options {
+			if opt.Name == "AUTO_INCREMENT" {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("AUTO_INCREMENT option not found")
+		}
+	})
+
+	t.Run("row format", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT) ROW_FORMAT=DYNAMIC")
+		found := false
+		for _, opt := range stmt.Options {
+			if opt.Name == "ROW_FORMAT" && opt.Value == "DYNAMIC" {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("ROW_FORMAT option not found")
+		}
+	})
+
+	t.Run("multiple options", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='test'")
+		if len(stmt.Options) < 3 {
+			t.Errorf("Options count = %d, want >= 3", len(stmt.Options))
+		}
+	})
+
+	t.Run("options with comma separator", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT) ENGINE=InnoDB, CHARSET=utf8mb4")
+		if len(stmt.Options) < 2 {
+			t.Errorf("Options count = %d, want >= 2", len(stmt.Options))
+		}
+	})
+
+	t.Run("character set", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT) CHARACTER SET utf8mb4")
+		found := false
+		for _, opt := range stmt.Options {
+			if opt.Name == "CHARACTER SET" && opt.Value == "utf8mb4" {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("CHARACTER SET option not found")
+		}
+	})
+}
+
+func TestParseCreateTableLike(t *testing.T) {
+	t.Run("simple like", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t2 LIKE t1")
+		if stmt.Like == nil {
+			t.Fatal("Like is nil")
+		}
+		if stmt.Like.Name != "t1" {
+			t.Errorf("Like.Name = %s, want t1", stmt.Like.Name)
+		}
+	})
+
+	t.Run("like with schema", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE mydb.t2 LIKE mydb.t1")
+		if stmt.Like == nil {
+			t.Fatal("Like is nil")
+		}
+		if stmt.Like.Schema != "mydb" || stmt.Like.Name != "t1" {
+			t.Errorf("Like = %v, want mydb.t1", stmt.Like)
+		}
+	})
+
+	t.Run("like if not exists", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE IF NOT EXISTS t2 LIKE t1")
+		if !stmt.IfNotExists {
+			t.Errorf("IfNotExists = false, want true")
+		}
+		if stmt.Like == nil {
+			t.Fatal("Like is nil")
+		}
+	})
+
+	t.Run("create as select", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t2 AS SELECT * FROM t1")
+		if stmt.Select == nil {
+			t.Fatal("Select is nil")
+		}
+	})
+
+	t.Run("create as select with columns", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t2 (id INT) AS SELECT id FROM t1")
+		if stmt.Select == nil {
+			t.Fatal("Select is nil")
+		}
+		if len(stmt.Columns) != 1 {
+			t.Errorf("Columns count = %d, want 1", len(stmt.Columns))
+		}
+	})
+
+	t.Run("partition by hash", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT) PARTITION BY HASH(id) PARTITIONS 4")
+		if stmt.Partitions == nil {
+			t.Fatal("Partitions is nil")
+		}
+		if stmt.Partitions.Type != ast.PartitionHash {
+			t.Errorf("Partition type = %d, want PartitionHash", stmt.Partitions.Type)
+		}
+		if stmt.Partitions.NumParts != 4 {
+			t.Errorf("NumParts = %d, want 4", stmt.Partitions.NumParts)
+		}
+	})
+
+	t.Run("partition by key", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT) PARTITION BY KEY(id)")
+		if stmt.Partitions == nil {
+			t.Fatal("Partitions is nil")
+		}
+		if stmt.Partitions.Type != ast.PartitionKey {
+			t.Errorf("Partition type = %d, want PartitionKey", stmt.Partitions.Type)
+		}
+	})
+
+	t.Run("partition by range", func(t *testing.T) {
+		stmt := parseCreateTable(t, `CREATE TABLE t (id INT, created DATE) PARTITION BY RANGE(id) (
+			PARTITION p0 VALUES LESS THAN (100),
+			PARTITION p1 VALUES LESS THAN (200),
+			PARTITION pmax VALUES LESS THAN MAXVALUE
+		)`)
+		if stmt.Partitions == nil {
+			t.Fatal("Partitions is nil")
+		}
+		if stmt.Partitions.Type != ast.PartitionRange {
+			t.Errorf("Partition type = %d, want PartitionRange", stmt.Partitions.Type)
+		}
+		if len(stmt.Partitions.Partitions) != 3 {
+			t.Fatalf("Partition defs = %d, want 3", len(stmt.Partitions.Partitions))
+		}
+	})
+
+	t.Run("partition by list", func(t *testing.T) {
+		stmt := parseCreateTable(t, `CREATE TABLE t (id INT, region INT) PARTITION BY LIST(region) (
+			PARTITION p_east VALUES IN (1, 2, 3),
+			PARTITION p_west VALUES IN (4, 5, 6)
+		)`)
+		if stmt.Partitions == nil {
+			t.Fatal("Partitions is nil")
+		}
+		if stmt.Partitions.Type != ast.PartitionList {
+			t.Errorf("Partition type = %d, want PartitionList", stmt.Partitions.Type)
+		}
+		if len(stmt.Partitions.Partitions) != 2 {
+			t.Fatalf("Partition defs = %d, want 2", len(stmt.Partitions.Partitions))
+		}
+	})
+
+	t.Run("partition by range columns", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (a INT, b INT) PARTITION BY RANGE COLUMNS(a, b)")
+		if stmt.Partitions == nil {
+			t.Fatal("Partitions is nil")
+		}
+		if len(stmt.Partitions.Columns) != 2 {
+			t.Errorf("Partition columns = %d, want 2", len(stmt.Partitions.Columns))
+		}
+	})
+
+	t.Run("foreign key restrict no action", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT, pid INT, FOREIGN KEY (pid) REFERENCES p(id) ON DELETE RESTRICT ON UPDATE NO ACTION)")
+		fk := stmt.Constraints[0]
+		if fk.OnDelete != ast.RefActRestrict {
+			t.Errorf("OnDelete = %d, want RefActRestrict", fk.OnDelete)
+		}
+		if fk.OnUpdate != ast.RefActNoAction {
+			t.Errorf("OnUpdate = %d, want RefActNoAction", fk.OnUpdate)
+		}
+	})
+
+	t.Run("foreign key set default", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT, pid INT, FOREIGN KEY (pid) REFERENCES p(id) ON DELETE SET DEFAULT)")
+		fk := stmt.Constraints[0]
+		if fk.OnDelete != ast.RefActSetDefault {
+			t.Errorf("OnDelete = %d, want RefActSetDefault", fk.OnDelete)
+		}
+	})
+}

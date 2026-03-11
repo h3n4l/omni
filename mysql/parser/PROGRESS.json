@@ -108,7 +108,7 @@
       "id": 7,
       "name": "create_table",
       "file": "create_table.go",
-      "status": "pending",
+      "status": "done",
       "description": "CREATE TABLE, column defs, constraints, table options, partitions, LIKE, CREATE TABLE AS SELECT",
       "rules": [
         "create_table_stmt", "column_definition", "column_constraint",
@@ -166,7 +166,7 @@
       "id": 11,
       "name": "create_database",
       "file": "create_database.go",
-      "status": "pending",
+      "status": "done",
       "description": "CREATE/ALTER/DROP DATABASE, CREATE/ALTER/DROP SCHEMA",
       "rules": [
         "create_database_stmt", "alter_database_stmt", "drop_database_stmt",
@@ -179,7 +179,7 @@
       "id": 12,
       "name": "drop",
       "file": "drop.go",
-      "status": "pending",
+      "status": "done",
       "description": "DROP TABLE/INDEX/VIEW/DATABASE, TRUNCATE TABLE, RENAME TABLE",
       "rules": [
         "drop_table_stmt", "drop_index_stmt", "drop_view_stmt",
@@ -206,7 +206,7 @@
       "id": 14,
       "name": "transaction",
       "file": "transaction.go",
-      "status": "pending",
+      "status": "done",
       "description": "BEGIN, START TRANSACTION, COMMIT, ROLLBACK, SAVEPOINT, LOCK/UNLOCK TABLES",
       "rules": [
         "begin_stmt", "start_transaction_stmt", "commit_stmt", "rollback_stmt",

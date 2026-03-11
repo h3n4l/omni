@@ -249,9 +249,32 @@ func (p *Parser) parseDataType() (*nodes.DataType, error) {
 		p.advance()
 
 	default:
-		return nil, &ParseError{
-			Message:  "expected data type",
-			Position: p.cur.Loc,
+		// Handle identifier-based types: GEOMETRY, POINT, LINESTRING, POLYGON, etc.
+		if p.cur.Type == tokIDENT {
+			name := p.cur.Str
+			switch {
+			case eqFold(name, "geometry"),
+				eqFold(name, "point"),
+				eqFold(name, "linestring"),
+				eqFold(name, "polygon"),
+				eqFold(name, "multipoint"),
+				eqFold(name, "multilinestring"),
+				eqFold(name, "multipolygon"),
+				eqFold(name, "geometrycollection"),
+				eqFold(name, "serial"):
+				dt.Name = name
+				p.advance()
+			default:
+				return nil, &ParseError{
+					Message:  "expected data type",
+					Position: p.cur.Loc,
+				}
+			}
+		} else {
+			return nil, &ParseError{
+				Message:  "expected data type",
+				Position: p.cur.Loc,
+			}
 		}
 	}
 

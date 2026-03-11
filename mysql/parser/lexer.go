@@ -319,6 +319,7 @@ const (
 	kwALWAYS
 	_ // was kwPARTITIONING — unused, not mapped in keywords
 	kwLINEAR
+	kwLIST
 	kwSUBPARTITION
 	kwFIXED
 	kwDYNAMIC
@@ -633,6 +634,7 @@ var keywords = map[string]int{
 	"generated":           kwGENERATED,
 	"always":              kwALWAYS,
 	"linear":              kwLINEAR,
+	"list":                kwLIST,
 	"subpartition":        kwSUBPARTITION,
 	"fixed":               kwFIXED,
 	"dynamic":             kwDYNAMIC,

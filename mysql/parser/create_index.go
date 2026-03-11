@@ -1,0 +1,256 @@
+package parser
+
+import (
+	nodes "github.com/bytebase/omni/mysql/ast"
+)
+
+// parseCreateIndexStmt parses a CREATE INDEX statement.
+// Called when p.cur is at the INDEX keyword (after consuming CREATE [UNIQUE|FULLTEXT|SPATIAL]).
+//
+// Ref: https://dev.mysql.com/doc/refman/8.0/en/create-index.html
+//
+//	CREATE [UNIQUE | FULLTEXT | SPATIAL] INDEX index_name
+//	    [index_type]
+//	    ON tbl_name (key_part,...)
+//	    [index_option] ...
+//	    [algorithm_option | lock_option] ...
+func (p *Parser) parseCreateIndexStmt(unique bool, fulltext bool, spatial bool) (*nodes.CreateIndexStmt, error) {
+	start := p.pos()
+	p.advance() // consume INDEX
+
+	stmt := &nodes.CreateIndexStmt{
+		Loc:     nodes.Loc{Start: start},
+		Unique:  unique,
+		Fulltext: fulltext,
+		Spatial: spatial,
+	}
+
+	// IF NOT EXISTS (MySQL 8.0.27+)
+	if p.cur.Type == kwIF {
+		p.advance()
+		p.match(kwNOT)
+		p.match(kwEXISTS_KW)
+		stmt.IfNotExists = true
+	}
+
+	// index_name
+	name, _, err := p.parseIdentifier()
+	if err != nil {
+		return nil, err
+	}
+	stmt.IndexName = name
+
+	// Optional index_type: USING {BTREE | HASH}
+	if p.cur.Type == kwUSING {
+		p.advance()
+		typeName, _, err := p.parseIdentifier()
+		if err != nil {
+			return nil, err
+		}
+		stmt.IndexType = typeName
+	}
+
+	// ON tbl_name
+	if _, err := p.expect(kwON); err != nil {
+		return nil, err
+	}
+	tbl, err := p.parseTableRef()
+	if err != nil {
+		return nil, err
+	}
+	stmt.Table = tbl
+
+	// (key_part, ...)
+	if _, err := p.expect('('); err != nil {
+		return nil, err
+	}
+	for {
+		col, err := p.parseIndexKeyPart()
+		if err != nil {
+			return nil, err
+		}
+		stmt.Columns = append(stmt.Columns, col)
+		if _, ok := p.match(','); !ok {
+			break
+		}
+	}
+	if _, err := p.expect(')'); err != nil {
+		return nil, err
+	}
+
+	// [index_option] ...
+	for {
+		opt, ok, err := p.parseIndexOption()
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			break
+		}
+		stmt.Options = append(stmt.Options, opt)
+	}
+
+	// [algorithm_option | lock_option] ...
+	for {
+		if p.cur.Type == kwALGORITHM {
+			p.advance()
+			p.match('=') // optional =
+			val, _, err := p.parseIdentifier()
+			if err != nil {
+				return nil, err
+			}
+			stmt.Algorithm = val
+		} else if p.cur.Type == kwLOCK {
+			p.advance()
+			p.match('=') // optional =
+			val, _, err := p.parseIdentifier()
+			if err != nil {
+				return nil, err
+			}
+			stmt.Lock = val
+		} else {
+			break
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt, nil
+}
+
+// parseIndexKeyPart parses a single key_part in an index column list.
+//
+//	key_part: col_name [(length)] [ASC | DESC]
+func (p *Parser) parseIndexKeyPart() (*nodes.IndexColumn, error) {
+	start := p.pos()
+
+	// Column name
+	colName, _, err := p.parseIdentifier()
+	if err != nil {
+		return nil, err
+	}
+	col := &nodes.IndexColumn{
+		Loc: nodes.Loc{Start: start},
+		Expr: &nodes.ColumnRef{
+			Loc:    nodes.Loc{Start: start, End: p.pos()},
+			Column: colName,
+		},
+	}
+
+	// Optional (length)
+	if p.cur.Type == '(' {
+		p.advance()
+		if p.cur.Type == tokICONST {
+			col.Length = int(p.cur.Ival)
+			p.advance()
+		}
+		if _, err := p.expect(')'); err != nil {
+			return nil, err
+		}
+	}
+
+	// Optional ASC | DESC
+	if _, ok := p.match(kwASC); ok {
+		// ASC is default, nothing to set
+	} else if _, ok := p.match(kwDESC); ok {
+		col.Desc = true
+	}
+
+	col.Loc.End = p.pos()
+	return col, nil
+}
+
+// parseIndexOption parses a single index_option.
+//
+//	index_option:
+//	    KEY_BLOCK_SIZE [=] value
+//	    | USING {BTREE | HASH}
+//	    | WITH PARSER parser_name
+//	    | COMMENT 'string'
+//	    | {VISIBLE | INVISIBLE}
+func (p *Parser) parseIndexOption() (*nodes.IndexOption, bool, error) {
+	start := p.pos()
+
+	switch {
+	case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "KEY_BLOCK_SIZE"):
+		p.advance()
+		p.match('=') // optional =
+		if p.cur.Type == tokICONST {
+			val := p.cur.Ival
+			p.advance()
+			return &nodes.IndexOption{
+				Loc:   nodes.Loc{Start: start, End: p.pos()},
+				Name:  "KEY_BLOCK_SIZE",
+				Value: &nodes.IntLit{Loc: nodes.Loc{Start: start}, Value: val},
+			}, true, nil
+		}
+		// Could be an identifier value
+		v, _, err := p.parseIdentifier()
+		if err != nil {
+			return nil, false, err
+		}
+		return &nodes.IndexOption{
+			Loc:   nodes.Loc{Start: start, End: p.pos()},
+			Name:  "KEY_BLOCK_SIZE",
+			Value: &nodes.StringLit{Loc: nodes.Loc{Start: start}, Value: v},
+		}, true, nil
+
+	case p.cur.Type == kwUSING:
+		p.advance()
+		typeName, _, err := p.parseIdentifier()
+		if err != nil {
+			return nil, false, err
+		}
+		return &nodes.IndexOption{
+			Loc:   nodes.Loc{Start: start, End: p.pos()},
+			Name:  "USING",
+			Value: &nodes.StringLit{Loc: nodes.Loc{Start: start}, Value: typeName},
+		}, true, nil
+
+	case p.cur.Type == kwWITH:
+		next := p.peekNext()
+		if next.Type == tokIDENT && eqFold(next.Str, "PARSER") {
+			p.advance() // consume WITH
+			p.advance() // consume PARSER
+			parserName, _, err := p.parseIdentifier()
+			if err != nil {
+				return nil, false, err
+			}
+			return &nodes.IndexOption{
+				Loc:   nodes.Loc{Start: start, End: p.pos()},
+				Name:  "PARSER",
+				Value: &nodes.StringLit{Loc: nodes.Loc{Start: start}, Value: parserName},
+			}, true, nil
+		}
+		return nil, false, nil
+
+	case p.cur.Type == kwCOMMENT:
+		p.advance()
+		if p.cur.Type == tokSCONST {
+			val := p.cur.Str
+			p.advance()
+			return &nodes.IndexOption{
+				Loc:   nodes.Loc{Start: start, End: p.pos()},
+				Name:  "COMMENT",
+				Value: &nodes.StringLit{Loc: nodes.Loc{Start: start}, Value: val},
+			}, true, nil
+		}
+		return nil, false, &ParseError{Message: "expected string after COMMENT", Position: p.cur.Loc}
+
+	case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "VISIBLE"):
+		p.advance()
+		return &nodes.IndexOption{
+			Loc:  nodes.Loc{Start: start, End: p.pos()},
+			Name: "VISIBLE",
+		}, true, nil
+
+	case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "INVISIBLE"):
+		p.advance()
+		return &nodes.IndexOption{
+			Loc:  nodes.Loc{Start: start, End: p.pos()},
+			Name: "INVISIBLE",
+		}, true, nil
+	}
+
+	return nil, false, nil
+}
+
