@@ -1,0 +1,303 @@
+{
+  "version": 1,
+  "target": "Complete T-SQL recursive descent parser",
+  "status": "in_progress",
+  "batches": [
+    {
+      "id": 0,
+      "name": "infrastructure",
+      "file": "parser.go",
+      "status": "done",
+      "description": "Parser struct, Parse(), advance/peek/match/expect/pos helpers, mapTokenType, ParseError",
+      "rules": [],
+      "depends_on": [],
+      "tests": []
+    },
+    {
+      "id": 1,
+      "name": "names",
+      "file": "name.go",
+      "status": "done",
+      "description": "Identifiers, [bracketed identifiers], @variables, qualified names (server.db.schema.object)",
+      "rules": [
+        "identifier", "bracketed_identifier", "quoted_identifier",
+        "variable_ref", "system_variable_ref",
+        "qualified_name", "column_ref", "table_ref"
+      ],
+      "depends_on": [0],
+      "tests": ["names"]
+    },
+    {
+      "id": 2,
+      "name": "types",
+      "file": "type.go",
+      "status": "pending",
+      "description": "Data types: INT, BIGINT, VARCHAR, NVARCHAR, DECIMAL, DATETIME2, UNIQUEIDENTIFIER, XML, etc.",
+      "rules": [
+        "data_type", "type_length", "type_precision_scale", "type_max"
+      ],
+      "depends_on": [1],
+      "tests": ["types"]
+    },
+    {
+      "id": 3,
+      "name": "expressions",
+      "file": "expr.go",
+      "status": "pending",
+      "description": "All expression types: operators, CASE, BETWEEN, IN, LIKE, IS, IIF, COALESCE, NULLIF, CONVERT, CAST, TRY_CAST",
+      "rules": [
+        "expr", "or_expr", "and_expr", "not_expr", "comparison_expr",
+        "addition_expr", "multiplication_expr", "unary_expr", "primary_expr",
+        "case_expr", "between_expr", "in_expr", "like_expr", "is_expr",
+        "cast_expr", "convert_expr", "coalesce_expr", "nullif_expr", "iif_expr",
+        "exists_expr", "func_call_expr"
+      ],
+      "depends_on": [1, 2],
+      "tests": ["expressions", "case", "cast", "convert"]
+    },
+    {
+      "id": 4,
+      "name": "select",
+      "file": "select.go",
+      "status": "pending",
+      "description": "SELECT with TOP, INTO, FOR XML/JSON, OPTION, CROSS/OUTER APPLY, CTE",
+      "rules": [
+        "select_stmt", "top_clause", "into_clause", "from_clause", "where_clause",
+        "group_by_clause", "having_clause", "order_by_clause", "offset_fetch_clause",
+        "for_clause", "option_clause", "with_clause", "common_table_expr",
+        "table_source", "joined_table", "apply_clause",
+        "union_intersect_except"
+      ],
+      "depends_on": [3],
+      "tests": ["select", "top", "cte", "join", "apply", "for_xml", "for_json", "union"]
+    },
+    {
+      "id": 5,
+      "name": "insert",
+      "file": "insert.go",
+      "status": "pending",
+      "description": "INSERT, OUTPUT clause, INSERT...EXEC",
+      "rules": [
+        "insert_stmt", "insert_values", "insert_select", "insert_exec",
+        "output_clause", "default_values"
+      ],
+      "depends_on": [4],
+      "tests": ["insert", "output"]
+    },
+    {
+      "id": 6,
+      "name": "update_delete",
+      "file": "update_delete.go",
+      "status": "pending",
+      "description": "UPDATE with FROM, DELETE with FROM, OUTPUT, TOP",
+      "rules": [
+        "update_stmt", "delete_stmt", "set_clause", "set_clause_list"
+      ],
+      "depends_on": [4],
+      "tests": ["update", "delete"]
+    },
+    {
+      "id": 7,
+      "name": "merge",
+      "file": "merge.go",
+      "status": "pending",
+      "description": "MERGE statement with WHEN MATCHED/NOT MATCHED",
+      "rules": [
+        "merge_stmt", "merge_when_clause", "merge_matched", "merge_not_matched",
+        "merge_update_action", "merge_delete_action", "merge_insert_action"
+      ],
+      "depends_on": [4, 5, 6],
+      "tests": ["merge"]
+    },
+    {
+      "id": 8,
+      "name": "create_table",
+      "file": "create_table.go",
+      "status": "pending",
+      "description": "CREATE TABLE, constraints, IDENTITY, computed columns, temporal tables",
+      "rules": [
+        "create_table_stmt", "column_def", "column_constraint", "table_constraint",
+        "identity_spec", "computed_column", "primary_key", "foreign_key",
+        "unique_constraint", "check_constraint", "default_constraint"
+      ],
+      "depends_on": [2, 3],
+      "tests": ["create_table", "constraints", "identity"]
+    },
+    {
+      "id": 9,
+      "name": "alter_table",
+      "file": "alter_table.go",
+      "status": "pending",
+      "description": "ALTER TABLE, ADD/DROP/ALTER COLUMN",
+      "rules": [
+        "alter_table_stmt", "alter_table_action",
+        "add_column", "drop_column", "alter_column",
+        "add_constraint", "drop_constraint"
+      ],
+      "depends_on": [8],
+      "tests": ["alter_table"]
+    },
+    {
+      "id": 10,
+      "name": "create_index",
+      "file": "create_index.go",
+      "status": "pending",
+      "description": "CREATE INDEX, CLUSTERED/NONCLUSTERED, INCLUDE, WHERE, COLUMNSTORE",
+      "rules": [
+        "create_index_stmt", "index_column_list", "include_clause",
+        "index_options", "clustered_spec"
+      ],
+      "depends_on": [3],
+      "tests": ["create_index"]
+    },
+    {
+      "id": 11,
+      "name": "create_view",
+      "file": "create_view.go",
+      "status": "pending",
+      "description": "CREATE/ALTER VIEW, WITH SCHEMABINDING",
+      "rules": [
+        "create_view_stmt", "view_options"
+      ],
+      "depends_on": [4],
+      "tests": ["create_view"]
+    },
+    {
+      "id": 12,
+      "name": "create_proc",
+      "file": "create_proc.go",
+      "status": "pending",
+      "description": "CREATE PROCEDURE/FUNCTION, parameters, RETURNS",
+      "rules": [
+        "create_procedure_stmt", "create_function_stmt",
+        "param_def_list", "param_def", "return_type",
+        "returns_table_def", "routine_body"
+      ],
+      "depends_on": [2, 4],
+      "tests": ["create_proc", "create_func"]
+    },
+    {
+      "id": 13,
+      "name": "create_database",
+      "file": "create_database.go",
+      "status": "pending",
+      "description": "CREATE/ALTER/DROP DATABASE",
+      "rules": [
+        "create_database_stmt", "alter_database_stmt", "drop_database_stmt"
+      ],
+      "depends_on": [1],
+      "tests": ["create_database"]
+    },
+    {
+      "id": 14,
+      "name": "drop",
+      "file": "drop.go",
+      "status": "pending",
+      "description": "DROP TABLE/INDEX/VIEW/PROC/FUNCTION/DATABASE",
+      "rules": [
+        "drop_stmt", "drop_object_type", "if_exists"
+      ],
+      "depends_on": [1],
+      "tests": ["drop"]
+    },
+    {
+      "id": 15,
+      "name": "control_flow",
+      "file": "control_flow.go",
+      "status": "pending",
+      "description": "IF/ELSE, WHILE, BEGIN/END, TRY/CATCH, GOTO, RETURN, BREAK, CONTINUE, WAITFOR",
+      "rules": [
+        "if_stmt", "while_stmt", "begin_end_stmt", "try_catch_stmt",
+        "goto_stmt", "label_stmt", "return_stmt", "break_stmt",
+        "continue_stmt", "waitfor_stmt"
+      ],
+      "depends_on": [3],
+      "tests": ["control_flow", "try_catch"]
+    },
+    {
+      "id": 16,
+      "name": "declare_set",
+      "file": "declare_set.go",
+      "status": "pending",
+      "description": "DECLARE, SET, SELECT @var = expr",
+      "rules": [
+        "declare_stmt", "variable_decl", "set_stmt", "select_assign"
+      ],
+      "depends_on": [2, 3],
+      "tests": ["declare", "set"]
+    },
+    {
+      "id": 17,
+      "name": "transaction",
+      "file": "transaction.go",
+      "status": "pending",
+      "description": "BEGIN TRAN, COMMIT, ROLLBACK, SAVE, @@TRANCOUNT",
+      "rules": [
+        "begin_trans_stmt", "commit_trans_stmt", "rollback_trans_stmt",
+        "save_trans_stmt"
+      ],
+      "depends_on": [1],
+      "tests": ["transaction"]
+    },
+    {
+      "id": 18,
+      "name": "execute",
+      "file": "execute.go",
+      "status": "pending",
+      "description": "EXEC/EXECUTE, sp_executesql",
+      "rules": [
+        "exec_stmt", "exec_arg_list", "exec_arg"
+      ],
+      "depends_on": [3],
+      "tests": ["execute"]
+    },
+    {
+      "id": 19,
+      "name": "grant",
+      "file": "grant.go",
+      "status": "pending",
+      "description": "GRANT, REVOKE, DENY, CREATE/ALTER/DROP USER/LOGIN/ROLE",
+      "rules": [
+        "grant_stmt", "revoke_stmt", "deny_stmt",
+        "privilege_list", "grantee_list"
+      ],
+      "depends_on": [1],
+      "tests": ["grant"]
+    },
+    {
+      "id": 20,
+      "name": "utility",
+      "file": "utility.go",
+      "status": "pending",
+      "description": "USE, PRINT, RAISERROR, THROW, DBCC, BULK INSERT, BACKUP/RESTORE",
+      "rules": [
+        "use_stmt", "print_stmt", "raiserror_stmt", "throw_stmt",
+        "truncate_stmt"
+      ],
+      "depends_on": [3],
+      "tests": ["utility"]
+    },
+    {
+      "id": 21,
+      "name": "go_batch",
+      "file": "go_batch.go",
+      "status": "pending",
+      "description": "GO batch separator handling",
+      "rules": [
+        "go_stmt", "batch_separator"
+      ],
+      "depends_on": [0],
+      "tests": ["go_batch"]
+    },
+    {
+      "id": 22,
+      "name": "stmt_dispatch",
+      "file": "stmt.go",
+      "status": "pending",
+      "description": "Wire up all statements in parseStmt dispatcher",
+      "rules": ["stmt_dispatch"],
+      "depends_on": [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+      "tests": ["integration"]
+    }
+  ]
+}
