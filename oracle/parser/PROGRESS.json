@@ -430,7 +430,7 @@
       "id": 32,
       "name": "xml_expressions",
       "file": "expr.go",
-      "status": "pending",
+      "status": "done",
       "description": "XML expression functions: XMLELEMENT, XMLFOREST, XMLAGG, XMLROOT, XMLPARSE, XMLSERIALIZE. These generate or transform XML data within SQL expressions.",
       "rules": [
         "xmlelement_expr", "xmlforest_expr", "xmlagg_expr",

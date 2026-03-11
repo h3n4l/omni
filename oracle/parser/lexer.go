@@ -808,6 +808,16 @@ var oracleKeywords = map[string]int{
 	// Cursor / MULTISET / TREAT keywords
 	"EXCEPT": kwEXCEPT,
 	"TREAT":  kwTREAT,
+
+	// XML expression keywords
+	"CONTENT":      kwCONTENT,
+	"NAME":         kwNAME,
+	"XMLAGG":       kwXMLAGG,
+	"XMLELEMENT":   kwXMLELEMENT,
+	"XMLFOREST":    kwXMLFOREST,
+	"XMLPARSE":     kwXMLPARSE,
+	"XMLROOT":      kwXMLROOT,
+	"XMLSERIALIZE": kwXMLSERIALIZE,
 }
 
 // Keyword token constants.
@@ -1133,4 +1143,14 @@ const (
 	// Cursor / MULTISET / TREAT keywords
 	kwEXCEPT
 	kwTREAT
+
+	// XML expression keywords
+	kwCONTENT
+	kwNAME
+	kwXMLAGG
+	kwXMLELEMENT
+	kwXMLFOREST
+	kwXMLPARSE
+	kwXMLROOT
+	kwXMLSERIALIZE
 )

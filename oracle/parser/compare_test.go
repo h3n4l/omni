@@ -674,6 +674,34 @@ func TestParseTreatExpr(t *testing.T) {
 	}
 }
 
+func TestParseXmlExpressions(t *testing.T) {
+	tests := []string{
+		// XMLELEMENT
+		"SELECT XMLELEMENT(NAME \"employee\", XMLELEMENT(NAME \"name\", e.name)) FROM employees e",
+		"SELECT XMLELEMENT(NAME \"emp\", e.name, e.salary) FROM employees e",
+		// XMLFOREST
+		"SELECT XMLFOREST(e.name, e.salary) FROM employees e",
+		// XMLAGG
+		"SELECT XMLAGG(XMLELEMENT(NAME \"name\", e.name) ORDER BY e.name) FROM employees e",
+		// XMLROOT
+		"SELECT XMLROOT(xml_col, VERSION '1.0') FROM xml_data",
+		// XMLPARSE
+		"SELECT XMLPARSE(CONTENT '<a>test</a>') FROM dual",
+		// XMLSERIALIZE
+		"SELECT XMLSERIALIZE(CONTENT xml_col AS VARCHAR2(4000)) FROM xml_data",
+	}
+
+	for _, sql := range tests {
+		name := sql
+		if len(name) > 60 {
+			name = name[:60]
+		}
+		t.Run(name, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
 func TestNodeToString(t *testing.T) {
 	n := &ast.NumberLiteral{Val: "42", Ival: 42, Loc: ast.Loc{Start: 0, End: -1}}
 	s := ast.NodeToString(n)

@@ -282,6 +282,19 @@ func (p *Parser) parsePrimary() nodes.ExprNode {
 	case kwTREAT:
 		return p.parseTreatExpr()
 
+	case kwXMLELEMENT:
+		return p.parseXmlElement()
+	case kwXMLFOREST:
+		return p.parseXmlGenericFunc("XMLFOREST")
+	case kwXMLAGG:
+		return p.parseXmlAgg()
+	case kwXMLROOT:
+		return p.parseXmlRoot()
+	case kwXMLPARSE:
+		return p.parseXmlContentFunc("XMLPARSE")
+	case kwXMLSERIALIZE:
+		return p.parseXmlSerialize()
+
 	default:
 		// Pseudo columns
 		if p.isPseudoColumn() {
@@ -1216,4 +1229,248 @@ func (p *Parser) parseMultisetOp(left nodes.ExprNode) nodes.ExprNode {
 		All:   all,
 		Loc:   nodes.Loc{Start: start, End: p.pos()},
 	}
+}
+
+// parseXmlElement parses XMLELEMENT(NAME tag, expr, ...).
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/XMLELEMENT.html
+//
+//	XMLELEMENT ( [ NAME ] identifier_or_string, expr [, ...] )
+func (p *Parser) parseXmlElement() nodes.ExprNode {
+	start := p.pos()
+	p.advance() // consume XMLELEMENT
+
+	fc := &nodes.FuncCallExpr{
+		FuncName: &nodes.ObjectName{Name: "XMLELEMENT"},
+		Args:     &nodes.List{},
+		Loc:      nodes.Loc{Start: start},
+	}
+
+	if p.cur.Type != '(' {
+		fc.Loc.End = p.pos()
+		return fc
+	}
+	p.advance() // consume '('
+
+	// Optional NAME keyword
+	if p.cur.Type == kwNAME {
+		p.advance()
+	}
+
+	// Element name — identifier or quoted identifier
+	for p.cur.Type != ')' && p.cur.Type != tokEOF {
+		arg := p.parseExpr()
+		if arg != nil {
+			fc.Args.Items = append(fc.Args.Items, arg)
+		}
+		if p.cur.Type != ',' {
+			break
+		}
+		p.advance()
+	}
+
+	if p.cur.Type == ')' {
+		p.advance()
+	}
+
+	return p.parseFuncCallPostfix(fc)
+}
+
+// parseXmlGenericFunc parses XML functions with standard argument syntax.
+// Used for XMLFOREST, XMLROOT.
+func (p *Parser) parseXmlGenericFunc(name string) nodes.ExprNode {
+	start := p.pos()
+	p.advance() // consume keyword
+
+	fc := &nodes.FuncCallExpr{
+		FuncName: &nodes.ObjectName{Name: name},
+		Args:     &nodes.List{},
+		Loc:      nodes.Loc{Start: start},
+	}
+
+	if p.cur.Type != '(' {
+		fc.Loc.End = p.pos()
+		return fc
+	}
+	p.advance() // consume '('
+
+	for p.cur.Type != ')' && p.cur.Type != tokEOF {
+		// Handle keyword-value pairs like VERSION '1.0'
+		arg := p.parseExpr()
+		if arg != nil {
+			fc.Args.Items = append(fc.Args.Items, arg)
+		}
+		if p.cur.Type != ',' {
+			break
+		}
+		p.advance()
+	}
+
+	if p.cur.Type == ')' {
+		p.advance()
+	}
+
+	return p.parseFuncCallPostfix(fc)
+}
+
+// parseXmlRoot parses XMLROOT(xml_expr, VERSION version_string | NO VALUE).
+func (p *Parser) parseXmlRoot() nodes.ExprNode {
+	start := p.pos()
+	p.advance() // consume XMLROOT
+
+	fc := &nodes.FuncCallExpr{
+		FuncName: &nodes.ObjectName{Name: "XMLROOT"},
+		Args:     &nodes.List{},
+		Loc:      nodes.Loc{Start: start},
+	}
+
+	if p.cur.Type != '(' {
+		fc.Loc.End = p.pos()
+		return fc
+	}
+	p.advance() // consume '('
+
+	// XML expression
+	arg := p.parseExpr()
+	if arg != nil {
+		fc.Args.Items = append(fc.Args.Items, arg)
+	}
+
+	if p.cur.Type == ',' {
+		p.advance()
+	}
+
+	// VERSION keyword-value pair: VERSION string_literal | VERSION NO VALUE
+	if p.isIdentLikeStr("VERSION") {
+		p.advance() // consume VERSION
+		// VERSION NO VALUE or VERSION 'string'
+		versionArg := p.parseExpr()
+		if versionArg != nil {
+			fc.Args.Items = append(fc.Args.Items, versionArg)
+		}
+	}
+
+	if p.cur.Type == ')' {
+		p.advance()
+	}
+
+	return p.parseFuncCallPostfix(fc)
+}
+
+// parseXmlAgg parses XMLAGG(expr ORDER BY ...).
+//
+//	XMLAGG ( expr [ ORDER BY sort_list ] )
+func (p *Parser) parseXmlAgg() nodes.ExprNode {
+	start := p.pos()
+	p.advance() // consume XMLAGG
+
+	fc := &nodes.FuncCallExpr{
+		FuncName: &nodes.ObjectName{Name: "XMLAGG"},
+		Args:     &nodes.List{},
+		Loc:      nodes.Loc{Start: start},
+	}
+
+	if p.cur.Type != '(' {
+		fc.Loc.End = p.pos()
+		return fc
+	}
+	p.advance() // consume '('
+
+	// Expression argument
+	arg := p.parseExpr()
+	if arg != nil {
+		fc.Args.Items = append(fc.Args.Items, arg)
+	}
+
+	// ORDER BY
+	if p.cur.Type == kwORDER {
+		p.advance() // consume ORDER
+		if p.cur.Type == kwBY {
+			p.advance() // consume BY
+		}
+		fc.OrderBy = p.parseOrderByList()
+	}
+
+	if p.cur.Type == ')' {
+		p.advance()
+	}
+
+	return p.parseFuncCallPostfix(fc)
+}
+
+// parseXmlContentFunc parses XMLPARSE(CONTENT expr).
+func (p *Parser) parseXmlContentFunc(name string) nodes.ExprNode {
+	start := p.pos()
+	p.advance() // consume keyword
+
+	fc := &nodes.FuncCallExpr{
+		FuncName: &nodes.ObjectName{Name: name},
+		Args:     &nodes.List{},
+		Loc:      nodes.Loc{Start: start},
+	}
+
+	if p.cur.Type != '(' {
+		fc.Loc.End = p.pos()
+		return fc
+	}
+	p.advance() // consume '('
+
+	// CONTENT or DOCUMENT keyword — skip
+	if p.cur.Type == kwCONTENT || p.isIdentLikeStr("DOCUMENT") {
+		p.advance()
+	}
+
+	arg := p.parseExpr()
+	if arg != nil {
+		fc.Args.Items = append(fc.Args.Items, arg)
+	}
+
+	if p.cur.Type == ')' {
+		p.advance()
+	}
+
+	return p.parseFuncCallPostfix(fc)
+}
+
+// parseXmlSerialize parses XMLSERIALIZE(CONTENT expr AS type).
+func (p *Parser) parseXmlSerialize() nodes.ExprNode {
+	start := p.pos()
+	p.advance() // consume XMLSERIALIZE
+
+	fc := &nodes.FuncCallExpr{
+		FuncName: &nodes.ObjectName{Name: "XMLSERIALIZE"},
+		Args:     &nodes.List{},
+		Loc:      nodes.Loc{Start: start},
+	}
+
+	if p.cur.Type != '(' {
+		fc.Loc.End = p.pos()
+		return fc
+	}
+	p.advance() // consume '('
+
+	// CONTENT or DOCUMENT keyword — skip
+	if p.cur.Type == kwCONTENT || p.isIdentLikeStr("DOCUMENT") {
+		p.advance()
+	}
+
+	arg := p.parseExpr()
+	if arg != nil {
+		fc.Args.Items = append(fc.Args.Items, arg)
+	}
+
+	// AS type
+	if p.cur.Type == kwAS {
+		p.advance()
+		typeName := p.parseTypeName()
+		if typeName != nil {
+			fc.Args.Items = append(fc.Args.Items, typeName)
+		}
+	}
+
+	if p.cur.Type == ')' {
+		p.advance()
+	}
+
+	return p.parseFuncCallPostfix(fc)
 }
