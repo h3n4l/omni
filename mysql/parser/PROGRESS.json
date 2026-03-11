@@ -153,7 +153,7 @@
       "id": 10,
       "name": "create_view",
       "file": "create_view.go",
-      "status": "pending",
+      "status": "done",
       "description": "CREATE VIEW, ALTER VIEW, CREATE OR REPLACE VIEW",
       "rules": [
         "create_view_stmt", "view_algorithm", "view_definer",
@@ -192,7 +192,7 @@
       "id": 13,
       "name": "set_show",
       "file": "set_show.go",
-      "status": "pending",
+      "status": "done",
       "description": "SET, SHOW, USE, DESCRIBE/EXPLAIN statements",
       "rules": [
         "set_stmt", "show_stmt", "use_stmt", "describe_stmt", "explain_stmt",

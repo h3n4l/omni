@@ -3486,3 +3486,231 @@ func TestParseCreateFulltextIndex(t *testing.T) {
 		}
 	})
 }
+
+// ============================================================================
+// Batch 13: SET, SHOW, USE, EXPLAIN
+// ============================================================================
+
+func parseSet(t *testing.T, input string) *ast.SetStmt {
+	t.Helper()
+	p := &Parser{lexer: NewLexer(input)}
+	p.advance()
+	stmt, err := p.parseSetStmt()
+	if err != nil {
+		t.Fatalf("parseSetStmt(%q) error: %v", input, err)
+	}
+	return stmt
+}
+
+func parseShow(t *testing.T, input string) *ast.ShowStmt {
+	t.Helper()
+	p := &Parser{lexer: NewLexer(input)}
+	p.advance()
+	stmt, err := p.parseShowStmt()
+	if err != nil {
+		t.Fatalf("parseShowStmt(%q) error: %v", input, err)
+	}
+	return stmt
+}
+
+func TestParseSet(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		stmt := parseSet(t, "SET x = 1")
+		if len(stmt.Assignments) != 1 {
+			t.Fatalf("Assignments count = %d, want 1", len(stmt.Assignments))
+		}
+		if stmt.Assignments[0].Column.Column != "x" {
+			t.Errorf("Column = %s, want x", stmt.Assignments[0].Column.Column)
+		}
+	})
+
+	t.Run("multiple", func(t *testing.T) {
+		stmt := parseSet(t, "SET x = 1, y = 2")
+		if len(stmt.Assignments) != 2 {
+			t.Fatalf("Assignments count = %d, want 2", len(stmt.Assignments))
+		}
+	})
+
+	t.Run("global scope", func(t *testing.T) {
+		stmt := parseSet(t, "SET GLOBAL max_connections = 100")
+		if stmt.Scope != "GLOBAL" {
+			t.Errorf("Scope = %s, want GLOBAL", stmt.Scope)
+		}
+	})
+
+	t.Run("session scope", func(t *testing.T) {
+		stmt := parseSet(t, "SET SESSION sql_mode = 'STRICT_TRANS_TABLES'")
+		if stmt.Scope != "SESSION" {
+			t.Errorf("Scope = %s, want SESSION", stmt.Scope)
+		}
+	})
+
+	t.Run("names", func(t *testing.T) {
+		stmt := parseSet(t, "SET NAMES utf8mb4")
+		if len(stmt.Assignments) < 1 {
+			t.Fatalf("Assignments count = %d, want >= 1", len(stmt.Assignments))
+		}
+		if stmt.Assignments[0].Column.Column != "NAMES" {
+			t.Errorf("Column = %s, want NAMES", stmt.Assignments[0].Column.Column)
+		}
+	})
+
+	t.Run("names with collate", func(t *testing.T) {
+		stmt := parseSet(t, "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci")
+		if len(stmt.Assignments) != 2 {
+			t.Fatalf("Assignments count = %d, want 2", len(stmt.Assignments))
+		}
+	})
+
+	t.Run("character set", func(t *testing.T) {
+		stmt := parseSet(t, "SET CHARACTER SET utf8mb4")
+		if len(stmt.Assignments) < 1 {
+			t.Fatalf("Assignments count = %d, want >= 1", len(stmt.Assignments))
+		}
+	})
+}
+
+func TestParseShow(t *testing.T) {
+	t.Run("databases", func(t *testing.T) {
+		stmt := parseShow(t, "SHOW DATABASES")
+		if stmt.Type != "DATABASES" {
+			t.Errorf("Type = %s, want DATABASES", stmt.Type)
+		}
+	})
+
+	t.Run("tables", func(t *testing.T) {
+		stmt := parseShow(t, "SHOW TABLES")
+		if stmt.Type != "TABLES" {
+			t.Errorf("Type = %s, want TABLES", stmt.Type)
+		}
+	})
+
+	t.Run("tables from db", func(t *testing.T) {
+		stmt := parseShow(t, "SHOW TABLES FROM mydb")
+		if stmt.Type != "TABLES" {
+			t.Errorf("Type = %s, want TABLES", stmt.Type)
+		}
+		if stmt.From == nil || stmt.From.Name != "mydb" {
+			t.Errorf("From = %v, want mydb", stmt.From)
+		}
+	})
+
+	t.Run("tables like", func(t *testing.T) {
+		stmt := parseShow(t, "SHOW TABLES LIKE 'user%'")
+		if stmt.Like == nil {
+			t.Fatal("Like is nil")
+		}
+	})
+
+	t.Run("columns from table", func(t *testing.T) {
+		stmt := parseShow(t, "SHOW COLUMNS FROM users")
+		if stmt.Type != "COLUMNS" {
+			t.Errorf("Type = %s, want COLUMNS", stmt.Type)
+		}
+		if stmt.From == nil || stmt.From.Name != "users" {
+			t.Errorf("From = %v, want users", stmt.From)
+		}
+	})
+
+	t.Run("create table", func(t *testing.T) {
+		stmt := parseShow(t, "SHOW CREATE TABLE users")
+		if stmt.Type != "CREATE TABLE" {
+			t.Errorf("Type = %s, want CREATE TABLE", stmt.Type)
+		}
+	})
+
+	t.Run("variables", func(t *testing.T) {
+		stmt := parseShow(t, "SHOW VARIABLES")
+		if stmt.Type != "VARIABLES" {
+			t.Errorf("Type = %s, want VARIABLES", stmt.Type)
+		}
+	})
+
+	t.Run("global variables", func(t *testing.T) {
+		stmt := parseShow(t, "SHOW GLOBAL VARIABLES")
+		if stmt.Type != "GLOBAL VARIABLES" {
+			t.Errorf("Type = %s, want GLOBAL VARIABLES", stmt.Type)
+		}
+	})
+
+	t.Run("status", func(t *testing.T) {
+		stmt := parseShow(t, "SHOW STATUS")
+		if stmt.Type != "STATUS" {
+			t.Errorf("Type = %s, want STATUS", stmt.Type)
+		}
+	})
+
+	t.Run("warnings", func(t *testing.T) {
+		stmt := parseShow(t, "SHOW WARNINGS")
+		if stmt.Type != "WARNINGS" {
+			t.Errorf("Type = %s, want WARNINGS", stmt.Type)
+		}
+	})
+
+	t.Run("errors", func(t *testing.T) {
+		stmt := parseShow(t, "SHOW ERRORS")
+		if stmt.Type != "ERRORS" {
+			t.Errorf("Type = %s, want ERRORS", stmt.Type)
+		}
+	})
+
+	t.Run("index from table", func(t *testing.T) {
+		stmt := parseShow(t, "SHOW INDEX FROM users")
+		if stmt.Type != "INDEX" {
+			t.Errorf("Type = %s, want INDEX", stmt.Type)
+		}
+	})
+}
+
+func TestParseUse(t *testing.T) {
+	p := &Parser{lexer: NewLexer("USE mydb")}
+	p.advance()
+	stmt, err := p.parseUseStmt()
+	if err != nil {
+		t.Fatalf("parseUseStmt error: %v", err)
+	}
+	if stmt.Database != "mydb" {
+		t.Errorf("Database = %s, want mydb", stmt.Database)
+	}
+}
+
+func TestParseExplain(t *testing.T) {
+	t.Run("explain select", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("EXPLAIN SELECT 1")}
+		p.advance()
+		stmt, err := p.parseExplainStmt()
+		if err != nil {
+			t.Fatalf("parseExplainStmt error: %v", err)
+		}
+		if stmt.Stmt == nil {
+			t.Fatal("Stmt is nil")
+		}
+		if _, ok := stmt.Stmt.(*ast.SelectStmt); !ok {
+			t.Errorf("Stmt type = %T, want *ast.SelectStmt", stmt.Stmt)
+		}
+	})
+
+	t.Run("explain format json", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("EXPLAIN FORMAT=JSON SELECT 1")}
+		p.advance()
+		stmt, err := p.parseExplainStmt()
+		if err != nil {
+			t.Fatalf("parseExplainStmt error: %v", err)
+		}
+		if stmt.Format != "JSON" {
+			t.Errorf("Format = %s, want JSON", stmt.Format)
+		}
+	})
+
+	t.Run("describe table", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("DESCRIBE users")}
+		p.advance()
+		stmt, err := p.parseExplainStmt()
+		if err != nil {
+			t.Fatalf("parseExplainStmt error: %v", err)
+		}
+		if stmt.Stmt == nil {
+			t.Fatal("Stmt is nil")
+		}
+	})
+}
