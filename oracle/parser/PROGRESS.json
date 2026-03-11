@@ -366,7 +366,7 @@
       "id": 27,
       "name": "analytic_functions",
       "file": "expr.go",
-      "status": "pending",
+      "status": "done",
       "description": "Analytic/window functions: OVER clause with PARTITION BY, ORDER BY, and windowing (ROWS/RANGE BETWEEN). Also KEEP (DENSE_RANK FIRST/LAST) and WITHIN GROUP for aggregate functions like LISTAGG.",
       "rules": [
         "over_clause", "window_partition", "window_order",

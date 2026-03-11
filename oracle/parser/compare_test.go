@@ -495,6 +495,37 @@ func TestParseSelectFlashbackQuery(t *testing.T) {
 	}
 }
 
+func TestParseAnalyticFunctions(t *testing.T) {
+	tests := []string{
+		"SELECT COUNT(*) OVER () FROM t",
+		"SELECT SUM(salary) OVER (PARTITION BY dept_id) FROM employees",
+		"SELECT ROW_NUMBER() OVER (ORDER BY hire_date) FROM employees",
+		"SELECT RANK() OVER (PARTITION BY dept_id ORDER BY salary DESC) FROM employees",
+		"SELECT AVG(salary) OVER (ORDER BY hire_date ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) FROM employees",
+		"SELECT SUM(amount) OVER (ORDER BY txn_date RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM txns",
+		"SELECT SUM(salary) OVER (ORDER BY hire_date ROWS UNBOUNDED PRECEDING) FROM employees",
+		"SELECT AVG(salary) OVER (ORDER BY dept_id GROUPS BETWEEN 1 PRECEDING AND 1 FOLLOWING) FROM employees",
+		"SELECT MIN(salary) KEEP (DENSE_RANK FIRST ORDER BY hire_date) FROM employees",
+		"SELECT MAX(salary) KEEP (DENSE_RANK LAST ORDER BY hire_date DESC) FROM employees",
+		"SELECT dept_id, MIN(salary) KEEP (DENSE_RANK FIRST ORDER BY hire_date) FROM employees GROUP BY dept_id",
+		"SELECT MIN(salary) KEEP (DENSE_RANK FIRST ORDER BY hire_date) OVER (PARTITION BY dept_id) FROM employees",
+		"SELECT LISTAGG(name, ', ') WITHIN GROUP (ORDER BY name) FROM employees",
+		"SELECT dept_id, LISTAGG(name, ', ') WITHIN GROUP (ORDER BY hire_date) FROM employees GROUP BY dept_id",
+		"SELECT ROW_NUMBER() OVER (ORDER BY salary), RANK() OVER (ORDER BY salary), DENSE_RANK() OVER (ORDER BY salary) FROM employees",
+		"SELECT SUM(salary) OVER (ORDER BY hire_date ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) FROM employees",
+	}
+
+	for _, sql := range tests {
+		name := sql
+		if len(name) > 60 {
+			name = name[:60]
+		}
+		t.Run(name, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
 func TestNodeToString(t *testing.T) {
 	n := &ast.NumberLiteral{Val: "42", Ival: 42, Loc: ast.Loc{Start: 0, End: -1}}
 	s := ast.NodeToString(n)

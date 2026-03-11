@@ -781,6 +781,13 @@ var oracleKeywords = map[string]int{
 	"UNTIL":     kwUNTIL,
 	"UPDATED":   kwUPDATED,
 	"UPSERT":    kwUPSERT,
+
+	// Analytic function keywords
+	"FOLLOWING":  kwFOLLOWING,
+	"GROUPS":     kwGROUPS,
+	"PRECEDING":  kwPRECEDING,
+	"UNBOUNDED":  kwUNBOUNDED,
+	"WITHIN":     kwWITHIN,
 }
 
 // Keyword token constants.
@@ -1079,4 +1086,11 @@ const (
 	kwUNTIL
 	kwUPDATED
 	kwUPSERT
+
+	// Analytic function keywords
+	kwFOLLOWING
+	kwGROUPS
+	kwPRECEDING
+	kwUNBOUNDED
+	kwWITHIN
 )

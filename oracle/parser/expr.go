@@ -432,8 +432,8 @@ func (p *Parser) parseFuncCall(name, schema string, start int) nodes.ExprNode {
 		if p.cur.Type == ')' {
 			p.advance()
 		}
-		fc.Loc.End = p.pos()
-		return fc
+		// Still check for KEEP/OVER after COUNT(*)
+		return p.parseFuncCallPostfix(fc)
 	}
 
 	// DISTINCT
@@ -465,8 +465,247 @@ func (p *Parser) parseFuncCall(name, schema string, start int) nodes.ExprNode {
 		p.advance()
 	}
 
+	return p.parseFuncCallPostfix(fc)
+}
+
+// parseFuncCallPostfix checks for WITHIN GROUP, KEEP, and OVER clauses
+// after a function call's closing parenthesis.
+func (p *Parser) parseFuncCallPostfix(fc *nodes.FuncCallExpr) nodes.ExprNode {
+	// WITHIN GROUP (ORDER BY ...)
+	if p.cur.Type == kwWITHIN {
+		fc.OrderBy = p.parseWithinGroup()
+	}
+
+	// KEEP (DENSE_RANK FIRST/LAST ORDER BY ...)
+	if p.cur.Type == kwKEEP {
+		fc.KeepClause = p.parseKeepClause()
+	}
+
+	// OVER (analytic window specification)
+	if p.cur.Type == kwOVER {
+		fc.Over = p.parseOverClause()
+	}
+
 	fc.Loc.End = p.pos()
 	return fc
+}
+
+// parseOverClause parses an analytic function's OVER clause.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/Analytic-Functions.html
+//
+//	OVER ( [ partition_by_clause ] [ order_by_clause [ windowing_clause ] ] )
+//	OVER window_name
+func (p *Parser) parseOverClause() *nodes.WindowSpec {
+	start := p.pos()
+	p.advance() // consume OVER
+
+	ws := &nodes.WindowSpec{Loc: nodes.Loc{Start: start}}
+
+	if p.cur.Type != '(' {
+		// OVER window_name
+		if p.isIdentLike() {
+			ws.WindowName = p.parseIdentifier()
+		}
+		ws.Loc.End = p.pos()
+		return ws
+	}
+
+	p.advance() // consume '('
+
+	// PARTITION BY
+	if p.cur.Type == kwPARTITION {
+		p.advance() // consume PARTITION
+		if p.cur.Type == kwBY {
+			p.advance() // consume BY
+		}
+		ws.PartitionBy = &nodes.List{}
+		for {
+			expr := p.parseExpr()
+			if expr != nil {
+				ws.PartitionBy.Items = append(ws.PartitionBy.Items, expr)
+			}
+			if p.cur.Type != ',' {
+				break
+			}
+			p.advance()
+		}
+	}
+
+	// ORDER BY
+	if p.cur.Type == kwORDER {
+		p.advance() // consume ORDER
+		if p.cur.Type == kwBY {
+			p.advance() // consume BY
+		}
+		ws.OrderBy = p.parseOrderByList()
+	}
+
+	// Windowing clause: ROWS | RANGE | GROUPS
+	if p.cur.Type == kwROWS || p.cur.Type == kwRANGE || p.cur.Type == kwGROUPS {
+		ws.Frame = p.parseWindowFrame()
+	}
+
+	if p.cur.Type == ')' {
+		p.advance()
+	}
+
+	ws.Loc.End = p.pos()
+	return ws
+}
+
+// parseWindowFrame parses a window frame specification.
+//
+//	{ ROWS | RANGE | GROUPS }
+//	  { BETWEEN bound AND bound | bound }
+func (p *Parser) parseWindowFrame() *nodes.WindowFrame {
+	start := p.pos()
+	wf := &nodes.WindowFrame{Loc: nodes.Loc{Start: start}}
+
+	switch p.cur.Type {
+	case kwROWS:
+		wf.Type = nodes.WINDOW_ROWS
+	case kwRANGE:
+		wf.Type = nodes.WINDOW_RANGE
+	case kwGROUPS:
+		wf.Type = nodes.WINDOW_GROUPS
+	}
+	p.advance() // consume ROWS/RANGE/GROUPS
+
+	if p.cur.Type == kwBETWEEN {
+		p.advance() // consume BETWEEN
+		wf.Start = p.parseWindowBound()
+		if p.cur.Type == kwAND {
+			p.advance() // consume AND
+		}
+		wf.End = p.parseWindowBound()
+	} else {
+		// Single bound (start only)
+		wf.Start = p.parseWindowBound()
+	}
+
+	wf.Loc.End = p.pos()
+	return wf
+}
+
+// parseWindowBound parses a window frame bound.
+//
+//	UNBOUNDED PRECEDING | UNBOUNDED FOLLOWING
+//	CURRENT ROW
+//	expr PRECEDING | expr FOLLOWING
+func (p *Parser) parseWindowBound() *nodes.WindowBound {
+	start := p.pos()
+	wb := &nodes.WindowBound{Loc: nodes.Loc{Start: start}}
+
+	if p.cur.Type == kwUNBOUNDED {
+		p.advance() // consume UNBOUNDED
+		if p.cur.Type == kwPRECEDING {
+			wb.Type = nodes.WINDOW_UNBOUNDED_PRECEDING
+			p.advance()
+		} else if p.cur.Type == kwFOLLOWING {
+			wb.Type = nodes.WINDOW_UNBOUNDED_FOLLOWING
+			p.advance()
+		}
+	} else if p.cur.Type == kwCURRENT {
+		p.advance() // consume CURRENT
+		wb.Type = nodes.WINDOW_CURRENT_ROW
+		if p.cur.Type == kwROW {
+			p.advance() // consume ROW
+		}
+	} else {
+		// expr PRECEDING | expr FOLLOWING
+		wb.Value = p.parseExprPrec(precAdd)
+		if p.cur.Type == kwPRECEDING {
+			wb.Type = nodes.WINDOW_VALUE_PRECEDING
+			p.advance()
+		} else if p.cur.Type == kwFOLLOWING {
+			wb.Type = nodes.WINDOW_VALUE_FOLLOWING
+			p.advance()
+		}
+	}
+
+	wb.Loc.End = p.pos()
+	return wb
+}
+
+// parseKeepClause parses a KEEP (DENSE_RANK FIRST/LAST ORDER BY ...) clause.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/FIRST.html
+//
+//	KEEP ( DENSE_RANK { FIRST | LAST } ORDER BY sort_list )
+func (p *Parser) parseKeepClause() *nodes.KeepClause {
+	start := p.pos()
+	p.advance() // consume KEEP
+
+	kc := &nodes.KeepClause{Loc: nodes.Loc{Start: start}}
+
+	if p.cur.Type == '(' {
+		p.advance() // consume '('
+	}
+
+	// DENSE_RANK
+	if p.cur.Type == kwDENSE_RANK {
+		p.advance()
+	}
+
+	// FIRST or LAST
+	if p.cur.Type == kwFIRST {
+		kc.IsFirst = true
+		p.advance()
+	} else if p.cur.Type == kwLAST {
+		kc.IsFirst = false
+		p.advance()
+	}
+
+	// ORDER BY
+	if p.cur.Type == kwORDER {
+		p.advance() // consume ORDER
+		if p.cur.Type == kwBY {
+			p.advance() // consume BY
+		}
+		kc.OrderBy = p.parseOrderByList()
+	}
+
+	if p.cur.Type == ')' {
+		p.advance()
+	}
+
+	kc.Loc.End = p.pos()
+	return kc
+}
+
+// parseWithinGroup parses a WITHIN GROUP (ORDER BY ...) clause.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/LISTAGG.html
+//
+//	WITHIN GROUP ( ORDER BY sort_list )
+func (p *Parser) parseWithinGroup() *nodes.List {
+	p.advance() // consume WITHIN
+
+	// GROUP
+	if p.cur.Type == kwGROUP {
+		p.advance()
+	}
+
+	if p.cur.Type != '(' {
+		return nil
+	}
+	p.advance() // consume '('
+
+	var orderBy *nodes.List
+	if p.cur.Type == kwORDER {
+		p.advance() // consume ORDER
+		if p.cur.Type == kwBY {
+			p.advance() // consume BY
+		}
+		orderBy = p.parseOrderByList()
+	}
+
+	if p.cur.Type == ')' {
+		p.advance()
+	}
+
+	return orderBy
 }
 
 // parseParenExpr parses a parenthesized expression or subquery.
