@@ -823,6 +823,13 @@ var oracleKeywords = map[string]int{
 	"CALL":  kwCALL,
 	"SHARE": kwSHARE,
 
+	// Session/audit keywords
+	"ASSOCIATE":    kwASSOCIATE,
+	"DISASSOCIATE": kwDISASSOCIATE,
+	"STATISTICS":   kwSTATISTICS,
+	"SUCCESSFUL":   kwSUCCESSFUL,
+	"WHENEVER":     kwWHENEVER,
+
 	// JSON expression keywords
 	"FORMAT":         kwFORMAT,
 	"JSON":           kwJSON,
@@ -1171,6 +1178,13 @@ const (
 	// Utility statement keywords
 	kwCALL
 	kwSHARE
+
+	// Session/audit keywords
+	kwASSOCIATE
+	kwDISASSOCIATE
+	kwSTATISTICS
+	kwSUCCESSFUL
+	kwWHENEVER
 
 	// JSON expression keywords
 	kwFORMAT

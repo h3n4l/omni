@@ -306,6 +306,18 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeCallStmt(sb, n)
 	case *RenameStmt:
 		writeRenameStmt(sb, n)
+	case *SetRoleStmt:
+		writeSetRoleStmt(sb, n)
+	case *SetConstraintsStmt:
+		writeSetConstraintsStmt(sb, n)
+	case *AuditStmt:
+		writeAuditStmt(sb, n)
+	case *NoauditStmt:
+		writeNoauditStmt(sb, n)
+	case *AssociateStatisticsStmt:
+		writeAssociateStatisticsStmt(sb, n)
+	case *DisassociateStatisticsStmt:
+		writeDisassociateStatisticsStmt(sb, n)
 
 	// PL/SQL nodes
 	case *PLSQLBlock:
@@ -2662,6 +2674,156 @@ func writeRenameStmt(sb *strings.Builder, n *RenameStmt) {
 	if n.NewName != nil {
 		sb.WriteString(" :newName ")
 		writeNode(sb, n.NewName)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeSetRoleStmt(sb *strings.Builder, n *SetRoleStmt) {
+	sb.WriteString("{SET_ROLE")
+	if n.All {
+		sb.WriteString(" :all true")
+	}
+	if n.None {
+		sb.WriteString(" :none true")
+	}
+	if len(n.Roles) > 0 {
+		sb.WriteString(" :roles (")
+		for i, r := range n.Roles {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, r)
+		}
+		sb.WriteString(")")
+	}
+	if len(n.Except) > 0 {
+		sb.WriteString(" :except (")
+		for i, r := range n.Except {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, r)
+		}
+		sb.WriteString(")")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeSetConstraintsStmt(sb *strings.Builder, n *SetConstraintsStmt) {
+	sb.WriteString("{SET_CONSTRAINTS")
+	if n.All {
+		sb.WriteString(" :all true")
+	}
+	if len(n.Constraints) > 0 {
+		sb.WriteString(" :constraints (")
+		for i, c := range n.Constraints {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, c)
+		}
+		sb.WriteString(")")
+	}
+	if n.Deferred {
+		sb.WriteString(" :deferred true")
+	} else {
+		sb.WriteString(" :immediate true")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeAuditStmt(sb *strings.Builder, n *AuditStmt) {
+	sb.WriteString("{AUDIT")
+	if len(n.Actions) > 0 {
+		sb.WriteString(" :actions (")
+		for i, a := range n.Actions {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			sb.WriteString(fmt.Sprintf("%q", a))
+		}
+		sb.WriteString(")")
+	}
+	if n.Object != nil {
+		sb.WriteString(" :object ")
+		writeNode(sb, n.Object)
+	}
+	if n.By != "" {
+		sb.WriteString(fmt.Sprintf(" :by %q", n.By))
+	}
+	if n.When != "" {
+		sb.WriteString(fmt.Sprintf(" :when %q", n.When))
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeNoauditStmt(sb *strings.Builder, n *NoauditStmt) {
+	sb.WriteString("{NOAUDIT")
+	if len(n.Actions) > 0 {
+		sb.WriteString(" :actions (")
+		for i, a := range n.Actions {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			sb.WriteString(fmt.Sprintf("%q", a))
+		}
+		sb.WriteString(")")
+	}
+	if n.Object != nil {
+		sb.WriteString(" :object ")
+		writeNode(sb, n.Object)
+	}
+	if n.When != "" {
+		sb.WriteString(fmt.Sprintf(" :when %q", n.When))
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeAssociateStatisticsStmt(sb *strings.Builder, n *AssociateStatisticsStmt) {
+	sb.WriteString("{ASSOCIATE_STATISTICS")
+	if n.ObjectType != "" {
+		sb.WriteString(fmt.Sprintf(" :objectType %q", n.ObjectType))
+	}
+	if len(n.Objects) > 0 {
+		sb.WriteString(" :objects (")
+		for i, o := range n.Objects {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, o)
+		}
+		sb.WriteString(")")
+	}
+	if n.Using != nil {
+		sb.WriteString(" :using ")
+		writeNode(sb, n.Using)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeDisassociateStatisticsStmt(sb *strings.Builder, n *DisassociateStatisticsStmt) {
+	sb.WriteString("{DISASSOCIATE_STATISTICS")
+	if n.ObjectType != "" {
+		sb.WriteString(fmt.Sprintf(" :objectType %q", n.ObjectType))
+	}
+	if len(n.Objects) > 0 {
+		sb.WriteString(" :objects (")
+		for i, o := range n.Objects {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, o)
+		}
+		sb.WriteString(")")
+	}
+	if n.Force {
+		sb.WriteString(" :force true")
 	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

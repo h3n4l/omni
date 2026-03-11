@@ -492,7 +492,7 @@
       "id": 37,
       "name": "set_role_set_constraint",
       "file": "session.go",
-      "status": "pending",
+      "status": "done",
       "description": "SET ROLE and SET CONSTRAINT(S) session control statements. SET ROLE enables/disables roles. SET CONSTRAINT(S) changes deferrable constraint behavior.",
       "rules": [
         "set_role_stmt", "set_constraints_stmt"
@@ -504,7 +504,7 @@
       "id": 38,
       "name": "audit_noaudit",
       "file": "utility.go",
-      "status": "pending",
+      "status": "done",
       "description": "AUDIT and NOAUDIT statements for unified and traditional auditing. AUDIT tracks SQL operations; NOAUDIT disables auditing.",
       "rules": [
         "audit_stmt", "noaudit_stmt"
@@ -516,7 +516,7 @@
       "id": 39,
       "name": "associate_statistics",
       "file": "utility.go",
-      "status": "pending",
+      "status": "done",
       "description": "ASSOCIATE STATISTICS and DISASSOCIATE STATISTICS statements for binding statistics types to database objects.",
       "rules": [
         "associate_statistics_stmt", "disassociate_statistics_stmt"

@@ -1976,6 +1976,88 @@ type RenameStmt struct {
 func (n *RenameStmt) nodeTag()  {}
 func (n *RenameStmt) stmtNode() {}
 
+// SetRoleStmt represents a SET ROLE statement.
+//
+//	SET ROLE { role [,...] | ALL [EXCEPT role [,...]] | NONE }
+type SetRoleStmt struct {
+	Roles  []*ObjectName // role names
+	All    bool          // ALL
+	Except []*ObjectName // EXCEPT role list (when ALL EXCEPT)
+	None   bool          // NONE
+	Loc    Loc
+}
+
+func (n *SetRoleStmt) nodeTag()  {}
+func (n *SetRoleStmt) stmtNode() {}
+
+// SetConstraintsStmt represents a SET CONSTRAINT(S) statement.
+//
+//	SET { CONSTRAINT | CONSTRAINTS } { ALL | constraint [,...] } { IMMEDIATE | DEFERRED }
+type SetConstraintsStmt struct {
+	All         bool          // ALL constraints
+	Constraints []*ObjectName // specific constraint names
+	Deferred    bool          // DEFERRED (false = IMMEDIATE)
+	Loc         Loc
+}
+
+func (n *SetConstraintsStmt) nodeTag()  {}
+func (n *SetConstraintsStmt) stmtNode() {}
+
+// AuditStmt represents an AUDIT statement.
+//
+//	AUDIT { sql_statement_clause | schema_object_clause } [BY { SESSION | ACCESS }] [WHENEVER [NOT] SUCCESSFUL]
+type AuditStmt struct {
+	Actions []string    // audit actions
+	Object  *ObjectName // optional object being audited
+	By      string      // BY SESSION or BY ACCESS
+	When    string      // WHENEVER clause text
+	Loc     Loc
+}
+
+func (n *AuditStmt) nodeTag()  {}
+func (n *AuditStmt) stmtNode() {}
+
+// NoauditStmt represents a NOAUDIT statement.
+//
+//	NOAUDIT { sql_statement_clause | schema_object_clause } [WHENEVER [NOT] SUCCESSFUL]
+type NoauditStmt struct {
+	Actions []string    // noaudit actions
+	Object  *ObjectName // optional object
+	When    string      // WHENEVER clause text
+	Loc     Loc
+}
+
+func (n *NoauditStmt) nodeTag()  {}
+func (n *NoauditStmt) stmtNode() {}
+
+// AssociateStatisticsStmt represents an ASSOCIATE STATISTICS statement.
+//
+//	ASSOCIATE STATISTICS WITH { COLUMNS | FUNCTIONS | PACKAGES | TYPES | INDEXES }
+//	    object [,...] USING [schema.]statistics_type
+type AssociateStatisticsStmt struct {
+	ObjectType string        // COLUMNS, FUNCTIONS, etc.
+	Objects    []*ObjectName // objects to associate
+	Using      *ObjectName   // statistics type
+	Loc        Loc
+}
+
+func (n *AssociateStatisticsStmt) nodeTag()  {}
+func (n *AssociateStatisticsStmt) stmtNode() {}
+
+// DisassociateStatisticsStmt represents a DISASSOCIATE STATISTICS statement.
+//
+//	DISASSOCIATE STATISTICS FROM { COLUMNS | FUNCTIONS | PACKAGES | TYPES | INDEXES }
+//	    object [,...] [FORCE]
+type DisassociateStatisticsStmt struct {
+	ObjectType string        // COLUMNS, FUNCTIONS, etc.
+	Objects    []*ObjectName // objects to disassociate
+	Force      bool          // FORCE
+	Loc        Loc
+}
+
+func (n *DisassociateStatisticsStmt) nodeTag()  {}
+func (n *DisassociateStatisticsStmt) stmtNode() {}
+
 // ---------------------------------------------------------------------------
 // Star expression (SELECT *)
 // ---------------------------------------------------------------------------

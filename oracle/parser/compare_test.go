@@ -791,3 +791,85 @@ func TestParseRenameStmt(t *testing.T) {
 		})
 	}
 }
+
+func TestParseSetRole(t *testing.T) {
+	tests := []string{
+		"SET ROLE dba_role",
+		"SET ROLE role1, role2",
+		"SET ROLE ALL",
+		"SET ROLE ALL EXCEPT restricted_role",
+		"SET ROLE NONE",
+		"SET ROLE admin_role IDENTIFIED BY secret",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseSetConstraints(t *testing.T) {
+	tests := []string{
+		"SET CONSTRAINTS ALL IMMEDIATE",
+		"SET CONSTRAINTS ALL DEFERRED",
+		"SET CONSTRAINT emp_fk IMMEDIATE",
+		"SET CONSTRAINTS emp_fk, dept_fk DEFERRED",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseAudit(t *testing.T) {
+	tests := []string{
+		"AUDIT SELECT ON hr.employees",
+		"AUDIT INSERT, UPDATE, DELETE ON hr.employees BY ACCESS",
+		"AUDIT SELECT ON hr.employees WHENEVER SUCCESSFUL",
+		"AUDIT SELECT ON hr.employees WHENEVER NOT SUCCESSFUL",
+		"AUDIT ALL",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseNoaudit(t *testing.T) {
+	tests := []string{
+		"NOAUDIT SELECT ON hr.employees",
+		"NOAUDIT ALL",
+		"NOAUDIT INSERT ON hr.employees WHENEVER SUCCESSFUL",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseAssociateStatistics(t *testing.T) {
+	tests := []string{
+		"ASSOCIATE STATISTICS WITH FUNCTIONS my_func USING my_stats_type",
+		"ASSOCIATE STATISTICS WITH COLUMNS employees.salary USING my_stats",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseDisassociateStatistics(t *testing.T) {
+	tests := []string{
+		"DISASSOCIATE STATISTICS FROM FUNCTIONS my_func",
+		"DISASSOCIATE STATISTICS FROM COLUMNS employees.salary FORCE",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}

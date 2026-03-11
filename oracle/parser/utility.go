@@ -418,3 +418,228 @@ func (p *Parser) parsePurgeStmt() nodes.StmtNode {
 	stmt.Loc.End = p.pos()
 	return stmt
 }
+
+// parseAuditStmt parses an AUDIT statement.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/AUDIT-Traditional-Auditing.html
+//
+//	AUDIT { action [,...] } [ON object] [BY { SESSION | ACCESS }] [WHENEVER [NOT] SUCCESSFUL]
+func (p *Parser) parseAuditStmt() nodes.StmtNode {
+	start := p.pos()
+	p.advance() // consume AUDIT
+
+	stmt := &nodes.AuditStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// Parse audit actions until ON/BY/WHENEVER/;/EOF
+	stmt.Actions = p.parseAuditActions()
+
+	// ON object
+	if p.cur.Type == kwON {
+		p.advance()
+		stmt.Object = p.parseObjectName()
+	}
+
+	// BY { SESSION | ACCESS }
+	if p.cur.Type == kwBY {
+		p.advance()
+		if p.isIdentLike() {
+			stmt.By = p.cur.Str
+			p.advance()
+		}
+	}
+
+	// WHENEVER [NOT] SUCCESSFUL
+	if p.cur.Type == kwWHENEVER {
+		stmt.When = p.parseWheneverClause()
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseNoauditStmt parses a NOAUDIT statement.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/NOAUDIT-Traditional-Auditing.html
+//
+//	NOAUDIT { action [,...] } [ON object] [WHENEVER [NOT] SUCCESSFUL]
+func (p *Parser) parseNoauditStmt() nodes.StmtNode {
+	start := p.pos()
+	p.advance() // consume NOAUDIT
+
+	stmt := &nodes.NoauditStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// Parse audit actions
+	stmt.Actions = p.parseAuditActions()
+
+	// ON object
+	if p.cur.Type == kwON {
+		p.advance()
+		stmt.Object = p.parseObjectName()
+	}
+
+	// WHENEVER [NOT] SUCCESSFUL
+	if p.cur.Type == kwWHENEVER {
+		stmt.When = p.parseWheneverClause()
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseAuditActions collects audit action identifiers separated by commas.
+func (p *Parser) parseAuditActions() []string {
+	var actions []string
+	for {
+		// Collect multi-word action (e.g., "CREATE TABLE", "ALTER SESSION")
+		action := ""
+		for p.isIdentLike() || p.cur.Type == kwSELECT || p.cur.Type == kwINSERT ||
+			p.cur.Type == kwUPDATE || p.cur.Type == kwDELETE || p.cur.Type == kwCREATE ||
+			p.cur.Type == kwALTER || p.cur.Type == kwDROP || p.cur.Type == kwGRANT ||
+			p.cur.Type == kwEXECUTE || p.cur.Type == kwINDEX || p.cur.Type == kwALL {
+			if action != "" {
+				action += " "
+			}
+			action += p.cur.Str
+			p.advance()
+			// Stop if we hit keywords that start a clause
+			if p.cur.Type == kwON || p.cur.Type == kwBY || p.cur.Type == kwWHENEVER {
+				break
+			}
+		}
+		if action != "" {
+			actions = append(actions, action)
+		}
+		if p.cur.Type != ',' {
+			break
+		}
+		p.advance()
+	}
+	return actions
+}
+
+// parseWheneverClause parses WHENEVER [NOT] SUCCESSFUL.
+func (p *Parser) parseWheneverClause() string {
+	result := "WHENEVER"
+	p.advance() // consume WHENEVER
+	if p.cur.Type == kwNOT {
+		result += " NOT"
+		p.advance()
+	}
+	if p.cur.Type == kwSUCCESSFUL {
+		result += " SUCCESSFUL"
+		p.advance()
+	}
+	return result
+}
+
+// parseAssociateStatisticsStmt parses an ASSOCIATE STATISTICS statement.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/ASSOCIATE-STATISTICS.html
+//
+//	ASSOCIATE STATISTICS WITH { COLUMNS | FUNCTIONS | PACKAGES | TYPES | INDEXES }
+//	    object [,...] USING [schema.]statistics_type
+func (p *Parser) parseAssociateStatisticsStmt() nodes.StmtNode {
+	start := p.pos()
+	p.advance() // consume ASSOCIATE
+	if p.cur.Type == kwSTATISTICS {
+		p.advance()
+	}
+
+	stmt := &nodes.AssociateStatisticsStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// WITH
+	if p.cur.Type == kwWITH {
+		p.advance()
+	}
+
+	// Object type: COLUMNS, FUNCTIONS, PACKAGES, TYPES, INDEXES
+	if p.isIdentLike() || p.cur.Type == kwINDEX {
+		if p.cur.Type == kwINDEX {
+			stmt.ObjectType = "INDEXES"
+		} else {
+			stmt.ObjectType = p.cur.Str
+		}
+		p.advance()
+	}
+
+	// Object names
+	for {
+		name := p.parseObjectName()
+		if name != nil {
+			stmt.Objects = append(stmt.Objects, name)
+		}
+		if p.cur.Type != ',' {
+			break
+		}
+		p.advance()
+	}
+
+	// USING statistics_type
+	if p.isIdentLike() && p.cur.Str == "USING" {
+		p.advance()
+		stmt.Using = p.parseObjectName()
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseDisassociateStatisticsStmt parses a DISASSOCIATE STATISTICS statement.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/DISASSOCIATE-STATISTICS.html
+//
+//	DISASSOCIATE STATISTICS FROM { COLUMNS | FUNCTIONS | PACKAGES | TYPES | INDEXES }
+//	    object [,...] [FORCE]
+func (p *Parser) parseDisassociateStatisticsStmt() nodes.StmtNode {
+	start := p.pos()
+	p.advance() // consume DISASSOCIATE
+	if p.cur.Type == kwSTATISTICS {
+		p.advance()
+	}
+
+	stmt := &nodes.DisassociateStatisticsStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// FROM
+	if p.cur.Type == kwFROM {
+		p.advance()
+	}
+
+	// Object type
+	if p.isIdentLike() || p.cur.Type == kwINDEX {
+		if p.cur.Type == kwINDEX {
+			stmt.ObjectType = "INDEXES"
+		} else {
+			stmt.ObjectType = p.cur.Str
+		}
+		p.advance()
+	}
+
+	// Object names
+	for {
+		name := p.parseObjectName()
+		if name != nil {
+			stmt.Objects = append(stmt.Objects, name)
+		}
+		if p.cur.Type != ',' {
+			break
+		}
+		p.advance()
+	}
+
+	// FORCE
+	if p.cur.Type == kwFORCE {
+		stmt.Force = true
+		p.advance()
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}

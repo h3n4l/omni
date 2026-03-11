@@ -83,7 +83,6 @@ func (p *Parser) parseStmt() nodes.StmtNode {
 	case kwSAVEPOINT:
 		return p.parseSavepointStmt()
 	case kwSET:
-		// SET TRANSACTION
 		next := p.peekNext()
 		if next.Type == kwTRANSACTION {
 			start := p.pos()
@@ -93,7 +92,21 @@ func (p *Parser) parseStmt() nodes.StmtNode {
 			stmt.(*nodes.SetTransactionStmt).Loc.Start = start
 			return stmt
 		}
+		if next.Type == kwROLE {
+			return p.parseSetRoleStmt()
+		}
+		if next.Type == kwCONSTRAINT || next.Type == kwCONSTRAINTS {
+			return p.parseSetConstraintsStmt()
+		}
 		return nil
+	case kwAUDIT:
+		return p.parseAuditStmt()
+	case kwNOAUDIT:
+		return p.parseNoauditStmt()
+	case kwASSOCIATE:
+		return p.parseAssociateStatisticsStmt()
+	case kwDISASSOCIATE:
+		return p.parseDisassociateStatisticsStmt()
 	case kwCOMMENT:
 		return p.parseCommentStmt()
 	case kwTRUNCATE:
