@@ -2263,3 +2263,114 @@ func TestParseCursorOperations(t *testing.T) {
 		})
 	}
 }
+
+// ---------- Batch 24: Create Trigger ----------
+
+func TestParseCursorCreateTrigger(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		// DML trigger - AFTER INSERT
+		{
+			name: "dml_trigger_after_insert",
+			sql:  "CREATE TRIGGER tr_insert ON dbo.employees AFTER INSERT AS BEGIN SELECT 1 END",
+		},
+		// DML trigger - AFTER UPDATE
+		{
+			name: "dml_trigger_after_update",
+			sql:  "CREATE TRIGGER tr_update ON employees AFTER UPDATE AS BEGIN SELECT 1 END",
+		},
+		// DML trigger - AFTER DELETE
+		{
+			name: "dml_trigger_after_delete",
+			sql:  "CREATE TRIGGER dbo.tr_delete ON dbo.orders AFTER DELETE AS BEGIN SELECT 1 END",
+		},
+		// DML trigger - AFTER INSERT, UPDATE, DELETE (multiple events)
+		{
+			name: "dml_trigger_multiple_events",
+			sql:  "CREATE TRIGGER tr_all ON employees AFTER INSERT, UPDATE, DELETE AS BEGIN SELECT 1 END",
+		},
+		// DML trigger - FOR (same as AFTER)
+		{
+			name: "dml_trigger_for",
+			sql:  "CREATE TRIGGER tr_for ON employees FOR INSERT AS BEGIN SELECT 1 END",
+		},
+		// DML trigger - INSTEAD OF INSERT
+		{
+			name: "dml_trigger_instead_of_insert",
+			sql:  "CREATE TRIGGER tr_instead ON employees INSTEAD OF INSERT AS BEGIN SELECT 1 END",
+		},
+		// DML trigger - INSTEAD OF UPDATE
+		{
+			name: "dml_trigger_instead_of_update",
+			sql:  "CREATE TRIGGER tr_instead_upd ON employees INSTEAD OF UPDATE AS BEGIN SELECT 1 END",
+		},
+		// DML trigger - INSTEAD OF DELETE
+		{
+			name: "dml_trigger_instead_of_delete",
+			sql:  "CREATE TRIGGER tr_instead_del ON employees INSTEAD OF DELETE AS BEGIN SELECT 1 END",
+		},
+		// DML trigger - INSTEAD OF INSERT, UPDATE
+		{
+			name: "dml_trigger_instead_of_multi",
+			sql:  "CREATE TRIGGER tr_instead_multi ON employees INSTEAD OF INSERT, UPDATE AS BEGIN SELECT 1 END",
+		},
+		// DML trigger - NOT FOR REPLICATION
+		{
+			name: "dml_trigger_not_for_replication",
+			sql:  "CREATE TRIGGER tr_nfr ON employees AFTER INSERT NOT FOR REPLICATION AS BEGIN SELECT 1 END",
+		},
+		// DML trigger - OR ALTER
+		{
+			name: "dml_trigger_or_alter",
+			sql:  "CREATE OR ALTER TRIGGER tr_oa ON employees AFTER INSERT AS BEGIN SELECT 1 END",
+		},
+		// DDL trigger - ON DATABASE
+		{
+			name: "ddl_trigger_on_database",
+			sql:  "CREATE TRIGGER tr_ddl ON DATABASE FOR CREATE_TABLE AS BEGIN SELECT 1 END",
+		},
+		// DDL trigger - ON DATABASE, multiple events
+		{
+			name: "ddl_trigger_multi_events",
+			sql:  "CREATE TRIGGER tr_ddl_multi ON DATABASE AFTER CREATE_TABLE, ALTER_TABLE, DROP_TABLE AS BEGIN SELECT 1 END",
+		},
+		// DDL trigger - ON ALL SERVER
+		{
+			name: "ddl_trigger_all_server",
+			sql:  "CREATE TRIGGER tr_server ON ALL SERVER FOR CREATE_DATABASE AS BEGIN SELECT 1 END",
+		},
+		// DDL trigger - event group
+		{
+			name: "ddl_trigger_event_group",
+			sql:  "CREATE TRIGGER tr_ddl_events ON DATABASE FOR DDL_TABLE_EVENTS AS BEGIN SELECT 1 END",
+		},
+		// Logon trigger
+		{
+			name: "logon_trigger",
+			sql:  "CREATE TRIGGER tr_logon ON ALL SERVER FOR LOGON AS BEGIN SELECT 1 END",
+		},
+		// Logon trigger - AFTER
+		{
+			name: "logon_trigger_after",
+			sql:  "CREATE TRIGGER tr_logon_after ON ALL SERVER AFTER LOGON AS BEGIN SELECT 1 END",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() == 0 {
+				t.Fatalf("Parse(%q): no statements returned", tt.sql)
+			}
+			for i, item := range result.Items {
+				s1 := ast.NodeToString(item)
+				s2 := ast.NodeToString(item)
+				if s1 != s2 {
+					t.Errorf("stmt[%d] serialization not deterministic:\n  s1: %s\n  s2: %s", i, s1, s2)
+				}
+			}
+		})
+	}
+}

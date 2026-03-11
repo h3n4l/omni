@@ -58,6 +58,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeCreateIndexStmt(sb, n)
 	case *CreateViewStmt:
 		writeCreateViewStmt(sb, n)
+	case *CreateTriggerStmt:
+		writeCreateTriggerStmt(sb, n)
 	case *CreateFunctionStmt:
 		writeCreateFunctionStmt(sb, n)
 	case *CreateProcedureStmt:
@@ -558,6 +560,44 @@ func writeCreateViewStmt(sb *strings.Builder, n *CreateViewStmt) {
 	}
 	if n.SchemaBinding {
 		sb.WriteString(" :schemaBinding true")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeCreateTriggerStmt(sb *strings.Builder, n *CreateTriggerStmt) {
+	sb.WriteString("{CREATETRIGGER")
+	sb.WriteString(fmt.Sprintf(" :orAlter %t", n.OrAlter))
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.Table != nil {
+		sb.WriteString(" :table ")
+		writeNode(sb, n.Table)
+	}
+	if n.OnDatabase {
+		sb.WriteString(" :onDatabase true")
+	}
+	if n.OnAllServer {
+		sb.WriteString(" :onAllServer true")
+	}
+	if n.TriggerType != "" {
+		sb.WriteString(fmt.Sprintf(" :triggerType \"%s\"", n.TriggerType))
+	}
+	if n.Events != nil {
+		sb.WriteString(" :events ")
+		writeNode(sb, n.Events)
+	}
+	if n.WithAppend {
+		sb.WriteString(" :withAppend true")
+	}
+	if n.NotForReplication {
+		sb.WriteString(" :notForReplication true")
+	}
+	if n.Body != nil {
+		sb.WriteString(" :body ")
+		writeNode(sb, n.Body)
 	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

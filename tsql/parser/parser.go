@@ -198,6 +198,11 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 		stmt := p.parseCreateDatabaseStmt()
 		stmt.Loc.Start = loc
 		return stmt
+	case kwTRIGGER:
+		p.advance() // consume TRIGGER
+		stmt := p.parseCreateTriggerStmt(orAlter)
+		stmt.Loc.Start = loc
+		return stmt
 	default:
 		return nil
 	}

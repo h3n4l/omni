@@ -438,6 +438,53 @@ type CreateViewStmt struct {
 func (n *CreateViewStmt) nodeTag()  {}
 func (n *CreateViewStmt) stmtNode() {}
 
+// CreateTriggerStmt represents a CREATE TRIGGER statement.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-trigger-transact-sql
+//
+// DML trigger:
+//
+//	CREATE [ OR ALTER ] TRIGGER [ schema_name . ] trigger_name
+//	ON { table | view }
+//	[ WITH <dml_trigger_option> [ , ...n ] ]
+//	{ FOR | AFTER | INSTEAD OF }
+//	{ [ INSERT ] [ , ] [ UPDATE ] [ , ] [ DELETE ] }
+//	[ WITH APPEND ]
+//	[ NOT FOR REPLICATION ]
+//	AS { sql_statement [ ; ] [ , ...n ] }
+//
+// DDL trigger:
+//
+//	CREATE [ OR ALTER ] TRIGGER trigger_name
+//	ON { ALL SERVER | DATABASE }
+//	[ WITH <ddl_trigger_option> [ , ...n ] ]
+//	{ FOR | AFTER } { event_type | event_group } [ , ...n ]
+//	AS { sql_statement [ ; ] [ , ...n ] }
+//
+// Logon trigger:
+//
+//	CREATE [ OR ALTER ] TRIGGER trigger_name
+//	ON ALL SERVER
+//	[ WITH <logon_trigger_option> [ , ...n ] ]
+//	{ FOR | AFTER } LOGON
+//	AS { sql_statement [ ; ] [ , ...n ] }
+type CreateTriggerStmt struct {
+	OrAlter           bool
+	Name              *TableRef // trigger name (possibly schema-qualified)
+	Table             *TableRef // ON table/view (DML trigger, nil for DDL/Logon)
+	OnDatabase        bool      // ON DATABASE (DDL trigger)
+	OnAllServer       bool      // ON ALL SERVER (DDL/Logon trigger)
+	TriggerType       string    // "FOR", "AFTER", "INSTEAD OF"
+	Events            *List     // list of String: INSERT/UPDATE/DELETE (DML) or event types (DDL)
+	WithAppend        bool      // WITH APPEND
+	NotForReplication bool      // NOT FOR REPLICATION
+	Body              Node      // statement body (BeginEndStmt or single stmt)
+	Loc               Loc
+}
+
+func (n *CreateTriggerStmt) nodeTag()  {}
+func (n *CreateTriggerStmt) stmtNode() {}
+
 // CreateFunctionStmt represents a CREATE FUNCTION statement.
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-function-transact-sql
 type CreateFunctionStmt struct {
