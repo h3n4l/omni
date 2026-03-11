@@ -1036,3 +1036,32 @@ func TestParseCreateLibrary(t *testing.T) {
 		})
 	}
 }
+
+func TestParseCreateMviewLog(t *testing.T) {
+	tests := []string{
+		"CREATE MATERIALIZED VIEW LOG ON employees",
+		"DROP MATERIALIZED VIEW LOG ON employees",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseAlterProcedure(t *testing.T) {
+	tests := []string{
+		"ALTER PROCEDURE my_proc COMPILE",
+		"ALTER FUNCTION my_func COMPILE",
+		"ALTER TRIGGER my_trigger ENABLE",
+		"ALTER TRIGGER my_trigger DISABLE",
+		"ALTER TYPE my_type COMPILE",
+		"ALTER PACKAGE my_pkg COMPILE",
+		"ALTER MATERIALIZED VIEW mv1 COMPILE",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}

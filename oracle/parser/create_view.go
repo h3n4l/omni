@@ -54,6 +54,13 @@ func (p *Parser) parseCreateViewStmt(start int, orReplace bool) *nodes.CreateVie
 		}
 	}
 
+	return p.finishCreateViewStmt(stmt)
+}
+
+// finishCreateViewStmt finishes parsing a CREATE VIEW statement after the
+// MATERIALIZED/FORCE/VIEW prefix has been consumed. The stmt should have
+// its Loc, OrReplace, Materialized, Force, NoForce fields set.
+func (p *Parser) finishCreateViewStmt(stmt *nodes.CreateViewStmt) *nodes.CreateViewStmt {
 	// View name
 	stmt.Name = p.parseObjectName()
 

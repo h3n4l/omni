@@ -4,6 +4,34 @@ import (
 	nodes "github.com/bytebase/omni/oracle/ast"
 )
 
+// parseCreateMaterializedOrView distinguishes between:
+// - CREATE MATERIALIZED VIEW LOG ON ... (mview log)
+// - CREATE MATERIALIZED VIEW ... (regular mview)
+func (p *Parser) parseCreateMaterializedOrView(start int, orReplace bool) nodes.StmtNode {
+	p.advance() // consume MATERIALIZED
+	if p.cur.Type == kwVIEW {
+		next := p.peekNext()
+		if next.Type == kwLOG {
+			p.advance() // consume VIEW
+			p.advance() // consume LOG
+			return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_MATERIALIZED_VIEW_LOG, start)
+		}
+	}
+	// It's a regular MATERIALIZED VIEW — but we already consumed MATERIALIZED.
+	// parseCreateViewStmt expects to see kwMATERIALIZED. Since we consumed it,
+	// we need to handle VIEW directly.
+	stmt := &nodes.CreateViewStmt{
+		OrReplace:    orReplace,
+		Materialized: true,
+		Loc:          nodes.Loc{Start: start},
+	}
+	if p.cur.Type == kwVIEW {
+		p.advance()
+	}
+	// Delegate the rest to the existing view parsing logic.
+	return p.finishCreateViewStmt(stmt)
+}
+
 // parseAdminDDLStmt parses generic administrative DDL statements by consuming
 // the action keyword (CREATE/ALTER/DROP) and object type keyword, then parsing
 // the object name and skipping remaining options until semicolon/EOF.

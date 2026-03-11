@@ -58,7 +58,9 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 		return p.parseCreateTableStmt(start, orReplace, global, private)
 	case kwUNIQUE, kwBITMAP, kwINDEX:
 		return p.parseCreateIndexStmt(start)
-	case kwMATERIALIZED, kwFORCE, kwVIEW:
+	case kwMATERIALIZED:
+		return p.parseCreateMaterializedOrView(start, orReplace)
+	case kwFORCE, kwVIEW:
 		return p.parseCreateViewStmt(start, orReplace)
 	case kwSEQUENCE:
 		return p.parseCreateSequenceStmt(start)

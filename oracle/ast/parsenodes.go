@@ -89,6 +89,7 @@ const (
 	OBJECT_FLASHBACK_ARCHIVE
 	OBJECT_JAVA
 	OBJECT_LIBRARY
+	OBJECT_MATERIALIZED_VIEW_LOG
 )
 
 // ConstraintType represents constraint types.

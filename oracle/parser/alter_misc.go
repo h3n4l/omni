@@ -31,6 +31,22 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 		return p.parseAlterGeneric(start, nodes.OBJECT_SEQUENCE)
 	case kwTABLE:
 		return p.parseAlterTableStmt(start)
+	case kwPROCEDURE:
+		return p.parseAlterGeneric(start, nodes.OBJECT_PROCEDURE)
+	case kwFUNCTION:
+		return p.parseAlterGeneric(start, nodes.OBJECT_FUNCTION)
+	case kwTRIGGER:
+		return p.parseAlterGeneric(start, nodes.OBJECT_TRIGGER)
+	case kwTYPE:
+		return p.parseAlterGeneric(start, nodes.OBJECT_TYPE)
+	case kwPACKAGE:
+		return p.parseAlterGeneric(start, nodes.OBJECT_PACKAGE)
+	case kwMATERIALIZED:
+		return p.parseAlterGeneric(start, nodes.OBJECT_MATERIALIZED_VIEW)
+	case kwDATABASE:
+		return p.parseAlterGeneric(start, nodes.OBJECT_DATABASE_LINK)
+	case kwSYNONYM:
+		return p.parseAlterGeneric(start, nodes.OBJECT_SYNONYM)
 	case kwUSER, kwROLE, kwPROFILE,
 		kwTABLESPACE, kwCLUSTER, kwJAVA, kwLIBRARY:
 		if adminStmt := p.parseAlterAdminObject(start); adminStmt != nil {

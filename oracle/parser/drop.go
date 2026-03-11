@@ -34,11 +34,16 @@ func (p *Parser) parseDropStmt() nodes.StmtNode {
 		stmt.ObjectType = nodes.OBJECT_VIEW
 		p.advance()
 	case kwMATERIALIZED:
-		stmt.ObjectType = nodes.OBJECT_MATERIALIZED_VIEW
 		p.advance() // consume MATERIALIZED
 		if p.cur.Type == kwVIEW {
 			p.advance() // consume VIEW
+			// Check for MATERIALIZED VIEW LOG
+			if p.cur.Type == kwLOG {
+				p.advance() // consume LOG
+				return p.parseAdminDDLStmt("DROP", nodes.OBJECT_MATERIALIZED_VIEW_LOG, start)
+			}
 		}
+		stmt.ObjectType = nodes.OBJECT_MATERIALIZED_VIEW
 	case kwSEQUENCE:
 		stmt.ObjectType = nodes.OBJECT_SEQUENCE
 		p.advance()

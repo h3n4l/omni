@@ -583,7 +583,7 @@
       "id": 44,
       "name": "create_mview_log",
       "file": "create_view.go",
-      "status": "pending",
+      "status": "done",
       "description": "CREATE/ALTER/DROP MATERIALIZED VIEW LOG. MV logs track changes to base tables enabling fast refresh of materialized views.",
       "rules": [
         "create_mview_log_stmt", "alter_mview_log_stmt", "drop_mview_log_stmt",
@@ -596,7 +596,7 @@
       "id": 45,
       "name": "alter_plsql_objects",
       "file": "alter_misc.go",
-      "status": "pending",
+      "status": "done",
       "description": "ALTER PROCEDURE, ALTER FUNCTION, ALTER TRIGGER, ALTER TYPE, ALTER PACKAGE, ALTER MATERIALIZED VIEW, ALTER DATABASE LINK, ALTER SYNONYM. Currently ALTER INDEX/VIEW/SEQUENCE use a generic skip-to-semicolon stub; these need proper object-specific parsing.",
       "rules": [
         "alter_procedure_stmt", "alter_function_stmt",
@@ -610,7 +610,7 @@
       "id": 46,
       "name": "drop_extended",
       "file": "drop.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 16 gap: extend DROP to handle DROP USER, DROP ROLE, DROP PROFILE, DROP TABLESPACE, DROP DIRECTORY, DROP CONTEXT, DROP CLUSTER, DROP DIMENSION, DROP FLASHBACK ARCHIVE, DROP JAVA, DROP LIBRARY, DROP MATERIALIZED VIEW LOG, DROP DATABASE.",
       "rules": [
         "drop_user", "drop_role", "drop_profile",
