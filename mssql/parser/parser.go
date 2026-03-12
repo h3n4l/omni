@@ -522,6 +522,35 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 			}
 			return nil
 		}
+		// CREATE EXTERNAL DATA SOURCE / EXTERNAL TABLE / EXTERNAL FILE FORMAT
+		if p.cur.Type == kwEXTERNAL {
+			p.advance() // consume EXTERNAL
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "DATA") {
+				p.advance() // consume DATA
+				if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SOURCE") {
+					p.advance() // consume SOURCE
+				}
+				stmt := p.parseCreateExternalDataSourceStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			if p.cur.Type == kwTABLE {
+				p.advance() // consume TABLE
+				stmt := p.parseCreateExternalTableStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			if p.cur.Type == kwFILE || (p.isIdentLike() && matchesKeywordCI(p.cur.Str, "FILE")) {
+				p.advance() // consume FILE
+				if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "FORMAT") {
+					p.advance() // consume FORMAT
+				}
+				stmt := p.parseCreateExternalFileFormatStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			return nil
+		}
 		// CREATE BROKER PRIORITY (service broker)
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "BROKER") {
 			p.advance() // consume BROKER
@@ -815,6 +844,20 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 			}
 			return nil
 		}
+		// ALTER EXTERNAL DATA SOURCE
+		if p.cur.Type == kwEXTERNAL {
+			p.advance() // consume EXTERNAL
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "DATA") {
+				p.advance() // consume DATA
+				if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SOURCE") {
+					p.advance() // consume SOURCE
+				}
+				stmt := p.parseAlterExternalDataSourceStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			return nil
+		}
 		return nil
 	}
 }
@@ -993,6 +1036,14 @@ func (p *Parser) parseDropOrSecurityStmt() nodes.StmtNode {
 				p.advance() // consume PRIORITY
 			}
 			stmt := p.parseDropServiceBrokerStmt("BROKER PRIORITY")
+			stmt.Loc.Start = loc
+			return stmt
+		}
+		// DROP EXTERNAL DATA SOURCE / EXTERNAL TABLE / EXTERNAL FILE FORMAT
+		if next.Type == kwEXTERNAL {
+			p.advance() // consume DROP
+			p.advance() // consume EXTERNAL
+			stmt := p.parseDropExternalStmt()
 			stmt.Loc.Start = loc
 			return stmt
 		}

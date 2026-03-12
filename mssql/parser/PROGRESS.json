@@ -1279,7 +1279,7 @@
       "id": 57,
       "name": "external_objects",
       "file": "external.go",
-      "status": "pending",
+      "status": "done",
       "description": "New: CREATE/ALTER/DROP EXTERNAL DATA SOURCE, EXTERNAL TABLE, EXTERNAL FILE FORMAT for PolyBase",
       "rules": ["parseCreateExternalDataSourceStmt", "parseCreateExternalTableStmt", "parseCreateExternalFileFormatStmt", "parseAlterExternalDataSourceStmt", "parseDropExternalStmt"],
       "depends_on": [1, 2],

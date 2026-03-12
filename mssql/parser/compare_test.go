@@ -4350,3 +4350,163 @@ DROP EVENT SESSION test_session ON SERVER`
 		}
 	}
 }
+
+// TestParseExternalDataSource tests batch 57: CREATE/ALTER/DROP EXTERNAL DATA SOURCE.
+func TestParseExternalDataSource(t *testing.T) {
+	tests := []string{
+		// CREATE basic with LOCATION only
+		"CREATE EXTERNAL DATA SOURCE MyHadoopCluster WITH (LOCATION = 'hdfs://10.10.10.10:8020')",
+		// CREATE with LOCATION and TYPE
+		"CREATE EXTERNAL DATA SOURCE MyHadoopCluster WITH (LOCATION = 'hdfs://10.10.10.10:8020', TYPE = HADOOP)",
+		// CREATE with LOCATION, TYPE, and RESOURCE_MANAGER_LOCATION
+		"CREATE EXTERNAL DATA SOURCE MyHadoopCluster WITH (LOCATION = 'hdfs://10.10.10.10:8020', TYPE = HADOOP, RESOURCE_MANAGER_LOCATION = '10.10.10.10:8032')",
+		// CREATE with CREDENTIAL
+		"CREATE EXTERNAL DATA SOURCE MyAzureStorage WITH (LOCATION = 'wasbs://container@account.blob.core.windows.net', CREDENTIAL = AzureStorageCredential)",
+		// CREATE with TYPE = BLOB_STORAGE
+		"CREATE EXTERNAL DATA SOURCE MyAzureBlob WITH (LOCATION = 'https://account.blob.core.windows.net', TYPE = BLOB_STORAGE, CREDENTIAL = AzureStorageCredential)",
+		// CREATE with PUSHDOWN
+		"CREATE EXTERNAL DATA SOURCE MySqlServer WITH (LOCATION = 'sqlserver://sql.database.windows.net', PUSHDOWN = ON, CREDENTIAL = SqlServerCredentials)",
+		// CREATE with CONNECTION_OPTIONS
+		"CREATE EXTERNAL DATA SOURCE MyOracleServer WITH (LOCATION = 'oracle://oracle.host:1521', CONNECTION_OPTIONS = 'ImpersonateUser=%CURRENT_USER', CREDENTIAL = OracleProxyCredential, PUSHDOWN = ON)",
+		// CREATE SQL Server 2022+ style (no TYPE)
+		"CREATE EXTERNAL DATA SOURCE MyABS WITH (LOCATION = 'abs://account.blob.core.windows.net', CREDENTIAL = AzureStorageCredential)",
+		// ALTER EXTERNAL DATA SOURCE
+		"ALTER EXTERNAL DATA SOURCE hadoop_eds SET LOCATION = 'hdfs://10.10.10.10:8020', RESOURCE_MANAGER_LOCATION = '10.10.10.10:8032'",
+		// ALTER with CREDENTIAL
+		"ALTER EXTERNAL DATA SOURCE hadoop_eds SET CREDENTIAL = new_hadoop_user",
+		// DROP EXTERNAL DATA SOURCE
+		"DROP EXTERNAL DATA SOURCE mydatasource",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			result := ParseAndCheck(t, sql)
+			if result.Len() != 1 {
+				t.Fatalf("Parse(%q): got %d statements, want 1", sql, result.Len())
+			}
+			stmt, ok := result.Items[0].(*ast.SecurityStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *SecurityStmt, got %T", sql, result.Items[0])
+			}
+			checkLocation(t, sql, "SecurityStmt", stmt.Loc)
+		})
+	}
+}
+
+// TestParseExternalTable tests batch 57: CREATE/DROP EXTERNAL TABLE.
+func TestParseExternalTable(t *testing.T) {
+	tests := []string{
+		// CREATE EXTERNAL TABLE basic
+		`CREATE EXTERNAL TABLE dbo.ClickStream (
+			url VARCHAR(50),
+			event_date DATE,
+			user_ip VARCHAR(50)
+		)
+		WITH (
+			LOCATION = '/webdata/employee.tbl',
+			DATA_SOURCE = MyHadoopCluster,
+			FILE_FORMAT = MyFileFormat
+		)`,
+		// CREATE with reject options
+		`CREATE EXTERNAL TABLE dbo.ErrorTable (
+			id INT,
+			name VARCHAR(100)
+		)
+		WITH (
+			LOCATION = '/data/errors/',
+			DATA_SOURCE = MyAzureStorage,
+			FILE_FORMAT = CsvFormat,
+			REJECT_TYPE = value,
+			REJECT_VALUE = 10
+		)`,
+		// CREATE with percentage reject and sample
+		`CREATE EXTERNAL TABLE dbo.DataTable (
+			col1 INT,
+			col2 NVARCHAR(200)
+		)
+		WITH (
+			LOCATION = '/data/files/',
+			DATA_SOURCE = MySource,
+			FILE_FORMAT = ParquetFormat,
+			REJECT_TYPE = percentage,
+			REJECT_VALUE = 5,
+			REJECT_SAMPLE_VALUE = 1000
+		)`,
+		// CREATE with REJECTED_ROW_LOCATION
+		`CREATE EXTERNAL TABLE dbo.RejectTest (
+			id INT NOT NULL,
+			value FLOAT
+		)
+		WITH (
+			LOCATION = '/data/',
+			DATA_SOURCE = MySource,
+			FILE_FORMAT = CsvFormat,
+			REJECT_TYPE = value,
+			REJECT_VALUE = 0,
+			REJECTED_ROW_LOCATION = '/REJECT_Directory'
+		)`,
+		// CREATE EXTERNAL TABLE with schema qualification
+		`CREATE EXTERNAL TABLE mydb.dbo.ExternalData (
+			id BIGINT,
+			description NVARCHAR(MAX)
+		)
+		WITH (
+			LOCATION = '/external/',
+			DATA_SOURCE = RemoteSource,
+			FILE_FORMAT = TextFormat
+		)`,
+		// DROP EXTERNAL TABLE
+		"DROP EXTERNAL TABLE dbo.ClickStream",
+		// DROP EXTERNAL TABLE qualified
+		"DROP EXTERNAL TABLE mydb.dbo.ExternalData",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			result := ParseAndCheck(t, sql)
+			if result.Len() != 1 {
+				t.Fatalf("Parse(%q): got %d statements, want 1", sql, result.Len())
+			}
+			stmt, ok := result.Items[0].(*ast.SecurityStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *SecurityStmt, got %T", sql, result.Items[0])
+			}
+			checkLocation(t, sql, "SecurityStmt", stmt.Loc)
+		})
+	}
+}
+
+// TestParseExternalFileFormat tests batch 57: CREATE/DROP EXTERNAL FILE FORMAT.
+func TestParseExternalFileFormat(t *testing.T) {
+	tests := []string{
+		// DELIMITEDTEXT format
+		`CREATE EXTERNAL FILE FORMAT textdelimited1 WITH (FORMAT_TYPE = DELIMITEDTEXT, FORMAT_OPTIONS (FIELD_TERMINATOR = '|', DATE_FORMAT = 'MM/dd/yyyy'), DATA_COMPRESSION = 'org.apache.hadoop.io.compress.GzipCodec')`,
+		// RCFILE format
+		`CREATE EXTERNAL FILE FORMAT rcfile1 WITH (FORMAT_TYPE = RCFILE, SERDE_METHOD = 'org.apache.hadoop.hive.serde2.columnar.LazyBinaryColumnarSerDe', DATA_COMPRESSION = 'org.apache.hadoop.io.compress.DefaultCodec')`,
+		// ORC format
+		`CREATE EXTERNAL FILE FORMAT orcfile1 WITH (FORMAT_TYPE = ORC, DATA_COMPRESSION = 'org.apache.hadoop.io.compress.SnappyCodec')`,
+		// PARQUET format
+		`CREATE EXTERNAL FILE FORMAT parquetfile1 WITH (FORMAT_TYPE = PARQUET, DATA_COMPRESSION = 'org.apache.hadoop.io.compress.SnappyCodec')`,
+		// PARQUET without compression
+		`CREATE EXTERNAL FILE FORMAT parquetfile2 WITH (FORMAT_TYPE = PARQUET)`,
+		// DELTA format
+		`CREATE EXTERNAL FILE FORMAT DeltaFileFormat WITH (FORMAT_TYPE = DELTA)`,
+		// CSV with skip header
+		`CREATE EXTERNAL FILE FORMAT skipHeader_CSV WITH (FORMAT_TYPE = DELIMITEDTEXT, FORMAT_OPTIONS (FIELD_TERMINATOR = ',', STRING_DELIMITER = '"', FIRST_ROW = 2, USE_TYPE_DEFAULT = True))`,
+		// CSV with ENCODING
+		`CREATE EXTERNAL FILE FORMAT utf16format WITH (FORMAT_TYPE = DELIMITEDTEXT, FORMAT_OPTIONS (FIELD_TERMINATOR = ',', ENCODING = 'UTF8'))`,
+		// DROP EXTERNAL FILE FORMAT
+		"DROP EXTERNAL FILE FORMAT textdelimited1",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			result := ParseAndCheck(t, sql)
+			if result.Len() != 1 {
+				t.Fatalf("Parse(%q): got %d statements, want 1", sql, result.Len())
+			}
+			stmt, ok := result.Items[0].(*ast.SecurityStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *SecurityStmt, got %T", sql, result.Items[0])
+			}
+			checkLocation(t, sql, "SecurityStmt", stmt.Loc)
+		})
+	}
+}
