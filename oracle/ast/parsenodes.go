@@ -1486,12 +1486,33 @@ type CreateTypeStmt struct {
 	AsVarray   *TypeName   // VARRAY(n) OF type
 	VarraySize ExprNode    // varray size limit
 	IsBody     bool        // CREATE TYPE BODY
-	Body       Node        // type body (generic, can be various PL/SQL constructs)
+	Body       *List       // type body members (list of *TypeBodyMember)
 	Loc        Loc         // start location
 }
 
 func (n *CreateTypeStmt) nodeTag()  {}
 func (n *CreateTypeStmt) stmtNode() {}
+
+// TypeBodyMemberKind represents the kind of a type body member.
+type TypeBodyMemberKind int
+
+const (
+	TYPE_BODY_MEMBER      TypeBodyMemberKind = iota // MEMBER
+	TYPE_BODY_STATIC                                // STATIC
+	TYPE_BODY_MAP                                   // MAP MEMBER
+	TYPE_BODY_ORDER                                 // ORDER MEMBER
+	TYPE_BODY_CONSTRUCTOR                           // CONSTRUCTOR
+)
+
+// TypeBodyMember represents a single member definition inside a CREATE TYPE BODY.
+// It wraps a procedure or function with its kind qualifier.
+type TypeBodyMember struct {
+	Kind    TypeBodyMemberKind // MEMBER, STATIC, MAP, ORDER, CONSTRUCTOR
+	Subprog Node               // *CreateProcedureStmt or *CreateFunctionStmt
+	Loc     Loc
+}
+
+func (n *TypeBodyMember) nodeTag() {}
 
 // ---------------------------------------------------------------------------
 // CREATE PACKAGE / PACKAGE BODY

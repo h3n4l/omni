@@ -260,6 +260,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeCreateDatabaseLinkStmt(sb, n)
 	case *CreateTypeStmt:
 		writeCreateTypeStmt(sb, n)
+	case *TypeBodyMember:
+		writeTypeBodyMember(sb, n)
 	case *CreatePackageStmt:
 		writeCreatePackageStmt(sb, n)
 	case *CreateProcedureStmt:
@@ -2278,6 +2280,28 @@ func writeCreateTypeStmt(sb *strings.Builder, n *CreateTypeStmt) {
 	if n.Body != nil {
 		sb.WriteString(" :body ")
 		writeNode(sb, n.Body)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeTypeBodyMember(sb *strings.Builder, n *TypeBodyMember) {
+	sb.WriteString("{TYPEBODYMEMBER")
+	kindStr := "MEMBER"
+	switch n.Kind {
+	case TYPE_BODY_STATIC:
+		kindStr = "STATIC"
+	case TYPE_BODY_MAP:
+		kindStr = "MAP"
+	case TYPE_BODY_ORDER:
+		kindStr = "ORDER"
+	case TYPE_BODY_CONSTRUCTOR:
+		kindStr = "CONSTRUCTOR"
+	}
+	sb.WriteString(fmt.Sprintf(" :kind %q", kindStr))
+	if n.Subprog != nil {
+		sb.WriteString(" :subprog ")
+		writeNode(sb, n.Subprog)
 	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

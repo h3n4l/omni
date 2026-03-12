@@ -1313,3 +1313,169 @@ func TestParseDDLTrigger(t *testing.T) {
 		})
 	}
 }
+
+func TestParseCreateTypeBodyMethods(t *testing.T) {
+	tests := []string{
+		// MEMBER PROCEDURE
+		`CREATE OR REPLACE TYPE BODY employee_type AS
+  MEMBER PROCEDURE set_name(p_name VARCHAR2) IS
+  BEGIN
+    SELF.name := p_name;
+  END set_name;
+END;`,
+		// MEMBER FUNCTION
+		`CREATE TYPE BODY my_type AS
+  MEMBER FUNCTION get_name RETURN VARCHAR2 IS
+  BEGIN
+    RETURN SELF.name;
+  END get_name;
+END;`,
+		// STATIC FUNCTION
+		`CREATE TYPE BODY my_type AS
+  STATIC FUNCTION create_default RETURN my_type IS
+  BEGIN
+    RETURN my_type('default');
+  END create_default;
+END;`,
+		// STATIC PROCEDURE
+		`CREATE TYPE BODY my_type AS
+  STATIC PROCEDURE log_count IS
+  BEGIN
+    NULL;
+  END log_count;
+END;`,
+		// MAP MEMBER FUNCTION
+		`CREATE TYPE BODY rational_type AS
+  MAP MEMBER FUNCTION to_real RETURN NUMBER IS
+  BEGIN
+    RETURN num / den;
+  END to_real;
+END;`,
+		// ORDER MEMBER FUNCTION
+		`CREATE TYPE BODY my_type AS
+  ORDER MEMBER FUNCTION compare(other my_type) RETURN INTEGER IS
+  BEGIN
+    IF SELF.val < other.val THEN RETURN -1;
+    ELSIF SELF.val > other.val THEN RETURN 1;
+    ELSE RETURN 0;
+    END IF;
+  END compare;
+END;`,
+		// Multiple members
+		`CREATE OR REPLACE TYPE BODY person_type AS
+  MEMBER FUNCTION get_name RETURN VARCHAR2 IS
+  BEGIN
+    RETURN first_name;
+  END get_name;
+  MEMBER PROCEDURE set_name(p_name VARCHAR2) IS
+  BEGIN
+    first_name := p_name;
+  END set_name;
+  STATIC FUNCTION count_all RETURN NUMBER IS
+    v_count NUMBER;
+  BEGIN
+    SELECT COUNT(*) INTO v_count FROM persons;
+    RETURN v_count;
+  END count_all;
+  MAP MEMBER FUNCTION to_string RETURN VARCHAR2 IS
+  BEGIN
+    RETURN first_name;
+  END to_string;
+END;`,
+		// Member with DECLARE section (local variables)
+		`CREATE TYPE BODY my_type AS
+  MEMBER FUNCTION compute RETURN NUMBER IS
+    v_result NUMBER;
+  BEGIN
+    v_result := val * 2;
+    RETURN v_result;
+  END compute;
+END;`,
+	}
+	for _, sql := range tests {
+		name := sql
+		if len(name) > 60 {
+			name = name[:60]
+		}
+		t.Run(name, func(t *testing.T) {
+			result := ParseAndCheck(t, sql)
+			if result.Len() != 1 {
+				t.Fatalf("expected 1 statement, got %d", result.Len())
+			}
+			raw, ok := result.Items[0].(*ast.RawStmt)
+			if !ok {
+				t.Fatalf("expected *RawStmt, got %T", result.Items[0])
+			}
+			stmt, ok := raw.Stmt.(*ast.CreateTypeStmt)
+			if !ok {
+				t.Fatalf("expected *CreateTypeStmt, got %T", raw.Stmt)
+			}
+			if !stmt.IsBody {
+				t.Fatal("expected IsBody to be true")
+			}
+			if stmt.Body == nil || len(stmt.Body.Items) == 0 {
+				t.Fatal("expected non-empty Body")
+			}
+		})
+	}
+}
+
+func TestParseCreateTypeBodyConstructor(t *testing.T) {
+	tests := []string{
+		// Basic constructor
+		`CREATE TYPE BODY my_type AS
+  CONSTRUCTOR FUNCTION my_type(p_val NUMBER) RETURN SELF AS RESULT IS
+  BEGIN
+    SELF.val := p_val;
+    RETURN;
+  END;
+END;`,
+		// Constructor with SELF parameter
+		`CREATE TYPE BODY my_type AS
+  CONSTRUCTOR FUNCTION my_type(SELF IN OUT NOCOPY my_type, p_name VARCHAR2) RETURN SELF AS RESULT IS
+  BEGIN
+    SELF.name := p_name;
+    RETURN;
+  END;
+END;`,
+		// Constructor plus member methods
+		`CREATE OR REPLACE TYPE BODY address_type AS
+  CONSTRUCTOR FUNCTION address_type(p_street VARCHAR2, p_city VARCHAR2) RETURN SELF AS RESULT IS
+  BEGIN
+    SELF.street := p_street;
+    SELF.city := p_city;
+    RETURN;
+  END;
+  MEMBER FUNCTION get_full_address RETURN VARCHAR2 IS
+  BEGIN
+    RETURN street || ', ' || city;
+  END get_full_address;
+END;`,
+	}
+	for _, sql := range tests {
+		name := sql
+		if len(name) > 60 {
+			name = name[:60]
+		}
+		t.Run(name, func(t *testing.T) {
+			result := ParseAndCheck(t, sql)
+			if result.Len() != 1 {
+				t.Fatalf("expected 1 statement, got %d", result.Len())
+			}
+			raw, ok := result.Items[0].(*ast.RawStmt)
+			if !ok {
+				t.Fatalf("expected *RawStmt, got %T", result.Items[0])
+			}
+			stmt, ok := raw.Stmt.(*ast.CreateTypeStmt)
+			if !ok {
+				t.Fatalf("expected *CreateTypeStmt, got %T", raw.Stmt)
+			}
+			if !stmt.IsBody {
+				t.Fatal("expected IsBody to be true")
+			}
+			if stmt.Body == nil || len(stmt.Body.Items) == 0 {
+				t.Fatal("expected non-empty Body")
+			}
+		})
+	}
+}
