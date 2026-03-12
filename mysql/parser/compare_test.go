@@ -9717,3 +9717,42 @@ func TestParseShowWarningsLimit(t *testing.T) {
 		})
 	}
 }
+
+// --- Batch 86: depth_fix_show_create_user_host ---
+
+func TestParseShowCreateUserHost(t *testing.T) {
+	tests := []struct {
+		sql      string
+		expected string
+	}{
+		{
+			sql:      "SHOW CREATE USER root",
+			expected: `{SHOW :loc 0 :type CREATE USER :for_user {USER_SPEC :loc 17 :name root}}`,
+		},
+		{
+			sql:      "SHOW CREATE USER 'root'@'localhost'",
+			expected: `{SHOW :loc 0 :type CREATE USER :for_user {USER_SPEC :loc 17 :name root :host localhost}}`,
+		},
+		{
+			sql:      "SHOW CREATE USER 'admin'@'%'",
+			expected: `{SHOW :loc 0 :type CREATE USER :for_user {USER_SPEC :loc 17 :name admin :host %}}`,
+		},
+		{
+			sql:      "SHOW CREATE USER 'user1'@'192.168.1.1'",
+			expected: `{SHOW :loc 0 :type CREATE USER :for_user {USER_SPEC :loc 17 :name user1 :host 192.168.1.1}}`,
+		},
+		{
+			sql:      "SHOW CREATE USER CURRENT_USER",
+			expected: `{SHOW :loc 0 :type CREATE USER :for_user {USER_SPEC :loc 17 :name CURRENT_USER}}`,
+		},
+		{
+			sql:      "SHOW CREATE USER CURRENT_USER()",
+			expected: `{SHOW :loc 0 :type CREATE USER :for_user {USER_SPEC :loc 17 :name CURRENT_USER}}`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.sql, func(t *testing.T) {
+			ParseAndCompare(t, tt.sql, tt.expected)
+		})
+	}
+}

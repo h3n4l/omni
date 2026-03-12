@@ -399,15 +399,24 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 		case kwUSER:
 			stmt.Type = "CREATE USER"
 			p.advance()
-			ref, err := p.parseTableRef()
-			if err != nil {
-				return nil, err
-			}
-			stmt.From = ref
-			// Skip optional @'host' part
-			if p.cur.Type == '@' {
+			// Handle CURRENT_USER / CURRENT_USER()
+			if p.cur.Type == kwCURRENT_USER {
+				start := p.pos()
 				p.advance()
-				p.advance() // skip host
+				if p.cur.Type == '(' {
+					p.advance()
+					p.match(')')
+				}
+				stmt.ForUser = &nodes.UserSpec{
+					Loc:  nodes.Loc{Start: start, End: p.pos()},
+					Name: "CURRENT_USER",
+				}
+			} else {
+				user, err := p.parseUserSpec()
+				if err != nil {
+					return nil, err
+				}
+				stmt.ForUser = user
 			}
 		}
 

@@ -2130,7 +2130,7 @@
       "id": 86,
       "name": "depth_fix_show_create_user_host",
       "file": "set_show.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 51 gap: SHOW CREATE USER parses username via parseTableRef then discards @host with bare p.advance(). Should use parseUserSpec (from grant.go) to properly capture user@host as a UserSpec.",
       "rules": [
         "parseShowCreateUser"
