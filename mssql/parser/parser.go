@@ -505,6 +505,23 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 			}
 			return nil
 		}
+		// CREATE EVENT NOTIFICATION / EVENT SESSION
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "EVENT") {
+			p.advance() // consume EVENT
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "NOTIFICATION") {
+				p.advance() // consume NOTIFICATION
+				stmt := p.parseCreateEventNotificationStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SESSION") {
+				p.advance() // consume SESSION
+				stmt := p.parseCreateEventSessionStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			return nil
+		}
 		// CREATE BROKER PRIORITY (service broker)
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "BROKER") {
 			p.advance() // consume BROKER
@@ -738,6 +755,17 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 			stmt.Loc.Start = loc
 			return stmt
 		}
+		// ALTER EVENT SESSION
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "EVENT") {
+			p.advance() // consume EVENT
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SESSION") {
+				p.advance() // consume SESSION
+				stmt := p.parseAlterEventSessionStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			return nil
+		}
 		// ALTER MESSAGE TYPE (service broker)
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "MESSAGE") {
 			p.advance() // consume MESSAGE
@@ -967,6 +995,24 @@ func (p *Parser) parseDropOrSecurityStmt() nodes.StmtNode {
 			stmt := p.parseDropServiceBrokerStmt("BROKER PRIORITY")
 			stmt.Loc.Start = loc
 			return stmt
+		}
+		// DROP EVENT NOTIFICATION / EVENT SESSION
+		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "EVENT") {
+			p.advance() // consume DROP
+			p.advance() // consume EVENT
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "NOTIFICATION") {
+				p.advance() // consume NOTIFICATION
+				stmt := p.parseDropEventNotificationStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SESSION") {
+				p.advance() // consume SESSION
+				stmt := p.parseDropEventSessionStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			return nil
 		}
 		return p.parseDropStmt()
 	}

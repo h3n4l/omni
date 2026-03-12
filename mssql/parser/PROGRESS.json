@@ -1269,7 +1269,7 @@
       "id": 56,
       "name": "event_notification_session",
       "file": "event.go",
-      "status": "pending",
+      "status": "done",
       "description": "New: CREATE/ALTER/DROP EVENT NOTIFICATION, CREATE/ALTER/DROP EVENT SESSION (Extended Events)",
       "rules": ["parseCreateEventNotificationStmt", "parseDropEventNotificationStmt", "parseCreateEventSessionStmt", "parseAlterEventSessionStmt", "parseDropEventSessionStmt"],
       "depends_on": [1, 3],

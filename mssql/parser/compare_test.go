@@ -4225,3 +4225,128 @@ func TestParseServiceBrokerMissing(t *testing.T) {
 		})
 	}
 }
+
+// TestParseEventNotification tests batch 56: CREATE/DROP EVENT NOTIFICATION.
+func TestParseEventNotification(t *testing.T) {
+	tests := []string{
+		// CREATE EVENT NOTIFICATION on SERVER
+		"CREATE EVENT NOTIFICATION log_ddl1 ON SERVER FOR Object_Created TO SERVICE 'NotifyService', '8140a771-3c4b-4479-8ac0-81008ab17984'",
+		// CREATE EVENT NOTIFICATION on DATABASE
+		"CREATE EVENT NOTIFICATION Notify_ALTER_T1 ON DATABASE FOR ALTER_TABLE TO SERVICE 'NotifyService', '8140a771-3c4b-4479-8ac0-81008ab17984'",
+		// CREATE EVENT NOTIFICATION on QUEUE
+		"CREATE EVENT NOTIFICATION NotifyQueue ON QUEUE dbo.ExpenseQueue FOR QUEUE_ACTIVATION TO SERVICE 'NotifyService', '8140a771-3c4b-4479-8ac0-81008ab17984'",
+		// CREATE EVENT NOTIFICATION with FAN_IN
+		"CREATE EVENT NOTIFICATION log_ddl2 ON SERVER WITH FAN_IN FOR ALTER_TABLE TO SERVICE 'NotifyService', '8140a771-3c4b-4479-8ac0-81008ab17984'",
+		// CREATE EVENT NOTIFICATION with multiple events
+		"CREATE EVENT NOTIFICATION log_ddl3 ON DATABASE FOR CREATE_TABLE, ALTER_TABLE, DROP_TABLE TO SERVICE 'NotifyService', 'current database'",
+		// DROP EVENT NOTIFICATION on SERVER
+		"DROP EVENT NOTIFICATION log_ddl1 ON SERVER",
+		// DROP EVENT NOTIFICATION on DATABASE
+		"DROP EVENT NOTIFICATION Notify_ALTER_T1 ON DATABASE",
+		// DROP EVENT NOTIFICATION on QUEUE
+		"DROP EVENT NOTIFICATION NotifyQueue ON QUEUE dbo.ExpenseQueue",
+		// DROP EVENT NOTIFICATION multiple names
+		"DROP EVENT NOTIFICATION log_ddl1, log_ddl2 ON SERVER",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			result := ParseAndCheck(t, sql)
+			if result.Len() != 1 {
+				t.Fatalf("Parse(%q): got %d statements, want 1", sql, result.Len())
+			}
+			stmt, ok := result.Items[0].(*ast.SecurityStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *SecurityStmt, got %T", sql, result.Items[0])
+			}
+			checkLocation(t, sql, "SecurityStmt", stmt.Loc)
+		})
+	}
+}
+
+// TestParseEventSession tests batch 56: CREATE/ALTER/DROP EVENT SESSION (Extended Events).
+func TestParseEventSession(t *testing.T) {
+	tests := []string{
+		// CREATE EVENT SESSION basic
+		"CREATE EVENT SESSION test_session ON SERVER ADD EVENT sqlserver.sql_batch_starting",
+		// CREATE EVENT SESSION with multiple events
+		"CREATE EVENT SESSION test_session ON SERVER ADD EVENT sqlserver.rpc_starting, ADD EVENT sqlserver.sql_batch_starting",
+		// CREATE EVENT SESSION with target
+		"CREATE EVENT SESSION test_session ON SERVER ADD EVENT sqlserver.sql_batch_starting ADD TARGET package0.event_file (SET filename = N'C:\\xe\\test.xel')",
+		// CREATE EVENT SESSION with target and multiple SET options
+		"CREATE EVENT SESSION test_session ON SERVER ADD EVENT sqlserver.sql_batch_starting ADD TARGET package0.event_file (SET filename = N'C:\\xe\\test.xel', max_file_size = 256, max_rollover_files = 10)",
+		// CREATE EVENT SESSION with WITH options
+		"CREATE EVENT SESSION test_session ON SERVER ADD EVENT sqlserver.sql_batch_starting WITH (MAX_MEMORY = 4 MB)",
+		// CREATE EVENT SESSION with multiple WITH options
+		"CREATE EVENT SESSION test_session ON SERVER ADD EVENT sqlserver.sql_batch_starting WITH (MAX_MEMORY = 4 MB, STARTUP_STATE = ON, TRACK_CAUSALITY = OFF)",
+		// CREATE EVENT SESSION on DATABASE
+		"CREATE EVENT SESSION test_session ON DATABASE ADD EVENT sqlserver.sql_batch_starting",
+		// CREATE EVENT SESSION with event SET and ACTION
+		"CREATE EVENT SESSION test_session ON SERVER ADD EVENT sqlserver.error_reported (SET collect_message = 1 ACTION (sqlserver.sql_text, sqlserver.tsql_stack) WHERE severity >= 16)",
+		// CREATE EVENT SESSION with WHERE predicate
+		"CREATE EVENT SESSION test_session ON SERVER ADD EVENT sqlserver.sql_batch_starting (WHERE sqlserver.database_id = 5)",
+		// CREATE EVENT SESSION with EVENT_RETENTION_MODE
+		"CREATE EVENT SESSION test_session ON SERVER ADD EVENT sqlserver.sql_batch_starting WITH (EVENT_RETENTION_MODE = NO_EVENT_LOSS)",
+		// CREATE EVENT SESSION with MAX_DISPATCH_LATENCY
+		"CREATE EVENT SESSION test_session ON SERVER ADD EVENT sqlserver.sql_batch_starting WITH (MAX_DISPATCH_LATENCY = 30 SECONDS)",
+		// CREATE EVENT SESSION with MEMORY_PARTITION_MODE
+		"CREATE EVENT SESSION test_session ON SERVER ADD EVENT sqlserver.sql_batch_starting WITH (MEMORY_PARTITION_MODE = PER_CPU)",
+		// ALTER EVENT SESSION - STATE START
+		"ALTER EVENT SESSION test_session ON SERVER STATE = START",
+		// ALTER EVENT SESSION - STATE STOP
+		"ALTER EVENT SESSION test_session ON SERVER STATE = STOP",
+		// ALTER EVENT SESSION - ADD EVENT
+		"ALTER EVENT SESSION test_session ON SERVER ADD EVENT sqlserver.database_transaction_begin, ADD EVENT sqlserver.database_transaction_end",
+		// ALTER EVENT SESSION - DROP EVENT
+		"ALTER EVENT SESSION test_session ON SERVER DROP EVENT sqlserver.sql_batch_starting",
+		// ALTER EVENT SESSION - ADD TARGET
+		"ALTER EVENT SESSION test_session ON SERVER ADD TARGET package0.ring_buffer (SET max_memory = 1024)",
+		// ALTER EVENT SESSION - DROP TARGET
+		"ALTER EVENT SESSION test_session ON SERVER DROP TARGET package0.event_file",
+		// ALTER EVENT SESSION - WITH options
+		"ALTER EVENT SESSION test_session ON SERVER WITH (MAX_MEMORY = 8 MB)",
+		// ALTER EVENT SESSION on DATABASE
+		"ALTER EVENT SESSION test_session ON DATABASE STATE = START",
+		// DROP EVENT SESSION
+		"DROP EVENT SESSION test_session ON SERVER",
+		// DROP EVENT SESSION on DATABASE
+		"DROP EVENT SESSION test_session ON DATABASE",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			result := ParseAndCheck(t, sql)
+			if result.Len() != 1 {
+				t.Fatalf("Parse(%q): got %d statements, want 1", sql, result.Len())
+			}
+			stmt, ok := result.Items[0].(*ast.SecurityStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *SecurityStmt, got %T", sql, result.Items[0])
+			}
+			checkLocation(t, sql, "SecurityStmt", stmt.Loc)
+		})
+	}
+}
+
+// TestParseEventSessionIntegration tests batch 56: multi-statement integration.
+func TestParseEventSessionIntegration(t *testing.T) {
+	sql := `CREATE EVENT SESSION test_session ON SERVER
+ADD EVENT sqlserver.rpc_starting,
+ADD EVENT sqlserver.sql_batch_starting,
+ADD EVENT sqlserver.error_reported
+ADD TARGET package0.event_file (SET filename = N'C:\xe\test_session.xel', max_file_size = 256, max_rollover_files = 10)
+WITH (MAX_MEMORY = 4 MB);
+ALTER EVENT SESSION test_session ON SERVER STATE = START;
+ALTER EVENT SESSION test_session ON SERVER STATE = STOP;
+DROP EVENT SESSION test_session ON SERVER`
+	result := ParseAndCheck(t, sql)
+	if result.Len() != 4 {
+		for i, item := range result.Items {
+			t.Logf("  stmt[%d]: %T -> %s", i, item, ast.NodeToString(item))
+		}
+		t.Fatalf("Parse: got %d statements, want 4", result.Len())
+	}
+	for _, item := range result.Items {
+		if _, ok := item.(*ast.SecurityStmt); !ok {
+			t.Fatalf("expected *SecurityStmt, got %T: %s", item, ast.NodeToString(item))
+		}
+	}
+}
