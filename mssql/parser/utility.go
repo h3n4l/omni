@@ -753,3 +753,38 @@ func (p *Parser) parseEnableDisableTriggerStmt(enable bool) *nodes.EnableDisable
 	stmt.Loc.End = p.pos()
 	return stmt
 }
+
+// parseSetuserStmt parses a SETUSER statement.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/setuser-transact-sql
+//
+//	SETUSER [ 'username' [ WITH NORESET ] ]
+func (p *Parser) parseSetuserStmt() *nodes.SecurityStmt {
+	loc := p.pos()
+	p.advance() // consume SETUSER
+
+	stmt := &nodes.SecurityStmt{
+		Action:     "SETUSER",
+		ObjectType: "USER",
+		Loc:        nodes.Loc{Start: loc},
+	}
+
+	// Optional 'username'
+	if p.cur.Type == tokSCONST {
+		stmt.Name = p.cur.Str
+		p.advance()
+
+		// Optional WITH NORESET
+		if p.cur.Type == kwWITH {
+			p.advance() // consume WITH
+			if p.matchIdentCI("NORESET") {
+				opts := &nodes.List{}
+				opts.Items = append(opts.Items, &nodes.String{Str: "NORESET"})
+				stmt.Options = opts
+			}
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}

@@ -9548,3 +9548,51 @@ func TestParseOptionQueryHints(t *testing.T) {
 		}
 	})
 }
+
+func TestParseSetuserStatement(t *testing.T) {
+	// SETUSER with no arguments (reset identity)
+	t.Run("setuser_basic_reset", func(t *testing.T) {
+		sql := "SETUSER"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		if stmt.Action != "SETUSER" {
+			t.Errorf("expected action SETUSER, got %q", stmt.Action)
+		}
+		if stmt.Name != "" {
+			t.Errorf("expected empty name, got %q", stmt.Name)
+		}
+	})
+
+	// SETUSER 'username'
+	t.Run("setuser_basic", func(t *testing.T) {
+		sql := "SETUSER 'mary'"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		if stmt.Action != "SETUSER" {
+			t.Errorf("expected action SETUSER, got %q", stmt.Action)
+		}
+		if stmt.Name != "mary" {
+			t.Errorf("expected name 'mary', got %q", stmt.Name)
+		}
+	})
+
+	// SETUSER 'username' WITH NORESET
+	t.Run("setuser_with_noreset", func(t *testing.T) {
+		sql := "SETUSER 'mary' WITH NORESET"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		if stmt.Action != "SETUSER" {
+			t.Errorf("expected action SETUSER, got %q", stmt.Action)
+		}
+		if stmt.Name != "mary" {
+			t.Errorf("expected name 'mary', got %q", stmt.Name)
+		}
+		if stmt.Options == nil || len(stmt.Options.Items) == 0 {
+			t.Fatal("expected NORESET option")
+		}
+		opt := stmt.Options.Items[0].(*ast.String).Str
+		if opt != "NORESET" {
+			t.Errorf("expected NORESET option, got %q", opt)
+		}
+	})
+}

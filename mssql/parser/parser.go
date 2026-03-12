@@ -222,6 +222,8 @@ func (p *Parser) parseStmt() nodes.StmtNode {
 		return p.parseShutdownStmt()
 	case kwKILL:
 		return p.parseKillStmt()
+	case kwSETUSER:
+		return p.parseSetuserStmt()
 	case kwREADTEXT:
 		return p.parseReadtextStmt()
 	case kwWRITETEXT:
