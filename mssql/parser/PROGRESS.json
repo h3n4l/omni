@@ -1259,7 +1259,7 @@
       "id": 55,
       "name": "endpoint",
       "file": "endpoint.go",
-      "status": "pending",
+      "status": "done",
       "description": "New: CREATE/ALTER/DROP ENDPOINT with TCP/HTTP protocol options, SOAP/TSQL/SERVICE_BROKER/DATABASE_MIRRORING payloads",
       "rules": ["parseCreateEndpointStmt", "parseAlterEndpointStmt", "parseDropEndpointStmt"],
       "depends_on": [1],

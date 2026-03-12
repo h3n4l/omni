@@ -468,6 +468,13 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 			stmt.Loc.Start = loc
 			return stmt
 		}
+		// CREATE ENDPOINT
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "ENDPOINT") {
+			p.advance() // consume ENDPOINT
+			stmt := p.parseCreateEndpointStmt()
+			stmt.Loc.Start = loc
+			return stmt
+		}
 		// CREATE REMOTE SERVICE BINDING (service broker)
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "REMOTE") {
 			p.advance() // consume REMOTE
@@ -650,6 +657,13 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 				return stmt
 			}
 			return nil
+		}
+		// ALTER ENDPOINT
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "ENDPOINT") {
+			p.advance() // consume ENDPOINT
+			stmt := p.parseAlterEndpointStmt()
+			stmt.Loc.Start = loc
+			return stmt
 		}
 		// ALTER SERVER AUDIT [SPECIFICATION]
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SERVER") {
@@ -863,6 +877,14 @@ func (p *Parser) parseDropOrSecurityStmt() nodes.StmtNode {
 			p.advance() // consume DROP
 			p.advance() // consume APPLICATION
 			stmt := p.parseSecurityApplicationRoleStmt("DROP")
+			stmt.Loc.Start = loc
+			return stmt
+		}
+		// DROP ENDPOINT
+		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "ENDPOINT") {
+			p.advance() // consume DROP
+			p.advance() // consume ENDPOINT
+			stmt := p.parseDropEndpointStmt()
 			stmt.Loc.Start = loc
 			return stmt
 		}

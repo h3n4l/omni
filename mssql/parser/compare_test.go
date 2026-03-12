@@ -3931,6 +3931,37 @@ COMMIT;`,
 	}
 }
 
+// TestParseEndpoint tests batch 55: CREATE/ALTER/DROP ENDPOINT.
+func TestParseEndpoint(t *testing.T) {
+	tests := []string{
+		// CREATE ENDPOINT basic TCP with SERVICE_BROKER
+		"CREATE ENDPOINT MyEndpoint STATE = STARTED AS TCP (LISTENER_PORT = 4022) FOR SERVICE_BROKER (AUTHENTICATION = WINDOWS)",
+		// CREATE ENDPOINT with AUTHORIZATION
+		"CREATE ENDPOINT MyEndpoint AUTHORIZATION sa AS TCP (LISTENER_PORT = 4022) FOR DATABASE_MIRRORING (ROLE = PARTNER)",
+		// CREATE ENDPOINT stopped
+		"CREATE ENDPOINT MyEndpoint STATE = STOPPED AS TCP (LISTENER_PORT = 5022) FOR TSQL ()",
+		// ALTER ENDPOINT
+		"ALTER ENDPOINT MyEndpoint STATE = STARTED",
+		// ALTER ENDPOINT with options
+		"ALTER ENDPOINT MyEndpoint AS TCP (LISTENER_PORT = 5023)",
+		// DROP ENDPOINT
+		"DROP ENDPOINT MyEndpoint",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			result := ParseAndCheck(t, sql)
+			if result.Len() != 1 {
+				t.Fatalf("Parse(%q): got %d statements, want 1", sql, result.Len())
+			}
+			stmt, ok := result.Items[0].(*ast.SecurityStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *SecurityStmt, got %T", sql, result.Items[0])
+			}
+			checkLocation(t, sql, "SecurityStmt", stmt.Loc)
+		})
+	}
+}
+
 // TestParseServerAudit tests batch 54: SERVER AUDIT, SERVER AUDIT SPECIFICATION, DATABASE AUDIT SPECIFICATION.
 func TestParseServerAudit(t *testing.T) {
 	tests := []string{
