@@ -1193,6 +1193,20 @@ type CreateUserStmt struct {
 	Users       []*UserSpec
 	Require     *RequireClause  // REQUIRE tls_option
 	Resource    *ResourceOption // WITH resource_option
+	// Password options
+	PasswordExpire         string // "", "DEFAULT", "NEVER", "INTERVAL N DAY"
+	PasswordHistory        string // "", "DEFAULT", "N"
+	PasswordReuseInterval  string // "", "DEFAULT", "N DAY"
+	PasswordRequireCurrent string // "", "DEFAULT", "OPTIONAL"
+	FailedLoginAttempts    int
+	HasFailedLogin         bool
+	PasswordLockTime       string // "", "N", "UNBOUNDED"
+	// Account lock
+	AccountLock   bool
+	AccountUnlock bool
+	// Comment / Attribute
+	Comment   string
+	Attribute string
 }
 
 func (s *CreateUserStmt) nodeTag()  {}
@@ -1214,6 +1228,20 @@ type AlterUserStmt struct {
 	Users    []*UserSpec
 	Require  *RequireClause  // REQUIRE tls_option
 	Resource *ResourceOption // WITH resource_option
+	// Password options
+	PasswordExpire         string // "", "DEFAULT", "NEVER", "INTERVAL N DAY"
+	PasswordHistory        string // "", "DEFAULT", "N"
+	PasswordReuseInterval  string // "", "DEFAULT", "N DAY"
+	PasswordRequireCurrent string // "", "DEFAULT", "OPTIONAL"
+	FailedLoginAttempts    int
+	HasFailedLogin         bool
+	PasswordLockTime       string // "", "N", "UNBOUNDED"
+	// Account lock
+	AccountLock   bool
+	AccountUnlock bool
+	// Comment / Attribute
+	Comment   string
+	Attribute string
 }
 
 func (s *AlterUserStmt) nodeTag()  {}

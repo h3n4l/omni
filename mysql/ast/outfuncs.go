@@ -1193,6 +1193,36 @@ func writeCreateUserStmt(sb *strings.Builder, n *CreateUserStmt) {
 		sb.WriteString(" :resource ")
 		writeNode(sb, n.Resource)
 	}
+	if n.PasswordExpire != "" {
+		fmt.Fprintf(sb, " :password_expire %s", n.PasswordExpire)
+	}
+	if n.PasswordHistory != "" {
+		fmt.Fprintf(sb, " :password_history %s", n.PasswordHistory)
+	}
+	if n.PasswordReuseInterval != "" {
+		fmt.Fprintf(sb, " :password_reuse_interval %s", n.PasswordReuseInterval)
+	}
+	if n.PasswordRequireCurrent != "" {
+		fmt.Fprintf(sb, " :password_require_current %s", n.PasswordRequireCurrent)
+	}
+	if n.HasFailedLogin {
+		fmt.Fprintf(sb, " :failed_login_attempts %d", n.FailedLoginAttempts)
+	}
+	if n.PasswordLockTime != "" {
+		fmt.Fprintf(sb, " :password_lock_time %s", n.PasswordLockTime)
+	}
+	if n.AccountLock {
+		sb.WriteString(" :account_lock true")
+	}
+	if n.AccountUnlock {
+		sb.WriteString(" :account_unlock true")
+	}
+	if n.Comment != "" {
+		fmt.Fprintf(sb, " :comment %q", n.Comment)
+	}
+	if n.Attribute != "" {
+		fmt.Fprintf(sb, " :attribute %q", n.Attribute)
+	}
 	sb.WriteString("}")
 }
 
@@ -1227,6 +1257,36 @@ func writeAlterUserStmt(sb *strings.Builder, n *AlterUserStmt) {
 	if n.Resource != nil {
 		sb.WriteString(" :resource ")
 		writeNode(sb, n.Resource)
+	}
+	if n.PasswordExpire != "" {
+		fmt.Fprintf(sb, " :password_expire %s", n.PasswordExpire)
+	}
+	if n.PasswordHistory != "" {
+		fmt.Fprintf(sb, " :password_history %s", n.PasswordHistory)
+	}
+	if n.PasswordReuseInterval != "" {
+		fmt.Fprintf(sb, " :password_reuse_interval %s", n.PasswordReuseInterval)
+	}
+	if n.PasswordRequireCurrent != "" {
+		fmt.Fprintf(sb, " :password_require_current %s", n.PasswordRequireCurrent)
+	}
+	if n.HasFailedLogin {
+		fmt.Fprintf(sb, " :failed_login_attempts %d", n.FailedLoginAttempts)
+	}
+	if n.PasswordLockTime != "" {
+		fmt.Fprintf(sb, " :password_lock_time %s", n.PasswordLockTime)
+	}
+	if n.AccountLock {
+		sb.WriteString(" :account_lock true")
+	}
+	if n.AccountUnlock {
+		sb.WriteString(" :account_unlock true")
+	}
+	if n.Comment != "" {
+		fmt.Fprintf(sb, " :comment %q", n.Comment)
+	}
+	if n.Attribute != "" {
+		fmt.Fprintf(sb, " :attribute %q", n.Attribute)
 	}
 	sb.WriteString("}")
 }

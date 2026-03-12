@@ -521,6 +521,14 @@ func (p *Parser) parseCreateUserStmt() (*nodes.CreateUserStmt, error) {
 		}
 	}
 
+	// [password_option | lock_option] ...
+	p.parseUserAccountOptions(
+		&stmt.PasswordExpire, &stmt.PasswordHistory, &stmt.PasswordReuseInterval,
+		&stmt.PasswordRequireCurrent, &stmt.FailedLoginAttempts, &stmt.HasFailedLogin,
+		&stmt.PasswordLockTime, &stmt.AccountLock, &stmt.AccountUnlock,
+		&stmt.Comment, &stmt.Attribute,
+	)
+
 	stmt.Loc.End = p.pos()
 	return stmt, nil
 }
@@ -598,6 +606,14 @@ func (p *Parser) parseAlterUserStmt() (*nodes.AlterUserStmt, error) {
 			stmt.Resource = res
 		}
 	}
+
+	// [password_option | lock_option] ...
+	p.parseUserAccountOptions(
+		&stmt.PasswordExpire, &stmt.PasswordHistory, &stmt.PasswordReuseInterval,
+		&stmt.PasswordRequireCurrent, &stmt.FailedLoginAttempts, &stmt.HasFailedLogin,
+		&stmt.PasswordLockTime, &stmt.AccountLock, &stmt.AccountUnlock,
+		&stmt.Comment, &stmt.Attribute,
+	)
 
 	stmt.Loc.End = p.pos()
 	return stmt, nil
@@ -964,6 +980,160 @@ func (p *Parser) parseResourceOptions() *nodes.ResourceOption {
 		res.Loc.End = p.pos()
 	}
 	return res
+}
+
+// parseUserAccountOptions parses password options, lock options, comment, and attribute
+// that can follow CREATE USER or ALTER USER statements.
+//
+//	password_option: {
+//	    PASSWORD EXPIRE [DEFAULT | NEVER | INTERVAL N DAY]
+//	  | PASSWORD HISTORY {DEFAULT | N}
+//	  | PASSWORD REUSE INTERVAL {DEFAULT | N DAY}
+//	  | PASSWORD REQUIRE CURRENT [DEFAULT | OPTIONAL]
+//	  | FAILED_LOGIN_ATTEMPTS N
+//	  | PASSWORD_LOCK_TIME {N | UNBOUNDED}
+//	}
+//
+//	lock_option: {
+//	    ACCOUNT LOCK
+//	  | ACCOUNT UNLOCK
+//	}
+func (p *Parser) parseUserAccountOptions(
+	passwordExpire, passwordHistory, passwordReuseInterval, passwordRequireCurrent *string,
+	failedLoginAttempts *int, hasFailedLogin *bool,
+	passwordLockTime *string,
+	accountLock, accountUnlock *bool,
+	comment, attribute *string,
+) {
+	for {
+		switch {
+		case p.cur.Type == kwPASSWORD:
+			next := p.peekNext()
+			switch {
+			case next.Type == tokIDENT && eqFold(next.Str, "expire"):
+				p.advance() // consume PASSWORD
+				p.advance() // consume EXPIRE
+				if p.cur.Type == kwDEFAULT {
+					*passwordExpire = "DEFAULT"
+					p.advance()
+				} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "never") {
+					*passwordExpire = "NEVER"
+					p.advance()
+				} else if p.cur.Type == kwINTERVAL {
+					p.advance() // consume INTERVAL
+					n := "0"
+					if p.cur.Type == tokICONST {
+						n = p.cur.Str
+						if n == "" {
+							n = strconv.FormatInt(p.cur.Ival, 10)
+						}
+						p.advance()
+					}
+					// DAY
+					if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "day") {
+						p.advance()
+					}
+					*passwordExpire = "INTERVAL " + n + " DAY"
+				} else {
+					*passwordExpire = "EXPIRE"
+				}
+			case next.Type == tokIDENT && eqFold(next.Str, "history"):
+				p.advance() // consume PASSWORD
+				p.advance() // consume HISTORY
+				if p.cur.Type == kwDEFAULT {
+					*passwordHistory = "DEFAULT"
+					p.advance()
+				} else if p.cur.Type == tokICONST {
+					*passwordHistory = strconv.FormatInt(p.cur.Ival, 10)
+					p.advance()
+				}
+			case next.Type == tokIDENT && eqFold(next.Str, "reuse"):
+				p.advance() // consume PASSWORD
+				p.advance() // consume REUSE
+				// INTERVAL
+				if p.cur.Type == kwINTERVAL {
+					p.advance()
+				}
+				if p.cur.Type == kwDEFAULT {
+					*passwordReuseInterval = "DEFAULT"
+					p.advance()
+				} else if p.cur.Type == tokICONST {
+					n := strconv.FormatInt(p.cur.Ival, 10)
+					p.advance()
+					if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "day") {
+						p.advance()
+					}
+					*passwordReuseInterval = n + " DAY"
+				}
+			case next.Type == kwREQUIRE:
+				p.advance() // consume PASSWORD
+				p.advance() // consume REQUIRE
+				if p.cur.Type == kwDEFAULT {
+					*passwordRequireCurrent = "DEFAULT"
+					p.advance()
+				} else if p.cur.Type == kwCURRENT || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "current")) {
+					p.advance() // consume CURRENT
+					// Check for DEFAULT or OPTIONAL after CURRENT
+					if p.cur.Type == kwDEFAULT {
+						*passwordRequireCurrent = "DEFAULT"
+						p.advance()
+					} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "optional") {
+						*passwordRequireCurrent = "OPTIONAL"
+						p.advance()
+					} else {
+						*passwordRequireCurrent = "CURRENT"
+					}
+				}
+			default:
+				return
+			}
+
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "failed_login_attempts"):
+			p.advance()
+			if p.cur.Type == tokICONST {
+				*failedLoginAttempts = int(p.cur.Ival)
+				*hasFailedLogin = true
+				p.advance()
+			}
+
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "password_lock_time"):
+			p.advance()
+			if p.cur.Type == tokICONST {
+				*passwordLockTime = strconv.FormatInt(p.cur.Ival, 10)
+				p.advance()
+			} else if p.cur.Type == kwUNBOUNDED || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "unbounded")) {
+				*passwordLockTime = "UNBOUNDED"
+				p.advance()
+			}
+
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "account"):
+			p.advance() // consume ACCOUNT
+			if p.cur.Type == kwLOCK {
+				*accountLock = true
+				p.advance()
+			} else if p.cur.Type == kwUNLOCK {
+				*accountUnlock = true
+				p.advance()
+			}
+
+		case p.cur.Type == kwCOMMENT:
+			p.advance()
+			if p.cur.Type == tokSCONST {
+				*comment = p.cur.Str
+				p.advance()
+			}
+
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "attribute"):
+			p.advance()
+			if p.cur.Type == tokSCONST {
+				*attribute = p.cur.Str
+				p.advance()
+			}
+
+		default:
+			return
+		}
+	}
 }
 
 // parseSetResourceGroupStmt parses SET RESOURCE GROUP group_name [FOR thread_id [, thread_id] ...].

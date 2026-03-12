@@ -8173,6 +8173,97 @@ func TestParseCreateUserRequire(t *testing.T) {
 	})
 }
 
+// ============================================================================
+// Batch 61: ALTER USER extended options
+// ============================================================================
+
+func TestParseAlterUserPasswordExpire(t *testing.T) {
+	t.Run("password expire", func(t *testing.T) {
+		ParseAndCheck(t, "ALTER USER 'jeffrey'@'localhost' PASSWORD EXPIRE")
+	})
+	t.Run("password expire default", func(t *testing.T) {
+		ParseAndCheck(t, "ALTER USER 'jeffrey'@'localhost' PASSWORD EXPIRE DEFAULT")
+	})
+	t.Run("password expire never", func(t *testing.T) {
+		ParseAndCheck(t, "ALTER USER 'jeffrey'@'localhost' PASSWORD EXPIRE NEVER")
+	})
+	t.Run("password expire interval", func(t *testing.T) {
+		ParseAndCheck(t, "ALTER USER 'jeffrey'@'localhost' PASSWORD EXPIRE INTERVAL 180 DAY")
+	})
+	t.Run("password history", func(t *testing.T) {
+		ParseAndCheck(t, "ALTER USER 'jeffrey'@'localhost' PASSWORD HISTORY 5")
+	})
+	t.Run("password history default", func(t *testing.T) {
+		ParseAndCheck(t, "ALTER USER 'jeffrey'@'localhost' PASSWORD HISTORY DEFAULT")
+	})
+	t.Run("password reuse interval", func(t *testing.T) {
+		ParseAndCheck(t, "ALTER USER 'jeffrey'@'localhost' PASSWORD REUSE INTERVAL 365 DAY")
+	})
+	t.Run("password reuse interval default", func(t *testing.T) {
+		ParseAndCheck(t, "ALTER USER 'jeffrey'@'localhost' PASSWORD REUSE INTERVAL DEFAULT")
+	})
+	t.Run("password require current", func(t *testing.T) {
+		ParseAndCheck(t, "ALTER USER 'jeffrey'@'localhost' PASSWORD REQUIRE CURRENT")
+	})
+	t.Run("password require current optional", func(t *testing.T) {
+		ParseAndCheck(t, "ALTER USER 'jeffrey'@'localhost' PASSWORD REQUIRE CURRENT OPTIONAL")
+	})
+}
+
+func TestParseAlterUserAccountLock(t *testing.T) {
+	t.Run("account lock", func(t *testing.T) {
+		ParseAndCheck(t, "ALTER USER 'jeffrey'@'localhost' ACCOUNT LOCK")
+	})
+	t.Run("account unlock", func(t *testing.T) {
+		ParseAndCheck(t, "ALTER USER 'jeffrey'@'localhost' ACCOUNT UNLOCK")
+	})
+}
+
+func TestParseAlterUserFailedLoginAttempts(t *testing.T) {
+	t.Run("failed login attempts", func(t *testing.T) {
+		ParseAndCheck(t, "ALTER USER 'jeffrey'@'localhost' FAILED_LOGIN_ATTEMPTS 3")
+	})
+	t.Run("password lock time", func(t *testing.T) {
+		ParseAndCheck(t, "ALTER USER 'jeffrey'@'localhost' PASSWORD_LOCK_TIME 2")
+	})
+	t.Run("password lock time unbounded", func(t *testing.T) {
+		ParseAndCheck(t, "ALTER USER 'jeffrey'@'localhost' PASSWORD_LOCK_TIME UNBOUNDED")
+	})
+	t.Run("failed login with lock time", func(t *testing.T) {
+		ParseAndCheck(t, "ALTER USER 'jeffrey'@'localhost' FAILED_LOGIN_ATTEMPTS 3 PASSWORD_LOCK_TIME 2")
+	})
+}
+
+func TestParseAlterUserComment(t *testing.T) {
+	t.Run("comment", func(t *testing.T) {
+		ParseAndCheck(t, "ALTER USER 'jeffrey'@'localhost' COMMENT 'this is a test user'")
+	})
+	t.Run("attribute", func(t *testing.T) {
+		ParseAndCheck(t, "ALTER USER 'jeffrey'@'localhost' ATTRIBUTE '{\"department\": \"engineering\"}'")
+	})
+}
+
+func TestParseAlterUserRequireSSL(t *testing.T) {
+	t.Run("require ssl with password expire", func(t *testing.T) {
+		ParseAndCheck(t, "ALTER USER 'jeffrey'@'localhost' REQUIRE SSL PASSWORD EXPIRE INTERVAL 90 DAY")
+	})
+	t.Run("full alter user", func(t *testing.T) {
+		ParseAndCheck(t, "ALTER USER 'jeffrey'@'localhost' IDENTIFIED BY 'newpass' REQUIRE X509 WITH MAX_QUERIES_PER_HOUR 100 PASSWORD EXPIRE INTERVAL 180 DAY ACCOUNT LOCK")
+	})
+}
+
+func TestParseCreateUserPasswordExpire(t *testing.T) {
+	t.Run("create user with password expire", func(t *testing.T) {
+		ParseAndCheck(t, "CREATE USER 'jeffrey'@'localhost' IDENTIFIED BY 'password' PASSWORD EXPIRE INTERVAL 180 DAY")
+	})
+	t.Run("create user with account lock", func(t *testing.T) {
+		ParseAndCheck(t, "CREATE USER 'jeffrey'@'localhost' ACCOUNT LOCK")
+	})
+	t.Run("create user with failed login", func(t *testing.T) {
+		ParseAndCheck(t, "CREATE USER 'jeffrey'@'localhost' FAILED_LOGIN_ATTEMPTS 3 PASSWORD_LOCK_TIME 2")
+	})
+}
+
 func TestParseShowGrants(t *testing.T) {
 	tests := []string{
 		"SHOW GRANTS",

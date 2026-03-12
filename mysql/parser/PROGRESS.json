@@ -1580,7 +1580,7 @@
       "id": 61,
       "name": "alter_user_extended",
       "file": "grant.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 15 gap: ALTER USER PASSWORD EXPIRE, ACCOUNT LOCK/UNLOCK, FAILED_LOGIN_ATTEMPTS, PASSWORD_LOCK_TIME, COMMENT, ATTRIBUTE, resource limits, TLS requirements",
       "rules": [
         "parseAlterUserPasswordExpire",
