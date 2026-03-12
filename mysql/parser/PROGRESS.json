@@ -1723,7 +1723,7 @@
       "id": 68,
       "name": "depth_fix_alter_table_default_constraint",
       "file": "alter_table.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 8 gap: ALTER COLUMN SET DEFAULT must consume the default value expression (currently skipped causing parse errors), ADD (multi-column) parenthesized form, ALTER CHECK/CONSTRAINT ENFORCED, DROP CONSTRAINT keyword",
       "rules": [
         "parseAlterColumn",

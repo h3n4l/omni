@@ -202,6 +202,7 @@ const (
 	ATImportTablespace
 	ATWithValidation
 	ATWithoutValidation
+	ATAlterCheckEnforced
 )
 
 // AlterTableCmd represents a single ALTER TABLE operation.
@@ -211,8 +212,10 @@ type AlterTableCmd struct {
 	Name           string       // column/constraint/index name
 	NewName        string       // for RENAME operations
 	Column         *ColumnDef   // for ADD/MODIFY/CHANGE COLUMN
+	Columns        []*ColumnDef // for ADD (col1, col2, ...) multi-column form
 	Constraint     *Constraint  // for ADD CONSTRAINT
 	Option         *TableOption // for table options
+	DefaultExpr    ExprNode     // for ALTER COLUMN SET DEFAULT expr
 	IfExists       bool
 	First          bool   // FIRST positioning
 	After          string // AFTER column positioning

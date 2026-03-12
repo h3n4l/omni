@@ -8617,6 +8617,63 @@ func TestParseCreateTableFKMatch(t *testing.T) {
 	}
 }
 
+// --- Batch 68: depth_fix_alter_table_default_constraint ---
+
+func TestParseAlterColumnSetDefault(t *testing.T) {
+	tests := []string{
+		"ALTER TABLE t ALTER COLUMN x SET DEFAULT 0",
+		"ALTER TABLE t ALTER COLUMN x SET DEFAULT 'hello'",
+		"ALTER TABLE t ALTER COLUMN x SET DEFAULT (NOW())",
+		"ALTER TABLE t ALTER x SET DEFAULT 42",
+		"ALTER TABLE t ALTER COLUMN x DROP DEFAULT",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseAlterTableAddMultiColumn(t *testing.T) {
+	tests := []string{
+		"ALTER TABLE t ADD (a INT, b VARCHAR(100))",
+		"ALTER TABLE t ADD (x INT)",
+		"ALTER TABLE t ADD COLUMN (a INT, b INT, c INT)",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseAlterCheckEnforced(t *testing.T) {
+	tests := []string{
+		"ALTER TABLE t ALTER CHECK chk1 ENFORCED",
+		"ALTER TABLE t ALTER CHECK chk1 NOT ENFORCED",
+		"ALTER TABLE t ALTER CONSTRAINT con1 ENFORCED",
+		"ALTER TABLE t ALTER CONSTRAINT con1 NOT ENFORCED",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseAlterTableDropConstraint(t *testing.T) {
+	tests := []string{
+		"ALTER TABLE t DROP CONSTRAINT con1",
+		"ALTER TABLE t DROP CHECK chk1",
+		"ALTER TABLE t DROP FOREIGN KEY fk1",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
 func TestParseShowProcesslist(t *testing.T) {
 	tests := []string{
 		"SHOW PROCESSLIST",

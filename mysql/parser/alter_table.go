@@ -349,6 +349,27 @@ func (p *Parser) parseAlterAdd(cmd *nodes.AlterTableCmd) (*nodes.AlterTableCmd, 
 	cmd.Type = nodes.ATAddColumn
 	p.match(kwCOLUMN)
 
+	// ADD (col1 INT, col2 INT, ...) — multi-column form
+	if p.cur.Type == '(' {
+		p.advance()
+		for {
+			col, err := p.parseColumnDef()
+			if err != nil {
+				return nil, err
+			}
+			cmd.Columns = append(cmd.Columns, col)
+			if p.cur.Type != ',' {
+				break
+			}
+			p.advance()
+		}
+		if _, err := p.expect(')'); err != nil {
+			return nil, err
+		}
+		cmd.Loc.End = p.pos()
+		return cmd, nil
+	}
+
 	col, err := p.parseColumnDef()
 	if err != nil {
 		return nil, err
@@ -415,6 +436,18 @@ func (p *Parser) parseAlterDrop(cmd *nodes.AlterTableCmd) (*nodes.AlterTableCmd,
 
 	case kwCHECK:
 		// DROP CHECK symbol
+		p.advance()
+		cmd.Type = nodes.ATDropConstraint
+		name, _, err := p.parseIdentifier()
+		if err != nil {
+			return nil, err
+		}
+		cmd.Name = name
+		cmd.Loc.End = p.pos()
+		return cmd, nil
+
+	case kwCONSTRAINT:
+		// DROP CONSTRAINT symbol
 		p.advance()
 		cmd.Type = nodes.ATDropConstraint
 		name, _, err := p.parseIdentifier()
@@ -529,6 +562,52 @@ func (p *Parser) parseAlterColumn(cmd *nodes.AlterTableCmd) (*nodes.AlterTableCm
 		return cmd, nil
 	}
 
+	// ALTER CHECK symbol [NOT] ENFORCED
+	if p.cur.Type == kwCHECK {
+		p.advance()
+		name, _, err := p.parseIdentifier()
+		if err != nil {
+			return nil, err
+		}
+		cmd.Name = name
+		cmd.Type = nodes.ATAlterCheckEnforced
+		if p.cur.Type == kwNOT {
+			p.advance()
+			cmd.NewName = "NOT ENFORCED"
+		}
+		if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "enforced") {
+			p.advance()
+			if cmd.NewName == "" {
+				cmd.NewName = "ENFORCED"
+			}
+		}
+		cmd.Loc.End = p.pos()
+		return cmd, nil
+	}
+
+	// ALTER CONSTRAINT symbol [NOT] ENFORCED
+	if p.cur.Type == kwCONSTRAINT {
+		p.advance()
+		name, _, err := p.parseIdentifier()
+		if err != nil {
+			return nil, err
+		}
+		cmd.Name = name
+		cmd.Type = nodes.ATAlterCheckEnforced
+		if p.cur.Type == kwNOT {
+			p.advance()
+			cmd.NewName = "NOT ENFORCED"
+		}
+		if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "enforced") {
+			p.advance()
+			if cmd.NewName == "" {
+				cmd.NewName = "ENFORCED"
+			}
+		}
+		cmd.Loc.End = p.pos()
+		return cmd, nil
+	}
+
 	// ALTER [COLUMN] col_name ...
 	p.match(kwCOLUMN)
 
@@ -542,7 +621,23 @@ func (p *Parser) parseAlterColumn(cmd *nodes.AlterTableCmd) (*nodes.AlterTableCm
 		if _, ok := p.match(kwDEFAULT); ok {
 			cmd.Type = nodes.ATAlterColumnDefault
 			// Default value: literal or (expr)
-			// We don't store the default value in cmd currently
+			if p.cur.Type == '(' {
+				p.advance()
+				expr, err := p.parseExpr()
+				if err != nil {
+					return nil, err
+				}
+				if _, err := p.expect(')'); err != nil {
+					return nil, err
+				}
+				cmd.DefaultExpr = expr
+			} else {
+				expr, err := p.parseExpr()
+				if err != nil {
+					return nil, err
+				}
+				cmd.DefaultExpr = expr
+			}
 		} else if p.cur.Type == kwNOT {
 			p.advance()
 			p.match(kwNULL)

@@ -2511,6 +2511,20 @@ func writeAlterTableCmd(sb *strings.Builder, n *AlterTableCmd) {
 		sb.WriteString(" :col ")
 		writeNode(sb, n.Column)
 	}
+	if len(n.Columns) > 0 {
+		sb.WriteString(" :columns (")
+		for i, c := range n.Columns {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, c)
+		}
+		sb.WriteString(")")
+	}
+	if n.DefaultExpr != nil {
+		sb.WriteString(" :default_expr ")
+		writeNode(sb, n.DefaultExpr)
+	}
 	if n.Constraint != nil {
 		sb.WriteString(" :constraint ")
 		writeNode(sb, n.Constraint)
