@@ -363,6 +363,13 @@ const (
 	kwPATH
 	kwEMPTY
 	kwERROR_KW
+	kwXA
+	kwSUSPEND
+	kwMIGRATE
+	kwPHASE
+	kwRECOVER
+	kwRESUME
+	kwONE
 )
 
 // keywords maps lowercase keyword strings to their token types.
@@ -687,6 +694,13 @@ var keywords = map[string]int{
 	"path":                kwPATH,
 	"empty":               kwEMPTY,
 	"error":               kwERROR_KW,
+	"xa":                  kwXA,
+	"suspend":             kwSUSPEND,
+	"migrate":             kwMIGRATE,
+	"phase":               kwPHASE,
+	"recover":             kwRECOVER,
+	"resume":              kwRESUME,
+	"one":                 kwONE,
 }
 
 // Token represents a lexical token.

@@ -350,7 +350,7 @@
       "id": 25,
       "name": "xa_transactions",
       "file": "transaction.go",
-      "status": "pending",
+      "status": "done",
       "description": "XA distributed transaction statements: XA START/BEGIN, XA END/SUSPEND, XA PREPARE, XA COMMIT, XA ROLLBACK, XA RECOVER",
       "rules": [
         "xa_start_stmt", "xa_end_stmt", "xa_prepare_stmt",

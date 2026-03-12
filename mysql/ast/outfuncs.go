@@ -255,6 +255,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeEventSchedule(sb, n)
 	case *CommonTableExpr:
 		writeCommonTableExpr(sb, n)
+	case *XAStmt:
+		writeXAStmt(sb, n)
 	case *MemberOfExpr:
 		writeMemberOfExpr(sb, n)
 	case *JsonTableExpr:
@@ -2260,6 +2262,48 @@ func writeCommonTableExpr(sb *strings.Builder, n *CommonTableExpr) {
 	if n.Select != nil {
 		sb.WriteString(" :select ")
 		writeNode(sb, n.Select)
+	}
+	sb.WriteString("}")
+}
+
+func writeXAStmt(sb *strings.Builder, n *XAStmt) {
+	sb.WriteString("{XA")
+	fmt.Fprintf(sb, " :loc %d", n.Loc.Start)
+	switch n.Type {
+	case XAStart:
+		sb.WriteString(" :type START")
+	case XAEnd:
+		sb.WriteString(" :type END")
+	case XAPrepare:
+		sb.WriteString(" :type PREPARE")
+	case XACommit:
+		sb.WriteString(" :type COMMIT")
+	case XARollback:
+		sb.WriteString(" :type ROLLBACK")
+	case XARecover:
+		sb.WriteString(" :type RECOVER")
+	}
+	if len(n.Xid) > 0 {
+		sb.WriteString(" :xid ")
+		writeExprNodeList(sb, n.Xid)
+	}
+	if n.Join {
+		sb.WriteString(" :join true")
+	}
+	if n.Resume {
+		sb.WriteString(" :resume true")
+	}
+	if n.Suspend {
+		sb.WriteString(" :suspend true")
+	}
+	if n.Migrate {
+		sb.WriteString(" :migrate true")
+	}
+	if n.OnePhase {
+		sb.WriteString(" :one_phase true")
+	}
+	if n.Convert {
+		sb.WriteString(" :convert true")
 	}
 	sb.WriteString("}")
 }

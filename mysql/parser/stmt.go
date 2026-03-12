@@ -118,6 +118,9 @@ func (p *Parser) parseStmt() (nodes.Node, error) {
 	case kwDO:
 		return p.parseDoStmt()
 
+	case kwXA:
+		return p.parseXAStmt()
+
 	case '(':
 		// Parenthesized subquery / select
 		return p.parseSelectStmt()

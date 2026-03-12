@@ -4374,6 +4374,71 @@ func TestParseDeleteWithCTE(t *testing.T) {
 }
 
 // -----------------------------------------------------------------------
+// Batch 25: XA Transactions
+// -----------------------------------------------------------------------
+
+func TestParseXAStart(t *testing.T) {
+	tests := []string{
+		"XA START 'xid1'",
+		"XA BEGIN 'xid1'",
+		"XA START 'xid1' JOIN",
+		"XA START 'xid1' RESUME",
+		"XA START 'gtrid', 'bqual'",
+		"XA START 'gtrid', 'bqual', 1",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseXAEnd(t *testing.T) {
+	tests := []string{
+		"XA END 'xid1'",
+		"XA END 'xid1' SUSPEND",
+		"XA END 'xid1' SUSPEND FOR MIGRATE",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseXAPrepare(t *testing.T) {
+	ParseAndCheck(t, "XA PREPARE 'xid1'")
+}
+
+func TestParseXACommit(t *testing.T) {
+	tests := []string{
+		"XA COMMIT 'xid1'",
+		"XA COMMIT 'xid1' ONE PHASE",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseXARollback(t *testing.T) {
+	ParseAndCheck(t, "XA ROLLBACK 'xid1'")
+}
+
+func TestParseXARecover(t *testing.T) {
+	tests := []string{
+		"XA RECOVER",
+		"XA RECOVER CONVERT XID",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+// -----------------------------------------------------------------------
 // Batch 24: JSON Operators
 // -----------------------------------------------------------------------
 

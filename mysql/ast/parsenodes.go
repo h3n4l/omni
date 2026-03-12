@@ -1471,6 +1471,34 @@ type JsonTableColumn struct {
 
 func (c *JsonTableColumn) nodeTag() {}
 
+// XAStmtType enumerates XA statement types.
+type XAStmtType int
+
+const (
+	XAStart XAStmtType = iota
+	XAEnd
+	XAPrepare
+	XACommit
+	XARollback
+	XARecover
+)
+
+// XAStmt represents an XA distributed transaction statement.
+type XAStmt struct {
+	Loc      Loc
+	Type     XAStmtType
+	Xid      []ExprNode // gtrid [, bqual [, formatID]]
+	Join     bool       // JOIN option for XA START
+	Resume   bool       // RESUME option for XA START
+	Suspend  bool       // SUSPEND option for XA END
+	Migrate  bool       // FOR MIGRATE option for XA END
+	OnePhase bool       // ONE PHASE option for XA COMMIT
+	Convert  bool       // CONVERT XID option for XA RECOVER
+}
+
+func (s *XAStmt) nodeTag()  {}
+func (s *XAStmt) stmtNode() {}
+
 // RawStmt wraps a statement node with its location span.
 type RawStmt struct {
 	Loc     Loc

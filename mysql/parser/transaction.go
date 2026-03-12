@@ -251,3 +251,137 @@ func (p *Parser) parseUnlockTablesStmt() (*nodes.UnlockTablesStmt, error) {
 		Loc: nodes.Loc{Start: start, End: p.pos()},
 	}, nil
 }
+
+// parseXAStmt parses an XA statement.
+//
+// Ref: https://dev.mysql.com/doc/refman/8.0/en/xa-statements.html
+//
+//	XA {START|BEGIN} xid [JOIN|RESUME]
+//	XA END xid [SUSPEND [FOR MIGRATE]]
+//	XA PREPARE xid
+//	XA COMMIT xid [ONE PHASE]
+//	XA ROLLBACK xid
+//	XA RECOVER [CONVERT XID]
+//
+//	xid: gtrid [, bqual [, formatID]]
+func (p *Parser) parseXAStmt() (*nodes.XAStmt, error) {
+	start := p.pos()
+	p.advance() // consume XA
+
+	stmt := &nodes.XAStmt{Loc: nodes.Loc{Start: start}}
+
+	switch p.cur.Type {
+	case kwSTART, kwBEGIN:
+		stmt.Type = nodes.XAStart
+		p.advance()
+		xid, err := p.parseXid()
+		if err != nil {
+			return nil, err
+		}
+		stmt.Xid = xid
+		if _, ok := p.match(kwJOIN); ok {
+			stmt.Join = true
+		} else if _, ok := p.match(kwRESUME); ok {
+			stmt.Resume = true
+		}
+
+	case kwEND:
+		stmt.Type = nodes.XAEnd
+		p.advance()
+		xid, err := p.parseXid()
+		if err != nil {
+			return nil, err
+		}
+		stmt.Xid = xid
+		if _, ok := p.match(kwSUSPEND); ok {
+			stmt.Suspend = true
+			if p.cur.Type == kwFOR {
+				p.advance()
+				p.match(kwMIGRATE)
+				stmt.Migrate = true
+			}
+		}
+
+	case kwPREPARE:
+		stmt.Type = nodes.XAPrepare
+		p.advance()
+		xid, err := p.parseXid()
+		if err != nil {
+			return nil, err
+		}
+		stmt.Xid = xid
+
+	case kwCOMMIT:
+		stmt.Type = nodes.XACommit
+		p.advance()
+		xid, err := p.parseXid()
+		if err != nil {
+			return nil, err
+		}
+		stmt.Xid = xid
+		if _, ok := p.match(kwONE); ok {
+			p.match(kwPHASE)
+			stmt.OnePhase = true
+		}
+
+	case kwROLLBACK:
+		stmt.Type = nodes.XARollback
+		p.advance()
+		xid, err := p.parseXid()
+		if err != nil {
+			return nil, err
+		}
+		stmt.Xid = xid
+
+	case kwRECOVER:
+		stmt.Type = nodes.XARecover
+		p.advance()
+		if _, ok := p.match(kwCONVERT); ok {
+			// CONVERT XID
+			if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "xid") {
+				p.advance()
+			}
+			stmt.Convert = true
+		}
+
+	default:
+		return nil, &ParseError{
+			Message:  "expected START, END, PREPARE, COMMIT, ROLLBACK, or RECOVER after XA",
+			Position: p.cur.Loc,
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt, nil
+}
+
+// parseXid parses an xid: gtrid [, bqual [, formatID]].
+func (p *Parser) parseXid() ([]nodes.ExprNode, error) {
+	var parts []nodes.ExprNode
+
+	gtrid, err := p.parseExpr()
+	if err != nil {
+		return nil, err
+	}
+	parts = append(parts, gtrid)
+
+	if p.cur.Type == ',' {
+		p.advance()
+		bqual, err := p.parseExpr()
+		if err != nil {
+			return nil, err
+		}
+		parts = append(parts, bqual)
+
+		if p.cur.Type == ',' {
+			p.advance()
+			formatID, err := p.parseExpr()
+			if err != nil {
+				return nil, err
+			}
+			parts = append(parts, formatID)
+		}
+	}
+
+	return parts, nil
+}
