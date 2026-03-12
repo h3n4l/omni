@@ -1197,7 +1197,9 @@
         "parseReplicationSourceOption",
         "parseReplicationFilter"
       ],
-      "depends_on": [3],
+      "depends_on": [
+        3
+      ],
       "tests": [
         "TestParseChangeReplicationSource",
         "TestParseChangeReplicationSourceOptions",
@@ -1217,7 +1219,9 @@
         "parsePurgeBinaryLogsStmt",
         "parseResetMasterStmt"
       ],
-      "depends_on": [3],
+      "depends_on": [
+        3
+      ],
       "tests": [
         "TestParseStartReplica",
         "TestParseStopReplica",
@@ -1236,7 +1240,9 @@
         "parseStartGroupReplicationStmt",
         "parseStopGroupReplicationStmt"
       ],
-      "depends_on": [3],
+      "depends_on": [
+        3
+      ],
       "tests": [
         "TestParseStartGroupReplication",
         "TestParseStopGroupReplication"
@@ -1254,7 +1260,9 @@
         "parseUnlockInstanceStmt",
         "parseImportTableStmt"
       ],
-      "depends_on": [1],
+      "depends_on": [
+        1
+      ],
       "tests": [
         "TestParseAlterInstanceRotateKey",
         "TestParseAlterInstanceRedoLog",
@@ -1276,7 +1284,9 @@
         "parseLoadIndexIntoCacheStmt",
         "parseResetPersistStmt"
       ],
-      "depends_on": [1],
+      "depends_on": [
+        1
+      ],
       "tests": [
         "TestParseBinlog",
         "TestParseCacheIndex",
@@ -1295,7 +1305,9 @@
         "parseSetResourceGroupStmt",
         "parseHelpStmt"
       ],
-      "depends_on": [15],
+      "depends_on": [
+        15
+      ],
       "tests": [
         "TestParseRenameUser",
         "TestParseSetResourceGroup",
@@ -1311,7 +1323,9 @@
       "rules": [
         "writeVCPUSpec"
       ],
-      "depends_on": [38],
+      "depends_on": [
+        38
+      ],
       "tests": [
         "TestDeparseCreateResourceGroup"
       ]
@@ -1330,7 +1344,15 @@
         "stmt_dispatch_help",
         "stmt_dispatch_import"
       ],
-      "depends_on": [42, 43, 44, 45, 46, 47, 48],
+      "depends_on": [
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48
+      ],
       "tests": [
         "TestParsePhase3Dispatch"
       ]
@@ -1349,7 +1371,9 @@
         "parseShowFunctionCode",
         "parseShowProcedureCode"
       ],
-      "depends_on": [32],
+      "depends_on": [
+        32
+      ],
       "tests": [
         "TestParseShowCreateUser",
         "TestParseShowReplicas",
@@ -1368,7 +1392,10 @@
       "rules": [
         "parseViewWithCheckOption"
       ],
-      "depends_on": [10, 39],
+      "depends_on": [
+        10,
+        39
+      ],
       "tests": [
         "TestParseCreateViewWithCheckOption",
         "TestParseAlterViewWithCheckOption"
@@ -1383,7 +1410,9 @@
       "rules": [
         "parseChangeMasterStmt"
       ],
-      "depends_on": [43],
+      "depends_on": [
+        43
+      ],
       "tests": [
         "TestParseChangeMasterTo",
         "TestParseChangeMasterToOptions"
@@ -1398,7 +1427,10 @@
       "rules": [
         "parseSetPasswordStmt"
       ],
-      "depends_on": [13, 15],
+      "depends_on": [
+        13,
+        15
+      ],
       "tests": [
         "TestParseSetPassword",
         "TestParseSetPasswordForUser"
@@ -1413,12 +1445,162 @@
       "rules": [
         "parseGrantAsClause"
       ],
-      "depends_on": [15],
+      "depends_on": [
+        15
+      ],
       "tests": [
         "TestParseGrantAs",
         "TestParseGrantAsWithRole"
       ]
+    },
+    {
+      "id": 56,
+      "name": "show_grants_index_processlist",
+      "file": "set_show.go",
+      "status": "done",
+      "description": "Fix batch 13/32 gap: SHOW GRANTS, SHOW INDEX, SHOW PROCESSLIST are implemented but not tracked in any batch and lack test coverage. Add SHOW FULL PROCESSLIST support.",
+      "rules": [
+        "show_grants",
+        "show_index",
+        "show_processlist"
+      ],
+      "depends_on": [
+        13,
+        32
+      ],
+      "tests": [
+        "TestParseShowGrants",
+        "TestParseShowGrantsForUser",
+        "TestParseShowIndex",
+        "TestParseShowProcesslist"
+      ]
+    },
+    {
+      "id": 57,
+      "name": "alter_table_partition_ops",
+      "file": "alter_table.go",
+      "status": "pending",
+      "description": "Fix batch 8 gap: ALTER TABLE partition operations - ADD/DROP/COALESCE/REORGANIZE/EXCHANGE/TRUNCATE/ANALYZE/CHECK/OPTIMIZE/REBUILD/REPAIR PARTITION",
+      "rules": [
+        "parseAlterTableAddPartition",
+        "parseAlterTableDropPartition",
+        "parseAlterTableCoalescePartition",
+        "parseAlterTableReorganizePartition",
+        "parseAlterTableExchangePartition",
+        "parseAlterTableTruncatePartition",
+        "parseAlterTableAnalyzePartition",
+        "parseAlterTableCheckPartition",
+        "parseAlterTableOptimizePartition",
+        "parseAlterTableRebuildPartition",
+        "parseAlterTableRepairPartition"
+      ],
+      "depends_on": [
+        8
+      ],
+      "tests": [
+        "TestParseAlterTableAddPartition",
+        "TestParseAlterTableDropPartition",
+        "TestParseAlterTableCoalescePartition",
+        "TestParseAlterTableReorganizePartition",
+        "TestParseAlterTableExchangePartition",
+        "TestParseAlterTableTruncatePartition"
+      ]
+    },
+    {
+      "id": 58,
+      "name": "alter_table_visibility_misc",
+      "file": "alter_table.go",
+      "status": "pending",
+      "description": "Fix batch 8 gap: ALTER TABLE column/index VISIBLE/INVISIBLE, FORCE, ORDER BY, ENABLE/DISABLE KEYS, DISCARD/IMPORT TABLESPACE, WITH/WITHOUT VALIDATION",
+      "rules": [
+        "parseAlterColumnSetVisible",
+        "parseAlterIndexSetVisible",
+        "parseAlterTableForce",
+        "parseAlterTableOrderBy",
+        "parseAlterTableEnableKeys",
+        "parseAlterTableDisableKeys",
+        "parseAlterTableDiscardTablespace",
+        "parseAlterTableImportTablespace",
+        "parseAlterTableValidation"
+      ],
+      "depends_on": [
+        8
+      ],
+      "tests": [
+        "TestParseAlterTableColumnVisible",
+        "TestParseAlterTableIndexVisible",
+        "TestParseAlterTableForce",
+        "TestParseAlterTableOrderBy",
+        "TestParseAlterTableEnableKeys",
+        "TestParseAlterTableDiscardTablespace"
+      ]
+    },
+    {
+      "id": 59,
+      "name": "create_table_depth",
+      "file": "create_table.go",
+      "status": "pending",
+      "description": "Fix batch 7 gap: column VISIBLE/INVISIBLE modifier, CHECK constraint NOT ENFORCED clause, functional/expression-based index keys, SUBPARTITION support",
+      "rules": [
+        "parseColumnVisibility",
+        "parseCheckNotEnforced",
+        "parseFunctionalIndexKey",
+        "parseSubPartition"
+      ],
+      "depends_on": [
+        7
+      ],
+      "tests": [
+        "TestParseCreateTableColumnInvisible",
+        "TestParseCreateTableCheckNotEnforced",
+        "TestParseCreateTableFunctionalIndex",
+        "TestParseCreateTableSubPartition"
+      ]
+    },
+    {
+      "id": 60,
+      "name": "grant_tls_resources",
+      "file": "grant.go",
+      "status": "pending",
+      "description": "Fix batch 15 gap: GRANT/REVOKE REQUIRE clause (SSL, X509, SUBJECT, ISSUER, CIPHER) and resource limits (MAX_QUERIES_PER_HOUR, MAX_UPDATES_PER_HOUR, MAX_CONNECTIONS_PER_HOUR, MAX_USER_CONNECTIONS)",
+      "rules": [
+        "parseGrantRequireClause",
+        "parseGrantResourceLimits"
+      ],
+      "depends_on": [
+        15
+      ],
+      "tests": [
+        "TestParseGrantRequireSSL",
+        "TestParseGrantRequireX509",
+        "TestParseGrantWithResourceLimits"
+      ]
+    },
+    {
+      "id": 61,
+      "name": "alter_user_extended",
+      "file": "grant.go",
+      "status": "pending",
+      "description": "Fix batch 15 gap: ALTER USER PASSWORD EXPIRE, ACCOUNT LOCK/UNLOCK, FAILED_LOGIN_ATTEMPTS, PASSWORD_LOCK_TIME, COMMENT, ATTRIBUTE, resource limits, TLS requirements",
+      "rules": [
+        "parseAlterUserPasswordExpire",
+        "parseAlterUserAccountLock",
+        "parseAlterUserFailedLogin",
+        "parseAlterUserComment",
+        "parseAlterUserResourceLimits",
+        "parseAlterUserRequire"
+      ],
+      "depends_on": [
+        15
+      ],
+      "tests": [
+        "TestParseAlterUserPasswordExpire",
+        "TestParseAlterUserAccountLock",
+        "TestParseAlterUserFailedLoginAttempts",
+        "TestParseAlterUserComment",
+        "TestParseAlterUserRequireSSL"
+      ]
     }
   ],
-  "audit_round": 3
+  "audit_round": 4
 }

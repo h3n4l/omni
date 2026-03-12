@@ -7565,3 +7565,71 @@ func TestParseGrantAsWithRole(t *testing.T) {
 		})
 	}
 }
+
+func TestParseShowGrants(t *testing.T) {
+	tests := []string{
+		"SHOW GRANTS",
+		"SHOW GRANTS FOR root",
+		"SHOW GRANTS FOR 'jeffrey'@'localhost'",
+		"SHOW GRANTS FOR CURRENT_USER",
+		"SHOW GRANTS FOR CURRENT_USER()",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseShowGrantsForUser(t *testing.T) {
+	tests := []string{
+		"SHOW GRANTS FOR 'u1'@'localhost' USING 'r1'",
+		"SHOW GRANTS FOR 'u1'@'localhost' USING 'r1', 'r2'",
+		"SHOW GRANTS FOR admin USING role1, role2, role3",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseShowIndex(t *testing.T) {
+	tests := []string{
+		// INDEX keyword
+		"SHOW INDEX FROM users",
+		"SHOW INDEX FROM users FROM mydb",
+		"SHOW INDEX IN users",
+		"SHOW INDEX IN users IN mydb",
+		"SHOW INDEX FROM users WHERE Key_name = 'PRIMARY'",
+		// INDEXES synonym (identifier)
+		"SHOW INDEXES FROM users",
+		"SHOW INDEXES IN users",
+		// KEYS synonym
+		"SHOW KEYS FROM users",
+		"SHOW KEYS IN users IN mydb",
+		// EXTENDED
+		"SHOW EXTENDED INDEX FROM users",
+		"SHOW EXTENDED INDEXES FROM users",
+		"SHOW EXTENDED KEYS IN users",
+		"SHOW EXTENDED INDEX FROM users FROM mydb",
+		"SHOW EXTENDED INDEX FROM users WHERE Key_name = 'idx_name'",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseShowProcesslist(t *testing.T) {
+	tests := []string{
+		"SHOW PROCESSLIST",
+		"SHOW FULL PROCESSLIST",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}

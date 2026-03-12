@@ -973,6 +973,8 @@ type ShowStmt struct {
 	Where        ExprNode
 	ProfileTypes []string // SHOW PROFILE type list (CPU, BLOCK IO, etc.)
 	ForQuery     ExprNode // SHOW PROFILE FOR QUERY n
+	ForUser      *UserSpec   // SHOW GRANTS FOR user
+	Using        []*UserSpec // SHOW GRANTS ... USING role [, role]
 }
 
 func (s *ShowStmt) nodeTag()  {}

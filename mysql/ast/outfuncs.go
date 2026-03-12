@@ -992,6 +992,20 @@ func writeShowStmt(sb *strings.Builder, n *ShowStmt) {
 		sb.WriteString(" :for_query ")
 		writeNode(sb, n.ForQuery)
 	}
+	if n.ForUser != nil {
+		sb.WriteString(" :for_user ")
+		writeNode(sb, n.ForUser)
+	}
+	if len(n.Using) > 0 {
+		sb.WriteString(" :using (")
+		for i, u := range n.Using {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, u)
+		}
+		sb.WriteString(")")
+	}
 	sb.WriteString("}")
 }
 

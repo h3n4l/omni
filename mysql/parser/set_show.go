@@ -265,8 +265,8 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 		if p.cur.Type == kwCOLUMNS {
 			stmt.Type = "FULL COLUMNS"
 			p.advance()
-			// FROM tbl
-			if _, err := p.expect(kwFROM); err != nil {
+			// FROM|IN tbl
+			if _, err := p.expectFromOrIn(); err != nil {
 				return nil, err
 			}
 			ref, err := p.parseTableRef()
@@ -274,8 +274,8 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 				return nil, err
 			}
 			stmt.From = ref
-			// Optional FROM db
-			if _, ok := p.match(kwFROM); ok {
+			// Optional FROM|IN db
+			if p.matchFromOrIn() {
 				dbRef, err := p.parseTableRef()
 				if err != nil {
 					return nil, err
@@ -286,13 +286,16 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 			if err := p.parseShowLikeOrWhere(stmt); err != nil {
 				return nil, err
 			}
+		} else if p.cur.Type == kwPROCESSLIST || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "processlist")) {
+			stmt.Type = "FULL PROCESSLIST"
+			p.advance()
 		}
 
 	case kwCOLUMNS:
 		stmt.Type = "COLUMNS"
 		p.advance()
-		// FROM tbl
-		if _, err := p.expect(kwFROM); err != nil {
+		// FROM|IN tbl
+		if _, err := p.expectFromOrIn(); err != nil {
 			return nil, err
 		}
 		ref, err := p.parseTableRef()
@@ -300,8 +303,8 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 			return nil, err
 		}
 		stmt.From = ref
-		// Optional FROM db
-		if _, ok := p.match(kwFROM); ok {
+		// Optional FROM|IN db
+		if p.matchFromOrIn() {
 			dbRef, err := p.parseTableRef()
 			if err != nil {
 				return nil, err
@@ -386,11 +389,37 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 			}
 		}
 
-	case kwINDEX:
+	case kwEXTENDED:
+		p.advance() // consume EXTENDED
+		// SHOW EXTENDED {INDEX | INDEXES | KEYS} ...
+		if p.cur.Type == kwINDEX || p.cur.Type == kwKEY || (p.cur.Type == tokIDENT && (eqFold(p.cur.Str, "indexes") || eqFold(p.cur.Str, "keys"))) {
+			stmt.Type = "EXTENDED INDEX"
+			p.advance()
+			if _, err := p.expectFromOrIn(); err != nil {
+				return nil, err
+			}
+			ref, err := p.parseTableRef()
+			if err != nil {
+				return nil, err
+			}
+			stmt.From = ref
+			if p.matchFromOrIn() {
+				dbRef, err := p.parseTableRef()
+				if err != nil {
+					return nil, err
+				}
+				stmt.From.Schema = dbRef.Name
+			}
+			if err := p.parseShowLikeOrWhere(stmt); err != nil {
+				return nil, err
+			}
+		}
+
+	case kwINDEX, kwKEY:
 		stmt.Type = "INDEX"
 		p.advance()
-		// FROM tbl
-		if _, err := p.expect(kwFROM); err != nil {
+		// FROM|IN tbl
+		if _, err := p.expectFromOrIn(); err != nil {
 			return nil, err
 		}
 		ref, err := p.parseTableRef()
@@ -398,13 +427,16 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 			return nil, err
 		}
 		stmt.From = ref
-		// Optional FROM db
-		if _, ok := p.match(kwFROM); ok {
+		// Optional FROM|IN db
+		if p.matchFromOrIn() {
 			dbRef, err := p.parseTableRef()
 			if err != nil {
 				return nil, err
 			}
 			stmt.From.Schema = dbRef.Name
+		}
+		if err := p.parseShowLikeOrWhere(stmt); err != nil {
+			return nil, err
 		}
 
 	case kwGLOBAL, kwSESSION:
@@ -693,17 +725,42 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 		if p.cur.Type == kwGRANT || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "grants")) {
 			stmt.Type = "GRANTS"
 			p.advance()
-			// Optional FOR user
+			// Optional FOR user_or_role
 			if _, ok := p.match(kwFOR); ok {
-				name, nameLoc, err := p.parseIdentifier()
-				if err != nil {
-					return nil, err
+				// Handle CURRENT_USER / CURRENT_USER()
+				if p.cur.Type == kwCURRENT_USER {
+					start := p.pos()
+					p.advance()
+					// Optional ()
+					if p.cur.Type == '(' {
+						p.advance()
+						p.match(')')
+					}
+					stmt.ForUser = &nodes.UserSpec{
+						Loc:  nodes.Loc{Start: start, End: p.pos()},
+						Name: "CURRENT_USER",
+					}
+				} else {
+					user, err := p.parseUserSpec()
+					if err != nil {
+						return nil, err
+					}
+					stmt.ForUser = user
 				}
-				stmt.From = &nodes.TableRef{
-					Loc:  nodes.Loc{Start: nameLoc},
-					Name: name,
+				// Optional USING role [, role] ...
+				if _, ok := p.match(kwUSING); ok {
+					for {
+						role, err := p.parseUserSpec()
+						if err != nil {
+							return nil, err
+						}
+						stmt.Using = append(stmt.Using, role)
+						if p.cur.Type != ',' {
+							break
+						}
+						p.advance() // consume ','
+					}
 				}
-				stmt.From.Loc.End = p.pos()
 			}
 		} else if p.cur.Type == kwPROCESSLIST || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "processlist")) {
 			stmt.Type = "PROCESSLIST"
@@ -718,6 +775,28 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 			stmt.Type = "EVENTS"
 			p.advance()
 			if err := p.parseShowFromLikeOrWhere(stmt); err != nil {
+				return nil, err
+			}
+		} else if p.cur.Type == tokIDENT && (eqFold(p.cur.Str, "indexes") || eqFold(p.cur.Str, "keys")) {
+			// SHOW INDEXES|KEYS (synonyms for SHOW INDEX)
+			stmt.Type = "INDEX"
+			p.advance()
+			if _, err := p.expectFromOrIn(); err != nil {
+				return nil, err
+			}
+			ref, err := p.parseTableRef()
+			if err != nil {
+				return nil, err
+			}
+			stmt.From = ref
+			if p.matchFromOrIn() {
+				dbRef, err := p.parseTableRef()
+				if err != nil {
+					return nil, err
+				}
+				stmt.From.Schema = dbRef.Name
+			}
+			if err := p.parseShowLikeOrWhere(stmt); err != nil {
 				return nil, err
 			}
 		}
@@ -747,9 +826,9 @@ func (p *Parser) parseShowLikeOrWhere(stmt *nodes.ShowStmt) error {
 	return nil
 }
 
-// parseShowFromLikeOrWhere parses optional FROM db, LIKE, or WHERE for SHOW statements.
+// parseShowFromLikeOrWhere parses optional FROM|IN db, LIKE, or WHERE for SHOW statements.
 func (p *Parser) parseShowFromLikeOrWhere(stmt *nodes.ShowStmt) error {
-	if _, ok := p.match(kwFROM); ok {
+	if p.matchFromOrIn() {
 		ref, err := p.parseTableRef()
 		if err != nil {
 			return err
@@ -874,6 +953,25 @@ func (p *Parser) parseShowProfileType() string {
 // matching the given name (case-insensitive).
 func (p *Parser) isIdentLike(name string) bool {
 	return p.cur.Type == tokIDENT && eqFold(p.cur.Str, name)
+}
+
+// expectFromOrIn expects FROM or IN keyword (both are equivalent in SHOW statements).
+func (p *Parser) expectFromOrIn() (Token, error) {
+	if p.cur.Type == kwFROM || p.cur.Type == kwIN {
+		tok := p.cur
+		p.advance()
+		return tok, nil
+	}
+	return Token{}, &ParseError{Message: "expected FROM or IN", Position: p.cur.Loc}
+}
+
+// matchFromOrIn matches FROM or IN keyword (both are equivalent in SHOW statements).
+func (p *Parser) matchFromOrIn() bool {
+	if p.cur.Type == kwFROM || p.cur.Type == kwIN {
+		p.advance()
+		return true
+	}
+	return false
 }
 
 // parseUseStmt parses a USE statement.
