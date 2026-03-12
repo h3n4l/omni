@@ -857,24 +857,11 @@ func (p *Parser) parseGroupConcatFunc(fc *nodes.FuncCallExpr) (nodes.ExprNode, e
 		if _, err := p.expect(kwBY); err != nil {
 			return nil, err
 		}
-		// Parse order by items
-		for {
-			expr, err := p.parseExpr()
-			if err != nil {
-				return nil, err
-			}
-			item := &nodes.OrderByItem{Loc: nodes.Loc{Start: expr.(*nodes.ColumnRef).Loc.Start}, Expr: expr}
-			if _, ok := p.match(kwDESC); ok {
-				item.Desc = true
-			} else {
-				p.match(kwASC)
-			}
-			fc.OrderBy = append(fc.OrderBy, item)
-			if p.cur.Type != ',' {
-				break
-			}
-			p.advance()
+		orderBy, err := p.parseOrderByList()
+		if err != nil {
+			return nil, err
 		}
+		fc.OrderBy = orderBy
 	}
 
 	// SEPARATOR

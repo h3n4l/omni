@@ -8674,6 +8674,35 @@ func TestParseAlterTableDropConstraint(t *testing.T) {
 	}
 }
 
+// --- Batch 72: depth_fix_expr_group_concat ---
+
+func TestParseGroupConcatOrderByExpr(t *testing.T) {
+	tests := []string{
+		"SELECT GROUP_CONCAT(name ORDER BY id) FROM t",
+		"SELECT GROUP_CONCAT(name ORDER BY id DESC) FROM t",
+		"SELECT GROUP_CONCAT(name ORDER BY UPPER(name)) FROM t",
+		"SELECT GROUP_CONCAT(name ORDER BY id + 1 DESC) FROM t",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseGroupConcatOrderByFuncCall(t *testing.T) {
+	tests := []string{
+		"SELECT GROUP_CONCAT(name ORDER BY CONCAT(a, b)) FROM t",
+		"SELECT GROUP_CONCAT(DISTINCT name ORDER BY name SEPARATOR ',') FROM t",
+		"SELECT GROUP_CONCAT(name ORDER BY COALESCE(x, 0) DESC, name ASC SEPARATOR '; ') FROM t",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
 func TestParseShowProcesslist(t *testing.T) {
 	tests := []string{
 		"SHOW PROCESSLIST",

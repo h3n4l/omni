@@ -1827,7 +1827,7 @@
       "id": 72,
       "name": "depth_fix_expr_group_concat",
       "file": "expr.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 3 gap: GROUP_CONCAT ORDER BY panics on non-column-ref expressions (unsafe type assertion to *nodes.ColumnRef). Should handle arbitrary expressions in ORDER BY clause.",
       "rules": [
         "parseGroupConcatFunc"
