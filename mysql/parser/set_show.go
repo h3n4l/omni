@@ -1025,10 +1025,18 @@ func (p *Parser) parseShowProfileOptions(stmt *nodes.ShowStmt) error {
 
 	// Optional LIMIT row_count [OFFSET offset]
 	if _, ok := p.match(kwLIMIT); ok {
-		p.advance() // skip count
-		if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "offset") {
+		count, err := p.parseExpr()
+		if err != nil {
+			return err
+		}
+		stmt.LimitCount = count
+		if p.cur.Type == kwOFFSET {
 			p.advance() // consume OFFSET
-			p.advance() // skip offset value
+			off, err := p.parseExpr()
+			if err != nil {
+				return err
+			}
+			stmt.LimitOffset = off
 		}
 	}
 

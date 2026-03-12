@@ -7927,6 +7927,26 @@ func TestParseShowProfile(t *testing.T) {
 	}
 }
 
+// ============================================================================
+// Batch 88: SHOW PROFILE LIMIT/OFFSET expression parsing
+// ============================================================================
+
+func TestParseShowProfileLimitOffset(t *testing.T) {
+	tests := []string{
+		"SHOW PROFILE CPU FOR QUERY 1 LIMIT 5",
+		"SHOW PROFILE CPU FOR QUERY 1 LIMIT 10 OFFSET 5",
+		"SHOW PROFILE ALL FOR QUERY 2 LIMIT 100",
+		"SHOW PROFILE LIMIT 3",
+		"SHOW PROFILE ALL LIMIT 5 OFFSET 10",
+		"SHOW PROFILE CPU, BLOCK IO FOR QUERY 1 LIMIT 20 OFFSET 0",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
 func TestParseShowFunctionCode(t *testing.T) {
 	tests := []string{
 		"SHOW FUNCTION CODE my_func",

@@ -2157,7 +2157,24 @@
       "tests": [
         "TestParsePartitionKeyAlgorithm"
       ]
+    },
+    {
+      "id": 88,
+      "name": "depth_fix_show_profile_limit_offset",
+      "file": "set_show.go",
+      "status": "done",
+      "description": "Fix batch 51 gap: SHOW PROFILE LIMIT count [OFFSET offset] values are consumed with bare p.advance() instead of parsing expressions. Should use p.parseExpr() and store values in ShowStmt.LimitCount and ShowStmt.LimitOffset fields (already defined in AST from batch 85).",
+      "rules": [
+        "parseShowProfileStmt"
+      ],
+      "depends_on": [
+        51,
+        85
+      ],
+      "tests": [
+        "TestParseShowProfileLimitOffset"
+      ]
     }
   ],
-  "audit_round": 11
+  "audit_round": 12
 }
