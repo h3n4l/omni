@@ -255,6 +255,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeEventSchedule(sb, n)
 	case *CommonTableExpr:
 		writeCommonTableExpr(sb, n)
+	case *SetTransactionStmt:
+		writeSetTransactionStmt(sb, n)
 	case *XAStmt:
 		writeXAStmt(sb, n)
 	case *MemberOfExpr:
@@ -2262,6 +2264,21 @@ func writeCommonTableExpr(sb *strings.Builder, n *CommonTableExpr) {
 	if n.Select != nil {
 		sb.WriteString(" :select ")
 		writeNode(sb, n.Select)
+	}
+	sb.WriteString("}")
+}
+
+func writeSetTransactionStmt(sb *strings.Builder, n *SetTransactionStmt) {
+	sb.WriteString("{SET_TRANSACTION")
+	fmt.Fprintf(sb, " :loc %d", n.Loc.Start)
+	if n.Scope != "" {
+		fmt.Fprintf(sb, " :scope %s", n.Scope)
+	}
+	if n.IsolationLevel != "" {
+		fmt.Fprintf(sb, " :isolation %s", n.IsolationLevel)
+	}
+	if n.AccessMode != "" {
+		fmt.Fprintf(sb, " :access %s", n.AccessMode)
 	}
 	sb.WriteString("}")
 }

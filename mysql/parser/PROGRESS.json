@@ -364,7 +364,7 @@
       "id": 26,
       "name": "set_transaction",
       "file": "transaction.go",
-      "status": "pending",
+      "status": "done",
       "description": "SET TRANSACTION isolation level and access mode. SET [GLOBAL | SESSION] TRANSACTION { ISOLATION LEVEL level | READ WRITE | READ ONLY }",
       "rules": [
         "set_transaction_stmt", "isolation_level",

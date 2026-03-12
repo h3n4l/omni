@@ -1471,6 +1471,17 @@ type JsonTableColumn struct {
 
 func (c *JsonTableColumn) nodeTag() {}
 
+// SetTransactionStmt represents a SET TRANSACTION statement.
+type SetTransactionStmt struct {
+	Loc            Loc
+	Scope          string // GLOBAL, SESSION, or ""
+	IsolationLevel string // READ UNCOMMITTED, READ COMMITTED, REPEATABLE READ, SERIALIZABLE
+	AccessMode     string // READ ONLY, READ WRITE
+}
+
+func (s *SetTransactionStmt) nodeTag()  {}
+func (s *SetTransactionStmt) stmtNode() {}
+
 // XAStmtType enumerates XA statement types.
 type XAStmtType int
 

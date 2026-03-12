@@ -11,7 +11,7 @@ import (
 //	SET [GLOBAL | SESSION | LOCAL] var = expr [, var = expr] ...
 //	SET NAMES charset [COLLATE collation]
 //	SET CHARACTER SET charset
-func (p *Parser) parseSetStmt() (*nodes.SetStmt, error) {
+func (p *Parser) parseSetStmt() (nodes.Node, error) {
 	start := p.pos()
 	p.advance() // consume SET
 
@@ -66,17 +66,25 @@ func (p *Parser) parseSetStmt() (*nodes.SetStmt, error) {
 	}
 
 	// Check for GLOBAL / SESSION / LOCAL scope
+	scope := ""
 	switch p.cur.Type {
 	case kwGLOBAL:
-		stmt.Scope = "GLOBAL"
+		scope = "GLOBAL"
 		p.advance()
 	case kwSESSION:
-		stmt.Scope = "SESSION"
+		scope = "SESSION"
 		p.advance()
 	case kwLOCAL:
-		stmt.Scope = "LOCAL"
+		scope = "LOCAL"
 		p.advance()
 	}
+
+	// SET [GLOBAL|SESSION] TRANSACTION ...
+	if p.cur.Type == kwTRANSACTION {
+		return p.parseSetTransactionStmt(start, scope)
+	}
+
+	stmt.Scope = scope
 
 	// Parse assignment list
 	for {

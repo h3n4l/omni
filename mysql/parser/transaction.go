@@ -252,6 +252,79 @@ func (p *Parser) parseUnlockTablesStmt() (*nodes.UnlockTablesStmt, error) {
 	}, nil
 }
 
+// parseSetTransactionStmt parses SET [GLOBAL|SESSION] TRANSACTION.
+//
+// Ref: https://dev.mysql.com/doc/refman/8.0/en/set-transaction.html
+//
+//	SET [GLOBAL | SESSION] TRANSACTION
+//	    transaction_characteristic [, transaction_characteristic] ...
+//
+//	transaction_characteristic: {
+//	    ISOLATION LEVEL level
+//	  | access_mode
+//	}
+//
+//	level: {
+//	     REPEATABLE READ
+//	   | READ COMMITTED
+//	   | READ UNCOMMITTED
+//	   | SERIALIZABLE
+//	}
+//
+//	access_mode: {
+//	     READ WRITE
+//	   | READ ONLY
+//	}
+func (p *Parser) parseSetTransactionStmt(start int, scope string) (*nodes.SetTransactionStmt, error) {
+	p.advance() // consume TRANSACTION
+
+	stmt := &nodes.SetTransactionStmt{
+		Loc:   nodes.Loc{Start: start},
+		Scope: scope,
+	}
+
+	// Parse transaction characteristics
+	for {
+		if p.cur.Type == kwISOLATION {
+			p.advance()
+			p.match(kwLEVEL)
+			switch p.cur.Type {
+			case kwREPEATABLE:
+				p.advance()
+				p.match(kwREAD)
+				stmt.IsolationLevel = "REPEATABLE READ"
+			case kwREAD:
+				p.advance()
+				if _, ok := p.match(kwCOMMITTED); ok {
+					stmt.IsolationLevel = "READ COMMITTED"
+				} else if _, ok := p.match(kwUNCOMMITTED); ok {
+					stmt.IsolationLevel = "READ UNCOMMITTED"
+				}
+			case kwSERIALIZABLE:
+				p.advance()
+				stmt.IsolationLevel = "SERIALIZABLE"
+			}
+		} else if p.cur.Type == kwREAD {
+			p.advance()
+			if _, ok := p.match(kwONLY); ok {
+				stmt.AccessMode = "READ ONLY"
+			} else if _, ok := p.match(kwWRITE); ok {
+				stmt.AccessMode = "READ WRITE"
+			}
+		} else {
+			break
+		}
+
+		if p.cur.Type != ',' {
+			break
+		}
+		p.advance()
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt, nil
+}
+
 // parseXAStmt parses an XA statement.
 //
 // Ref: https://dev.mysql.com/doc/refman/8.0/en/xa-statements.html

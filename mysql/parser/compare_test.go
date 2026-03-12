@@ -3495,9 +3495,13 @@ func parseSet(t *testing.T, input string) *ast.SetStmt {
 	t.Helper()
 	p := &Parser{lexer: NewLexer(input)}
 	p.advance()
-	stmt, err := p.parseSetStmt()
+	node, err := p.parseSetStmt()
 	if err != nil {
 		t.Fatalf("parseSetStmt(%q) error: %v", input, err)
+	}
+	stmt, ok := node.(*ast.SetStmt)
+	if !ok {
+		t.Fatalf("parseSetStmt(%q) returned %T, want *ast.SetStmt", input, node)
 	}
 	return stmt
 }
@@ -4366,6 +4370,43 @@ func TestParseDeleteWithCTE(t *testing.T) {
 		"WITH cte AS (SELECT id FROM t2) DELETE FROM t1 WHERE id IN (SELECT id FROM cte)",
 	}
 
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+// -----------------------------------------------------------------------
+// Batch 26: SET TRANSACTION
+// -----------------------------------------------------------------------
+
+func TestParseSetTransactionReadUncommitted(t *testing.T) {
+	ParseAndCheck(t, "SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED")
+}
+
+func TestParseSetTransactionReadCommitted(t *testing.T) {
+	ParseAndCheck(t, "SET TRANSACTION ISOLATION LEVEL READ COMMITTED")
+}
+
+func TestParseSetTransactionRepeatableRead(t *testing.T) {
+	ParseAndCheck(t, "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+}
+
+func TestParseSetTransactionSerializable(t *testing.T) {
+	ParseAndCheck(t, "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
+}
+
+func TestParseSetTransactionReadOnly(t *testing.T) {
+	ParseAndCheck(t, "SET TRANSACTION READ ONLY")
+}
+
+func TestParseSetGlobalTransaction(t *testing.T) {
+	tests := []string{
+		"SET GLOBAL TRANSACTION ISOLATION LEVEL REPEATABLE READ",
+		"SET SESSION TRANSACTION READ WRITE",
+		"SET GLOBAL TRANSACTION ISOLATION LEVEL SERIALIZABLE, READ ONLY",
+	}
 	for _, sql := range tests {
 		t.Run(sql, func(t *testing.T) {
 			ParseAndCheck(t, sql)
