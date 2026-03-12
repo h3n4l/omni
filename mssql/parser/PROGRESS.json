@@ -1359,7 +1359,7 @@
       "id": 65,
       "name": "external_runtime",
       "file": "external.go",
-      "status": "pending",
+      "status": "done",
       "description": "New: CREATE/ALTER/DROP EXTERNAL LIBRARY, CREATE/ALTER/DROP EXTERNAL LANGUAGE",
       "rules": ["parseCreateExternalLibraryStmt", "parseAlterExternalLibraryStmt", "parseDropExternalLibraryStmt", "parseCreateExternalLanguageStmt", "parseAlterExternalLanguageStmt", "parseDropExternalLanguageStmt"],
       "depends_on": [57],

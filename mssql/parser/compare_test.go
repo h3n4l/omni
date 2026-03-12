@@ -5763,3 +5763,78 @@ func TestParseRestoreExtendedMasterKey(t *testing.T) {
 		}
 	})
 }
+
+
+// TestParseExternalLibrary tests batch 65: CREATE/ALTER/DROP EXTERNAL LIBRARY.
+func TestParseExternalLibrary(t *testing.T) {
+	tests := []string{
+		// CREATE basic with file path
+		"CREATE EXTERNAL LIBRARY customPackage FROM (CONTENT = 'C:\\Program Files\\Microsoft SQL Server\\MSSQL14.MSSQLSERVER\\customPackage.zip') WITH (LANGUAGE = 'R')",
+		// CREATE with AUTHORIZATION
+		"CREATE EXTERNAL LIBRARY customLib AUTHORIZATION dbo FROM (CONTENT = 'C:\\temp\\lib.zip') WITH (LANGUAGE = 'Python')",
+		// CREATE with PLATFORM
+		"CREATE EXTERNAL LIBRARY customLib FROM (CONTENT = 'C:\\temp\\lib.zip', PLATFORM = WINDOWS) WITH (LANGUAGE = 'R')",
+		// CREATE with varbinary literal
+		"CREATE EXTERNAL LIBRARY customLib FROM (CONTENT = 0xABC123) WITH (LANGUAGE = 'R')",
+		// CREATE for Java language
+		"CREATE EXTERNAL LIBRARY customJar FROM (CONTENT = 'C:\\temp\\customJar.jar') WITH (LANGUAGE = 'Java')",
+		// ALTER with SET
+		"ALTER EXTERNAL LIBRARY customPackage SET (CONTENT = 'C:\\temp\\customPackage.zip') WITH (LANGUAGE = 'R')",
+		// ALTER with AUTHORIZATION
+		"ALTER EXTERNAL LIBRARY customLib AUTHORIZATION dbo SET (CONTENT = 'C:\\temp\\lib.zip') WITH (LANGUAGE = 'Python')",
+		// DROP
+		"DROP EXTERNAL LIBRARY customPackage",
+		// DROP with AUTHORIZATION
+		"DROP EXTERNAL LIBRARY customPackage AUTHORIZATION dbo",
+	}
+
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			result := ParseAndCheck(t, sql)
+			if result.Len() != 1 {
+				t.Fatalf("Parse(%q): got %d statements, want 1", sql, result.Len())
+			}
+			stmt, ok := result.Items[0].(*ast.SecurityStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *SecurityStmt, got %T", sql, result.Items[0])
+			}
+			checkLocation(t, sql, "SecurityStmt", stmt.Loc)
+		})
+	}
+}
+
+// TestParseExternalLanguage tests batch 65: CREATE/ALTER/DROP EXTERNAL LANGUAGE.
+func TestParseExternalLanguage(t *testing.T) {
+	tests := []string{
+		// CREATE basic
+		"CREATE EXTERNAL LANGUAGE Java FROM (CONTENT = N'C:\\temp\\java.zip', FILE_NAME = 'javaextension.dll')",
+		// CREATE with AUTHORIZATION
+		"CREATE EXTERNAL LANGUAGE Java AUTHORIZATION dbo FROM (CONTENT = N'C:\\temp\\java.zip', FILE_NAME = 'javaextension.dll')",
+		// CREATE with PLATFORM
+		"CREATE EXTERNAL LANGUAGE Java FROM (CONTENT = N'C:\\temp\\java.zip', FILE_NAME = 'javaextension.dll', PLATFORM = WINDOWS)",
+		// CREATE with dual platform specs
+		"CREATE EXTERNAL LANGUAGE Java FROM (CONTENT = N'C:\\temp\\java.zip', FILE_NAME = 'javaextension.dll', PLATFORM = WINDOWS), (CONTENT = N'C:\\temp\\java.tar.gz', FILE_NAME = 'javaextension.so', PLATFORM = LINUX)",
+		// ALTER with SET
+		"ALTER EXTERNAL LANGUAGE Java SET (CONTENT = N'C:\\temp\\java.zip', FILE_NAME = 'javaextension.dll')",
+		// ALTER with ADD
+		"ALTER EXTERNAL LANGUAGE Java ADD (CONTENT = N'C:\\temp\\java.tar.gz', FILE_NAME = 'javaextension.so', PLATFORM = LINUX)",
+		// ALTER with REMOVE PLATFORM
+		"ALTER EXTERNAL LANGUAGE Java REMOVE PLATFORM LINUX",
+		// DROP
+		"DROP EXTERNAL LANGUAGE Java",
+	}
+
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			result := ParseAndCheck(t, sql)
+			if result.Len() != 1 {
+				t.Fatalf("Parse(%q): got %d statements, want 1", sql, result.Len())
+			}
+			stmt, ok := result.Items[0].(*ast.SecurityStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *SecurityStmt, got %T", sql, result.Items[0])
+			}
+			checkLocation(t, sql, "SecurityStmt", stmt.Loc)
+		})
+	}
+}

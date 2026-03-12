@@ -733,6 +733,18 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 				stmt.Loc.Start = loc
 				return stmt
 			}
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LIBRARY") {
+				p.advance() // consume LIBRARY
+				stmt := p.parseCreateExternalLibraryStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LANGUAGE") {
+				p.advance() // consume LANGUAGE
+				stmt := p.parseCreateExternalLanguageStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
 			return nil
 		}
 		// CREATE BROKER PRIORITY (service broker)
@@ -1134,6 +1146,18 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 					p.advance() // consume POOL
 				}
 				stmt := p.parseAlterExternalResourcePoolStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LIBRARY") {
+				p.advance() // consume LIBRARY
+				stmt := p.parseAlterExternalLibraryStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LANGUAGE") {
+				p.advance() // consume LANGUAGE
+				stmt := p.parseAlterExternalLanguageStmt()
 				stmt.Loc.Start = loc
 				return stmt
 			}

@@ -120,6 +120,12 @@ func (p *Parser) parseDropExternalStmt() *nodes.SecurityStmt {
 			p.advance() // consume POOL
 		}
 		stmt.ObjectType = "EXTERNAL RESOURCE POOL"
+	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LIBRARY") {
+		p.advance() // consume LIBRARY
+		stmt.ObjectType = "EXTERNAL LIBRARY"
+	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LANGUAGE") {
+		p.advance() // consume LANGUAGE
+		stmt.ObjectType = "EXTERNAL LANGUAGE"
 	}
 
 	// name (possibly qualified)
@@ -135,6 +141,14 @@ func (p *Parser) parseDropExternalStmt() *nodes.SecurityStmt {
 			}
 		}
 		stmt.Name = strings.Join(parts, ".")
+	}
+
+	// optional AUTHORIZATION owner_name (for DROP EXTERNAL LIBRARY)
+	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AUTHORIZATION") {
+		p.advance()
+		if p.isIdentLike() {
+			p.advance()
+		}
 	}
 
 	stmt.Loc.End = p.pos()
@@ -283,6 +297,303 @@ func (p *Parser) parseCreateExternalFileFormatStmt() *nodes.SecurityStmt {
 
 	// WITH ( options )
 	stmt.Options = p.parseExternalWithOptions()
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseCreateExternalLibraryStmt parses CREATE EXTERNAL LIBRARY.
+// Caller has consumed CREATE EXTERNAL LIBRARY.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-library-transact-sql
+//
+//	CREATE EXTERNAL LIBRARY library_name
+//	[ AUTHORIZATION owner_name ]
+//	FROM <file_spec> [ ,...2 ]
+//	WITH ( LANGUAGE = <language> )
+//	[ ; ]
+//
+//	<file_spec> ::=
+//	{
+//	    (CONTENT = { <client_library_specifier> | <library_bits> }
+//	    [, PLATFORM = <platform> ])
+//	}
+//
+//	<client_library_specifier> :: = { '[file_path\]manifest_file_name' }
+//	<library_bits> :: = { varbinary_literal | varbinary_expression }
+//	<platform> :: = { WINDOWS | LINUX }
+//	<language> :: = { 'R' | 'Python' | <external_language> }
+func (p *Parser) parseCreateExternalLibraryStmt() *nodes.SecurityStmt {
+	loc := p.pos()
+	stmt := &nodes.SecurityStmt{
+		Action:     "CREATE",
+		ObjectType: "EXTERNAL LIBRARY",
+		Loc:        nodes.Loc{Start: loc},
+	}
+
+	if p.isIdentLike() {
+		stmt.Name = p.cur.Str
+		p.advance()
+	}
+
+	// AUTHORIZATION owner_name
+	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AUTHORIZATION") {
+		p.advance()
+		if p.isIdentLike() {
+			p.advance()
+		}
+	}
+
+	// FROM (CONTENT = ...) or FROM literal
+	if p.cur.Type == kwFROM {
+		p.advance()
+		if p.cur.Type == '(' {
+			p.parseNestedParens()
+		} else if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
+			p.advance()
+		}
+	}
+
+	stmt.Options = p.parseExternalWithOptions()
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseAlterExternalLibraryStmt parses ALTER EXTERNAL LIBRARY.
+// Caller has consumed ALTER EXTERNAL LIBRARY.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-external-library-transact-sql
+//
+//	ALTER EXTERNAL LIBRARY library_name
+//	[ AUTHORIZATION owner_name ]
+//	SET <file_spec>
+//	WITH ( LANGUAGE = <language> )
+//	[ ; ]
+//
+//	<file_spec> ::=
+//	{
+//	    (CONTENT = { <client_library_specifier> | <library_bits> | NONE}
+//	    [, PLATFORM = <platform> ])
+//	}
+//
+//	<client_library_specifier> :: = { '[path\]manifest_file_name' | '<relative_path_in_external_data_source>' }
+//	<library_bits> :: = { varbinary_literal | varbinary_expression }
+//	<platform> :: = { WINDOWS | LINUX }
+//	<language> :: = { 'R' | 'Python' | <external_language> }
+func (p *Parser) parseAlterExternalLibraryStmt() *nodes.SecurityStmt {
+	loc := p.pos()
+	stmt := &nodes.SecurityStmt{
+		Action:     "ALTER",
+		ObjectType: "EXTERNAL LIBRARY",
+		Loc:        nodes.Loc{Start: loc},
+	}
+
+	if p.isIdentLike() {
+		stmt.Name = p.cur.Str
+		p.advance()
+	}
+
+	// AUTHORIZATION owner_name
+	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AUTHORIZATION") {
+		p.advance()
+		if p.isIdentLike() {
+			p.advance()
+		}
+	}
+
+	// SET (CONTENT = ...) or ADD/REMOVE
+	if p.cur.Type == kwSET || (p.isIdentLike() && (matchesKeywordCI(p.cur.Str, "ADD") || matchesKeywordCI(p.cur.Str, "REMOVE"))) {
+		p.advance()
+		if p.cur.Type == '(' {
+			p.parseNestedParens()
+		}
+	}
+
+	stmt.Options = p.parseExternalWithOptions()
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseCreateExternalLanguageStmt parses CREATE EXTERNAL LANGUAGE.
+// Caller has consumed CREATE EXTERNAL LANGUAGE.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-language-transact-sql
+//
+//	CREATE EXTERNAL LANGUAGE language_name
+//	[ AUTHORIZATION owner_name ]
+//	FROM <file_spec> [ ,...2 ]
+//	[ ; ]
+//
+//	<file_spec> ::=
+//	{
+//	    ( CONTENT = { <external_lang_specifier> | <content_bits> },
+//	    FILE_NAME = <external_lang_file_name>
+//	    [ , PLATFORM = <platform> ]
+//	    [ , PARAMETERS = <external_lang_parameters> ]
+//	    [ , ENVIRONMENT_VARIABLES = <external_lang_env_variables> ] )
+//	}
+//
+//	<external_lang_specifier> :: = { '[file_path\]os_file_name' }
+//	<content_bits> :: = { varbinary_literal | varbinary_expression }
+//	<external_lang_file_name> :: = 'extension_file_name'
+//	<platform> :: = { WINDOWS | LINUX }
+func (p *Parser) parseCreateExternalLanguageStmt() *nodes.SecurityStmt {
+	loc := p.pos()
+	stmt := &nodes.SecurityStmt{
+		Action:     "CREATE",
+		ObjectType: "EXTERNAL LANGUAGE",
+		Loc:        nodes.Loc{Start: loc},
+	}
+
+	if p.isIdentLike() {
+		stmt.Name = p.cur.Str
+		p.advance()
+	}
+
+	// AUTHORIZATION owner_name
+	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AUTHORIZATION") {
+		p.advance()
+		if p.isIdentLike() {
+			p.advance()
+		}
+	}
+
+	// FROM <file_spec> [ ,...2 ]
+	if p.cur.Type == kwFROM {
+		p.advance()
+		if p.cur.Type == '(' {
+			p.parseNestedParens()
+		}
+		// handle additional file_spec separated by commas
+		for p.cur.Type == ',' {
+			p.advance() // consume ','
+			if p.cur.Type == '(' {
+				p.parseNestedParens()
+			}
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseAlterExternalLanguageStmt parses ALTER EXTERNAL LANGUAGE.
+// Caller has consumed ALTER EXTERNAL LANGUAGE.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-external-language-transact-sql
+//
+//	ALTER EXTERNAL LANGUAGE language_name
+//	[ AUTHORIZATION owner_name ]
+//	{
+//	    SET <file_spec>
+//	    | ADD <file_spec>
+//	    | REMOVE PLATFORM <platform>
+//	}
+//	[ ; ]
+//
+//	<file_spec> ::=
+//	{
+//	    ( CONTENT = { <external_lang_specifier> | <content_bits> },
+//	    FILE_NAME = <external_lang_file_name>
+//	    [ , PLATFORM = <platform> ]
+//	    [ , PARAMETERS = <external_lang_parameters> ]
+//	    [ , ENVIRONMENT_VARIABLES = <external_lang_env_variables> ] )
+//	}
+//
+//	<platform> :: = { WINDOWS | LINUX }
+func (p *Parser) parseAlterExternalLanguageStmt() *nodes.SecurityStmt {
+	loc := p.pos()
+	stmt := &nodes.SecurityStmt{
+		Action:     "ALTER",
+		ObjectType: "EXTERNAL LANGUAGE",
+		Loc:        nodes.Loc{Start: loc},
+	}
+
+	if p.isIdentLike() {
+		stmt.Name = p.cur.Str
+		p.advance()
+	}
+
+	// AUTHORIZATION owner_name
+	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AUTHORIZATION") {
+		p.advance()
+		if p.isIdentLike() {
+			p.advance()
+		}
+	}
+
+	// SET | ADD | REMOVE PLATFORM
+	if p.cur.Type == kwSET || (p.isIdentLike() && matchesKeywordCI(p.cur.Str, "ADD")) {
+		p.advance()
+		if p.cur.Type == '(' {
+			p.parseNestedParens()
+		}
+	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "REMOVE") {
+		p.advance() // consume REMOVE
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "PLATFORM") {
+			p.advance() // consume PLATFORM
+		}
+		if p.isIdentLike() {
+			p.advance() // consume platform name (WINDOWS/LINUX)
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseDropExternalLibraryStmt parses DROP EXTERNAL LIBRARY.
+// Caller has consumed DROP EXTERNAL LIBRARY.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-external-library-transact-sql
+//
+//	DROP EXTERNAL LIBRARY library_name
+//	[ AUTHORIZATION owner_name ]
+//	[ ; ]
+func (p *Parser) parseDropExternalLibraryStmt() *nodes.SecurityStmt {
+	loc := p.pos()
+	stmt := &nodes.SecurityStmt{
+		Action:     "DROP",
+		ObjectType: "EXTERNAL LIBRARY",
+		Loc:        nodes.Loc{Start: loc},
+	}
+
+	if p.isIdentLike() {
+		stmt.Name = p.cur.Str
+		p.advance()
+	}
+
+	// optional AUTHORIZATION owner_name
+	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AUTHORIZATION") {
+		p.advance()
+		if p.isIdentLike() {
+			p.advance()
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseDropExternalLanguageStmt parses DROP EXTERNAL LANGUAGE.
+// Caller has consumed DROP EXTERNAL LANGUAGE.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-external-language-transact-sql
+//
+//	DROP EXTERNAL LANGUAGE language_name
+//	[ ; ]
+func (p *Parser) parseDropExternalLanguageStmt() *nodes.SecurityStmt {
+	loc := p.pos()
+	stmt := &nodes.SecurityStmt{
+		Action:     "DROP",
+		ObjectType: "EXTERNAL LANGUAGE",
+		Loc:        nodes.Loc{Start: loc},
+	}
+
+	if p.isIdentLike() {
+		stmt.Name = p.cur.Str
+		p.advance()
+	}
 
 	stmt.Loc.End = p.pos()
 	return stmt
