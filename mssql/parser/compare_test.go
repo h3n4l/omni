@@ -10885,3 +10885,53 @@ func TestParseDropSecurityKeysDispatch(t *testing.T) {
 		})
 	}
 }
+
+// TestParseDropExternalLibraryLanguageDispatch tests batch 104: DROP EXTERNAL LIBRARY / LANGUAGE dispatch.
+func TestParseDropExternalLibraryLanguageDispatch(t *testing.T) {
+	tests := []struct {
+		sql        string
+		objectType string
+		name       string
+	}{
+		// DROP EXTERNAL LIBRARY
+		{
+			sql:        "DROP EXTERNAL LIBRARY MyLibrary",
+			objectType: "EXTERNAL LIBRARY",
+			name:       "MyLibrary",
+		},
+		// DROP EXTERNAL LIBRARY with AUTHORIZATION
+		{
+			sql:        "DROP EXTERNAL LIBRARY MyLibrary AUTHORIZATION dbo",
+			objectType: "EXTERNAL LIBRARY",
+			name:       "MyLibrary",
+		},
+		// DROP EXTERNAL LANGUAGE
+		{
+			sql:        "DROP EXTERNAL LANGUAGE MyLang",
+			objectType: "EXTERNAL LANGUAGE",
+			name:       "MyLang",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.sql, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() != 1 {
+				t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+			}
+			stmt, ok := result.Items[0].(*ast.SecurityStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *SecurityStmt, got %T", tt.sql, result.Items[0])
+			}
+			if stmt.Action != "DROP" {
+				t.Errorf("Parse(%q): action = %q, want %q", tt.sql, stmt.Action, "DROP")
+			}
+			if stmt.ObjectType != tt.objectType {
+				t.Errorf("Parse(%q): objectType = %q, want %q", tt.sql, stmt.ObjectType, tt.objectType)
+			}
+			if stmt.Name != tt.name {
+				t.Errorf("Parse(%q): name = %q, want %q", tt.sql, stmt.Name, tt.name)
+			}
+			checkLocation(t, tt.sql, "SecurityStmt", stmt.Loc)
+		})
+	}
+}

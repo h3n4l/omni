@@ -2347,7 +2347,7 @@
       "id": 104,
       "name": "drop_external_library_language_dispatch",
       "file": "parser.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 65 gap: wire DROP EXTERNAL LIBRARY and DROP EXTERNAL LANGUAGE to their existing parseDropExternalLibraryStmt/parseDropExternalLanguageStmt parsers in parseDropOrSecurityStmt dispatcher. Parsers exist but are unreachable from the dispatcher.",
       "rules": [
         "drop_external_library_dispatch",

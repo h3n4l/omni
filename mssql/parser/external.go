@@ -122,10 +122,10 @@ func (p *Parser) parseDropExternalStmt() *nodes.SecurityStmt {
 		stmt.ObjectType = "EXTERNAL RESOURCE POOL"
 	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LIBRARY") {
 		p.advance() // consume LIBRARY
-		stmt.ObjectType = "EXTERNAL LIBRARY"
+		return p.parseDropExternalLibraryStmt()
 	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LANGUAGE") {
 		p.advance() // consume LANGUAGE
-		stmt.ObjectType = "EXTERNAL LANGUAGE"
+		return p.parseDropExternalLanguageStmt()
 	}
 
 	// name (possibly qualified)
