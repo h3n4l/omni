@@ -1200,7 +1200,7 @@
       "id": 44,
       "name": "begin_atomic_routine_body",
       "file": "create_function.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 14 gap: parseOptRoutineBody has TODO stub at line 525 for BEGIN ATOMIC routine_body_stmt_list END. Must parse BEGIN_P ATOMIC, then loop calling parseStmt for each statement (separated by ';'), then expect END_P. Ref: https://www.postgresql.org/docs/current/sql-createfunction.html",
       "rules": [
         "parseOptRoutineBody",

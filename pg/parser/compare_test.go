@@ -2993,3 +2993,23 @@ func TestCompareCteSearchCycle(t *testing.T) {
 		})
 	}
 }
+
+func TestCompareBeginAtomicBody(t *testing.T) {
+	tests := []string{
+		// Simple RETURN expression
+		"CREATE FUNCTION add(a int, b int) RETURNS int LANGUAGE SQL RETURN a + b",
+		// BEGIN ATOMIC with single RETURN
+		"CREATE FUNCTION add(a int, b int) RETURNS int LANGUAGE SQL BEGIN ATOMIC RETURN a + b; END",
+		// BEGIN ATOMIC with single SELECT
+		"CREATE FUNCTION get_one() RETURNS int LANGUAGE SQL BEGIN ATOMIC SELECT 1; END",
+		// BEGIN ATOMIC with multiple statements
+		"CREATE FUNCTION test() RETURNS void LANGUAGE SQL BEGIN ATOMIC INSERT INTO t VALUES (1); SELECT 1; END",
+		// BEGIN ATOMIC with RETURN
+		"CREATE PROCEDURE do_stuff() LANGUAGE SQL BEGIN ATOMIC INSERT INTO t VALUES (1); END",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+		})
+	}
+}

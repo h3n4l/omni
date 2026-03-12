@@ -519,11 +519,34 @@ func (p *Parser) parseOptRoutineBody() nodes.Node {
 		return &nodes.ReturnStmt{Returnval: expr}
 	}
 	if p.cur.Type == BEGIN_P {
-		// BEGIN ATOMIC routine_body_stmt_list END
-		// For now, we skip parsing the full body and return nil.
-		// This is complex because routine_body_stmt is the full stmt parser.
-		// TODO: implement when needed
-		return nil
+		p.advance() // consume BEGIN
+		p.expect(ATOMIC)
+
+		// Parse routine_body_stmt_list: (routine_body_stmt ';')*
+		var stmts []nodes.Node
+		for p.cur.Type != END_P && p.cur.Type != 0 {
+			var stmt nodes.Node
+			if p.cur.Type == RETURN {
+				p.advance()
+				expr := p.parseAExpr(0)
+				stmt = &nodes.ReturnStmt{Returnval: expr}
+			} else {
+				stmt = p.parseStmt()
+			}
+			if stmt != nil {
+				stmts = append(stmts, stmt)
+			}
+			// consume trailing ';'
+			if p.cur.Type == ';' {
+				p.advance()
+			}
+		}
+		p.expect(END_P)
+
+		// Yacc wraps the stmt list in makeList(stmtList):
+		// a single-element list containing the statement list
+		stmtList := &nodes.List{Items: stmts}
+		return &nodes.List{Items: []nodes.Node{stmtList}}
 	}
 	return nil
 }
