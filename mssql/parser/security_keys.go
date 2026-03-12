@@ -296,6 +296,65 @@ func (p *Parser) parseBackupCertificateStmt() *nodes.SecurityKeyStmt {
 	return stmt
 }
 
+// parseOpenMasterKeyStmt parses OPEN MASTER KEY DECRYPTION BY PASSWORD = 'password'.
+func (p *Parser) parseOpenMasterKeyStmt() *nodes.SecurityKeyStmt {
+	loc := p.pos()
+	p.advance() // consume OPEN
+	stmt := &nodes.SecurityKeyStmt{
+		Action:     "OPEN",
+		ObjectType: "MASTER KEY",
+		Loc:        nodes.Loc{Start: loc},
+	}
+
+	// consume MASTER KEY
+	if p.matchIdentCI("MASTER") {
+		p.match(kwKEY)
+	}
+
+	p.skipSecurityKeyOptions(stmt)
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseCloseMasterKeyStmt parses CLOSE MASTER KEY.
+func (p *Parser) parseCloseMasterKeyStmt() *nodes.SecurityKeyStmt {
+	loc := p.pos()
+	p.advance() // consume CLOSE
+	stmt := &nodes.SecurityKeyStmt{
+		Action:     "CLOSE",
+		ObjectType: "MASTER KEY",
+		Loc:        nodes.Loc{Start: loc},
+	}
+
+	// consume MASTER KEY
+	if p.matchIdentCI("MASTER") {
+		p.match(kwKEY)
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseRestoreMasterKeyStmt parses RESTORE MASTER KEY FROM FILE = 'path' ...
+func (p *Parser) parseRestoreMasterKeyStmt() *nodes.SecurityKeyStmt {
+	loc := p.pos()
+	p.advance() // consume RESTORE
+	stmt := &nodes.SecurityKeyStmt{
+		Action:     "RESTORE",
+		ObjectType: "MASTER KEY",
+		Loc:        nodes.Loc{Start: loc},
+	}
+
+	// consume MASTER KEY
+	if p.matchIdentCI("MASTER") {
+		p.match(kwKEY)
+	}
+
+	p.skipSecurityKeyOptions(stmt)
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
 // skipSecurityKeyOptions consumes remaining tokens until a statement boundary,
 // collecting option strings.
 func (p *Parser) skipSecurityKeyOptions(stmt *nodes.SecurityKeyStmt) {

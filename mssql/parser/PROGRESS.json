@@ -1349,7 +1349,7 @@
       "id": 64,
       "name": "restore_extended_master_key",
       "file": "backup_restore.go",
-      "status": "pending",
+      "status": "done",
       "description": "New: RESTORE VERIFYONLY, RESTORE LABELONLY, RESTORE REWINDONLY; OPEN/CLOSE MASTER KEY; BACKUP/RESTORE MASTER KEY",
       "rules": ["parseRestoreVerifyonlyStmt", "parseRestoreLabelonlyStmt", "parseRestoreRewindonlyStmt", "parseOpenMasterKeyStmt", "parseCloseMasterKeyStmt", "parseBackupMasterKeyStmt", "parseRestoreMasterKeyStmt"],
       "depends_on": [34, 31],

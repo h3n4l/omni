@@ -141,17 +141,23 @@ func (p *Parser) parseStmt() nodes.StmtNode {
 	case kwTHROW:
 		return p.parseThrowStmt()
 	case kwOPEN:
-		// Check for OPEN SYMMETRIC KEY vs OPEN cursor
+		// Check for OPEN SYMMETRIC KEY / OPEN MASTER KEY vs OPEN cursor
 		next := p.peekNext()
 		if next.Type >= kwADD && matchesKeywordCI(next.Str, "SYMMETRIC") {
 			return p.parseOpenSymmetricKeyStmt()
+		}
+		if next.Str != "" && matchesKeywordCI(next.Str, "MASTER") {
+			return p.parseOpenMasterKeyStmt()
 		}
 		return p.parseOpenCursorStmt()
 	case kwFETCH:
 		return p.parseFetchCursorStmt()
 	case kwCLOSE:
-		// Check for CLOSE SYMMETRIC KEY / CLOSE ALL SYMMETRIC KEYS vs CLOSE cursor
+		// Check for CLOSE SYMMETRIC KEY / CLOSE ALL SYMMETRIC KEYS / CLOSE MASTER KEY vs CLOSE cursor
 		next := p.peekNext()
+		if next.Str != "" && matchesKeywordCI(next.Str, "MASTER") {
+			return p.parseCloseMasterKeyStmt()
+		}
 		if (next.Type >= kwADD && matchesKeywordCI(next.Str, "SYMMETRIC")) ||
 			next.Type == kwALL {
 			return p.parseCloseSymmetricKeyStmt()
@@ -182,14 +188,17 @@ func (p *Parser) parseStmt() nodes.StmtNode {
 			stmt.Loc.Start = loc
 			return stmt
 		}
-		if (next.Type >= kwADD && matchesKeywordCI(next.Str, "CERTIFICATE")) ||
-			(next.Type >= kwADD && matchesKeywordCI(next.Str, "MASTER")) {
+		if (next.Str != "" && matchesKeywordCI(next.Str, "CERTIFICATE")) ||
+			(next.Str != "" && matchesKeywordCI(next.Str, "MASTER")) {
 			return p.parseBackupCertificateStmt()
 		}
 		return p.parseBackupStmt()
 	case kwRESTORE:
-		// Check for RESTORE SERVICE MASTER KEY
+		// Check for RESTORE MASTER KEY / RESTORE SERVICE MASTER KEY
 		next := p.peekNext()
+		if next.Str != "" && matchesKeywordCI(next.Str, "MASTER") {
+			return p.parseRestoreMasterKeyStmt()
+		}
 		if next.Str != "" && matchesKeywordCI(next.Str, "SERVICE") {
 			loc := p.pos()
 			p.advance() // consume RESTORE

@@ -5661,3 +5661,105 @@ func TestParseSpecializedIndexes(t *testing.T) {
 		}
 	})
 }
+
+// TestParseRestoreExtendedMasterKey tests batch 64: RESTORE extended types, OPEN/CLOSE/BACKUP/RESTORE MASTER KEY.
+func TestParseRestoreExtendedMasterKey(t *testing.T) {
+	t.Run("restore_verifyonly", func(t *testing.T) {
+		tests := []struct {
+			sql      string
+			restType string
+		}{
+			{`RESTORE VERIFYONLY FROM DISK = '/backup/test.bak'`, "VERIFYONLY"},
+			{`RESTORE LABELONLY FROM DISK = '/backup/test.bak'`, "LABELONLY"},
+			{`RESTORE REWINDONLY FROM DISK = '/backup/test.bak'`, "REWINDONLY"},
+			{`RESTORE HEADERONLY FROM DISK = '/backup/test.bak'`, "HEADERONLY"},
+			{`RESTORE FILELISTONLY FROM DISK = '/backup/test.bak'`, "FILELISTONLY"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.sql, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.RestoreStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected *RestoreStmt, got %T", tt.sql, result.Items[0])
+				}
+				if stmt.Type != tt.restType {
+					t.Errorf("Parse(%q): type = %q, want %q", tt.sql, stmt.Type, tt.restType)
+				}
+				checkLocation(t, tt.sql, "RestoreStmt", stmt.Loc)
+			})
+		}
+	})
+
+	t.Run("open_master_key", func(t *testing.T) {
+		tests := []string{
+			`OPEN MASTER KEY DECRYPTION BY PASSWORD = 'sfj5300osdVdgwdfkli7'`,
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				result := ParseAndCheck(t, sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): got %d statements, want 1", sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.SecurityKeyStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected *SecurityKeyStmt, got %T", sql, result.Items[0])
+				}
+				if stmt.Action != "OPEN" || stmt.ObjectType != "MASTER KEY" {
+					t.Errorf("Parse(%q): action=%q objectType=%q, want OPEN/MASTER KEY", sql, stmt.Action, stmt.ObjectType)
+				}
+				checkLocation(t, sql, "SecurityKeyStmt", stmt.Loc)
+			})
+		}
+	})
+
+	t.Run("close_master_key", func(t *testing.T) {
+		tests := []string{
+			`CLOSE MASTER KEY`,
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				result := ParseAndCheck(t, sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): got %d statements, want 1", sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.SecurityKeyStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected *SecurityKeyStmt, got %T", sql, result.Items[0])
+				}
+				if stmt.Action != "CLOSE" || stmt.ObjectType != "MASTER KEY" {
+					t.Errorf("Parse(%q): action=%q objectType=%q, want CLOSE/MASTER KEY", sql, stmt.Action, stmt.ObjectType)
+				}
+				checkLocation(t, sql, "SecurityKeyStmt", stmt.Loc)
+			})
+		}
+	})
+
+	t.Run("backup_master_key", func(t *testing.T) {
+		tests := []struct {
+			sql    string
+			action string
+		}{
+			{`BACKUP MASTER KEY TO FILE = 'exportedmasterkey.bak' ENCRYPTION BY PASSWORD = 'sd092735kjn'`, "BACKUP"},
+			{`RESTORE MASTER KEY FROM FILE = 'exportedmasterkey.bak' DECRYPTION BY PASSWORD = 'sd092735kjn' ENCRYPTION BY PASSWORD = 'newpassword'`, "RESTORE"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.sql, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.SecurityKeyStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected *SecurityKeyStmt, got %T", tt.sql, result.Items[0])
+				}
+				if stmt.Action != tt.action || stmt.ObjectType != "MASTER KEY" {
+					t.Errorf("Parse(%q): action=%q objectType=%q, want %s/MASTER KEY", tt.sql, stmt.Action, stmt.ObjectType, tt.action)
+				}
+				checkLocation(t, tt.sql, "SecurityKeyStmt", stmt.Loc)
+			})
+		}
+	})
+}

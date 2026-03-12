@@ -104,6 +104,9 @@ func (p *Parser) parseRestoreStmt() *nodes.RestoreStmt {
 		case "LABELONLY":
 			stmt.Type = "LABELONLY"
 			p.advance()
+		case "REWINDONLY":
+			stmt.Type = "REWINDONLY"
+			p.advance()
 		default:
 			stmt.Type = "DATABASE"
 		}
@@ -113,7 +116,7 @@ func (p *Parser) parseRestoreStmt() *nodes.RestoreStmt {
 
 	// Database name (optional for HEADERONLY/FILELISTONLY/VERIFYONLY/LABELONLY)
 	switch stmt.Type {
-	case "HEADERONLY", "FILELISTONLY", "VERIFYONLY", "LABELONLY":
+	case "HEADERONLY", "FILELISTONLY", "VERIFYONLY", "LABELONLY", "REWINDONLY":
 		// no database name expected before FROM
 	default:
 		if p.isIdentLike() && p.cur.Type != kwFROM {
