@@ -1528,6 +1528,20 @@ type SubqueryComparisonExpr struct {
 func (n *SubqueryComparisonExpr) nodeTag()  {}
 func (n *SubqueryComparisonExpr) exprNode() {}
 
+// CollateExpr represents a postfix COLLATE operator on an expression.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/collations
+//
+//	expr COLLATE { collation_name | database_default }
+type CollateExpr struct {
+	Expr      ExprNode // the expression being collated
+	Collation string   // collation name or "database_default"
+	Loc       Loc
+}
+
+func (n *CollateExpr) nodeTag()  {}
+func (n *CollateExpr) exprNode() {}
+
 // ParenExpr represents a parenthesized expression.
 type ParenExpr struct {
 	Expr ExprNode

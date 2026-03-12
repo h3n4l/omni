@@ -1966,7 +1966,7 @@
       "id": 84,
       "name": "collate_expression",
       "file": "expr.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 3 gap: parse postfix COLLATE operator on expressions (expr COLLATE collation_name). This is a postfix operator that binds tightly, used in ORDER BY, WHERE, assignments, and column definitions.",
       "rules": [
         "parseCollateExpr"

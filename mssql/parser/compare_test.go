@@ -8858,3 +8858,112 @@ func TestParseTableHints(t *testing.T) {
 		}
 	})
 }
+
+// TestParseCollateExpression tests COLLATE as a postfix expression operator (batch 84).
+func TestParseCollateExpression(t *testing.T) {
+	// COLLATE in ORDER BY
+	t.Run("collate_order_by", func(t *testing.T) {
+		sql := "SELECT name FROM employees ORDER BY name COLLATE Latin1_General_CS_AS"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		if stmt.OrderByClause == nil || stmt.OrderByClause.Len() != 1 {
+			t.Fatalf("expected 1 ORDER BY item")
+		}
+		item := stmt.OrderByClause.Items[0].(*ast.OrderByItem)
+		collate, ok := item.Expr.(*ast.CollateExpr)
+		if !ok {
+			t.Fatalf("expected CollateExpr, got %T", item.Expr)
+		}
+		if collate.Collation != "Latin1_General_CS_AS" {
+			t.Errorf("expected collation Latin1_General_CS_AS, got %s", collate.Collation)
+		}
+	})
+
+	// COLLATE in WHERE clause
+	t.Run("collate_where", func(t *testing.T) {
+		sql := "SELECT * FROM t WHERE col1 COLLATE Latin1_General_CI_AS = 'abc'"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		if stmt.WhereClause == nil {
+			t.Fatalf("expected WHERE clause")
+		}
+		bin, ok := stmt.WhereClause.(*ast.BinaryExpr)
+		if !ok {
+			t.Fatalf("expected BinaryExpr, got %T", stmt.WhereClause)
+		}
+		collate, ok := bin.Left.(*ast.CollateExpr)
+		if !ok {
+			t.Fatalf("expected CollateExpr on left, got %T", bin.Left)
+		}
+		if collate.Collation != "Latin1_General_CI_AS" {
+			t.Errorf("expected collation Latin1_General_CI_AS, got %s", collate.Collation)
+		}
+	})
+
+	// COLLATE on column expression (SELECT list)
+	t.Run("collate_column_expr", func(t *testing.T) {
+		sql := "SELECT col1 COLLATE SQL_Latin1_General_CP1_CI_AS FROM t"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		if stmt.TargetList == nil || stmt.TargetList.Len() != 1 {
+			t.Fatalf("expected 1 target")
+		}
+		rt := stmt.TargetList.Items[0].(*ast.ResTarget)
+		collate, ok := rt.Val.(*ast.CollateExpr)
+		if !ok {
+			t.Fatalf("expected CollateExpr, got %T", rt.Val)
+		}
+		if collate.Collation != "SQL_Latin1_General_CP1_CI_AS" {
+			t.Errorf("expected SQL_Latin1_General_CP1_CI_AS, got %s", collate.Collation)
+		}
+	})
+
+	// COLLATE database_default
+	t.Run("collate_database_default", func(t *testing.T) {
+		sql := "SELECT col1 COLLATE database_default FROM t"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		rt := stmt.TargetList.Items[0].(*ast.ResTarget)
+		collate, ok := rt.Val.(*ast.CollateExpr)
+		if !ok {
+			t.Fatalf("expected CollateExpr, got %T", rt.Val)
+		}
+		if collate.Collation != "database_default" {
+			t.Errorf("expected database_default, got %s", collate.Collation)
+		}
+	})
+
+	// COLLATE on string literal
+	t.Run("collate_string_literal", func(t *testing.T) {
+		sql := "SELECT 'hello' COLLATE Latin1_General_CS_AS"
+		ParseAndCheck(t, sql)
+	})
+
+	// COLLATE with LIKE
+	t.Run("collate_with_like", func(t *testing.T) {
+		sql := "SELECT * FROM t WHERE name COLLATE Latin1_General_CI_AS LIKE 'A%'"
+		ParseAndCheck(t, sql)
+	})
+
+	// COLLATE in CASE expression
+	t.Run("collate_in_case", func(t *testing.T) {
+		sql := "SELECT CASE WHEN 1=1 THEN col1 COLLATE Latin1_General_CS_AS ELSE col2 END FROM t"
+		ParseAndCheck(t, sql)
+	})
+
+	// Multiple COLLATEs in same query
+	t.Run("collate_multiple", func(t *testing.T) {
+		sql := "SELECT a COLLATE Latin1_General_CS_AS, b COLLATE SQL_Latin1_General_CP1_CI_AS FROM t"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		if stmt.TargetList.Len() != 2 {
+			t.Fatalf("expected 2 targets, got %d", stmt.TargetList.Len())
+		}
+		for i := 0; i < 2; i++ {
+			rt := stmt.TargetList.Items[i].(*ast.ResTarget)
+			if _, ok := rt.Val.(*ast.CollateExpr); !ok {
+				t.Errorf("target[%d]: expected CollateExpr, got %T", i, rt.Val)
+			}
+		}
+	})
+}

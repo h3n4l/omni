@@ -243,9 +243,10 @@ func comparisonOp(tok int) (nodes.BinaryOp, bool) {
 	}
 }
 
-// parseAddition parses addition/subtraction and bitwise operators.
+// parseAddition parses addition/subtraction and bitwise operators,
+// followed by an optional postfix COLLATE clause.
 //
-//	addition_expr = multiplication_expr { ('+' | '-' | '&' | '|' | '^') multiplication_expr }
+//	addition_expr = multiplication_expr { ('+' | '-' | '&' | '|' | '^') multiplication_expr } [ COLLATE collation_name ]
 func (p *Parser) parseAddition() nodes.ExprNode {
 	left := p.parseMultiplication()
 	for p.cur.Type == '+' || p.cur.Type == '-' || p.cur.Type == '&' || p.cur.Type == '|' || p.cur.Type == '^' {
@@ -272,7 +273,40 @@ func (p *Parser) parseAddition() nodes.ExprNode {
 			Loc:   nodes.Loc{Start: loc},
 		}
 	}
+	// Postfix COLLATE
+	if p.cur.Type == kwCOLLATE {
+		left = p.parseCollateExpr(left)
+	}
 	return left
+}
+
+// parseCollateExpr parses a postfix COLLATE operator on an expression.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/collations
+//
+//	expr COLLATE { <collation_name> | database_default }
+//
+//	<collation_name> ::=
+//	    { Windows_collation_name } | { SQL_collation_name }
+func (p *Parser) parseCollateExpr(expr nodes.ExprNode) nodes.ExprNode {
+	loc := p.pos()
+	p.advance() // consume COLLATE
+	// Collation name is an identifier (may contain underscores, numbers)
+	// or the special keyword database_default
+	var collation string
+	if p.cur.Type == tokIDENT || p.isIdentLike() {
+		collation = p.cur.Str
+		p.advance()
+	} else {
+		return expr
+	}
+	node := &nodes.CollateExpr{
+		Expr:      expr,
+		Collation: collation,
+		Loc:       nodes.Loc{Start: loc},
+	}
+	node.Loc.End = p.pos()
+	return node
 }
 
 // parseMultiplication parses multiplication/division/modulo.

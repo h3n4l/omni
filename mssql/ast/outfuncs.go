@@ -186,6 +186,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeSubqueryExpr(sb, n)
 	case *SubqueryComparisonExpr:
 		writeSubqueryComparisonExpr(sb, n)
+	case *CollateExpr:
+		writeCollateExpr(sb, n)
 	case *ParenExpr:
 		writeParenExpr(sb, n)
 	case *TableRef:
@@ -1714,6 +1716,19 @@ func writeSubqueryComparisonExpr(sb *strings.Builder, n *SubqueryComparisonExpr)
 		writeNode(sb, n.Subquery)
 	}
 	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
+	sb.WriteString("}")
+}
+
+func writeCollateExpr(sb *strings.Builder, n *CollateExpr) {
+	sb.WriteString("{COLLATE_EXPR")
+	if n.Expr != nil {
+		sb.WriteString(" :expr ")
+		writeNode(sb, n.Expr)
+	}
+	if n.Collation != "" {
+		sb.WriteString(fmt.Sprintf(" :collation \"%s\"", escapeString(n.Collation)))
+	}
+	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
 }
 
