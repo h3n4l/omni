@@ -2212,3 +2212,66 @@ type DropSearchPropertyListStmt struct {
 
 func (n *DropSearchPropertyListStmt) nodeTag()  {}
 func (n *DropSearchPropertyListStmt) stmtNode() {}
+
+// ---------- Batch 62: Security Policy / Classification / Signature ----------
+
+// SecurityPolicyStmt represents CREATE/ALTER/DROP SECURITY POLICY (row-level security).
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-security-policy-transact-sql
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-security-policy-transact-sql
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-security-policy-transact-sql
+type SecurityPolicyStmt struct {
+	Action          string   // CREATE, ALTER, DROP
+	Name            *TableRef // [schema.]policy_name
+	IfExists        bool     // DROP IF EXISTS
+	Predicates      *List    // list of *SecurityPredicate (for CREATE/ALTER)
+	StateOn         *bool    // WITH (STATE = ON|OFF); nil if unspecified
+	SchemaBinding   *bool    // WITH (SCHEMABINDING = ON|OFF); nil if unspecified
+	NotForReplication bool
+	Loc             Loc
+}
+
+func (n *SecurityPolicyStmt) nodeTag()  {}
+func (n *SecurityPolicyStmt) stmtNode() {}
+
+// SecurityPredicate represents a FILTER/BLOCK PREDICATE in a security policy.
+type SecurityPredicate struct {
+	Action        string   // ADD, ALTER, DROP
+	PredicateType string   // FILTER or BLOCK
+	Function      *TableRef // schema.function_name
+	Args          *List    // function arguments (column names / expressions)
+	Table         *TableRef // ON schema.table
+	BlockDMLOp    string   // AFTER INSERT, AFTER UPDATE, BEFORE UPDATE, BEFORE DELETE, or ""
+	Loc           Loc
+}
+
+func (n *SecurityPredicate) nodeTag() {}
+
+// SensitivityClassificationStmt represents ADD/DROP SENSITIVITY CLASSIFICATION.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/add-sensitivity-classification-transact-sql
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-sensitivity-classification-transact-sql
+type SensitivityClassificationStmt struct {
+	Action  string // ADD or DROP
+	Columns *List  // list of *TableRef (schema.table.column references)
+	Options *List  // list of *String key=value pairs (for ADD: LABEL, LABEL_ID, INFORMATION_TYPE, etc.)
+	Loc     Loc
+}
+
+func (n *SensitivityClassificationStmt) nodeTag()  {}
+func (n *SensitivityClassificationStmt) stmtNode() {}
+
+// SignatureStmt represents ADD/DROP [COUNTER] SIGNATURE.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/add-signature-transact-sql
+type SignatureStmt struct {
+	Action      string // ADD or DROP
+	IsCounter   bool   // COUNTER SIGNATURE
+	ModuleClass string // OBJECT, ASSEMBLY, etc. (default OBJECT)
+	ModuleName  *TableRef // module name
+	CryptoList  *List  // list of *String with certificate/key references
+	Loc         Loc
+}
+
+func (n *SignatureStmt) nodeTag()  {}
+func (n *SignatureStmt) stmtNode() {}

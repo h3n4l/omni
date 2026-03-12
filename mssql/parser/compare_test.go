@@ -5428,3 +5428,120 @@ func TestParseFulltextStoplistSearch(t *testing.T) {
 		checkLocation(t, sql, "DropSearchPropertyListStmt", stmt.Loc)
 	})
 }
+
+// TestParseSecurityPolicyClassification tests batch 62: SECURITY POLICY, SENSITIVITY CLASSIFICATION, SIGNATURE.
+func TestParseSecurityPolicyClassification(t *testing.T) {
+	t.Run("security_policy", func(t *testing.T) {
+		tests := []struct {
+			sql    string
+			action string
+		}{
+			// CREATE with filter predicate
+			{`CREATE SECURITY POLICY FederatedSecurityPolicy ADD FILTER PREDICATE rls.fn_securitypredicate(CustomerId) ON dbo.Customer`, "CREATE"},
+			// CREATE with multiple predicates and WITH options
+			{`CREATE SECURITY POLICY FederatedSecurityPolicy ADD FILTER PREDICATE rls.fn_pred1(CustomerId) ON dbo.Customer, ADD FILTER PREDICATE rls.fn_pred2(VendorId) ON dbo.Vendor WITH (STATE = ON)`, "CREATE"},
+			// CREATE with block predicate AFTER INSERT
+			{`CREATE SECURITY POLICY rls.SecPol ADD FILTER PREDICATE rls.tenantPred(TenantId) ON dbo.Sales, ADD BLOCK PREDICATE rls.tenantPred(TenantId) ON dbo.Sales AFTER INSERT`, "CREATE"},
+			// CREATE with NOT FOR REPLICATION
+			{`CREATE SECURITY POLICY pol1 ADD FILTER PREDICATE dbo.fn1(col1) ON dbo.t1 NOT FOR REPLICATION`, "CREATE"},
+			// ALTER with STATE = ON
+			{`ALTER SECURITY POLICY pol1 WITH (STATE = ON)`, "ALTER"},
+			// ALTER ADD predicate
+			{`ALTER SECURITY POLICY pol1 ADD FILTER PREDICATE schema_preds.SecPredicate(column1) ON myschema.mytable`, "ALTER"},
+			// ALTER DROP predicate
+			{`ALTER SECURITY POLICY pol1 DROP FILTER PREDICATE ON myschema.mytable`, "ALTER"},
+			// ALTER with ALTER predicate
+			{`ALTER SECURITY POLICY pol1 ALTER FILTER PREDICATE schema_preds.SecPredicate2(column1) ON myschema.mytable`, "ALTER"},
+			// ALTER with BLOCK predicate BEFORE DELETE
+			{`ALTER SECURITY POLICY rls.SecPol ALTER BLOCK PREDICATE rls.tenantPred_v2(TenantId) ON dbo.Sales BEFORE DELETE`, "ALTER"},
+			// DROP
+			{`DROP SECURITY POLICY secPolicy`, "DROP"},
+			// DROP IF EXISTS
+			{`DROP SECURITY POLICY IF EXISTS dbo.secPolicy`, "DROP"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.sql, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.SecurityPolicyStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected *SecurityPolicyStmt, got %T", tt.sql, result.Items[0])
+				}
+				if stmt.Action != tt.action {
+					t.Errorf("Parse(%q): action = %q, want %q", tt.sql, stmt.Action, tt.action)
+				}
+				checkLocation(t, tt.sql, "SecurityPolicyStmt", stmt.Loc)
+			})
+		}
+	})
+
+	t.Run("sensitivity_classification", func(t *testing.T) {
+		tests := []struct {
+			sql    string
+			action string
+		}{
+			// ADD with all options
+			{`ADD SENSITIVITY CLASSIFICATION TO dbo.sales.price, dbo.sales.discount WITH (LABEL = 'Highly Confidential', INFORMATION_TYPE = 'Financial', RANK = CRITICAL)`, "ADD"},
+			// ADD with label only
+			{`ADD SENSITIVITY CLASSIFICATION TO dbo.customer.comments WITH (LABEL = 'Confidential', LABEL_ID = '643f7acd-776a-438d-890c-79c3f2a520d6')`, "ADD"},
+			// DROP
+			{`DROP SENSITIVITY CLASSIFICATION FROM dbo.sales.price`, "DROP"},
+			// DROP multiple
+			{`DROP SENSITIVITY CLASSIFICATION FROM dbo.sales.price, dbo.sales.discount, SalesLT.Customer.Phone`, "DROP"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.sql, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.SensitivityClassificationStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected *SensitivityClassificationStmt, got %T", tt.sql, result.Items[0])
+				}
+				if stmt.Action != tt.action {
+					t.Errorf("Parse(%q): action = %q, want %q", tt.sql, stmt.Action, tt.action)
+				}
+				checkLocation(t, tt.sql, "SensitivityClassificationStmt", stmt.Loc)
+			})
+		}
+	})
+
+	t.Run("signature", func(t *testing.T) {
+		tests := []struct {
+			sql    string
+			action string
+		}{
+			// ADD SIGNATURE with certificate
+			{`ADD SIGNATURE TO HumanResources.uspUpdateEmployeeLogin BY CERTIFICATE HumanResourcesDP`, "ADD"},
+			// ADD SIGNATURE with password
+			{`ADD SIGNATURE TO sp_signature_demo BY CERTIFICATE cert_signature_demo WITH PASSWORD = 'pGFD4bb925DGvbd2439587y'`, "ADD"},
+			// ADD COUNTER SIGNATURE
+			{`ADD COUNTER SIGNATURE TO ProcSelectT1 BY CERTIFICATE csSelectT WITH PASSWORD = 'secret'`, "ADD"},
+			// DROP SIGNATURE
+			{`DROP SIGNATURE FROM sp_signature_demo BY CERTIFICATE cert_signature_demo`, "DROP"},
+			// DROP COUNTER SIGNATURE
+			{`DROP COUNTER SIGNATURE FROM sp_test BY CERTIFICATE cert1`, "DROP"},
+			// ADD SIGNATURE with ASYMMETRIC KEY
+			{`ADD SIGNATURE TO dbo.myProc BY ASYMMETRIC KEY myAsymKey`, "ADD"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.sql, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.SignatureStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected *SignatureStmt, got %T", tt.sql, result.Items[0])
+				}
+				if stmt.Action != tt.action {
+					t.Errorf("Parse(%q): action = %q, want %q", tt.sql, stmt.Action, tt.action)
+				}
+				checkLocation(t, tt.sql, "SignatureStmt", stmt.Loc)
+			})
+		}
+	})
+}

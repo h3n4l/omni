@@ -263,9 +263,50 @@ func (p *Parser) parseStmt() nodes.StmtNode {
 			if matchesKeywordCI(p.cur.Str, "REVERT") {
 				return p.parseRevertStmt()
 			}
+			// ADD SENSITIVITY CLASSIFICATION / ADD [COUNTER] SIGNATURE
+			if matchesKeywordCI(p.cur.Str, "ADD") {
+				return p.parseAddStmt()
+			}
+		}
+		// kwADD is handled here too
+		if p.cur.Type == kwADD {
+			return p.parseAddStmt()
 		}
 		return nil
 	}
+}
+
+// parseAddStmt dispatches ADD SENSITIVITY CLASSIFICATION and ADD [COUNTER] SIGNATURE.
+func (p *Parser) parseAddStmt() nodes.StmtNode {
+	loc := p.pos()
+	p.advance() // consume ADD
+
+	// ADD SENSITIVITY CLASSIFICATION
+	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SENSITIVITY") {
+		p.advance() // consume SENSITIVITY
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CLASSIFICATION") {
+			p.advance() // consume CLASSIFICATION
+		}
+		stmt := p.parseAddSensitivityClassificationStmt()
+		stmt.Loc.Start = loc
+		return stmt
+	}
+
+	// ADD [COUNTER] SIGNATURE
+	isCounter := false
+	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "COUNTER") {
+		isCounter = true
+		p.advance() // consume COUNTER
+	}
+	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SIGNATURE") {
+		p.advance() // consume SIGNATURE
+		stmt := p.parseSignatureStmt("ADD")
+		stmt.IsCounter = isCounter
+		stmt.Loc.Start = loc
+		return stmt
+	}
+
+	return nil
 }
 
 // parseCreateStmt dispatches CREATE to the appropriate sub-parser.
@@ -476,6 +517,17 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 					stmt.Loc.Start = loc
 					return stmt
 				}
+			}
+			return nil
+		}
+		// CREATE SECURITY POLICY
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SECURITY") {
+			p.advance() // consume SECURITY
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "POLICY") {
+				p.advance() // consume POLICY
+				stmt := p.parseCreateSecurityPolicyStmt()
+				stmt.Loc.Start = loc
+				return stmt
 			}
 			return nil
 		}
@@ -819,6 +871,17 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "STOPLIST") {
 				p.advance() // consume STOPLIST
 				stmt := p.parseAlterFulltextStoplistStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			return nil
+		}
+		// ALTER SECURITY POLICY
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SECURITY") {
+			p.advance() // consume SECURITY
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "POLICY") {
+				p.advance() // consume POLICY
+				stmt := p.parseAlterSecurityPolicyStmt()
 				stmt.Loc.Start = loc
 				return stmt
 			}
@@ -1301,6 +1364,47 @@ func (p *Parser) parseDropOrSecurityStmt() nodes.StmtNode {
 			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "POOL") {
 				p.advance() // consume POOL
 				stmt := p.parseDropResourcePoolStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			return nil
+		}
+		// DROP SECURITY POLICY
+		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "SECURITY") {
+			p.advance() // consume DROP
+			p.advance() // consume SECURITY
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "POLICY") {
+				p.advance() // consume POLICY
+				stmt := p.parseDropSecurityPolicyStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			return nil
+		}
+		// DROP SENSITIVITY CLASSIFICATION
+		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "SENSITIVITY") {
+			p.advance() // consume DROP
+			p.advance() // consume SENSITIVITY
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CLASSIFICATION") {
+				p.advance() // consume CLASSIFICATION
+			}
+			stmt := p.parseDropSensitivityClassificationStmt()
+			stmt.Loc.Start = loc
+			return stmt
+		}
+		// DROP [COUNTER] SIGNATURE
+		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) &&
+			(matchesKeywordCI(next.Str, "SIGNATURE") || matchesKeywordCI(next.Str, "COUNTER")) {
+			p.advance() // consume DROP
+			isCounter := false
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "COUNTER") {
+				isCounter = true
+				p.advance() // consume COUNTER
+			}
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SIGNATURE") {
+				p.advance() // consume SIGNATURE
+				stmt := p.parseSignatureStmt("DROP")
+				stmt.IsCounter = isCounter
 				stmt.Loc.Start = loc
 				return stmt
 			}

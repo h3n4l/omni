@@ -344,6 +344,14 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeAlterSearchPropertyListStmt(sb, n)
 	case *DropSearchPropertyListStmt:
 		fmt.Fprintf(sb, "{DROPSEARCHPROPERTYLIST :name \"%s\" :loc %d %d}", escapeString(n.Name), n.Loc.Start, n.Loc.End)
+	case *SecurityPolicyStmt:
+		writeSecurityPolicyStmt(sb, n)
+	case *SecurityPredicate:
+		writeSecurityPredicate(sb, n)
+	case *SensitivityClassificationStmt:
+		writeSensitivityClassificationStmt(sb, n)
+	case *SignatureStmt:
+		writeSignatureStmt(sb, n)
 	default:
 		sb.WriteString("{UNKNOWN}")
 	}
@@ -2656,6 +2664,96 @@ func writeAlterServerConfigurationStmt(sb *strings.Builder, n *AlterServerConfig
 	}
 	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
 	sb.WriteString("}")
+}
+
+func writeSecurityPolicyStmt(sb *strings.Builder, n *SecurityPolicyStmt) {
+	sb.WriteString("{SECURITYPOLICY")
+	fmt.Fprintf(sb, " :action \"%s\"", escapeString(n.Action))
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.IfExists {
+		sb.WriteString(" :ifExists true")
+	}
+	if n.Predicates != nil {
+		sb.WriteString(" :predicates ")
+		writeNode(sb, n.Predicates)
+	}
+	if n.StateOn != nil {
+		if *n.StateOn {
+			sb.WriteString(" :state \"ON\"")
+		} else {
+			sb.WriteString(" :state \"OFF\"")
+		}
+	}
+	if n.SchemaBinding != nil {
+		if *n.SchemaBinding {
+			sb.WriteString(" :schemaBinding \"ON\"")
+		} else {
+			sb.WriteString(" :schemaBinding \"OFF\"")
+		}
+	}
+	if n.NotForReplication {
+		sb.WriteString(" :notForReplication true")
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeSecurityPredicate(sb *strings.Builder, n *SecurityPredicate) {
+	sb.WriteString("{SECPREDICATE")
+	fmt.Fprintf(sb, " :action \"%s\"", escapeString(n.Action))
+	fmt.Fprintf(sb, " :type \"%s\"", escapeString(n.PredicateType))
+	if n.Function != nil {
+		sb.WriteString(" :func ")
+		writeNode(sb, n.Function)
+	}
+	if n.Args != nil {
+		sb.WriteString(" :args ")
+		writeNode(sb, n.Args)
+	}
+	if n.Table != nil {
+		sb.WriteString(" :table ")
+		writeNode(sb, n.Table)
+	}
+	if n.BlockDMLOp != "" {
+		fmt.Fprintf(sb, " :blockOp \"%s\"", escapeString(n.BlockDMLOp))
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeSensitivityClassificationStmt(sb *strings.Builder, n *SensitivityClassificationStmt) {
+	sb.WriteString("{SENSITIVITYCLASSIFICATION")
+	fmt.Fprintf(sb, " :action \"%s\"", escapeString(n.Action))
+	if n.Columns != nil {
+		sb.WriteString(" :columns ")
+		writeNode(sb, n.Columns)
+	}
+	if n.Options != nil {
+		sb.WriteString(" :options ")
+		writeNode(sb, n.Options)
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeSignatureStmt(sb *strings.Builder, n *SignatureStmt) {
+	sb.WriteString("{SIGNATURE")
+	fmt.Fprintf(sb, " :action \"%s\"", escapeString(n.Action))
+	if n.IsCounter {
+		sb.WriteString(" :counter true")
+	}
+	if n.ModuleClass != "" {
+		fmt.Fprintf(sb, " :moduleClass \"%s\"", escapeString(n.ModuleClass))
+	}
+	if n.ModuleName != nil {
+		sb.WriteString(" :moduleName ")
+		writeNode(sb, n.ModuleName)
+	}
+	if n.CryptoList != nil {
+		sb.WriteString(" :crypto ")
+		writeNode(sb, n.CryptoList)
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
 }
 
 func writeCreateFulltextStoplistStmt(sb *strings.Builder, n *CreateFulltextStoplistStmt) {

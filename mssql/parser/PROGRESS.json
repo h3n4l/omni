@@ -1329,7 +1329,7 @@
       "id": 62,
       "name": "security_policy_classification",
       "file": "security_misc.go",
-      "status": "pending",
+      "status": "done",
       "description": "New: CREATE/ALTER/DROP SECURITY POLICY (row-level security), ADD/DROP SENSITIVITY CLASSIFICATION, ADD/DROP SIGNATURE",
       "rules": ["parseCreateSecurityPolicyStmt", "parseAlterSecurityPolicyStmt", "parseDropSecurityPolicyStmt", "parseAddSensitivityClassificationStmt", "parseDropSensitivityClassificationStmt", "parseAddSignatureStmt", "parseDropSignatureStmt"],
       "depends_on": [1, 3],
