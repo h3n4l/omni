@@ -13,12 +13,52 @@ import (
 //
 //	CREATE ENDPOINT endPointName [ AUTHORIZATION login ]
 //	    [ STATE = { STARTED | STOPPED | DISABLED } ]
-//	    AS { TCP | HTTP } (
+//	    AS { TCP } (
 //	        <protocol_specific_arguments>
 //	    )
-//	    FOR { TSQL | SERVICE_BROKER | DATABASE_MIRRORING | SOAP } (
+//	    FOR { TSQL | SERVICE_BROKER | DATABASE_MIRRORING } (
 //	        <language_specific_arguments>
 //	    )
+//
+//	<AS TCP_protocol_specific_arguments> ::=
+//	AS TCP (
+//	  LISTENER_PORT = listenerPort
+//	  [ [ , ] LISTENER_IP = ALL | ( xx.xx.xx.xx IPv4 address ) | ( '__:__1' IPv6 address ) ]
+//	)
+//
+//	<FOR TSQL_language_specific_arguments> ::=
+//	FOR TSQL (
+//	  [ ENCRYPTION = { NEGOTIATED | STRICT } ]
+//	)
+//
+//	<FOR SERVICE_BROKER_language_specific_arguments> ::=
+//	FOR SERVICE_BROKER (
+//	   [ AUTHENTICATION = {
+//	            WINDOWS [ { NTLM | KERBEROS | NEGOTIATE } ]
+//	      | CERTIFICATE certificate_name
+//	      | WINDOWS [ { NTLM | KERBEROS | NEGOTIATE } ] CERTIFICATE certificate_name
+//	      | CERTIFICATE certificate_name WINDOWS [ { NTLM | KERBEROS | NEGOTIATE } ]
+//	    } ]
+//	   [ [ , ] ENCRYPTION = { DISABLED | { { SUPPORTED | REQUIRED }
+//	       [ ALGORITHM { AES | RC4 | AES RC4 | RC4 AES } ] }
+//	   ]
+//	   [ [ , ] MESSAGE_FORWARDING = { ENABLED | DISABLED } ]
+//	   [ [ , ] MESSAGE_FORWARD_SIZE = forward_size ]
+//	)
+//
+//	<FOR DATABASE_MIRRORING_language_specific_arguments> ::=
+//	FOR DATABASE_MIRRORING (
+//	   [ AUTHENTICATION = {
+//	            WINDOWS [ { NTLM | KERBEROS | NEGOTIATE } ]
+//	      | CERTIFICATE certificate_name
+//	      | WINDOWS [ { NTLM | KERBEROS | NEGOTIATE } ] CERTIFICATE certificate_name
+//	      | CERTIFICATE certificate_name WINDOWS [ { NTLM | KERBEROS | NEGOTIATE } ]
+//	   } ]
+//	   [ [ , ] ENCRYPTION = { DISABLED | { { SUPPORTED | REQUIRED }
+//	       [ ALGORITHM { AES | RC4 | AES RC4 | RC4 AES } ] }
+//	   ]
+//	   [ , ] ROLE = { WITNESS | PARTNER | ALL }
+//	)
 func (p *Parser) parseCreateEndpointStmt() *nodes.SecurityStmt {
 	loc := p.pos()
 	// ENDPOINT keyword already consumed by caller
@@ -46,10 +86,10 @@ func (p *Parser) parseCreateEndpointStmt() *nodes.SecurityStmt {
 //
 //	ALTER ENDPOINT endPointName [ AUTHORIZATION login ]
 //	    [ STATE = { STARTED | STOPPED | DISABLED } ]
-//	    [ AS { TCP | HTTP } (
+//	    [ AS { TCP } (
 //	        <protocol_specific_arguments>
 //	    ) ]
-//	    [ FOR { TSQL | SERVICE_BROKER | DATABASE_MIRRORING | SOAP } (
+//	    [ FOR { TSQL | SERVICE_BROKER | DATABASE_MIRRORING } (
 //	        <language_specific_arguments>
 //	    ) ]
 func (p *Parser) parseAlterEndpointStmt() *nodes.SecurityStmt {
@@ -97,45 +137,75 @@ func (p *Parser) parseDropEndpointStmt() *nodes.SecurityStmt {
 	return stmt
 }
 
-// parseEndpointOptions consumes AUTHORIZATION, STATE, AS, FOR clauses.
+// parseEndpointOptions parses AUTHORIZATION, STATE, AS <protocol>, FOR <payload> clauses
+// for CREATE/ALTER ENDPOINT statements.
+//
+//	[ AUTHORIZATION login ]
+//	[ STATE = { STARTED | STOPPED | DISABLED } ]
+//	[ AS { TCP } ( <protocol_specific_arguments> ) ]
+//	[ FOR { TSQL | SERVICE_BROKER | DATABASE_MIRRORING } ( <language_specific_arguments> ) ]
 func (p *Parser) parseEndpointOptions() *nodes.List {
 	var opts []nodes.Node
 
-	// Consume rest of statement
 	for p.cur.Type != ';' && p.cur.Type != tokEOF && p.cur.Type != kwGO {
-		if p.cur.Type == '(' {
-			p.advance()
-			depth := 1
-			for depth > 0 && p.cur.Type != tokEOF {
-				if p.cur.Type == '(' {
-					depth++
-				} else if p.cur.Type == ')' {
-					depth--
-				}
-				if depth > 0 {
-					p.advance()
-				}
-			}
-			p.match(')')
-		} else if p.cur.Type == kwAUTHORIZATION {
+		switch {
+		case p.cur.Type == kwAUTHORIZATION:
 			p.advance()
 			if p.isIdentLike() {
 				opts = append(opts, &nodes.String{Str: "AUTHORIZATION=" + p.cur.Str})
 				p.advance()
 			}
-		} else if p.isIdentLike() || p.cur.Type == kwAS || p.cur.Type == kwFOR ||
-			p.cur.Type == kwON || p.cur.Type == kwOFF {
-			optStr := strings.ToUpper(p.cur.Str)
+
+		case p.isIdentLike() && strings.EqualFold(p.cur.Str, "STATE"):
 			p.advance()
 			if p.cur.Type == '=' {
 				p.advance()
-				if p.isIdentLike() || p.cur.Type == tokSCONST || p.cur.Type == tokICONST {
-					optStr += "=" + strings.ToUpper(p.cur.Str)
+			}
+			if p.isIdentLike() {
+				opts = append(opts, &nodes.String{Str: "STATE=" + strings.ToUpper(p.cur.Str)})
+				p.advance()
+			}
+
+		case p.cur.Type == kwAS:
+			p.advance()
+			if p.isIdentLike() && strings.EqualFold(p.cur.Str, "TCP") {
+				opts = append(opts, &nodes.String{Str: "AS=TCP"})
+				p.advance()
+				p.parseEndpointProtocolTCPOptions(&opts)
+			} else if p.isIdentLike() {
+				// Unknown protocol - consume as generic
+				opts = append(opts, &nodes.String{Str: "AS=" + strings.ToUpper(p.cur.Str)})
+				p.advance()
+				p.skipParenthesized()
+			}
+
+		case p.cur.Type == kwFOR:
+			p.advance()
+			if p.isIdentLike() {
+				payloadType := strings.ToUpper(p.cur.Str)
+				// Check for multi-word payload types
+				if payloadType == "SERVICE" {
+					p.advance()
+					if p.isIdentLike() && strings.EqualFold(p.cur.Str, "BROKER") {
+						payloadType = "SERVICE_BROKER"
+						p.advance()
+					}
+				} else if payloadType == "DATABASE" {
+					p.advance()
+					if p.isIdentLike() && strings.EqualFold(p.cur.Str, "MIRRORING") {
+						payloadType = "DATABASE_MIRRORING"
+						p.advance()
+					}
+				} else {
+					// TSQL or other single-word type
 					p.advance()
 				}
+				opts = append(opts, &nodes.String{Str: "FOR=" + payloadType})
+				p.parseEndpointPayloadOptions(payloadType, &opts)
 			}
-			opts = append(opts, &nodes.String{Str: optStr})
-		} else {
+
+		default:
+			// Unknown token - skip
 			p.advance()
 		}
 	}
@@ -144,4 +214,275 @@ func (p *Parser) parseEndpointOptions() *nodes.List {
 		return nil
 	}
 	return &nodes.List{Items: opts}
+}
+
+// parseEndpointProtocolTCPOptions parses TCP protocol-specific arguments.
+//
+//	( LISTENER_PORT = listenerPort
+//	  [ [ , ] LISTENER_IP = ALL | ( xx.xx.xx.xx ) | ( 'ipv6' ) ] )
+func (p *Parser) parseEndpointProtocolTCPOptions(opts *[]nodes.Node) {
+	if p.cur.Type != '(' {
+		return
+	}
+	p.advance() // consume '('
+
+	for p.cur.Type != ')' && p.cur.Type != tokEOF {
+		if p.cur.Type == ',' {
+			p.advance()
+			continue
+		}
+
+		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "LISTENER_PORT") {
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			if p.cur.Type == tokICONST || p.isIdentLike() {
+				*opts = append(*opts, &nodes.String{Str: "LISTENER_PORT=" + p.cur.Str})
+				p.advance()
+			}
+		} else if p.isIdentLike() && strings.EqualFold(p.cur.Str, "LISTENER_IP") {
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			if p.isIdentLike() && strings.EqualFold(p.cur.Str, "ALL") {
+				*opts = append(*opts, &nodes.String{Str: "LISTENER_IP=ALL"})
+				p.advance()
+			} else if p.cur.Type == '(' {
+				// ( ip_address ) or ( 'ipv6' )
+				p.advance()
+				if p.cur.Type == tokSCONST || p.cur.Type == tokICONST || p.isIdentLike() {
+					ip := p.parseEndpointIPAddress()
+					*opts = append(*opts, &nodes.String{Str: "LISTENER_IP=" + ip})
+				}
+				p.match(')')
+			} else if p.isIdentLike() || p.cur.Type == tokSCONST {
+				*opts = append(*opts, &nodes.String{Str: "LISTENER_IP=" + p.cur.Str})
+				p.advance()
+			}
+		} else {
+			p.advance()
+		}
+	}
+
+	p.match(')') // consume ')'
+}
+
+// parseEndpointIPAddress parses an IP address which may contain dots (parsed as separate tokens).
+func (p *Parser) parseEndpointIPAddress() string {
+	var parts []string
+	if p.cur.Type == tokSCONST {
+		// Quoted IPv6 like '::1'
+		s := p.cur.Str
+		p.advance()
+		return "'" + s + "'"
+	}
+	// IPv4 like 10.0.75.1 — tokens: 10 . 0 . 75 . 1
+	for p.cur.Type != ')' && p.cur.Type != tokEOF {
+		if p.cur.Type == tokICONST || p.isIdentLike() {
+			parts = append(parts, p.cur.Str)
+			p.advance()
+		} else if p.cur.Type == '.' {
+			parts = append(parts, ".")
+			p.advance()
+		} else {
+			break
+		}
+	}
+	return strings.Join(parts, "")
+}
+
+// parseEndpointPayloadOptions parses payload-specific arguments within parentheses.
+func (p *Parser) parseEndpointPayloadOptions(payloadType string, opts *[]nodes.Node) {
+	if p.cur.Type != '(' {
+		return
+	}
+	p.advance() // consume '('
+
+	for p.cur.Type != ')' && p.cur.Type != tokEOF {
+		if p.cur.Type == ',' {
+			p.advance()
+			continue
+		}
+
+		switch {
+		case p.isIdentLike() && strings.EqualFold(p.cur.Str, "AUTHENTICATION"):
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			authStr := p.parseEndpointAuthentication()
+			*opts = append(*opts, &nodes.String{Str: "AUTHENTICATION=" + authStr})
+
+		case p.isIdentLike() && strings.EqualFold(p.cur.Str, "ENCRYPTION"):
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			encStr := p.parseEndpointEncryption(payloadType)
+			*opts = append(*opts, &nodes.String{Str: "ENCRYPTION=" + encStr})
+
+		case p.isIdentLike() && strings.EqualFold(p.cur.Str, "MESSAGE_FORWARDING"):
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			if p.isIdentLike() {
+				*opts = append(*opts, &nodes.String{Str: "MESSAGE_FORWARDING=" + strings.ToUpper(p.cur.Str)})
+				p.advance()
+			}
+
+		case p.isIdentLike() && strings.EqualFold(p.cur.Str, "MESSAGE_FORWARD_SIZE"):
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			if p.cur.Type == tokICONST || p.isIdentLike() {
+				*opts = append(*opts, &nodes.String{Str: "MESSAGE_FORWARD_SIZE=" + p.cur.Str})
+				p.advance()
+			}
+
+		case p.cur.Type == kwROLE:
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			if p.isIdentLike() || p.cur.Type == kwALL {
+				val := strings.ToUpper(p.cur.Str)
+				*opts = append(*opts, &nodes.String{Str: "ROLE=" + val})
+				p.advance()
+			}
+
+		default:
+			p.advance()
+		}
+	}
+
+	p.match(')') // consume ')'
+}
+
+// parseEndpointAuthentication parses the AUTHENTICATION value for SERVICE_BROKER and DATABASE_MIRRORING.
+//
+//	AUTHENTICATION = {
+//	    WINDOWS [ { NTLM | KERBEROS | NEGOTIATE } ]
+//	  | CERTIFICATE certificate_name
+//	  | WINDOWS [ { NTLM | KERBEROS | NEGOTIATE } ] CERTIFICATE certificate_name
+//	  | CERTIFICATE certificate_name WINDOWS [ { NTLM | KERBEROS | NEGOTIATE } ]
+//	}
+func (p *Parser) parseEndpointAuthentication() string {
+	var parts []string
+
+	if p.isIdentLike() && strings.EqualFold(p.cur.Str, "WINDOWS") {
+		parts = append(parts, "WINDOWS")
+		p.advance()
+		// Optional auth method: NTLM | KERBEROS | NEGOTIATE
+		if p.isIdentLike() {
+			upper := strings.ToUpper(p.cur.Str)
+			if upper == "NTLM" || upper == "KERBEROS" || upper == "NEGOTIATE" {
+				parts = append(parts, upper)
+				p.advance()
+			}
+		}
+		// Optional CERTIFICATE after WINDOWS
+		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "CERTIFICATE") {
+			p.advance()
+			if p.isIdentLike() {
+				parts = append(parts, "CERTIFICATE", p.cur.Str)
+				p.advance()
+			}
+		}
+	} else if p.isIdentLike() && strings.EqualFold(p.cur.Str, "CERTIFICATE") {
+		p.advance()
+		if p.isIdentLike() {
+			parts = append(parts, "CERTIFICATE", p.cur.Str)
+			p.advance()
+		}
+		// Optional WINDOWS after CERTIFICATE
+		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "WINDOWS") {
+			parts = append(parts, "WINDOWS")
+			p.advance()
+			if p.isIdentLike() {
+				upper := strings.ToUpper(p.cur.Str)
+				if upper == "NTLM" || upper == "KERBEROS" || upper == "NEGOTIATE" {
+					parts = append(parts, upper)
+					p.advance()
+				}
+			}
+		}
+	}
+
+	return strings.Join(parts, " ")
+}
+
+// parseEndpointEncryption parses the ENCRYPTION value.
+//
+// For TSQL payload:
+//
+//	ENCRYPTION = { NEGOTIATED | STRICT }
+//
+// For SERVICE_BROKER / DATABASE_MIRRORING:
+//
+//	ENCRYPTION = { DISABLED | { { SUPPORTED | REQUIRED }
+//	    [ ALGORITHM { AES | RC4 | AES RC4 | RC4 AES } ] } }
+func (p *Parser) parseEndpointEncryption(payloadType string) string {
+	if !p.isIdentLike() {
+		return ""
+	}
+
+	val := strings.ToUpper(p.cur.Str)
+	p.advance()
+
+	// For TSQL: NEGOTIATED or STRICT - no further options
+	if payloadType == "TSQL" {
+		return val
+	}
+
+	// For SERVICE_BROKER / DATABASE_MIRRORING:
+	// DISABLED has no further options
+	if val == "DISABLED" {
+		return val
+	}
+
+	// SUPPORTED or REQUIRED may have ALGORITHM clause
+	if val == "SUPPORTED" || val == "REQUIRED" {
+		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "ALGORITHM") {
+			p.advance()
+			if p.isIdentLike() {
+				alg1 := strings.ToUpper(p.cur.Str)
+				p.advance()
+				// Check for two-algorithm spec: AES RC4 or RC4 AES
+				if p.isIdentLike() {
+					alg2 := strings.ToUpper(p.cur.Str)
+					if alg2 == "AES" || alg2 == "RC4" {
+						p.advance()
+						return val + " ALGORITHM " + alg1 + " " + alg2
+					}
+				}
+				return val + " ALGORITHM " + alg1
+			}
+		}
+	}
+
+	return val
+}
+
+// skipParenthesized skips a parenthesized block (including nested parens).
+func (p *Parser) skipParenthesized() {
+	if p.cur.Type != '(' {
+		return
+	}
+	p.advance()
+	depth := 1
+	for depth > 0 && p.cur.Type != tokEOF {
+		if p.cur.Type == '(' {
+			depth++
+		} else if p.cur.Type == ')' {
+			depth--
+		}
+		if depth > 0 {
+			p.advance()
+		}
+	}
+	p.match(')')
 }

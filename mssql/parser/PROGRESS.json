@@ -2237,7 +2237,87 @@
         "credential_structured",
         "master_key_structured"
       ]
+    },
+    {
+      "id": 99,
+      "name": "endpoint_options_depth",
+      "file": "endpoint.go",
+      "status": "done",
+      "description": "Fix batch 55 gap: replace skip-loop in parseEndpointOptions (line 101) with structured parsing of CREATE/ALTER ENDPOINT options. STATE = STARTED|STOPPED|DISABLED, AUTHORIZATION owner, AS { TCP | HTTP } ( protocol_options ), FOR { TSQL | SERVICE_BROKER | DATABASE_MIRRORING | SOAP } ( payload_options ). TCP options: LISTENER_PORT, LISTENER_IP. HTTP options: PATH, AUTHENTICATION, PORTS, SITE, CLEAR_PORT, SSL_PORT, AUTH_REALM, DEFAULT_LOGON_DOMAIN, COMPRESSION.",
+      "rules": [
+        "parseEndpointProtocolOptions",
+        "parseEndpointPayloadOptions"
+      ],
+      "depends_on": [
+        55
+      ],
+      "tests": [
+        "endpoint_tcp_options",
+        "endpoint_http_options",
+        "endpoint_payload_tsql",
+        "endpoint_payload_service_broker"
+      ]
+    },
+    {
+      "id": 100,
+      "name": "service_broker_alter_options_depth",
+      "file": "service_broker.go",
+      "status": "pending",
+      "description": "Fix batch 52 gap: replace skip-loop in parseServiceBrokerOptions WITH clause (line 1024) with structured parsing. ALTER MESSAGE TYPE: VALIDATION = { NONE | EMPTY | WELL_FORMED_XML | VALID_XML WITH SCHEMA COLLECTION name }. ALTER CONTRACT: ADD/DROP MESSAGE TYPE name SENT BY { INITIATOR | TARGET | ANY }. ALTER ROUTE: WITH SERVICE_NAME, BROKER_INSTANCE, LIFETIME, ADDRESS, MIRROR_ADDRESS options. ALTER REMOTE SERVICE BINDING: WITH USER, ANONYMOUS = { ON | OFF } options.",
+      "rules": [
+        "parseServiceBrokerWithOptions"
+      ],
+      "depends_on": [
+        52
+      ],
+      "tests": [
+        "alter_message_type_validation",
+        "alter_contract_message_types",
+        "alter_route_with_options",
+        "alter_remote_binding_with_options"
+      ]
+    },
+    {
+      "id": 101,
+      "name": "event_session_specs_depth",
+      "file": "event.go",
+      "status": "pending",
+      "description": "Fix batch 56 gap: replace skip-loops in parseEventSessionEventSpec (line 392) and parseEventSessionTargetSpec (line 421) with structured parsing. Event spec SET: ( SET column = value [,...] ), ACTION: ( package.action [,...] ), WHERE: ( predicate ). Target spec SET: ( SET column = value [,...] ). Values can be quoted strings, integers, or identifiers.",
+      "rules": [
+        "parseEventSpecSetClause",
+        "parseEventSpecActionClause",
+        "parseEventSpecWhereClause",
+        "parseTargetSpecSetClause"
+      ],
+      "depends_on": [
+        56
+      ],
+      "tests": [
+        "event_spec_set",
+        "event_spec_action",
+        "event_spec_where",
+        "target_spec_set"
+      ]
+    },
+    {
+      "id": 102,
+      "name": "resource_governor_options_depth",
+      "file": "resource_governor.go",
+      "status": "pending",
+      "description": "Fix batch 59 gap: replace semi-generic skip-loop in parseResourceGovernorOptions (line 325) with structured parsing. Used by 9 callers: CREATE/ALTER WORKLOAD GROUP (REQUEST_MAX_MEMORY_GRANT_PERCENT, REQUEST_MAX_CPU_TIME_SEC, MAX_DOP, GROUP_MAX_REQUESTS, IMPORTANCE), CREATE/ALTER RESOURCE POOL (MIN_CPU_PERCENT, MAX_CPU_PERCENT, CAP_CPU_PERCENT, MIN_MEMORY_PERCENT, MAX_MEMORY_PERCENT, MIN_IOPS_PER_VOLUME, MAX_IOPS_PER_VOLUME, AFFINITY), CREATE/ALTER EXTERNAL RESOURCE POOL, ALTER RESOURCE GOVERNOR (RECONFIGURE, DISABLE, RESET STATISTICS, CLASSIFIER_FUNCTION), CREATE/ALTER/DROP WORKLOAD CLASSIFIER (MEMBERNAME, WORKLOAD_GROUP, IMPORTANCE, START_TIME, END_TIME, LABEL, CONTEXT).",
+      "rules": [
+        "parseResourceGovernorStructuredOptions"
+      ],
+      "depends_on": [
+        59
+      ],
+      "tests": [
+        "workload_group_structured_options",
+        "resource_pool_structured_options",
+        "alter_resource_governor_structured",
+        "workload_classifier_structured_options"
+      ]
     }
   ],
-  "audit_round": 6
+  "audit_round": 7
 }

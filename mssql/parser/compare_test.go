@@ -10415,3 +10415,127 @@ func TestParseSecurityKeyStructuredOptions(t *testing.T) {
 		}
 	})
 }
+
+// TestParseEndpointOptionsDepth tests batch 99: structured endpoint options parsing.
+func TestParseEndpointOptionsDepth(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		// TCP protocol options
+		{
+			"tcp_listener_port",
+			"CREATE ENDPOINT ep1 STATE = STARTED AS TCP (LISTENER_PORT = 4022) FOR TSQL ()",
+		},
+		{
+			"tcp_listener_port_and_ip_all",
+			"CREATE ENDPOINT ep1 AS TCP (LISTENER_PORT = 4022, LISTENER_IP = ALL) FOR TSQL ()",
+		},
+		{
+			"tcp_listener_ip_ipv4",
+			"CREATE ENDPOINT ep1 AS TCP (LISTENER_PORT = 5022, LISTENER_IP = (10.0.75.1)) FOR TSQL ()",
+		},
+		{
+			"tcp_listener_ip_ipv6",
+			"CREATE ENDPOINT ep1 AS TCP (LISTENER_PORT = 5022, LISTENER_IP = ('::1')) FOR TSQL ()",
+		},
+		// TSQL payload options
+		{
+			"payload_tsql_empty",
+			"CREATE ENDPOINT ep1 AS TCP (LISTENER_PORT = 1433) FOR TSQL ()",
+		},
+		{
+			"payload_tsql_encryption_strict",
+			"CREATE ENDPOINT ep1 AS TCP (LISTENER_PORT = 1433) FOR TSQL (ENCRYPTION = STRICT)",
+		},
+		{
+			"payload_tsql_encryption_negotiated",
+			"CREATE ENDPOINT ep1 AS TCP (LISTENER_PORT = 1433) FOR TSQL (ENCRYPTION = NEGOTIATED)",
+		},
+		// SERVICE_BROKER payload options
+		{
+			"payload_service_broker_auth_windows",
+			"CREATE ENDPOINT ep1 AS TCP (LISTENER_PORT = 4022) FOR SERVICE_BROKER (AUTHENTICATION = WINDOWS NEGOTIATE)",
+		},
+		{
+			"payload_service_broker_auth_cert",
+			"CREATE ENDPOINT ep1 AS TCP (LISTENER_PORT = 4022) FOR SERVICE_BROKER (AUTHENTICATION = CERTIFICATE MyCert)",
+		},
+		{
+			"payload_service_broker_auth_windows_cert",
+			"CREATE ENDPOINT ep1 AS TCP (LISTENER_PORT = 4022) FOR SERVICE_BROKER (AUTHENTICATION = WINDOWS KERBEROS CERTIFICATE MyCert)",
+		},
+		{
+			"payload_service_broker_auth_cert_windows",
+			"CREATE ENDPOINT ep1 AS TCP (LISTENER_PORT = 4022) FOR SERVICE_BROKER (AUTHENTICATION = CERTIFICATE MyCert WINDOWS NTLM)",
+		},
+		{
+			"payload_service_broker_encryption",
+			"CREATE ENDPOINT ep1 AS TCP (LISTENER_PORT = 4022) FOR SERVICE_BROKER (ENCRYPTION = REQUIRED ALGORITHM AES)",
+		},
+		{
+			"payload_service_broker_encryption_disabled",
+			"CREATE ENDPOINT ep1 AS TCP (LISTENER_PORT = 4022) FOR SERVICE_BROKER (ENCRYPTION = DISABLED)",
+		},
+		{
+			"payload_service_broker_encryption_supported_rc4_aes",
+			"CREATE ENDPOINT ep1 AS TCP (LISTENER_PORT = 4022) FOR SERVICE_BROKER (ENCRYPTION = SUPPORTED ALGORITHM RC4 AES)",
+		},
+		{
+			"payload_service_broker_message_forwarding",
+			"CREATE ENDPOINT ep1 AS TCP (LISTENER_PORT = 4022) FOR SERVICE_BROKER (MESSAGE_FORWARDING = ENABLED, MESSAGE_FORWARD_SIZE = 10)",
+		},
+		{
+			"payload_service_broker_full",
+			"CREATE ENDPOINT ep1 STATE = STARTED AS TCP (LISTENER_PORT = 4022) FOR SERVICE_BROKER (AUTHENTICATION = WINDOWS, ENCRYPTION = SUPPORTED ALGORITHM AES, MESSAGE_FORWARDING = DISABLED)",
+		},
+		// DATABASE_MIRRORING payload options
+		{
+			"payload_db_mirroring_role_witness",
+			"CREATE ENDPOINT ep1 AS TCP (LISTENER_PORT = 7022) FOR DATABASE_MIRRORING (ROLE = WITNESS)",
+		},
+		{
+			"payload_db_mirroring_role_partner",
+			"CREATE ENDPOINT ep1 AS TCP (LISTENER_PORT = 7022) FOR DATABASE_MIRRORING (ROLE = PARTNER)",
+		},
+		{
+			"payload_db_mirroring_role_all",
+			"CREATE ENDPOINT ep1 AS TCP (LISTENER_PORT = 7022) FOR DATABASE_MIRRORING (ROLE = ALL)",
+		},
+		{
+			"payload_db_mirroring_full",
+			"CREATE ENDPOINT ep1 STATE = STARTED AS TCP (LISTENER_PORT = 7022) FOR DATABASE_MIRRORING (AUTHENTICATION = WINDOWS KERBEROS, ENCRYPTION = SUPPORTED, ROLE = ALL)",
+		},
+		// ALTER ENDPOINT
+		{
+			"alter_endpoint_state",
+			"ALTER ENDPOINT ep1 STATE = STARTED",
+		},
+		{
+			"alter_endpoint_tcp_options",
+			"ALTER ENDPOINT ep1 AS TCP (LISTENER_PORT = 5023)",
+		},
+		{
+			"alter_endpoint_full",
+			"ALTER ENDPOINT ep1 STATE = DISABLED AS TCP (LISTENER_PORT = 7022) FOR DATABASE_MIRRORING (AUTHENTICATION = CERTIFICATE MyCert, ENCRYPTION = REQUIRED ALGORITHM AES RC4, ROLE = PARTNER)",
+		},
+		// AUTHORIZATION
+		{
+			"create_endpoint_authorization",
+			"CREATE ENDPOINT ep1 AUTHORIZATION sa STATE = STARTED AS TCP (LISTENER_PORT = 4022) FOR TSQL ()",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tc.sql)
+			if result.Len() != 1 {
+				t.Fatalf("Parse(%q): got %d statements, want 1", tc.sql, result.Len())
+			}
+			stmt, ok := result.Items[0].(*ast.SecurityStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *SecurityStmt, got %T", tc.sql, result.Items[0])
+			}
+			checkLocation(t, tc.sql, "SecurityStmt", stmt.Loc)
+		})
+	}
+}
