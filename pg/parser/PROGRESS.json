@@ -1743,7 +1743,7 @@
       "name": "ddl_compat_unlogged_view_modifying_cte",
       "file": "parser.go",
       "status": "done",
-      "description": "Fix 2 syntax gaps found by pg/ddl test suite. (1) CREATE UNLOGGED VIEW: parseCreateUnloggedDispatch only handles TABLE and MATERIALIZED VIEW, missing VIEW branch — should call parseCreateViewStmt with RELPERSISTENCE_UNLOGGED. (2) Modifying CTE: parseCommonTableExpr calls parseSelectNoParens for cte.Ctequery, but PreparableStmt in gram.y also allows INSERT/UPDATE/DELETE (modifying CTEs with RETURNING). Must dispatch on INSERT/UPDATE/DELETE tokens before falling back to parseSelectNoParens. Refs: https://www.postgresql.org/docs/17/sql-createview.html, https://www.postgresql.org/docs/17/queries-with.html#QUERIES-WITH-MODIFYING",
+      "description": "Fix 2 syntax gaps found by pg/ddl test suite. (1) CREATE UNLOGGED VIEW: parseCreateUnloggedDispatch only handles TABLE and MATERIALIZED VIEW, missing VIEW branch \u2014 should call parseCreateViewStmt with RELPERSISTENCE_UNLOGGED. (2) Modifying CTE: parseCommonTableExpr calls parseSelectNoParens for cte.Ctequery, but PreparableStmt in gram.y also allows INSERT/UPDATE/DELETE (modifying CTEs with RETURNING). Must dispatch on INSERT/UPDATE/DELETE tokens before falling back to parseSelectNoParens. Refs: https://www.postgresql.org/docs/17/sql-createview.html, https://www.postgresql.org/docs/17/queries-with.html#QUERIES-WITH-MODIFYING",
       "rules": [
         "parseCreateUnloggedDispatch",
         "parseCommonTableExpr",
@@ -1757,7 +1757,23 @@
         "TestDdlCompatUnloggedView",
         "TestDdlCompatModifyingCTE"
       ]
+    },
+    {
+      "id": 73,
+      "name": "alter_column_reset_options",
+      "file": "alter_table.go",
+      "status": "done",
+      "description": "Fix batch 11 gap: parseAlterColumnAction (line ~725) has no case RESET handler. PostgreSQL grammar allows ALTER TABLE t ALTER COLUMN c RESET (attribute_option [, ...]). Must add case RESET that consumes RESET, calls parseReloptions(), and returns AlterTableCmd with Subtype=AT_ResetOptions and Name=colname. Ref: https://www.postgresql.org/docs/17/sql-altertable.html",
+      "rules": [
+        "parseAlterColumnAction"
+      ],
+      "depends_on": [
+        11
+      ],
+      "tests": [
+        "TestAlterColumnReset"
+      ]
     }
   ],
-  "audit_round": 6
+  "audit_round": 7
 }

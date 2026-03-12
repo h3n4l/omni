@@ -4125,3 +4125,17 @@ func TestDdlCompatModifyingCTE(t *testing.T) {
 		})
 	}
 }
+
+// TestAlterColumnReset runs ALTER COLUMN ... RESET comparison tests for batch 73.
+func TestAlterColumnReset(t *testing.T) {
+	tests := []string{
+		"ALTER TABLE t ALTER COLUMN c RESET (n_distinct)",
+		"ALTER TABLE t ALTER COLUMN c RESET (n_distinct, n_distinct_inherited)",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+			CheckLocations(t, sql)
+		})
+	}
+}

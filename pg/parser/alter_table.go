@@ -735,6 +735,17 @@ func (p *Parser) parseAlterColumnAction(colname string) *nodes.AlterTableCmd {
 	case ADD_P:
 		p.advance() // consume ADD
 		return p.parseAlterColumnAddGenerated(colname)
+	case RESET:
+		// ALTER COLUMN ColId RESET '(' def_list ')'
+		p.advance() // consume RESET
+		p.expect('(')
+		defs := p.parseDefList()
+		p.expect(')')
+		return &nodes.AlterTableCmd{
+			Subtype: int(nodes.AT_ResetOptions),
+			Name:    colname,
+			Def:     defs,
+		}
 	case OPTIONS:
 		// alter_generic_options
 		opts := p.parseAlterGenericOptions()
