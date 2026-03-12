@@ -73,7 +73,8 @@ type Token struct {
 	Type int    // Token type (IDENT, ICONST, keyword token, etc.)
 	Str  string // String value for identifiers, operators, string literals
 	Ival int64  // Integer value for ICONST
-	Loc  int    // Byte offset in the source text
+	Loc  int    // Byte offset of token start in the source text
+	End  int    // Byte offset past the end of the token in the source text
 }
 
 // Lexer implements a PostgreSQL-compatible SQL lexer.
@@ -134,6 +135,12 @@ func NewLexer(input string) *Lexer {
 
 // NextToken returns the next token from the input.
 func (l *Lexer) NextToken() Token {
+	tok := l.nextTokenInner()
+	tok.End = l.pos
+	return tok
+}
+
+func (l *Lexer) nextTokenInner() Token {
 	for {
 		if l.pos >= len(l.input) {
 			// At EOF - if we're in a string state, that's an error

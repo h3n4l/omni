@@ -45,9 +45,14 @@ func CompareWithYacc(t *testing.T, sql string) {
 
 	// Compare each statement's AST string representation.
 	// Strip :location fields since the yacc parser doesn't set them consistently.
+	// Unwrap RawStmt on the rd side since the rd parser wraps statements.
 	for i := 0; i < yaccLen; i++ {
 		yaccStr := locationRe.ReplaceAllString(ast.NodeToString(yaccResult.Items[i]), "")
-		rdStr := locationRe.ReplaceAllString(ast.NodeToString(rdResult.Items[i]), "")
+		rdItem := rdResult.Items[i]
+		if raw, ok := rdItem.(*ast.RawStmt); ok {
+			rdItem = raw.Stmt
+		}
+		rdStr := locationRe.ReplaceAllString(ast.NodeToString(rdItem), "")
 		if yaccStr != rdStr {
 			t.Errorf("Parse(%q) stmt[%d] mismatch:\n  yacc: %s\n  rd:   %s", sql, i, yaccStr, rdStr)
 		}
@@ -4032,6 +4037,57 @@ func TestLocSet(t *testing.T) {
 			violations := CheckLocations(t, sql)
 			for _, v := range violations {
 				t.Logf("  violation: %s", v)
+			}
+		})
+	}
+}
+
+// TestLocRawStmt validates that RawStmt.Loc accurately spans the source SQL text
+// for each statement in multi-statement inputs.
+func TestLocRawStmt(t *testing.T) {
+	tests := []struct {
+		sql   string
+		stmts []string // expected source text for each statement
+	}{
+		{
+			sql:   "SELECT 1",
+			stmts: []string{"SELECT 1"},
+		},
+		{
+			sql:   "SELECT 1; SELECT 2",
+			stmts: []string{"SELECT 1", "SELECT 2"},
+		},
+		{
+			sql:   "BEGIN; INSERT INTO t VALUES (1); COMMIT",
+			stmts: []string{"BEGIN", "INSERT INTO t VALUES (1)", "COMMIT"},
+		},
+		{
+			sql:   "  SELECT 1 ;  SELECT 2  ",
+			stmts: []string{"SELECT 1", "SELECT 2"},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.sql, func(t *testing.T) {
+			result, err := Parse(tc.sql)
+			if err != nil {
+				t.Fatalf("Parse(%q): %v", tc.sql, err)
+			}
+			if len(result.Items) != len(tc.stmts) {
+				t.Fatalf("Parse(%q): got %d stmts, want %d", tc.sql, len(result.Items), len(tc.stmts))
+			}
+			for i, item := range result.Items {
+				raw, ok := item.(*ast.RawStmt)
+				if !ok {
+					t.Fatalf("stmt[%d] is %T, want *ast.RawStmt", i, item)
+				}
+				if raw.Loc.Start < 0 || raw.Loc.End < 0 {
+					t.Errorf("stmt[%d] has invalid Loc: %+v", i, raw.Loc)
+					continue
+				}
+				got := tc.sql[raw.Loc.Start:raw.Loc.End]
+				if got != tc.stmts[i] {
+					t.Errorf("stmt[%d] Loc mismatch:\n  got:  %q (Loc=%+v)\n  want: %q", i, got, raw.Loc, tc.stmts[i])
+				}
 			}
 		})
 	}

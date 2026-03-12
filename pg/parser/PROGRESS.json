@@ -1718,7 +1718,7 @@
       "id": 71,
       "name": "loc_end_rawstmt_wrap",
       "file": "parser.go",
-      "status": "pending",
+      "status": "done",
       "description": "Wrap every statement returned from parseStmt() in a RawStmt with correct Loc (Start from before the statement keyword, End from after the last token including optional semicolon). Update Parse() to record stmt_start before calling parseStmt, then wrap: RawStmt{Stmt: stmt, Loc: Loc{Start: stmt_start, End: p.pos()}}. Add TestLocRawStmt that validates source[raw.Loc.Start:raw.Loc.End] exactly equals the original SQL statement text for multi-statement inputs.",
       "rules": [
         "Parse",

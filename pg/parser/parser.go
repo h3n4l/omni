@@ -33,6 +33,7 @@ func Parse(sql string) (*nodes.List, error) {
 			p.advance()
 			continue
 		}
+		stmtStart := p.pos()
 		stmt := p.parseStmt()
 		if stmt == nil {
 			if p.cur.Type != 0 {
@@ -43,7 +44,11 @@ func Parse(sql string) (*nodes.List, error) {
 			}
 			break
 		}
-		stmts = append(stmts, stmt)
+		raw := &nodes.RawStmt{
+			Stmt: stmt,
+			Loc:  nodes.Loc{Start: stmtStart, End: p.prev.End},
+		}
+		stmts = append(stmts, raw)
 	}
 
 	if len(stmts) == 0 {
