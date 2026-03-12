@@ -69,6 +69,19 @@ func (p *Parser) parseAlterTable() nodes.Node {
 		return p.parseAlterTableRename(rel, missingOk)
 	}
 
+	// Check for SET SCHEMA (produces AlterObjectSchemaStmt)
+	if p.cur.Type == SET && p.peekNext().Type == SCHEMA {
+		p.advance() // consume SET
+		p.advance() // consume SCHEMA
+		newschema, _ := p.parseName()
+		return &nodes.AlterObjectSchemaStmt{
+			ObjectType: nodes.OBJECT_TABLE,
+			Relation:   rel,
+			Newschema:  newschema,
+			MissingOk:  missingOk,
+		}
+	}
+
 	// alter_table_cmds
 	cmds := p.parseAlterTableCmds()
 	return &nodes.AlterTableStmt{
@@ -206,6 +219,19 @@ func (p *Parser) parseAlterView() nodes.Node {
 		}
 	}
 
+	// Check for SET SCHEMA (produces AlterObjectSchemaStmt)
+	if p.cur.Type == SET && p.peekNext().Type == SCHEMA {
+		p.advance() // consume SET
+		p.advance() // consume SCHEMA
+		newschema, _ := p.parseName()
+		return &nodes.AlterObjectSchemaStmt{
+			ObjectType: nodes.OBJECT_VIEW,
+			Relation:   rv,
+			Newschema:  newschema,
+			MissingOk:  missingOk,
+		}
+	}
+
 	cmds := p.parseAlterTableCmds()
 	return &nodes.AlterTableStmt{
 		Relation:   rv,
@@ -248,6 +274,19 @@ func (p *Parser) parseAlterMaterializedView() nodes.Node {
 		}
 	}
 
+	// Check for SET SCHEMA (produces AlterObjectSchemaStmt)
+	if p.cur.Type == SET && p.peekNext().Type == SCHEMA {
+		p.advance() // consume SET
+		p.advance() // consume SCHEMA
+		newschema, _ := p.parseName()
+		return &nodes.AlterObjectSchemaStmt{
+			ObjectType: nodes.OBJECT_MATVIEW,
+			Relation:   rv,
+			Newschema:  newschema,
+			MissingOk:  missingOk,
+		}
+	}
+
 	cmds := p.parseAlterTableCmds()
 	return &nodes.AlterTableStmt{
 		Relation:   rv,
@@ -280,6 +319,19 @@ func (p *Parser) parseAlterForeignTable() nodes.Node {
 	// Check for RENAME
 	if p.cur.Type == RENAME {
 		return p.parseAlterTableRename(rel, missingOk)
+	}
+
+	// Check for SET SCHEMA (produces AlterObjectSchemaStmt)
+	if p.cur.Type == SET && p.peekNext().Type == SCHEMA {
+		p.advance() // consume SET
+		p.advance() // consume SCHEMA
+		newschema, _ := p.parseName()
+		return &nodes.AlterObjectSchemaStmt{
+			ObjectType: nodes.OBJECT_FOREIGN_TABLE,
+			Relation:   rel,
+			Newschema:  newschema,
+			MissingOk:  missingOk,
+		}
 	}
 
 	cmds := p.parseAlterTableCmds()

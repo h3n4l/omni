@@ -1253,7 +1253,7 @@
       "id": 47,
       "name": "alter_relation_set_schema",
       "file": "alter_table.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 11 gap: parseAlterTable, parseAlterView, parseAlterIndex, parseAlterMaterializedView, parseAlterForeignTable do not handle SET SCHEMA. In PG yacc grammar, ALTER TABLE/VIEW/INDEX/MATVIEW/FOREIGN TABLE ... SET SCHEMA produces AlterObjectSchemaStmt, but parseAlterTableSet has no SCHEMA case and the separate parseAlter* functions don't check for it before delegating to parseAlterTableCmds. Must add SET SCHEMA dispatch before parseAlterTableCmds in each function. Ref: https://www.postgresql.org/docs/17/sql-altertable.html",
       "rules": [
         "parseAlterTable",

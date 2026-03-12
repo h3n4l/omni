@@ -3063,3 +3063,52 @@ func TestCompareAlterRule(t *testing.T) {
 		})
 	}
 }
+
+func TestCompareAlterTableSetSchema(t *testing.T) {
+	tests := []string{
+		"ALTER TABLE t SET SCHEMA new_schema",
+		"ALTER TABLE IF EXISTS t SET SCHEMA new_schema",
+		"ALTER TABLE public.t SET SCHEMA new_schema",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+		})
+	}
+}
+
+func TestCompareAlterViewSetSchema(t *testing.T) {
+	tests := []string{
+		"ALTER VIEW v SET SCHEMA new_schema",
+		"ALTER VIEW IF EXISTS v SET SCHEMA new_schema",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+		})
+	}
+}
+
+func TestCompareAlterMatviewSetSchema(t *testing.T) {
+	tests := []string{
+		"ALTER MATERIALIZED VIEW mv SET SCHEMA new_schema",
+		"ALTER MATERIALIZED VIEW IF EXISTS mv SET SCHEMA new_schema",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+		})
+	}
+}
+
+func TestCompareAlterForeignTableSetSchema(t *testing.T) {
+	tests := []string{
+		"ALTER FOREIGN TABLE ft SET SCHEMA new_schema",
+		"ALTER FOREIGN TABLE IF EXISTS ft SET SCHEMA new_schema",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+		})
+	}
+}
