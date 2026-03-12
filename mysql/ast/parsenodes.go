@@ -1119,6 +1119,34 @@ type UnlockTablesStmt struct {
 func (s *UnlockTablesStmt) nodeTag()  {}
 func (s *UnlockTablesStmt) stmtNode() {}
 
+// RequireClause represents a REQUIRE clause for TLS options.
+type RequireClause struct {
+	Loc     Loc
+	None    bool   // REQUIRE NONE
+	SSL     bool   // REQUIRE SSL
+	X509    bool   // REQUIRE X509
+	Cipher  string // REQUIRE CIPHER 'cipher'
+	Issuer  string // REQUIRE ISSUER 'issuer'
+	Subject string // REQUIRE SUBJECT 'subject'
+}
+
+func (r *RequireClause) nodeTag() {}
+
+// ResourceOption represents a WITH resource limit option.
+type ResourceOption struct {
+	Loc                  Loc
+	MaxQueriesPerHour    int
+	MaxUpdatesPerHour    int
+	MaxConnectionsPerHour int
+	MaxUserConnections   int
+	HasMaxQueries        bool
+	HasMaxUpdates        bool
+	HasMaxConnections    bool
+	HasMaxUserConn       bool
+}
+
+func (r *ResourceOption) nodeTag() {}
+
 // GrantStmt represents a GRANT statement.
 type GrantStmt struct {
 	Loc          Loc
@@ -1130,6 +1158,8 @@ type GrantStmt struct {
 	AsUser       string   // AS user (MySQL 8.0+ role context)
 	WithRoleType string   // DEFAULT, NONE, ALL, ALL EXCEPT, or "" (roles list)
 	WithRoles    []string // role names for WITH ROLE role, role, ...
+	Require      *RequireClause  // REQUIRE tls_option
+	Resource     *ResourceOption // WITH resource_option
 }
 
 func (s *GrantStmt) nodeTag()  {}
@@ -1161,6 +1191,8 @@ type CreateUserStmt struct {
 	Loc         Loc
 	IfNotExists bool
 	Users       []*UserSpec
+	Require     *RequireClause  // REQUIRE tls_option
+	Resource    *ResourceOption // WITH resource_option
 }
 
 func (s *CreateUserStmt) nodeTag()  {}
@@ -1178,8 +1210,10 @@ func (s *DropUserStmt) stmtNode() {}
 
 // AlterUserStmt represents an ALTER USER statement.
 type AlterUserStmt struct {
-	Loc   Loc
-	Users []*UserSpec
+	Loc      Loc
+	Users    []*UserSpec
+	Require  *RequireClause  // REQUIRE tls_option
+	Resource *ResourceOption // WITH resource_option
 }
 
 func (s *AlterUserStmt) nodeTag()  {}

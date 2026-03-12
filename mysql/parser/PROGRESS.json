@@ -1561,7 +1561,7 @@
       "id": 60,
       "name": "grant_tls_resources",
       "file": "grant.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 15 gap: GRANT/REVOKE REQUIRE clause (SSL, X509, SUBJECT, ISSUER, CIPHER) and resource limits (MAX_QUERIES_PER_HOUR, MAX_UPDATES_PER_HOUR, MAX_CONNECTIONS_PER_HOUR, MAX_USER_CONNECTIONS)",
       "rules": [
         "parseGrantRequireClause",

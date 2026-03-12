@@ -8106,6 +8106,73 @@ func TestParseGrantAsWithRole(t *testing.T) {
 	}
 }
 
+// ============================================================================
+// Batch 60: GRANT/REVOKE REQUIRE and resource limits
+// ============================================================================
+
+func TestParseGrantRequireSSL(t *testing.T) {
+	t.Run("require ssl", func(t *testing.T) {
+		ParseAndCheck(t, "GRANT ALL ON *.* TO 'jeffrey'@'localhost' REQUIRE SSL")
+	})
+	t.Run("require none", func(t *testing.T) {
+		ParseAndCheck(t, "GRANT ALL ON *.* TO 'jeffrey'@'localhost' REQUIRE NONE")
+	})
+}
+
+func TestParseGrantRequireX509(t *testing.T) {
+	t.Run("require x509", func(t *testing.T) {
+		ParseAndCheck(t, "GRANT ALL ON *.* TO 'jeffrey'@'localhost' REQUIRE X509")
+	})
+	t.Run("require cipher", func(t *testing.T) {
+		ParseAndCheck(t, "GRANT ALL ON *.* TO 'jeffrey'@'localhost' REQUIRE CIPHER 'EDH-RSA-DES-CBC3-SHA'")
+	})
+	t.Run("require issuer", func(t *testing.T) {
+		ParseAndCheck(t, "GRANT ALL ON *.* TO 'jeffrey'@'localhost' REQUIRE ISSUER '/C=SE/ST=Stockholm'")
+	})
+	t.Run("require subject", func(t *testing.T) {
+		ParseAndCheck(t, "GRANT ALL ON *.* TO 'jeffrey'@'localhost' REQUIRE SUBJECT '/C=SE/ST=Stockholm'")
+	})
+	t.Run("require multiple tls options", func(t *testing.T) {
+		ParseAndCheck(t, "GRANT ALL ON *.* TO 'jeffrey'@'localhost' REQUIRE ISSUER '/C=SE' AND SUBJECT '/C=SE' AND CIPHER 'EDH-RSA'")
+	})
+}
+
+func TestParseGrantWithResourceLimits(t *testing.T) {
+	t.Run("max queries per hour", func(t *testing.T) {
+		ParseAndCheck(t, "GRANT ALL ON *.* TO 'jeffrey'@'localhost' WITH MAX_QUERIES_PER_HOUR 500")
+	})
+	t.Run("max updates per hour", func(t *testing.T) {
+		ParseAndCheck(t, "GRANT ALL ON *.* TO 'jeffrey'@'localhost' WITH MAX_UPDATES_PER_HOUR 100")
+	})
+	t.Run("max connections per hour", func(t *testing.T) {
+		ParseAndCheck(t, "GRANT ALL ON *.* TO 'jeffrey'@'localhost' WITH MAX_CONNECTIONS_PER_HOUR 50")
+	})
+	t.Run("max user connections", func(t *testing.T) {
+		ParseAndCheck(t, "GRANT ALL ON *.* TO 'jeffrey'@'localhost' WITH MAX_USER_CONNECTIONS 10")
+	})
+	t.Run("multiple resource limits", func(t *testing.T) {
+		ParseAndCheck(t, "GRANT ALL ON *.* TO 'jeffrey'@'localhost' WITH MAX_QUERIES_PER_HOUR 500 MAX_UPDATES_PER_HOUR 100")
+	})
+	t.Run("grant option with resource limits", func(t *testing.T) {
+		ParseAndCheck(t, "GRANT ALL ON *.* TO 'jeffrey'@'localhost' WITH GRANT OPTION MAX_QUERIES_PER_HOUR 500")
+	})
+	t.Run("require ssl with resource limits", func(t *testing.T) {
+		ParseAndCheck(t, "GRANT ALL ON *.* TO 'jeffrey'@'localhost' REQUIRE SSL WITH MAX_QUERIES_PER_HOUR 90")
+	})
+}
+
+func TestParseCreateUserRequire(t *testing.T) {
+	t.Run("require ssl", func(t *testing.T) {
+		ParseAndCheck(t, "CREATE USER 'jeffrey'@'localhost' IDENTIFIED BY 'password' REQUIRE SSL")
+	})
+	t.Run("require x509", func(t *testing.T) {
+		ParseAndCheck(t, "CREATE USER 'jeffrey'@'localhost' REQUIRE X509")
+	})
+	t.Run("require with resource limits", func(t *testing.T) {
+		ParseAndCheck(t, "CREATE USER 'jeffrey'@'localhost' REQUIRE SSL WITH MAX_QUERIES_PER_HOUR 100")
+	})
+}
+
 func TestParseShowGrants(t *testing.T) {
 	tests := []string{
 		"SHOW GRANTS",

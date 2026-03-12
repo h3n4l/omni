@@ -80,7 +80,16 @@ func (p *Parser) parseGrantStmt() (nodes.Node, error) {
 	}
 	stmt.To = users
 
-	// [WITH GRANT OPTION]
+	// [REQUIRE {NONE | tls_option [[AND] tls_option] ...}]
+	if p.cur.Type == kwREQUIRE {
+		req, err := p.parseRequireClause()
+		if err != nil {
+			return nil, err
+		}
+		stmt.Require = req
+	}
+
+	// [WITH [GRANT OPTION] [resource_option ...]]
 	if p.cur.Type == kwWITH {
 		p.advance()
 		if p.cur.Type == kwGRANT {
@@ -89,6 +98,11 @@ func (p *Parser) parseGrantStmt() (nodes.Node, error) {
 				p.advance()
 			}
 			stmt.WithGrant = true
+		}
+		// resource options after GRANT OPTION or standalone
+		res := p.parseResourceOptions()
+		if res != nil {
+			stmt.Resource = res
 		}
 	}
 
@@ -489,6 +503,24 @@ func (p *Parser) parseCreateUserStmt() (*nodes.CreateUserStmt, error) {
 		p.advance() // consume ','
 	}
 
+	// [REQUIRE {NONE | tls_option [[AND] tls_option] ...}]
+	if p.cur.Type == kwREQUIRE {
+		req, err := p.parseRequireClause()
+		if err != nil {
+			return nil, err
+		}
+		stmt.Require = req
+	}
+
+	// [WITH resource_option ...]
+	if p.cur.Type == kwWITH {
+		p.advance()
+		res := p.parseResourceOptions()
+		if res != nil {
+			stmt.Resource = res
+		}
+	}
+
 	stmt.Loc.End = p.pos()
 	return stmt, nil
 }
@@ -527,6 +559,8 @@ func (p *Parser) parseDropUserStmt() (*nodes.DropUserStmt, error) {
 // Ref: https://dev.mysql.com/doc/refman/8.0/en/alter-user.html
 //
 //	ALTER USER user_spec [, user_spec] ...
+//	    [REQUIRE {NONE | tls_option [[AND] tls_option] ...}]
+//	    [WITH resource_option [resource_option] ...]
 func (p *Parser) parseAlterUserStmt() (*nodes.AlterUserStmt, error) {
 	start := p.pos()
 	p.advance() // consume USER
@@ -545,6 +579,24 @@ func (p *Parser) parseAlterUserStmt() (*nodes.AlterUserStmt, error) {
 			break
 		}
 		p.advance() // consume ','
+	}
+
+	// [REQUIRE {NONE | tls_option [[AND] tls_option] ...}]
+	if p.cur.Type == kwREQUIRE {
+		req, err := p.parseRequireClause()
+		if err != nil {
+			return nil, err
+		}
+		stmt.Require = req
+	}
+
+	// [WITH resource_option ...]
+	if p.cur.Type == kwWITH {
+		p.advance()
+		res := p.parseResourceOptions()
+		if res != nil {
+			stmt.Resource = res
+		}
 	}
 
 	stmt.Loc.End = p.pos()
@@ -796,6 +848,122 @@ func (p *Parser) parseRenameUserStmt(start int) (*nodes.RenameUserStmt, error) {
 
 	stmt.Loc.End = p.pos()
 	return stmt, nil
+}
+
+// parseRequireClause parses a REQUIRE clause for TLS options.
+//
+//	REQUIRE {NONE | tls_option [[AND] tls_option] ...}
+//
+//	tls_option: {
+//	    SSL
+//	  | X509
+//	  | CIPHER 'cipher'
+//	  | ISSUER 'issuer'
+//	  | SUBJECT 'subject'
+//	}
+func (p *Parser) parseRequireClause() (*nodes.RequireClause, error) {
+	start := p.pos()
+	p.advance() // consume REQUIRE
+
+	req := &nodes.RequireClause{Loc: nodes.Loc{Start: start}}
+
+	for {
+		switch {
+		case p.cur.Type == kwNONE:
+			req.None = true
+			p.advance()
+		case p.cur.Type == kwSSL:
+			req.SSL = true
+			p.advance()
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "x509"):
+			req.X509 = true
+			p.advance()
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "cipher"):
+			p.advance()
+			if p.cur.Type == tokSCONST {
+				req.Cipher = p.cur.Str
+				p.advance()
+			}
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "issuer"):
+			p.advance()
+			if p.cur.Type == tokSCONST {
+				req.Issuer = p.cur.Str
+				p.advance()
+			}
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "subject"):
+			p.advance()
+			if p.cur.Type == tokSCONST {
+				req.Subject = p.cur.Str
+				p.advance()
+			}
+		default:
+			req.Loc.End = p.pos()
+			return req, nil
+		}
+
+		// Optional AND between tls_option items
+		if p.cur.Type == kwAND {
+			p.advance()
+		}
+	}
+}
+
+// parseResourceOptions parses resource limit options.
+// Caller has already consumed WITH.
+//
+//	resource_option: {
+//	    MAX_QUERIES_PER_HOUR count
+//	  | MAX_UPDATES_PER_HOUR count
+//	  | MAX_CONNECTIONS_PER_HOUR count
+//	  | MAX_USER_CONNECTIONS count
+//	}
+func (p *Parser) parseResourceOptions() *nodes.ResourceOption {
+	var res *nodes.ResourceOption
+	for p.cur.Type == tokIDENT {
+		if !eqFold(p.cur.Str, "max_queries_per_hour") &&
+			!eqFold(p.cur.Str, "max_updates_per_hour") &&
+			!eqFold(p.cur.Str, "max_connections_per_hour") &&
+			!eqFold(p.cur.Str, "max_user_connections") {
+			break
+		}
+		if res == nil {
+			res = &nodes.ResourceOption{Loc: nodes.Loc{Start: p.pos()}}
+		}
+		switch {
+		case eqFold(p.cur.Str, "max_queries_per_hour"):
+			p.advance()
+			if p.cur.Type == tokICONST {
+				res.MaxQueriesPerHour = int(p.cur.Ival)
+				res.HasMaxQueries = true
+				p.advance()
+			}
+		case eqFold(p.cur.Str, "max_updates_per_hour"):
+			p.advance()
+			if p.cur.Type == tokICONST {
+				res.MaxUpdatesPerHour = int(p.cur.Ival)
+				res.HasMaxUpdates = true
+				p.advance()
+			}
+		case eqFold(p.cur.Str, "max_connections_per_hour"):
+			p.advance()
+			if p.cur.Type == tokICONST {
+				res.MaxConnectionsPerHour = int(p.cur.Ival)
+				res.HasMaxConnections = true
+				p.advance()
+			}
+		case eqFold(p.cur.Str, "max_user_connections"):
+			p.advance()
+			if p.cur.Type == tokICONST {
+				res.MaxUserConnections = int(p.cur.Ival)
+				res.HasMaxUserConn = true
+				p.advance()
+			}
+		}
+	}
+	if res != nil {
+		res.Loc.End = p.pos()
+	}
+	return res
 }
 
 // parseSetResourceGroupStmt parses SET RESOURCE GROUP group_name [FOR thread_id [, thread_id] ...].

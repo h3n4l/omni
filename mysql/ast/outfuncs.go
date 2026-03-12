@@ -269,6 +269,10 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeLockTable(sb, n)
 	case *GrantTarget:
 		writeGrantTarget(sb, n)
+	case *RequireClause:
+		writeRequireClause(sb, n)
+	case *ResourceOption:
+		writeResourceOption(sb, n)
 	case *UserSpec:
 		writeUserSpec(sb, n)
 	case *FuncParam:
@@ -1136,6 +1140,14 @@ func writeGrantStmt(sb *strings.Builder, n *GrantStmt) {
 	if len(n.WithRoles) > 0 {
 		fmt.Fprintf(sb, " :with_roles %s", strings.Join(n.WithRoles, ", "))
 	}
+	if n.Require != nil {
+		sb.WriteString(" :require ")
+		writeNode(sb, n.Require)
+	}
+	if n.Resource != nil {
+		sb.WriteString(" :resource ")
+		writeNode(sb, n.Resource)
+	}
 	sb.WriteString("}")
 }
 
@@ -1173,6 +1185,14 @@ func writeCreateUserStmt(sb *strings.Builder, n *CreateUserStmt) {
 			writeNode(sb, u)
 		}
 	}
+	if n.Require != nil {
+		sb.WriteString(" :require ")
+		writeNode(sb, n.Require)
+	}
+	if n.Resource != nil {
+		sb.WriteString(" :resource ")
+		writeNode(sb, n.Resource)
+	}
 	sb.WriteString("}")
 }
 
@@ -1199,6 +1219,14 @@ func writeAlterUserStmt(sb *strings.Builder, n *AlterUserStmt) {
 			}
 			writeNode(sb, u)
 		}
+	}
+	if n.Require != nil {
+		sb.WriteString(" :require ")
+		writeNode(sb, n.Require)
+	}
+	if n.Resource != nil {
+		sb.WriteString(" :resource ")
+		writeNode(sb, n.Resource)
 	}
 	sb.WriteString("}")
 }
@@ -2627,6 +2655,46 @@ func writeGrantTarget(sb *strings.Builder, n *GrantTarget) {
 	if n.Name != nil {
 		sb.WriteString(" :name ")
 		writeNode(sb, n.Name)
+	}
+	sb.WriteString("}")
+}
+
+func writeRequireClause(sb *strings.Builder, n *RequireClause) {
+	sb.WriteString("{REQUIRE")
+	if n.None {
+		sb.WriteString(" NONE")
+	}
+	if n.SSL {
+		sb.WriteString(" SSL")
+	}
+	if n.X509 {
+		sb.WriteString(" X509")
+	}
+	if n.Cipher != "" {
+		fmt.Fprintf(sb, " :cipher %q", n.Cipher)
+	}
+	if n.Issuer != "" {
+		fmt.Fprintf(sb, " :issuer %q", n.Issuer)
+	}
+	if n.Subject != "" {
+		fmt.Fprintf(sb, " :subject %q", n.Subject)
+	}
+	sb.WriteString("}")
+}
+
+func writeResourceOption(sb *strings.Builder, n *ResourceOption) {
+	sb.WriteString("{RESOURCE")
+	if n.HasMaxQueries {
+		fmt.Fprintf(sb, " :max_queries_per_hour %d", n.MaxQueriesPerHour)
+	}
+	if n.HasMaxUpdates {
+		fmt.Fprintf(sb, " :max_updates_per_hour %d", n.MaxUpdatesPerHour)
+	}
+	if n.HasMaxConnections {
+		fmt.Fprintf(sb, " :max_connections_per_hour %d", n.MaxConnectionsPerHour)
+	}
+	if n.HasMaxUserConn {
+		fmt.Fprintf(sb, " :max_user_connections %d", n.MaxUserConnections)
 	}
 	sb.WriteString("}")
 }
