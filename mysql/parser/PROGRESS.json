@@ -2053,7 +2053,7 @@
       "id": 83,
       "name": "depth_fix_utility_tests_batch2",
       "file": "compare_test.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 27/35/36/37/38/46 gap: add dedicated tests for CALL, HANDLER OPEN/READ/CLOSE, INSTALL/UNINSTALL PLUGIN/COMPONENT, CREATE/ALTER/DROP TABLESPACE, CREATE/ALTER/DROP SERVER, CREATE/DROP SPATIAL REFERENCE SYSTEM, CREATE/ALTER/DROP RESOURCE GROUP, ALTER INSTANCE, LOCK/UNLOCK INSTANCE, IMPORT TABLE, RESET PERSIST",
       "rules": [],
       "depends_on": [

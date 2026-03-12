@@ -9490,3 +9490,68 @@ func TestParseDo(t *testing.T) {
 
 // TestParseChecksumTable, TestParseShutdown, TestParseRestart are defined
 // earlier in batch 34 with ParseAndCompare assertions.
+
+// ─── Batch 83: depth_fix_utility_tests_batch2 ─────────────────────────────
+
+func TestParseAlterServer(t *testing.T) {
+	tests := []string{
+		"ALTER SERVER s1 OPTIONS (USER 'admin')",
+		"ALTER SERVER s1 OPTIONS (HOST '10.0.0.1', DATABASE 'db1')",
+		"ALTER SERVER s1 OPTIONS (USER 'root', HOST 'localhost', DATABASE 'test', PORT 3306)",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseHandlerOpenReadClose(t *testing.T) {
+	tests := []string{
+		"HANDLER t1 OPEN",
+		"HANDLER t1 OPEN AS h1",
+		"HANDLER h1 READ FIRST",
+		"HANDLER h1 READ NEXT",
+		"HANDLER h1 READ idx1 = (1)",
+		"HANDLER h1 READ idx1 FIRST",
+		"HANDLER h1 READ idx1 NEXT",
+		"HANDLER h1 READ idx1 PREV",
+		"HANDLER h1 READ idx1 LAST",
+		"HANDLER h1 READ NEXT WHERE id > 10",
+		"HANDLER h1 READ NEXT LIMIT 5",
+		"HANDLER h1 CLOSE",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseLockUnlockInstance(t *testing.T) {
+	tests := []string{
+		"LOCK INSTANCE FOR BACKUP",
+		"UNLOCK INSTANCE",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseAlterInstance(t *testing.T) {
+	tests := []string{
+		"ALTER INSTANCE ROTATE INNODB MASTER KEY",
+		"ALTER INSTANCE ENABLE INNODB REDO_LOG",
+		"ALTER INSTANCE DISABLE INNODB REDO_LOG",
+		"ALTER INSTANCE RELOAD TLS",
+		"ALTER INSTANCE RELOAD TLS NO ROLLBACK ON ERROR",
+		"ALTER INSTANCE RELOAD TLS FOR CHANNEL mysql_main",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
