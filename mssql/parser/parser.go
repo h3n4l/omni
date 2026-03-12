@@ -777,9 +777,15 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 			stmt.Loc.Start = loc
 			return stmt
 		}
-		// CREATE WORKLOAD GROUP
+		// CREATE WORKLOAD GROUP / CREATE WORKLOAD CLASSIFIER
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "WORKLOAD") {
 			p.advance() // consume WORKLOAD
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CLASSIFIER") {
+				p.advance() // consume CLASSIFIER
+				stmt := p.parseCreateWorkloadClassifierStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
 			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "GROUP") {
 				p.advance() // consume GROUP
 			}
@@ -1220,9 +1226,15 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 			stmt.Loc.Start = loc
 			return stmt
 		}
-		// ALTER WORKLOAD GROUP
+		// ALTER WORKLOAD GROUP / ALTER WORKLOAD CLASSIFIER
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "WORKLOAD") {
 			p.advance() // consume WORKLOAD
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CLASSIFIER") {
+				p.advance() // consume CLASSIFIER
+				stmt := p.parseAlterWorkloadClassifierStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
 			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "GROUP") {
 				p.advance() // consume GROUP
 			}
@@ -1491,10 +1503,16 @@ func (p *Parser) parseDropOrSecurityStmt() nodes.StmtNode {
 			stmt.Loc.Start = loc
 			return stmt
 		}
-		// DROP WORKLOAD GROUP
+		// DROP WORKLOAD GROUP / DROP WORKLOAD CLASSIFIER
 		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "WORKLOAD") {
 			p.advance() // consume DROP
 			p.advance() // consume WORKLOAD
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CLASSIFIER") {
+				p.advance() // consume CLASSIFIER
+				stmt := p.parseDropWorkloadClassifierStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
 			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "GROUP") {
 				p.advance() // consume GROUP
 			}

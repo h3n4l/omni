@@ -7654,6 +7654,91 @@ func TestParseCreateDatabaseDepth(t *testing.T) {
 	})
 }
 
+// TestParseWorkloadClassifier tests CREATE/ALTER/DROP WORKLOAD CLASSIFIER (batch 80).
+func TestParseWorkloadClassifier(t *testing.T) {
+	t.Run("create_workload_classifier", func(t *testing.T) {
+		tests := []struct {
+			name string
+			sql  string
+		}{
+			{
+				"basic",
+				`CREATE WORKLOAD CLASSIFIER wgcELTRole
+				WITH (WORKLOAD_GROUP = 'staticrc20', MEMBERNAME = 'ELTRole')`,
+			},
+			{
+				"with importance",
+				`CREATE WORKLOAD CLASSIFIER wgcELTRole
+				WITH (WORKLOAD_GROUP = 'staticrc20', MEMBERNAME = 'ELTRole', IMPORTANCE = ABOVE_NORMAL)`,
+			},
+			{
+				"with label and context",
+				`CREATE WORKLOAD CLASSIFIER wgcELTRole
+				WITH (WORKLOAD_GROUP = 'wgDataLoad', MEMBERNAME = 'ELTRole', WLM_LABEL = 'dimension_loads', WLM_CONTEXT = 'dim_load')`,
+			},
+			{
+				"with time range",
+				`CREATE WORKLOAD CLASSIFIER wgcNight
+				WITH (WORKLOAD_GROUP = 'wgDataLoads', MEMBERNAME = 'ELTRole', START_TIME = '22:00', END_TIME = '02:00')`,
+			},
+			{
+				"all options",
+				`CREATE WORKLOAD CLASSIFIER wgcAll
+				WITH (WORKLOAD_GROUP = 'wg1', MEMBERNAME = 'user1', WLM_LABEL = 'lbl', WLM_CONTEXT = 'ctx', START_TIME = '08:00', END_TIME = '17:00', IMPORTANCE = HIGH)`,
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				stmt, ok := result.Items[0].(*ast.SecurityStmt)
+				if !ok {
+					t.Fatalf("expected *SecurityStmt, got %T", result.Items[0])
+				}
+				if stmt.Action != "CREATE" {
+					t.Errorf("expected action CREATE, got %s", stmt.Action)
+				}
+				if stmt.ObjectType != "WORKLOAD CLASSIFIER" {
+					t.Errorf("expected objectType WORKLOAD CLASSIFIER, got %s", stmt.ObjectType)
+				}
+			})
+		}
+	})
+
+	t.Run("alter_workload_classifier", func(t *testing.T) {
+		sql := `ALTER WORKLOAD CLASSIFIER wgcELTRole
+			WITH (WORKLOAD_GROUP = 'staticrc30', MEMBERNAME = 'ELTRole', IMPORTANCE = HIGH)`
+		result := ParseAndCheck(t, sql)
+		stmt, ok := result.Items[0].(*ast.SecurityStmt)
+		if !ok {
+			t.Fatalf("expected *SecurityStmt, got %T", result.Items[0])
+		}
+		if stmt.Action != "ALTER" {
+			t.Errorf("expected action ALTER, got %s", stmt.Action)
+		}
+		if stmt.ObjectType != "WORKLOAD CLASSIFIER" {
+			t.Errorf("expected objectType WORKLOAD CLASSIFIER, got %s", stmt.ObjectType)
+		}
+	})
+
+	t.Run("drop_workload_classifier", func(t *testing.T) {
+		sql := "DROP WORKLOAD CLASSIFIER wgcELTRole"
+		result := ParseAndCheck(t, sql)
+		stmt, ok := result.Items[0].(*ast.SecurityStmt)
+		if !ok {
+			t.Fatalf("expected *SecurityStmt, got %T", result.Items[0])
+		}
+		if stmt.Action != "DROP" {
+			t.Errorf("expected action DROP, got %s", stmt.Action)
+		}
+		if stmt.ObjectType != "WORKLOAD CLASSIFIER" {
+			t.Errorf("expected objectType WORKLOAD CLASSIFIER, got %s", stmt.ObjectType)
+		}
+		if stmt.Name != "wgcELTRole" {
+			t.Errorf("expected name wgcELTRole, got %s", stmt.Name)
+		}
+	})
+}
+
 // TestParseSubqueryComparison tests ANY/SOME/ALL subquery comparison operators (batch 79).
 func TestParseSubqueryComparison(t *testing.T) {
 	t.Run("any_subquery", func(t *testing.T) {

@@ -1889,7 +1889,7 @@
       "id": 80,
       "name": "workload_classifier",
       "file": "resource_governor.go",
-      "status": "pending",
+      "status": "done",
       "description": "New: CREATE/ALTER/DROP WORKLOAD CLASSIFIER (SQL Server 2019+) with WITH options (MEMBERNAME, WORKLOAD_GROUP, IMPORTANCE, etc.)",
       "rules": [
         "parseCreateWorkloadClassifierStmt",

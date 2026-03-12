@@ -401,3 +401,90 @@ func (p *Parser) parseResourceGovernorOptions() *nodes.List {
 	}
 	return &nodes.List{Items: opts}
 }
+
+// parseCreateWorkloadClassifierStmt parses CREATE WORKLOAD CLASSIFIER.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-workload-classifier-transact-sql
+//
+//	CREATE WORKLOAD CLASSIFIER classifier_name
+//	WITH
+//	    ( WORKLOAD_GROUP = 'name'
+//	    , MEMBERNAME = 'security_account'
+//	    [ [ , ] WLM_LABEL = 'label' ]
+//	    [ [ , ] WLM_CONTEXT = 'context' ]
+//	    [ [ , ] START_TIME = 'HH:MM' ]
+//	    [ [ , ] END_TIME = 'HH:MM' ]
+//	    [ [ , ] IMPORTANCE = { LOW | BELOW_NORMAL | NORMAL | ABOVE_NORMAL | HIGH } ] )
+func (p *Parser) parseCreateWorkloadClassifierStmt() *nodes.SecurityStmt {
+	loc := p.pos()
+	stmt := &nodes.SecurityStmt{
+		Action:     "CREATE",
+		ObjectType: "WORKLOAD CLASSIFIER",
+		Loc:        nodes.Loc{Start: loc},
+	}
+
+	// classifier_name
+	if p.isIdentLike() || p.cur.Type == tokSCONST {
+		stmt.Name = p.cur.Str
+		p.advance()
+	}
+
+	stmt.Options = p.parseResourceGovernorOptions()
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseAlterWorkloadClassifierStmt parses ALTER WORKLOAD CLASSIFIER.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-workload-classifier-transact-sql
+//
+//	ALTER WORKLOAD CLASSIFIER classifier_name
+//	WITH
+//	    ( WORKLOAD_GROUP = 'name'
+//	    , MEMBERNAME = 'security_account'
+//	    [ [ , ] WLM_LABEL = 'label' ]
+//	    [ [ , ] WLM_CONTEXT = 'context' ]
+//	    [ [ , ] START_TIME = 'HH:MM' ]
+//	    [ [ , ] END_TIME = 'HH:MM' ]
+//	    [ [ , ] IMPORTANCE = { LOW | BELOW_NORMAL | NORMAL | ABOVE_NORMAL | HIGH } ] )
+func (p *Parser) parseAlterWorkloadClassifierStmt() *nodes.SecurityStmt {
+	loc := p.pos()
+	stmt := &nodes.SecurityStmt{
+		Action:     "ALTER",
+		ObjectType: "WORKLOAD CLASSIFIER",
+		Loc:        nodes.Loc{Start: loc},
+	}
+
+	// classifier_name
+	if p.isIdentLike() || p.cur.Type == tokSCONST {
+		stmt.Name = p.cur.Str
+		p.advance()
+	}
+
+	stmt.Options = p.parseResourceGovernorOptions()
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseDropWorkloadClassifierStmt parses DROP WORKLOAD CLASSIFIER.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-workload-classifier-transact-sql
+//
+//	DROP WORKLOAD CLASSIFIER classifier_name
+func (p *Parser) parseDropWorkloadClassifierStmt() *nodes.SecurityStmt {
+	loc := p.pos()
+	stmt := &nodes.SecurityStmt{
+		Action:     "DROP",
+		ObjectType: "WORKLOAD CLASSIFIER",
+		Loc:        nodes.Loc{Start: loc},
+	}
+
+	// classifier_name
+	if p.isIdentLike() || p.cur.Type == tokSCONST {
+		stmt.Name = p.cur.Str
+		p.advance()
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
