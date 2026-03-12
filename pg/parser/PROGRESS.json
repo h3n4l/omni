@@ -1089,7 +1089,7 @@
       "id": 38,
       "name": "create_conversion",
       "file": "define.go",
-      "status": "pending",
+      "status": "done",
       "description": "CREATE [DEFAULT] CONVERSION statement. Add CONVERSION case to parseCreateDispatch. Ref: https://www.postgresql.org/docs/17/sql-createconversion.html",
       "rules": [
         "CreateConversionStmt"

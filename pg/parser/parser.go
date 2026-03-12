@@ -436,6 +436,15 @@ func (p *Parser) parseCreateDispatch() nodes.Node {
 		// CREATE TRANSFORM ...
 		p.advance() // consume CREATE
 		return p.parseCreateTransformStmt(false)
+	case CONVERSION_P:
+		// CREATE CONVERSION ...
+		p.advance() // consume CREATE
+		return p.parseCreateConversionStmt(false)
+	case DEFAULT:
+		// CREATE DEFAULT CONVERSION ...
+		p.advance() // consume CREATE
+		p.advance() // consume DEFAULT
+		return p.parseCreateConversionStmt(true)
 	case TABLESPACE:
 		// CREATE TABLESPACE ...
 		p.advance() // consume CREATE

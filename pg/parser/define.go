@@ -956,3 +956,32 @@ func (p *Parser) parseOperatorDefElem() *nodes.DefElem {
 	}
 	return &nodes.DefElem{Defname: label, Location: -1}
 }
+
+// parseCreateConversionStmt parses CREATE [DEFAULT] CONVERSION.
+// CREATE has already been consumed. Current token is DEFAULT or CONVERSION_P.
+//
+// Ref: https://www.postgresql.org/docs/17/sql-createconversion.html
+//
+//	CREATE [ DEFAULT ] CONVERSION name
+//	    FOR source_encoding TO dest_encoding FROM function_name
+func (p *Parser) parseCreateConversionStmt(isDef bool) nodes.Node {
+	p.advance() // consume CONVERSION_P
+
+	convName, _ := p.parseAnyName()
+	p.expect(FOR)
+	srcEnc := p.cur.Str
+	p.expect(SCONST)
+	p.expect(TO)
+	dstEnc := p.cur.Str
+	p.expect(SCONST)
+	p.expect(FROM)
+	funcName, _ := p.parseAnyName()
+
+	return &nodes.CreateConversionStmt{
+		ConversionName:  convName,
+		ForEncodingName: srcEnc,
+		ToEncodingName:  dstEnc,
+		FuncName:        funcName,
+		Def:             isDef,
+	}
+}

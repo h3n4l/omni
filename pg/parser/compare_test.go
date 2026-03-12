@@ -2718,6 +2718,25 @@ func TestCompareAlterGeneric(t *testing.T) {
 	}
 }
 
+// TestCompareCreateConversion runs CREATE CONVERSION comparison tests for batch 38.
+func TestCompareCreateConversion(t *testing.T) {
+	tests := []string{
+		// Basic CREATE CONVERSION
+		"CREATE CONVERSION myconv FOR 'UTF8' TO 'LATIN1' FROM myfunc",
+		// CREATE DEFAULT CONVERSION
+		"CREATE DEFAULT CONVERSION myconv FOR 'UTF8' TO 'LATIN1' FROM myfunc",
+		// Schema-qualified names
+		"CREATE CONVERSION myschema.myconv FOR 'UTF8' TO 'LATIN1' FROM myschema.myfunc",
+		// DEFAULT with schema-qualified names
+		"CREATE DEFAULT CONVERSION myschema.myconv FOR 'UTF8' TO 'LATIN1' FROM myschema.myfunc",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+		})
+	}
+}
+
 // TestCompareTablespace runs tablespace comparison tests for batch 37.
 func TestCompareTablespace(t *testing.T) {
 	tests := []string{
