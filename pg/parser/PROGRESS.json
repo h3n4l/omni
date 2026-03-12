@@ -1106,7 +1106,7 @@
       "id": 39,
       "name": "drop_operator",
       "file": "drop.go",
-      "status": "pending",
+      "status": "done",
       "description": "DROP OPERATOR with oper_argtypes (RemoveOperStmt). Currently has a TODO placeholder returning nil. Must parse operator_with_argtypes_list. Ref: https://www.postgresql.org/docs/17/sql-dropoperator.html",
       "rules": [
         "RemoveOperStmt"

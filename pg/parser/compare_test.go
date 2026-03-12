@@ -2718,6 +2718,33 @@ func TestCompareAlterGeneric(t *testing.T) {
 	}
 }
 
+// TestCompareDropOperator runs DROP OPERATOR comparison tests for batch 39.
+func TestCompareDropOperator(t *testing.T) {
+	tests := []string{
+		// Binary operator
+		"DROP OPERATOR + (integer, integer)",
+		// Left unary operator
+		"DROP OPERATOR - (NONE, integer)",
+		// Right unary operator
+		"DROP OPERATOR ! (integer, NONE)",
+		// IF EXISTS
+		"DROP OPERATOR IF EXISTS + (integer, integer)",
+		// CASCADE
+		"DROP OPERATOR + (integer, integer) CASCADE",
+		// RESTRICT
+		"DROP OPERATOR + (integer, integer) RESTRICT",
+		// Schema-qualified operator
+		"DROP OPERATOR myschema.+ (integer, integer)",
+		// Multiple operators
+		"DROP OPERATOR + (integer, integer), - (integer, integer)",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+		})
+	}
+}
+
 // TestCompareCreateConversion runs CREATE CONVERSION comparison tests for batch 38.
 func TestCompareCreateConversion(t *testing.T) {
 	tests := []string{

@@ -559,8 +559,46 @@ func (p *Parser) parseDropOperatorClassOrFamily() nodes.Node {
 }
 
 // parseDropOperator parses DROP OPERATOR (RemoveOperStmt).
-// Current token is the operator name (DROP OPERATOR already consumed).
+// Current token is the first token after OPERATOR (DROP OPERATOR already consumed).
+//
+// Ref: https://www.postgresql.org/docs/17/sql-dropoperator.html
+//
+//	DROP OPERATOR [ IF EXISTS ] operator_with_argtypes_list [ CASCADE | RESTRICT ]
+//	DROP OPERATOR IF EXISTS operator_with_argtypes_list [ CASCADE | RESTRICT ]
 func (p *Parser) parseDropOperator() nodes.Node {
-	// TODO: implement RemoveOperStmt
-	return nil
+	missingOk := false
+	if p.cur.Type == IF_P {
+		p.advance()
+		p.expect(EXISTS)
+		missingOk = true
+	}
+
+	objects := p.parseOperatorWithArgtypesList()
+	behavior := p.parseOptDropBehavior()
+
+	return &nodes.DropStmt{
+		RemoveType: int(nodes.OBJECT_OPERATOR),
+		Objects:    objects,
+		Behavior:   int(behavior),
+		Missing_ok: missingOk,
+	}
+}
+
+// parseOperatorWithArgtypesList parses a comma-separated list of operator_with_argtypes.
+func (p *Parser) parseOperatorWithArgtypesList() *nodes.List {
+	owa := p.parseOperatorWithArgtypes()
+	items := []nodes.Node{owa}
+	for p.cur.Type == ',' {
+		p.advance()
+		items = append(items, p.parseOperatorWithArgtypes())
+	}
+	return &nodes.List{Items: items}
+}
+
+// parseOperatorWithArgtypes parses operator_with_argtypes: any_operator oper_argtypes.
+func (p *Parser) parseOperatorWithArgtypes() *nodes.ObjectWithArgs {
+	opName, _ := p.parseAnyOperator()
+	owa := &nodes.ObjectWithArgs{Objname: opName}
+	owa.Objargs = p.parseOperArgtypes()
+	return owa
 }
