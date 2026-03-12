@@ -27,8 +27,10 @@ const (
 	tokNullSafeEq // <=>
 	tokShiftLeft  // <<
 	tokShiftRight // >>
-	tokAssign     // :=
-	tokColonColon // :: (not MySQL, but for compat)
+	tokAssign       // :=
+	tokColonColon   // :: (not MySQL, but for compat)
+	tokJsonExtract  // ->
+	tokJsonUnquote  // ->>
 )
 
 // Keyword token constants. Values start at 700.
@@ -354,6 +356,13 @@ const (
 	_ // was kwBY_KW — duplicate of kwBY
 	kwTYPE
 	kwRECURSIVE
+	kwMEMBER
+	kwJSON_TABLE
+	kwORDINALITY
+	kwNESTED
+	kwPATH
+	kwEMPTY
+	kwERROR_KW
 )
 
 // keywords maps lowercase keyword strings to their token types.
@@ -671,6 +680,13 @@ var keywords = map[string]int{
 	"force":               kwFORCE,
 	"type":                kwTYPE,
 	"recursive":           kwRECURSIVE,
+	"member":              kwMEMBER,
+	"json_table":          kwJSON_TABLE,
+	"ordinality":          kwORDINALITY,
+	"nested":              kwNESTED,
+	"path":                kwPATH,
+	"empty":               kwEMPTY,
+	"error":               kwERROR_KW,
 }
 
 // Token represents a lexical token.
@@ -785,6 +801,13 @@ func (l *Lexer) NextToken() Token {
 		case ch == ':' && next == '=':
 			l.pos += 2
 			return Token{Type: tokAssign, Str: ":=", Loc: l.start}
+		case ch == '-' && next == '>':
+			if l.pos+2 < len(l.input) && l.input[l.pos+2] == '>' {
+				l.pos += 3
+				return Token{Type: tokJsonUnquote, Str: "->>", Loc: l.start}
+			}
+			l.pos += 2
+			return Token{Type: tokJsonExtract, Str: "->", Loc: l.start}
 		}
 	}
 

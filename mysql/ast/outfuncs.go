@@ -255,6 +255,12 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeEventSchedule(sb, n)
 	case *CommonTableExpr:
 		writeCommonTableExpr(sb, n)
+	case *MemberOfExpr:
+		writeMemberOfExpr(sb, n)
+	case *JsonTableExpr:
+		writeJsonTableExpr(sb, n)
+	case *JsonTableColumn:
+		writeJsonTableColumn(sb, n)
 
 	default:
 		fmt.Fprintf(sb, "{UNKNOWN %T}", node)
@@ -1371,6 +1377,10 @@ func binaryOpStr(op BinaryOp) string {
 		return "<=>"
 	case BinOpAssign:
 		return ":="
+	case BinOpJsonExtract:
+		return "->"
+	case BinOpJsonUnquote:
+		return "->>"
 	default:
 		return fmt.Sprintf("?%d", op)
 	}
@@ -2250,6 +2260,72 @@ func writeCommonTableExpr(sb *strings.Builder, n *CommonTableExpr) {
 	if n.Select != nil {
 		sb.WriteString(" :select ")
 		writeNode(sb, n.Select)
+	}
+	sb.WriteString("}")
+}
+
+func writeMemberOfExpr(sb *strings.Builder, n *MemberOfExpr) {
+	sb.WriteString("{MEMBER_OF")
+	fmt.Fprintf(sb, " :loc %d", n.Loc.Start)
+	sb.WriteString(" :value ")
+	writeNode(sb, n.Value)
+	sb.WriteString(" :array ")
+	writeNode(sb, n.Array)
+	sb.WriteString("}")
+}
+
+func writeJsonTableExpr(sb *strings.Builder, n *JsonTableExpr) {
+	sb.WriteString("{JSON_TABLE")
+	fmt.Fprintf(sb, " :loc %d", n.Loc.Start)
+	sb.WriteString(" :expr ")
+	writeNode(sb, n.Expr)
+	sb.WriteString(" :path ")
+	writeNode(sb, n.Path)
+	if len(n.Columns) > 0 {
+		sb.WriteString(" :columns (")
+		for i, col := range n.Columns {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, col)
+		}
+		sb.WriteString(")")
+	}
+	if n.Alias != "" {
+		fmt.Fprintf(sb, " :alias %s", n.Alias)
+	}
+	sb.WriteString("}")
+}
+
+func writeJsonTableColumn(sb *strings.Builder, n *JsonTableColumn) {
+	sb.WriteString("{JT_COL")
+	fmt.Fprintf(sb, " :loc %d", n.Loc.Start)
+	if n.Ordinality {
+		fmt.Fprintf(sb, " :name %s :ordinality true", n.Name)
+	} else if n.Nested {
+		fmt.Fprintf(sb, " :nested_path %q", n.NestedPath)
+		if len(n.NestedCols) > 0 {
+			sb.WriteString(" :columns (")
+			for i, col := range n.NestedCols {
+				if i > 0 {
+					sb.WriteString(" ")
+				}
+				writeNode(sb, col)
+			}
+			sb.WriteString(")")
+		}
+	} else {
+		fmt.Fprintf(sb, " :name %s", n.Name)
+		if n.TypeName != nil {
+			sb.WriteString(" :type ")
+			writeNode(sb, n.TypeName)
+		}
+		if n.Path != "" {
+			fmt.Fprintf(sb, " :path %q", n.Path)
+		}
+		if n.Exists {
+			sb.WriteString(" :exists true")
+		}
 	}
 	sb.WriteString("}")
 }

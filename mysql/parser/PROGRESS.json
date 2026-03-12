@@ -337,7 +337,7 @@
       "id": 24,
       "name": "json_operators",
       "file": "expr.go",
-      "status": "pending",
+      "status": "done",
       "description": "JSON column-path operators: -> (JSON_EXTRACT), ->> (JSON_UNQUOTE(JSON_EXTRACT)), MEMBER OF, JSON_TABLE",
       "rules": [
         "json_extract_op", "json_unquote_extract_op",

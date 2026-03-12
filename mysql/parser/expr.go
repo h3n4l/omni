@@ -23,6 +23,7 @@ const (
 	precBitXor     = 12 // ^
 	precUnary      = 13 // -, ~, !
 	precCollate    = 14 // COLLATE
+	precJsonAccess = 15 // ->, ->>
 )
 
 // parseExpr parses an expression using Pratt parsing / precedence climbing.
@@ -40,6 +41,15 @@ func (p *Parser) parseExprPrec(minPrec int) (nodes.ExprNode, error) {
 	}
 
 	for {
+		// MEMBER OF special handling (not in infixPrecedence since it's keyword-based)
+		if p.cur.Type == kwMEMBER {
+			left, err = p.parseMemberOfExpr(left)
+			if err != nil {
+				return nil, err
+			}
+			continue
+		}
+
 		prec, binOp, ok := p.infixPrecedence()
 		if !ok || prec < minPrec {
 			break
@@ -202,6 +212,12 @@ func (p *Parser) infixPrecedence() (int, nodes.BinaryOp, bool) {
 
 	case kwCOLLATE:
 		return precCollate, 0, true
+
+	// JSON column-path operators
+	case tokJsonExtract:
+		return precJsonAccess, nodes.BinOpJsonExtract, true
+	case tokJsonUnquote:
+		return precJsonAccess, nodes.BinOpJsonUnquote, true
 	}
 
 	return 0, 0, false
@@ -532,6 +548,42 @@ overCheck:
 }
 
 // parseTrimFunc parses TRIM([LEADING|TRAILING|BOTH] [remstr FROM] str).
+// parseMemberOfExpr parses value MEMBER OF(json_array).
+//
+// Ref: https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html
+//
+//	value MEMBER OF(json_array)
+func (p *Parser) parseMemberOfExpr(value nodes.ExprNode) (nodes.ExprNode, error) {
+	start := p.pos()
+	p.advance() // consume MEMBER
+
+	// Expect OF
+	if p.cur.Type != tokIDENT || !eqFold(p.cur.Str, "of") {
+		return nil, &ParseError{
+			Message:  "expected OF after MEMBER",
+			Position: p.cur.Loc,
+		}
+	}
+	p.advance() // consume OF
+
+	if _, err := p.expect('('); err != nil {
+		return nil, err
+	}
+	array, err := p.parseExpr()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(')'); err != nil {
+		return nil, err
+	}
+
+	return &nodes.MemberOfExpr{
+		Loc:   nodes.Loc{Start: start, End: p.pos()},
+		Value: value,
+		Array: array,
+	}, nil
+}
+
 // parseOverClause parses OVER (window_spec) or OVER window_name.
 func (p *Parser) parseOverClause() (*nodes.WindowDef, error) {
 	start := p.pos()

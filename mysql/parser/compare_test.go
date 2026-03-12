@@ -4374,6 +4374,62 @@ func TestParseDeleteWithCTE(t *testing.T) {
 }
 
 // -----------------------------------------------------------------------
+// Batch 24: JSON Operators
+// -----------------------------------------------------------------------
+
+func TestParseJsonExtract(t *testing.T) {
+	tests := []string{
+		"SELECT c->'$.name' FROM t",
+		"SELECT t.c->'$.id' FROM t",
+		"SELECT c->'$.a.b' FROM t WHERE c->'$.id' > 1",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseJsonUnquoteExtract(t *testing.T) {
+	tests := []string{
+		"SELECT c->>'$.name' FROM t",
+		"SELECT t.c->>'$.id' FROM t",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseMemberOf(t *testing.T) {
+	tests := []string{
+		"SELECT 17 MEMBER OF('[23, 17, 10]')",
+		"SELECT * FROM t WHERE val MEMBER OF(json_col)",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseJsonTable(t *testing.T) {
+	tests := []string{
+		"SELECT * FROM JSON_TABLE('[1,2,3]', '$[*]' COLUMNS(id INT PATH '$')) AS jt",
+		"SELECT * FROM JSON_TABLE('{\"a\":1}', '$' COLUMNS(a INT PATH '$.a', b VARCHAR(10) PATH '$.b' NULL ON EMPTY NULL ON ERROR)) AS jt",
+		"SELECT * FROM JSON_TABLE('[1,2]', '$[*]' COLUMNS(rowid FOR ORDINALITY, val INT PATH '$')) AS jt",
+		"SELECT * FROM JSON_TABLE('{\"a\":1}', '$' COLUMNS(a INT EXISTS PATH '$.a')) AS jt",
+		"SELECT * FROM JSON_TABLE('[{\"a\":[1,2]}]', '$[*]' COLUMNS(NESTED PATH '$.a[*]' COLUMNS(val INT PATH '$'))) AS jt",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+// -----------------------------------------------------------------------
 // Batch 23: Window OVER clause
 // -----------------------------------------------------------------------
 

@@ -524,8 +524,226 @@ func (p *Parser) parseTableFactor() (nodes.TableExpr, error) {
 		return ref, nil
 	}
 
+	// JSON_TABLE(expr, path COLUMNS (...)) AS alias
+	if p.cur.Type == kwJSON_TABLE {
+		return p.parseJsonTable()
+	}
+
 	// Regular table reference with alias
 	return p.parseTableRefWithAlias()
+}
+
+// parseJsonTable parses JSON_TABLE(expr, path COLUMNS (column_list)) [AS] alias.
+//
+// Ref: https://dev.mysql.com/doc/refman/8.0/en/json-table-functions.html
+//
+//	JSON_TABLE(
+//	    expr,
+//	    path COLUMNS (column_list)
+//	) [AS] alias
+//
+//	column_list:
+//	    column[, column][, ...]
+//
+//	column:
+//	    name FOR ORDINALITY
+//	  | name type PATH string_path [on_empty] [on_error]
+//	  | name type EXISTS PATH string_path
+//	  | NESTED [PATH] path COLUMNS (column_list)
+//
+//	on_empty:
+//	    {NULL | DEFAULT json_string | ERROR} ON EMPTY
+//
+//	on_error:
+//	    {NULL | DEFAULT json_string | ERROR} ON ERROR
+func (p *Parser) parseJsonTable() (nodes.TableExpr, error) {
+	start := p.pos()
+	p.advance() // consume JSON_TABLE
+
+	if _, err := p.expect('('); err != nil {
+		return nil, err
+	}
+
+	// Parse the JSON expression
+	expr, err := p.parseExpr()
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := p.expect(','); err != nil {
+		return nil, err
+	}
+
+	// Parse the path expression
+	path, err := p.parseExpr()
+	if err != nil {
+		return nil, err
+	}
+
+	// COLUMNS
+	if p.cur.Type != kwCOLUMNS {
+		return nil, &ParseError{Message: "expected COLUMNS in JSON_TABLE", Position: p.cur.Loc}
+	}
+	p.advance()
+
+	cols, err := p.parseJsonTableColumns()
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := p.expect(')'); err != nil {
+		return nil, err
+	}
+
+	// [AS] alias (required)
+	p.match(kwAS)
+	alias := ""
+	if p.isIdentToken() {
+		alias, _, _ = p.parseIdentifier()
+	}
+
+	return &nodes.JsonTableExpr{
+		Loc:     nodes.Loc{Start: start, End: p.pos()},
+		Expr:    expr,
+		Path:    path,
+		Columns: cols,
+		Alias:   alias,
+	}, nil
+}
+
+// parseJsonTableColumns parses (column_list) for JSON_TABLE.
+func (p *Parser) parseJsonTableColumns() ([]*nodes.JsonTableColumn, error) {
+	if _, err := p.expect('('); err != nil {
+		return nil, err
+	}
+
+	var cols []*nodes.JsonTableColumn
+	for {
+		col, err := p.parseJsonTableColumn()
+		if err != nil {
+			return nil, err
+		}
+		cols = append(cols, col)
+		if p.cur.Type != ',' {
+			break
+		}
+		p.advance()
+	}
+
+	if _, err := p.expect(')'); err != nil {
+		return nil, err
+	}
+	return cols, nil
+}
+
+// parseJsonTableColumn parses a single JSON_TABLE column definition.
+func (p *Parser) parseJsonTableColumn() (*nodes.JsonTableColumn, error) {
+	start := p.pos()
+
+	// NESTED [PATH] path COLUMNS (column_list)
+	if p.cur.Type == kwNESTED {
+		p.advance()
+		p.match(kwPATH) // optional PATH keyword
+		if p.cur.Type != tokSCONST {
+			return nil, &ParseError{Message: "expected path string in NESTED", Position: p.cur.Loc}
+		}
+		nestedPath := p.cur.Str
+		p.advance()
+
+		if p.cur.Type != kwCOLUMNS {
+			return nil, &ParseError{Message: "expected COLUMNS after NESTED PATH", Position: p.cur.Loc}
+		}
+		p.advance()
+		nestedCols, err := p.parseJsonTableColumns()
+		if err != nil {
+			return nil, err
+		}
+		return &nodes.JsonTableColumn{
+			Loc:        nodes.Loc{Start: start, End: p.pos()},
+			Nested:     true,
+			NestedPath: nestedPath,
+			NestedCols: nestedCols,
+		}, nil
+	}
+
+	// name FOR ORDINALITY | name type PATH path | name type EXISTS PATH path
+	name, _, err := p.parseIdentifier()
+	if err != nil {
+		return nil, err
+	}
+
+	col := &nodes.JsonTableColumn{
+		Loc:  nodes.Loc{Start: start},
+		Name: name,
+	}
+
+	// FOR ORDINALITY
+	if p.cur.Type == kwFOR {
+		p.advance()
+		p.match(kwORDINALITY)
+		col.Ordinality = true
+		col.Loc.End = p.pos()
+		return col, nil
+	}
+
+	// type
+	typeName, err := p.parseDataType()
+	if err != nil {
+		return nil, err
+	}
+	col.TypeName = typeName
+
+	// EXISTS PATH
+	if p.cur.Type == kwEXISTS_KW {
+		p.advance()
+		col.Exists = true
+	}
+
+	// PATH
+	if p.cur.Type == kwPATH {
+		p.advance()
+		if p.cur.Type != tokSCONST {
+			return nil, &ParseError{Message: "expected path string", Position: p.cur.Loc}
+		}
+		col.Path = p.cur.Str
+		p.advance()
+	}
+
+	// [on_empty] [on_error]
+	// {NULL | DEFAULT json_string | ERROR} ON {EMPTY | ERROR}
+	for p.cur.Type == kwNULL || p.cur.Type == kwDEFAULT || p.cur.Type == kwERROR_KW {
+		option := ""
+		switch p.cur.Type {
+		case kwNULL:
+			option = "NULL"
+			p.advance()
+		case kwDEFAULT:
+			p.advance()
+			if p.cur.Type == tokSCONST {
+				option = "DEFAULT " + p.cur.Str
+				p.advance()
+			}
+		case kwERROR_KW:
+			option = "ERROR"
+			p.advance()
+		}
+
+		if p.cur.Type != kwON {
+			break
+		}
+		p.advance() // consume ON
+
+		if p.cur.Type == kwEMPTY {
+			col.EmptyOption = option
+			p.advance()
+		} else if p.cur.Type == kwERROR_KW {
+			col.ErrorOption = option
+			p.advance()
+		}
+	}
+
+	col.Loc.End = p.pos()
+	return col, nil
 }
 
 // parseOrderByList parses ORDER BY items.
