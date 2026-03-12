@@ -2233,7 +2233,7 @@
       "id": 92,
       "name": "depth_fix_alter_table_secondary_load_unload",
       "file": "alter_table.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 8 gap: missing ALTER TABLE ... SECONDARY_LOAD and ALTER TABLE ... SECONDARY_UNLOAD actions (MySQL 8.0.13+) for loading/unloading tables in HeatWave secondary engine. Need new AlterTableCmd types and lexer keywords.",
       "rules": [
         "parseAlterTableAction"

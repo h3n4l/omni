@@ -9896,3 +9896,27 @@ func TestParseCreateIndexSecondaryEngineAttribute(t *testing.T) {
 		})
 	}
 }
+
+func TestParseAlterTableSecondaryLoad(t *testing.T) {
+	tests := []string{
+		"ALTER TABLE t SECONDARY_LOAD",
+		"ALTER TABLE mydb.t secondary_load",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseAlterTableSecondaryUnload(t *testing.T) {
+	tests := []string{
+		"ALTER TABLE t SECONDARY_UNLOAD",
+		"ALTER TABLE mydb.t secondary_unload",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}

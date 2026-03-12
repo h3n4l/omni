@@ -206,6 +206,8 @@ const (
 	ATWithValidation
 	ATWithoutValidation
 	ATAlterCheckEnforced
+	ATSecondaryLoad
+	ATSecondaryUnload
 )
 
 // AlterTableCmd represents a single ALTER TABLE operation.
