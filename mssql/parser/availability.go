@@ -1,0 +1,459 @@
+// Package parser - availability.go implements T-SQL AVAILABILITY GROUP statement parsing.
+package parser
+
+import (
+	"strings"
+
+	nodes "github.com/bytebase/omni/mssql/ast"
+)
+
+// parseCreateAvailabilityGroupStmt parses CREATE AVAILABILITY GROUP.
+// Caller has consumed CREATE AVAILABILITY GROUP.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-availability-group-transact-sql
+//
+//	CREATE AVAILABILITY GROUP group_name
+//	   WITH (<with_option_spec> [ ,...n ] )
+//	   FOR [ DATABASE database_name [ ,...n ] ]
+//	   REPLICA ON <add_replica_spec> [ ,...n ]
+//	   AVAILABILITY GROUP ON <add_availability_group_spec> [ ,...2 ]
+//	   [ LISTENER 'dns_name' ( <listener_option> ) ]
+//	[ ; ]
+//
+//	<with_option_spec>::=
+//	    AUTOMATED_BACKUP_PREFERENCE = { PRIMARY | SECONDARY_ONLY| SECONDARY | NONE }
+//	  | FAILURE_CONDITION_LEVEL  = { 1 | 2 | 3 | 4 | 5 }
+//	  | HEALTH_CHECK_TIMEOUT = milliseconds
+//	  | DB_FAILOVER  = { ON | OFF }
+//	  | DTC_SUPPORT  = { PER_DB | NONE }
+//	  | [ BASIC | DISTRIBUTED | CONTAINED [ REUSE_SYSTEM_DATABASES | AUTOSEEDING_SYSTEM_DATABASES ] ]
+//	  | REQUIRED_SYNCHRONIZED_SECONDARIES_TO_COMMIT = { integer }
+//	  | CLUSTER_TYPE = { WSFC | EXTERNAL | NONE }
+//	  | WRITE_LEASE_VALIDITY = { seconds }
+//	  | CLUSTER_CONNECTION_OPTIONS = 'key_value_pairs'
+//
+//	<add_replica_spec>::=
+//	  <server_instance> WITH
+//	    (
+//	       ENDPOINT_URL = 'TCP://system-address:port',
+//	       AVAILABILITY_MODE = { SYNCHRONOUS_COMMIT | ASYNCHRONOUS_COMMIT | CONFIGURATION_ONLY },
+//	       FAILOVER_MODE = { AUTOMATIC | MANUAL | EXTERNAL }
+//	       [ , <add_replica_option> [ ,...n ] ]
+//	    )
+//
+//	  <add_replica_option>::=
+//	       SEEDING_MODE = { AUTOMATIC | MANUAL }
+//	     | BACKUP_PRIORITY = n
+//	     | SECONDARY_ROLE ( { [ ALLOW_CONNECTIONS = { NO | READ_ONLY | ALL } ]
+//	        [,] [ READ_ONLY_ROUTING_URL = 'TCP://system-address:port' ] } )
+//	     | PRIMARY_ROLE ( { [ ALLOW_CONNECTIONS = { READ_WRITE | ALL } ]
+//	        [,] [ READ_ONLY_ROUTING_LIST = { ( '<server_instance>' [ ,...n ] ) | NONE } ]
+//	        [,] [ READ_WRITE_ROUTING_URL = 'TCP://system-address:port' ] } )
+//	     | SESSION_TIMEOUT = integer
+//
+//	<add_availability_group_spec>::=
+//	 <ag_name> WITH
+//	    (
+//	       LISTENER_URL = 'TCP://system-address:port',
+//	       AVAILABILITY_MODE = { SYNCHRONOUS_COMMIT | ASYNCHRONOUS_COMMIT },
+//	       FAILOVER_MODE = MANUAL,
+//	       SEEDING_MODE = { AUTOMATIC | MANUAL }
+//	    )
+//
+//	<listener_option> ::=
+//	   {
+//	      WITH DHCP [ ON ( <network_subnet_option> ) ]
+//	    | WITH IP ( { ( <ip_address_option> ) } [ , ...n ] ) [ , PORT = listener_port ]
+//	   }
+//
+//	  <network_subnet_option> ::= 'ip4_address', 'four_part_ipv4_mask'
+//	  <ip_address_option> ::= { 'ip4_address', 'pv4_mask' | 'ipv6_address' }
+func (p *Parser) parseCreateAvailabilityGroupStmt() *nodes.SecurityStmt {
+	loc := p.pos()
+	// AVAILABILITY GROUP already consumed by caller
+
+	stmt := &nodes.SecurityStmt{
+		Action:     "CREATE",
+		ObjectType: "AVAILABILITY GROUP",
+		Loc:        nodes.Loc{Start: loc},
+	}
+
+	// group_name
+	if p.isIdentLike() || p.cur.Type == tokSCONST {
+		stmt.Name = p.cur.Str
+		p.advance()
+	}
+
+	stmt.Options = p.parseAvailabilityGroupOptions()
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseAlterAvailabilityGroupStmt parses ALTER AVAILABILITY GROUP.
+// Caller has consumed ALTER AVAILABILITY GROUP.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-availability-group-transact-sql
+//
+//	ALTER AVAILABILITY GROUP group_name
+//	  {
+//	     SET ( <set_option_spec> )
+//	   | ADD DATABASE database_name
+//	   | REMOVE DATABASE database_name
+//	   | ADD REPLICA ON <add_replica_spec>
+//	   | MODIFY REPLICA ON <modify_replica_spec>
+//	   | REMOVE REPLICA ON <server_instance>
+//	   | JOIN
+//	   | JOIN AVAILABILITY GROUP ON <add_availability_group_spec> [ , ...2 ]
+//	   | MODIFY AVAILABILITY GROUP ON <modify_availability_group_spec> [ , ...2 ]
+//	   | GRANT CREATE ANY DATABASE
+//	   | DENY CREATE ANY DATABASE
+//	   | FAILOVER
+//	   | FORCE_FAILOVER_ALLOW_DATA_LOSS
+//	   | ADD LISTENER 'dns_name' ( <add_listener_option> )
+//	   | MODIFY LISTENER 'dns_name' ( <modify_listener_option> )
+//	   | RESTART LISTENER 'dns_name'
+//	   | REMOVE LISTENER 'dns_name'
+//	   | OFFLINE
+//	  }
+//	[ ; ]
+//
+//	<set_option_spec> ::=
+//	    AUTOMATED_BACKUP_PREFERENCE = { PRIMARY | SECONDARY_ONLY | SECONDARY | NONE }
+//	  | FAILURE_CONDITION_LEVEL  = { 1 | 2 | 3 | 4 | 5 }
+//	  | HEALTH_CHECK_TIMEOUT = milliseconds
+//	  | DB_FAILOVER  = { ON | OFF }
+//	  | DTC_SUPPORT  = { PER_DB | NONE }
+//	  | REQUIRED_SYNCHRONIZED_SECONDARIES_TO_COMMIT = { integer }
+//	  | ROLE = SECONDARY
+//	  | CLUSTER_CONNECTION_OPTIONS = 'key_value_pairs'
+//
+//	<add_replica_spec>::=
+//	  <server_instance> WITH
+//	    (
+//	       ENDPOINT_URL = 'TCP://system-address:port' ,
+//	       AVAILABILITY_MODE = { SYNCHRONOUS_COMMIT | ASYNCHRONOUS_COMMIT | CONFIGURATION_ONLY } ,
+//	       FAILOVER_MODE = { AUTOMATIC | MANUAL }
+//	       [ , <add_replica_option> [ , ...n ] ]
+//	    )
+//
+//	<modify_replica_spec>::=
+//	  <server_instance> WITH
+//	    (
+//	       ENDPOINT_URL = 'TCP://system-address:port'
+//	     | AVAILABILITY_MODE = { SYNCHRONOUS_COMMIT | ASYNCHRONOUS_COMMIT }
+//	     | FAILOVER_MODE = { AUTOMATIC | MANUAL }
+//	     | SEEDING_MODE = { AUTOMATIC | MANUAL }
+//	     | BACKUP_PRIORITY = n
+//	     | SECONDARY_ROLE ( { ... } )
+//	     | PRIMARY_ROLE ( { ... } )
+//	     | SESSION_TIMEOUT = seconds
+//	    )
+//
+//	<add_listener_option> ::=
+//	   {
+//	      WITH DHCP [ ON ( <network_subnet_option> ) ]
+//	    | WITH IP ( { ( <ip_address_option> ) } [ , ...n ] ) [ , PORT = listener_port ]
+//	   }
+//
+//	<modify_listener_option>::=
+//	    {
+//	       ADD IP ( <ip_address_option> )
+//	     | PORT = listener_port
+//	     | REMOVE IP ( 'ipv4_address' | 'ipv6_address')
+//	    }
+func (p *Parser) parseAlterAvailabilityGroupStmt() *nodes.SecurityStmt {
+	loc := p.pos()
+	// AVAILABILITY GROUP already consumed by caller
+
+	stmt := &nodes.SecurityStmt{
+		Action:     "ALTER",
+		ObjectType: "AVAILABILITY GROUP",
+		Loc:        nodes.Loc{Start: loc},
+	}
+
+	// group_name
+	if p.isIdentLike() || p.cur.Type == tokSCONST {
+		stmt.Name = p.cur.Str
+		p.advance()
+	}
+
+	stmt.Options = p.parseAvailabilityGroupOptions()
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseDropAvailabilityGroupStmt parses DROP AVAILABILITY GROUP.
+// Caller has consumed DROP AVAILABILITY GROUP.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-availability-group-transact-sql
+//
+//	DROP AVAILABILITY GROUP group_name
+//	[ ; ]
+func (p *Parser) parseDropAvailabilityGroupStmt() *nodes.SecurityStmt {
+	loc := p.pos()
+	// AVAILABILITY GROUP already consumed by caller
+
+	stmt := &nodes.SecurityStmt{
+		Action:     "DROP",
+		ObjectType: "AVAILABILITY GROUP",
+		Loc:        nodes.Loc{Start: loc},
+	}
+
+	// group_name
+	if p.isIdentLike() || p.cur.Type == tokSCONST {
+		stmt.Name = p.cur.Str
+		p.advance()
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseAvailabilityGroupOptions consumes the remaining clauses of
+// CREATE/ALTER AVAILABILITY GROUP: WITH, FOR DATABASE, REPLICA ON,
+// AVAILABILITY GROUP ON, LISTENER, SET, ADD DATABASE, REMOVE DATABASE,
+// JOIN, FAILOVER, FORCE_FAILOVER_ALLOW_DATA_LOSS, OFFLINE, etc.
+func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
+	var opts []nodes.Node
+
+	for p.cur.Type != ';' && p.cur.Type != tokEOF && p.cur.Type != kwGO {
+		switch {
+		case p.cur.Type == '(':
+			// Consume parenthesized blocks (SET options, replica options, listener options, etc.)
+			inner := p.parseNestedParens()
+			if inner != "" {
+				opts = append(opts, &nodes.String{Str: "(" + inner + ")"})
+			}
+
+		case p.cur.Type == kwWITH:
+			opts = append(opts, &nodes.String{Str: "WITH"})
+			p.advance()
+
+		case p.cur.Type == kwFOR:
+			p.advance()
+			if p.cur.Type == kwDATABASE {
+				p.advance()
+				var dbs []string
+				for p.isIdentLike() || p.cur.Type == tokSCONST {
+					dbs = append(dbs, p.cur.Str)
+					p.advance()
+					if p.cur.Type == ',' {
+						p.advance()
+					}
+				}
+				opts = append(opts, &nodes.String{Str: "FOR DATABASE " + strings.Join(dbs, ", ")})
+			} else {
+				opts = append(opts, &nodes.String{Str: "FOR"})
+			}
+
+		case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "REPLICA"):
+			p.advance() // consume REPLICA
+			if p.cur.Type == kwON {
+				p.advance() // consume ON
+			}
+			opts = append(opts, &nodes.String{Str: "REPLICA ON"})
+
+		case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AVAILABILITY"):
+			p.advance() // consume AVAILABILITY
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "GROUP") {
+				p.advance() // consume GROUP
+			}
+			if p.cur.Type == kwON {
+				p.advance() // consume ON
+			}
+			opts = append(opts, &nodes.String{Str: "AVAILABILITY GROUP ON"})
+
+		case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LISTENER"):
+			p.advance() // consume LISTENER
+			optStr := "LISTENER"
+			if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
+				optStr += "='" + p.cur.Str + "'"
+				p.advance()
+			}
+			opts = append(opts, &nodes.String{Str: optStr})
+
+		case p.cur.Type == kwSET:
+			opts = append(opts, &nodes.String{Str: "SET"})
+			p.advance()
+
+		case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "ADD"):
+			p.advance() // consume ADD
+			if p.cur.Type == kwDATABASE {
+				p.advance()
+				if p.isIdentLike() || p.cur.Type == tokSCONST {
+					opts = append(opts, &nodes.String{Str: "ADD DATABASE " + p.cur.Str})
+					p.advance()
+				}
+			} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "REPLICA") {
+				p.advance() // consume REPLICA
+				if p.cur.Type == kwON {
+					p.advance() // consume ON
+				}
+				opts = append(opts, &nodes.String{Str: "ADD REPLICA ON"})
+			} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LISTENER") {
+				p.advance() // consume LISTENER
+				optStr := "ADD LISTENER"
+				if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
+					optStr += "='" + p.cur.Str + "'"
+					p.advance()
+				}
+				opts = append(opts, &nodes.String{Str: optStr})
+			} else {
+				opts = append(opts, &nodes.String{Str: "ADD"})
+			}
+
+		case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "REMOVE"):
+			p.advance() // consume REMOVE
+			if p.cur.Type == kwDATABASE {
+				p.advance()
+				if p.isIdentLike() || p.cur.Type == tokSCONST {
+					opts = append(opts, &nodes.String{Str: "REMOVE DATABASE " + p.cur.Str})
+					p.advance()
+				}
+			} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "REPLICA") {
+				p.advance() // consume REPLICA
+				if p.cur.Type == kwON {
+					p.advance() // consume ON
+				}
+				opts = append(opts, &nodes.String{Str: "REMOVE REPLICA ON"})
+			} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LISTENER") {
+				p.advance() // consume LISTENER
+				optStr := "REMOVE LISTENER"
+				if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
+					optStr += "='" + p.cur.Str + "'"
+					p.advance()
+				}
+				opts = append(opts, &nodes.String{Str: optStr})
+			} else {
+				opts = append(opts, &nodes.String{Str: "REMOVE"})
+			}
+
+		case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "MODIFY"):
+			p.advance() // consume MODIFY
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "REPLICA") {
+				p.advance() // consume REPLICA
+				if p.cur.Type == kwON {
+					p.advance() // consume ON
+				}
+				opts = append(opts, &nodes.String{Str: "MODIFY REPLICA ON"})
+			} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LISTENER") {
+				p.advance() // consume LISTENER
+				optStr := "MODIFY LISTENER"
+				if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
+					optStr += "='" + p.cur.Str + "'"
+					p.advance()
+				}
+				opts = append(opts, &nodes.String{Str: optStr})
+			} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AVAILABILITY") {
+				p.advance() // consume AVAILABILITY
+				if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "GROUP") {
+					p.advance() // consume GROUP
+				}
+				if p.cur.Type == kwON {
+					p.advance() // consume ON
+				}
+				opts = append(opts, &nodes.String{Str: "MODIFY AVAILABILITY GROUP ON"})
+			} else {
+				opts = append(opts, &nodes.String{Str: "MODIFY"})
+			}
+
+		case p.cur.Type == kwJOIN:
+			p.advance() // consume JOIN
+			// JOIN AVAILABILITY GROUP ON ...
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AVAILABILITY") {
+				p.advance() // consume AVAILABILITY
+				if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "GROUP") {
+					p.advance() // consume GROUP
+				}
+				if p.cur.Type == kwON {
+					p.advance() // consume ON
+				}
+				opts = append(opts, &nodes.String{Str: "JOIN AVAILABILITY GROUP ON"})
+			} else {
+				opts = append(opts, &nodes.String{Str: "JOIN"})
+			}
+
+		case p.cur.Type == kwGRANT:
+			p.advance() // consume GRANT
+			opts = append(opts, &nodes.String{Str: "GRANT CREATE ANY DATABASE"})
+			// skip tokens: CREATE ANY DATABASE
+			for p.isIdentLike() || p.cur.Type == kwCREATE {
+				p.advance()
+			}
+
+		case p.cur.Type == kwDENY:
+			p.advance() // consume DENY
+			opts = append(opts, &nodes.String{Str: "DENY CREATE ANY DATABASE"})
+			// skip tokens: CREATE ANY DATABASE
+			for p.isIdentLike() || p.cur.Type == kwCREATE {
+				p.advance()
+			}
+
+		case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "FAILOVER"):
+			opts = append(opts, &nodes.String{Str: "FAILOVER"})
+			p.advance()
+
+		case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "FORCE_FAILOVER_ALLOW_DATA_LOSS"):
+			opts = append(opts, &nodes.String{Str: "FORCE_FAILOVER_ALLOW_DATA_LOSS"})
+			p.advance()
+
+		case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "OFFLINE"):
+			opts = append(opts, &nodes.String{Str: "OFFLINE"})
+			p.advance()
+
+		case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "RESTART"):
+			p.advance() // consume RESTART
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LISTENER") {
+				p.advance() // consume LISTENER
+				optStr := "RESTART LISTENER"
+				if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
+					optStr += "='" + p.cur.Str + "'"
+					p.advance()
+				}
+				opts = append(opts, &nodes.String{Str: optStr})
+			} else {
+				opts = append(opts, &nodes.String{Str: "RESTART"})
+			}
+
+		case p.cur.Type == kwON:
+			opts = append(opts, &nodes.String{Str: "ON"})
+			p.advance()
+
+		case p.cur.Type == ',':
+			p.advance() // skip commas
+
+		case p.isIdentLike() || p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST || p.cur.Type == tokICONST:
+			key := strings.ToUpper(p.cur.Str)
+			if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
+				key = "'" + p.cur.Str + "'"
+			}
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance() // consume '='
+				if p.isIdentLike() || p.cur.Type == tokSCONST || p.cur.Type == tokICONST || p.cur.Type == tokFCONST ||
+					p.cur.Type == kwON || p.cur.Type == kwOFF || p.cur.Type == kwNULL {
+					val := strings.ToUpper(p.cur.Str)
+					if p.cur.Type == tokSCONST {
+						val = "'" + p.cur.Str + "'"
+					}
+					p.advance()
+					opts = append(opts, &nodes.String{Str: key + "=" + val})
+				} else {
+					opts = append(opts, &nodes.String{Str: key + "="})
+				}
+			} else {
+				opts = append(opts, &nodes.String{Str: key})
+			}
+
+		default:
+			p.advance() // skip unexpected tokens
+		}
+	}
+
+	if len(opts) == 0 {
+		return nil
+	}
+	return &nodes.List{Items: opts}
+}

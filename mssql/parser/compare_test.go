@@ -5838,3 +5838,140 @@ func TestParseExternalLanguage(t *testing.T) {
 		})
 	}
 }
+
+// TestParseCreateAvailabilityGroup tests batch 66: CREATE AVAILABILITY GROUP.
+func TestParseCreateAvailabilityGroup(t *testing.T) {
+	tests := []string{
+		// Basic CREATE AVAILABILITY GROUP with minimal options
+		"CREATE AVAILABILITY GROUP MyAG WITH (CLUSTER_TYPE = WSFC) FOR DATABASE MyDB REPLICA ON 'server1' WITH (ENDPOINT_URL = 'TCP://server1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = AUTOMATIC)",
+		// CREATE with multiple databases
+		"CREATE AVAILABILITY GROUP MyAG FOR DATABASE db1, db2, db3 REPLICA ON 'server1' WITH (ENDPOINT_URL = 'TCP://server1:5022', AVAILABILITY_MODE = ASYNCHRONOUS_COMMIT, FAILOVER_MODE = MANUAL)",
+		// CREATE with multiple WITH options
+		"CREATE AVAILABILITY GROUP MyAG WITH (AUTOMATED_BACKUP_PREFERENCE = SECONDARY, FAILURE_CONDITION_LEVEL = 3, HEALTH_CHECK_TIMEOUT = 30000, DB_FAILOVER = ON) FOR DATABASE MyDB REPLICA ON 'server1' WITH (ENDPOINT_URL = 'TCP://server1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = AUTOMATIC)",
+		// CREATE with LISTENER
+		"CREATE AVAILABILITY GROUP MyAG FOR DATABASE MyDB REPLICA ON 'server1' WITH (ENDPOINT_URL = 'TCP://server1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = AUTOMATIC) LISTENER 'MyAGListener' (WITH IP ((N'10.120.19.155', N'255.255.254.0')), PORT = 1433)",
+		// CREATE with CLUSTER_TYPE = NONE (Linux)
+		"CREATE AVAILABILITY GROUP MyAG WITH (CLUSTER_TYPE = NONE) FOR DATABASE MyDB REPLICA ON 'server1' WITH (ENDPOINT_URL = 'TCP://server1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = EXTERNAL)",
+		// CREATE with DTC_SUPPORT
+		"CREATE AVAILABILITY GROUP MyAG WITH (DTC_SUPPORT = PER_DB) FOR DATABASE MyDB REPLICA ON 'server1' WITH (ENDPOINT_URL = 'TCP://server1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = AUTOMATIC)",
+		// CREATE with REQUIRED_SYNCHRONIZED_SECONDARIES_TO_COMMIT
+		"CREATE AVAILABILITY GROUP MyAG WITH (REQUIRED_SYNCHRONIZED_SECONDARIES_TO_COMMIT = 1) FOR DATABASE MyDB REPLICA ON 'server1' WITH (ENDPOINT_URL = 'TCP://server1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = AUTOMATIC)",
+		// CREATE with SEEDING_MODE, BACKUP_PRIORITY in replica
+		"CREATE AVAILABILITY GROUP MyAG FOR DATABASE MyDB REPLICA ON 'server1' WITH (ENDPOINT_URL = 'TCP://server1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = AUTOMATIC, SEEDING_MODE = AUTOMATIC, BACKUP_PRIORITY = 50)",
+		// CREATE with SECONDARY_ROLE and PRIMARY_ROLE
+		"CREATE AVAILABILITY GROUP MyAG FOR DATABASE MyDB REPLICA ON 'server1' WITH (ENDPOINT_URL = 'TCP://server1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = AUTOMATIC, SECONDARY_ROLE (ALLOW_CONNECTIONS = READ_ONLY), PRIMARY_ROLE (ALLOW_CONNECTIONS = ALL))",
+		// CREATE DISTRIBUTED
+		"CREATE AVAILABILITY GROUP MyDistAG WITH (DISTRIBUTED) AVAILABILITY GROUP ON 'AG1' WITH (LISTENER_URL = 'TCP://server1:5022', AVAILABILITY_MODE = ASYNCHRONOUS_COMMIT, FAILOVER_MODE = MANUAL, SEEDING_MODE = AUTOMATIC), 'AG2' WITH (LISTENER_URL = 'TCP://server2:5022', AVAILABILITY_MODE = ASYNCHRONOUS_COMMIT, FAILOVER_MODE = MANUAL, SEEDING_MODE = AUTOMATIC)",
+		// CREATE with CONFIGURATION_ONLY availability mode
+		"CREATE AVAILABILITY GROUP MyAG FOR DATABASE MyDB REPLICA ON 'server1' WITH (ENDPOINT_URL = 'TCP://server1:5022', AVAILABILITY_MODE = CONFIGURATION_ONLY, FAILOVER_MODE = MANUAL)",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			result := ParseAndCheck(t, sql)
+			if result.Len() != 1 {
+				t.Fatalf("Parse(%q): got %d statements, want 1", sql, result.Len())
+			}
+			stmt, ok := result.Items[0].(*ast.SecurityStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *SecurityStmt, got %T", sql, result.Items[0])
+			}
+			if stmt.Action != "CREATE" {
+				t.Errorf("Parse(%q): Action = %q, want CREATE", sql, stmt.Action)
+			}
+			if stmt.ObjectType != "AVAILABILITY GROUP" {
+				t.Errorf("Parse(%q): ObjectType = %q, want AVAILABILITY GROUP", sql, stmt.ObjectType)
+			}
+			checkLocation(t, sql, "SecurityStmt", stmt.Loc)
+		})
+	}
+}
+
+// TestParseAlterAvailabilityGroup tests batch 66: ALTER AVAILABILITY GROUP.
+func TestParseAlterAvailabilityGroup(t *testing.T) {
+	tests := []string{
+		// SET option
+		"ALTER AVAILABILITY GROUP MyAG SET (AUTOMATED_BACKUP_PREFERENCE = SECONDARY)",
+		// ADD DATABASE
+		"ALTER AVAILABILITY GROUP MyAG ADD DATABASE MyNewDB",
+		// REMOVE DATABASE
+		"ALTER AVAILABILITY GROUP MyAG REMOVE DATABASE MyOldDB",
+		// ADD REPLICA ON
+		"ALTER AVAILABILITY GROUP MyAG ADD REPLICA ON 'server2' WITH (ENDPOINT_URL = 'TCP://server2:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = AUTOMATIC)",
+		// MODIFY REPLICA ON
+		"ALTER AVAILABILITY GROUP MyAG MODIFY REPLICA ON 'server2' WITH (AVAILABILITY_MODE = ASYNCHRONOUS_COMMIT)",
+		// REMOVE REPLICA ON
+		"ALTER AVAILABILITY GROUP MyAG REMOVE REPLICA ON 'server2'",
+		// JOIN
+		"ALTER AVAILABILITY GROUP MyAG JOIN",
+		// JOIN AVAILABILITY GROUP ON (distributed)
+		"ALTER AVAILABILITY GROUP MyDistAG JOIN AVAILABILITY GROUP ON 'AG1' WITH (LISTENER_URL = 'TCP://server1:5022', AVAILABILITY_MODE = ASYNCHRONOUS_COMMIT, FAILOVER_MODE = MANUAL, SEEDING_MODE = AUTOMATIC), 'AG2' WITH (LISTENER_URL = 'TCP://server2:5022', AVAILABILITY_MODE = ASYNCHRONOUS_COMMIT, FAILOVER_MODE = MANUAL, SEEDING_MODE = AUTOMATIC)",
+		// GRANT CREATE ANY DATABASE
+		"ALTER AVAILABILITY GROUP MyAG GRANT CREATE ANY DATABASE",
+		// DENY CREATE ANY DATABASE
+		"ALTER AVAILABILITY GROUP MyAG DENY CREATE ANY DATABASE",
+		// FAILOVER
+		"ALTER AVAILABILITY GROUP MyAG FAILOVER",
+		// FORCE_FAILOVER_ALLOW_DATA_LOSS
+		"ALTER AVAILABILITY GROUP MyAG FORCE_FAILOVER_ALLOW_DATA_LOSS",
+		// ADD LISTENER
+		"ALTER AVAILABILITY GROUP MyAG ADD LISTENER 'MyAGListener' (WITH IP ((N'10.120.19.155', N'255.255.254.0')), PORT = 1433)",
+		// MODIFY LISTENER
+		"ALTER AVAILABILITY GROUP MyAG MODIFY LISTENER 'MyAGListener' (ADD IP (N'10.120.19.200', N'255.255.254.0'))",
+		// RESTART LISTENER
+		"ALTER AVAILABILITY GROUP MyAG RESTART LISTENER 'MyAGListener'",
+		// REMOVE LISTENER
+		"ALTER AVAILABILITY GROUP MyAG REMOVE LISTENER 'MyAGListener'",
+		// OFFLINE
+		"ALTER AVAILABILITY GROUP MyAG OFFLINE",
+		// SET multiple options
+		"ALTER AVAILABILITY GROUP MyAG SET (DB_FAILOVER = ON, FAILURE_CONDITION_LEVEL = 4, HEALTH_CHECK_TIMEOUT = 60000)",
+		// MODIFY AVAILABILITY GROUP ON (distributed)
+		"ALTER AVAILABILITY GROUP MyDistAG MODIFY AVAILABILITY GROUP ON 'AG1' WITH (LISTENER_URL = 'TCP://server1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT)",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			result := ParseAndCheck(t, sql)
+			if result.Len() != 1 {
+				t.Fatalf("Parse(%q): got %d statements, want 1", sql, result.Len())
+			}
+			stmt, ok := result.Items[0].(*ast.SecurityStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *SecurityStmt, got %T", sql, result.Items[0])
+			}
+			if stmt.Action != "ALTER" {
+				t.Errorf("Parse(%q): Action = %q, want ALTER", sql, stmt.Action)
+			}
+			if stmt.ObjectType != "AVAILABILITY GROUP" {
+				t.Errorf("Parse(%q): ObjectType = %q, want AVAILABILITY GROUP", sql, stmt.ObjectType)
+			}
+			checkLocation(t, sql, "SecurityStmt", stmt.Loc)
+		})
+	}
+}
+
+// TestParseDropAvailabilityGroup tests batch 66: DROP AVAILABILITY GROUP.
+func TestParseDropAvailabilityGroup(t *testing.T) {
+	tests := []string{
+		"DROP AVAILABILITY GROUP MyAG",
+		"DROP AVAILABILITY GROUP [MyAG]",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			result := ParseAndCheck(t, sql)
+			if result.Len() != 1 {
+				t.Fatalf("Parse(%q): got %d statements, want 1", sql, result.Len())
+			}
+			stmt, ok := result.Items[0].(*ast.SecurityStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *SecurityStmt, got %T", sql, result.Items[0])
+			}
+			if stmt.Action != "DROP" {
+				t.Errorf("Parse(%q): Action = %q, want DROP", sql, stmt.Action)
+			}
+			if stmt.ObjectType != "AVAILABILITY GROUP" {
+				t.Errorf("Parse(%q): ObjectType = %q, want AVAILABILITY GROUP", sql, stmt.ObjectType)
+			}
+			checkLocation(t, sql, "SecurityStmt", stmt.Loc)
+		})
+	}
+}

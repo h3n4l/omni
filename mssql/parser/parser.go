@@ -747,6 +747,16 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 			}
 			return nil
 		}
+		// CREATE AVAILABILITY GROUP
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AVAILABILITY") {
+			p.advance() // consume AVAILABILITY
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "GROUP") {
+				p.advance() // consume GROUP
+			}
+			stmt := p.parseCreateAvailabilityGroupStmt()
+			stmt.Loc.Start = loc
+			return stmt
+		}
 		// CREATE BROKER PRIORITY (service broker)
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "BROKER") {
 			p.advance() // consume BROKER
@@ -1163,6 +1173,16 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 			}
 			return nil
 		}
+		// ALTER AVAILABILITY GROUP
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AVAILABILITY") {
+			p.advance() // consume AVAILABILITY
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "GROUP") {
+				p.advance() // consume GROUP
+			}
+			stmt := p.parseAlterAvailabilityGroupStmt()
+			stmt.Loc.Start = loc
+			return stmt
+		}
 		// ALTER WORKLOAD GROUP
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "WORKLOAD") {
 			p.advance() // consume WORKLOAD
@@ -1395,6 +1415,17 @@ func (p *Parser) parseDropOrSecurityStmt() nodes.StmtNode {
 			p.advance() // consume DROP
 			p.advance() // consume EXTERNAL
 			stmt := p.parseDropExternalStmt()
+			stmt.Loc.Start = loc
+			return stmt
+		}
+		// DROP AVAILABILITY GROUP
+		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "AVAILABILITY") {
+			p.advance() // consume DROP
+			p.advance() // consume AVAILABILITY
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "GROUP") {
+				p.advance() // consume GROUP
+			}
+			stmt := p.parseDropAvailabilityGroupStmt()
 			stmt.Loc.Start = loc
 			return stmt
 		}
