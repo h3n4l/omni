@@ -75,8 +75,16 @@ func (p *Parser) parseCreateTableStmt() *nodes.CreateTableStmt {
 			}
 		}
 
-		// Check if this is a table-level constraint
-		if p.cur.Type == kwCONSTRAINT || p.cur.Type == kwPRIMARY ||
+		// Check for inline INDEX definition
+		if p.cur.Type == kwINDEX {
+			idx := p.parseInlineTableIndex()
+			if idx != nil {
+				if stmt.Indexes == nil {
+					stmt.Indexes = &nodes.List{}
+				}
+				stmt.Indexes.Items = append(stmt.Indexes.Items, idx)
+			}
+		} else if p.cur.Type == kwCONSTRAINT || p.cur.Type == kwPRIMARY ||
 			p.cur.Type == kwUNIQUE || p.cur.Type == kwCHECK ||
 			p.cur.Type == kwFOREIGN {
 			constraint := p.parseTableConstraint()
@@ -820,6 +828,74 @@ func (p *Parser) parseRefAction() nodes.ReferentialAction {
 		return nodes.RefActNoAction
 	}
 	return nodes.RefActNone
+}
+
+// parseInlineTableIndex parses an inline INDEX definition inside a CREATE TABLE body.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-table-transact-sql
+//
+//	INDEX index_name [ UNIQUE ] [ CLUSTERED | NONCLUSTERED ]
+//	    ( column_name [ ASC | DESC ] [ ,...n ] )
+//	    [ INCLUDE ( column_name [ ,...n ] ) ]
+//	    [ WHERE <filter_predicate> ]
+//	    [ WITH ( <index_option> [ ,...n ] ) ]
+func (p *Parser) parseInlineTableIndex() *nodes.InlineIndexDef {
+	loc := p.pos()
+	p.advance() // consume INDEX
+
+	idx := &nodes.InlineIndexDef{
+		Loc: nodes.Loc{Start: loc},
+	}
+
+	// index_name
+	name, _ := p.parseIdentifier()
+	idx.Name = name
+
+	// [ UNIQUE ]
+	if p.cur.Type == kwUNIQUE {
+		idx.Unique = true
+		p.advance()
+	}
+
+	// [ CLUSTERED | NONCLUSTERED ]
+	if p.cur.Type == kwCLUSTERED {
+		v := true
+		idx.Clustered = &v
+		p.advance()
+	} else if p.cur.Type == kwNONCLUSTERED {
+		v := false
+		idx.Clustered = &v
+		p.advance()
+	}
+
+	// ( column_name [ ASC | DESC ] [ ,...n ] )
+	if p.cur.Type == '(' {
+		idx.Columns = p.parseIndexColumnList()
+	}
+
+	// [ INCLUDE ( column_name [ ,...n ] ) ]
+	if p.cur.Type == kwINCLUDE {
+		p.advance()
+		if p.cur.Type == '(' {
+			idx.IncludeCols = p.parseParenIdentList()
+		}
+	}
+
+	// [ WHERE <filter_predicate> ]
+	if _, ok := p.match(kwWHERE); ok {
+		idx.WhereClause = p.parseExpr()
+	}
+
+	// [ WITH ( <index_option> [ ,...n ] ) ]
+	if p.cur.Type == kwWITH {
+		p.advance()
+		if p.cur.Type == '(' {
+			idx.Options = p.parseOptionList()
+		}
+	}
+
+	idx.Loc.End = p.pos()
+	return idx
 }
 
 // parseParenIdentList parses (ident, ident, ...).

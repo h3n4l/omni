@@ -9034,3 +9034,109 @@ func TestParseAtTimeZone(t *testing.T) {
 		ParseAndCheck(t, sql)
 	})
 }
+
+// TestParseCreateTableInlineIndex tests inline INDEX definitions in CREATE TABLE (batch 86).
+func TestParseCreateTableInlineIndex(t *testing.T) {
+	// Basic inline index
+	t.Run("create_table_inline_index", func(t *testing.T) {
+		sql := `CREATE TABLE t1 (
+			id INT NOT NULL,
+			name NVARCHAR(100),
+			INDEX IX_name NONCLUSTERED (name)
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		if stmt.Indexes == nil || stmt.Indexes.Len() != 1 {
+			t.Fatalf("expected 1 inline index, got %v", stmt.Indexes)
+		}
+		idx := stmt.Indexes.Items[0].(*ast.InlineIndexDef)
+		if idx.Name != "IX_name" {
+			t.Errorf("expected index name IX_name, got %q", idx.Name)
+		}
+		if idx.Clustered == nil || *idx.Clustered != false {
+			t.Error("expected NONCLUSTERED")
+		}
+	})
+
+	// Inline index with INCLUDE
+	t.Run("create_table_inline_index_include", func(t *testing.T) {
+		sql := `CREATE TABLE t2 (
+			id INT PRIMARY KEY,
+			col1 INT,
+			col2 VARCHAR(50),
+			INDEX IX_col1 NONCLUSTERED (col1) INCLUDE (col2)
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		if stmt.Indexes == nil || stmt.Indexes.Len() != 1 {
+			t.Fatalf("expected 1 inline index")
+		}
+		idx := stmt.Indexes.Items[0].(*ast.InlineIndexDef)
+		if idx.IncludeCols == nil || idx.IncludeCols.Len() != 1 {
+			t.Fatalf("expected 1 include column")
+		}
+	})
+
+	// Unique clustered inline index
+	t.Run("create_table_inline_unique_clustered", func(t *testing.T) {
+		sql := `CREATE TABLE t3 (
+			id INT,
+			INDEX IX_id UNIQUE CLUSTERED (id ASC)
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		idx := stmt.Indexes.Items[0].(*ast.InlineIndexDef)
+		if !idx.Unique {
+			t.Error("expected UNIQUE")
+		}
+		if idx.Clustered == nil || *idx.Clustered != true {
+			t.Error("expected CLUSTERED")
+		}
+	})
+
+	// Inline index with WHERE (filtered)
+	t.Run("create_table_inline_index_filtered", func(t *testing.T) {
+		sql := `CREATE TABLE t4 (
+			id INT,
+			status INT,
+			INDEX IX_active NONCLUSTERED (status) WHERE status = 1
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		idx := stmt.Indexes.Items[0].(*ast.InlineIndexDef)
+		if idx.WhereClause == nil {
+			t.Error("expected WHERE clause on filtered index")
+		}
+	})
+
+	// Inline index with WITH options
+	t.Run("create_table_inline_index_with_options", func(t *testing.T) {
+		sql := `CREATE TABLE t5 (
+			id INT,
+			name VARCHAR(100),
+			INDEX IX_name NONCLUSTERED (name) WITH (FILLFACTOR = 80)
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		idx := stmt.Indexes.Items[0].(*ast.InlineIndexDef)
+		if idx.Options == nil || idx.Options.Len() != 1 {
+			t.Fatalf("expected 1 index option, got %v", idx.Options)
+		}
+	})
+
+	// Multiple inline indexes
+	t.Run("create_table_multiple_inline_indexes", func(t *testing.T) {
+		sql := `CREATE TABLE t6 (
+			id INT,
+			col1 INT,
+			col2 INT,
+			INDEX IX_col1 (col1 DESC),
+			INDEX IX_col2 (col2 ASC)
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		if stmt.Indexes == nil || stmt.Indexes.Len() != 2 {
+			t.Fatalf("expected 2 inline indexes, got %d", stmt.Indexes.Len())
+		}
+	})
+}

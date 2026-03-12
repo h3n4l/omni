@@ -2001,7 +2001,7 @@
       "id": 86,
       "name": "create_table_inline_index",
       "file": "create_table.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 8 gap: parse inline INDEX definitions in CREATE TABLE body. BNF: INDEX index_name [UNIQUE] [CLUSTERED|NONCLUSTERED] (column [ASC|DESC] [,...n]) [INCLUDE (...)] [WHERE ...] [WITH (...)]. Currently only CONSTRAINT, PRIMARY, UNIQUE, CHECK, FOREIGN are parsed as table-level elements.",
       "rules": [
         "parseInlineTableIndex"

@@ -268,6 +268,9 @@ type CreateTableStmt struct {
 	TextImageOn        string
 	FilestreamOn       string
 
+	// Inline indexes (INDEX ... inside CREATE TABLE body)
+	Indexes *List // list of *InlineIndexDef
+
 	// WITH table options
 	TableOptions *List // list of *TableOption
 
@@ -276,6 +279,28 @@ type CreateTableStmt struct {
 
 func (n *CreateTableStmt) nodeTag()  {}
 func (n *CreateTableStmt) stmtNode() {}
+
+// InlineIndexDef represents an inline INDEX definition inside a CREATE TABLE body.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-table-transact-sql
+//
+//	INDEX index_name [ UNIQUE ] [ CLUSTERED | NONCLUSTERED ]
+//	    ( column_name [ ASC | DESC ] [ ,...n ] )
+//	    [ INCLUDE ( column_name [ ,...n ] ) ]
+//	    [ WHERE <filter_predicate> ]
+//	    [ WITH ( <index_option> [ ,...n ] ) ]
+type InlineIndexDef struct {
+	Name        string
+	Unique      bool
+	Clustered   *bool    // true=CLUSTERED, false=NONCLUSTERED, nil=unspecified
+	Columns     *List    // list of *IndexColumn
+	IncludeCols *List    // INCLUDE columns
+	WhereClause ExprNode // filtered index
+	Options     *List    // WITH options
+	Loc         Loc
+}
+
+func (n *InlineIndexDef) nodeTag() {}
 
 // ColumnDef represents a column definition in CREATE TABLE.
 type ColumnDef struct {

@@ -508,7 +508,7 @@ func (p *Parser) parsePrimary() nodes.ExprNode {
 		// Many keywords can also be used as identifiers or function names in T-SQL.
 		if p.isIdentLike() {
 			next := p.peekNext()
-			if next.Type == '(' || next.Type == '.' {
+			if next.Type == '(' || next.Type == '.' || next.Type == '=' {
 				return p.parseIdentExpr()
 			}
 		}

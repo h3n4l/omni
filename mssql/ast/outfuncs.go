@@ -50,6 +50,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeMergeStmt(sb, n)
 	case *CreateTableStmt:
 		writeCreateTableStmt(sb, n)
+	case *InlineIndexDef:
+		writeInlineIndexDef(sb, n)
 	case *AlterTableStmt:
 		writeAlterTableStmt(sb, n)
 	case *DropStmt:
@@ -628,9 +630,44 @@ func writeCreateTableStmt(sb *strings.Builder, n *CreateTableStmt) {
 	if n.FilestreamOn != "" {
 		sb.WriteString(fmt.Sprintf(" :filestreamOn \"%s\"", escapeString(n.FilestreamOn)))
 	}
+	if n.Indexes != nil {
+		sb.WriteString(" :indexes ")
+		writeNode(sb, n.Indexes)
+	}
 	if n.TableOptions != nil {
 		sb.WriteString(" :tableOptions ")
 		writeNode(sb, n.TableOptions)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeInlineIndexDef(sb *strings.Builder, n *InlineIndexDef) {
+	sb.WriteString("{INLINE_INDEX")
+	if n.Name != "" {
+		sb.WriteString(fmt.Sprintf(" :name \"%s\"", escapeString(n.Name)))
+	}
+	if n.Unique {
+		sb.WriteString(" :unique true")
+	}
+	if n.Clustered != nil {
+		sb.WriteString(fmt.Sprintf(" :clustered %t", *n.Clustered))
+	}
+	if n.Columns != nil {
+		sb.WriteString(" :columns ")
+		writeNode(sb, n.Columns)
+	}
+	if n.IncludeCols != nil {
+		sb.WriteString(" :include ")
+		writeNode(sb, n.IncludeCols)
+	}
+	if n.WhereClause != nil {
+		sb.WriteString(" :where ")
+		writeNode(sb, n.WhereClause)
+	}
+	if n.Options != nil {
+		sb.WriteString(" :options ")
+		writeNode(sb, n.Options)
 	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
