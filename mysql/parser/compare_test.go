@@ -4373,6 +4373,101 @@ func TestParseDeleteWithCTE(t *testing.T) {
 	}
 }
 
+// -----------------------------------------------------------------------
+// Batch 23: Window OVER clause
+// -----------------------------------------------------------------------
+
+func TestParseWindowRowNumber(t *testing.T) {
+	tests := []string{
+		"SELECT ROW_NUMBER() OVER () FROM t",
+		"SELECT ROW_NUMBER() OVER (ORDER BY id) FROM t",
+		"SELECT ROW_NUMBER() OVER (PARTITION BY dept ORDER BY id) FROM t",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseWindowRank(t *testing.T) {
+	tests := []string{
+		"SELECT RANK() OVER (ORDER BY score DESC) FROM t",
+		"SELECT DENSE_RANK() OVER (PARTITION BY dept ORDER BY score DESC) FROM t",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseWindowFrameRows(t *testing.T) {
+	tests := []string{
+		"SELECT SUM(x) OVER (ORDER BY id ROWS UNBOUNDED PRECEDING) FROM t",
+		"SELECT SUM(x) OVER (ORDER BY id ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) FROM t",
+		"SELECT SUM(x) OVER (ORDER BY id ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) FROM t",
+		"SELECT SUM(x) OVER (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM t",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseWindowFrameRange(t *testing.T) {
+	tests := []string{
+		"SELECT SUM(x) OVER (ORDER BY id RANGE UNBOUNDED PRECEDING) FROM t",
+		"SELECT SUM(x) OVER (ORDER BY id RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM t",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseWindowFrameGroups(t *testing.T) {
+	tests := []string{
+		"SELECT SUM(x) OVER (ORDER BY id GROUPS BETWEEN 1 PRECEDING AND 1 FOLLOWING) FROM t",
+		"SELECT SUM(x) OVER (ORDER BY id GROUPS CURRENT ROW) FROM t",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseWindowPartitionOrderBy(t *testing.T) {
+	tests := []string{
+		"SELECT COUNT(*) OVER (PARTITION BY dept) FROM t",
+		"SELECT AVG(salary) OVER (PARTITION BY dept ORDER BY hire_date) FROM t",
+		"SELECT SUM(x) OVER (PARTITION BY a, b ORDER BY c ASC, d DESC) FROM t",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseNamedWindow(t *testing.T) {
+	tests := []string{
+		"SELECT SUM(x) OVER w FROM t WINDOW w AS (ORDER BY id)",
+		"SELECT SUM(x) OVER w, AVG(x) OVER w FROM t WINDOW w AS (PARTITION BY dept ORDER BY id)",
+		"SELECT SUM(x) OVER w1, AVG(x) OVER w2 FROM t WINDOW w1 AS (ORDER BY id), w2 AS (ORDER BY name)",
+		// OVER referencing a named window by name
+		"SELECT SUM(x) OVER w FROM t WINDOW w AS (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
 func TestParseStmtDispatchAlterVariants(t *testing.T) {
 	tests := []string{
 		"ALTER TABLE t ADD COLUMN c INT",

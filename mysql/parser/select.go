@@ -237,6 +237,16 @@ func (p *Parser) parseSelectStmt() (*nodes.SelectStmt, error) {
 		stmt.Having = having
 	}
 
+	// WINDOW clause: WINDOW window_name AS (window_spec) [, ...]
+	if p.cur.Type == kwWINDOW {
+		p.advance()
+		defs, err := p.parseNamedWindowList()
+		if err != nil {
+			return nil, err
+		}
+		stmt.WindowClause = defs
+	}
+
 	// ORDER BY clause
 	if p.cur.Type == kwORDER {
 		p.advance()
@@ -755,6 +765,81 @@ func tableExprLoc(te nodes.TableExpr) int {
 		return t.Loc.Start
 	}
 	return 0
+}
+
+// parseNamedWindowList parses WINDOW window_name AS (window_spec) [, ...].
+//
+// Ref: https://dev.mysql.com/doc/refman/8.0/en/window-functions-named-windows.html
+//
+//	window_clause:
+//	    WINDOW window_name AS (window_spec) [, window_name AS (window_spec)] ...
+func (p *Parser) parseNamedWindowList() ([]*nodes.WindowDef, error) {
+	var defs []*nodes.WindowDef
+	for {
+		start := p.pos()
+		name, _, err := p.parseIdentifier()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(kwAS); err != nil {
+			return nil, err
+		}
+		if _, err := p.expect('('); err != nil {
+			return nil, err
+		}
+
+		wd := &nodes.WindowDef{Loc: nodes.Loc{Start: start}, Name: name}
+
+		// Optional reference to existing window
+		if p.isIdentToken() && p.cur.Type != kwPARTITION && p.cur.Type != kwORDER &&
+			p.cur.Type != kwROWS && p.cur.Type != kwRANGE && p.cur.Type != kwGROUPS {
+			wd.RefName, _, _ = p.parseIdentifier()
+		}
+
+		if p.cur.Type == kwPARTITION {
+			p.advance()
+			if _, err := p.expect(kwBY); err != nil {
+				return nil, err
+			}
+			exprs, err := p.parseExprList()
+			if err != nil {
+				return nil, err
+			}
+			wd.PartitionBy = exprs
+		}
+
+		if p.cur.Type == kwORDER {
+			p.advance()
+			if _, err := p.expect(kwBY); err != nil {
+				return nil, err
+			}
+			orderBy, err := p.parseOrderByList()
+			if err != nil {
+				return nil, err
+			}
+			wd.OrderBy = orderBy
+		}
+
+		if p.cur.Type == kwROWS || p.cur.Type == kwRANGE || p.cur.Type == kwGROUPS {
+			frame, err := p.parseFrameClause()
+			if err != nil {
+				return nil, err
+			}
+			wd.Frame = frame
+		}
+
+		if _, err := p.expect(')'); err != nil {
+			return nil, err
+		}
+		wd.Loc.End = p.pos()
+		defs = append(defs, wd)
+
+		if p.cur.Type != ',' {
+			break
+		}
+		p.advance()
+	}
+	return defs, nil
 }
 
 // parseSubqueryExpr parses a subquery expression: (SELECT ...)

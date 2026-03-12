@@ -434,8 +434,7 @@ func (p *Parser) parseFuncCall(start int, schema, name string) (nodes.ExprNode, 
 		if _, err := p.expect(')'); err != nil {
 			return nil, err
 		}
-		fc.Loc.End = p.pos()
-		return fc, nil
+		goto overCheck
 	}
 
 	// Aggregate with DISTINCT: COUNT(DISTINCT ...), SUM(DISTINCT ...), etc.
@@ -462,8 +461,7 @@ func (p *Parser) parseFuncCall(start int, schema, name string) (nodes.ExprNode, 
 	// Empty argument list
 	if p.cur.Type == ')' {
 		p.advance()
-		fc.Loc.End = p.pos()
-		return fc, nil
+		goto overCheck
 	}
 
 	// Regular argument list
@@ -483,10 +481,50 @@ func (p *Parser) parseFuncCall(start int, schema, name string) (nodes.ExprNode, 
 		return nil, err
 	}
 
+overCheck:
+
 	// OVER clause for window functions
+	//
+	// Ref: https://dev.mysql.com/doc/refman/8.0/en/window-functions-usage.html
+	//
+	//   over_clause:
+	//       {OVER (window_spec) | OVER window_name}
+	//
+	//   window_spec:
+	//       [window_name] [partition_clause] [order_clause] [frame_clause]
+	//
+	//   partition_clause:
+	//       PARTITION BY expr [, expr] ...
+	//
+	//   order_clause:
+	//       ORDER BY expr [ASC|DESC] [, expr [ASC|DESC]] ...
+	//
+	//   frame_clause:
+	//       frame_units frame_extent
+	//
+	//   frame_units:
+	//       {ROWS | RANGE | GROUPS}
+	//
+	//   frame_extent:
+	//       {frame_start | frame_between}
+	//
+	//   frame_between:
+	//       BETWEEN frame_start AND frame_end
+	//
+	//   frame_start, frame_end: {
+	//       CURRENT ROW
+	//     | UNBOUNDED PRECEDING
+	//     | UNBOUNDED FOLLOWING
+	//     | expr PRECEDING
+	//     | expr FOLLOWING
+	//   }
 	if p.cur.Type == kwOVER {
 		p.advance()
-		// TODO: parse window definition in batch 4
+		wd, err := p.parseOverClause()
+		if err != nil {
+			return nil, err
+		}
+		fc.Over = wd
 	}
 
 	fc.Loc.End = p.pos()
@@ -494,6 +532,163 @@ func (p *Parser) parseFuncCall(start int, schema, name string) (nodes.ExprNode, 
 }
 
 // parseTrimFunc parses TRIM([LEADING|TRAILING|BOTH] [remstr FROM] str).
+// parseOverClause parses OVER (window_spec) or OVER window_name.
+func (p *Parser) parseOverClause() (*nodes.WindowDef, error) {
+	start := p.pos()
+
+	// OVER window_name (identifier reference)
+	if p.cur.Type != '(' {
+		name, _, err := p.parseIdentifier()
+		if err != nil {
+			return nil, err
+		}
+		return &nodes.WindowDef{
+			Loc:     nodes.Loc{Start: start, End: p.pos()},
+			RefName: name,
+		}, nil
+	}
+
+	// OVER (window_spec)
+	p.advance() // consume '('
+
+	wd := &nodes.WindowDef{Loc: nodes.Loc{Start: start}}
+
+	// Optional window_name reference
+	if p.isIdentToken() && p.cur.Type != kwPARTITION && p.cur.Type != kwORDER &&
+		p.cur.Type != kwROWS && p.cur.Type != kwRANGE && p.cur.Type != kwGROUPS {
+		wd.RefName, _, _ = p.parseIdentifier()
+	}
+
+	// PARTITION BY
+	if p.cur.Type == kwPARTITION {
+		p.advance()
+		if _, err := p.expect(kwBY); err != nil {
+			return nil, err
+		}
+		exprs, err := p.parseExprList()
+		if err != nil {
+			return nil, err
+		}
+		wd.PartitionBy = exprs
+	}
+
+	// ORDER BY
+	if p.cur.Type == kwORDER {
+		p.advance()
+		if _, err := p.expect(kwBY); err != nil {
+			return nil, err
+		}
+		orderBy, err := p.parseOrderByList()
+		if err != nil {
+			return nil, err
+		}
+		wd.OrderBy = orderBy
+	}
+
+	// frame_clause: {ROWS | RANGE | GROUPS} frame_extent
+	if p.cur.Type == kwROWS || p.cur.Type == kwRANGE || p.cur.Type == kwGROUPS {
+		frame, err := p.parseFrameClause()
+		if err != nil {
+			return nil, err
+		}
+		wd.Frame = frame
+	}
+
+	if _, err := p.expect(')'); err != nil {
+		return nil, err
+	}
+
+	wd.Loc.End = p.pos()
+	return wd, nil
+}
+
+// parseFrameClause parses a window frame clause.
+func (p *Parser) parseFrameClause() (*nodes.WindowFrame, error) {
+	start := p.pos()
+	frame := &nodes.WindowFrame{Loc: nodes.Loc{Start: start}}
+
+	switch p.cur.Type {
+	case kwROWS:
+		frame.Type = nodes.FrameRows
+	case kwRANGE:
+		frame.Type = nodes.FrameRange
+	case kwGROUPS:
+		frame.Type = nodes.FrameGroups
+	}
+	p.advance()
+
+	// frame_extent: frame_start | BETWEEN frame_start AND frame_end
+	if _, ok := p.match(kwBETWEEN); ok {
+		startBound, err := p.parseFrameBound()
+		if err != nil {
+			return nil, err
+		}
+		frame.Start = startBound
+		if _, err := p.expect(kwAND); err != nil {
+			return nil, err
+		}
+		endBound, err := p.parseFrameBound()
+		if err != nil {
+			return nil, err
+		}
+		frame.End = endBound
+	} else {
+		// Single frame_start
+		startBound, err := p.parseFrameBound()
+		if err != nil {
+			return nil, err
+		}
+		frame.Start = startBound
+	}
+
+	frame.Loc.End = p.pos()
+	return frame, nil
+}
+
+// parseFrameBound parses a window frame bound.
+func (p *Parser) parseFrameBound() (*nodes.WindowFrameBound, error) {
+	start := p.pos()
+	bound := &nodes.WindowFrameBound{Loc: nodes.Loc{Start: start}}
+
+	if p.cur.Type == kwCURRENT {
+		p.advance()
+		p.match(kwROW)
+		bound.Type = nodes.BoundCurrentRow
+	} else if p.cur.Type == kwUNBOUNDED {
+		p.advance()
+		if _, ok := p.match(kwPRECEDING); ok {
+			bound.Type = nodes.BoundUnboundedPreceding
+		} else if _, ok := p.match(kwFOLLOWING); ok {
+			bound.Type = nodes.BoundUnboundedFollowing
+		} else {
+			return nil, &ParseError{
+				Message:  "expected PRECEDING or FOLLOWING after UNBOUNDED",
+				Position: p.cur.Loc,
+			}
+		}
+	} else {
+		// expr PRECEDING | expr FOLLOWING
+		expr, err := p.parseExpr()
+		if err != nil {
+			return nil, err
+		}
+		bound.Offset = expr
+		if _, ok := p.match(kwPRECEDING); ok {
+			bound.Type = nodes.BoundPreceding
+		} else if _, ok := p.match(kwFOLLOWING); ok {
+			bound.Type = nodes.BoundFollowing
+		} else {
+			return nil, &ParseError{
+				Message:  "expected PRECEDING or FOLLOWING",
+				Position: p.cur.Loc,
+			}
+		}
+	}
+
+	bound.Loc.End = p.pos()
+	return bound, nil
+}
+
 func (p *Parser) parseTrimFunc(fc *nodes.FuncCallExpr) (nodes.ExprNode, error) {
 	// Check for LEADING, TRAILING, BOTH
 	switch p.cur.Type {

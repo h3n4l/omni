@@ -321,7 +321,7 @@
       "id": 23,
       "name": "window_over",
       "file": "expr.go",
-      "status": "pending",
+      "status": "done",
       "description": "Complete OVER clause for window functions. Currently has TODO in parseFuncCall. Implement named/inline window specs, frame clauses (ROWS/RANGE/GROUPS BETWEEN).",
       "rules": [
         "over_clause", "window_spec", "window_name_or_spec",
