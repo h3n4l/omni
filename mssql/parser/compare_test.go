@@ -4993,3 +4993,265 @@ ALTER RESOURCE GOVERNOR RECONFIGURE`
 		}
 	}
 }
+
+// TestParseServerLevelObjects tests batch 60: CREATE/ALTER/DROP SERVER ROLE,
+// ALTER SERVER CONFIGURATION, ALTER/BACKUP/RESTORE SERVICE MASTER KEY.
+func TestParseServerLevelObjects(t *testing.T) {
+	t.Run("server_role", func(t *testing.T) {
+		tests := []struct {
+			sql        string
+			action     string
+			objectType string
+			name       string
+		}{
+			// CREATE SERVER ROLE - basic
+			{
+				sql:        "CREATE SERVER ROLE auditors",
+				action:     "CREATE",
+				objectType: "SERVER ROLE",
+				name:       "auditors",
+			},
+			// CREATE SERVER ROLE - with AUTHORIZATION
+			{
+				sql:        "CREATE SERVER ROLE auditors AUTHORIZATION securityadmin",
+				action:     "CREATE",
+				objectType: "SERVER ROLE",
+				name:       "auditors",
+			},
+			// ALTER SERVER ROLE - ADD MEMBER
+			{
+				sql:        "ALTER SERVER ROLE sysadmin ADD MEMBER [MyDomain\\TestUser]",
+				action:     "ALTER",
+				objectType: "SERVER ROLE",
+				name:       "sysadmin",
+			},
+			// ALTER SERVER ROLE - DROP MEMBER
+			{
+				sql:        "ALTER SERVER ROLE diskadmin DROP MEMBER TestLogin",
+				action:     "ALTER",
+				objectType: "SERVER ROLE",
+				name:       "diskadmin",
+			},
+			// ALTER SERVER ROLE - WITH NAME
+			{
+				sql:        "ALTER SERVER ROLE buyers WITH NAME = purchasing",
+				action:     "ALTER",
+				objectType: "SERVER ROLE",
+				name:       "buyers",
+			},
+			// DROP SERVER ROLE
+			{
+				sql:        "DROP SERVER ROLE purchasing",
+				action:     "DROP",
+				objectType: "SERVER ROLE",
+				name:       "purchasing",
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.sql, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.SecurityStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected *SecurityStmt, got %T", tt.sql, result.Items[0])
+				}
+				if stmt.Action != tt.action {
+					t.Errorf("Parse(%q): action = %q, want %q", tt.sql, stmt.Action, tt.action)
+				}
+				if stmt.ObjectType != tt.objectType {
+					t.Errorf("Parse(%q): objectType = %q, want %q", tt.sql, stmt.ObjectType, tt.objectType)
+				}
+				if stmt.Name != tt.name {
+					t.Errorf("Parse(%q): name = %q, want %q", tt.sql, stmt.Name, tt.name)
+				}
+				checkLocation(t, tt.sql, "SecurityStmt", stmt.Loc)
+			})
+		}
+	})
+
+	t.Run("alter_server_configuration", func(t *testing.T) {
+		tests := []struct {
+			sql        string
+			optionType string
+		}{
+			// PROCESS AFFINITY CPU
+			{
+				sql:        "ALTER SERVER CONFIGURATION SET PROCESS AFFINITY CPU = AUTO",
+				optionType: "PROCESS AFFINITY",
+			},
+			// PROCESS AFFINITY CPU range
+			{
+				sql:        "ALTER SERVER CONFIGURATION SET PROCESS AFFINITY CPU = 0 TO 3, 8 TO 11",
+				optionType: "PROCESS AFFINITY",
+			},
+			// PROCESS AFFINITY NUMANODE
+			{
+				sql:        "ALTER SERVER CONFIGURATION SET PROCESS AFFINITY NUMANODE = 0 TO 1",
+				optionType: "PROCESS AFFINITY",
+			},
+			// DIAGNOSTICS LOG ON
+			{
+				sql:        "ALTER SERVER CONFIGURATION SET DIAGNOSTICS LOG ON",
+				optionType: "DIAGNOSTICS LOG",
+			},
+			// DIAGNOSTICS LOG OFF
+			{
+				sql:        "ALTER SERVER CONFIGURATION SET DIAGNOSTICS LOG OFF",
+				optionType: "DIAGNOSTICS LOG",
+			},
+			// DIAGNOSTICS LOG PATH
+			{
+				sql:        `ALTER SERVER CONFIGURATION SET DIAGNOSTICS LOG PATH = 'C:\MSSSQL\Logs'`,
+				optionType: "DIAGNOSTICS LOG",
+			},
+			// DIAGNOSTICS LOG MAX_SIZE
+			{
+				sql:        "ALTER SERVER CONFIGURATION SET DIAGNOSTICS LOG MAX_SIZE = 20 MB",
+				optionType: "DIAGNOSTICS LOG",
+			},
+			// FAILOVER CLUSTER PROPERTY
+			{
+				sql:        "ALTER SERVER CONFIGURATION SET FAILOVER CLUSTER PROPERTY VerboseLogging = 2",
+				optionType: "FAILOVER CLUSTER PROPERTY",
+			},
+			// HADR CLUSTER CONTEXT
+			{
+				sql:        `ALTER SERVER CONFIGURATION SET HADR CLUSTER CONTEXT = 'clus01.xyz.com'`,
+				optionType: "HADR CLUSTER CONTEXT",
+			},
+			// HADR CLUSTER CONTEXT LOCAL
+			{
+				sql:        "ALTER SERVER CONFIGURATION SET HADR CLUSTER CONTEXT = LOCAL",
+				optionType: "HADR CLUSTER CONTEXT",
+			},
+			// BUFFER POOL EXTENSION ON
+			{
+				sql:        `ALTER SERVER CONFIGURATION SET BUFFER POOL EXTENSION ON (FILENAME = 'F:\SSDCACHE\Example.BPE', SIZE = 50 GB)`,
+				optionType: "BUFFER POOL EXTENSION",
+			},
+			// BUFFER POOL EXTENSION OFF
+			{
+				sql:        "ALTER SERVER CONFIGURATION SET BUFFER POOL EXTENSION OFF",
+				optionType: "BUFFER POOL EXTENSION",
+			},
+			// SOFTNUMA ON
+			{
+				sql:        "ALTER SERVER CONFIGURATION SET SOFTNUMA ON",
+				optionType: "SOFTNUMA",
+			},
+			// SOFTNUMA OFF
+			{
+				sql:        "ALTER SERVER CONFIGURATION SET SOFTNUMA OFF",
+				optionType: "SOFTNUMA",
+			},
+			// MEMORY_OPTIMIZED TEMPDB_METADATA ON
+			{
+				sql:        "ALTER SERVER CONFIGURATION SET MEMORY_OPTIMIZED TEMPDB_METADATA = ON",
+				optionType: "MEMORY_OPTIMIZED",
+			},
+			// MEMORY_OPTIMIZED HYBRID_BUFFER_POOL OFF
+			{
+				sql:        "ALTER SERVER CONFIGURATION SET MEMORY_OPTIMIZED HYBRID_BUFFER_POOL = OFF",
+				optionType: "MEMORY_OPTIMIZED",
+			},
+			// HARDWARE_OFFLOAD ON
+			{
+				sql:        "ALTER SERVER CONFIGURATION SET HARDWARE_OFFLOAD ON",
+				optionType: "HARDWARE_OFFLOAD",
+			},
+			// HARDWARE_OFFLOAD OFF
+			{
+				sql:        "ALTER SERVER CONFIGURATION SET HARDWARE_OFFLOAD OFF",
+				optionType: "HARDWARE_OFFLOAD",
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.sql, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.AlterServerConfigurationStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected *AlterServerConfigurationStmt, got %T", tt.sql, result.Items[0])
+				}
+				if stmt.OptionType != tt.optionType {
+					t.Errorf("Parse(%q): optionType = %q, want %q", tt.sql, stmt.OptionType, tt.optionType)
+				}
+				checkLocation(t, tt.sql, "AlterServerConfigurationStmt", stmt.Loc)
+			})
+		}
+	})
+
+	t.Run("service_master_key", func(t *testing.T) {
+		tests := []struct {
+			sql        string
+			action     string
+			objectType string
+		}{
+			// ALTER SERVICE MASTER KEY REGENERATE
+			{
+				sql:        "ALTER SERVICE MASTER KEY REGENERATE",
+				action:     "ALTER",
+				objectType: "SERVICE MASTER KEY",
+			},
+			// ALTER SERVICE MASTER KEY FORCE REGENERATE
+			{
+				sql:        "ALTER SERVICE MASTER KEY FORCE REGENERATE",
+				action:     "ALTER",
+				objectType: "SERVICE MASTER KEY",
+			},
+			// ALTER SERVICE MASTER KEY WITH OLD_ACCOUNT / OLD_PASSWORD
+			{
+				sql:        "ALTER SERVICE MASTER KEY WITH OLD_ACCOUNT = 'NT AUTHORITY\\NetworkService', OLD_PASSWORD = 'old_p@ss'",
+				action:     "ALTER",
+				objectType: "SERVICE MASTER KEY",
+			},
+			// ALTER SERVICE MASTER KEY WITH NEW_ACCOUNT / NEW_PASSWORD
+			{
+				sql:        "ALTER SERVICE MASTER KEY WITH NEW_ACCOUNT = 'NT AUTHORITY\\NetworkService', NEW_PASSWORD = 'new_p@ss'",
+				action:     "ALTER",
+				objectType: "SERVICE MASTER KEY",
+			},
+			// BACKUP SERVICE MASTER KEY
+			{
+				sql:        "BACKUP SERVICE MASTER KEY TO FILE = 'c:\\temp\\exportedkey' ENCRYPTION BY PASSWORD = 'sd@34$#%^+)2Dwe23klj'",
+				action:     "BACKUP",
+				objectType: "SERVICE MASTER KEY",
+			},
+			// RESTORE SERVICE MASTER KEY
+			{
+				sql:        "RESTORE SERVICE MASTER KEY FROM FILE = 'c:\\temp\\exportedkey' DECRYPTION BY PASSWORD = 'sd@34$#%^+)2Dwe23klj'",
+				action:     "RESTORE",
+				objectType: "SERVICE MASTER KEY",
+			},
+			// RESTORE SERVICE MASTER KEY with FORCE
+			{
+				sql:        "RESTORE SERVICE MASTER KEY FROM FILE = 'c:\\temp\\exportedkey' DECRYPTION BY PASSWORD = 'sd@34$#%^+)2Dwe23klj' FORCE",
+				action:     "RESTORE",
+				objectType: "SERVICE MASTER KEY",
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.sql, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.SecurityKeyStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected *SecurityKeyStmt, got %T", tt.sql, result.Items[0])
+				}
+				if stmt.Action != tt.action {
+					t.Errorf("Parse(%q): action = %q, want %q", tt.sql, stmt.Action, tt.action)
+				}
+				if stmt.ObjectType != tt.objectType {
+					t.Errorf("Parse(%q): objectType = %q, want %q", tt.sql, stmt.ObjectType, tt.objectType)
+				}
+				checkLocation(t, tt.sql, "SecurityKeyStmt", stmt.Loc)
+			})
+		}
+	})
+}

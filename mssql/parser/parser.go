@@ -166,14 +166,44 @@ func (p *Parser) parseStmt() nodes.StmtNode {
 	case kwDBCC:
 		return p.parseDbccStmt()
 	case kwBACKUP:
-		// Check for BACKUP CERTIFICATE / BACKUP MASTER KEY vs BACKUP DATABASE/LOG
+		// Check for BACKUP SERVICE MASTER KEY / BACKUP CERTIFICATE / BACKUP MASTER KEY vs BACKUP DATABASE/LOG
 		next := p.peekNext()
+		if next.Str != "" && matchesKeywordCI(next.Str, "SERVICE") {
+			loc := p.pos()
+			p.advance() // consume BACKUP
+			p.advance() // consume SERVICE
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "MASTER") {
+				p.advance() // consume MASTER
+			}
+			if p.cur.Type == kwKEY {
+				p.advance() // consume KEY
+			}
+			stmt := p.parseBackupServiceMasterKeyStmt()
+			stmt.Loc.Start = loc
+			return stmt
+		}
 		if (next.Type >= kwADD && matchesKeywordCI(next.Str, "CERTIFICATE")) ||
 			(next.Type >= kwADD && matchesKeywordCI(next.Str, "MASTER")) {
 			return p.parseBackupCertificateStmt()
 		}
 		return p.parseBackupStmt()
 	case kwRESTORE:
+		// Check for RESTORE SERVICE MASTER KEY
+		next := p.peekNext()
+		if next.Str != "" && matchesKeywordCI(next.Str, "SERVICE") {
+			loc := p.pos()
+			p.advance() // consume RESTORE
+			p.advance() // consume SERVICE
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "MASTER") {
+				p.advance() // consume MASTER
+			}
+			if p.cur.Type == kwKEY {
+				p.advance() // consume KEY
+			}
+			stmt := p.parseRestoreServiceMasterKeyStmt()
+			stmt.Loc.Start = loc
+			return stmt
+		}
 		return p.parseRestoreStmt()
 	case kwCHECKPOINT:
 		return p.parseCheckpointStmt()
@@ -502,7 +532,7 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 			stmt.Loc.Start = loc
 			return stmt
 		}
-		// CREATE SERVER AUDIT [SPECIFICATION]
+		// CREATE SERVER AUDIT [SPECIFICATION] / CREATE SERVER ROLE
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SERVER") {
 			p.advance() // consume SERVER
 			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AUDIT") {
@@ -514,6 +544,12 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 					return stmt
 				}
 				stmt := p.parseCreateServerAuditStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			if p.cur.Type == kwROLE || (p.isIdentLike() && matchesKeywordCI(p.cur.Str, "ROLE")) {
+				p.advance() // consume ROLE
+				stmt := p.parseCreateServerRoleStmt()
 				stmt.Loc.Start = loc
 				return stmt
 			}
@@ -769,7 +805,7 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 			stmt.Loc.Start = loc
 			return stmt
 		}
-		// ALTER SERVER AUDIT [SPECIFICATION]
+		// ALTER SERVER AUDIT [SPECIFICATION] / ALTER SERVER ROLE / ALTER SERVER CONFIGURATION
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SERVER") {
 			next := p.peekNext()
 			if next.Str != "" && matchesKeywordCI(next.Str, "AUDIT") {
@@ -782,6 +818,20 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 					return stmt
 				}
 				stmt := p.parseAlterServerAuditStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			if next.Type == kwROLE || (next.Str != "" && matchesKeywordCI(next.Str, "ROLE")) {
+				p.advance() // consume SERVER
+				p.advance() // consume ROLE
+				stmt := p.parseAlterServerRoleStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			if next.Str != "" && matchesKeywordCI(next.Str, "CONFIGURATION") {
+				p.advance() // consume SERVER
+				p.advance() // consume CONFIGURATION
+				stmt := p.parseAlterServerConfigurationStmt()
 				stmt.Loc.Start = loc
 				return stmt
 			}
@@ -801,16 +851,24 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 			stmt.Loc.Start = loc
 			return stmt
 		}
-		// ALTER SERVICE (service broker) -- not kwSERVICE, context-sensitive
+		// ALTER SERVICE (service broker) / ALTER SERVICE MASTER KEY
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SERVICE") {
 			next := p.peekNext()
-			// Distinguish from ALTER SERVICE MASTER KEY (batch 60)
-			if !matchesKeywordCI(next.Str, "MASTER") {
+			if matchesKeywordCI(next.Str, "MASTER") {
+				// ALTER SERVICE MASTER KEY
 				p.advance() // consume SERVICE
-				stmt := p.parseAlterServiceStmt()
+				p.advance() // consume MASTER
+				if p.cur.Type == kwKEY {
+					p.advance() // consume KEY
+				}
+				stmt := p.parseAlterServiceMasterKeyStmt()
 				stmt.Loc.Start = loc
 				return stmt
 			}
+			p.advance() // consume SERVICE
+			stmt := p.parseAlterServiceStmt()
+			stmt.Loc.Start = loc
+			return stmt
 		}
 		// ALTER ROUTE (service broker)
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "ROUTE") {
@@ -1066,7 +1124,7 @@ func (p *Parser) parseDropOrSecurityStmt() nodes.StmtNode {
 			stmt.Loc.Start = loc
 			return stmt
 		}
-		// DROP SERVER AUDIT [SPECIFICATION]
+		// DROP SERVER AUDIT [SPECIFICATION] / DROP SERVER ROLE
 		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "SERVER") {
 			p.advance() // consume DROP
 			p.advance() // consume SERVER
@@ -1079,6 +1137,12 @@ func (p *Parser) parseDropOrSecurityStmt() nodes.StmtNode {
 					return stmt
 				}
 				stmt := p.parseDropServerAuditStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			if p.cur.Type == kwROLE || (p.isIdentLike() && matchesKeywordCI(p.cur.Str, "ROLE")) {
+				p.advance() // consume ROLE
+				stmt := p.parseDropServerRoleStmt()
 				stmt.Loc.Start = loc
 				return stmt
 			}

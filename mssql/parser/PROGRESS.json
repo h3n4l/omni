@@ -1309,7 +1309,7 @@
       "id": 60,
       "name": "server_level_objects",
       "file": "server.go",
-      "status": "pending",
+      "status": "done",
       "description": "New: CREATE/ALTER/DROP SERVER ROLE, ALTER SERVER CONFIGURATION, ALTER/BACKUP/RESTORE SERVICE MASTER KEY",
       "rules": ["parseCreateServerRoleStmt", "parseAlterServerRoleStmt", "parseDropServerRoleStmt", "parseAlterServerConfigurationStmt", "parseAlterServiceMasterKeyStmt", "parseBackupServiceMasterKeyStmt", "parseRestoreServiceMasterKeyStmt"],
       "depends_on": [1, 30],

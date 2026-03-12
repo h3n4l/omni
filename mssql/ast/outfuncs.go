@@ -330,6 +330,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeRollupExpr(sb, n)
 	case *CubeExpr:
 		writeCubeExpr(sb, n)
+	case *AlterServerConfigurationStmt:
+		writeAlterServerConfigurationStmt(sb, n)
 	default:
 		sb.WriteString("{UNKNOWN}")
 	}
@@ -2631,6 +2633,17 @@ func writeCubeExpr(sb *strings.Builder, n *CubeExpr) {
 		writeNode(sb, n.Args)
 	}
 	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeAlterServerConfigurationStmt(sb *strings.Builder, n *AlterServerConfigurationStmt) {
+	sb.WriteString("{ALTERSERVERCONFIGURATION")
+	fmt.Fprintf(sb, " :optionType \"%s\"", escapeString(n.OptionType))
+	if n.Options != nil && len(n.Options.Items) > 0 {
+		sb.WriteString(" :options ")
+		writeNode(sb, n.Options)
+	}
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
+	sb.WriteString("}")
 }
 
 func escapeString(s string) string {

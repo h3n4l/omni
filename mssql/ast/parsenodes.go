@@ -2113,3 +2113,17 @@ type CubeExpr struct {
 
 func (n *CubeExpr) nodeTag()  {}
 func (n *CubeExpr) exprNode() {}
+
+// ---------- Batch 60: Server-level objects ----------
+
+// AlterServerConfigurationStmt represents ALTER SERVER CONFIGURATION SET <option>.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-server-configuration-transact-sql
+type AlterServerConfigurationStmt struct {
+	OptionType string // e.g. "PROCESS AFFINITY", "DIAGNOSTICS LOG", "BUFFER POOL EXTENSION", etc.
+	Options    *List  // list of String nodes for key=value pairs
+	Loc        Loc
+}
+
+func (n *AlterServerConfigurationStmt) nodeTag()  {}
+func (n *AlterServerConfigurationStmt) stmtNode() {}
