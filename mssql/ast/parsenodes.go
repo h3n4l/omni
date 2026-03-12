@@ -1488,6 +1488,24 @@ func (n *SubqueryExpr) nodeTag()   {}
 func (n *SubqueryExpr) exprNode()  {}
 func (n *SubqueryExpr) tableExpr() {}
 
+// SubqueryComparisonExpr represents expr comparison_op { ANY | SOME | ALL } (subquery).
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/some-any-transact-sql
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/all-transact-sql
+//
+//	scalar_expression { = | <> | != | > | >= | !> | < | <= | !< }
+//	    { ALL | SOME | ANY } ( subquery )
+type SubqueryComparisonExpr struct {
+	Left     ExprNode // left-hand scalar expression
+	Op       BinaryOp // comparison operator
+	Quantifier string // "ALL", "SOME", or "ANY"
+	Subquery StmtNode // subquery (SelectStmt)
+	Loc      Loc
+}
+
+func (n *SubqueryComparisonExpr) nodeTag()  {}
+func (n *SubqueryComparisonExpr) exprNode() {}
+
 // ParenExpr represents a parenthesized expression.
 type ParenExpr struct {
 	Expr ExprNode

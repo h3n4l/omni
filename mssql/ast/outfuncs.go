@@ -182,6 +182,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeLiteral(sb, n)
 	case *SubqueryExpr:
 		writeSubqueryExpr(sb, n)
+	case *SubqueryComparisonExpr:
+		writeSubqueryComparisonExpr(sb, n)
 	case *ParenExpr:
 		writeParenExpr(sb, n)
 	case *TableRef:
@@ -1661,6 +1663,22 @@ func writeSubqueryExpr(sb *strings.Builder, n *SubqueryExpr) {
 		writeNode(sb, n.Query)
 	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeSubqueryComparisonExpr(sb *strings.Builder, n *SubqueryComparisonExpr) {
+	sb.WriteString("{SUBQUERY_COMPARISON")
+	if n.Left != nil {
+		sb.WriteString(" :left ")
+		writeNode(sb, n.Left)
+	}
+	fmt.Fprintf(sb, " :op %d", n.Op)
+	fmt.Fprintf(sb, " :quantifier \"%s\"", escapeString(n.Quantifier))
+	if n.Subquery != nil {
+		sb.WriteString(" :subquery ")
+		writeNode(sb, n.Subquery)
+	}
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
 	sb.WriteString("}")
 }
 

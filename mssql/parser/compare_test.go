@@ -7654,6 +7654,60 @@ func TestParseCreateDatabaseDepth(t *testing.T) {
 	})
 }
 
+// TestParseSubqueryComparison tests ANY/SOME/ALL subquery comparison operators (batch 79).
+func TestParseSubqueryComparison(t *testing.T) {
+	t.Run("any_subquery", func(t *testing.T) {
+		tests := []struct {
+			name string
+			sql  string
+		}{
+			{"basic any", "SELECT * FROM t WHERE x > ANY (SELECT y FROM t2)"},
+			{"any with equals", "SELECT * FROM t WHERE x = ANY (SELECT y FROM t2)"},
+			{"any with not equals", "SELECT * FROM t WHERE x <> ANY (SELECT y FROM t2)"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				_ = result
+			})
+		}
+	})
+
+	t.Run("some_subquery", func(t *testing.T) {
+		tests := []struct {
+			name string
+			sql  string
+		}{
+			{"basic some", "SELECT * FROM t WHERE x >= SOME (SELECT y FROM t2)"},
+			{"some with lt", "SELECT * FROM t WHERE x < SOME (SELECT y FROM t2)"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				_ = result
+			})
+		}
+	})
+
+	t.Run("all_subquery", func(t *testing.T) {
+		tests := []struct {
+			name string
+			sql  string
+		}{
+			{"basic all", "SELECT * FROM t WHERE x > ALL (SELECT y FROM t2)"},
+			{"all with lte", "SELECT * FROM t WHERE x <= ALL (SELECT y FROM t2)"},
+			{"all with eq", "SELECT * FROM t WHERE x = ALL (SELECT y FROM t2)"},
+			{"all with neq", "SELECT * FROM t WHERE x != ALL (SELECT y FROM t2)"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				_ = result
+			})
+		}
+	})
+}
+
 // TestParseGrantDepth tests GRANT/REVOKE/DENY securable class and REVOKE GRANT OPTION FOR (batch 78).
 func TestParseGrantDepth(t *testing.T) {
 	t.Run("grant_on_schema", func(t *testing.T) {

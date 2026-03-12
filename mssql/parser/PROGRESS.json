@@ -1871,7 +1871,7 @@
       "id": 79,
       "name": "subquery_comparison",
       "file": "expr.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 3 gap: parse ANY/SOME/ALL subquery comparison operators (e.g., WHERE x > ALL (SELECT ...))",
       "rules": [
         "parseAnySomeAll"

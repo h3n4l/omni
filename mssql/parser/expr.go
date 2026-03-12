@@ -2,6 +2,8 @@
 package parser
 
 import (
+	"strings"
+
 	nodes "github.com/bytebase/omni/mssql/ast"
 )
 
@@ -187,6 +189,25 @@ func (p *Parser) parseComparison() nodes.ExprNode {
 	if ok {
 		loc := p.pos()
 		p.advance()
+
+		// Check for ANY/SOME/ALL subquery comparison
+		if p.cur.Type == kwALL || p.cur.Type == kwSOME || p.cur.Type == kwANY {
+			quantifier := strings.ToUpper(p.cur.Str)
+			p.advance() // consume ALL/SOME/ANY
+			if p.cur.Type == '(' {
+				p.advance() // consume (
+				subquery := p.parseSelectStmt()
+				_, _ = p.expect(')')
+				return &nodes.SubqueryComparisonExpr{
+					Left:       left,
+					Op:         op,
+					Quantifier: quantifier,
+					Subquery:   subquery,
+					Loc:        nodes.Loc{Start: loc},
+				}
+			}
+		}
+
 		right := p.parseAddition()
 		return &nodes.BinaryExpr{
 			Op:    op,
