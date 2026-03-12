@@ -1788,7 +1788,7 @@
       "id": 75,
       "name": "compound_assignment",
       "file": "update_delete.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 6/16 gap: support compound assignment operators (+=, -=, *=, /=, %=, &=, ^=, |=) in UPDATE SET clause and SET @variable statements",
       "rules": [
         "parseCompoundAssignment",

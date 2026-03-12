@@ -767,6 +767,7 @@ func (n *VariableDecl) nodeTag() {}
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/set-local-variable-transact-sql
 type SetStmt struct {
 	Variable string   // @variable or SET option name
+	Operator string   // "=" (default), "+=", "-=", "*=", "/=", "%=", "&=", "^=", "|="
 	Value    ExprNode // expression
 	Loc      Loc
 }
@@ -1578,6 +1579,7 @@ const (
 type SetExpr struct {
 	Column   *ColumnRef
 	Variable string // @var = expr
+	Operator string // "=" (default), "+=", "-=", "*=", "/=", "%=", "&=", "^=", "|="
 	Value    ExprNode
 	Loc      Loc
 }

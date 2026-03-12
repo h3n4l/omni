@@ -128,13 +128,18 @@ func (p *Parser) parseSetStmt() nodes.StmtNode {
 	p.advance() // consume SET
 
 	if p.cur.Type == tokVARIABLE {
-		// SET @var = expr
+		// SET @var { = | += | -= | *= | /= | %= | &= | ^= | |= } expr
 		stmt := &nodes.SetStmt{
 			Loc: nodes.Loc{Start: loc},
 		}
 		stmt.Variable = p.cur.Str
 		p.advance()
-		if _, err := p.expect('='); err == nil {
+		// Check for compound assignment operators or simple =
+		if op := p.isCompoundAssign(); op != "" {
+			stmt.Operator = op
+			p.advance()
+			stmt.Value = p.parseExpr()
+		} else if _, err := p.expect('='); err == nil {
 			stmt.Value = p.parseExpr()
 		}
 		stmt.Loc.End = p.pos()

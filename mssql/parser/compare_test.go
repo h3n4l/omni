@@ -7235,3 +7235,131 @@ func TestParseForXmlJsonOptions(t *testing.T) {
 		}
 	})
 }
+
+// TestParseCompoundAssignment tests compound assignment operators (batch 75).
+func TestParseCompoundAssignment(t *testing.T) {
+	t.Run("update_compound_assignment", func(t *testing.T) {
+		tests := []struct {
+			sql string
+			op  string
+		}{
+			{"UPDATE t SET col += 1", "+="},
+			{"UPDATE t SET col -= 1", "-="},
+			{"UPDATE t SET col *= 2", "*="},
+			{"UPDATE t SET col /= 2", "/="},
+			{"UPDATE t SET col %= 3", "%="},
+			{"UPDATE t SET col &= 0xFF", "&="},
+			{"UPDATE t SET col |= 0x01", "|="},
+			{"UPDATE t SET col ^= 0x0F", "^="},
+			// Simple = should have empty operator (default)
+			{"UPDATE t SET col = 1", ""},
+		}
+		for _, tt := range tests {
+			t.Run(tt.sql, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				stmt := result.Items[0].(*ast.UpdateStmt)
+				if stmt.SetClause == nil || stmt.SetClause.Len() == 0 {
+					t.Fatal("expected non-empty SetClause")
+				}
+				se := stmt.SetClause.Items[0].(*ast.SetExpr)
+				if se.Operator != tt.op {
+					t.Errorf("expected operator %q, got %q", tt.op, se.Operator)
+				}
+			})
+		}
+	})
+
+	t.Run("update_compound_with_variable", func(t *testing.T) {
+		tests := []struct {
+			sql string
+			op  string
+		}{
+			{"UPDATE t SET @v += col", "+="},
+			{"UPDATE t SET @v -= col", "-="},
+		}
+		for _, tt := range tests {
+			t.Run(tt.sql, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				stmt := result.Items[0].(*ast.UpdateStmt)
+				se := stmt.SetClause.Items[0].(*ast.SetExpr)
+				if se.Variable == "" {
+					t.Error("expected variable in SetExpr")
+				}
+				if se.Operator != tt.op {
+					t.Errorf("expected operator %q, got %q", tt.op, se.Operator)
+				}
+			})
+		}
+	})
+
+	t.Run("update_compound_mixed", func(t *testing.T) {
+		sql := "UPDATE t SET col1 += 1, col2 = 2, col3 *= 3"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.UpdateStmt)
+		if stmt.SetClause.Len() != 3 {
+			t.Fatalf("expected 3 set exprs, got %d", stmt.SetClause.Len())
+		}
+		ops := []string{"+=", "", "*="}
+		for i, expected := range ops {
+			se := stmt.SetClause.Items[i].(*ast.SetExpr)
+			if se.Operator != expected {
+				t.Errorf("item[%d]: expected operator %q, got %q", i, expected, se.Operator)
+			}
+		}
+	})
+
+	t.Run("set_var_compound_assignment", func(t *testing.T) {
+		tests := []struct {
+			sql string
+			op  string
+		}{
+			{"SET @x += 1", "+="},
+			{"SET @x -= 1", "-="},
+			{"SET @x *= 2", "*="},
+			{"SET @x /= 2", "/="},
+			{"SET @x %= 3", "%="},
+			{"SET @x &= 0xFF", "&="},
+			{"SET @x |= 0x01", "|="},
+			{"SET @x ^= 0x0F", "^="},
+			// Simple = should have empty operator
+			{"SET @x = 1", ""},
+		}
+		for _, tt := range tests {
+			t.Run(tt.sql, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				stmt := result.Items[0].(*ast.SetStmt)
+				if stmt.Operator != tt.op {
+					t.Errorf("expected operator %q, got %q", tt.op, stmt.Operator)
+				}
+			})
+		}
+	})
+
+	t.Run("set_var_compound_with_expr", func(t *testing.T) {
+		// Compound assignment with a complex expression
+		sql := "SET @total += @price * @quantity"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SetStmt)
+		if stmt.Operator != "+=" {
+			t.Errorf("expected operator '+=', got %q", stmt.Operator)
+		}
+		if stmt.Value == nil {
+			t.Error("expected non-nil Value")
+		}
+	})
+
+	t.Run("serialization_roundtrip", func(t *testing.T) {
+		// Ensure compound assignment operators appear in serialized output
+		sqls := []string{
+			"UPDATE t SET col += 1",
+			"SET @x -= 5",
+		}
+		for _, sql := range sqls {
+			result := ParseAndCheck(t, sql)
+			s := ast.NodeToString(result.Items[0])
+			if s == "" {
+				t.Errorf("NodeToString returned empty for %q", sql)
+			}
+		}
+	})
+}

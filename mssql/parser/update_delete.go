@@ -93,10 +93,36 @@ func (p *Parser) parseDeleteStmt() *nodes.DeleteStmt {
 	return stmt
 }
 
+// isCompoundAssign returns the operator string if the current token is a compound assignment operator,
+// or empty string if not.
+func (p *Parser) isCompoundAssign() string {
+	switch p.cur.Type {
+	case tokPLUSEQUAL:
+		return "+="
+	case tokMINUSEQUAL:
+		return "-="
+	case tokMULEQUAL:
+		return "*="
+	case tokDIVEQUAL:
+		return "/="
+	case tokMODEQUAL:
+		return "%="
+	case tokANDEQUAL:
+		return "&="
+	case tokOREQUAL:
+		return "|="
+	case tokXOREQUAL:
+		return "^="
+	default:
+		return ""
+	}
+}
+
 // parseSetClauseList parses a comma-separated list of SET assignments.
 //
 //	set_clause_list = set_clause { ',' set_clause }
-//	set_clause = column_ref '=' expr | @variable '=' expr
+//	set_clause = column_ref { = | += | -= | *= | /= | %= | &= | ^= | |= } expr
+//	           | @variable { = | += | -= | *= | /= | %= | &= | ^= | |= } expr
 func (p *Parser) parseSetClauseList() *nodes.List {
 	var items []nodes.Node
 	for {
@@ -112,7 +138,8 @@ func (p *Parser) parseSetClauseList() *nodes.List {
 	return &nodes.List{Items: items}
 }
 
-// parseSetClause parses a single SET assignment: column = expr or @var = expr.
+// parseSetClause parses a single SET assignment: column {=|+=|-=|*=|/=|%=|&=|^=||=} expr
+// or @var {=|+=|-=|*=|/=|%=|&=|^=||=} expr.
 func (p *Parser) parseSetClause() *nodes.SetExpr {
 	loc := p.pos()
 
@@ -131,8 +158,11 @@ func (p *Parser) parseSetClause() *nodes.SetExpr {
 		}
 	}
 
-	// Expect =
-	if _, err := p.expect('='); err != nil {
+	// Check for compound assignment operators (+=, -=, *=, /=, %=, &=, ^=, |=) or simple =
+	if op := p.isCompoundAssign(); op != "" {
+		se.Operator = op
+		p.advance()
+	} else if _, err := p.expect('='); err != nil {
 		return nil
 	}
 
