@@ -437,6 +437,9 @@ const (
 	kwVALIDATION
 	kwWITHOUT
 	kwPARTITIONING
+	kwVISIBLE
+	kwINVISIBLE
+	kwKEYS
 )
 
 // keywords maps lowercase keyword strings to their token types.
@@ -835,6 +838,9 @@ var keywords = map[string]int{
 	"validation":          kwVALIDATION,
 	"without":             kwWITHOUT,
 	"partitioning":        kwPARTITIONING,
+	"visible":             kwVISIBLE,
+	"invisible":           kwINVISIBLE,
+	"keys":                kwKEYS,
 }
 
 // Token represents a lexical token.

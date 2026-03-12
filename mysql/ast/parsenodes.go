@@ -184,6 +184,18 @@ const (
 	ATDiscardPartitionTablespace
 	ATImportPartitionTablespace
 	ATRemovePartitioning
+	ATAlterColumnVisible
+	ATAlterColumnInvisible
+	ATAlterIndexVisible
+	ATAlterIndexInvisible
+	ATForce
+	ATOrderBy
+	ATEnableKeys
+	ATDisableKeys
+	ATDiscardTablespace
+	ATImportTablespace
+	ATWithValidation
+	ATWithoutValidation
 )
 
 // AlterTableCmd represents a single ALTER TABLE operation.
@@ -204,6 +216,7 @@ type AlterTableCmd struct {
 	Number         int              // for COALESCE PARTITION number
 	ExchangeTable  *TableRef        // for EXCHANGE PARTITION ... WITH TABLE
 	WithValidation *bool            // for EXCHANGE PARTITION: true=WITH VALIDATION, false=WITHOUT VALIDATION, nil=not specified
+	OrderByItems   []*OrderByItem   // for ORDER BY operation
 }
 
 func (c *AlterTableCmd) nodeTag() {}

@@ -3655,6 +3655,156 @@ func TestParseAlterTableRemovePartitioning(t *testing.T) {
 }
 
 // ============================================================================
+// Batch 58: ALTER TABLE visibility/misc
+// ============================================================================
+
+func TestParseAlterTableColumnVisible(t *testing.T) {
+	t.Run("set column visible", func(t *testing.T) {
+		stmt := parseAlterTable(t, "ALTER TABLE t ALTER COLUMN name SET VISIBLE")
+		cmd := stmt.Commands[0]
+		if cmd.Type != ast.ATAlterColumnVisible {
+			t.Errorf("Type = %d, want ATAlterColumnVisible", cmd.Type)
+		}
+		if cmd.Name != "name" {
+			t.Errorf("Name = %s, want name", cmd.Name)
+		}
+	})
+
+	t.Run("set column invisible", func(t *testing.T) {
+		stmt := parseAlterTable(t, "ALTER TABLE t ALTER COLUMN name SET INVISIBLE")
+		cmd := stmt.Commands[0]
+		if cmd.Type != ast.ATAlterColumnInvisible {
+			t.Errorf("Type = %d, want ATAlterColumnInvisible", cmd.Type)
+		}
+	})
+}
+
+func TestParseAlterTableIndexVisible(t *testing.T) {
+	t.Run("alter index visible", func(t *testing.T) {
+		stmt := parseAlterTable(t, "ALTER TABLE t ALTER INDEX idx_name VISIBLE")
+		cmd := stmt.Commands[0]
+		if cmd.Type != ast.ATAlterIndexVisible {
+			t.Errorf("Type = %d, want ATAlterIndexVisible", cmd.Type)
+		}
+		if cmd.Name != "idx_name" {
+			t.Errorf("Name = %s, want idx_name", cmd.Name)
+		}
+	})
+
+	t.Run("alter index invisible", func(t *testing.T) {
+		stmt := parseAlterTable(t, "ALTER TABLE t ALTER INDEX idx_name INVISIBLE")
+		cmd := stmt.Commands[0]
+		if cmd.Type != ast.ATAlterIndexInvisible {
+			t.Errorf("Type = %d, want ATAlterIndexInvisible", cmd.Type)
+		}
+	})
+}
+
+func TestParseAlterTableForce(t *testing.T) {
+	t.Run("force", func(t *testing.T) {
+		stmt := parseAlterTable(t, "ALTER TABLE t FORCE")
+		cmd := stmt.Commands[0]
+		if cmd.Type != ast.ATForce {
+			t.Errorf("Type = %d, want ATForce", cmd.Type)
+		}
+	})
+
+	t.Run("force with algorithm", func(t *testing.T) {
+		stmt := parseAlterTable(t, "ALTER TABLE t FORCE, ALGORITHM=INPLACE")
+		if len(stmt.Commands) != 2 {
+			t.Fatalf("Commands count = %d, want 2", len(stmt.Commands))
+		}
+		if stmt.Commands[0].Type != ast.ATForce {
+			t.Errorf("Commands[0].Type = %d, want ATForce", stmt.Commands[0].Type)
+		}
+		if stmt.Commands[1].Type != ast.ATAlgorithm {
+			t.Errorf("Commands[1].Type = %d, want ATAlgorithm", stmt.Commands[1].Type)
+		}
+	})
+}
+
+func TestParseAlterTableOrderBy(t *testing.T) {
+	t.Run("order by single column", func(t *testing.T) {
+		stmt := parseAlterTable(t, "ALTER TABLE t ORDER BY name")
+		cmd := stmt.Commands[0]
+		if cmd.Type != ast.ATOrderBy {
+			t.Errorf("Type = %d, want ATOrderBy", cmd.Type)
+		}
+		if len(cmd.OrderByItems) != 1 {
+			t.Fatalf("OrderByItems count = %d, want 1", len(cmd.OrderByItems))
+		}
+	})
+
+	t.Run("order by multiple columns", func(t *testing.T) {
+		stmt := parseAlterTable(t, "ALTER TABLE t ORDER BY name ASC, age DESC")
+		cmd := stmt.Commands[0]
+		if cmd.Type != ast.ATOrderBy {
+			t.Errorf("Type = %d, want ATOrderBy", cmd.Type)
+		}
+		if len(cmd.OrderByItems) != 2 {
+			t.Fatalf("OrderByItems count = %d, want 2", len(cmd.OrderByItems))
+		}
+	})
+}
+
+func TestParseAlterTableEnableKeys(t *testing.T) {
+	t.Run("enable keys", func(t *testing.T) {
+		stmt := parseAlterTable(t, "ALTER TABLE t ENABLE KEYS")
+		cmd := stmt.Commands[0]
+		if cmd.Type != ast.ATEnableKeys {
+			t.Errorf("Type = %d, want ATEnableKeys", cmd.Type)
+		}
+	})
+
+	t.Run("disable keys", func(t *testing.T) {
+		stmt := parseAlterTable(t, "ALTER TABLE t DISABLE KEYS")
+		cmd := stmt.Commands[0]
+		if cmd.Type != ast.ATDisableKeys {
+			t.Errorf("Type = %d, want ATDisableKeys", cmd.Type)
+		}
+	})
+}
+
+func TestParseAlterTableDiscardTablespace(t *testing.T) {
+	t.Run("discard tablespace", func(t *testing.T) {
+		stmt := parseAlterTable(t, "ALTER TABLE t DISCARD TABLESPACE")
+		cmd := stmt.Commands[0]
+		if cmd.Type != ast.ATDiscardTablespace {
+			t.Errorf("Type = %d, want ATDiscardTablespace", cmd.Type)
+		}
+	})
+
+	t.Run("import tablespace", func(t *testing.T) {
+		stmt := parseAlterTable(t, "ALTER TABLE t IMPORT TABLESPACE")
+		cmd := stmt.Commands[0]
+		if cmd.Type != ast.ATImportTablespace {
+			t.Errorf("Type = %d, want ATImportTablespace", cmd.Type)
+		}
+	})
+}
+
+func TestParseAlterTableValidation(t *testing.T) {
+	t.Run("with validation", func(t *testing.T) {
+		stmt := parseAlterTable(t, "ALTER TABLE t ALTER COLUMN v SET INVISIBLE, WITH VALIDATION")
+		if len(stmt.Commands) != 2 {
+			t.Fatalf("Commands count = %d, want 2", len(stmt.Commands))
+		}
+		cmd := stmt.Commands[1]
+		if cmd.Type != ast.ATWithValidation {
+			t.Errorf("Type = %d, want ATWithValidation", cmd.Type)
+		}
+	})
+
+	t.Run("without validation", func(t *testing.T) {
+		stmt := parseAlterTable(t, "ALTER TABLE t ALTER COLUMN v SET INVISIBLE, WITHOUT VALIDATION")
+		cmd := stmt.Commands[1]
+		if cmd.Type != ast.ATWithoutValidation {
+			t.Errorf("Type = %d, want ATWithoutValidation", cmd.Type)
+		}
+	})
+}
+
+// ============================================================================
 // Batch 9: CREATE INDEX
 // ============================================================================
 

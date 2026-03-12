@@ -392,7 +392,7 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 	case kwEXTENDED:
 		p.advance() // consume EXTENDED
 		// SHOW EXTENDED {INDEX | INDEXES | KEYS} ...
-		if p.cur.Type == kwINDEX || p.cur.Type == kwKEY || (p.cur.Type == tokIDENT && (eqFold(p.cur.Str, "indexes") || eqFold(p.cur.Str, "keys"))) {
+		if p.cur.Type == kwINDEX || p.cur.Type == kwKEY || p.cur.Type == kwKEYS || (p.cur.Type == tokIDENT && (eqFold(p.cur.Str, "indexes") || eqFold(p.cur.Str, "keys"))) {
 			stmt.Type = "EXTENDED INDEX"
 			p.advance()
 			if _, err := p.expectFromOrIn(); err != nil {
@@ -777,7 +777,7 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 			if err := p.parseShowFromLikeOrWhere(stmt); err != nil {
 				return nil, err
 			}
-		} else if p.cur.Type == tokIDENT && (eqFold(p.cur.Str, "indexes") || eqFold(p.cur.Str, "keys")) {
+		} else if p.cur.Type == kwKEYS || (p.cur.Type == tokIDENT && (eqFold(p.cur.Str, "indexes") || eqFold(p.cur.Str, "keys"))) {
 			// SHOW INDEXES|KEYS (synonyms for SHOW INDEX)
 			stmt.Type = "INDEX"
 			p.advance()

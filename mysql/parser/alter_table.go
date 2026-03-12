@@ -191,7 +191,7 @@ func (p *Parser) parseAlterTableCmd() (*nodes.AlterTableCmd, error) {
 		}
 
 	case kwDISCARD:
-		// DISCARD PARTITION {partition_names | ALL} TABLESPACE
+		// DISCARD TABLESPACE | DISCARD PARTITION {partition_names | ALL} TABLESPACE
 		p.advance()
 		if _, ok := p.match(kwPARTITION); ok {
 			cmd, err := p.parseAlterPartitionNamesOrAll(cmd, nodes.ATDiscardPartitionTablespace)
@@ -202,13 +202,14 @@ func (p *Parser) parseAlterTableCmd() (*nodes.AlterTableCmd, error) {
 			cmd.Loc.End = p.pos()
 			return cmd, nil
 		}
-		return nil, &ParseError{
-			Message:  "expected PARTITION after DISCARD",
-			Position: p.cur.Loc,
-		}
+		// DISCARD TABLESPACE
+		p.match(kwTABLESPACE)
+		cmd.Type = nodes.ATDiscardTablespace
+		cmd.Loc.End = p.pos()
+		return cmd, nil
 
 	case kwIMPORT:
-		// IMPORT PARTITION {partition_names | ALL} TABLESPACE
+		// IMPORT TABLESPACE | IMPORT PARTITION {partition_names | ALL} TABLESPACE
 		p.advance()
 		if _, ok := p.match(kwPARTITION); ok {
 			cmd, err := p.parseAlterPartitionNamesOrAll(cmd, nodes.ATImportPartitionTablespace)
@@ -219,10 +220,62 @@ func (p *Parser) parseAlterTableCmd() (*nodes.AlterTableCmd, error) {
 			cmd.Loc.End = p.pos()
 			return cmd, nil
 		}
-		return nil, &ParseError{
-			Message:  "expected PARTITION after IMPORT",
-			Position: p.cur.Loc,
+		// IMPORT TABLESPACE
+		p.match(kwTABLESPACE)
+		cmd.Type = nodes.ATImportTablespace
+		cmd.Loc.End = p.pos()
+		return cmd, nil
+
+	case kwFORCE:
+		p.advance()
+		cmd.Type = nodes.ATForce
+		cmd.Loc.End = p.pos()
+		return cmd, nil
+
+	case kwORDER:
+		// ORDER BY col_name [ASC | DESC] [, ...]
+		p.advance()
+		p.match(kwBY)
+		cmd.Type = nodes.ATOrderBy
+		items, err := p.parseOrderByList()
+		if err != nil {
+			return nil, err
 		}
+		cmd.OrderByItems = items
+		cmd.Loc.End = p.pos()
+		return cmd, nil
+
+	case kwENABLE:
+		// ENABLE KEYS
+		p.advance()
+		p.match(kwKEYS)
+		cmd.Type = nodes.ATEnableKeys
+		cmd.Loc.End = p.pos()
+		return cmd, nil
+
+	case kwDISABLE:
+		// DISABLE KEYS
+		p.advance()
+		p.match(kwKEYS)
+		cmd.Type = nodes.ATDisableKeys
+		cmd.Loc.End = p.pos()
+		return cmd, nil
+
+	case kwWITH:
+		// WITH VALIDATION
+		p.advance()
+		p.match(kwVALIDATION)
+		cmd.Type = nodes.ATWithValidation
+		cmd.Loc.End = p.pos()
+		return cmd, nil
+
+	case kwWITHOUT:
+		// WITHOUT VALIDATION
+		p.advance()
+		p.match(kwVALIDATION)
+		cmd.Type = nodes.ATWithoutValidation
+		cmd.Loc.End = p.pos()
+		return cmd, nil
 
 	case kwREMOVE:
 		// REMOVE PARTITIONING
@@ -443,9 +496,40 @@ func (p *Parser) parseAlterChange(cmd *nodes.AlterTableCmd) (*nodes.AlterTableCm
 	return cmd, nil
 }
 
-// parseAlterColumn parses ALTER [COLUMN] col_name {SET DEFAULT ... | DROP DEFAULT | SET NOT NULL | DROP NOT NULL}.
+// parseAlterColumn parses ALTER [COLUMN] col_name {SET DEFAULT | DROP DEFAULT | SET NOT NULL | DROP NOT NULL | SET VISIBLE | SET INVISIBLE}
+// and ALTER INDEX index_name {VISIBLE | INVISIBLE}.
+//
+// Ref: https://dev.mysql.com/doc/refman/8.0/en/alter-table.html
+//
+//	ALTER [COLUMN] col_name {
+//	    SET DEFAULT {literal | (expr)}
+//	  | SET {VISIBLE | INVISIBLE}
+//	  | DROP DEFAULT
+//	  | SET NOT NULL
+//	  | DROP NOT NULL
+//	}
+//	ALTER INDEX index_name {VISIBLE | INVISIBLE}
 func (p *Parser) parseAlterColumn(cmd *nodes.AlterTableCmd) (*nodes.AlterTableCmd, error) {
 	p.advance() // consume ALTER
+
+	// ALTER INDEX index_name {VISIBLE | INVISIBLE}
+	if p.cur.Type == kwINDEX {
+		p.advance()
+		name, _, err := p.parseIdentifier()
+		if err != nil {
+			return nil, err
+		}
+		cmd.Name = name
+		if _, ok := p.match(kwVISIBLE); ok {
+			cmd.Type = nodes.ATAlterIndexVisible
+		} else if _, ok := p.match(kwINVISIBLE); ok {
+			cmd.Type = nodes.ATAlterIndexInvisible
+		}
+		cmd.Loc.End = p.pos()
+		return cmd, nil
+	}
+
+	// ALTER [COLUMN] col_name ...
 	p.match(kwCOLUMN)
 
 	name, _, err := p.parseIdentifier()
@@ -463,6 +547,10 @@ func (p *Parser) parseAlterColumn(cmd *nodes.AlterTableCmd) (*nodes.AlterTableCm
 			p.advance()
 			p.match(kwNULL)
 			cmd.Type = nodes.ATAlterColumnSetNotNull
+		} else if _, ok := p.match(kwVISIBLE); ok {
+			cmd.Type = nodes.ATAlterColumnVisible
+		} else if _, ok := p.match(kwINVISIBLE); ok {
+			cmd.Type = nodes.ATAlterColumnInvisible
 		}
 	} else if _, ok := p.match(kwDROP); ok {
 		if _, ok := p.match(kwDEFAULT); ok {

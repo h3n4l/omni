@@ -2406,6 +2406,16 @@ func writeAlterTableCmd(sb *strings.Builder, n *AlterTableCmd) {
 			sb.WriteString(" :validation without")
 		}
 	}
+	if len(n.OrderByItems) > 0 {
+		sb.WriteString(" :order_by (")
+		for i, item := range n.OrderByItems {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, item)
+		}
+		sb.WriteString(")")
+	}
 	sb.WriteString("}")
 }
 
