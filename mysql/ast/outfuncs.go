@@ -1725,6 +1725,9 @@ func writeRepairTableStmt(sb *strings.Builder, n *RepairTableStmt) {
 	if n.Extended {
 		sb.WriteString(" :extended true")
 	}
+	if n.UseFrm {
+		sb.WriteString(" :use_frm true")
+	}
 	sb.WriteString("}")
 }
 
@@ -1789,6 +1792,9 @@ func writeChecksumTableStmt(sb *strings.Builder, n *ChecksumTableStmt) {
 	}
 	if n.Quick {
 		sb.WriteString(" :quick true")
+	}
+	if n.Extended {
+		sb.WriteString(" :extended true")
 	}
 	sb.WriteString("}")
 }

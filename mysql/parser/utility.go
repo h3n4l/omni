@@ -229,6 +229,7 @@ func (p *Parser) parseRepairTableStmt() (*nodes.RepairTableStmt, error) {
 			stmt.Extended = true
 			p.advance()
 		} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "use_frm") {
+			stmt.UseFrm = true
 			p.advance()
 		} else {
 			break
@@ -675,6 +676,7 @@ func (p *Parser) parseChecksumTableStmt() (*nodes.ChecksumTableStmt, error) {
 		stmt.Quick = true
 		p.advance()
 	} else if p.cur.Type == kwEXTENDED {
+		stmt.Extended = true
 		p.advance()
 	}
 

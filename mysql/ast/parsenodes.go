@@ -1555,6 +1555,7 @@ type RepairTableStmt struct {
 	Tables   []*TableRef
 	Quick    bool
 	Extended bool
+	UseFrm   bool
 }
 
 func (s *RepairTableStmt) nodeTag()  {}
@@ -1593,9 +1594,10 @@ func (s *DoStmt) stmtNode() {}
 
 // ChecksumTableStmt represents a CHECKSUM TABLE statement.
 type ChecksumTableStmt struct {
-	Loc    Loc
-	Tables []*TableRef
-	Quick  bool
+	Loc      Loc
+	Tables   []*TableRef
+	Quick    bool
+	Extended bool
 }
 
 func (s *ChecksumTableStmt) nodeTag()  {}

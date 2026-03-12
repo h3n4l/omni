@@ -6324,7 +6324,7 @@ func TestParseChecksumTable(t *testing.T) {
 		},
 		{
 			sql:  "CHECKSUM TABLE t1 EXTENDED",
-			want: "{CHECKSUM_TABLE :loc 0 :tables {TABLEREF :loc 15 :name t1}}",
+			want: "{CHECKSUM_TABLE :loc 0 :tables {TABLEREF :loc 15 :name t1} :extended true}",
 		},
 		{
 			sql:  "CHECKSUM TABLE db.t1, db.t2 QUICK",
@@ -9929,6 +9929,51 @@ func TestParseAlterTableSecondaryLoad(t *testing.T) {
 			ParseAndCheck(t, sql)
 		})
 	}
+}
+
+func TestParseRepairTableUseFrm(t *testing.T) {
+	tests := []string{
+		"REPAIR TABLE t USE_FRM",
+		"REPAIR TABLE t QUICK EXTENDED USE_FRM",
+		"REPAIR TABLE t1, t2 USE_FRM",
+		"REPAIR LOCAL TABLE t USE_FRM",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+
+	// Verify USE_FRM is captured in AST
+	t.Run("use_frm_value_captured", func(t *testing.T) {
+		result := ParseAndCheck(t, "REPAIR TABLE t USE_FRM")
+		s := ast.NodeToString(result.Items[0])
+		if !strings.Contains(s, ":use_frm true") {
+			t.Errorf("expected :use_frm true in AST, got: %s", s)
+		}
+	})
+}
+
+func TestParseChecksumTableExtended(t *testing.T) {
+	tests := []string{
+		"CHECKSUM TABLE t EXTENDED",
+		"CHECKSUM TABLE t1, t2 EXTENDED",
+		"CHECKSUM TABLE t QUICK",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+
+	// Verify EXTENDED is captured in AST
+	t.Run("extended_value_captured", func(t *testing.T) {
+		result := ParseAndCheck(t, "CHECKSUM TABLE t EXTENDED")
+		s := ast.NodeToString(result.Items[0])
+		if !strings.Contains(s, ":extended true") {
+			t.Errorf("expected :extended true in AST, got: %s", s)
+		}
+	})
 }
 
 func TestParseAlterTableSecondaryUnload(t *testing.T) {
