@@ -227,6 +227,9 @@ func (p *Parser) parseStmt() nodes.Node {
 	case LOAD:
 		p.advance() // consume LOAD
 		return p.parseLoadStmt()
+	case CALL:
+		p.advance() // consume CALL
+		return p.parseCallStmt()
 	case REASSIGN:
 		p.advance() // consume REASSIGN
 		return p.parseReassignOwnedStmt()

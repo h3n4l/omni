@@ -1035,7 +1035,7 @@
       "id": 35,
       "name": "call_stmt",
       "file": "utility.go",
-      "status": "pending",
+      "status": "done",
       "description": "CALL statement for invoking procedures. Add CALL case to parseStmt dispatch. Ref: https://www.postgresql.org/docs/17/sql-call.html",
       "rules": [
         "CallStmt"

@@ -2717,3 +2717,28 @@ func TestCompareAlterGeneric(t *testing.T) {
 		})
 	}
 }
+
+// TestCompareCallStmt runs CALL statement comparison tests for batch 35.
+func TestCompareCallStmt(t *testing.T) {
+	tests := []string{
+		// Basic CALL with no arguments
+		"CALL do_maintenance()",
+		// CALL with positional arguments
+		"CALL my_proc(1, 'hello')",
+		// CALL with named arguments
+		"CALL my_proc(arg1 => 1, arg2 => 'hello')",
+		// CALL with schema-qualified name
+		"CALL myschema.my_proc(42)",
+		// CALL with expression arguments
+		"CALL my_proc(1 + 2, now())",
+		// CALL with NULL argument (common for OUT params)
+		"CALL my_proc(NULL)",
+		// CALL with multiple mixed arguments
+		"CALL my_proc(1, 'text', NULL, true)",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+		})
+	}
+}

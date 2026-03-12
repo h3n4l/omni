@@ -158,6 +158,27 @@ func (p *Parser) parseLoadStmt() nodes.Node {
 	return &nodes.LoadStmt{Filename: filename}
 }
 
+// parseCallStmt parses a CALL statement.
+// The CALL keyword has already been consumed.
+//
+// Ref: https://www.postgresql.org/docs/17/sql-call.html
+//
+//	CALL name ( [ argument ] [, ...] )
+func (p *Parser) parseCallStmt() nodes.Node {
+	funcName, err := p.parseFuncName()
+	if err != nil {
+		return nil
+	}
+	loc := p.pos()
+	fc := p.parseFuncApplication(funcName, loc)
+	if fc == nil {
+		return nil
+	}
+	return &nodes.CallStmt{
+		Funccall: fc.(*nodes.FuncCall),
+	}
+}
+
 // parseReassignOwnedStmt parses a REASSIGN OWNED BY statement.
 func (p *Parser) parseReassignOwnedStmt() nodes.Node {
 	p.expect(OWNED)
