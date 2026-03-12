@@ -2019,7 +2019,7 @@
       "id": 87,
       "name": "graph_tables",
       "file": "create_table.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 8 gap: parse CREATE TABLE ... AS NODE and CREATE TABLE ... AS EDGE for SQL Server graph database tables. Add IsNode/IsEdge flags to CreateTableStmt. Graph edge tables support $from_id, $to_id pseudo-columns.",
       "rules": [
         "parseGraphTableType"

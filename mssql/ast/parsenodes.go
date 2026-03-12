@@ -258,6 +258,8 @@ type CreateTableStmt struct {
 	Columns     *List // list of ColumnDef
 	Constraints *List // table-level constraints
 	IfNotExists bool
+	IsNode      bool // AS NODE (graph table)
+	IsEdge      bool // AS EDGE (graph table)
 
 	// PERIOD FOR SYSTEM_TIME (start_col, end_col)
 	PeriodStartCol string

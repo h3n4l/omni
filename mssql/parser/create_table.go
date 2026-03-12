@@ -39,6 +39,20 @@ func (p *Parser) parseCreateTableStmt() *nodes.CreateTableStmt {
 	// Table name
 	stmt.Name = p.parseTableRef()
 
+	// AS NODE | AS EDGE (graph tables)
+	if p.cur.Type == kwAS {
+		next := p.peekNext()
+		if next.Type == tokIDENT && strings.EqualFold(next.Str, "node") {
+			p.advance() // AS
+			p.advance() // NODE
+			stmt.IsNode = true
+		} else if next.Type == tokIDENT && strings.EqualFold(next.Str, "edge") {
+			p.advance() // AS
+			p.advance() // EDGE
+			stmt.IsEdge = true
+		}
+	}
+
 	// Column and constraint definitions
 	if _, err := p.expect('('); err != nil {
 		stmt.Loc.End = p.pos()

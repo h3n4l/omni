@@ -9140,3 +9140,61 @@ func TestParseCreateTableInlineIndex(t *testing.T) {
 		}
 	})
 }
+
+// TestParseGraphTables tests CREATE TABLE AS NODE / AS EDGE (batch 87).
+func TestParseGraphTables(t *testing.T) {
+	// AS NODE
+	t.Run("create_table_as_node", func(t *testing.T) {
+		sql := `CREATE TABLE Person AS NODE (
+			ID INT PRIMARY KEY,
+			Name NVARCHAR(100)
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		if !stmt.IsNode {
+			t.Error("expected IsNode=true")
+		}
+		if stmt.IsEdge {
+			t.Error("expected IsEdge=false")
+		}
+		if stmt.Columns == nil || stmt.Columns.Len() != 2 {
+			t.Fatalf("expected 2 columns")
+		}
+	})
+
+	// AS EDGE
+	t.Run("create_table_as_edge", func(t *testing.T) {
+		sql := `CREATE TABLE Likes AS EDGE (
+			CreatedDate DATETIME DEFAULT GETDATE()
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		if !stmt.IsEdge {
+			t.Error("expected IsEdge=true")
+		}
+		if stmt.IsNode {
+			t.Error("expected IsNode=false")
+		}
+	})
+
+	// Edge table with $from_id and $to_id pseudo-columns
+	t.Run("create_table_edge_pseudo_columns", func(t *testing.T) {
+		sql := `CREATE TABLE FriendOf AS EDGE (
+			Since DATE
+		)`
+		ParseAndCheck(t, sql)
+	})
+
+	// Node table without columns
+	t.Run("create_table_node_minimal", func(t *testing.T) {
+		sql := "CREATE TABLE dbo.Entity AS NODE (ID INT)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		if !stmt.IsNode {
+			t.Error("expected IsNode=true")
+		}
+		if stmt.Name.Schema != "dbo" {
+			t.Errorf("expected schema dbo, got %q", stmt.Name.Schema)
+		}
+	})
+}

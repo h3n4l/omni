@@ -617,6 +617,12 @@ func writeCreateTableStmt(sb *strings.Builder, n *CreateTableStmt) {
 		writeNode(sb, n.Constraints)
 	}
 	sb.WriteString(fmt.Sprintf(" :ifNotExists %t", n.IfNotExists))
+	if n.IsNode {
+		sb.WriteString(" :isNode true")
+	}
+	if n.IsEdge {
+		sb.WriteString(" :isEdge true")
+	}
 	if n.PeriodStartCol != "" {
 		sb.WriteString(fmt.Sprintf(" :periodStart \"%s\"", escapeString(n.PeriodStartCol)))
 		sb.WriteString(fmt.Sprintf(" :periodEnd \"%s\"", escapeString(n.PeriodEndCol)))
