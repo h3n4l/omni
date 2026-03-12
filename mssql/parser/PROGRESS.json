@@ -1942,7 +1942,190 @@
         "alter_table_filetable_namespace",
         "alter_table_set_filetable_directory"
       ]
+    },
+    {
+      "id": 83,
+      "name": "table_hints",
+      "file": "select.go",
+      "status": "done",
+      "description": "Fix batch 4 gap: parse table hints in FROM clause (WITH (NOLOCK), WITH (ROWLOCK), WITH (UPDLOCK), WITH (HOLDLOCK), WITH (TABLOCK), WITH (PAGLOCK), WITH (INDEX(name)), WITH (FORCESEEK), WITH (SERIALIZABLE), WITH (READUNCOMMITTED), WITH (READCOMMITTED), WITH (REPEATABLEREAD), WITH (READPAST), WITH (XLOCK), WITH (SNAPSHOT)). Table hints appear after table references and optional aliases.",
+      "rules": [
+        "parseTableHints",
+        "parseTableHint"
+      ],
+      "depends_on": [
+        4
+      ],
+      "tests": [
+        "table_hints_nolock",
+        "table_hints_index",
+        "table_hints_multiple"
+      ]
+    },
+    {
+      "id": 84,
+      "name": "collate_expression",
+      "file": "expr.go",
+      "status": "pending",
+      "description": "Fix batch 3 gap: parse postfix COLLATE operator on expressions (expr COLLATE collation_name). This is a postfix operator that binds tightly, used in ORDER BY, WHERE, assignments, and column definitions.",
+      "rules": [
+        "parseCollateExpr"
+      ],
+      "depends_on": [
+        3
+      ],
+      "tests": [
+        "collate_order_by",
+        "collate_where",
+        "collate_column_expr"
+      ]
+    },
+    {
+      "id": 85,
+      "name": "at_time_zone",
+      "file": "expr.go",
+      "status": "pending",
+      "description": "Fix batch 3 gap: parse AT TIME ZONE postfix expression (datetime_expr AT TIME ZONE 'timezone_name'). Can be chained: expr AT TIME ZONE 'UTC' AT TIME ZONE 'Pacific Standard Time'.",
+      "rules": [
+        "parseAtTimeZone"
+      ],
+      "depends_on": [
+        3
+      ],
+      "tests": [
+        "at_time_zone_literal",
+        "at_time_zone_chained"
+      ]
+    },
+    {
+      "id": 86,
+      "name": "create_table_inline_index",
+      "file": "create_table.go",
+      "status": "pending",
+      "description": "Fix batch 8 gap: parse inline INDEX definitions in CREATE TABLE body. BNF: INDEX index_name [UNIQUE] [CLUSTERED|NONCLUSTERED] (column [ASC|DESC] [,...n]) [INCLUDE (...)] [WHERE ...] [WITH (...)]. Currently only CONSTRAINT, PRIMARY, UNIQUE, CHECK, FOREIGN are parsed as table-level elements.",
+      "rules": [
+        "parseInlineTableIndex"
+      ],
+      "depends_on": [
+        8,
+        10
+      ],
+      "tests": [
+        "create_table_inline_index",
+        "create_table_inline_index_include"
+      ]
+    },
+    {
+      "id": 87,
+      "name": "graph_tables",
+      "file": "create_table.go",
+      "status": "pending",
+      "description": "Fix batch 8 gap: parse CREATE TABLE ... AS NODE and CREATE TABLE ... AS EDGE for SQL Server graph database tables. Add IsNode/IsEdge flags to CreateTableStmt. Graph edge tables support $from_id, $to_id pseudo-columns.",
+      "rules": [
+        "parseGraphTableType"
+      ],
+      "depends_on": [
+        8
+      ],
+      "tests": [
+        "create_table_as_node",
+        "create_table_as_edge"
+      ]
+    },
+    {
+      "id": 88,
+      "name": "alter_table_add_period",
+      "file": "alter_table.go",
+      "status": "pending",
+      "description": "Fix batch 70 gap: parse ALTER TABLE ADD PERIOD FOR SYSTEM_TIME (start_col, end_col) and ALTER TABLE DROP PERIOD FOR SYSTEM_TIME. These modify temporal table configuration.",
+      "rules": [
+        "parseAlterTableAddPeriod",
+        "parseAlterTableDropPeriod"
+      ],
+      "depends_on": [
+        9,
+        70
+      ],
+      "tests": [
+        "alter_table_add_period",
+        "alter_table_drop_period"
+      ]
+    },
+    {
+      "id": 89,
+      "name": "trigger_with_options",
+      "file": "trigger.go",
+      "status": "pending",
+      "description": "Fix batch 24 gap: structurally parse CREATE/ALTER TRIGGER WITH options (ENCRYPTION, EXECUTE AS CALLER/SELF/OWNER/'user_name', NATIVE_COMPILATION, SCHEMABINDING) instead of skipping tokens between WITH and FOR/AFTER/INSTEAD.",
+      "rules": [
+        "parseTriggerWithOptions"
+      ],
+      "depends_on": [
+        24
+      ],
+      "tests": [
+        "trigger_with_encryption",
+        "trigger_with_execute_as"
+      ]
+    },
+    {
+      "id": 90,
+      "name": "security_key_options_depth",
+      "file": "security_keys.go",
+      "status": "pending",
+      "description": "Fix batch 31 gap: replace skipSecurityKeyOptions() with structured parsing for CREATE/ALTER/DROP SYMMETRIC KEY (KEY_SOURCE, ALGORITHM, IDENTITY_VALUE, PROVIDER_KEY_NAME), ASYMMETRIC KEY (ALGORITHM, FILE, EXECUTABLE_FILE, ASSEMBLY, PROVIDER_KEY_NAME), CERTIFICATE (ENCRYPTION BY, WITH SUBJECT, EXPIRY_DATE, START_DATE), CREDENTIAL (IDENTITY, SECRET).",
+      "rules": [
+        "parseSymmetricKeyOptions",
+        "parseAsymmetricKeyOptions",
+        "parseCertificateOptions",
+        "parseCredentialOptions"
+      ],
+      "depends_on": [
+        31
+      ],
+      "tests": [
+        "create_symmetric_key_options",
+        "create_certificate_options",
+        "create_credential_options"
+      ]
+    },
+    {
+      "id": 91,
+      "name": "choose_string_agg",
+      "file": "expr.go",
+      "status": "pending",
+      "description": "Fix batch 3 gap: parse CHOOSE(index, val1, val2, ...) function and STRING_AGG(expr, separator) WITHIN GROUP (ORDER BY ...) clause. WITHIN GROUP is a postfix clause on aggregate functions.",
+      "rules": [
+        "parseChooseExpr",
+        "parseWithinGroupClause"
+      ],
+      "depends_on": [
+        3
+      ],
+      "tests": [
+        "choose_function",
+        "string_agg_within_group"
+      ]
+    },
+    {
+      "id": 92,
+      "name": "option_query_hints",
+      "file": "select.go",
+      "status": "pending",
+      "description": "Fix batch 4 gap: structurally parse OPTION clause query hints instead of generic expressions. Supported hints: RECOMPILE, OPTIMIZE FOR (@var = val | UNKNOWN), LOOP/HASH/MERGE JOIN, FORCE ORDER, MAXDOP n, MAXRECURSION n, USE PLAN N'xml', EXPAND VIEWS, FAST n, KEEP PLAN, KEEPFIXED PLAN, PARAMETERIZATION SIMPLE/FORCED, ROBUST PLAN.",
+      "rules": [
+        "parseQueryHint"
+      ],
+      "depends_on": [
+        4
+      ],
+      "tests": [
+        "option_recompile",
+        "option_optimize_for",
+        "option_join_hints",
+        "option_maxdop"
+      ]
     }
   ],
-  "audit_round": 4
+  "audit_round": 5
 }

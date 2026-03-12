@@ -8447,3 +8447,414 @@ func TestParseAlterTableFiletable(t *testing.T) {
 		}
 	})
 }
+
+// TestParseTableHints tests table hints parsing (batch 83).
+func TestParseTableHints(t *testing.T) {
+	// NOLOCK hint
+	t.Run("table_hints_nolock", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (NOLOCK)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		if ref.Hints == nil || ref.Hints.Len() != 1 {
+			t.Fatalf("expected 1 hint, got %v", ref.Hints)
+		}
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "NOLOCK" {
+			t.Errorf("expected NOLOCK, got %s", hint.Name)
+		}
+	})
+
+	// ROWLOCK hint
+	t.Run("table_hints_rowlock", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (ROWLOCK)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "ROWLOCK" {
+			t.Errorf("expected ROWLOCK, got %s", hint.Name)
+		}
+	})
+
+	// UPDLOCK hint
+	t.Run("table_hints_updlock", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (UPDLOCK)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "UPDLOCK" {
+			t.Errorf("expected UPDLOCK, got %s", hint.Name)
+		}
+	})
+
+	// HOLDLOCK hint
+	t.Run("table_hints_holdlock", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (HOLDLOCK)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "HOLDLOCK" {
+			t.Errorf("expected HOLDLOCK, got %s", hint.Name)
+		}
+	})
+
+	// TABLOCK hint
+	t.Run("table_hints_tablock", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (TABLOCK)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "TABLOCK" {
+			t.Errorf("expected TABLOCK, got %s", hint.Name)
+		}
+	})
+
+	// TABLOCKX hint
+	t.Run("table_hints_tablockx", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (TABLOCKX)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "TABLOCKX" {
+			t.Errorf("expected TABLOCKX, got %s", hint.Name)
+		}
+	})
+
+	// PAGLOCK hint
+	t.Run("table_hints_paglock", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (PAGLOCK)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "PAGLOCK" {
+			t.Errorf("expected PAGLOCK, got %s", hint.Name)
+		}
+	})
+
+	// XLOCK hint
+	t.Run("table_hints_xlock", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (XLOCK)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "XLOCK" {
+			t.Errorf("expected XLOCK, got %s", hint.Name)
+		}
+	})
+
+	// SERIALIZABLE hint
+	t.Run("table_hints_serializable", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (SERIALIZABLE)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "SERIALIZABLE" {
+			t.Errorf("expected SERIALIZABLE, got %s", hint.Name)
+		}
+	})
+
+	// READUNCOMMITTED hint
+	t.Run("table_hints_readuncommitted", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (READUNCOMMITTED)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "READUNCOMMITTED" {
+			t.Errorf("expected READUNCOMMITTED, got %s", hint.Name)
+		}
+	})
+
+	// READCOMMITTED hint
+	t.Run("table_hints_readcommitted", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (READCOMMITTED)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "READCOMMITTED" {
+			t.Errorf("expected READCOMMITTED, got %s", hint.Name)
+		}
+	})
+
+	// READCOMMITTEDLOCK hint
+	t.Run("table_hints_readcommittedlock", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (READCOMMITTEDLOCK)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "READCOMMITTEDLOCK" {
+			t.Errorf("expected READCOMMITTEDLOCK, got %s", hint.Name)
+		}
+	})
+
+	// REPEATABLEREAD hint
+	t.Run("table_hints_repeatableread", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (REPEATABLEREAD)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "REPEATABLEREAD" {
+			t.Errorf("expected REPEATABLEREAD, got %s", hint.Name)
+		}
+	})
+
+	// READPAST hint
+	t.Run("table_hints_readpast", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (READPAST)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "READPAST" {
+			t.Errorf("expected READPAST, got %s", hint.Name)
+		}
+	})
+
+	// SNAPSHOT hint
+	t.Run("table_hints_snapshot", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (SNAPSHOT)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "SNAPSHOT" {
+			t.Errorf("expected SNAPSHOT, got %s", hint.Name)
+		}
+	})
+
+	// NOWAIT hint
+	t.Run("table_hints_nowait", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (NOWAIT)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "NOWAIT" {
+			t.Errorf("expected NOWAIT, got %s", hint.Name)
+		}
+	})
+
+	// NOEXPAND hint
+	t.Run("table_hints_noexpand", func(t *testing.T) {
+		sql := "SELECT * FROM v1 WITH (NOEXPAND)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "NOEXPAND" {
+			t.Errorf("expected NOEXPAND, got %s", hint.Name)
+		}
+	})
+
+	// FORCESCAN hint
+	t.Run("table_hints_forcescan", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (FORCESCAN)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "FORCESCAN" {
+			t.Errorf("expected FORCESCAN, got %s", hint.Name)
+		}
+	})
+
+	// INDEX hint with single index name
+	t.Run("table_hints_index", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (INDEX(idx1))"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "INDEX" {
+			t.Errorf("expected INDEX, got %s", hint.Name)
+		}
+		if hint.IndexValues == nil || hint.IndexValues.Len() != 1 {
+			t.Fatalf("expected 1 index value, got %v", hint.IndexValues)
+		}
+	})
+
+	// INDEX hint with multiple index values
+	t.Run("table_hints_index_multiple", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (INDEX(idx1, idx2))"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "INDEX" {
+			t.Errorf("expected INDEX, got %s", hint.Name)
+		}
+		if hint.IndexValues == nil || hint.IndexValues.Len() != 2 {
+			t.Fatalf("expected 2 index values, got %v", hint.IndexValues)
+		}
+	})
+
+	// INDEX hint with = syntax
+	t.Run("table_hints_index_eq", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (INDEX = (idx1))"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "INDEX" {
+			t.Errorf("expected INDEX, got %s", hint.Name)
+		}
+		if hint.IndexValues == nil || hint.IndexValues.Len() != 1 {
+			t.Fatalf("expected 1 index value, got %v", hint.IndexValues)
+		}
+	})
+
+	// INDEX hint with numeric value (0 = table scan)
+	t.Run("table_hints_index_zero", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (INDEX(0))"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "INDEX" {
+			t.Errorf("expected INDEX, got %s", hint.Name)
+		}
+		if hint.IndexValues == nil || hint.IndexValues.Len() != 1 {
+			t.Fatalf("expected 1 index value, got %v", hint.IndexValues)
+		}
+	})
+
+	// FORCESEEK hint (no parameters)
+	t.Run("table_hints_forceseek", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (FORCESEEK)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "FORCESEEK" {
+			t.Errorf("expected FORCESEEK, got %s", hint.Name)
+		}
+	})
+
+	// FORCESEEK with index and columns
+	t.Run("table_hints_forceseek_params", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (FORCESEEK(idx1(col1, col2)))"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "FORCESEEK" {
+			t.Errorf("expected FORCESEEK, got %s", hint.Name)
+		}
+		if hint.IndexValues == nil || hint.IndexValues.Len() != 1 {
+			t.Fatalf("expected 1 index value for FORCESEEK, got %v", hint.IndexValues)
+		}
+		if hint.ForceSeekColumns == nil || hint.ForceSeekColumns.Len() != 2 {
+			t.Fatalf("expected 2 FORCESEEK columns, got %v", hint.ForceSeekColumns)
+		}
+	})
+
+	// SPATIAL_WINDOW_MAX_CELLS hint
+	t.Run("table_hints_spatial", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (SPATIAL_WINDOW_MAX_CELLS = 512)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		hint := ref.Hints.Items[0].(*ast.TableHint)
+		if hint.Name != "SPATIAL_WINDOW_MAX_CELLS" {
+			t.Errorf("expected SPATIAL_WINDOW_MAX_CELLS, got %s", hint.Name)
+		}
+		if hint.IntValue == nil {
+			t.Error("expected IntValue for SPATIAL_WINDOW_MAX_CELLS")
+		}
+	})
+
+	// Multiple hints
+	t.Run("table_hints_multiple", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (NOLOCK, INDEX(idx1))"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		if ref.Hints == nil || ref.Hints.Len() != 2 {
+			t.Fatalf("expected 2 hints, got %v", ref.Hints)
+		}
+		h0 := ref.Hints.Items[0].(*ast.TableHint)
+		h1 := ref.Hints.Items[1].(*ast.TableHint)
+		if h0.Name != "NOLOCK" {
+			t.Errorf("expected NOLOCK, got %s", h0.Name)
+		}
+		if h1.Name != "INDEX" {
+			t.Errorf("expected INDEX, got %s", h1.Name)
+		}
+	})
+
+	// Hints with alias
+	t.Run("table_hints_with_alias", func(t *testing.T) {
+		sql := "SELECT * FROM t1 AS a WITH (NOLOCK)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		if ref.Alias != "a" {
+			t.Errorf("expected alias 'a', got %s", ref.Alias)
+		}
+		if ref.Hints == nil || ref.Hints.Len() != 1 {
+			t.Fatalf("expected 1 hint, got %v", ref.Hints)
+		}
+	})
+
+	// Hints on joined table
+	t.Run("table_hints_join", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (NOLOCK) INNER JOIN t2 WITH (ROWLOCK) ON t1.id = t2.id"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		join := stmt.FromClause.Items[0].(*ast.JoinClause)
+		left := join.Left.(*ast.TableRef)
+		right := join.Right.(*ast.TableRef)
+		if left.Hints == nil || left.Hints.Len() != 1 {
+			t.Fatalf("expected 1 hint on left, got %v", left.Hints)
+		}
+		if right.Hints == nil || right.Hints.Len() != 1 {
+			t.Fatalf("expected 1 hint on right, got %v", right.Hints)
+		}
+		if left.Hints.Items[0].(*ast.TableHint).Name != "NOLOCK" {
+			t.Errorf("expected NOLOCK on left")
+		}
+		if right.Hints.Items[0].(*ast.TableHint).Name != "ROWLOCK" {
+			t.Errorf("expected ROWLOCK on right")
+		}
+	})
+
+	// Three hints combined
+	t.Run("table_hints_three", func(t *testing.T) {
+		sql := "SELECT * FROM t1 WITH (UPDLOCK, ROWLOCK, HOLDLOCK)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		if ref.Hints == nil || ref.Hints.Len() != 3 {
+			t.Fatalf("expected 3 hints, got %v", ref.Hints)
+		}
+		names := []string{"UPDLOCK", "ROWLOCK", "HOLDLOCK"}
+		for i, name := range names {
+			h := ref.Hints.Items[i].(*ast.TableHint)
+			if h.Name != name {
+				t.Errorf("hint[%d]: expected %s, got %s", i, name, h.Name)
+			}
+		}
+	})
+
+	// NOEXPAND with INDEX
+	t.Run("table_hints_noexpand_index", func(t *testing.T) {
+		sql := "SELECT * FROM v1 WITH (NOEXPAND, INDEX(idx1))"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		ref := stmt.FromClause.Items[0].(*ast.TableRef)
+		if ref.Hints == nil || ref.Hints.Len() != 2 {
+			t.Fatalf("expected 2 hints, got %v", ref.Hints)
+		}
+	})
+}

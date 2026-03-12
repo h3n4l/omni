@@ -438,6 +438,10 @@ func (p *Parser) parsePrimaryTableSource() nodes.TableExpr {
 			TableSample: ts,
 			Loc:         ref.Loc,
 		}
+		// Table hints after TABLESAMPLE
+		if p.cur.Type == kwWITH && p.peekNext().Type == '(' {
+			result.Hints = p.parseTableHints()
+		}
 		return p.parsePivotUnpivot(result)
 	}
 
@@ -445,6 +449,11 @@ func (p *Parser) parsePrimaryTableSource() nodes.TableExpr {
 	alias := p.parseOptionalAlias()
 	if alias != "" {
 		ref.Alias = alias
+	}
+
+	// Table hints: WITH (NOLOCK), WITH (INDEX(idx1)), etc.
+	if p.cur.Type == kwWITH && p.peekNext().Type == '(' {
+		ref.Hints = p.parseTableHints()
 	}
 
 	return p.parsePivotUnpivot(ref)
@@ -1024,4 +1033,189 @@ func (p *Parser) parseOrderByList() *nodes.List {
 		}
 	}
 	return &nodes.List{Items: items}
+}
+
+// parseTableHints parses WITH ( <table_hint> [ [ , ] ...n ] ).
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/queries/hints-transact-sql-table
+//
+//	WITH ( <table_hint> [ [ , ] ...n ] )
+//
+//	<table_hint> ::=
+//	{ NOEXPAND
+//	  | INDEX ( <index_value> [ , ...n ] ) | INDEX = ( <index_value> )
+//	  | FORCESEEK [ ( <index_value> ( <index_column_name> [ , ... ] ) ) ]
+//	  | FORCESCAN
+//	  | HOLDLOCK
+//	  | NOLOCK
+//	  | NOWAIT
+//	  | PAGLOCK
+//	  | READCOMMITTED
+//	  | READCOMMITTEDLOCK
+//	  | READPAST
+//	  | READUNCOMMITTED
+//	  | REPEATABLEREAD
+//	  | ROWLOCK
+//	  | SERIALIZABLE
+//	  | SNAPSHOT
+//	  | SPATIAL_WINDOW_MAX_CELLS = <integer_value>
+//	  | TABLOCK
+//	  | TABLOCKX
+//	  | UPDLOCK
+//	  | XLOCK
+//	}
+func (p *Parser) parseTableHints() *nodes.List {
+	p.advance() // consume WITH
+	if _, err := p.expect('('); err != nil {
+		return nil
+	}
+
+	var hints []nodes.Node
+	for p.cur.Type != ')' && p.cur.Type != tokEOF {
+		hint := p.parseTableHint()
+		if hint == nil {
+			break
+		}
+		hints = append(hints, hint)
+		// Optional comma between hints
+		p.match(',')
+	}
+	_, _ = p.expect(')')
+
+	if len(hints) == 0 {
+		return nil
+	}
+	return &nodes.List{Items: hints}
+}
+
+// parseTableHint parses a single table hint.
+func (p *Parser) parseTableHint() *nodes.TableHint {
+	loc := p.pos()
+
+	// INDEX hint: INDEX ( values ) or INDEX = ( value )
+	if p.cur.Type == kwINDEX {
+		p.advance()
+		hint := &nodes.TableHint{
+			Name: "INDEX",
+			Loc:  nodes.Loc{Start: loc},
+		}
+		if _, ok := p.match('='); ok {
+			// INDEX = ( value )
+			if _, err := p.expect('('); err == nil {
+				var vals []nodes.Node
+				for p.cur.Type != ')' && p.cur.Type != tokEOF {
+					vals = append(vals, p.parseIndexValue())
+					if _, ok := p.match(','); !ok {
+						break
+					}
+				}
+				_, _ = p.expect(')')
+				hint.IndexValues = &nodes.List{Items: vals}
+			}
+		} else if p.cur.Type == '(' {
+			// INDEX ( values )
+			p.advance()
+			var vals []nodes.Node
+			for p.cur.Type != ')' && p.cur.Type != tokEOF {
+				vals = append(vals, p.parseIndexValue())
+				if _, ok := p.match(','); !ok {
+					break
+				}
+			}
+			_, _ = p.expect(')')
+			hint.IndexValues = &nodes.List{Items: vals}
+		}
+		hint.Loc.End = p.pos()
+		return hint
+	}
+
+	// Check for keyword-based hints that are lexer keywords
+	switch p.cur.Type {
+	case kwHOLDLOCK:
+		p.advance()
+		return &nodes.TableHint{Name: "HOLDLOCK", Loc: nodes.Loc{Start: loc, End: p.pos()}}
+	case kwNOLOCK:
+		p.advance()
+		return &nodes.TableHint{Name: "NOLOCK", Loc: nodes.Loc{Start: loc, End: p.pos()}}
+	case kwNOWAIT:
+		p.advance()
+		return &nodes.TableHint{Name: "NOWAIT", Loc: nodes.Loc{Start: loc, End: p.pos()}}
+	}
+
+	// All remaining hints are identifiers (not lexer keywords)
+	if !p.isIdentLike() {
+		return nil
+	}
+
+	name := strings.ToUpper(p.cur.Str)
+	switch name {
+	case "FORCESEEK":
+		p.advance()
+		hint := &nodes.TableHint{
+			Name: "FORCESEEK",
+			Loc:  nodes.Loc{Start: loc},
+		}
+		// Optional: FORCESEEK ( index_value ( col1, col2, ... ) )
+		if p.cur.Type == '(' {
+			p.advance()
+			// index value
+			idxVal := p.parseIndexValue()
+			hint.IndexValues = &nodes.List{Items: []nodes.Node{idxVal}}
+			// ( col1, col2, ... )
+			if p.cur.Type == '(' {
+				p.advance()
+				var cols []nodes.Node
+				for p.cur.Type != ')' && p.cur.Type != tokEOF {
+					if colName, ok := p.parseIdentifier(); ok {
+						cols = append(cols, &nodes.String{Str: colName})
+					}
+					if _, ok := p.match(','); !ok {
+						break
+					}
+				}
+				_, _ = p.expect(')')
+				hint.ForceSeekColumns = &nodes.List{Items: cols}
+			}
+			_, _ = p.expect(')') // outer paren
+		}
+		hint.Loc.End = p.pos()
+		return hint
+
+	case "SPATIAL_WINDOW_MAX_CELLS":
+		p.advance()
+		hint := &nodes.TableHint{
+			Name: "SPATIAL_WINDOW_MAX_CELLS",
+			Loc:  nodes.Loc{Start: loc},
+		}
+		if _, ok := p.match('='); ok {
+			hint.IntValue = p.parsePrimary()
+		}
+		hint.Loc.End = p.pos()
+		return hint
+
+	case "FORCESCAN", "NOEXPAND",
+		"PAGLOCK", "READCOMMITTED", "READCOMMITTEDLOCK",
+		"READPAST", "READUNCOMMITTED", "REPEATABLEREAD",
+		"ROWLOCK", "SERIALIZABLE", "SNAPSHOT",
+		"TABLOCK", "TABLOCKX", "UPDLOCK", "XLOCK",
+		"KEEPIDENTITY", "KEEPDEFAULTS", "IGNORE_CONSTRAINTS", "IGNORE_TRIGGERS":
+		p.advance()
+		return &nodes.TableHint{Name: name, Loc: nodes.Loc{Start: loc, End: p.pos()}}
+
+	default:
+		return nil
+	}
+}
+
+// parseIndexValue parses an index value (identifier or integer).
+func (p *Parser) parseIndexValue() nodes.Node {
+	if p.cur.Type == tokICONST {
+		val := &nodes.Integer{Ival: p.cur.Ival}
+		p.advance()
+		return val
+	}
+	if name, ok := p.parseIdentifier(); ok {
+		return &nodes.String{Str: name}
+	}
+	return &nodes.String{Str: ""}
 }

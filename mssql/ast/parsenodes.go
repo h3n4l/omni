@@ -1547,6 +1547,7 @@ type TableRef struct {
 	Schema   string
 	Object   string
 	Alias    string
+	Hints    *List // table hints: WITH (NOLOCK), WITH (INDEX(...)), etc.
 	Loc      Loc
 }
 
@@ -1596,10 +1597,11 @@ const (
 
 // AliasedTableRef represents a table reference with optional alias.
 type AliasedTableRef struct {
-	Table       TableExpr           // TableRef, SubqueryExpr, etc.
+	Table       TableExpr          // TableRef, SubqueryExpr, etc.
 	Alias       string
-	Columns     *List               // alias column list
-	TableSample *TableSampleClause  // optional TABLESAMPLE clause
+	Columns     *List              // alias column list
+	TableSample *TableSampleClause // optional TABLESAMPLE clause
+	Hints       *List              // table hints: WITH (NOLOCK), etc.
 	Loc         Loc
 }
 
@@ -2294,6 +2296,45 @@ type TableSampleClause struct {
 }
 
 func (n *TableSampleClause) nodeTag() {}
+
+// ---------- Batch 83: Table Hints ----------
+
+// TableHint represents a single table hint in WITH (hint, hint, ...).
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/queries/hints-transact-sql-table
+//
+//	<table_hint> ::=
+//	{ NOEXPAND
+//	  | INDEX ( <index_value> [ , ...n ] ) | INDEX = ( <index_value> )
+//	  | FORCESEEK [ ( <index_value> ( <index_column_name> [ , ... ] ) ) ]
+//	  | FORCESCAN
+//	  | HOLDLOCK
+//	  | NOLOCK
+//	  | NOWAIT
+//	  | PAGLOCK
+//	  | READCOMMITTED
+//	  | READCOMMITTEDLOCK
+//	  | READPAST
+//	  | READUNCOMMITTED
+//	  | REPEATABLEREAD
+//	  | ROWLOCK
+//	  | SERIALIZABLE
+//	  | SNAPSHOT
+//	  | SPATIAL_WINDOW_MAX_CELLS = <integer_value>
+//	  | TABLOCK
+//	  | TABLOCKX
+//	  | UPDLOCK
+//	  | XLOCK
+//	}
+type TableHint struct {
+	Name             string   // hint name: NOLOCK, INDEX, FORCESEEK, etc.
+	IndexValues      *List    // INDEX(val, ...) or FORCESEEK index value
+	ForceSeekColumns *List    // FORCESEEK(idx(col, col, ...)) column names
+	IntValue         ExprNode // SPATIAL_WINDOW_MAX_CELLS = N
+	Loc              Loc
+}
+
+func (n *TableHint) nodeTag() {}
 
 // ---------- Batch 38: GROUPING SETS/CUBE/ROLLUP ----------
 

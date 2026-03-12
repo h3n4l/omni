@@ -196,6 +196,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeJoinClause(sb, n)
 	case *AliasedTableRef:
 		writeAliasedTableRef(sb, n)
+	case *TableHint:
+		writeTableHint(sb, n)
 	case *OverClause:
 		writeOverClause(sb, n)
 	case *OrderByItem:
@@ -1742,6 +1744,10 @@ func writeTableRef(sb *strings.Builder, n *TableRef) {
 	if n.Alias != "" {
 		sb.WriteString(fmt.Sprintf(" :alias \"%s\"", escapeString(n.Alias)))
 	}
+	if n.Hints != nil {
+		sb.WriteString(" :hints ")
+		writeNode(sb, n.Hints)
+	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
 }
@@ -1810,6 +1816,29 @@ func writeAliasedTableRef(sb *strings.Builder, n *AliasedTableRef) {
 	if n.TableSample != nil {
 		sb.WriteString(" :tablesample ")
 		writeNode(sb, n.TableSample)
+	}
+	if n.Hints != nil {
+		sb.WriteString(" :hints ")
+		writeNode(sb, n.Hints)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeTableHint(sb *strings.Builder, n *TableHint) {
+	sb.WriteString("{TABLEHINT")
+	sb.WriteString(fmt.Sprintf(" :name \"%s\"", escapeString(n.Name)))
+	if n.IndexValues != nil {
+		sb.WriteString(" :indexValues ")
+		writeNode(sb, n.IndexValues)
+	}
+	if n.ForceSeekColumns != nil {
+		sb.WriteString(" :forceSeekColumns ")
+		writeNode(sb, n.ForceSeekColumns)
+	}
+	if n.IntValue != nil {
+		sb.WriteString(" :intValue ")
+		writeNode(sb, n.IntValue)
 	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
