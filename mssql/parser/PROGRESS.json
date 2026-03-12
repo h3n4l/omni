@@ -2366,7 +2366,7 @@
       "id": 105,
       "name": "backup_restore_symmetric_key",
       "file": "security_keys.go",
-      "status": "pending",
+      "status": "done",
       "description": "New: BACKUP SYMMETRIC KEY and RESTORE SYMMETRIC KEY statements. BNF: BACKUP SYMMETRIC KEY key_name TO FILE = 'path' ENCRYPTION BY PASSWORD = 'password'; RESTORE SYMMETRIC KEY key_name FROM FILE = 'path' DECRYPTION BY PASSWORD = 'password'.",
       "rules": [
         "parseBackupSymmetricKeyStmt",

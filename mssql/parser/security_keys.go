@@ -496,7 +496,14 @@ func (p *Parser) parseCloseSymmetricKeyStmt() *nodes.SecurityKeyStmt {
 	return stmt
 }
 
-// parseBackupCertificateStmt parses BACKUP CERTIFICATE cert_name TO FILE = 'path' ...
+// parseBackupCertificateStmt parses BACKUP CERTIFICATE|MASTER KEY|SYMMETRIC KEY statements.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/backup-certificate-transact-sql
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/backup-symmetric-key-transact-sql
+//
+//	BACKUP CERTIFICATE certname TO FILE = 'path_to_file' [ WITH PRIVATE KEY ( ... ) ]
+//	BACKUP MASTER KEY TO FILE = 'path_to_file' ENCRYPTION BY PASSWORD = 'password'
+//	BACKUP SYMMETRIC KEY key_name TO { FILE = 'path' | URL = 'url' } ENCRYPTION BY PASSWORD = 'password'
 func (p *Parser) parseBackupCertificateStmt() *nodes.SecurityKeyStmt {
 	loc := p.pos()
 	p.advance() // consume BACKUP
@@ -507,6 +514,11 @@ func (p *Parser) parseBackupCertificateStmt() *nodes.SecurityKeyStmt {
 
 	if p.matchIdentCI("CERTIFICATE") {
 		stmt.ObjectType = "CERTIFICATE"
+		name, _ := p.parseIdentifier()
+		stmt.Name = name
+	} else if p.matchIdentCI("SYMMETRIC") {
+		p.match(kwKEY)
+		stmt.ObjectType = "SYMMETRIC KEY"
 		name, _ := p.parseIdentifier()
 		stmt.Name = name
 	} else if p.matchIdentCI("MASTER") {
@@ -573,6 +585,40 @@ func (p *Parser) parseRestoreMasterKeyStmt() *nodes.SecurityKeyStmt {
 	if p.matchIdentCI("MASTER") {
 		p.match(kwKEY)
 	}
+
+	p.parseSecurityKeyOptions(stmt)
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseRestoreSymmetricKeyStmt parses RESTORE SYMMETRIC KEY key_name FROM { FILE | URL } = '...' ...
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/restore-symmetric-key-transact-sql
+//
+//	RESTORE SYMMETRIC KEY key_name FROM
+//	  {
+//	    FILE = 'path_to_file'
+//	  | URL = 'Azure Blob storage URL'
+//	  }
+//	      DECRYPTION BY PASSWORD = 'password'
+//	      ENCRYPTION BY PASSWORD = 'password'
+func (p *Parser) parseRestoreSymmetricKeyStmt() *nodes.SecurityKeyStmt {
+	loc := p.pos()
+	p.advance() // consume RESTORE
+	stmt := &nodes.SecurityKeyStmt{
+		Action:     "RESTORE",
+		ObjectType: "SYMMETRIC KEY",
+		Loc:        nodes.Loc{Start: loc},
+	}
+
+	// consume SYMMETRIC KEY
+	if p.matchIdentCI("SYMMETRIC") {
+		p.match(kwKEY)
+	}
+
+	// key name
+	name, _ := p.parseIdentifier()
+	stmt.Name = name
 
 	p.parseSecurityKeyOptions(stmt)
 	stmt.Loc.End = p.pos()

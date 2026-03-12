@@ -10935,3 +10935,64 @@ func TestParseDropExternalLibraryLanguageDispatch(t *testing.T) {
 		})
 	}
 }
+
+// TestParseBackupRestoreSymmetricKey tests batch 105: BACKUP/RESTORE SYMMETRIC KEY.
+func TestParseBackupRestoreSymmetricKey(t *testing.T) {
+	tests := []struct {
+		sql        string
+		action     string
+		objectType string
+		name       string
+	}{
+		// BACKUP SYMMETRIC KEY to file
+		{
+			sql:        "BACKUP SYMMETRIC KEY symmetric_key TO FILE = 'c:\\temp\\keys\\symmetric_key' ENCRYPTION BY PASSWORD = '3dH85Hhk003GHk2597gheij4'",
+			action:     "BACKUP",
+			objectType: "SYMMETRIC KEY",
+			name:       "symmetric_key",
+		},
+		// BACKUP SYMMETRIC KEY to URL
+		{
+			sql:        "BACKUP SYMMETRIC KEY symmetric_key TO URL = 'https://mystorage.blob.core.windows.net/mycontainer/symmetric_key.bak' ENCRYPTION BY PASSWORD = '3dH85Hhk003GHk2597gheij4'",
+			action:     "BACKUP",
+			objectType: "SYMMETRIC KEY",
+			name:       "symmetric_key",
+		},
+		// RESTORE SYMMETRIC KEY from file
+		{
+			sql:        "RESTORE SYMMETRIC KEY symmetric_key FROM FILE = 'c:\\temp\\keys\\symmetric_key' DECRYPTION BY PASSWORD = '3dH85Hhk003' ENCRYPTION BY PASSWORD = '259087M'",
+			action:     "RESTORE",
+			objectType: "SYMMETRIC KEY",
+			name:       "symmetric_key",
+		},
+		// RESTORE SYMMETRIC KEY from URL
+		{
+			sql:        "RESTORE SYMMETRIC KEY symmetric_key FROM URL = 'https://mystorage.blob.core.windows.net/mycontainer/symmetric_key.bak' DECRYPTION BY PASSWORD = '3dH85Hhk003' ENCRYPTION BY PASSWORD = '259087M'",
+			action:     "RESTORE",
+			objectType: "SYMMETRIC KEY",
+			name:       "symmetric_key",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.sql, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() != 1 {
+				t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+			}
+			stmt, ok := result.Items[0].(*ast.SecurityKeyStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *SecurityKeyStmt, got %T", tt.sql, result.Items[0])
+			}
+			if stmt.Action != tt.action {
+				t.Errorf("Parse(%q): action = %q, want %q", tt.sql, stmt.Action, tt.action)
+			}
+			if stmt.ObjectType != tt.objectType {
+				t.Errorf("Parse(%q): objectType = %q, want %q", tt.sql, stmt.ObjectType, tt.objectType)
+			}
+			if stmt.Name != tt.name {
+				t.Errorf("Parse(%q): name = %q, want %q", tt.sql, stmt.Name, tt.name)
+			}
+			checkLocation(t, tt.sql, "SecurityKeyStmt", stmt.Loc)
+		})
+	}
+}

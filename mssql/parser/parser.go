@@ -189,15 +189,19 @@ func (p *Parser) parseStmt() nodes.StmtNode {
 			return stmt
 		}
 		if (next.Str != "" && matchesKeywordCI(next.Str, "CERTIFICATE")) ||
-			(next.Str != "" && matchesKeywordCI(next.Str, "MASTER")) {
+			(next.Str != "" && matchesKeywordCI(next.Str, "MASTER")) ||
+			(next.Str != "" && matchesKeywordCI(next.Str, "SYMMETRIC")) {
 			return p.parseBackupCertificateStmt()
 		}
 		return p.parseBackupStmt()
 	case kwRESTORE:
-		// Check for RESTORE MASTER KEY / RESTORE SERVICE MASTER KEY
+		// Check for RESTORE MASTER KEY / RESTORE SYMMETRIC KEY / RESTORE SERVICE MASTER KEY
 		next := p.peekNext()
 		if next.Str != "" && matchesKeywordCI(next.Str, "MASTER") {
 			return p.parseRestoreMasterKeyStmt()
+		}
+		if next.Str != "" && matchesKeywordCI(next.Str, "SYMMETRIC") {
+			return p.parseRestoreSymmetricKeyStmt()
 		}
 		if next.Str != "" && matchesKeywordCI(next.Str, "SERVICE") {
 			loc := p.pos()
