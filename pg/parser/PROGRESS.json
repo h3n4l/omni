@@ -1219,7 +1219,7 @@
       "id": 45,
       "name": "func_set_reset_options",
       "file": "create_function.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 14 gap: parseCommonFuncOptItem BNF lists SET set_rest_more and VariableResetStmt (lines 442-443) but the switch has no cases for them. Must add SET case that calls parseSetRestMore and RESET case that calls parseVariableResetStmt, wrapping results in DefElem. Ref: https://www.postgresql.org/docs/current/sql-createfunction.html",
       "rules": [
         "parseCommonFuncOptItem"

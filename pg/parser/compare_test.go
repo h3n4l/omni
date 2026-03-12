@@ -3013,3 +3013,39 @@ func TestCompareBeginAtomicBody(t *testing.T) {
 		})
 	}
 }
+
+func TestCompareFuncSetOption(t *testing.T) {
+	tests := []string{
+		// SET configuration parameter
+		"CREATE FUNCTION f() RETURNS void LANGUAGE SQL SET search_path TO 'public'",
+		// SET with equals syntax
+		"CREATE FUNCTION f() RETURNS void LANGUAGE SQL SET work_mem = '64MB'",
+		// SET with multiple values
+		"CREATE FUNCTION f() RETURNS void LANGUAGE SQL SET search_path TO 'myschema', 'public'",
+		// SET TIME ZONE
+		"CREATE FUNCTION f() RETURNS void LANGUAGE SQL SET TIME ZONE 'UTC'",
+		// SET combined with other options
+		"CREATE FUNCTION f() RETURNS void LANGUAGE SQL IMMUTABLE SET search_path TO 'public'",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+		})
+	}
+}
+
+func TestCompareFuncResetOption(t *testing.T) {
+	tests := []string{
+		// RESET specific parameter
+		"CREATE FUNCTION f() RETURNS void LANGUAGE SQL RESET search_path",
+		// RESET ALL
+		"CREATE FUNCTION f() RETURNS void LANGUAGE SQL RESET ALL",
+		// RESET combined with other options
+		"CREATE FUNCTION f() RETURNS void LANGUAGE SQL STABLE RESET work_mem",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+		})
+	}
+}

@@ -502,6 +502,16 @@ func (p *Parser) parseCommonFuncOptItem() *nodes.DefElem {
 		p.advance()
 		name, _ := p.parseAnyName()
 		return &nodes.DefElem{Defname: "support", Arg: name}
+	case SET:
+		// SET set_rest_more
+		p.advance() // consume SET
+		arg := p.parseSetRestMore()
+		return &nodes.DefElem{Defname: "set", Arg: arg}
+	case RESET:
+		// VariableResetStmt (RESET reset_rest)
+		p.advance() // consume RESET
+		arg := p.parseVariableResetStmt()
+		return &nodes.DefElem{Defname: "set", Arg: arg}
 	}
 	return nil
 }
