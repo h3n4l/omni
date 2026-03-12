@@ -1967,7 +1967,7 @@
       "id": 79,
       "name": "depth_fix_create_user_password_random",
       "file": "grant.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 15 gap: IDENTIFIED BY RANDOM PASSWORD syntax (MySQL 8.0.18+), RETAIN CURRENT PASSWORD dual-password support (MySQL 8.0.14+), DISCARD OLD PASSWORD. Add PasswordRandom and RetainCurrentPassword fields to UserSpec and AlterUserStmt AST nodes.",
       "rules": [
         "parseUserSpec",

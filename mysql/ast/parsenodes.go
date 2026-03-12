@@ -1285,12 +1285,15 @@ func (s *AlterUserStmt) stmtNode() {}
 
 // UserSpec represents a user specification.
 type UserSpec struct {
-	Loc        Loc
-	Name       string
-	Host       string
-	AuthPlugin string
-	Password   string
-	AuthHash   string // IDENTIFIED WITH plugin AS 'hash_string'
+	Loc                  Loc
+	Name                 string
+	Host                 string
+	AuthPlugin           string
+	Password             string
+	AuthHash             string // IDENTIFIED WITH plugin AS 'hash_string'
+	PasswordRandom       bool   // IDENTIFIED BY RANDOM PASSWORD
+	RetainCurrentPassword bool  // RETAIN CURRENT PASSWORD
+	DiscardOldPassword   bool   // DISCARD OLD PASSWORD
 }
 
 func (u *UserSpec) nodeTag() {}

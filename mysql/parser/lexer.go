@@ -448,6 +448,9 @@ const (
 	kwSQL_BUFFER_RESULT
 	kwSQL_NO_CACHE
 	kwMODE
+	kwRANDOM
+	kwRETAIN
+	kwOLD
 )
 
 // keywords maps lowercase keyword strings to their token types.
@@ -857,6 +860,9 @@ var keywords = map[string]int{
 	"sql_buffer_result":   kwSQL_BUFFER_RESULT,
 	"sql_no_cache":        kwSQL_NO_CACHE,
 	"mode":                kwMODE,
+	"random":              kwRANDOM,
+	"retain":              kwRETAIN,
+	"old":                 kwOLD,
 }
 
 // Token represents a lexical token.

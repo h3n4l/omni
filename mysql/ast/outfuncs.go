@@ -2974,6 +2974,15 @@ func writeUserSpec(sb *strings.Builder, n *UserSpec) {
 	if n.AuthHash != "" {
 		fmt.Fprintf(sb, " :auth_hash %s", n.AuthHash)
 	}
+	if n.PasswordRandom {
+		sb.WriteString(" :password_random true")
+	}
+	if n.RetainCurrentPassword {
+		sb.WriteString(" :retain_current_password true")
+	}
+	if n.DiscardOldPassword {
+		sb.WriteString(" :discard_old_password true")
+	}
 	sb.WriteString("}")
 }
 

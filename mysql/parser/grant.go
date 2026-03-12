@@ -877,14 +877,19 @@ func (p *Parser) parseUserSpec() (*nodes.UserSpec, error) {
 	if p.cur.Type == kwIDENTIFIED {
 		p.advance()
 		if p.cur.Type == kwBY {
-			// IDENTIFIED BY 'password'
+			// IDENTIFIED BY 'password' | IDENTIFIED BY RANDOM PASSWORD
 			p.advance()
-			if p.cur.Type == tokSCONST {
+			if p.cur.Type == kwRANDOM {
+				// IDENTIFIED BY RANDOM PASSWORD
+				p.advance() // consume RANDOM
+				p.advance() // consume PASSWORD
+				spec.PasswordRandom = true
+			} else if p.cur.Type == tokSCONST {
 				spec.Password = p.cur.Str
 				p.advance()
 			}
 		} else if p.cur.Type == kwWITH {
-			// IDENTIFIED WITH auth_plugin [BY 'password' | AS 'hash']
+			// IDENTIFIED WITH auth_plugin [BY 'password' | BY RANDOM PASSWORD | AS 'hash']
 			p.advance()
 			if p.isIdentToken() {
 				plugin, _, err := p.parseIdentifier()
@@ -893,10 +898,15 @@ func (p *Parser) parseUserSpec() (*nodes.UserSpec, error) {
 				}
 				spec.AuthPlugin = plugin
 			}
-			// Optional BY 'password' or AS 'hash'
+			// Optional BY 'password' / BY RANDOM PASSWORD / AS 'hash'
 			if p.cur.Type == kwBY {
 				p.advance()
-				if p.cur.Type == tokSCONST {
+				if p.cur.Type == kwRANDOM {
+					// BY RANDOM PASSWORD
+					p.advance() // consume RANDOM
+					p.advance() // consume PASSWORD
+					spec.PasswordRandom = true
+				} else if p.cur.Type == tokSCONST {
 					spec.Password = p.cur.Str
 					p.advance()
 				}
@@ -908,6 +918,22 @@ func (p *Parser) parseUserSpec() (*nodes.UserSpec, error) {
 				}
 			}
 		}
+	}
+
+	// RETAIN CURRENT PASSWORD
+	if p.cur.Type == kwRETAIN {
+		p.advance() // consume RETAIN
+		p.advance() // consume CURRENT
+		p.advance() // consume PASSWORD
+		spec.RetainCurrentPassword = true
+	}
+
+	// DISCARD OLD PASSWORD
+	if p.cur.Type == kwDISCARD {
+		p.advance() // consume DISCARD
+		p.advance() // consume OLD
+		p.advance() // consume PASSWORD
+		spec.DiscardOldPassword = true
 	}
 
 	spec.Loc.End = p.pos()

@@ -9277,3 +9277,47 @@ func TestParseSelectIntoAfterHavingBeforeOrderBy(t *testing.T) {
 		})
 	}
 }
+
+func TestParseCreateUserRandomPassword(t *testing.T) {
+	tests := []string{
+		// IDENTIFIED BY RANDOM PASSWORD
+		"CREATE USER 'jeffrey'@'localhost' IDENTIFIED BY RANDOM PASSWORD",
+		// IDENTIFIED WITH plugin BY RANDOM PASSWORD
+		"CREATE USER 'jeffrey'@'localhost' IDENTIFIED WITH caching_sha2_password BY RANDOM PASSWORD",
+		// Multiple users with RANDOM PASSWORD
+		"CREATE USER 'u1'@'localhost' IDENTIFIED BY RANDOM PASSWORD, 'u2'@'localhost' IDENTIFIED BY RANDOM PASSWORD",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseAlterUserRetainCurrentPassword(t *testing.T) {
+	tests := []string{
+		// RETAIN CURRENT PASSWORD
+		"ALTER USER 'jeffrey'@'localhost' IDENTIFIED BY 'new_password' RETAIN CURRENT PASSWORD",
+		// RETAIN CURRENT PASSWORD with auth plugin
+		"ALTER USER 'jeffrey'@'localhost' IDENTIFIED WITH caching_sha2_password BY 'new_password' RETAIN CURRENT PASSWORD",
+		// RANDOM PASSWORD with RETAIN CURRENT PASSWORD
+		"ALTER USER 'jeffrey'@'localhost' IDENTIFIED BY RANDOM PASSWORD RETAIN CURRENT PASSWORD",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseAlterUserDiscardOldPassword(t *testing.T) {
+	tests := []string{
+		// DISCARD OLD PASSWORD
+		"ALTER USER 'jeffrey'@'localhost' DISCARD OLD PASSWORD",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
