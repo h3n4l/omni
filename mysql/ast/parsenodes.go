@@ -2238,6 +2238,46 @@ type DropServerStmt struct {
 func (s *DropServerStmt) nodeTag()  {}
 func (s *DropServerStmt) stmtNode() {}
 
+// CreateLogfileGroupStmt represents a CREATE LOGFILE GROUP statement (NDB).
+type CreateLogfileGroupStmt struct {
+	Loc            Loc
+	Name           string // logfile group name
+	UndoFile       string // ADD UNDOFILE 'file_name'
+	InitialSize    string // INITIAL_SIZE value
+	UndoBufferSize string // UNDO_BUFFER_SIZE value
+	RedoBufferSize string // REDO_BUFFER_SIZE value
+	NodeGroup      string // NODEGROUP value
+	Wait           bool   // WAIT
+	Comment        string // COMMENT 'string'
+	Engine         string // ENGINE name
+}
+
+func (s *CreateLogfileGroupStmt) nodeTag()  {}
+func (s *CreateLogfileGroupStmt) stmtNode() {}
+
+// AlterLogfileGroupStmt represents an ALTER LOGFILE GROUP statement (NDB).
+type AlterLogfileGroupStmt struct {
+	Loc         Loc
+	Name        string // logfile group name
+	UndoFile    string // ADD UNDOFILE 'file_name'
+	InitialSize string // INITIAL_SIZE value
+	Wait        bool   // WAIT
+	Engine      string // ENGINE name
+}
+
+func (s *AlterLogfileGroupStmt) nodeTag()  {}
+func (s *AlterLogfileGroupStmt) stmtNode() {}
+
+// DropLogfileGroupStmt represents a DROP LOGFILE GROUP statement (NDB).
+type DropLogfileGroupStmt struct {
+	Loc    Loc
+	Name   string // logfile group name
+	Engine string // ENGINE name
+}
+
+func (s *DropLogfileGroupStmt) nodeTag()  {}
+func (s *DropLogfileGroupStmt) stmtNode() {}
+
 // CreateSpatialRefSysStmt represents a CREATE SPATIAL REFERENCE SYSTEM statement.
 type CreateSpatialRefSysStmt struct {
 	Loc          Loc

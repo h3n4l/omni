@@ -9976,6 +9976,101 @@ func TestParseChecksumTableExtended(t *testing.T) {
 	})
 }
 
+func TestParseCreateLogfileGroup(t *testing.T) {
+	tests := []struct {
+		sql  string
+		want string
+	}{
+		{
+			sql:  "CREATE LOGFILE GROUP lg1 ADD UNDOFILE 'undo1.dat' ENGINE = NDB",
+			want: `{CREATE_LOGFILE_GROUP :loc 0 :name lg1 :undo_file "undo1.dat" :engine NDB}`,
+		},
+		{
+			sql:  "CREATE LOGFILE GROUP lg1 ADD UNDOFILE 'undo1.dat' INITIAL_SIZE = 16M ENGINE NDB",
+			want: `{CREATE_LOGFILE_GROUP :loc 0 :name lg1 :undo_file "undo1.dat" :initial_size 16M :engine NDB}`,
+		},
+		{
+			sql:  "CREATE LOGFILE GROUP lg1 ADD UNDOFILE 'undo1.dat' UNDO_BUFFER_SIZE = 8M ENGINE = NDBCLUSTER",
+			want: `{CREATE_LOGFILE_GROUP :loc 0 :name lg1 :undo_file "undo1.dat" :undo_buffer_size 8M :engine NDBCLUSTER}`,
+		},
+		{
+			sql:  "CREATE LOGFILE GROUP lg1 ADD UNDOFILE 'undo1.dat' REDO_BUFFER_SIZE 32M ENGINE = NDB",
+			want: `{CREATE_LOGFILE_GROUP :loc 0 :name lg1 :undo_file "undo1.dat" :redo_buffer_size 32M :engine NDB}`,
+		},
+		{
+			sql:  "CREATE LOGFILE GROUP lg1 ADD UNDOFILE 'undo1.dat' NODEGROUP = 0 ENGINE = NDB",
+			want: `{CREATE_LOGFILE_GROUP :loc 0 :name lg1 :undo_file "undo1.dat" :nodegroup 0 :engine NDB}`,
+		},
+		{
+			sql:  "CREATE LOGFILE GROUP lg1 ADD UNDOFILE 'undo1.dat' WAIT ENGINE = NDB",
+			want: `{CREATE_LOGFILE_GROUP :loc 0 :name lg1 :undo_file "undo1.dat" :wait true :engine NDB}`,
+		},
+		{
+			sql:  "CREATE LOGFILE GROUP lg1 ADD UNDOFILE 'undo1.dat' COMMENT = 'test group' ENGINE = NDB",
+			want: `{CREATE_LOGFILE_GROUP :loc 0 :name lg1 :undo_file "undo1.dat" :comment "test group" :engine NDB}`,
+		},
+		{
+			sql:  "CREATE LOGFILE GROUP lg1 ADD UNDOFILE 'undo1.dat' INITIAL_SIZE 16M UNDO_BUFFER_SIZE 8M REDO_BUFFER_SIZE 32M NODEGROUP 0 WAIT COMMENT 'full opts' ENGINE NDB",
+			want: `{CREATE_LOGFILE_GROUP :loc 0 :name lg1 :undo_file "undo1.dat" :initial_size 16M :undo_buffer_size 8M :redo_buffer_size 32M :nodegroup 0 :wait true :comment "full opts" :engine NDB}`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.sql, func(t *testing.T) {
+			ParseAndCompare(t, tt.sql, tt.want)
+		})
+	}
+}
+
+func TestParseAlterLogfileGroup(t *testing.T) {
+	tests := []struct {
+		sql  string
+		want string
+	}{
+		{
+			sql:  "ALTER LOGFILE GROUP lg1 ADD UNDOFILE 'undo2.dat' ENGINE = NDB",
+			want: `{ALTER_LOGFILE_GROUP :loc 0 :name lg1 :undo_file "undo2.dat" :engine NDB}`,
+		},
+		{
+			sql:  "ALTER LOGFILE GROUP lg1 ADD UNDOFILE 'undo2.dat' INITIAL_SIZE = 32M ENGINE NDB",
+			want: `{ALTER_LOGFILE_GROUP :loc 0 :name lg1 :undo_file "undo2.dat" :initial_size 32M :engine NDB}`,
+		},
+		{
+			sql:  "ALTER LOGFILE GROUP lg1 ADD UNDOFILE 'undo2.dat' WAIT ENGINE = NDBCLUSTER",
+			want: `{ALTER_LOGFILE_GROUP :loc 0 :name lg1 :undo_file "undo2.dat" :wait true :engine NDBCLUSTER}`,
+		},
+		{
+			sql:  "ALTER LOGFILE GROUP lg1 ADD UNDOFILE 'undo2.dat' INITIAL_SIZE 16M WAIT ENGINE NDB",
+			want: `{ALTER_LOGFILE_GROUP :loc 0 :name lg1 :undo_file "undo2.dat" :initial_size 16M :wait true :engine NDB}`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.sql, func(t *testing.T) {
+			ParseAndCompare(t, tt.sql, tt.want)
+		})
+	}
+}
+
+func TestParseDropLogfileGroup(t *testing.T) {
+	tests := []struct {
+		sql  string
+		want string
+	}{
+		{
+			sql:  "DROP LOGFILE GROUP lg1 ENGINE = NDB",
+			want: "{DROP_LOGFILE_GROUP :loc 0 :name lg1 :engine NDB}",
+		},
+		{
+			sql:  "DROP LOGFILE GROUP lg1 ENGINE NDBCLUSTER",
+			want: "{DROP_LOGFILE_GROUP :loc 0 :name lg1 :engine NDBCLUSTER}",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.sql, func(t *testing.T) {
+			ParseAndCompare(t, tt.sql, tt.want)
+		})
+	}
+}
+
 func TestParseAlterTableSecondaryUnload(t *testing.T) {
 	tests := []string{
 		"ALTER TABLE t SECONDARY_UNLOAD",

@@ -1998,3 +1998,221 @@ func (p *Parser) parseHelpStmt() (*nodes.HelpStmt, error) {
 	stmt.Loc.End = p.pos()
 	return stmt, nil
 }
+
+// parseSizeValue reads a size value which may be a number optionally followed
+// by a suffix like K, M, G (e.g. "16M", "256K", "1G"). The lexer tokenizes
+// "16M" as tokICONST("16") + tokIDENT("M"), so we concatenate them.
+func (p *Parser) parseSizeValue() string {
+	val := p.cur.Str
+	p.advance()
+	// Check for size suffix: K, M, G, T
+	if p.cur.Type == tokIDENT && len(p.cur.Str) == 1 {
+		ch := p.cur.Str[0]
+		if ch == 'K' || ch == 'k' || ch == 'M' || ch == 'm' || ch == 'G' || ch == 'g' || ch == 'T' || ch == 't' {
+			val += p.cur.Str
+			p.advance()
+		}
+	}
+	return val
+}
+
+// parseCreateLogfileGroupStmt parses a CREATE LOGFILE GROUP statement.
+//
+// Ref: https://dev.mysql.com/doc/refman/8.0/en/create-logfile-group.html
+//
+//	CREATE LOGFILE GROUP logfile_group
+//	    ADD UNDOFILE 'undo_file'
+//	    [INITIAL_SIZE [=] initial_size]
+//	    [UNDO_BUFFER_SIZE [=] undo_buffer_size]
+//	    [REDO_BUFFER_SIZE [=] redo_buffer_size]
+//	    [NODEGROUP [=] nodegroup_id]
+//	    [WAIT]
+//	    [COMMENT [=] 'string']
+//	    ENGINE [=] engine_name
+func (p *Parser) parseCreateLogfileGroupStmt(start int) (*nodes.CreateLogfileGroupStmt, error) {
+	p.advance() // consume LOGFILE
+	p.match(kwGROUP)
+
+	name, _, err := p.parseIdentifier()
+	if err != nil {
+		return nil, err
+	}
+
+	stmt := &nodes.CreateLogfileGroupStmt{
+		Loc:  nodes.Loc{Start: start},
+		Name: name,
+	}
+
+	// ADD UNDOFILE 'file_name'
+	if p.cur.Type == kwADD {
+		p.advance() // consume ADD
+		if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "undofile") {
+			p.advance()
+		}
+		if p.cur.Type == tokSCONST {
+			stmt.UndoFile = p.cur.Str
+			p.advance()
+		}
+	}
+
+	// Parse optional clauses
+	for p.cur.Type != tokEOF && p.cur.Type != ';' {
+		switch {
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "initial_size"):
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			stmt.InitialSize = p.parseSizeValue()
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "undo_buffer_size"):
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			stmt.UndoBufferSize = p.parseSizeValue()
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "redo_buffer_size"):
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			stmt.RedoBufferSize = p.parseSizeValue()
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "nodegroup"):
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			stmt.NodeGroup = p.cur.Str
+			p.advance()
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "wait"):
+			p.advance()
+			stmt.Wait = true
+		case p.cur.Type == kwCOMMENT:
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			if p.cur.Type == tokSCONST {
+				stmt.Comment = p.cur.Str
+				p.advance()
+			}
+		case p.cur.Type == kwENGINE:
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			ename, _, err := p.parseIdentifier()
+			if err != nil {
+				return nil, err
+			}
+			stmt.Engine = ename
+		default:
+			goto createLGDone
+		}
+	}
+createLGDone:
+	stmt.Loc.End = p.pos()
+	return stmt, nil
+}
+
+// parseAlterLogfileGroupStmt parses an ALTER LOGFILE GROUP statement.
+//
+// Ref: https://dev.mysql.com/doc/refman/8.0/en/alter-logfile-group.html
+//
+//	ALTER LOGFILE GROUP logfile_group
+//	    ADD UNDOFILE 'file_name'
+//	    [INITIAL_SIZE [=] size]
+//	    [WAIT]
+//	    ENGINE [=] engine_name
+func (p *Parser) parseAlterLogfileGroupStmt(start int) (*nodes.AlterLogfileGroupStmt, error) {
+	p.advance() // consume LOGFILE
+	p.match(kwGROUP)
+
+	name, _, err := p.parseIdentifier()
+	if err != nil {
+		return nil, err
+	}
+
+	stmt := &nodes.AlterLogfileGroupStmt{
+		Loc:  nodes.Loc{Start: start},
+		Name: name,
+	}
+
+	// ADD UNDOFILE 'file_name'
+	if p.cur.Type == kwADD {
+		p.advance() // consume ADD
+		if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "undofile") {
+			p.advance()
+		}
+		if p.cur.Type == tokSCONST {
+			stmt.UndoFile = p.cur.Str
+			p.advance()
+		}
+	}
+
+	// Parse optional clauses
+	for p.cur.Type != tokEOF && p.cur.Type != ';' {
+		switch {
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "initial_size"):
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			stmt.InitialSize = p.parseSizeValue()
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "wait"):
+			p.advance()
+			stmt.Wait = true
+		case p.cur.Type == kwENGINE:
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			ename, _, err := p.parseIdentifier()
+			if err != nil {
+				return nil, err
+			}
+			stmt.Engine = ename
+		default:
+			goto alterLGDone
+		}
+	}
+alterLGDone:
+	stmt.Loc.End = p.pos()
+	return stmt, nil
+}
+
+// parseDropLogfileGroupStmt parses a DROP LOGFILE GROUP statement.
+//
+// Ref: https://dev.mysql.com/doc/refman/8.0/en/drop-logfile-group.html
+//
+//	DROP LOGFILE GROUP logfile_group
+//	    ENGINE [=] engine_name
+func (p *Parser) parseDropLogfileGroupStmt(start int) (*nodes.DropLogfileGroupStmt, error) {
+	p.advance() // consume LOGFILE
+	p.match(kwGROUP)
+
+	name, _, err := p.parseIdentifier()
+	if err != nil {
+		return nil, err
+	}
+
+	stmt := &nodes.DropLogfileGroupStmt{
+		Loc:  nodes.Loc{Start: start},
+		Name: name,
+	}
+
+	// ENGINE [=] engine_name
+	if p.cur.Type == kwENGINE {
+		p.advance()
+		if p.cur.Type == '=' {
+			p.advance()
+		}
+		ename, _, err := p.parseIdentifier()
+		if err != nil {
+			return nil, err
+		}
+		stmt.Engine = ename
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt, nil
+}

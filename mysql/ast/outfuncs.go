@@ -373,6 +373,12 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeAlterServerStmt(sb, n)
 	case *DropServerStmt:
 		writeDropServerStmt(sb, n)
+	case *CreateLogfileGroupStmt:
+		writeCreateLogfileGroupStmt(sb, n)
+	case *AlterLogfileGroupStmt:
+		writeAlterLogfileGroupStmt(sb, n)
+	case *DropLogfileGroupStmt:
+		writeDropLogfileGroupStmt(sb, n)
 	case *CreateSpatialRefSysStmt:
 		writeCreateSpatialRefSysStmt(sb, n)
 	case *DropSpatialRefSysStmt:
@@ -3962,6 +3968,66 @@ func writeDropServerStmt(sb *strings.Builder, n *DropServerStmt) {
 		sb.WriteString(" :if_exists true")
 	}
 	fmt.Fprintf(sb, " :name %s", n.Name)
+	sb.WriteString("}")
+}
+
+func writeCreateLogfileGroupStmt(sb *strings.Builder, n *CreateLogfileGroupStmt) {
+	sb.WriteString("{CREATE_LOGFILE_GROUP")
+	fmt.Fprintf(sb, " :loc %d", n.Loc.Start)
+	fmt.Fprintf(sb, " :name %s", n.Name)
+	if n.UndoFile != "" {
+		fmt.Fprintf(sb, " :undo_file %q", n.UndoFile)
+	}
+	if n.InitialSize != "" {
+		fmt.Fprintf(sb, " :initial_size %s", n.InitialSize)
+	}
+	if n.UndoBufferSize != "" {
+		fmt.Fprintf(sb, " :undo_buffer_size %s", n.UndoBufferSize)
+	}
+	if n.RedoBufferSize != "" {
+		fmt.Fprintf(sb, " :redo_buffer_size %s", n.RedoBufferSize)
+	}
+	if n.NodeGroup != "" {
+		fmt.Fprintf(sb, " :nodegroup %s", n.NodeGroup)
+	}
+	if n.Wait {
+		sb.WriteString(" :wait true")
+	}
+	if n.Comment != "" {
+		fmt.Fprintf(sb, " :comment %q", n.Comment)
+	}
+	if n.Engine != "" {
+		fmt.Fprintf(sb, " :engine %s", n.Engine)
+	}
+	sb.WriteString("}")
+}
+
+func writeAlterLogfileGroupStmt(sb *strings.Builder, n *AlterLogfileGroupStmt) {
+	sb.WriteString("{ALTER_LOGFILE_GROUP")
+	fmt.Fprintf(sb, " :loc %d", n.Loc.Start)
+	fmt.Fprintf(sb, " :name %s", n.Name)
+	if n.UndoFile != "" {
+		fmt.Fprintf(sb, " :undo_file %q", n.UndoFile)
+	}
+	if n.InitialSize != "" {
+		fmt.Fprintf(sb, " :initial_size %s", n.InitialSize)
+	}
+	if n.Wait {
+		sb.WriteString(" :wait true")
+	}
+	if n.Engine != "" {
+		fmt.Fprintf(sb, " :engine %s", n.Engine)
+	}
+	sb.WriteString("}")
+}
+
+func writeDropLogfileGroupStmt(sb *strings.Builder, n *DropLogfileGroupStmt) {
+	sb.WriteString("{DROP_LOGFILE_GROUP")
+	fmt.Fprintf(sb, " :loc %d", n.Loc.Start)
+	fmt.Fprintf(sb, " :name %s", n.Name)
+	if n.Engine != "" {
+		fmt.Fprintf(sb, " :engine %s", n.Engine)
+	}
 	sb.WriteString("}")
 }
 

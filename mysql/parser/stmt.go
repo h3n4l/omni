@@ -451,11 +451,7 @@ func (p *Parser) parseCreateDispatch() (nodes.Node, error) {
 		return p.parseCreateServerStmt(start)
 
 	case kwLOGFILE:
-		// CREATE LOGFILE GROUP — NDB-specific, use RawStmt
-		for p.cur.Type != tokEOF && p.cur.Type != ';' {
-			p.advance()
-		}
-		return &nodes.RawStmt{}, nil
+		return p.parseCreateLogfileGroupStmt(start)
 
 	case kwALGORITHM:
 		// Only CREATE VIEW uses ALGORITHM
@@ -591,11 +587,7 @@ func (p *Parser) parseAlterDispatch() (nodes.Node, error) {
 		return p.parseAlterRoutineStmt(true)
 
 	case kwLOGFILE:
-		// ALTER LOGFILE GROUP — NDB-specific, use RawStmt
-		for p.cur.Type != tokEOF && p.cur.Type != ';' {
-			p.advance()
-		}
-		return &nodes.RawStmt{}, nil
+		return p.parseAlterLogfileGroupStmt(start)
 
 	case kwRESOURCE:
 		p.advance() // consume RESOURCE
@@ -670,11 +662,7 @@ func (p *Parser) parseDropDispatch() (nodes.Node, error) {
 		return p.parseDropServerStmt(start)
 
 	case kwLOGFILE:
-		// DROP LOGFILE GROUP — NDB-specific, use RawStmt
-		for p.cur.Type != tokEOF && p.cur.Type != ';' {
-			p.advance()
-		}
-		return &nodes.RawStmt{}, nil
+		return p.parseDropLogfileGroupStmt(start)
 
 	case kwSPATIAL:
 		p.advance() // consume SPATIAL

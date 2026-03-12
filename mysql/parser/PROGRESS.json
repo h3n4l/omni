@@ -2280,7 +2280,45 @@
         "TestParseRepairTableUseFrm",
         "TestParseChecksumTableExtended"
       ]
+    },
+    {
+      "id": 95,
+      "name": "depth_fix_logfile_group_stubs",
+      "file": "utility.go",
+      "status": "done",
+      "description": "Fix batch 37 gap: CREATE/ALTER/DROP LOGFILE GROUP use RawStmt token-skipping stubs in stmt.go instead of proper parse functions. Need AST nodes (CreateLogfileGroupStmt, AlterLogfileGroupStmt, DropLogfileGroupStmt), parse functions in utility.go, outfuncs cases, and dispatch wiring in stmt.go.",
+      "rules": [
+        "parseCreateLogfileGroupStmt",
+        "parseAlterLogfileGroupStmt",
+        "parseDropLogfileGroupStmt"
+      ],
+      "depends_on": [
+        37
+      ],
+      "tests": [
+        "TestParseCreateLogfileGroup",
+        "TestParseAlterLogfileGroup",
+        "TestParseDropLogfileGroup"
+      ]
+    },
+    {
+      "id": 96,
+      "name": "depth_fix_show_create_schema_if_not_exists",
+      "file": "set_show.go",
+      "status": "pending",
+      "description": "Fix batch 13/32 gap: SHOW CREATE SCHEMA synonym not handled (only kwDATABASE checked in SHOW CREATE dispatch), and SHOW CREATE {DATABASE|SCHEMA} IF NOT EXISTS clause not parsed. Add SCHEMA case and optional IF NOT EXISTS parsing.",
+      "rules": [
+        "parseShowCreateStmt"
+      ],
+      "depends_on": [
+        13,
+        32
+      ],
+      "tests": [
+        "TestParseShowCreateSchema",
+        "TestParseShowCreateDatabaseIfNotExists"
+      ]
     }
   ],
-  "audit_round": 15
+  "audit_round": 16
 }
