@@ -3706,3 +3706,65 @@ func TestLocDelete(t *testing.T) {
 		})
 	}
 }
+
+// TestLocCreateTable validates Loc.End for CREATE TABLE nodes.
+func TestLocCreateTable(t *testing.T) {
+	tests := []string{
+		"CREATE TABLE t (id int)",
+		"CREATE TABLE t (id int, name text NOT NULL)",
+		"CREATE TABLE t (id serial PRIMARY KEY, name text UNIQUE)",
+		"CREATE TABLE IF NOT EXISTS t (id int)",
+		"CREATE TEMP TABLE t (id int)",
+		"CREATE TABLE t (id int) WITH (fillfactor=70)",
+		"CREATE TABLE t (a int, b int, PRIMARY KEY (a, b))",
+		"CREATE TABLE t (id int CHECK (id > 0))",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+			violations := CheckLocations(t, sql)
+			for _, v := range violations {
+				t.Logf("  violation: %s", v)
+			}
+		})
+	}
+}
+
+// TestLocCreateIndex validates Loc.End for CREATE INDEX nodes.
+func TestLocCreateIndex(t *testing.T) {
+	tests := []string{
+		"CREATE INDEX idx ON t (a)",
+		"CREATE UNIQUE INDEX idx ON t (a, b)",
+		"CREATE INDEX IF NOT EXISTS idx ON t (a)",
+		"CREATE INDEX idx ON t USING btree (a)",
+		"CREATE INDEX idx ON t (a) WHERE a > 0",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+			violations := CheckLocations(t, sql)
+			for _, v := range violations {
+				t.Logf("  violation: %s", v)
+			}
+		})
+	}
+}
+
+// TestLocCreateView validates Loc.End for CREATE VIEW nodes.
+func TestLocCreateView(t *testing.T) {
+	tests := []string{
+		"CREATE VIEW v AS SELECT 1",
+		"CREATE OR REPLACE VIEW v AS SELECT * FROM t",
+		"CREATE VIEW v (a, b) AS SELECT 1, 2",
+		"CREATE TEMP VIEW v AS SELECT 1",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+			violations := CheckLocations(t, sql)
+			for _, v := range violations {
+				t.Logf("  violation: %s", v)
+			}
+		})
+	}
+}

@@ -248,22 +248,22 @@ func (p *Parser) parseAExprForTypmod() nodes.Node {
 	if p.cur.Type == ICONST {
 		tok := p.advance()
 		return &nodes.A_Const{
-			Val:      &nodes.Integer{Ival: tok.Ival},
-			Loc: nodes.Loc{Start: tok.Loc, End: -1},
+			Val: &nodes.Integer{Ival: tok.Ival},
+			Loc: nodes.Loc{Start: tok.Loc, End: p.pos()},
 		}
 	}
 	if p.cur.Type == FCONST {
 		tok := p.advance()
 		return &nodes.A_Const{
-			Val:      &nodes.Float{Fval: tok.Str},
-			Loc: nodes.Loc{Start: tok.Loc, End: -1},
+			Val: &nodes.Float{Fval: tok.Str},
+			Loc: nodes.Loc{Start: tok.Loc, End: p.pos()},
 		}
 	}
 	if p.cur.Type == SCONST {
 		tok := p.advance()
 		return &nodes.A_Const{
-			Val:      &nodes.String{Str: tok.Str},
-			Loc: nodes.Loc{Start: tok.Loc, End: -1},
+			Val: &nodes.String{Str: tok.Str},
+			Loc: nodes.Loc{Start: tok.Loc, End: p.pos()},
 		}
 	}
 	// Fall back to full a_expr for complex expressions

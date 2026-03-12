@@ -586,7 +586,7 @@ func (p *Parser) parseQualifiedNameList() (*nodes.List, error) {
 
 // makeRangeVarFromNames creates a RangeVar from a list of name String nodes.
 func makeRangeVarFromNames(names *nodes.List) *nodes.RangeVar {
-	rv := &nodes.RangeVar{Inh: true, Relpersistence: 'p'}
+	rv := &nodes.RangeVar{Inh: true, Relpersistence: 'p', Loc: nodes.NoLoc()}
 	if names != nil && len(names.Items) > 0 {
 		switch len(names.Items) {
 		case 1:

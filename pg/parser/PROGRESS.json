@@ -1600,7 +1600,7 @@
       "id": 66,
       "name": "loc_end_create_table_index_view",
       "file": "create_table.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix End position for all parse functions in create_table.go, create_index.go, create_view.go: parseCreateStmt (CreateStmt), parseColumnDef, parseConstraint (all constraint types), parseTypeName, parsePartitionClause, parsePartitionBound, finishCreateStmt, finishCTAS, parseCreateIndexStmt, parseCreateViewStmt, parseCreateMatviewStmt. Add TestLocCreateTable, TestLocCreateIndex, TestLocCreateView.",
       "rules": [
         "finishCreateStmt",
