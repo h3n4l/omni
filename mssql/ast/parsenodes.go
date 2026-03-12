@@ -717,10 +717,12 @@ func (n *CreateDatabaseStmt) stmtNode() {}
 //	  [, FILEGROWTH = growth_increment [KB|MB|GB|TB|%]] )
 type DatabaseFileSpec struct {
 	Name       string // logical file name
+	NewName    string // new logical name (NEWNAME, for ALTER DATABASE MODIFY FILE)
 	Filename   string // OS file path
 	Size       string // e.g. "10MB"
 	MaxSize    string // e.g. "100MB" or "UNLIMITED"
 	FileGrowth string // e.g. "5MB" or "10%"
+	Offline    bool   // OFFLINE flag (for ALTER DATABASE MODIFY FILE)
 	Loc        Loc
 }
 
@@ -746,11 +748,28 @@ func (n *DatabaseFilegroup) nodeTag() {}
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-transact-sql
 //
 //	ALTER DATABASE { database_name | CURRENT }
-//	    { SET ... | MODIFY FILE ... | ADD FILE ... | ... }
+//	{
+//	    SET <option_spec> [ ,...n ] [ WITH <termination> ]
+//	  | ADD FILE <filespec> [ ,...n ] [ TO FILEGROUP filegroup_name ]
+//	  | ADD LOG FILE <filespec> [ ,...n ]
+//	  | REMOVE FILE logical_file_name
+//	  | MODIFY FILE <filespec>
+//	  | ADD FILEGROUP filegroup_name [ CONTAINS FILESTREAM | CONTAINS MEMORY_OPTIMIZED_DATA ]
+//	  | REMOVE FILEGROUP filegroup_name
+//	  | MODIFY FILEGROUP filegroup_name { <filegroup_updatability_option> | DEFAULT | NAME = new_name | AUTOGROW_SINGLE_FILE | AUTOGROW_ALL_FILES }
+//	  | COLLATE collation_name
+//	  | MODIFY NAME = new_database_name
+//	}
 type AlterDatabaseStmt struct {
-	Name   string // database name or "CURRENT"
-	Action string // SET, MODIFY, ADD, REMOVE, COLLATE, etc.
-	Loc    Loc
+	Name        string // database name or "CURRENT"
+	Action      string // SET, ADD, REMOVE, MODIFY, COLLATE
+	SubAction   string // FILE, LOG FILE, FILEGROUP, NAME (qualifier for ADD/REMOVE/MODIFY)
+	Options     *List  // SET options as String nodes; or MODIFY FILEGROUP options
+	FileSpecs   *List  // file specifications (DatabaseFileSpec nodes)
+	TargetName  string // file/filegroup/collation name (context-dependent)
+	NewName     string // for MODIFY NAME or MODIFY FILEGROUP NAME
+	Termination string // WITH termination clause (e.g. "ROLLBACK IMMEDIATE")
+	Loc         Loc
 }
 
 func (n *AlterDatabaseStmt) nodeTag()  {}

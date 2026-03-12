@@ -7653,3 +7653,288 @@ func TestParseCreateDatabaseDepth(t *testing.T) {
 		}
 	})
 }
+
+// TestParseAlterDatabaseDepth tests ALTER DATABASE structured parsing (batch 77).
+func TestParseAlterDatabaseDepth(t *testing.T) {
+	// --- SET options ---
+	t.Run("alter_database_set_options", func(t *testing.T) {
+		tests := []struct {
+			name string
+			sql  string
+		}{
+			{"set single_user", "ALTER DATABASE mydb SET SINGLE_USER"},
+			{"set multi_user", "ALTER DATABASE mydb SET MULTI_USER"},
+			{"set restricted_user", "ALTER DATABASE mydb SET RESTRICTED_USER"},
+			{"set read_only", "ALTER DATABASE mydb SET READ_ONLY"},
+			{"set read_write", "ALTER DATABASE mydb SET READ_WRITE"},
+			{"set online", "ALTER DATABASE mydb SET ONLINE"},
+			{"set offline", "ALTER DATABASE mydb SET OFFLINE"},
+			{"set emergency", "ALTER DATABASE mydb SET EMERGENCY"},
+			{"set recovery full", "ALTER DATABASE mydb SET RECOVERY FULL"},
+			{"set recovery simple", "ALTER DATABASE mydb SET RECOVERY SIMPLE"},
+			{"set recovery bulk_logged", "ALTER DATABASE mydb SET RECOVERY BULK_LOGGED"},
+			{"set auto_close on", "ALTER DATABASE mydb SET AUTO_CLOSE ON"},
+			{"set auto_close off", "ALTER DATABASE mydb SET AUTO_CLOSE OFF"},
+			{"set auto_shrink on", "ALTER DATABASE mydb SET AUTO_SHRINK ON"},
+			{"set auto_create_statistics on", "ALTER DATABASE mydb SET AUTO_CREATE_STATISTICS ON"},
+			{"set auto_update_statistics off", "ALTER DATABASE mydb SET AUTO_UPDATE_STATISTICS OFF"},
+			{"set ansi_nulls on", "ALTER DATABASE mydb SET ANSI_NULLS ON"},
+			{"set quoted_identifier on", "ALTER DATABASE mydb SET QUOTED_IDENTIFIER ON"},
+			{"set concat_null_yields_null on", "ALTER DATABASE mydb SET CONCAT_NULL_YIELDS_NULL ON"},
+			{"set arithabort on", "ALTER DATABASE mydb SET ARITHABORT ON"},
+			{"set page_verify checksum", "ALTER DATABASE mydb SET PAGE_VERIFY CHECKSUM"},
+			{"set compatibility_level", "ALTER DATABASE mydb SET COMPATIBILITY_LEVEL = 150"},
+			{"set allow_snapshot_isolation on", "ALTER DATABASE mydb SET ALLOW_SNAPSHOT_ISOLATION ON"},
+			{"set read_committed_snapshot on", "ALTER DATABASE mydb SET READ_COMMITTED_SNAPSHOT ON"},
+			{"set parameterization forced", "ALTER DATABASE mydb SET PARAMETERIZATION FORCED"},
+			{"set encryption on", "ALTER DATABASE mydb SET ENCRYPTION ON"},
+			{"set db_chaining on", "ALTER DATABASE mydb SET DB_CHAINING ON"},
+			{"set trustworthy on", "ALTER DATABASE mydb SET TRUSTWORTHY ON"},
+			{"set delayed_durability allowed", "ALTER DATABASE mydb SET DELAYED_DURABILITY = ALLOWED"},
+			{"set target_recovery_time", "ALTER DATABASE mydb SET TARGET_RECOVERY_TIME = 60 SECONDS"},
+			{"set multiple options", "ALTER DATABASE mydb SET AUTO_CLOSE OFF, AUTO_SHRINK OFF"},
+			{"set with rollback immediate", "ALTER DATABASE mydb SET SINGLE_USER WITH ROLLBACK IMMEDIATE"},
+			{"set with rollback after", "ALTER DATABASE mydb SET SINGLE_USER WITH ROLLBACK AFTER 10 SECONDS"},
+			{"set with no_wait", "ALTER DATABASE mydb SET SINGLE_USER WITH NO_WAIT"},
+			{"set CURRENT", "ALTER DATABASE CURRENT SET READ_ONLY"},
+			{"set change_tracking on", "ALTER DATABASE mydb SET CHANGE_TRACKING = ON"},
+			{"set change_tracking on with options", "ALTER DATABASE mydb SET CHANGE_TRACKING = ON (AUTO_CLEANUP = ON, CHANGE_RETENTION = 7 DAYS)"},
+			{"set query_store on", "ALTER DATABASE mydb SET QUERY_STORE = ON"},
+			{"set query_store off", "ALTER DATABASE mydb SET QUERY_STORE = OFF"},
+			{"set query_store clear", "ALTER DATABASE mydb SET QUERY_STORE CLEAR"},
+			{"set containment none", "ALTER DATABASE mydb SET CONTAINMENT = NONE"},
+			{"set enable_broker", "ALTER DATABASE mydb SET ENABLE_BROKER"},
+			{"set disable_broker", "ALTER DATABASE mydb SET DISABLE_BROKER"},
+			{"set new_broker", "ALTER DATABASE mydb SET NEW_BROKER"},
+			{"set accelerated_database_recovery on", "ALTER DATABASE mydb SET ACCELERATED_DATABASE_RECOVERY = ON"},
+			{"set mixed_page_allocation off", "ALTER DATABASE mydb SET MIXED_PAGE_ALLOCATION OFF"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				stmt, ok := result.Items[0].(*ast.AlterDatabaseStmt)
+				if !ok {
+					t.Fatalf("expected *AlterDatabaseStmt, got %T", result.Items[0])
+				}
+				if stmt.Action != "SET" {
+					t.Errorf("expected action SET, got %s", stmt.Action)
+				}
+				if stmt.Options == nil || stmt.Options.Len() == 0 {
+					t.Error("expected SET options to be parsed")
+				}
+			})
+		}
+	})
+
+	// --- MODIFY FILE ---
+	t.Run("alter_database_modify_file", func(t *testing.T) {
+		tests := []struct {
+			name string
+			sql  string
+		}{
+			{"modify file size", "ALTER DATABASE mydb MODIFY FILE (NAME = mydb_data, SIZE = 200MB)"},
+			{"modify file newname", "ALTER DATABASE mydb MODIFY FILE (NAME = mydb_data, NEWNAME = mydb_data_new)"},
+			{"modify file filename", `ALTER DATABASE mydb MODIFY FILE (NAME = mydb_data, FILENAME = 'C:\data\mydb.mdf')`},
+			{"modify file maxsize", "ALTER DATABASE mydb MODIFY FILE (NAME = mydb_data, SIZE = 100MB, MAXSIZE = 500MB, FILEGROWTH = 10MB)"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				stmt, ok := result.Items[0].(*ast.AlterDatabaseStmt)
+				if !ok {
+					t.Fatalf("expected *AlterDatabaseStmt, got %T", result.Items[0])
+				}
+				if stmt.Action != "MODIFY" {
+					t.Errorf("expected action MODIFY, got %s", stmt.Action)
+				}
+				if stmt.SubAction != "FILE" {
+					t.Errorf("expected subAction FILE, got %s", stmt.SubAction)
+				}
+				if stmt.FileSpecs == nil || stmt.FileSpecs.Len() == 0 {
+					t.Error("expected file specs to be parsed")
+				}
+			})
+		}
+	})
+
+	// --- ADD FILE ---
+	t.Run("alter_database_add_file", func(t *testing.T) {
+		tests := []struct {
+			name string
+			sql  string
+		}{
+			{
+				"add file basic",
+				`ALTER DATABASE mydb ADD FILE (NAME = mydb_data2, FILENAME = 'C:\data\mydb2.ndf', SIZE = 5MB)`,
+			},
+			{
+				"add file to filegroup",
+				`ALTER DATABASE mydb ADD FILE (NAME = mydb_data2, FILENAME = 'C:\data\mydb2.ndf', SIZE = 5MB) TO FILEGROUP fg1`,
+			},
+			{
+				"add multiple files",
+				`ALTER DATABASE mydb ADD FILE (NAME = f1, FILENAME = 'C:\data\f1.ndf', SIZE = 5MB), (NAME = f2, FILENAME = 'C:\data\f2.ndf', SIZE = 5MB)`,
+			},
+			{
+				"add log file",
+				`ALTER DATABASE mydb ADD LOG FILE (NAME = mydb_log2, FILENAME = 'C:\data\mydb_log2.ldf', SIZE = 5MB)`,
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				stmt, ok := result.Items[0].(*ast.AlterDatabaseStmt)
+				if !ok {
+					t.Fatalf("expected *AlterDatabaseStmt, got %T", result.Items[0])
+				}
+				if stmt.Action != "ADD" {
+					t.Errorf("expected action ADD, got %s", stmt.Action)
+				}
+				if stmt.SubAction != "FILE" && stmt.SubAction != "LOG FILE" {
+					t.Errorf("expected subAction FILE or LOG FILE, got %s", stmt.SubAction)
+				}
+				if stmt.FileSpecs == nil || stmt.FileSpecs.Len() == 0 {
+					t.Error("expected file specs to be parsed")
+				}
+			})
+		}
+	})
+
+	// --- REMOVE FILE ---
+	t.Run("alter_database_remove_file", func(t *testing.T) {
+		sql := "ALTER DATABASE mydb REMOVE FILE mydb_data2"
+		result := ParseAndCheck(t, sql)
+		stmt, ok := result.Items[0].(*ast.AlterDatabaseStmt)
+		if !ok {
+			t.Fatalf("expected *AlterDatabaseStmt, got %T", result.Items[0])
+		}
+		if stmt.Action != "REMOVE" {
+			t.Errorf("expected action REMOVE, got %s", stmt.Action)
+		}
+		if stmt.SubAction != "FILE" {
+			t.Errorf("expected subAction FILE, got %s", stmt.SubAction)
+		}
+		if stmt.TargetName != "mydb_data2" {
+			t.Errorf("expected targetName mydb_data2, got %s", stmt.TargetName)
+		}
+	})
+
+	// --- ADD FILEGROUP ---
+	t.Run("alter_database_add_filegroup", func(t *testing.T) {
+		tests := []struct {
+			name string
+			sql  string
+		}{
+			{"add filegroup basic", "ALTER DATABASE mydb ADD FILEGROUP fg1"},
+			{"add filegroup contains filestream", "ALTER DATABASE mydb ADD FILEGROUP fg1 CONTAINS FILESTREAM"},
+			{"add filegroup contains memory_optimized", "ALTER DATABASE mydb ADD FILEGROUP fg1 CONTAINS MEMORY_OPTIMIZED_DATA"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				stmt, ok := result.Items[0].(*ast.AlterDatabaseStmt)
+				if !ok {
+					t.Fatalf("expected *AlterDatabaseStmt, got %T", result.Items[0])
+				}
+				if stmt.Action != "ADD" {
+					t.Errorf("expected action ADD, got %s", stmt.Action)
+				}
+				if stmt.SubAction != "FILEGROUP" {
+					t.Errorf("expected subAction FILEGROUP, got %s", stmt.SubAction)
+				}
+				if stmt.TargetName == "" {
+					t.Error("expected targetName for filegroup")
+				}
+			})
+		}
+	})
+
+	// --- REMOVE FILEGROUP ---
+	t.Run("alter_database_remove_filegroup", func(t *testing.T) {
+		sql := "ALTER DATABASE mydb REMOVE FILEGROUP fg1"
+		result := ParseAndCheck(t, sql)
+		stmt, ok := result.Items[0].(*ast.AlterDatabaseStmt)
+		if !ok {
+			t.Fatalf("expected *AlterDatabaseStmt, got %T", result.Items[0])
+		}
+		if stmt.Action != "REMOVE" {
+			t.Errorf("expected action REMOVE, got %s", stmt.Action)
+		}
+		if stmt.SubAction != "FILEGROUP" {
+			t.Errorf("expected subAction FILEGROUP, got %s", stmt.SubAction)
+		}
+		if stmt.TargetName != "fg1" {
+			t.Errorf("expected targetName fg1, got %s", stmt.TargetName)
+		}
+	})
+
+	// --- MODIFY FILEGROUP ---
+	t.Run("alter_database_modify_filegroup", func(t *testing.T) {
+		tests := []struct {
+			name string
+			sql  string
+		}{
+			{"modify filegroup default", "ALTER DATABASE mydb MODIFY FILEGROUP fg1 DEFAULT"},
+			{"modify filegroup read_only", "ALTER DATABASE mydb MODIFY FILEGROUP fg1 READ_ONLY"},
+			{"modify filegroup read_write", "ALTER DATABASE mydb MODIFY FILEGROUP fg1 READ_WRITE"},
+			{"modify filegroup readonly", "ALTER DATABASE mydb MODIFY FILEGROUP fg1 READONLY"},
+			{"modify filegroup readwrite", "ALTER DATABASE mydb MODIFY FILEGROUP fg1 READWRITE"},
+			{"modify filegroup name", "ALTER DATABASE mydb MODIFY FILEGROUP fg1 NAME = fg2"},
+			{"modify filegroup autogrow_all", "ALTER DATABASE mydb MODIFY FILEGROUP fg1 AUTOGROW_ALL_FILES"},
+			{"modify filegroup autogrow_single", "ALTER DATABASE mydb MODIFY FILEGROUP fg1 AUTOGROW_SINGLE_FILE"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				stmt, ok := result.Items[0].(*ast.AlterDatabaseStmt)
+				if !ok {
+					t.Fatalf("expected *AlterDatabaseStmt, got %T", result.Items[0])
+				}
+				if stmt.Action != "MODIFY" {
+					t.Errorf("expected action MODIFY, got %s", stmt.Action)
+				}
+				if stmt.SubAction != "FILEGROUP" {
+					t.Errorf("expected subAction FILEGROUP, got %s", stmt.SubAction)
+				}
+				if stmt.TargetName != "fg1" {
+					t.Errorf("expected targetName fg1, got %s", stmt.TargetName)
+				}
+			})
+		}
+	})
+
+	// --- COLLATE ---
+	t.Run("alter_database_collate", func(t *testing.T) {
+		sql := "ALTER DATABASE mydb COLLATE Latin1_General_CI_AS"
+		result := ParseAndCheck(t, sql)
+		stmt, ok := result.Items[0].(*ast.AlterDatabaseStmt)
+		if !ok {
+			t.Fatalf("expected *AlterDatabaseStmt, got %T", result.Items[0])
+		}
+		if stmt.Action != "COLLATE" {
+			t.Errorf("expected action COLLATE, got %s", stmt.Action)
+		}
+		if stmt.TargetName != "Latin1_General_CI_AS" {
+			t.Errorf("expected collation Latin1_General_CI_AS, got %s", stmt.TargetName)
+		}
+	})
+
+	// --- MODIFY NAME ---
+	t.Run("alter_database_modify_name", func(t *testing.T) {
+		sql := "ALTER DATABASE mydb MODIFY NAME = newdb"
+		result := ParseAndCheck(t, sql)
+		stmt, ok := result.Items[0].(*ast.AlterDatabaseStmt)
+		if !ok {
+			t.Fatalf("expected *AlterDatabaseStmt, got %T", result.Items[0])
+		}
+		if stmt.Action != "MODIFY" {
+			t.Errorf("expected action MODIFY, got %s", stmt.Action)
+		}
+		if stmt.SubAction != "NAME" {
+			t.Errorf("expected subAction NAME, got %s", stmt.SubAction)
+		}
+		if stmt.NewName != "newdb" {
+			t.Errorf("expected newName newdb, got %s", stmt.NewName)
+		}
+	})
+}

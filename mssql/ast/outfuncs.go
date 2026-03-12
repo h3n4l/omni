@@ -887,6 +887,9 @@ func writeCreateDatabaseStmt(sb *strings.Builder, n *CreateDatabaseStmt) {
 func writeDatabaseFileSpec(sb *strings.Builder, n *DatabaseFileSpec) {
 	sb.WriteString("{DBFILESPEC")
 	sb.WriteString(fmt.Sprintf(" :name \"%s\"", escapeString(n.Name)))
+	if n.NewName != "" {
+		sb.WriteString(fmt.Sprintf(" :newName \"%s\"", escapeString(n.NewName)))
+	}
 	sb.WriteString(fmt.Sprintf(" :filename \"%s\"", escapeString(n.Filename)))
 	if n.Size != "" {
 		sb.WriteString(fmt.Sprintf(" :size \"%s\"", escapeString(n.Size)))
@@ -896,6 +899,9 @@ func writeDatabaseFileSpec(sb *strings.Builder, n *DatabaseFileSpec) {
 	}
 	if n.FileGrowth != "" {
 		sb.WriteString(fmt.Sprintf(" :filegrowth \"%s\"", escapeString(n.FileGrowth)))
+	}
+	if n.Offline {
+		sb.WriteString(" :offline true")
 	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
@@ -2432,6 +2438,26 @@ func writeAlterDatabaseStmt(sb *strings.Builder, n *AlterDatabaseStmt) {
 	sb.WriteString("{ALTERDATABASE")
 	fmt.Fprintf(sb, " :name \"%s\"", escapeString(n.Name))
 	fmt.Fprintf(sb, " :action \"%s\"", escapeString(n.Action))
+	if n.SubAction != "" {
+		fmt.Fprintf(sb, " :subAction \"%s\"", escapeString(n.SubAction))
+	}
+	if n.Options != nil && n.Options.Len() > 0 {
+		sb.WriteString(" :options ")
+		writeNode(sb, n.Options)
+	}
+	if n.FileSpecs != nil && n.FileSpecs.Len() > 0 {
+		sb.WriteString(" :fileSpecs ")
+		writeNode(sb, n.FileSpecs)
+	}
+	if n.TargetName != "" {
+		fmt.Fprintf(sb, " :targetName \"%s\"", escapeString(n.TargetName))
+	}
+	if n.NewName != "" {
+		fmt.Fprintf(sb, " :newName \"%s\"", escapeString(n.NewName))
+	}
+	if n.Termination != "" {
+		fmt.Fprintf(sb, " :termination \"%s\"", escapeString(n.Termination))
+	}
 	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
 	sb.WriteString("}")
 }

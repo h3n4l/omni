@@ -1832,7 +1832,7 @@
       "id": 77,
       "name": "alter_database_depth",
       "file": "alter_objects.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 29 gap: replace ALTER DATABASE skip-loop with structured parsing of SET options, MODIFY FILE, ADD FILE/FILEGROUP, COLLATE, MODIFY NAME",
       "rules": [
         "parseAlterDatabaseSetOptions",

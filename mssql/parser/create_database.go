@@ -285,6 +285,13 @@ func (p *Parser) parseDatabaseFileSpec() *nodes.DatabaseFileSpec {
 			case "FILEGROWTH":
 				p.match('=')
 				spec.FileGrowth = p.parseSizeValue()
+			case "NEWNAME":
+				p.match('=')
+				if id, ok := p.parseIdentifier(); ok {
+					spec.NewName = id
+				}
+			case "OFFLINE":
+				spec.Offline = true
 			}
 		}
 		// Consume comma separator
