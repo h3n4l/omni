@@ -68,7 +68,7 @@ func (p *Parser) parseCreateAdminObject(start int) nodes.StmtNode {
 		return p.parseCreateRoleStmt(start)
 	case kwPROFILE:
 		p.advance()
-		return p.parseCreateProfileStmt(start)
+		return p.parseCreateProfileStmt(start, false)
 	case kwTABLESPACE:
 		p.advance()
 		return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_TABLESPACE, start)
@@ -91,7 +91,7 @@ func (p *Parser) parseCreateAdminObject(start int) nodes.StmtNode {
 		p.advance()
 		return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_TABLE, start) // reuse TABLE type for SCHEMA
 	default:
-		// DIMENSION, FLASHBACK ARCHIVE handled via identifiers
+		// DIMENSION, FLASHBACK ARCHIVE, MANDATORY PROFILE handled via identifiers
 		if p.isIdentLike() {
 			switch p.cur.Str {
 			case "DIMENSION":
@@ -103,6 +103,12 @@ func (p *Parser) parseCreateAdminObject(start int) nodes.StmtNode {
 					p.advance()
 				}
 				return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_FLASHBACK_ARCHIVE, start)
+			case "MANDATORY":
+				p.advance()
+				if p.cur.Type == kwPROFILE {
+					p.advance()
+					return p.parseCreateProfileStmt(start, true)
+				}
 			}
 		}
 		return nil

@@ -2119,24 +2119,110 @@ type RenameStmt struct {
 func (n *RenameStmt) nodeTag()  {}
 func (n *RenameStmt) stmtNode() {}
 
+// IdentifiedClauseType represents the type of IDENTIFIED clause.
+type IdentifiedClauseType int
+
+const (
+	IDENTIFIED_BY        IdentifiedClauseType = iota // IDENTIFIED BY password
+	IDENTIFIED_EXTERNALLY                            // IDENTIFIED EXTERNALLY [AS '...']
+	IDENTIFIED_GLOBALLY                              // IDENTIFIED GLOBALLY [AS '...']
+	IDENTIFIED_NO_AUTH                               // NO AUTHENTICATION
+)
+
+// IdentifiedClause represents an IDENTIFIED BY/EXTERNALLY/GLOBALLY clause.
+type IdentifiedClause struct {
+	Type       IdentifiedClauseType
+	Password   string // password for IDENTIFIED BY
+	OldPass    string // REPLACE old_password (ALTER USER only)
+	ExternalAs string // AS 'certificate_DN' etc. for EXTERNALLY/GLOBALLY
+	Loc        Loc
+}
+
+func (n *IdentifiedClause) nodeTag() {}
+
+// UserQuotaClause represents a QUOTA clause for a user.
+type UserQuotaClause struct {
+	Size       string      // size value (e.g. "10M") or "UNLIMITED"
+	Tablespace *ObjectName // ON tablespace
+	Loc        Loc
+}
+
+func (n *UserQuotaClause) nodeTag() {}
+
+// DefaultRoleClause represents a DEFAULT ROLE clause for ALTER USER.
+type DefaultRoleClause struct {
+	AllRoles  bool          // ALL
+	NoneRole  bool          // NONE
+	Roles     []*ObjectName // specific role list
+	ExceptAll bool          // ALL EXCEPT ...
+	Loc       Loc
+}
+
+func (n *DefaultRoleClause) nodeTag() {}
+
 // CreateUserStmt represents a CREATE USER statement.
 //
-//	CREATE USER name IDENTIFIED BY password [DEFAULT TABLESPACE ts] [QUOTA ...] [PROFILE p]
+//	CREATE USER [IF NOT EXISTS] user
+//	    IDENTIFIED { BY password | EXTERNALLY [AS '...'] | GLOBALLY [AS '...'] | NO AUTHENTICATION }
+//	    [DEFAULT COLLATION collation_name]
+//	    [DEFAULT TABLESPACE tablespace]
+//	    [[LOCAL] TEMPORARY TABLESPACE { tablespace | tablespace_group_name }]
+//	    [QUOTA { size_clause | UNLIMITED } ON tablespace] ...
+//	    [PROFILE profile_name]
+//	    [PASSWORD EXPIRE]
+//	    [ACCOUNT { LOCK | UNLOCK }]
+//	    [ENABLE EDITIONS]
+//	    [CONTAINER = { ALL | CURRENT }]
 type CreateUserStmt struct {
-	Name       *ObjectName // user name
-	IdentifyBy string      // IDENTIFIED BY password or IDENTIFIED EXTERNALLY/GLOBALLY
-	Options    []string    // other options collected as strings
-	Loc        Loc
+	Name              *ObjectName      // user name
+	IfNotExists       bool             // IF NOT EXISTS
+	Identified        *IdentifiedClause // IDENTIFIED clause
+	DefaultTablespace string            // DEFAULT TABLESPACE
+	TempTablespace    string            // [LOCAL] TEMPORARY TABLESPACE
+	LocalTemp         bool              // LOCAL keyword present
+	Quotas            []*UserQuotaClause // QUOTA clauses
+	Profile           string            // PROFILE name
+	PasswordExpire    bool              // PASSWORD EXPIRE
+	AccountLock       *bool             // ACCOUNT LOCK (true) / UNLOCK (false) / nil (not specified)
+	EnableEditions    bool              // ENABLE EDITIONS
+	DefaultCollation  string            // DEFAULT COLLATION
+	ContainerAll      *bool             // CONTAINER = ALL (true) / CURRENT (false) / nil (not specified)
+	Loc               Loc
 }
 
 func (n *CreateUserStmt) nodeTag()  {}
 func (n *CreateUserStmt) stmtNode() {}
 
 // AlterUserStmt represents an ALTER USER statement.
+//
+//	ALTER USER [IF EXISTS] user
+//	    [IDENTIFIED { BY password [REPLACE old] | EXTERNALLY | GLOBALLY AS '...' | NO AUTHENTICATION }]
+//	    [DEFAULT COLLATION collation_name]
+//	    [DEFAULT TABLESPACE tablespace]
+//	    [[LOCAL] TEMPORARY TABLESPACE { tablespace | tablespace_group_name }]
+//	    [QUOTA { size_clause | UNLIMITED } ON tablespace] ...
+//	    [PROFILE profile_name]
+//	    [DEFAULT ROLE { role [, role]... | ALL [EXCEPT role [, role]...] | NONE }]
+//	    [PASSWORD EXPIRE]
+//	    [ACCOUNT { LOCK | UNLOCK }]
+//	    [ENABLE EDITIONS]
+//	    [CONTAINER = { ALL | CURRENT }]
 type AlterUserStmt struct {
-	Name    *ObjectName // user name
-	Options []string    // options collected as strings
-	Loc     Loc
+	Name              *ObjectName        // user name
+	IfExists          bool               // IF EXISTS
+	Identified        *IdentifiedClause  // IDENTIFIED clause
+	DefaultTablespace string             // DEFAULT TABLESPACE
+	TempTablespace    string             // [LOCAL] TEMPORARY TABLESPACE
+	LocalTemp         bool               // LOCAL keyword present
+	Quotas            []*UserQuotaClause // QUOTA clauses
+	Profile           string             // PROFILE name
+	DefaultRole       *DefaultRoleClause // DEFAULT ROLE clause
+	PasswordExpire    bool               // PASSWORD EXPIRE
+	AccountLock       *bool              // ACCOUNT LOCK (true) / UNLOCK (false) / nil (not specified)
+	EnableEditions    bool               // ENABLE EDITIONS
+	DefaultCollation  string             // DEFAULT COLLATION
+	ContainerAll      *bool              // CONTAINER = ALL (true) / CURRENT (false) / nil (not specified)
+	Loc               Loc
 }
 
 func (n *AlterUserStmt) nodeTag()  {}
@@ -2152,11 +2238,34 @@ type CreateRoleStmt struct {
 func (n *CreateRoleStmt) nodeTag()  {}
 func (n *CreateRoleStmt) stmtNode() {}
 
+// ProfileLimitType represents the type of profile limit.
+type ProfileLimitType int
+
+const (
+	PROFILE_RESOURCE ProfileLimitType = iota // resource parameter
+	PROFILE_PASSWORD                         // password parameter
+)
+
+// ProfileLimit represents a single profile limit entry.
+type ProfileLimit struct {
+	Name  string // parameter name (e.g. "SESSIONS_PER_USER", "FAILED_LOGIN_ATTEMPTS")
+	Value string // value: integer, size clause, "UNLIMITED", "DEFAULT", "NULL", or function name
+	Loc   Loc
+}
+
+func (n *ProfileLimit) nodeTag() {}
+
 // CreateProfileStmt represents a CREATE PROFILE statement.
+//
+//	CREATE [MANDATORY] PROFILE profile_name
+//	    LIMIT { resource_parameters | password_parameters } ...
+//	    [CONTAINER = { ALL | CURRENT }]
 type CreateProfileStmt struct {
-	Name   *ObjectName // profile name
-	Limits []string    // resource limit specifications
-	Loc    Loc
+	Name         *ObjectName     // profile name
+	Mandatory    bool            // MANDATORY keyword
+	Limits       []*ProfileLimit // parsed limit entries
+	ContainerAll *bool           // CONTAINER = ALL (true) / CURRENT (false) / nil (not specified)
+	Loc          Loc
 }
 
 func (n *CreateProfileStmt) nodeTag()  {}

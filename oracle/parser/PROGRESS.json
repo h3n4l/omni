@@ -1311,7 +1311,10 @@
         "type_body_map_order_method",
         "type_body_constructor"
       ],
-      "depends_on": [15, 21],
+      "depends_on": [
+        15,
+        21
+      ],
       "tests": [
         "create_type_body_methods",
         "create_type_body_constructor"
@@ -1321,7 +1324,7 @@
       "id": 59,
       "name": "security_option_parsing",
       "file": "security.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 40 gap: CREATE USER, ALTER USER, CREATE PROFILE use generic token collection instead of parsing options. Parse IDENTIFIED BY/EXTERNALLY/GLOBALLY, DEFAULT TABLESPACE, TEMPORARY TABLESPACE, QUOTA, PROFILE, ACCOUNT LOCK/UNLOCK, PASSWORD EXPIRE for users. Parse resource limits (SESSIONS_PER_USER, CPU_PER_SESSION, etc.) and password parameters for profiles.",
       "rules": [
         "user_identified_clause",
@@ -1331,7 +1334,9 @@
         "profile_resource_param",
         "profile_password_param"
       ],
-      "depends_on": [40],
+      "depends_on": [
+        40
+      ],
       "tests": [
         "create_user_full",
         "alter_user_full",
@@ -1351,7 +1356,10 @@
         "dimension_level_clause",
         "dimension_hierarchy_clause"
       ],
-      "depends_on": [41, 42],
+      "depends_on": [
+        41,
+        42
+      ],
       "tests": [
         "create_tablespace_full",
         "create_cluster_full",
@@ -1370,7 +1378,9 @@
         "create_controlfile_stmt",
         "alter_database_dictionary_stmt"
       ],
-      "depends_on": [0],
+      "depends_on": [
+        0
+      ],
       "tests": [
         "create_database",
         "alter_database",
@@ -1388,7 +1398,9 @@
         "alter_diskgroup_stmt",
         "drop_diskgroup_stmt"
       ],
-      "depends_on": [0],
+      "depends_on": [
+        0
+      ],
       "tests": [
         "create_diskgroup",
         "alter_diskgroup",
@@ -1406,7 +1418,9 @@
         "alter_pluggable_database_stmt",
         "drop_pluggable_database_stmt"
       ],
-      "depends_on": [0],
+      "depends_on": [
+        0
+      ],
       "tests": [
         "create_pdb",
         "alter_pdb",
@@ -1422,7 +1436,9 @@
       "rules": [
         "administer_key_management_stmt"
       ],
-      "depends_on": [0],
+      "depends_on": [
+        0
+      ],
       "tests": [
         "administer_key_mgmt"
       ]
@@ -1438,7 +1454,9 @@
         "alter_audit_policy_stmt",
         "drop_audit_policy_stmt"
       ],
-      "depends_on": [0],
+      "depends_on": [
+        0
+      ],
       "tests": [
         "create_audit_policy",
         "alter_audit_policy",
@@ -1462,7 +1480,9 @@
         "alter_hierarchy_stmt",
         "drop_hierarchy_stmt"
       ],
-      "depends_on": [0],
+      "depends_on": [
+        0
+      ],
       "tests": [
         "create_analytic_view",
         "create_attribute_dimension",
@@ -1480,7 +1500,9 @@
         "alter_domain_stmt",
         "drop_domain_stmt"
       ],
-      "depends_on": [2],
+      "depends_on": [
+        2
+      ],
       "tests": [
         "create_domain",
         "alter_domain",
@@ -1501,7 +1523,9 @@
         "alter_operator_stmt",
         "drop_operator_stmt"
       ],
-      "depends_on": [0],
+      "depends_on": [
+        0
+      ],
       "tests": [
         "create_indextype",
         "create_operator"
@@ -1521,7 +1545,9 @@
         "alter_outline_stmt",
         "drop_outline_stmt"
       ],
-      "depends_on": [0],
+      "depends_on": [
+        0
+      ],
       "tests": [
         "create_lockdown_profile",
         "create_outline"
@@ -1541,7 +1567,9 @@
         "alter_inmemory_join_group_stmt",
         "drop_inmemory_join_group_stmt"
       ],
-      "depends_on": [0],
+      "depends_on": [
+        0
+      ],
       "tests": [
         "create_zonemap",
         "create_inmemory_join_group"
@@ -1558,7 +1586,9 @@
         "alter_json_duality_view_stmt",
         "drop_json_duality_view_stmt"
       ],
-      "depends_on": [11],
+      "depends_on": [
+        11
+      ],
       "tests": [
         "create_json_duality_view"
       ]
@@ -1576,7 +1606,9 @@
         "alter_resource_cost_stmt",
         "alter_rollback_segment_stmt"
       ],
-      "depends_on": [17],
+      "depends_on": [
+        17
+      ],
       "tests": [
         "alter_java",
         "alter_flashback_archive",
@@ -1595,7 +1627,9 @@
         "create_edition_stmt",
         "drop_edition_stmt"
       ],
-      "depends_on": [0],
+      "depends_on": [
+        0
+      ],
       "tests": [
         "create_rollback_segment",
         "create_edition"
@@ -1612,7 +1646,9 @@
         "alter_tablespace_set_stmt",
         "drop_tablespace_set_stmt"
       ],
-      "depends_on": [41],
+      "depends_on": [
+        41
+      ],
       "tests": [
         "create_tablespace_set",
         "alter_tablespace_set"
@@ -1630,7 +1666,9 @@
         "create_mle_module_stmt",
         "drop_mle_module_stmt"
       ],
-      "depends_on": [0],
+      "depends_on": [
+        0
+      ],
       "tests": [
         "create_mle_env",
         "create_mle_module"
@@ -1646,7 +1684,9 @@
         "create_pfile_stmt",
         "create_spfile_stmt"
       ],
-      "depends_on": [0],
+      "depends_on": [
+        0
+      ],
       "tests": [
         "create_pfile",
         "create_spfile"
@@ -1662,7 +1702,9 @@
         "create_property_graph_stmt",
         "create_vector_index_stmt"
       ],
-      "depends_on": [0],
+      "depends_on": [
+        0
+      ],
       "tests": [
         "create_property_graph",
         "create_vector_index"
@@ -1680,7 +1722,9 @@
         "create_logical_partition_tracking_stmt",
         "create_pmem_filestore_stmt"
       ],
-      "depends_on": [0],
+      "depends_on": [
+        0
+      ],
       "tests": [
         "create_restore_point",
         "drop_restore_point"
@@ -1696,7 +1740,10 @@
         "truncate_cluster_stmt",
         "drop_type_body_stmt"
       ],
-      "depends_on": [22, 16],
+      "depends_on": [
+        22,
+        16
+      ],
       "tests": [
         "truncate_cluster",
         "drop_type_body"

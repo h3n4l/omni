@@ -310,6 +310,14 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeCallStmt(sb, n)
 	case *RenameStmt:
 		writeRenameStmt(sb, n)
+	case *IdentifiedClause:
+		writeIdentifiedClause(sb, n)
+	case *UserQuotaClause:
+		writeUserQuotaClause(sb, n)
+	case *DefaultRoleClause:
+		writeDefaultRoleClause(sb, n)
+	case *ProfileLimit:
+		writeProfileLimit(sb, n)
 	case *CreateUserStmt:
 		writeCreateUserStmt(sb, n)
 	case *AlterUserStmt:
@@ -2750,17 +2758,120 @@ func writeRenameStmt(sb *strings.Builder, n *RenameStmt) {
 	sb.WriteString("}")
 }
 
+func writeIdentifiedClause(sb *strings.Builder, n *IdentifiedClause) {
+	sb.WriteString("{IDENTIFIED")
+	switch n.Type {
+	case IDENTIFIED_BY:
+		sb.WriteString(" :type BY")
+		if n.Password != "" {
+			sb.WriteString(fmt.Sprintf(" :password %q", n.Password))
+		}
+		if n.OldPass != "" {
+			sb.WriteString(fmt.Sprintf(" :replace %q", n.OldPass))
+		}
+	case IDENTIFIED_EXTERNALLY:
+		sb.WriteString(" :type EXTERNALLY")
+		if n.ExternalAs != "" {
+			sb.WriteString(fmt.Sprintf(" :as %q", n.ExternalAs))
+		}
+	case IDENTIFIED_GLOBALLY:
+		sb.WriteString(" :type GLOBALLY")
+		if n.ExternalAs != "" {
+			sb.WriteString(fmt.Sprintf(" :as %q", n.ExternalAs))
+		}
+	case IDENTIFIED_NO_AUTH:
+		sb.WriteString(" :type NO_AUTHENTICATION")
+	}
+	sb.WriteString("}")
+}
+
+func writeUserQuotaClause(sb *strings.Builder, n *UserQuotaClause) {
+	sb.WriteString("{QUOTA")
+	sb.WriteString(fmt.Sprintf(" :size %q", n.Size))
+	if n.Tablespace != nil {
+		sb.WriteString(" :on ")
+		writeNode(sb, n.Tablespace)
+	}
+	sb.WriteString("}")
+}
+
+func writeDefaultRoleClause(sb *strings.Builder, n *DefaultRoleClause) {
+	sb.WriteString("{DEFAULT_ROLE")
+	if n.AllRoles {
+		if n.ExceptAll {
+			sb.WriteString(" :allExcept true")
+		} else {
+			sb.WriteString(" :all true")
+		}
+	}
+	if n.NoneRole {
+		sb.WriteString(" :none true")
+	}
+	for _, r := range n.Roles {
+		sb.WriteString(" :role ")
+		writeNode(sb, r)
+	}
+	sb.WriteString("}")
+}
+
+func writeProfileLimit(sb *strings.Builder, n *ProfileLimit) {
+	sb.WriteString("{LIMIT")
+	sb.WriteString(fmt.Sprintf(" :name %q", n.Name))
+	sb.WriteString(fmt.Sprintf(" :value %q", n.Value))
+	sb.WriteString("}")
+}
+
 func writeCreateUserStmt(sb *strings.Builder, n *CreateUserStmt) {
 	sb.WriteString("{CREATE_USER")
 	if n.Name != nil {
 		sb.WriteString(" :name ")
 		writeNode(sb, n.Name)
 	}
-	if n.IdentifyBy != "" {
-		sb.WriteString(fmt.Sprintf(" :identifiedBy %q", n.IdentifyBy))
+	if n.IfNotExists {
+		sb.WriteString(" :ifNotExists true")
 	}
-	for _, opt := range n.Options {
-		sb.WriteString(fmt.Sprintf(" :option %q", opt))
+	if n.Identified != nil {
+		sb.WriteString(" :identified ")
+		writeIdentifiedClause(sb, n.Identified)
+	}
+	if n.DefaultCollation != "" {
+		sb.WriteString(fmt.Sprintf(" :defaultCollation %q", n.DefaultCollation))
+	}
+	if n.DefaultTablespace != "" {
+		sb.WriteString(fmt.Sprintf(" :defaultTablespace %q", n.DefaultTablespace))
+	}
+	if n.TempTablespace != "" {
+		if n.LocalTemp {
+			sb.WriteString(" :localTemp true")
+		}
+		sb.WriteString(fmt.Sprintf(" :tempTablespace %q", n.TempTablespace))
+	}
+	for _, q := range n.Quotas {
+		sb.WriteString(" :quota ")
+		writeUserQuotaClause(sb, q)
+	}
+	if n.Profile != "" {
+		sb.WriteString(fmt.Sprintf(" :profile %q", n.Profile))
+	}
+	if n.PasswordExpire {
+		sb.WriteString(" :passwordExpire true")
+	}
+	if n.AccountLock != nil {
+		if *n.AccountLock {
+			sb.WriteString(" :accountLock true")
+		} else {
+			sb.WriteString(" :accountUnlock true")
+		}
+	}
+	if n.EnableEditions {
+		sb.WriteString(" :enableEditions true")
+	}
+	if n.ContainerAll != nil {
+		if *n.ContainerAll {
+			sb.WriteString(" :container ALL")
+		} else {
+			sb.WriteString(" :container CURRENT")
+		}
 	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
@@ -2772,8 +2883,55 @@ func writeAlterUserStmt(sb *strings.Builder, n *AlterUserStmt) {
 		sb.WriteString(" :name ")
 		writeNode(sb, n.Name)
 	}
-	for _, opt := range n.Options {
-		sb.WriteString(fmt.Sprintf(" :option %q", opt))
+	if n.IfExists {
+		sb.WriteString(" :ifExists true")
+	}
+	if n.Identified != nil {
+		sb.WriteString(" :identified ")
+		writeIdentifiedClause(sb, n.Identified)
+	}
+	if n.DefaultCollation != "" {
+		sb.WriteString(fmt.Sprintf(" :defaultCollation %q", n.DefaultCollation))
+	}
+	if n.DefaultTablespace != "" {
+		sb.WriteString(fmt.Sprintf(" :defaultTablespace %q", n.DefaultTablespace))
+	}
+	if n.TempTablespace != "" {
+		if n.LocalTemp {
+			sb.WriteString(" :localTemp true")
+		}
+		sb.WriteString(fmt.Sprintf(" :tempTablespace %q", n.TempTablespace))
+	}
+	for _, q := range n.Quotas {
+		sb.WriteString(" :quota ")
+		writeUserQuotaClause(sb, q)
+	}
+	if n.Profile != "" {
+		sb.WriteString(fmt.Sprintf(" :profile %q", n.Profile))
+	}
+	if n.DefaultRole != nil {
+		sb.WriteString(" :defaultRole ")
+		writeDefaultRoleClause(sb, n.DefaultRole)
+	}
+	if n.PasswordExpire {
+		sb.WriteString(" :passwordExpire true")
+	}
+	if n.AccountLock != nil {
+		if *n.AccountLock {
+			sb.WriteString(" :accountLock true")
+		} else {
+			sb.WriteString(" :accountUnlock true")
+		}
+	}
+	if n.EnableEditions {
+		sb.WriteString(" :enableEditions true")
+	}
+	if n.ContainerAll != nil {
+		if *n.ContainerAll {
+			sb.WriteString(" :container ALL")
+		} else {
+			sb.WriteString(" :container CURRENT")
+		}
 	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
@@ -2798,8 +2956,19 @@ func writeCreateProfileStmt(sb *strings.Builder, n *CreateProfileStmt) {
 		sb.WriteString(" :name ")
 		writeNode(sb, n.Name)
 	}
+	if n.Mandatory {
+		sb.WriteString(" :mandatory true")
+	}
 	for _, lim := range n.Limits {
-		sb.WriteString(fmt.Sprintf(" :limit %q", lim))
+		sb.WriteString(" :limit ")
+		writeProfileLimit(sb, lim)
+	}
+	if n.ContainerAll != nil {
+		if *n.ContainerAll {
+			sb.WriteString(" :container ALL")
+		} else {
+			sb.WriteString(" :container CURRENT")
+		}
 	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

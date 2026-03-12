@@ -1479,3 +1479,139 @@ END;`,
 		})
 	}
 }
+
+// TestParseCreateUserFull tests full CREATE USER parsing with structured options.
+func TestParseCreateUserFull(t *testing.T) {
+	tests := []string{
+		"CREATE USER scott IDENTIFIED BY tiger",
+		"CREATE USER ext_user IDENTIFIED EXTERNALLY",
+		"CREATE USER ext_user IDENTIFIED EXTERNALLY AS 'CN=scott,O=myco'",
+		"CREATE USER global_user IDENTIFIED GLOBALLY",
+		"CREATE USER global_user IDENTIFIED GLOBALLY AS 'CN=scott,O=myco'",
+		"CREATE USER schema_only NO AUTHENTICATION",
+		"CREATE USER IF NOT EXISTS scott IDENTIFIED BY tiger",
+		"CREATE USER scott IDENTIFIED BY tiger DEFAULT TABLESPACE users",
+		"CREATE USER scott IDENTIFIED BY tiger TEMPORARY TABLESPACE temp",
+		"CREATE USER scott IDENTIFIED BY tiger LOCAL TEMPORARY TABLESPACE temp",
+		"CREATE USER scott IDENTIFIED BY tiger QUOTA 100M ON users",
+		"CREATE USER scott IDENTIFIED BY tiger QUOTA UNLIMITED ON users",
+		"CREATE USER scott IDENTIFIED BY tiger QUOTA 100M ON users QUOTA UNLIMITED ON temp",
+		"CREATE USER scott IDENTIFIED BY tiger PROFILE app_profile",
+		"CREATE USER scott IDENTIFIED BY tiger PASSWORD EXPIRE",
+		"CREATE USER scott IDENTIFIED BY tiger ACCOUNT LOCK",
+		"CREATE USER scott IDENTIFIED BY tiger ACCOUNT UNLOCK",
+		"CREATE USER scott IDENTIFIED BY tiger ENABLE EDITIONS",
+		"CREATE USER scott IDENTIFIED BY tiger DEFAULT COLLATION USING_NLS_COMP",
+		"CREATE USER c##scott IDENTIFIED BY tiger CONTAINER = ALL",
+		"CREATE USER scott IDENTIFIED BY tiger CONTAINER = CURRENT",
+		"CREATE USER scott IDENTIFIED BY tiger DEFAULT TABLESPACE users TEMPORARY TABLESPACE temp QUOTA 100M ON users PROFILE default PASSWORD EXPIRE ACCOUNT LOCK",
+	}
+	for _, sql := range tests {
+		name := sql
+		if len(name) > 60 {
+			name = name[:60]
+		}
+		t.Run(name, func(t *testing.T) {
+			result := ParseAndCheck(t, sql)
+			if result.Len() != 1 {
+				t.Fatalf("expected 1 statement, got %d", result.Len())
+			}
+			raw := result.Items[0].(*ast.RawStmt)
+			_, ok := raw.Stmt.(*ast.CreateUserStmt)
+			if !ok {
+				t.Fatalf("expected *CreateUserStmt, got %T", raw.Stmt)
+			}
+		})
+	}
+}
+
+// TestParseAlterUserFull tests full ALTER USER parsing with structured options.
+func TestParseAlterUserFull(t *testing.T) {
+	tests := []string{
+		"ALTER USER scott IDENTIFIED BY lion REPLACE tiger",
+		"ALTER USER scott IDENTIFIED BY newpass",
+		"ALTER USER scott IDENTIFIED EXTERNALLY",
+		"ALTER USER scott IDENTIFIED GLOBALLY AS 'CN=scott,O=myco'",
+		"ALTER USER scott NO AUTHENTICATION",
+		"ALTER USER IF EXISTS scott IDENTIFIED BY tiger",
+		"ALTER USER scott DEFAULT TABLESPACE users",
+		"ALTER USER scott TEMPORARY TABLESPACE temp",
+		"ALTER USER scott LOCAL TEMPORARY TABLESPACE temp",
+		"ALTER USER scott QUOTA 50M ON users",
+		"ALTER USER scott QUOTA UNLIMITED ON users",
+		"ALTER USER scott PROFILE app_profile",
+		"ALTER USER scott DEFAULT ROLE connect, resource",
+		"ALTER USER scott DEFAULT ROLE ALL",
+		"ALTER USER scott DEFAULT ROLE ALL EXCEPT dba",
+		"ALTER USER scott DEFAULT ROLE NONE",
+		"ALTER USER scott PASSWORD EXPIRE",
+		"ALTER USER scott ACCOUNT LOCK",
+		"ALTER USER scott ACCOUNT UNLOCK",
+		"ALTER USER scott ENABLE EDITIONS",
+		"ALTER USER c##scott CONTAINER = ALL",
+		"ALTER USER scott IDENTIFIED BY newpass DEFAULT TABLESPACE users QUOTA 100M ON users PROFILE default PASSWORD EXPIRE ACCOUNT UNLOCK",
+	}
+	for _, sql := range tests {
+		name := sql
+		if len(name) > 60 {
+			name = name[:60]
+		}
+		t.Run(name, func(t *testing.T) {
+			result := ParseAndCheck(t, sql)
+			if result.Len() != 1 {
+				t.Fatalf("expected 1 statement, got %d", result.Len())
+			}
+			raw := result.Items[0].(*ast.RawStmt)
+			_, ok := raw.Stmt.(*ast.AlterUserStmt)
+			if !ok {
+				t.Fatalf("expected *AlterUserStmt, got %T", raw.Stmt)
+			}
+		})
+	}
+}
+
+// TestParseCreateProfileFull tests full CREATE PROFILE parsing with structured options.
+func TestParseCreateProfileFull(t *testing.T) {
+	tests := []string{
+		"CREATE PROFILE app_profile LIMIT SESSIONS_PER_USER 10",
+		"CREATE PROFILE app_profile LIMIT CPU_PER_SESSION 10000",
+		"CREATE PROFILE app_profile LIMIT CPU_PER_CALL 3000",
+		"CREATE PROFILE app_profile LIMIT CONNECT_TIME 60",
+		"CREATE PROFILE app_profile LIMIT IDLE_TIME 30",
+		"CREATE PROFILE app_profile LIMIT LOGICAL_READS_PER_SESSION UNLIMITED",
+		"CREATE PROFILE app_profile LIMIT LOGICAL_READS_PER_CALL DEFAULT",
+		"CREATE PROFILE app_profile LIMIT PRIVATE_SGA 100K",
+		"CREATE PROFILE app_profile LIMIT COMPOSITE_LIMIT 5000000",
+		"CREATE PROFILE app_profile LIMIT FAILED_LOGIN_ATTEMPTS 5",
+		"CREATE PROFILE app_profile LIMIT PASSWORD_LIFE_TIME 90",
+		"CREATE PROFILE app_profile LIMIT PASSWORD_REUSE_TIME 365",
+		"CREATE PROFILE app_profile LIMIT PASSWORD_REUSE_MAX 10",
+		"CREATE PROFILE app_profile LIMIT PASSWORD_LOCK_TIME 1",
+		"CREATE PROFILE app_profile LIMIT PASSWORD_GRACE_TIME 7",
+		"CREATE PROFILE app_profile LIMIT INACTIVE_ACCOUNT_TIME 90",
+		"CREATE PROFILE app_profile LIMIT PASSWORD_VERIFY_FUNCTION verify_func",
+		"CREATE PROFILE app_profile LIMIT PASSWORD_VERIFY_FUNCTION NULL",
+		"CREATE PROFILE app_profile LIMIT PASSWORD_ROLLOVER_TIME 1",
+		"CREATE MANDATORY PROFILE mandatory_prof LIMIT SESSIONS_PER_USER 5",
+		"CREATE PROFILE app_profile LIMIT SESSIONS_PER_USER 10 CPU_PER_SESSION UNLIMITED FAILED_LOGIN_ATTEMPTS 3 PASSWORD_LIFE_TIME 60",
+		"CREATE PROFILE app_profile LIMIT SESSIONS_PER_USER 10 CONTAINER = ALL",
+		"CREATE PROFILE app_profile LIMIT SESSIONS_PER_USER 10 LIMIT FAILED_LOGIN_ATTEMPTS 5",
+	}
+	for _, sql := range tests {
+		name := sql
+		if len(name) > 60 {
+			name = name[:60]
+		}
+		t.Run(name, func(t *testing.T) {
+			result := ParseAndCheck(t, sql)
+			if result.Len() != 1 {
+				t.Fatalf("expected 1 statement, got %d", result.Len())
+			}
+			raw := result.Items[0].(*ast.RawStmt)
+			_, ok := raw.Stmt.(*ast.CreateProfileStmt)
+			if !ok {
+				t.Fatalf("expected *CreateProfileStmt, got %T", raw.Stmt)
+			}
+		})
+	}
+}
