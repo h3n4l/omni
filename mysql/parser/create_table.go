@@ -320,6 +320,22 @@ func (p *Parser) parseColumnOption(col *nodes.ColumnDef) bool {
 		col.Constraints = append(col.Constraints, constr)
 		return true
 
+	case kwVISIBLE:
+		p.advance()
+		col.Constraints = append(col.Constraints, &nodes.ColumnConstraint{
+			Loc:  nodes.Loc{Start: start, End: p.pos()},
+			Type: nodes.ColConstrVisible,
+		})
+		return true
+
+	case kwINVISIBLE:
+		p.advance()
+		col.Constraints = append(col.Constraints, &nodes.ColumnConstraint{
+			Loc:  nodes.Loc{Start: start, End: p.pos()},
+			Type: nodes.ColConstrInvisible,
+		})
+		return true
+
 	case kwCHECK:
 		p.advance()
 		if _, err := p.expect('('); err != nil {
@@ -332,11 +348,23 @@ func (p *Parser) parseColumnOption(col *nodes.ColumnDef) bool {
 		if _, err := p.expect(')'); err != nil {
 			return false
 		}
-		col.Constraints = append(col.Constraints, &nodes.ColumnConstraint{
+		cc := &nodes.ColumnConstraint{
 			Loc:  nodes.Loc{Start: start, End: p.pos()},
 			Type: nodes.ColConstrCheck,
 			Expr: expr,
-		})
+		}
+		// [[NOT] ENFORCED]
+		if p.cur.Type == kwNOT {
+			p.advance()
+			if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "enforced") {
+				p.advance()
+				cc.NotEnforced = true
+			}
+		} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "enforced") {
+			p.advance()
+		}
+		cc.Loc.End = p.pos()
+		col.Constraints = append(col.Constraints, cc)
 		return true
 
 	case kwGENERATED:
@@ -536,11 +564,12 @@ func (p *Parser) parseTableConstraint() (*nodes.Constraint, error) {
 		constr.Type = nodes.ConstrPrimaryKey
 		// Optional index type
 		p.parseIndexTypeClause(constr)
-		cols, err := p.parseParenIdentList()
+		idxCols, err := p.parseParenIndexKeyParts()
 		if err != nil {
 			return nil, err
 		}
-		constr.Columns = cols
+		constr.IndexColumns = idxCols
+		constr.Columns = indexColumnsToNames(idxCols)
 
 	case kwUNIQUE:
 		p.advance()
@@ -552,11 +581,12 @@ func (p *Parser) parseTableConstraint() (*nodes.Constraint, error) {
 		}
 		// Optional index type
 		p.parseIndexTypeClause(constr)
-		cols, err := p.parseParenIdentList()
+		idxCols, err := p.parseParenIndexKeyParts()
 		if err != nil {
 			return nil, err
 		}
-		constr.Columns = cols
+		constr.IndexColumns = idxCols
+		constr.Columns = indexColumnsToNames(idxCols)
 
 	case kwFOREIGN:
 		p.advance()
@@ -619,6 +649,16 @@ func (p *Parser) parseTableConstraint() (*nodes.Constraint, error) {
 		if _, err := p.expect(')'); err != nil {
 			return nil, err
 		}
+		// [[NOT] ENFORCED]
+		if p.cur.Type == kwNOT {
+			p.advance()
+			if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "enforced") {
+				p.advance()
+				constr.NotEnforced = true
+			}
+		} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "enforced") {
+			p.advance()
+		}
 
 	case kwINDEX, kwKEY:
 		p.advance()
@@ -628,11 +668,12 @@ func (p *Parser) parseTableConstraint() (*nodes.Constraint, error) {
 			constr.Name, _, _ = p.parseIdentifier()
 		}
 		p.parseIndexTypeClause(constr)
-		cols, err := p.parseParenIdentList()
+		idxCols, err := p.parseParenIndexKeyParts()
 		if err != nil {
 			return nil, err
 		}
-		constr.Columns = cols
+		constr.IndexColumns = idxCols
+		constr.Columns = indexColumnsToNames(idxCols)
 
 	case kwFULLTEXT:
 		p.advance()
@@ -641,11 +682,12 @@ func (p *Parser) parseTableConstraint() (*nodes.Constraint, error) {
 		if p.isIdentToken() && p.cur.Type != '(' {
 			constr.Name, _, _ = p.parseIdentifier()
 		}
-		cols, err := p.parseParenIdentList()
+		idxCols, err := p.parseParenIndexKeyParts()
 		if err != nil {
 			return nil, err
 		}
-		constr.Columns = cols
+		constr.IndexColumns = idxCols
+		constr.Columns = indexColumnsToNames(idxCols)
 
 	case kwSPATIAL:
 		p.advance()
@@ -654,11 +696,12 @@ func (p *Parser) parseTableConstraint() (*nodes.Constraint, error) {
 		if p.isIdentToken() && p.cur.Type != '(' {
 			constr.Name, _, _ = p.parseIdentifier()
 		}
-		cols, err := p.parseParenIdentList()
+		idxCols, err := p.parseParenIndexKeyParts()
 		if err != nil {
 			return nil, err
 		}
-		constr.Columns = cols
+		constr.IndexColumns = idxCols
+		constr.Columns = indexColumnsToNames(idxCols)
 
 	default:
 		return nil, &ParseError{
@@ -941,6 +984,87 @@ func (p *Parser) parsePartitionClause() (*nodes.PartitionClause, error) {
 		}
 	}
 
+	// SUBPARTITION BY {HASH(expr) | KEY [ALGORITHM=N] (column_list)}
+	if p.cur.Type == kwSUBPARTITION {
+		p.advance() // SUBPARTITION
+		if _, err := p.expect(kwBY); err != nil {
+			return nil, err
+		}
+		switch {
+		case p.cur.Type == kwHASH:
+			p.advance()
+			part.SubPartType = nodes.PartitionHash
+			if _, err := p.expect('('); err != nil {
+				return nil, err
+			}
+			expr, err := p.parseExpr()
+			if err != nil {
+				return nil, err
+			}
+			part.SubPartExpr = expr
+			if _, err := p.expect(')'); err != nil {
+				return nil, err
+			}
+		case p.cur.Type == kwKEY:
+			p.advance()
+			part.SubPartType = nodes.PartitionKey
+			// Optional ALGORITHM = N
+			if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "algorithm") {
+				p.advance()
+				p.match('=')
+				if p.cur.Type == tokICONST {
+					p.advance()
+				}
+			}
+			cols, err := p.parseParenIdentList()
+			if err != nil {
+				return nil, err
+			}
+			part.SubPartColumns = cols
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "linear"):
+			p.advance() // LINEAR
+			if p.cur.Type == kwHASH {
+				p.advance()
+				part.SubPartType = nodes.PartitionHash
+				if _, err := p.expect('('); err != nil {
+					return nil, err
+				}
+				expr, err := p.parseExpr()
+				if err != nil {
+					return nil, err
+				}
+				part.SubPartExpr = expr
+				if _, err := p.expect(')'); err != nil {
+					return nil, err
+				}
+			} else if p.cur.Type == kwKEY {
+				p.advance()
+				part.SubPartType = nodes.PartitionKey
+				if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "algorithm") {
+					p.advance()
+					p.match('=')
+					if p.cur.Type == tokICONST {
+						p.advance()
+					}
+				}
+				cols, err := p.parseParenIdentList()
+				if err != nil {
+					return nil, err
+				}
+				part.SubPartColumns = cols
+			}
+		}
+
+		// SUBPARTITIONS num
+		if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "subpartitions") {
+			p.advance()
+			if p.cur.Type == tokICONST {
+				part.NumSubParts = int(p.cur.Ival)
+				p.advance()
+			}
+		}
+	}
+
 	// Optional partition definitions
 	if p.cur.Type == '(' {
 		p.advance()
@@ -1047,6 +1171,55 @@ func (p *Parser) parsePartitionDef() (*nodes.PartitionDef, error) {
 		pd.Options = append(pd.Options, opt)
 	}
 
+	// Optional subpartition definitions: (SUBPARTITION name [table_options], ...)
+	if p.cur.Type == '(' {
+		p.advance()
+		for {
+			if p.cur.Type == ')' {
+				break
+			}
+			spd, err := p.parseSubPartitionDef()
+			if err != nil {
+				return nil, err
+			}
+			pd.SubPartitions = append(pd.SubPartitions, spd)
+			if p.cur.Type != ',' {
+				break
+			}
+			p.advance()
+		}
+		if _, err := p.expect(')'); err != nil {
+			return nil, err
+		}
+	}
+
 	pd.Loc.End = p.pos()
 	return pd, nil
+}
+
+// parseSubPartitionDef parses a single subpartition definition.
+//
+//	SUBPARTITION logical_name [table_options]
+func (p *Parser) parseSubPartitionDef() (*nodes.SubPartitionDef, error) {
+	start := p.pos()
+	if _, err := p.expect(kwSUBPARTITION); err != nil {
+		return nil, err
+	}
+	name, _, err := p.parseIdentifier()
+	if err != nil {
+		return nil, err
+	}
+	spd := &nodes.SubPartitionDef{
+		Loc:  nodes.Loc{Start: start},
+		Name: name,
+	}
+	for {
+		opt, ok := p.parseTableOption()
+		if !ok {
+			break
+		}
+		spd.Options = append(spd.Options, opt)
+	}
+	spd.Loc.End = p.pos()
+	return spd, nil
 }

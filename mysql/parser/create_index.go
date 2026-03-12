@@ -119,32 +119,47 @@ func (p *Parser) parseCreateIndexStmt(unique bool, fulltext bool, spatial bool) 
 
 // parseIndexKeyPart parses a single key_part in an index column list.
 //
-//	key_part: col_name [(length)] [ASC | DESC]
+//	key_part:
+//	    col_name [(length)] [ASC | DESC]
+//	  | (expr) [ASC | DESC]
 func (p *Parser) parseIndexKeyPart() (*nodes.IndexColumn, error) {
 	start := p.pos()
-
-	// Column name
-	colName, _, err := p.parseIdentifier()
-	if err != nil {
-		return nil, err
-	}
 	col := &nodes.IndexColumn{
 		Loc: nodes.Loc{Start: start},
-		Expr: &nodes.ColumnRef{
-			Loc:    nodes.Loc{Start: start, End: p.pos()},
-			Column: colName,
-		},
 	}
 
-	// Optional (length)
+	// Functional index: (expr)
 	if p.cur.Type == '(' {
 		p.advance()
-		if p.cur.Type == tokICONST {
-			col.Length = int(p.cur.Ival)
-			p.advance()
+		expr, err := p.parseExpr()
+		if err != nil {
+			return nil, err
 		}
 		if _, err := p.expect(')'); err != nil {
 			return nil, err
+		}
+		col.Expr = expr
+	} else {
+		// Column name
+		colName, _, err := p.parseIdentifier()
+		if err != nil {
+			return nil, err
+		}
+		col.Expr = &nodes.ColumnRef{
+			Loc:    nodes.Loc{Start: start, End: p.pos()},
+			Column: colName,
+		}
+
+		// Optional (length)
+		if p.cur.Type == '(' {
+			p.advance()
+			if p.cur.Type == tokICONST {
+				col.Length = int(p.cur.Ival)
+				p.advance()
+			}
+			if _, err := p.expect(')'); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -157,6 +172,43 @@ func (p *Parser) parseIndexKeyPart() (*nodes.IndexColumn, error) {
 
 	col.Loc.End = p.pos()
 	return col, nil
+}
+
+// indexColumnsToNames extracts simple column names from index columns.
+// For functional indexes (expression-based), the column name is empty.
+func indexColumnsToNames(cols []*nodes.IndexColumn) []string {
+	names := make([]string, 0, len(cols))
+	for _, c := range cols {
+		if cr, ok := c.Expr.(*nodes.ColumnRef); ok {
+			names = append(names, cr.Column)
+		}
+	}
+	return names
+}
+
+// parseParenIndexKeyParts parses a parenthesized list of index key parts.
+//
+//	(key_part [, key_part] ...)
+func (p *Parser) parseParenIndexKeyParts() ([]*nodes.IndexColumn, error) {
+	if _, err := p.expect('('); err != nil {
+		return nil, err
+	}
+	var cols []*nodes.IndexColumn
+	for {
+		col, err := p.parseIndexKeyPart()
+		if err != nil {
+			return nil, err
+		}
+		cols = append(cols, col)
+		if p.cur.Type != ',' {
+			break
+		}
+		p.advance()
+	}
+	if _, err := p.expect(')'); err != nil {
+		return nil, err
+	}
+	return cols, nil
 }
 
 // parseIndexOption parses a single index_option.

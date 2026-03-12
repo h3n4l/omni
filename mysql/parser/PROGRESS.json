@@ -1539,7 +1539,7 @@
       "id": 59,
       "name": "create_table_depth",
       "file": "create_table.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 7 gap: column VISIBLE/INVISIBLE modifier, CHECK constraint NOT ENFORCED clause, functional/expression-based index keys, SUBPARTITION support",
       "rules": [
         "parseColumnVisibility",

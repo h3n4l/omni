@@ -377,18 +377,21 @@ const (
 	ColConstrComment
 	ColConstrCollate
 	ColConstrAutoIncrement
+	ColConstrVisible
+	ColConstrInvisible
 )
 
 // ColumnConstraint represents a column-level constraint.
 type ColumnConstraint struct {
-	Loc        Loc
-	Type       ColumnConstraintType
-	Name       string   // constraint name
-	Expr       ExprNode // for CHECK, DEFAULT, etc.
-	RefTable   *TableRef
-	RefColumns []string
-	OnDelete   ReferenceAction
-	OnUpdate   ReferenceAction
+	Loc         Loc
+	Type        ColumnConstraintType
+	Name        string   // constraint name
+	Expr        ExprNode // for CHECK, DEFAULT, etc.
+	RefTable    *TableRef
+	RefColumns  []string
+	OnDelete    ReferenceAction
+	OnUpdate    ReferenceAction
+	NotEnforced bool // for CHECK ... NOT ENFORCED
 }
 
 func (c *ColumnConstraint) nodeTag() {}
@@ -408,17 +411,19 @@ const (
 
 // Constraint represents a table-level constraint.
 type Constraint struct {
-	Loc        Loc
-	Type       ConstraintType
-	Name       string
-	Columns    []string
-	IndexType  string    // BTREE, HASH
-	Expr       ExprNode  // for CHECK
-	RefTable   *TableRef // for FOREIGN KEY
-	RefColumns []string  // for FOREIGN KEY
-	OnDelete   ReferenceAction
-	OnUpdate   ReferenceAction
-	Match      string // FULL, PARTIAL, SIMPLE
+	Loc          Loc
+	Type         ConstraintType
+	Name         string
+	Columns      []string       // simple column names
+	IndexColumns []*IndexColumn // key parts with optional expressions (for functional indexes)
+	IndexType    string         // BTREE, HASH
+	Expr         ExprNode       // for CHECK
+	RefTable     *TableRef      // for FOREIGN KEY
+	RefColumns   []string       // for FOREIGN KEY
+	OnDelete     ReferenceAction
+	OnUpdate     ReferenceAction
+	Match        string // FULL, PARTIAL, SIMPLE
+	NotEnforced  bool   // for CHECK ... NOT ENFORCED
 }
 
 func (c *Constraint) nodeTag() {}
@@ -446,12 +451,16 @@ func (o *TableOption) nodeTag() {}
 
 // PartitionClause represents a PARTITION BY clause.
 type PartitionClause struct {
-	Loc        Loc
-	Type       PartitionType
-	Expr       ExprNode
-	Columns    []string
-	NumParts   int
-	Partitions []*PartitionDef
+	Loc            Loc
+	Type           PartitionType
+	Expr           ExprNode
+	Columns        []string
+	NumParts       int
+	Partitions     []*PartitionDef
+	SubPartType    PartitionType // SUBPARTITION BY type (0 if no subpartitioning)
+	SubPartExpr    ExprNode      // SUBPARTITION BY ... (expr)
+	SubPartColumns []string      // SUBPARTITION BY KEY (columns)
+	NumSubParts    int           // SUBPARTITIONS num
 }
 
 func (p *PartitionClause) nodeTag() {}
@@ -468,11 +477,21 @@ const (
 
 // PartitionDef represents a single partition definition.
 type PartitionDef struct {
+	Loc           Loc
+	Name          string
+	Values        Node // VALUES LESS THAN (expr) or IN (list) — kept as Node to support heterogeneous partition value types
+	Options       []*TableOption
+	SubPartitions []*SubPartitionDef
+}
+
+// SubPartitionDef represents a subpartition definition.
+type SubPartitionDef struct {
 	Loc     Loc
 	Name    string
-	Values  Node // VALUES LESS THAN (expr) or IN (list) — kept as Node to support heterogeneous partition value types
 	Options []*TableOption
 }
+
+func (d *SubPartitionDef) nodeTag() {}
 
 func (d *PartitionDef) nodeTag() {}
 

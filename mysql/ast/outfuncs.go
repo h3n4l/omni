@@ -249,6 +249,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		writePartitionClause(sb, n)
 	case *PartitionDef:
 		writePartitionDef(sb, n)
+	case *SubPartitionDef:
+		writeSubPartitionDef(sb, n)
 	case *IndexColumn:
 		writeIndexColumn(sb, n)
 	case *IndexOption:
@@ -2271,6 +2273,9 @@ func writeColumnConstraint(sb *strings.Builder, n *ColumnConstraint) {
 	if n.OnUpdate != RefActNone {
 		fmt.Fprintf(sb, " :on_update %d", n.OnUpdate)
 	}
+	if n.NotEnforced {
+		sb.WriteString(" :not_enforced true")
+	}
 	sb.WriteString("}")
 }
 
@@ -2282,6 +2287,16 @@ func writeConstraint(sb *strings.Builder, n *Constraint) {
 	}
 	if len(n.Columns) > 0 {
 		fmt.Fprintf(sb, " :columns %s", strings.Join(n.Columns, ", "))
+	}
+	if len(n.IndexColumns) > 0 {
+		sb.WriteString(" :index_columns (")
+		for i, ic := range n.IndexColumns {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, ic)
+		}
+		sb.WriteString(")")
 	}
 	if n.IndexType != "" {
 		fmt.Fprintf(sb, " :index_type %s", n.IndexType)
@@ -2305,6 +2320,9 @@ func writeConstraint(sb *strings.Builder, n *Constraint) {
 	}
 	if n.Match != "" {
 		fmt.Fprintf(sb, " :match %s", n.Match)
+	}
+	if n.NotEnforced {
+		sb.WriteString(" :not_enforced true")
 	}
 	sb.WriteString("}")
 }
@@ -2441,6 +2459,19 @@ func writePartitionClause(sb *strings.Builder, n *PartitionClause) {
 			writeNode(sb, p)
 		}
 	}
+	if n.SubPartType > 0 {
+		fmt.Fprintf(sb, " :sub_type %d", n.SubPartType)
+	}
+	if n.SubPartExpr != nil {
+		sb.WriteString(" :sub_expr ")
+		writeNode(sb, n.SubPartExpr)
+	}
+	if len(n.SubPartColumns) > 0 {
+		fmt.Fprintf(sb, " :sub_columns %s", strings.Join(n.SubPartColumns, ", "))
+	}
+	if n.NumSubParts > 0 {
+		fmt.Fprintf(sb, " :num_sub_parts %d", n.NumSubParts)
+	}
 	sb.WriteString("}")
 }
 
@@ -2451,6 +2482,31 @@ func writePartitionDef(sb *strings.Builder, n *PartitionDef) {
 		sb.WriteString(" :values ")
 		writeNode(sb, n.Values)
 	}
+	if len(n.Options) > 0 {
+		sb.WriteString(" :options ")
+		for i, o := range n.Options {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, o)
+		}
+	}
+	if len(n.SubPartitions) > 0 {
+		sb.WriteString(" :sub_partitions (")
+		for i, sp := range n.SubPartitions {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, sp)
+		}
+		sb.WriteString(")")
+	}
+	sb.WriteString("}")
+}
+
+func writeSubPartitionDef(sb *strings.Builder, n *SubPartitionDef) {
+	sb.WriteString("{SUBPARTITION_DEF")
+	fmt.Fprintf(sb, " :loc %d :name %s", n.Loc.Start, n.Name)
 	if len(n.Options) > 0 {
 		sb.WriteString(" :options ")
 		for i, o := range n.Options {

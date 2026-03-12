@@ -2996,6 +2996,96 @@ func TestParseCreateTableLike(t *testing.T) {
 }
 
 // ============================================================================
+// Batch 59: CREATE TABLE depth fixes
+// ============================================================================
+
+func TestParseCreateTableColumnInvisible(t *testing.T) {
+	t.Run("column visible", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT VISIBLE, name VARCHAR(100) INVISIBLE)")
+		if len(stmt.Columns) != 2 {
+			t.Fatalf("Columns count = %d, want 2", len(stmt.Columns))
+		}
+		// Check id column has VISIBLE constraint
+		found := false
+		for _, c := range stmt.Columns[0].Constraints {
+			if c.Type == ast.ColConstrVisible {
+				found = true
+			}
+		}
+		if !found {
+			t.Error("expected ColConstrVisible for id column")
+		}
+		// Check name column has INVISIBLE constraint
+		found = false
+		for _, c := range stmt.Columns[1].Constraints {
+			if c.Type == ast.ColConstrInvisible {
+				found = true
+			}
+		}
+		if !found {
+			t.Error("expected ColConstrInvisible for name column")
+		}
+	})
+}
+
+func TestParseCreateTableCheckNotEnforced(t *testing.T) {
+	t.Run("column check not enforced", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT, CONSTRAINT chk_id CHECK (id > 0) NOT ENFORCED)")
+		if len(stmt.Constraints) != 1 {
+			t.Fatalf("Constraints count = %d, want 1", len(stmt.Constraints))
+		}
+		chk := stmt.Constraints[0]
+		if chk.Type != ast.ConstrCheck {
+			t.Errorf("Type = %d, want ConstrCheck", chk.Type)
+		}
+		if !chk.NotEnforced {
+			t.Error("expected NotEnforced = true")
+		}
+	})
+
+	t.Run("check enforced (default)", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT, CHECK (id > 0) ENFORCED)")
+		chk := stmt.Constraints[0]
+		if chk.NotEnforced {
+			t.Error("expected NotEnforced = false for ENFORCED")
+		}
+	})
+
+	t.Run("column-level check not enforced", func(t *testing.T) {
+		stmt := parseCreateTable(t, "CREATE TABLE t (id INT CHECK (id > 0) NOT ENFORCED)")
+		found := false
+		for _, c := range stmt.Columns[0].Constraints {
+			if c.Type == ast.ColConstrCheck && c.NotEnforced {
+				found = true
+			}
+		}
+		if !found {
+			t.Error("expected column-level CHECK NOT ENFORCED")
+		}
+	})
+}
+
+func TestParseCreateTableFunctionalIndex(t *testing.T) {
+	t.Run("expression-based index", func(t *testing.T) {
+		ParseAndCheck(t, "CREATE TABLE t (id INT, name VARCHAR(100), INDEX idx_upper ((UPPER(name))))")
+	})
+
+	t.Run("functional key in unique index", func(t *testing.T) {
+		ParseAndCheck(t, "CREATE TABLE t (a INT, b INT, UNIQUE INDEX idx_expr ((a + b)))")
+	})
+}
+
+func TestParseCreateTableSubPartition(t *testing.T) {
+	t.Run("subpartition by hash", func(t *testing.T) {
+		ParseAndCheck(t, "CREATE TABLE t (id INT, ts DATE) PARTITION BY RANGE (YEAR(ts)) SUBPARTITION BY HASH (id) (PARTITION p0 VALUES LESS THAN (2000), PARTITION p1 VALUES LESS THAN MAXVALUE)")
+	})
+
+	t.Run("subpartition definitions", func(t *testing.T) {
+		ParseAndCheck(t, "CREATE TABLE t (id INT, ts DATE) PARTITION BY RANGE (YEAR(ts)) SUBPARTITION BY HASH (id) SUBPARTITIONS 2 (PARTITION p0 VALUES LESS THAN (2000) (SUBPARTITION s0, SUBPARTITION s1), PARTITION p1 VALUES LESS THAN MAXVALUE (SUBPARTITION s2, SUBPARTITION s3))")
+	})
+}
+
+// ============================================================================
 // Batch 8: ALTER TABLE
 // ============================================================================
 
