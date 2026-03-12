@@ -2468,6 +2468,12 @@ func writeColumnDef(sb *strings.Builder, n *ColumnDef) {
 	if n.Storage != "" {
 		fmt.Fprintf(sb, " :storage %s", n.Storage)
 	}
+	if n.EngineAttribute != "" {
+		fmt.Fprintf(sb, " :engine_attribute %q", n.EngineAttribute)
+	}
+	if n.SecondaryEngineAttribute != "" {
+		fmt.Fprintf(sb, " :secondary_engine_attribute %q", n.SecondaryEngineAttribute)
+	}
 	if len(n.Constraints) > 0 {
 		sb.WriteString(" :constraints ")
 		for i, c := range n.Constraints {

@@ -362,8 +362,10 @@ type ColumnDef struct {
 	AutoIncrement bool
 	OnUpdate      ExprNode // ON UPDATE CURRENT_TIMESTAMP
 	Generated     *GeneratedColumn
-	ColumnFormat  string // COLUMN_FORMAT {FIXED | DYNAMIC | DEFAULT}
-	Storage       string // STORAGE {DISK | MEMORY}
+	ColumnFormat              string // COLUMN_FORMAT {FIXED | DYNAMIC | DEFAULT}
+	Storage                  string // STORAGE {DISK | MEMORY}
+	EngineAttribute          string // ENGINE_ATTRIBUTE [=] 'string'
+	SecondaryEngineAttribute string // SECONDARY_ENGINE_ATTRIBUTE [=] 'string'
 }
 
 func (d *ColumnDef) nodeTag() {}
@@ -395,6 +397,8 @@ const (
 	ColConstrInvisible
 	ColConstrColumnFormat
 	ColConstrStorage
+	ColConstrEngineAttribute
+	ColConstrSecondaryEngineAttribute
 )
 
 // ColumnConstraint represents a column-level constraint.

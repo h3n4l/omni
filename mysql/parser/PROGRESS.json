@@ -2197,7 +2197,7 @@
       "id": 90,
       "name": "depth_fix_column_engine_attribute",
       "file": "create_table.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 7 gap: missing column-level ENGINE_ATTRIBUTE [=] 'string' and SECONDARY_ENGINE_ATTRIBUTE [=] 'string' modifiers in column definitions (MySQL 8.0.21+). Not parsed in parseColumnOption or isColumnConstraintStart.",
       "rules": [
         "parseColumnOption",

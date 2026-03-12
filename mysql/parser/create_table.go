@@ -238,6 +238,11 @@ func (p *Parser) isColumnConstraintStart() bool {
 		kwCOLUMN_FORMAT, kwSTORAGE:
 		return true
 	}
+	if p.cur.Type == tokIDENT {
+		if eqFold(p.cur.Str, "engine_attribute") || eqFold(p.cur.Str, "secondary_engine_attribute") {
+			return true
+		}
+	}
 	return false
 }
 
@@ -461,6 +466,43 @@ func (p *Parser) parseColumnOption(col *nodes.ColumnDef) bool {
 			Name: val,
 		})
 		return true
+	}
+
+	// Handle identifier-based column options: ENGINE_ATTRIBUTE, SECONDARY_ENGINE_ATTRIBUTE
+	if p.cur.Type == tokIDENT {
+		optName := p.cur.Str
+		if eqFold(optName, "engine_attribute") {
+			p.advance()
+			p.match('=')
+			val := ""
+			if p.cur.Type == tokSCONST {
+				val = p.cur.Str
+				p.advance()
+			}
+			col.EngineAttribute = val
+			col.Constraints = append(col.Constraints, &nodes.ColumnConstraint{
+				Loc:  nodes.Loc{Start: start, End: p.pos()},
+				Type: nodes.ColConstrEngineAttribute,
+				Name: val,
+			})
+			return true
+		}
+		if eqFold(optName, "secondary_engine_attribute") {
+			p.advance()
+			p.match('=')
+			val := ""
+			if p.cur.Type == tokSCONST {
+				val = p.cur.Str
+				p.advance()
+			}
+			col.SecondaryEngineAttribute = val
+			col.Constraints = append(col.Constraints, &nodes.ColumnConstraint{
+				Loc:  nodes.Loc{Start: start, End: p.pos()},
+				Type: nodes.ColConstrSecondaryEngineAttribute,
+				Name: val,
+			})
+			return true
+		}
 	}
 
 	return false

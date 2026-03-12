@@ -9844,3 +9844,29 @@ func TestParseCreateTableEngineAttribute(t *testing.T) {
 		})
 	}
 }
+
+func TestParseColumnEngineAttribute(t *testing.T) {
+	tests := []string{
+		"CREATE TABLE t (id INT ENGINE_ATTRIBUTE = '{\"key\": \"val\"}')",
+		"CREATE TABLE t (id INT ENGINE_ATTRIBUTE '{\"key\": \"val\"}')",
+		"CREATE TABLE t (id INT engine_attribute = '{}')",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseColumnSecondaryEngineAttribute(t *testing.T) {
+	tests := []string{
+		"CREATE TABLE t (id INT SECONDARY_ENGINE_ATTRIBUTE = '{\"key\": \"val\"}')",
+		"CREATE TABLE t (id INT SECONDARY_ENGINE_ATTRIBUTE '{\"key\": \"val\"}')",
+		"CREATE TABLE t (id INT secondary_engine_attribute = '{}')",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
