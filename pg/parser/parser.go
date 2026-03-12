@@ -132,6 +132,8 @@ func (p *Parser) parseStmt() nodes.Node {
 			return p.parseAlterLargeObjectStmt()
 		case EVENT:
 			return p.parseAlterEventTriggerOwner()
+		case SYSTEM_P:
+			return p.parseAlterSystemStmt()
 		case TABLESPACE:
 			return p.parseAlterTablespaceOwner()
 		case TRIGGER:

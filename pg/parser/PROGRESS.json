@@ -1052,7 +1052,7 @@
       "id": 36,
       "name": "alter_system",
       "file": "set.go",
-      "status": "pending",
+      "status": "done",
       "description": "ALTER SYSTEM SET/RESET for modifying postgresql.conf. Add ALTER SYSTEM case to parseStmt ALTER dispatch. Ref: https://www.postgresql.org/docs/17/sql-altersystem.html",
       "rules": [
         "AlterSystemStmt"

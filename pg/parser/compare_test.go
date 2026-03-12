@@ -2718,6 +2718,35 @@ func TestCompareAlterGeneric(t *testing.T) {
 	}
 }
 
+// TestCompareAlterSystem runs ALTER SYSTEM comparison tests for batch 36.
+func TestCompareAlterSystem(t *testing.T) {
+	tests := []string{
+		// ALTER SYSTEM SET with TO
+		"ALTER SYSTEM SET wal_level TO replica",
+		// ALTER SYSTEM SET with =
+		"ALTER SYSTEM SET wal_level = replica",
+		// ALTER SYSTEM SET to DEFAULT
+		"ALTER SYSTEM SET wal_level TO DEFAULT",
+		// ALTER SYSTEM SET with = DEFAULT
+		"ALTER SYSTEM SET wal_level = DEFAULT",
+		// ALTER SYSTEM RESET
+		"ALTER SYSTEM RESET wal_level",
+		// ALTER SYSTEM RESET ALL
+		"ALTER SYSTEM RESET ALL",
+		// ALTER SYSTEM SET with dotted var_name
+		"ALTER SYSTEM SET auto_explain.log_min_duration TO 100",
+		// ALTER SYSTEM SET with string value
+		"ALTER SYSTEM SET search_path TO 'public'",
+		// ALTER SYSTEM SET with multiple values
+		"ALTER SYSTEM SET search_path TO public, pg_catalog",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+		})
+	}
+}
+
 // TestCompareCallStmt runs CALL statement comparison tests for batch 35.
 func TestCompareCallStmt(t *testing.T) {
 	tests := []string{

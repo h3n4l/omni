@@ -656,6 +656,47 @@ func (p *Parser) parseConstraintsNameList() *nodes.List {
 	return &nodes.List{Items: items}
 }
 
+// parseAlterSystemStmt parses an ALTER SYSTEM statement.
+// The ALTER keyword has already been consumed. The current token is SYSTEM_P.
+//
+// Ref: https://www.postgresql.org/docs/17/sql-altersystem.html
+//
+//	ALTER SYSTEM SET configuration_parameter { TO | = } { value [, ...] | DEFAULT }
+//	ALTER SYSTEM RESET configuration_parameter
+//	ALTER SYSTEM RESET ALL
+func (p *Parser) parseAlterSystemStmt() nodes.Node {
+	p.advance() // consume SYSTEM_P
+
+	switch p.cur.Type {
+	case SET:
+		p.advance() // consume SET
+		setstmt := p.parseGenericSetOrFromCurrent()
+		return &nodes.AlterSystemStmt{
+			Setstmt: setstmt.(*nodes.VariableSetStmt),
+		}
+	case RESET:
+		p.advance() // consume RESET
+		var setstmt *nodes.VariableSetStmt
+		if p.cur.Type == ALL {
+			p.advance()
+			setstmt = &nodes.VariableSetStmt{
+				Kind: nodes.VAR_RESET_ALL,
+			}
+		} else {
+			name := p.parseVarName()
+			setstmt = &nodes.VariableSetStmt{
+				Kind: nodes.VAR_RESET,
+				Name: name,
+			}
+		}
+		return &nodes.AlterSystemStmt{
+			Setstmt: setstmt,
+		}
+	default:
+		return nil
+	}
+}
+
 // makeStringConst creates an A_Const with a String value.
 func makeStringConst(s string) nodes.Node {
 	return &nodes.A_Const{Val: &nodes.String{Str: s}}
