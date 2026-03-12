@@ -9819,6 +9819,28 @@ func TestParsePartitionKeyAlgorithm(t *testing.T) {
 	})
 }
 
+func TestParseSubPartitionKeyAlgorithm(t *testing.T) {
+	tests := []string{
+		"CREATE TABLE t1 (id INT) PARTITION BY HASH(id) SUBPARTITION BY LINEAR KEY ALGORITHM=1 (id)",
+		"CREATE TABLE t1 (id INT) PARTITION BY HASH(id) SUBPARTITION BY LINEAR KEY ALGORITHM=2 (id)",
+		"CREATE TABLE t1 (id INT) PARTITION BY KEY(id) SUBPARTITION BY LINEAR KEY ALGORITHM=1 (id)",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+
+	// Verify LINEAR KEY algorithm value is captured in AST
+	t.Run("linear_sub_algorithm_value_captured", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE TABLE t1 (id INT) PARTITION BY HASH(id) SUBPARTITION BY LINEAR KEY ALGORITHM=2 (id)")
+		s := ast.NodeToString(result.Items[0])
+		if !strings.Contains(s, ":sub_algorithm 2") {
+			t.Errorf("expected :sub_algorithm 2 in AST, got: %s", s)
+		}
+	})
+}
+
 func TestParseCreateTableAutoextendSize(t *testing.T) {
 	tests := []string{
 		"CREATE TABLE t (id INT) AUTOEXTEND_SIZE = 4194304",

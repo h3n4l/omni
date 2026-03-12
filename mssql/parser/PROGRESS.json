@@ -2385,7 +2385,7 @@
       "id": 106,
       "name": "get_transmission_status",
       "file": "service_broker.go",
-      "status": "pending",
+      "status": "done",
       "description": "New: GET TRANSMISSION STATUS Service Broker statement. BNF: GET TRANSMISSION STATUS ( conversation_handle )",
       "rules": [
         "parseGetTransmissionStatusStmt"

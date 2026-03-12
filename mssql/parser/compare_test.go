@@ -10996,3 +10996,28 @@ func TestParseBackupRestoreSymmetricKey(t *testing.T) {
 		})
 	}
 }
+
+// TestParseGetTransmissionStatus tests batch 106: GET_TRANSMISSION_STATUS function.
+func TestParseGetTransmissionStatus(t *testing.T) {
+	tests := []struct {
+		sql string
+	}{
+		// GET_TRANSMISSION_STATUS as a function in SELECT
+		{sql: "SELECT GET_TRANSMISSION_STATUS('58ef1d2d-c405-42eb-a762-23ff320bddf0')"},
+		// GET_TRANSMISSION_STATUS with alias
+		{sql: "SELECT Status = GET_TRANSMISSION_STATUS(@convHandle)"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.sql, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() != 1 {
+				t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+			}
+			stmt, ok := result.Items[0].(*ast.SelectStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *SelectStmt, got %T", tt.sql, result.Items[0])
+			}
+			checkLocation(t, tt.sql, "SelectStmt", stmt.Loc)
+		})
+	}
+}

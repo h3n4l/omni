@@ -1173,7 +1173,7 @@ func (p *Parser) parsePartitionClause() (*nodes.PartitionClause, error) {
 				return nil, err
 			}
 			part.SubPartColumns = cols
-		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "linear"):
+		case p.cur.Type == kwLINEAR:
 			p.advance() // LINEAR
 			if p.cur.Type == kwHASH {
 				p.advance()
@@ -1192,10 +1192,11 @@ func (p *Parser) parsePartitionClause() (*nodes.PartitionClause, error) {
 			} else if p.cur.Type == kwKEY {
 				p.advance()
 				part.SubPartType = nodes.PartitionKey
-				if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "algorithm") {
+				if p.cur.Type == kwALGORITHM {
 					p.advance()
 					p.match('=')
 					if p.cur.Type == tokICONST {
+						part.SubPartAlgo = int(p.cur.Ival)
 						p.advance()
 					}
 				}

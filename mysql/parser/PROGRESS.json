@@ -2245,7 +2245,42 @@
         "TestParseAlterTableSecondaryLoad",
         "TestParseAlterTableSecondaryUnload"
       ]
+    },
+    {
+      "id": 93,
+      "name": "depth_fix_subpartition_algorithm_value",
+      "file": "create_table.go",
+      "status": "done",
+      "description": "Fix batch 87 gap: SUBPARTITION BY LINEAR KEY ALGORITHM={1|2} value was not stored in part.SubPartAlgo. Also fixed token type checks: LINEAR was checked as tokIDENT instead of kwLINEAR, and ALGORITHM was checked as tokIDENT instead of kwALGORITHM.",
+      "rules": [
+        "parsePartitionClause"
+      ],
+      "depends_on": [
+        87
+      ],
+      "tests": [
+        "TestParseSubPartitionKeyAlgorithm"
+      ]
+    },
+    {
+      "id": 94,
+      "name": "depth_fix_repair_usefrm_checksum_extended",
+      "file": "utility.go",
+      "status": "pending",
+      "description": "Fix batch 20/34 gap: REPAIR TABLE USE_FRM option is parsed but not stored (no UseFrm field on RepairTableStmt AST, no outfuncs emit). CHECKSUM TABLE EXTENDED option is parsed but not stored (no Extended field on ChecksumTableStmt AST, no outfuncs emit). Add AST fields and outfuncs for both.",
+      "rules": [
+        "parseRepairTableStmt",
+        "parseChecksumTableStmt"
+      ],
+      "depends_on": [
+        20,
+        34
+      ],
+      "tests": [
+        "TestParseRepairTableUseFrm",
+        "TestParseChecksumTableExtended"
+      ]
     }
   ],
-  "audit_round": 14
+  "audit_round": 15
 }
