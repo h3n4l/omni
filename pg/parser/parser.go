@@ -535,6 +535,15 @@ func (p *Parser) parseCreateUnloggedDispatch() nodes.Node {
 		return p.parseCreateMatViewStmt(relpersistence)
 	}
 
+	if p.cur.Type == VIEW || p.cur.Type == RECURSIVE {
+		// CREATE UNLOGGED VIEW ... or CREATE UNLOGGED RECURSIVE VIEW ...
+		stmt := p.parseViewStmt(false)
+		if stmt != nil {
+			stmt.View.Relpersistence = relpersistence
+		}
+		return stmt
+	}
+
 	// CREATE UNLOGGED TABLE ...
 	p.expect(TABLE)
 

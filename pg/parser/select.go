@@ -556,7 +556,7 @@ func (p *Parser) parseCommonTableExpr() *nodes.CommonTableExpr {
 
 	// '(' PreparableStmt ')'
 	p.expect('(')
-	cte.Ctequery = p.parseSelectNoParens()
+	cte.Ctequery = p.parsePreparableStmt()
 	p.expect(')')
 
 	// opt_search_clause

@@ -77,6 +77,8 @@ func (p *Parser) parsePreparableStmt() nodes.Node {
 		return p.parseUpdateStmt(nil)
 	case DELETE_P:
 		return p.parseDeleteStmt(nil)
+	case MERGE:
+		return p.parseMergeStmt(nil)
 	default:
 		return p.parseSelectNoParens()
 	}

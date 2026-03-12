@@ -4092,3 +4092,36 @@ func TestLocRawStmt(t *testing.T) {
 		})
 	}
 }
+
+func TestDdlCompatUnloggedView(t *testing.T) {
+	tests := []string{
+		"CREATE UNLOGGED VIEW v AS SELECT 1",
+		"CREATE UNLOGGED VIEW myschema.v AS SELECT a, b FROM t",
+		"CREATE UNLOGGED VIEW v (x, y) AS SELECT 1, 2",
+		"CREATE UNLOGGED VIEW v AS SELECT * FROM t WITH CHECK OPTION",
+		"CREATE UNLOGGED VIEW v AS SELECT * FROM t WITH LOCAL CHECK OPTION",
+		"CREATE UNLOGGED VIEW v AS SELECT * FROM t WITH CASCADED CHECK OPTION",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+			CheckLocations(t, sql)
+		})
+	}
+}
+
+func TestDdlCompatModifyingCTE(t *testing.T) {
+	tests := []string{
+		"WITH moved AS (DELETE FROM t1 WHERE id > 100 RETURNING *) INSERT INTO t2 SELECT * FROM moved",
+		"WITH upd AS (UPDATE t SET x = 1 RETURNING *) SELECT * FROM upd",
+		"WITH ins AS (INSERT INTO t VALUES (1) RETURNING *) SELECT * FROM ins",
+		"WITH del AS (DELETE FROM t RETURNING id) SELECT * FROM del",
+		"WITH moved AS (DELETE FROM t1 RETURNING *) INSERT INTO t2 SELECT * FROM moved",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+			CheckLocations(t, sql)
+		})
+	}
+}
