@@ -357,7 +357,7 @@ func (p *Parser) isSelectTerminator() bool {
 	switch p.cur.Type {
 	case kwFROM, kwWHERE, kwGROUP, kwHAVING, kwORDER, kwLIMIT, kwFOR, kwINTO,
 		kwUNION, kwINTERSECT, kwEXCEPT, kwON, kwUSING, kwJOIN, kwINNER, kwLEFT,
-		kwRIGHT, kwCROSS, kwNATURAL, kwFULL, kwWINDOW, ';', tokEOF:
+		kwRIGHT, kwCROSS, kwNATURAL, kwFULL, kwWINDOW, kwWITH, ';', tokEOF:
 		return true
 	}
 	return false

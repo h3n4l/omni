@@ -6650,7 +6650,7 @@ func TestParseAlterViewParseAndCheck(t *testing.T) {
 		"ALTER VIEW v AS SELECT 1",
 		"ALTER ALGORITHM = MERGE VIEW v AS SELECT 1",
 		"ALTER VIEW v (a, b) AS SELECT 1, 2",
-		// "ALTER VIEW v AS SELECT 1 WITH CASCADED CHECK OPTION", // TODO: WITH CHECK OPTION after SELECT needs special handling
+		"ALTER VIEW v AS SELECT 1 WITH CASCADED CHECK OPTION",
 	}
 	for _, sql := range tests {
 		t.Run(sql, func(t *testing.T) {
@@ -7372,6 +7372,36 @@ func TestParseShowFunctionCode(t *testing.T) {
 	tests := []string{
 		"SHOW FUNCTION CODE my_func",
 		"SHOW FUNCTION CODE db1.my_func",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+// ============================================================================
+// Batch 52: WITH CHECK OPTION depth fix
+// ============================================================================
+
+func TestParseCreateViewWithCheckOption(t *testing.T) {
+	tests := []string{
+		"CREATE VIEW v AS SELECT 1 WITH CHECK OPTION",
+		"CREATE VIEW v AS SELECT 1 WITH CASCADED CHECK OPTION",
+		"CREATE VIEW v AS SELECT 1 WITH LOCAL CHECK OPTION",
+		"CREATE OR REPLACE VIEW v AS SELECT * FROM t WITH CHECK OPTION",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseAlterViewWithCheckOption(t *testing.T) {
+	tests := []string{
+		"ALTER VIEW v AS SELECT 1 WITH CASCADED CHECK OPTION",
+		"ALTER VIEW v AS SELECT 1 WITH LOCAL CHECK OPTION",
 	}
 	for _, sql := range tests {
 		t.Run(sql, func(t *testing.T) {

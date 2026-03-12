@@ -1363,7 +1363,7 @@
       "id": 52,
       "name": "depth_fix_view_with_check_option",
       "file": "select.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 10/39 gap: WITH CHECK OPTION after SELECT in CREATE/ALTER VIEW conflicts with WITH keyword parsing. Test at compare_test.go:6653 is disabled.",
       "rules": [
         "parseViewWithCheckOption"
