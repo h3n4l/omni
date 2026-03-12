@@ -5136,43 +5136,7 @@ func TestParseOptimize(t *testing.T) {
 	}
 }
 
-func TestParseKill(t *testing.T) {
-	t.Run("connection", func(t *testing.T) {
-		p := &Parser{lexer: NewLexer("KILL 123")}
-		p.advance()
-		stmt, err := p.parseKillStmt()
-		if err != nil {
-			t.Fatalf("error: %v", err)
-		}
-		if stmt.ConnectionID == nil {
-			t.Fatal("ConnectionID is nil")
-		}
-	})
-
-	t.Run("query", func(t *testing.T) {
-		p := &Parser{lexer: NewLexer("KILL QUERY 123")}
-		p.advance()
-		stmt, err := p.parseKillStmt()
-		if err != nil {
-			t.Fatalf("error: %v", err)
-		}
-		if !stmt.Query {
-			t.Errorf("Query = false, want true")
-		}
-	})
-}
-
-func TestParseDo(t *testing.T) {
-	p := &Parser{lexer: NewLexer("DO 1 + 2, 3 + 4")}
-	p.advance()
-	stmt, err := p.parseDoStmt()
-	if err != nil {
-		t.Fatalf("error: %v", err)
-	}
-	if len(stmt.Exprs) != 2 {
-		t.Fatalf("Exprs count = %d, want 2", len(stmt.Exprs))
-	}
-}
+// Old TestParseKill and TestParseDo moved to batch 82 section below.
 
 // ─── Batch 21: stmt_dispatch integration tests ────────────────────────────
 
@@ -9389,3 +9353,140 @@ func TestParseColumnStorage(t *testing.T) {
 		})
 	}
 }
+
+// ─── Batch 82: depth_fix_utility_tests_batch1 ─────────────────────────────
+
+func TestParseAnalyzeTable(t *testing.T) {
+	tests := []string{
+		"ANALYZE TABLE t1",
+		"ANALYZE TABLE t1, t2, t3",
+		"ANALYZE TABLE db1.t1",
+		"ANALYZE LOCAL TABLE t1",
+		"ANALYZE NO_WRITE_TO_BINLOG TABLE t1",
+		"ANALYZE TABLE t1 UPDATE HISTOGRAM ON col1 WITH 10 BUCKETS",
+		"ANALYZE TABLE t1 UPDATE HISTOGRAM ON col1, col2 WITH 50 BUCKETS",
+		"ANALYZE TABLE t1 DROP HISTOGRAM ON col1",
+		"ANALYZE TABLE t1 DROP HISTOGRAM ON col1, col2",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseOptimizeTable(t *testing.T) {
+	tests := []string{
+		"OPTIMIZE TABLE t1",
+		"OPTIMIZE TABLE t1, t2",
+		"OPTIMIZE TABLE db1.t1",
+		"OPTIMIZE LOCAL TABLE t1",
+		"OPTIMIZE NO_WRITE_TO_BINLOG TABLE t1",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseCheckTable(t *testing.T) {
+	tests := []string{
+		"CHECK TABLE t1",
+		"CHECK TABLE t1, t2",
+		"CHECK TABLE db1.t1",
+		"CHECK TABLE t1 FOR UPGRADE",
+		"CHECK TABLE t1 QUICK",
+		"CHECK TABLE t1 FAST",
+		"CHECK TABLE t1 MEDIUM",
+		"CHECK TABLE t1 EXTENDED",
+		"CHECK TABLE t1 CHANGED",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseRepairTable(t *testing.T) {
+	tests := []string{
+		"REPAIR TABLE t1",
+		"REPAIR TABLE t1, t2",
+		"REPAIR TABLE db1.t1",
+		"REPAIR LOCAL TABLE t1",
+		"REPAIR NO_WRITE_TO_BINLOG TABLE t1",
+		"REPAIR TABLE t1 QUICK",
+		"REPAIR TABLE t1 EXTENDED",
+		"REPAIR TABLE t1 USE_FRM",
+		"REPAIR TABLE t1 QUICK EXTENDED",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseFlush(t *testing.T) {
+	tests := []string{
+		"FLUSH TABLES",
+		"FLUSH TABLES t1",
+		"FLUSH TABLES t1, t2",
+		"FLUSH TABLES WITH READ LOCK",
+		"FLUSH TABLES t1, t2 WITH READ LOCK",
+		"FLUSH TABLES t1 FOR EXPORT",
+		"FLUSH LOCAL TABLES",
+		"FLUSH NO_WRITE_TO_BINLOG TABLES",
+		"FLUSH PRIVILEGES",
+		"FLUSH STATUS",
+		"FLUSH BINARY LOGS",
+		"FLUSH HOSTS",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseReset(t *testing.T) {
+	tests := []string{
+		"RESET QUERY CACHE",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseKill(t *testing.T) {
+	tests := []string{
+		"KILL 123",
+		"KILL QUERY 123",
+		"KILL CONNECTION 123",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseDo(t *testing.T) {
+	tests := []string{
+		"DO 1",
+		"DO 1 + 2",
+		"DO 1 + 2, 3 + 4",
+		"DO SLEEP(1)",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+// TestParseChecksumTable, TestParseShutdown, TestParseRestart are defined
+// earlier in batch 34 with ParseAndCompare assertions.

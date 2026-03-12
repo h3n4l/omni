@@ -2027,7 +2027,7 @@
       "id": 82,
       "name": "depth_fix_utility_tests_batch1",
       "file": "compare_test.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 20 gap: add dedicated tests for table maintenance and administrative statements in utility.go - ANALYZE TABLE, OPTIMIZE TABLE, CHECK TABLE, REPAIR TABLE, FLUSH, RESET, KILL, DO, CHECKSUM TABLE, SHUTDOWN, RESTART",
       "rules": [],
       "depends_on": [

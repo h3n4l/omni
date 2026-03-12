@@ -163,19 +163,25 @@ func (p *Parser) parseCheckTableStmt() (*nodes.CheckTableStmt, error) {
 	}
 
 	// Optional check options: FOR UPGRADE, QUICK, FAST, MEDIUM, EXTENDED, CHANGED
-	for p.cur.Type == kwFOR || (p.cur.Type == tokIDENT &&
-		(eqFold(p.cur.Str, "quick") || eqFold(p.cur.Str, "fast") ||
-			eqFold(p.cur.Str, "medium") || eqFold(p.cur.Str, "extended") ||
-			eqFold(p.cur.Str, "changed"))) {
+	for {
 		if p.cur.Type == kwFOR {
 			p.advance()
-			if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "upgrade") {
+			if p.isIdentToken() && eqFold(p.cur.Str, "upgrade") {
 				stmt.Options = append(stmt.Options, "FOR UPGRADE")
 				p.advance()
 			}
-		} else {
+		} else if p.cur.Type == kwQUICK {
+			stmt.Options = append(stmt.Options, "QUICK")
+			p.advance()
+		} else if p.cur.Type == kwEXTENDED {
+			stmt.Options = append(stmt.Options, "EXTENDED")
+			p.advance()
+		} else if p.cur.Type == tokIDENT &&
+			(eqFold(p.cur.Str, "fast") || eqFold(p.cur.Str, "medium") || eqFold(p.cur.Str, "changed")) {
 			stmt.Options = append(stmt.Options, p.cur.Str)
 			p.advance()
+		} else {
+			break
 		}
 	}
 
@@ -214,15 +220,15 @@ func (p *Parser) parseRepairTableStmt() (*nodes.RepairTableStmt, error) {
 		p.advance()
 	}
 
-	// Options
-	for p.cur.Type == tokIDENT {
-		if eqFold(p.cur.Str, "quick") {
+	// Options: QUICK, EXTENDED, USE_FRM
+	for {
+		if p.cur.Type == kwQUICK {
 			stmt.Quick = true
 			p.advance()
-		} else if eqFold(p.cur.Str, "extended") {
+		} else if p.cur.Type == kwEXTENDED {
 			stmt.Extended = true
 			p.advance()
-		} else if eqFold(p.cur.Str, "use_frm") {
+		} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "use_frm") {
 			p.advance()
 		} else {
 			break

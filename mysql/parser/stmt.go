@@ -300,6 +300,7 @@ func (p *Parser) parseResetDispatch() (nodes.Node, error) {
 	}
 
 	// Fall through to generic RESET (re-assemble the FlushStmt from utility.go)
+	// Options may be multi-word (e.g. RESET QUERY CACHE) or comma-separated.
 	stmt := &nodes.FlushStmt{Loc: nodes.Loc{Start: start}}
 	for {
 		if p.cur.Type == tokEOF || p.cur.Type == ';' {
@@ -311,10 +312,10 @@ func (p *Parser) parseResetDispatch() (nodes.Node, error) {
 		} else {
 			break
 		}
-		if p.cur.Type != ',' {
-			break
+		// Consume optional comma separator between options
+		if p.cur.Type == ',' {
+			p.advance()
 		}
-		p.advance()
 	}
 	stmt.Loc.End = p.pos()
 	return stmt, nil
