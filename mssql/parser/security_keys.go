@@ -356,10 +356,20 @@ func (p *Parser) parseRestoreMasterKeyStmt() *nodes.SecurityKeyStmt {
 }
 
 // skipSecurityKeyOptions consumes remaining tokens until a statement boundary,
-// collecting option strings.
+// using structured key-value parsing when possible.
+//
+// Security key statements use several patterns:
+//   - WITH ( KEY_SOURCE = ..., ALGORITHM = ..., ... )
+//   - WITH SUBJECT = ..., EXPIRY_DATE = ...
+//   - ENCRYPTION BY { PASSWORD = ... | CERTIFICATE ... | ASYMMETRIC KEY ... }
+//   - DECRYPTION BY { PASSWORD = ... | CERTIFICATE ... | ASYMMETRIC KEY ... }
+//   - WITH IDENTITY = '...', SECRET = '...'
+//   - FROM FILE = '...'
+//   - TO FILE = '...'
+//
+// We parse these as alternating name/value pairs in a List of String nodes.
 func (p *Parser) skipSecurityKeyOptions(stmt *nodes.SecurityKeyStmt) {
-	var opts []nodes.Node
-	var buf strings.Builder
+	var items []nodes.Node
 	depth := 0
 
 	for p.cur.Type != tokEOF && p.cur.Type != ';' {
@@ -367,29 +377,113 @@ func (p *Parser) skipSecurityKeyOptions(stmt *nodes.SecurityKeyStmt) {
 		if depth == 0 && isStmtStart(p.cur.Type) {
 			break
 		}
+
+		// WITH keyword: may introduce parenthesized or inline options
+		if p.cur.Type == kwWITH {
+			p.advance() // consume WITH
+			if p.cur.Type == '(' {
+				// WITH ( NAME = VALUE [, ...] )
+				nested := p.parseKeyValueOptionList()
+				if nested != nil {
+					items = append(items, nested.Items...)
+				}
+				continue
+			}
+			// WITH inline options: SUBJECT = ..., IDENTITY = ..., etc.
+			// Fall through to parse as key=value below
+		}
+
+		// ENCRYPTION BY / DECRYPTION BY / FROM / TO patterns
+		if p.isIdentLike() && (strings.EqualFold(p.cur.Str, "ENCRYPTION") ||
+			strings.EqualFold(p.cur.Str, "DECRYPTION")) {
+			keyword := strings.ToUpper(p.cur.Str)
+			p.advance()
+			if p.cur.Type == kwBY {
+				p.advance() // consume BY
+			}
+			// Collect the encryption spec: PASSWORD = '...', CERTIFICATE name, ASYMMETRIC KEY name, etc.
+			var spec strings.Builder
+			spec.WriteString(keyword)
+			spec.WriteString(" BY")
+			for p.cur.Type != tokEOF && p.cur.Type != ';' && p.cur.Type != ',' {
+				if depth == 0 && isStmtStart(p.cur.Type) {
+					break
+				}
+				if p.cur.Type == kwWITH || (p.isIdentLike() && (strings.EqualFold(p.cur.Str, "ENCRYPTION") ||
+					strings.EqualFold(p.cur.Str, "DECRYPTION"))) {
+					break
+				}
+				if p.cur.Type == '(' {
+					depth++
+				} else if p.cur.Type == ')' {
+					if depth > 0 {
+						depth--
+					} else {
+						break
+					}
+				}
+				spec.WriteByte(' ')
+				if p.cur.Str != "" {
+					spec.WriteString(p.cur.Str)
+				} else {
+					spec.WriteRune(rune(p.cur.Type))
+				}
+				p.advance()
+			}
+			items = append(items, &nodes.String{Str: spec.String()})
+			p.match(',')
+			continue
+		}
+
+		if p.cur.Type == kwFROM || p.cur.Type == kwTO {
+			keyword := strings.ToUpper(p.cur.Str)
+			if keyword == "" {
+				if p.cur.Type == kwFROM {
+					keyword = "FROM"
+				} else {
+					keyword = "TO"
+				}
+			}
+			p.advance()
+			items = append(items, &nodes.String{Str: keyword})
+			// Collect FILE = '...' or ASSEMBLY etc.
+			continue
+		}
+
+		// General key = value parsing
+		if p.isIdentLike() || p.cur.Type == tokICONST || p.cur.Type == tokSCONST {
+			key := p.consumeAnyIdent()
+			items = append(items, &nodes.String{Str: key})
+
+			if p.cur.Type == '=' {
+				p.advance()
+				val := p.consumeAnyIdent()
+				items = append(items, &nodes.String{Str: val})
+			}
+			p.match(',')
+			continue
+		}
+
 		if p.cur.Type == '(' {
 			depth++
-		} else if p.cur.Type == ')' {
+			p.advance()
+			continue
+		}
+		if p.cur.Type == ')' {
 			if depth > 0 {
 				depth--
+				p.advance()
+				continue
 			}
+			break
 		}
-		if buf.Len() > 0 {
-			buf.WriteByte(' ')
-		}
-		buf.WriteString(p.cur.Str)
-		if buf.Len() == 0 {
-			// For single-char tokens with empty Str
-			buf.WriteRune(rune(p.cur.Type))
-		}
+
+		// Unknown token, consume to avoid infinite loop
 		p.advance()
 	}
 
-	if buf.Len() > 0 {
-		opts = append(opts, &nodes.String{Str: buf.String()})
-	}
-	if len(opts) > 0 {
-		stmt.Options = &nodes.List{Items: opts}
+	if len(items) > 0 {
+		stmt.Options = &nodes.List{Items: items}
 	}
 }
 

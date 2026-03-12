@@ -9312,3 +9312,79 @@ func TestParseTriggerWithOptions(t *testing.T) {
 		}
 	})
 }
+
+// TestParseSecurityKeyOptionsDepth tests structured security key option parsing (batch 90).
+func TestParseSecurityKeyOptionsDepth(t *testing.T) {
+	// CREATE SYMMETRIC KEY with structured options
+	t.Run("create_symmetric_key_options", func(t *testing.T) {
+		sql := `CREATE SYMMETRIC KEY MySymKey
+			WITH ALGORITHM = AES_256, KEY_SOURCE = 'pass phrase', IDENTITY_VALUE = 'id val'
+			ENCRYPTION BY CERTIFICATE MyCert`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityKeyStmt)
+		if stmt.ObjectType != "SYMMETRIC KEY" {
+			t.Errorf("expected SYMMETRIC KEY, got %q", stmt.ObjectType)
+		}
+		if stmt.Name != "MySymKey" {
+			t.Errorf("expected name MySymKey, got %q", stmt.Name)
+		}
+		if stmt.Options == nil {
+			t.Fatal("expected options to be parsed")
+		}
+		// Should have structured options, not a raw blob
+		if stmt.Options.Len() < 2 {
+			t.Errorf("expected multiple option items, got %d", stmt.Options.Len())
+		}
+	})
+
+	// CREATE CERTIFICATE with structured options
+	t.Run("create_certificate_options", func(t *testing.T) {
+		sql := `CREATE CERTIFICATE MyCert
+			WITH SUBJECT = 'Test Certificate'`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityKeyStmt)
+		if stmt.ObjectType != "CERTIFICATE" {
+			t.Errorf("expected CERTIFICATE, got %q", stmt.ObjectType)
+		}
+		if stmt.Options == nil {
+			t.Fatal("expected options to be parsed")
+		}
+	})
+
+	// CREATE CREDENTIAL with IDENTITY and SECRET
+	t.Run("create_credential_options", func(t *testing.T) {
+		sql := `CREATE CREDENTIAL MyCred
+			WITH IDENTITY = 'my_identity', SECRET = 'my_secret'`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityKeyStmt)
+		if stmt.ObjectType != "CREDENTIAL" {
+			t.Errorf("expected CREDENTIAL, got %q", stmt.ObjectType)
+		}
+		if stmt.Options == nil {
+			t.Fatal("expected options to be parsed")
+		}
+	})
+
+	// CREATE MASTER KEY with ENCRYPTION BY PASSWORD
+	t.Run("create_master_key", func(t *testing.T) {
+		sql := "CREATE MASTER KEY ENCRYPTION BY PASSWORD = 'StrongPass123!'"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityKeyStmt)
+		if stmt.ObjectType != "MASTER KEY" {
+			t.Errorf("expected MASTER KEY, got %q", stmt.ObjectType)
+		}
+		if stmt.Options == nil {
+			t.Fatal("expected options")
+		}
+	})
+
+	// CREATE ASYMMETRIC KEY
+	t.Run("create_asymmetric_key", func(t *testing.T) {
+		sql := "CREATE ASYMMETRIC KEY MyAsymKey WITH ALGORITHM = RSA_2048"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityKeyStmt)
+		if stmt.ObjectType != "ASYMMETRIC KEY" {
+			t.Errorf("expected ASYMMETRIC KEY, got %q", stmt.ObjectType)
+		}
+	})
+}

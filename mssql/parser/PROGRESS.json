@@ -2072,7 +2072,7 @@
       "id": 90,
       "name": "security_key_options_depth",
       "file": "security_keys.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 31 gap: replace skipSecurityKeyOptions() with structured parsing for CREATE/ALTER/DROP SYMMETRIC KEY (KEY_SOURCE, ALGORITHM, IDENTITY_VALUE, PROVIDER_KEY_NAME), ASYMMETRIC KEY (ALGORITHM, FILE, EXECUTABLE_FILE, ASSEMBLY, PROVIDER_KEY_NAME), CERTIFICATE (ENCRYPTION BY, WITH SUBJECT, EXPIRY_DATE, START_DATE), CREDENTIAL (IDENTITY, SECRET).",
       "rules": [
         "parseSymmetricKeyOptions",
