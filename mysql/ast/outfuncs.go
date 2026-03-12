@@ -2720,6 +2720,9 @@ func writePartitionClause(sb *strings.Builder, n *PartitionClause) {
 	if len(n.Columns) > 0 {
 		fmt.Fprintf(sb, " :columns %s", strings.Join(n.Columns, ", "))
 	}
+	if n.Algorithm > 0 {
+		fmt.Fprintf(sb, " :algorithm %d", n.Algorithm)
+	}
 	if n.NumParts > 0 {
 		fmt.Fprintf(sb, " :num_parts %d", n.NumParts)
 	}
@@ -2741,6 +2744,9 @@ func writePartitionClause(sb *strings.Builder, n *PartitionClause) {
 	}
 	if len(n.SubPartColumns) > 0 {
 		fmt.Fprintf(sb, " :sub_columns %s", strings.Join(n.SubPartColumns, ", "))
+	}
+	if n.SubPartAlgo > 0 {
+		fmt.Fprintf(sb, " :sub_algorithm %d", n.SubPartAlgo)
 	}
 	if n.NumSubParts > 0 {
 		fmt.Fprintf(sb, " :num_sub_parts %d", n.NumSubParts)

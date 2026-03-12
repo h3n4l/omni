@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/bytebase/omni/mysql/ast"
@@ -9755,4 +9756,45 @@ func TestParseShowCreateUserHost(t *testing.T) {
 			ParseAndCompare(t, tt.sql, tt.expected)
 		})
 	}
+}
+
+// --- Batch 87: depth_fix_partition_algorithm_value ---
+
+func TestParsePartitionKeyAlgorithm(t *testing.T) {
+	tests := []string{
+		"CREATE TABLE t1 (id INT) PARTITION BY KEY ALGORITHM=1 (id)",
+		"CREATE TABLE t1 (id INT) PARTITION BY KEY ALGORITHM=2 (id)",
+		"CREATE TABLE t1 (id INT) PARTITION BY LINEAR KEY ALGORITHM=1 (id)",
+		"CREATE TABLE t1 (id INT) PARTITION BY KEY (id)",
+		"CREATE TABLE t1 (id INT) PARTITION BY KEY ALGORITHM=1 (id) SUBPARTITION BY KEY ALGORITHM=2 (id)",
+		"CREATE TABLE t1 (id INT) PARTITION BY HASH(id) SUBPARTITION BY KEY ALGORITHM=1 (id)",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+
+	// Verify algorithm value is captured in AST
+	t.Run("algorithm_value_captured", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE TABLE t1 (id INT) PARTITION BY KEY ALGORITHM=2 (id)")
+		s := ast.NodeToString(result.Items[0])
+		if !strings.Contains(s, ":algorithm 2") {
+			t.Errorf("expected :algorithm 2 in AST, got: %s", s)
+		}
+	})
+	t.Run("no_algorithm_when_unset", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE TABLE t1 (id INT) PARTITION BY KEY (id)")
+		s := ast.NodeToString(result.Items[0])
+		if strings.Contains(s, ":algorithm") {
+			t.Errorf("expected no :algorithm in AST, got: %s", s)
+		}
+	})
+	t.Run("sub_algorithm_value_captured", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE TABLE t1 (id INT) PARTITION BY HASH(id) SUBPARTITION BY KEY ALGORITHM=1 (id)")
+		s := ast.NodeToString(result.Items[0])
+		if !strings.Contains(s, ":sub_algorithm 1") {
+			t.Errorf("expected :sub_algorithm 1 in AST, got: %s", s)
+		}
+	})
 }

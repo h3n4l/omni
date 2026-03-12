@@ -2146,7 +2146,7 @@
       "id": 87,
       "name": "depth_fix_partition_algorithm_value",
       "file": "create_table.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 7 gap: PARTITION BY KEY and SUBPARTITION BY KEY consume ALGORITHM={1|2} value with p.advance() but do not store it in PartitionClause AST. Add Algorithm field and capture the integer value at lines 1016-1019 and 1147-1152.",
       "rules": [
         "parsePartitionClause"

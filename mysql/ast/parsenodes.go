@@ -474,11 +474,13 @@ type PartitionClause struct {
 	Linear         bool // LINEAR HASH or LINEAR KEY
 	Expr           ExprNode
 	Columns        []string
+	Algorithm      int // ALGORITHM={1|2} for KEY partitioning (0 if not specified)
 	NumParts       int
 	Partitions     []*PartitionDef
 	SubPartType    PartitionType // SUBPARTITION BY type (0 if no subpartitioning)
 	SubPartExpr    ExprNode      // SUBPARTITION BY ... (expr)
 	SubPartColumns []string      // SUBPARTITION BY KEY (columns)
+	SubPartAlgo    int           // ALGORITHM={1|2} for SUBPARTITION BY KEY (0 if not specified)
 	NumSubParts    int           // SUBPARTITIONS num
 }
 

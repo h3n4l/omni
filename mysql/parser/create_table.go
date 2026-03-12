@@ -1016,7 +1016,10 @@ func (p *Parser) parsePartitionClause() (*nodes.PartitionClause, error) {
 		if p.cur.Type == kwALGORITHM {
 			p.advance()
 			p.match('=')
-			p.advance() // consume value
+			if p.cur.Type == tokICONST {
+				part.Algorithm = int(p.cur.Ival)
+				p.advance()
+			}
 		}
 		if p.cur.Type == '(' {
 			cols, err := p.parseParenIdentList()
@@ -1113,10 +1116,11 @@ func (p *Parser) parsePartitionClause() (*nodes.PartitionClause, error) {
 			p.advance()
 			part.SubPartType = nodes.PartitionKey
 			// Optional ALGORITHM = N
-			if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "algorithm") {
+			if p.cur.Type == kwALGORITHM {
 				p.advance()
 				p.match('=')
 				if p.cur.Type == tokICONST {
+					part.SubPartAlgo = int(p.cur.Ival)
 					p.advance()
 				}
 			}
