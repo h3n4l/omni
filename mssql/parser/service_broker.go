@@ -373,6 +373,215 @@ func (p *Parser) parseEndConversationStmt() *nodes.ServiceBrokerStmt {
 	return stmt
 }
 
+// parseCreateRouteStmt parses CREATE ROUTE.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-route-transact-sql
+//
+//	CREATE ROUTE route_name
+//	    [ AUTHORIZATION owner_name ]
+//	    WITH
+//	    [ SERVICE_NAME = 'service_name' , ]
+//	    [ BROKER_INSTANCE = 'broker_instance_identifier' , ]
+//	    [ LIFETIME = route_lifetime , ]
+//	    ADDRESS = 'next_hop_address'
+//	    [ , MIRROR_ADDRESS = 'next_hop_mirror_address' ]
+func (p *Parser) parseCreateRouteStmt() *nodes.ServiceBrokerStmt {
+	loc := p.pos()
+	// ROUTE keyword already consumed by caller
+
+	stmt := &nodes.ServiceBrokerStmt{
+		Action:     "CREATE",
+		ObjectType: "ROUTE",
+		Loc:        nodes.Loc{Start: loc},
+	}
+
+	// route_name
+	if p.isIdentLike() || p.cur.Type == tokSCONST {
+		stmt.Name = p.cur.Str
+		p.advance()
+	}
+
+	// Optional: AUTHORIZATION owner
+	if p.cur.Type == kwAUTHORIZATION {
+		p.advance()
+		if p.isIdentLike() {
+			p.advance()
+		}
+	}
+
+	// WITH clause (required for CREATE ROUTE)
+	if p.cur.Type == kwWITH {
+		p.advance()
+		var opts []nodes.Node
+		for {
+			if !p.isIdentLike() && p.cur.Type != tokSCONST {
+				break
+			}
+			optName := strings.ToUpper(p.cur.Str)
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+				var val string
+				if p.cur.Type == tokSCONST {
+					val = p.cur.Str
+					p.advance()
+				} else if p.cur.Type == tokICONST {
+					val = p.cur.Str
+					p.advance()
+				} else if p.isIdentLike() {
+					val = p.cur.Str
+					p.advance()
+				}
+				opts = append(opts, &nodes.String{Str: optName + "=" + val})
+			} else {
+				opts = append(opts, &nodes.String{Str: optName})
+			}
+			if _, ok := p.match(','); !ok {
+				break
+			}
+		}
+		if len(opts) > 0 {
+			stmt.Options = &nodes.List{Items: opts}
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseCreateRemoteServiceBindingStmt parses CREATE REMOTE SERVICE BINDING.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-remote-service-binding-transact-sql
+//
+//	CREATE REMOTE SERVICE BINDING binding_name
+//	    [ AUTHORIZATION owner_name ]
+//	    TO SERVICE 'service_name'
+//	    WITH USER = user_name [ , ANONYMOUS = { ON | OFF } ]
+func (p *Parser) parseCreateRemoteServiceBindingStmt() *nodes.ServiceBrokerStmt {
+	loc := p.pos()
+	// REMOTE SERVICE BINDING keywords already consumed by caller
+
+	stmt := &nodes.ServiceBrokerStmt{
+		Action:     "CREATE",
+		ObjectType: "REMOTE SERVICE BINDING",
+		Loc:        nodes.Loc{Start: loc},
+	}
+
+	// binding_name
+	if p.isIdentLike() || p.cur.Type == tokSCONST {
+		stmt.Name = p.cur.Str
+		p.advance()
+	}
+
+	// Optional: AUTHORIZATION owner
+	if p.cur.Type == kwAUTHORIZATION {
+		p.advance()
+		if p.isIdentLike() {
+			p.advance()
+		}
+	}
+
+	var opts []nodes.Node
+
+	// TO SERVICE 'service_name'
+	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "TO") {
+		p.advance()
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SERVICE") {
+			p.advance()
+		}
+		if p.cur.Type == tokSCONST {
+			opts = append(opts, &nodes.String{Str: "SERVICE=" + p.cur.Str})
+			p.advance()
+		}
+	}
+
+	// WITH USER = user_name [, ANONYMOUS = { ON | OFF }]
+	if p.cur.Type == kwWITH {
+		p.advance()
+		for {
+			if !p.isIdentLike() && p.cur.Type != kwUSER {
+				break
+			}
+			optName := strings.ToUpper(p.cur.Str)
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+				var val string
+				if p.isIdentLike() {
+					val = p.cur.Str
+					p.advance()
+				} else if p.cur.Type == kwON {
+					val = "ON"
+					p.advance()
+				} else if p.cur.Type == kwOFF {
+					val = "OFF"
+					p.advance()
+				} else if p.cur.Type == tokSCONST {
+					val = p.cur.Str
+					p.advance()
+				}
+				opts = append(opts, &nodes.String{Str: optName + "=" + val})
+			}
+			if _, ok := p.match(','); !ok {
+				break
+			}
+		}
+	}
+
+	if len(opts) > 0 {
+		stmt.Options = &nodes.List{Items: opts}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseGetConversationGroupStmt parses GET CONVERSATION GROUP.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/get-conversation-group-transact-sql
+//
+//	[ WAITFOR ( ]
+//	    GET CONVERSATION GROUP @conversation_group_id
+//	        FROM <queue>
+//	[ ) ] [ , TIMEOUT timeout ]
+func (p *Parser) parseGetConversationGroupStmt() *nodes.ServiceBrokerStmt {
+	loc := p.pos()
+	p.advance() // consume GET
+
+	stmt := &nodes.ServiceBrokerStmt{
+		Action:     "GET",
+		ObjectType: "CONVERSATION GROUP",
+		Loc:        nodes.Loc{Start: loc},
+	}
+
+	// CONVERSATION GROUP
+	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CONVERSATION") {
+		p.advance()
+	}
+	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "GROUP") {
+		p.advance()
+	}
+
+	// @conversation_group_id
+	if p.cur.Type == tokVARIABLE {
+		stmt.Name = p.cur.Str
+		p.advance()
+	}
+
+	// FROM queue
+	if _, ok := p.match(kwFROM); ok {
+		ref := p.parseTableRef()
+		if ref != nil {
+			var opts []nodes.Node
+			opts = append(opts, &nodes.String{Str: "QUEUE=" + ref.Object})
+			stmt.Options = &nodes.List{Items: opts}
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
 // parseServiceBrokerOptions consumes a generic WITH options clause.
 func (p *Parser) parseServiceBrokerOptions() *nodes.List {
 	// Skip any options

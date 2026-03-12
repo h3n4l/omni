@@ -202,6 +202,11 @@ func (p *Parser) parseStmt() nodes.StmtNode {
 				next.Str != "" && matchesKeywordCI(next.Str, "CONVERSATION") {
 				return p.parseEndConversationStmt()
 			}
+			// GET CONVERSATION GROUP (service broker)
+			if matchesKeywordCI(p.cur.Str, "GET") &&
+				next.Str != "" && matchesKeywordCI(next.Str, "CONVERSATION") {
+				return p.parseGetConversationGroupStmt()
+			}
 		}
 		return nil
 	}
@@ -413,6 +418,26 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SERVICE") {
 			p.advance() // consume SERVICE
 			stmt := p.parseCreateServiceStmt()
+			stmt.Loc.Start = loc
+			return stmt
+		}
+		// CREATE ROUTE (service broker)
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "ROUTE") {
+			p.advance() // consume ROUTE
+			stmt := p.parseCreateRouteStmt()
+			stmt.Loc.Start = loc
+			return stmt
+		}
+		// CREATE REMOTE SERVICE BINDING (service broker)
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "REMOTE") {
+			p.advance() // consume REMOTE
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SERVICE") {
+				p.advance() // consume SERVICE
+			}
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "BINDING") {
+				p.advance() // consume BINDING
+			}
+			stmt := p.parseCreateRemoteServiceBindingStmt()
 			stmt.Loc.Start = loc
 			return stmt
 		}

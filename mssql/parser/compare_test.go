@@ -3930,3 +3930,50 @@ COMMIT;`,
 		})
 	}
 }
+
+// TestParseServiceBrokerMissing tests batch 50: CREATE ROUTE, CREATE REMOTE SERVICE BINDING, GET CONVERSATION GROUP.
+func TestParseServiceBrokerMissing(t *testing.T) {
+	tests := []string{
+		// CREATE ROUTE - basic
+		"CREATE ROUTE MyRoute WITH ADDRESS = 'TCP://10.0.0.1:4022'",
+		// CREATE ROUTE - with AUTHORIZATION
+		"CREATE ROUTE MyRoute AUTHORIZATION dbo WITH ADDRESS = 'TCP://10.0.0.1:4022'",
+		// CREATE ROUTE - with SERVICE_NAME
+		"CREATE ROUTE MyRoute WITH SERVICE_NAME = '//Adventure-Works.com/Expenses', ADDRESS = 'TCP://10.0.0.1:4022'",
+		// CREATE ROUTE - with BROKER_INSTANCE
+		"CREATE ROUTE MyRoute WITH SERVICE_NAME = '//Adventure-Works.com/Expenses', BROKER_INSTANCE = 'D8787ED9-A3CF-43CE-8FCC-B123456789AB', ADDRESS = 'TCP://10.0.0.1:4022'",
+		// CREATE ROUTE - with LIFETIME
+		"CREATE ROUTE MyRoute WITH LIFETIME = 600, ADDRESS = 'TCP://10.0.0.1:4022'",
+		// CREATE ROUTE - with MIRROR_ADDRESS
+		"CREATE ROUTE MyRoute WITH ADDRESS = 'TCP://10.0.0.1:4022', MIRROR_ADDRESS = 'TCP://10.0.0.2:4022'",
+		// CREATE ROUTE - LOCAL address
+		"CREATE ROUTE MyRoute WITH SERVICE_NAME = '//Adventure-Works.com/Expenses', ADDRESS = 'LOCAL'",
+		// CREATE ROUTE - TRANSPORT address
+		"CREATE ROUTE TransportRoute WITH ADDRESS = 'TRANSPORT'",
+		// CREATE REMOTE SERVICE BINDING - basic
+		"CREATE REMOTE SERVICE BINDING MyBinding TO SERVICE '//Adventure-Works.com/Expenses' WITH USER = ExpensesUser",
+		// CREATE REMOTE SERVICE BINDING - with AUTHORIZATION
+		"CREATE REMOTE SERVICE BINDING MyBinding AUTHORIZATION dbo TO SERVICE '//Adventure-Works.com/Expenses' WITH USER = ExpensesUser",
+		// CREATE REMOTE SERVICE BINDING - with ANONYMOUS ON
+		"CREATE REMOTE SERVICE BINDING MyBinding TO SERVICE '//Adventure-Works.com/Expenses' WITH USER = ExpensesUser, ANONYMOUS = ON",
+		// CREATE REMOTE SERVICE BINDING - with ANONYMOUS OFF
+		"CREATE REMOTE SERVICE BINDING MyBinding TO SERVICE '//Adventure-Works.com/Expenses' WITH USER = ExpensesUser, ANONYMOUS = OFF",
+		// GET CONVERSATION GROUP - basic
+		"GET CONVERSATION GROUP @conversation_group_id FROM ExpenseQueue",
+		// GET CONVERSATION GROUP - qualified queue name
+		"GET CONVERSATION GROUP @conversation_group_id FROM dbo.ExpenseQueue",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			result := ParseAndCheck(t, sql)
+			if result.Len() != 1 {
+				t.Fatalf("Parse(%q): got %d statements, want 1", sql, result.Len())
+			}
+			stmt, ok := result.Items[0].(*ast.ServiceBrokerStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *ServiceBrokerStmt, got %T", sql, result.Items[0])
+			}
+			checkLocation(t, sql, "ServiceBrokerStmt", stmt.Loc)
+		})
+	}
+}
