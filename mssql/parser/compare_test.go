@@ -4510,3 +4510,198 @@ func TestParseExternalFileFormat(t *testing.T) {
 		})
 	}
 }
+
+// ---------- Batch 58: encryption_keys ----------
+
+func TestParseEncryptionKeys(t *testing.T) {
+	tests := []struct {
+		sql        string
+		action     string
+		objectType string
+		name       string
+	}{
+		// CREATE COLUMN ENCRYPTION KEY
+		{
+			sql:        "CREATE COLUMN ENCRYPTION KEY MyCEK WITH VALUES (COLUMN_MASTER_KEY = MyCMK, ALGORITHM = 'RSA_OAEP', ENCRYPTED_VALUE = 0x01AB)",
+			action:     "CREATE",
+			objectType: "COLUMN ENCRYPTION KEY",
+			name:       "MyCEK",
+		},
+		// CREATE COLUMN ENCRYPTION KEY with two values
+		{
+			sql:        "CREATE COLUMN ENCRYPTION KEY TwoValueCEK WITH VALUES (COLUMN_MASTER_KEY = CMK1, ALGORITHM = 'RSA_OAEP', ENCRYPTED_VALUE = 0x016E), (COLUMN_MASTER_KEY = CMK2, ALGORITHM = 'RSA_OAEP', ENCRYPTED_VALUE = 0x016E)",
+			action:     "CREATE",
+			objectType: "COLUMN ENCRYPTION KEY",
+			name:       "TwoValueCEK",
+		},
+		// ALTER COLUMN ENCRYPTION KEY - ADD VALUE
+		{
+			sql:        "ALTER COLUMN ENCRYPTION KEY MyCEK ADD VALUE (COLUMN_MASTER_KEY = MyCMK2, ALGORITHM = 'RSA_OAEP', ENCRYPTED_VALUE = 0x016E)",
+			action:     "ALTER",
+			objectType: "COLUMN ENCRYPTION KEY",
+			name:       "MyCEK",
+		},
+		// ALTER COLUMN ENCRYPTION KEY - DROP VALUE
+		{
+			sql:        "ALTER COLUMN ENCRYPTION KEY MyCEK DROP VALUE (COLUMN_MASTER_KEY = MyCMK)",
+			action:     "ALTER",
+			objectType: "COLUMN ENCRYPTION KEY",
+			name:       "MyCEK",
+		},
+		// DROP COLUMN ENCRYPTION KEY
+		{
+			sql:        "DROP COLUMN ENCRYPTION KEY MyCEK",
+			action:     "DROP",
+			objectType: "COLUMN ENCRYPTION KEY",
+			name:       "MyCEK",
+		},
+		// CREATE COLUMN MASTER KEY
+		{
+			sql:        "CREATE COLUMN MASTER KEY MyCMK WITH (KEY_STORE_PROVIDER_NAME = N'MSSQL_CERTIFICATE_STORE', KEY_PATH = 'CurrentUser/My/BBF037EC')",
+			action:     "CREATE",
+			objectType: "COLUMN MASTER KEY",
+			name:       "MyCMK",
+		},
+		// CREATE COLUMN MASTER KEY with ENCLAVE_COMPUTATIONS
+		{
+			sql:        "CREATE COLUMN MASTER KEY MyCMK WITH (KEY_STORE_PROVIDER_NAME = N'AZURE_KEY_VAULT', KEY_PATH = N'https://myvault.vault.azure.net:443/keys/MyCMK/abc', ENCLAVE_COMPUTATIONS (SIGNATURE = 0xA80F))",
+			action:     "CREATE",
+			objectType: "COLUMN MASTER KEY",
+			name:       "MyCMK",
+		},
+		// DROP COLUMN MASTER KEY
+		{
+			sql:        "DROP COLUMN MASTER KEY MyCMK",
+			action:     "DROP",
+			objectType: "COLUMN MASTER KEY",
+			name:       "MyCMK",
+		},
+		// CREATE DATABASE ENCRYPTION KEY
+		{
+			sql:        "CREATE DATABASE ENCRYPTION KEY WITH ALGORITHM = AES_256 ENCRYPTION BY SERVER CERTIFICATE MyServerCert",
+			action:     "CREATE",
+			objectType: "DATABASE ENCRYPTION KEY",
+			name:       "",
+		},
+		// CREATE DATABASE ENCRYPTION KEY with ASYMMETRIC KEY
+		{
+			sql:        "CREATE DATABASE ENCRYPTION KEY WITH ALGORITHM = AES_128 ENCRYPTION BY SERVER ASYMMETRIC KEY MyAsymKey",
+			action:     "CREATE",
+			objectType: "DATABASE ENCRYPTION KEY",
+			name:       "",
+		},
+		// ALTER DATABASE ENCRYPTION KEY - REGENERATE
+		{
+			sql:        "ALTER DATABASE ENCRYPTION KEY REGENERATE WITH ALGORITHM = AES_256",
+			action:     "ALTER",
+			objectType: "DATABASE ENCRYPTION KEY",
+			name:       "",
+		},
+		// ALTER DATABASE ENCRYPTION KEY - ENCRYPTION BY
+		{
+			sql:        "ALTER DATABASE ENCRYPTION KEY ENCRYPTION BY SERVER CERTIFICATE MyServerCert",
+			action:     "ALTER",
+			objectType: "DATABASE ENCRYPTION KEY",
+			name:       "",
+		},
+		// DROP DATABASE ENCRYPTION KEY
+		{
+			sql:        "DROP DATABASE ENCRYPTION KEY",
+			action:     "DROP",
+			objectType: "DATABASE ENCRYPTION KEY",
+			name:       "",
+		},
+		// CREATE DATABASE SCOPED CREDENTIAL
+		{
+			sql:        "CREATE DATABASE SCOPED CREDENTIAL AppCred WITH IDENTITY = 'Mary5', SECRET = 'mypassword'",
+			action:     "CREATE",
+			objectType: "DATABASE SCOPED CREDENTIAL",
+			name:       "AppCred",
+		},
+		// CREATE DATABASE SCOPED CREDENTIAL with SAS
+		{
+			sql:        "CREATE DATABASE SCOPED CREDENTIAL MyCredentials WITH IDENTITY = 'SHARED ACCESS SIGNATURE', SECRET = 'sas_token'",
+			action:     "CREATE",
+			objectType: "DATABASE SCOPED CREDENTIAL",
+			name:       "MyCredentials",
+		},
+		// CREATE DATABASE SCOPED CREDENTIAL with MANAGED IDENTITY
+		{
+			sql:        "CREATE DATABASE SCOPED CREDENTIAL managed_id WITH IDENTITY = 'Managed Identity'",
+			action:     "CREATE",
+			objectType: "DATABASE SCOPED CREDENTIAL",
+			name:       "managed_id",
+		},
+		// ALTER DATABASE SCOPED CREDENTIAL
+		{
+			sql:        "ALTER DATABASE SCOPED CREDENTIAL AppCred WITH IDENTITY = 'Mary6', SECRET = 'newpassword'",
+			action:     "ALTER",
+			objectType: "DATABASE SCOPED CREDENTIAL",
+			name:       "AppCred",
+		},
+		// DROP DATABASE SCOPED CREDENTIAL
+		{
+			sql:        "DROP DATABASE SCOPED CREDENTIAL AppCred",
+			action:     "DROP",
+			objectType: "DATABASE SCOPED CREDENTIAL",
+			name:       "AppCred",
+		},
+		// CREATE CRYPTOGRAPHIC PROVIDER
+		{
+			sql:        "CREATE CRYPTOGRAPHIC PROVIDER SecurityProvider FROM FILE = 'C:\\SecurityProvider\\SecurityProvider_v1.dll'",
+			action:     "CREATE",
+			objectType: "CRYPTOGRAPHIC PROVIDER",
+			name:       "SecurityProvider",
+		},
+		// ALTER CRYPTOGRAPHIC PROVIDER - ENABLE
+		{
+			sql:        "ALTER CRYPTOGRAPHIC PROVIDER SecurityProvider ENABLE",
+			action:     "ALTER",
+			objectType: "CRYPTOGRAPHIC PROVIDER",
+			name:       "SecurityProvider",
+		},
+		// ALTER CRYPTOGRAPHIC PROVIDER - DISABLE
+		{
+			sql:        "ALTER CRYPTOGRAPHIC PROVIDER SecurityProvider DISABLE",
+			action:     "ALTER",
+			objectType: "CRYPTOGRAPHIC PROVIDER",
+			name:       "SecurityProvider",
+		},
+		// ALTER CRYPTOGRAPHIC PROVIDER - FROM FILE
+		{
+			sql:        "ALTER CRYPTOGRAPHIC PROVIDER SecurityProvider FROM FILE = 'c:\\SecurityProvider\\SecurityProvider_v2.dll' ENABLE",
+			action:     "ALTER",
+			objectType: "CRYPTOGRAPHIC PROVIDER",
+			name:       "SecurityProvider",
+		},
+		// DROP CRYPTOGRAPHIC PROVIDER
+		{
+			sql:        "DROP CRYPTOGRAPHIC PROVIDER SecurityProvider",
+			action:     "DROP",
+			objectType: "CRYPTOGRAPHIC PROVIDER",
+			name:       "SecurityProvider",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.sql, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() != 1 {
+				t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+			}
+			stmt, ok := result.Items[0].(*ast.SecurityKeyStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *SecurityKeyStmt, got %T", tt.sql, result.Items[0])
+			}
+			if stmt.Action != tt.action {
+				t.Errorf("Parse(%q): action = %q, want %q", tt.sql, stmt.Action, tt.action)
+			}
+			if stmt.ObjectType != tt.objectType {
+				t.Errorf("Parse(%q): objectType = %q, want %q", tt.sql, stmt.ObjectType, tt.objectType)
+			}
+			if stmt.Name != tt.name {
+				t.Errorf("Parse(%q): name = %q, want %q", tt.sql, stmt.Name, tt.name)
+			}
+			checkLocation(t, tt.sql, "SecurityKeyStmt", stmt.Loc)
+		})
+	}
+}

@@ -286,6 +286,12 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 		stmt := p.parseCreateFunctionStmt(orAlter)
 		stmt.Loc.Start = loc
 		return stmt
+	case kwCOLUMN:
+		// CREATE COLUMN ENCRYPTION KEY / CREATE COLUMN MASTER KEY
+		p.advance() // consume COLUMN
+		stmt := p.parseSecurityKeyStmtColumn("CREATE")
+		stmt.Loc.Start = loc
+		return stmt
 	case kwDATABASE:
 		// Check for CREATE DATABASE AUDIT SPECIFICATION
 		{
@@ -297,6 +303,13 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 					p.advance() // consume SPECIFICATION
 				}
 				stmt := p.parseCreateDatabaseAuditSpecStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			// CREATE DATABASE ENCRYPTION KEY / CREATE DATABASE SCOPED CREDENTIAL
+			if next.Str != "" && (matchesKeywordCI(next.Str, "ENCRYPTION") || matchesKeywordCI(next.Str, "SCOPED")) {
+				p.advance() // consume DATABASE
+				stmt := p.parseSecurityKeyStmtDatabaseEncryption("CREATE")
 				stmt.Loc.Start = loc
 				return stmt
 			}
@@ -359,7 +372,8 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 		if p.isIdentLike() && (matchesKeywordCI(p.cur.Str, "SYMMETRIC") ||
 			matchesKeywordCI(p.cur.Str, "ASYMMETRIC") ||
 			matchesKeywordCI(p.cur.Str, "CERTIFICATE") ||
-			matchesKeywordCI(p.cur.Str, "CREDENTIAL")) {
+			matchesKeywordCI(p.cur.Str, "CREDENTIAL") ||
+			matchesKeywordCI(p.cur.Str, "CRYPTOGRAPHIC")) {
 			stmt := p.parseSecurityKeyStmt("CREATE")
 			stmt.Loc.Start = loc
 			return stmt
@@ -576,6 +590,12 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 		stmt := p.parseAlterTableStmt()
 		stmt.Loc.Start = loc
 		return stmt
+	case kwCOLUMN:
+		// ALTER COLUMN ENCRYPTION KEY / ALTER COLUMN MASTER KEY
+		p.advance() // consume COLUMN
+		stmt := p.parseSecurityKeyStmtColumn("ALTER")
+		stmt.Loc.Start = loc
+		return stmt
 	case kwDATABASE:
 		// Check for ALTER DATABASE AUDIT SPECIFICATION
 		{
@@ -587,6 +607,13 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 					p.advance() // consume SPECIFICATION
 				}
 				stmt := p.parseAlterDatabaseAuditSpecStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			// ALTER DATABASE ENCRYPTION KEY / ALTER DATABASE SCOPED CREDENTIAL
+			if next.Str != "" && (matchesKeywordCI(next.Str, "ENCRYPTION") || matchesKeywordCI(next.Str, "SCOPED")) {
+				p.advance() // consume DATABASE
+				stmt := p.parseSecurityKeyStmtDatabaseEncryption("ALTER")
 				stmt.Loc.Start = loc
 				return stmt
 			}
@@ -655,7 +682,8 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 			matchesKeywordCI(p.cur.Str, "SYMMETRIC") ||
 			matchesKeywordCI(p.cur.Str, "ASYMMETRIC") ||
 			matchesKeywordCI(p.cur.Str, "CERTIFICATE") ||
-			matchesKeywordCI(p.cur.Str, "CREDENTIAL")) {
+			matchesKeywordCI(p.cur.Str, "CREDENTIAL") ||
+			matchesKeywordCI(p.cur.Str, "CRYPTOGRAPHIC")) {
 			stmt := p.parseSecurityKeyStmt("ALTER")
 			stmt.Loc.Start = loc
 			return stmt
@@ -876,9 +904,16 @@ func (p *Parser) parseDropOrSecurityStmt() nodes.StmtNode {
 	// by falling through to parseDropStmt if it's just DROP DATABASE (no AUDIT).
 
 	switch next.Type {
+	case kwCOLUMN:
+		// DROP COLUMN ENCRYPTION KEY / DROP COLUMN MASTER KEY
+		p.advance() // consume DROP
+		p.advance() // consume COLUMN
+		stmt := p.parseSecurityKeyStmtColumn("DROP")
+		stmt.Loc.Start = loc
+		return stmt
 	case kwDATABASE:
-		// Could be DROP DATABASE or DROP DATABASE AUDIT SPECIFICATION
-		// We need to peek further
+		// Could be DROP DATABASE, DROP DATABASE AUDIT SPECIFICATION,
+		// DROP DATABASE ENCRYPTION KEY, or DROP DATABASE SCOPED CREDENTIAL
 		p.advance() // consume DROP
 		p.advance() // consume DATABASE
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AUDIT") {
@@ -890,7 +925,13 @@ func (p *Parser) parseDropOrSecurityStmt() nodes.StmtNode {
 			stmt.Loc.Start = loc
 			return stmt
 		}
-		// Not AUDIT — it's a regular DROP DATABASE. We already consumed DROP + DATABASE.
+		// DROP DATABASE ENCRYPTION KEY / DROP DATABASE SCOPED CREDENTIAL
+		if p.isIdentLike() && (matchesKeywordCI(p.cur.Str, "ENCRYPTION") || matchesKeywordCI(p.cur.Str, "SCOPED")) {
+			stmt := p.parseSecurityKeyStmtDatabaseEncryption("DROP")
+			stmt.Loc.Start = loc
+			return stmt
+		}
+		// Not AUDIT/ENCRYPTION/SCOPED — it's a regular DROP DATABASE. We already consumed DROP + DATABASE.
 		// We need to call parseDropStmt logic but we've already consumed DROP + DATABASE.
 		// Let's just handle it inline.
 		dropStmt := &nodes.DropStmt{
@@ -1064,6 +1105,13 @@ func (p *Parser) parseDropOrSecurityStmt() nodes.StmtNode {
 				return stmt
 			}
 			return nil
+		}
+		// DROP CRYPTOGRAPHIC PROVIDER
+		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "CRYPTOGRAPHIC") {
+			p.advance() // consume DROP
+			stmt := p.parseSecurityKeyStmt("DROP")
+			stmt.Loc.Start = loc
+			return stmt
 		}
 		return p.parseDropStmt()
 	}

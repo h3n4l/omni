@@ -1289,7 +1289,7 @@
       "id": 58,
       "name": "encryption_keys",
       "file": "security_keys.go",
-      "status": "pending",
+      "status": "done",
       "description": "New: CREATE/ALTER/DROP COLUMN ENCRYPTION KEY, COLUMN MASTER KEY, DATABASE ENCRYPTION KEY, DATABASE SCOPED CREDENTIAL, CRYPTOGRAPHIC PROVIDER",
       "rules": ["parseCreateColumnEncryptionKeyStmt", "parseCreateColumnMasterKeyStmt", "parseCreateDatabaseEncryptionKeyStmt", "parseCreateDatabaseScopedCredentialStmt", "parseCreateCryptographicProviderStmt"],
       "depends_on": [31],
