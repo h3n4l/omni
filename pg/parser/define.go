@@ -824,16 +824,61 @@ func (p *Parser) parseDefACLPrivilegeTarget() int {
 
 // parseAlterStatisticsStmt parses ALTER STATISTICS ...
 // ALTER has already been consumed. Current token is STATISTICS.
+//
+// Ref: https://www.postgresql.org/docs/17/sql-alterstatistics.html
+//
+//	ALTER STATISTICS name RENAME TO new_name
+//	ALTER STATISTICS name OWNER TO { new_owner | CURRENT_ROLE | CURRENT_USER | SESSION_USER }
+//	ALTER STATISTICS name SET SCHEMA new_schema
+//	ALTER STATISTICS name SET STATISTICS target
+//	ALTER STATISTICS IF EXISTS name SET STATISTICS target
 func (p *Parser) parseAlterStatisticsStmt() nodes.Node {
 	p.advance() // consume STATISTICS
+
+	// IF EXISTS only applies to SET STATISTICS variant
 	missingOk := false
 	if p.cur.Type == IF_P {
 		p.advance()
 		p.expect(EXISTS)
 		missingOk = true
 	}
+
 	defnames, _ := p.parseAnyName()
+
+	switch p.cur.Type {
+	case RENAME:
+		p.advance()
+		p.expect(TO)
+		newname, _ := p.parseName()
+		return &nodes.RenameStmt{
+			RenameType: nodes.OBJECT_STATISTIC_EXT,
+			Object:     defnames,
+			Newname:    newname,
+		}
+	case OWNER:
+		p.advance()
+		p.expect(TO)
+		roleSpec := p.parseRoleSpec()
+		return &nodes.AlterOwnerStmt{
+			ObjectType: nodes.OBJECT_STATISTIC_EXT,
+			Object:     defnames,
+			Newowner:   roleSpec,
+		}
+	}
+
 	p.expect(SET)
+
+	// SET SCHEMA vs SET STATISTICS
+	if p.cur.Type == SCHEMA {
+		p.advance()
+		newschema, _ := p.parseName()
+		return &nodes.AlterObjectSchemaStmt{
+			ObjectType: nodes.OBJECT_STATISTIC_EXT,
+			Object:     defnames,
+			Newschema:  newschema,
+		}
+	}
+
 	p.expect(STATISTICS)
 	stmt := &nodes.AlterStatsStmt{Defnames: defnames, MissingOk: missingOk}
 	if p.cur.Type == DEFAULT {

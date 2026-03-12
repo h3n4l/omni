@@ -25,6 +25,29 @@ func (p *Parser) parseAlterFdwStmt() nodes.Node {
 	p.expect(DATA_P)
 	p.expect(WRAPPER)
 	name, _ := p.parseName()
+
+	// Check for OWNER TO and RENAME TO before FDW options
+	switch p.cur.Type {
+	case OWNER:
+		p.advance()
+		p.expect(TO)
+		roleSpec := p.parseRoleSpec()
+		return &nodes.AlterOwnerStmt{
+			ObjectType: nodes.OBJECT_FDW,
+			Object:     &nodes.String{Str: name},
+			Newowner:   roleSpec,
+		}
+	case RENAME:
+		p.advance()
+		p.expect(TO)
+		newname, _ := p.parseName()
+		return &nodes.RenameStmt{
+			RenameType: nodes.OBJECT_FDW,
+			Object:     &nodes.String{Str: name},
+			Newname:    newname,
+		}
+	}
+
 	funcOptions := p.parseOptFdwOptions()
 	if p.cur.Type == OPTIONS {
 		options := p.parseAlterGenericOptions()

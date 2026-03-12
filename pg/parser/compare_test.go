@@ -3340,3 +3340,66 @@ func TestCompareIsNormalized(t *testing.T) {
 		})
 	}
 }
+
+// TestCompareAlterFdwOwner runs ALTER FOREIGN DATA WRAPPER OWNER TO comparison tests for batch 59.
+func TestCompareAlterFdwOwner(t *testing.T) {
+	tests := []string{
+		"ALTER FOREIGN DATA WRAPPER mywrapper OWNER TO newowner",
+		"ALTER FOREIGN DATA WRAPPER mywrapper OWNER TO CURRENT_USER",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+		})
+	}
+}
+
+// TestCompareAlterFdwRename runs ALTER FOREIGN DATA WRAPPER RENAME TO comparison tests for batch 59.
+func TestCompareAlterFdwRename(t *testing.T) {
+	tests := []string{
+		"ALTER FOREIGN DATA WRAPPER mywrapper RENAME TO newwrapper",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+		})
+	}
+}
+
+// TestCompareAlterStatisticsRename runs ALTER STATISTICS RENAME TO comparison tests for batch 60.
+func TestCompareAlterStatisticsRename(t *testing.T) {
+	tests := []string{
+		"ALTER STATISTICS mystat RENAME TO newstat",
+		"ALTER STATISTICS myschema.mystat RENAME TO newstat",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+		})
+	}
+}
+
+// TestCompareAlterStatisticsOwner runs ALTER STATISTICS OWNER TO comparison tests for batch 60.
+func TestCompareAlterStatisticsOwner(t *testing.T) {
+	tests := []string{
+		"ALTER STATISTICS mystat OWNER TO newowner",
+		"ALTER STATISTICS mystat OWNER TO CURRENT_USER",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+		})
+	}
+}
+
+// TestCompareAlterStatisticsSetSchema runs ALTER STATISTICS SET SCHEMA comparison tests for batch 60.
+func TestCompareAlterStatisticsSetSchema(t *testing.T) {
+	tests := []string{
+		"ALTER STATISTICS mystat SET SCHEMA newschema",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+		})
+	}
+}

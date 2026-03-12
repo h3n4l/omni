@@ -1,7 +1,7 @@
 {
   "version": 1,
   "target": "100% yacc grammar parity with recursive descent parser",
-  "status": "in_progress",
+  "status": "done",
   "batches": [
     {
       "id": 0,
@@ -1411,7 +1411,27 @@
       "rules": ["parseIsPostfix"],
       "depends_on": [3],
       "tests": ["is_normalized"]
+    },
+    {
+      "id": 59,
+      "name": "alter_fdw_owner_rename",
+      "file": "fdw.go",
+      "status": "done",
+      "description": "Fix batch 31 gap: parseAlterFdwStmt only handles HANDLER/VALIDATOR/OPTIONS. Missing OWNER TO (AlterOwnerStmt with OBJECT_FDW) and RENAME TO (RenameStmt with OBJECT_FDW). Must add OWNER and RENAME cases before falling through to FDW options parsing, similar to pattern in parseAlterForeignServerStmt. Ref: https://www.postgresql.org/docs/17/sql-alterforeigndatawrapper.html",
+      "rules": ["parseAlterFdwStmt"],
+      "depends_on": [31],
+      "tests": ["alter_fdw_owner", "alter_fdw_rename"]
+    },
+    {
+      "id": 60,
+      "name": "alter_statistics_rename_owner_schema",
+      "file": "define.go",
+      "status": "done",
+      "description": "Fix batch 20 gap: parseAlterStatisticsStmt only handles SET STATISTICS value. Missing RENAME TO (RenameStmt with OBJECT_STATISTIC_EXT), OWNER TO (AlterOwnerStmt with OBJECT_STATISTIC_EXT), and SET SCHEMA (AlterObjectSchemaStmt with OBJECT_STATISTIC_EXT). Must dispatch on next token after name before expecting SET STATISTICS. Ref: https://www.postgresql.org/docs/17/sql-alterstatistics.html",
+      "rules": ["parseAlterStatisticsStmt"],
+      "depends_on": [20],
+      "tests": ["alter_statistics_rename", "alter_statistics_owner", "alter_statistics_set_schema"]
     }
   ],
-  "audit_round": 3
+  "audit_round": 4
 }
