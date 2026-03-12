@@ -8415,6 +8415,90 @@ func TestParseCreateAggregateFunction(t *testing.T) {
 	}
 }
 
+// --- Batch 65: depth_fix_select_into_outfile ---
+
+func TestParseSelectIntoOutfileFields(t *testing.T) {
+	tests := []string{
+		"SELECT * FROM t INTO OUTFILE '/tmp/data.csv' FIELDS TERMINATED BY ','",
+		"SELECT * FROM t INTO OUTFILE '/tmp/data.csv' FIELDS TERMINATED BY ',' ENCLOSED BY '\"'",
+		"SELECT * FROM t INTO OUTFILE '/tmp/data.csv' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' ESCAPED BY '\\\\'",
+		"SELECT * FROM t INTO OUTFILE '/tmp/data.csv' COLUMNS TERMINATED BY '\\t' ENCLOSED BY '\"'",
+		"SELECT * FROM t INTO OUTFILE '/tmp/data.csv' FIELDS TERMINATED BY ',' LINES TERMINATED BY '\\n'",
+		"SELECT * FROM t INTO OUTFILE '/tmp/data.csv' FIELDS TERMINATED BY '|' ENCLOSED BY '\"' ESCAPED BY '\\\\' LINES STARTING BY 'X' TERMINATED BY '\\n'",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseSelectIntoOutfileCharset(t *testing.T) {
+	tests := []string{
+		"SELECT * FROM t INTO OUTFILE '/tmp/data.csv' CHARACTER SET utf8",
+		"SELECT * FROM t INTO OUTFILE '/tmp/data.csv' CHARACTER SET utf8mb4 FIELDS TERMINATED BY ','",
+		"SELECT * FROM t INTO OUTFILE '/tmp/data.csv' CHARSET latin1",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseSelectIntoBeforeFrom(t *testing.T) {
+	tests := []string{
+		"SELECT * INTO OUTFILE '/tmp/data.csv' FROM t",
+		"SELECT * INTO DUMPFILE '/tmp/data.bin' FROM t",
+		"SELECT a, b INTO @x, @y FROM t",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseLockInShareMode(t *testing.T) {
+	tests := []string{
+		"SELECT * FROM t LOCK IN SHARE MODE",
+		"SELECT * FROM t WHERE id = 1 LOCK IN SHARE MODE",
+		"SELECT * FROM t ORDER BY id LOCK IN SHARE MODE",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseSelectSqlSmallResult(t *testing.T) {
+	tests := []string{
+		"SELECT SQL_SMALL_RESULT * FROM t GROUP BY c",
+		"SELECT SQL_BIG_RESULT * FROM t GROUP BY c",
+		"SELECT SQL_SMALL_RESULT SQL_BIG_RESULT * FROM t",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseSelectSqlBufferResult(t *testing.T) {
+	tests := []string{
+		"SELECT SQL_BUFFER_RESULT * FROM t",
+		"SELECT SQL_NO_CACHE * FROM t",
+		"SELECT SQL_BUFFER_RESULT SQL_NO_CACHE * FROM t",
+		"SELECT HIGH_PRIORITY SQL_SMALL_RESULT SQL_BIG_RESULT SQL_BUFFER_RESULT SQL_NO_CACHE SQL_CALC_FOUND_ROWS * FROM t",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
 func TestParseShowProcesslist(t *testing.T) {
 	tests := []string{
 		"SHOW PROCESSLIST",

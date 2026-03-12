@@ -442,6 +442,11 @@ const (
 	kwVISIBLE
 	kwINVISIBLE
 	kwKEYS
+	kwSQL_SMALL_RESULT
+	kwSQL_BIG_RESULT
+	kwSQL_BUFFER_RESULT
+	kwSQL_NO_CACHE
+	kwMODE
 )
 
 // keywords maps lowercase keyword strings to their token types.
@@ -845,6 +850,11 @@ var keywords = map[string]int{
 	"visible":             kwVISIBLE,
 	"invisible":           kwINVISIBLE,
 	"keys":                kwKEYS,
+	"sql_small_result":    kwSQL_SMALL_RESULT,
+	"sql_big_result":      kwSQL_BIG_RESULT,
+	"sql_buffer_result":   kwSQL_BUFFER_RESULT,
+	"sql_no_cache":        kwSQL_NO_CACHE,
+	"mode":                kwMODE,
 }
 
 // Token represents a lexical token.

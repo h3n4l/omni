@@ -1649,7 +1649,243 @@
         "TestParseCreateLoadableFunction",
         "TestParseCreateAggregateFunction"
       ]
+    },
+    {
+      "id": 65,
+      "name": "depth_fix_select_into_outfile",
+      "file": "select.go",
+      "status": "done",
+      "description": "Fix batch 4 gap: INTO OUTFILE missing export options (FIELDS/COLUMNS TERMINATED BY, ENCLOSED BY, ESCAPED BY, LINES TERMINATED BY, CHARACTER SET), INTO positioning (before FROM, before FOR UPDATE), LOCK IN SHARE MODE legacy syntax, SELECT modifiers SQL_SMALL_RESULT/SQL_BIG_RESULT/SQL_BUFFER_RESULT/SQL_NO_CACHE",
+      "rules": [
+        "parseIntoClause",
+        "parseIntoOutfileOptions",
+        "parseSelectStmt",
+        "parseForUpdateClause"
+      ],
+      "depends_on": [
+        4
+      ],
+      "tests": [
+        "TestParseSelectIntoOutfileFields",
+        "TestParseSelectIntoOutfileCharset",
+        "TestParseSelectIntoBeforeFrom",
+        "TestParseLockInShareMode",
+        "TestParseSelectSqlSmallResult",
+        "TestParseSelectSqlBufferResult"
+      ]
+    },
+    {
+      "id": 66,
+      "name": "depth_fix_select_partition_with_insert",
+      "file": "select.go",
+      "status": "pending",
+      "description": "Fix batch 4/22 gap: PARTITION clause on table references (SELECT ... FROM t PARTITION (p0, p1)), WITH ... INSERT support, set operation INTERSECT precedence over UNION/EXCEPT",
+      "rules": [
+        "parseTableRefWithAlias",
+        "parseWithStmt",
+        "parseSetOperation"
+      ],
+      "depends_on": [
+        4,
+        22
+      ],
+      "tests": [
+        "TestParseSelectPartition",
+        "TestParseWithInsert",
+        "TestParseIntersectPrecedence"
+      ]
+    },
+    {
+      "id": 67,
+      "name": "depth_fix_create_table_constraints_ctas",
+      "file": "create_table.go",
+      "status": "pending",
+      "description": "Fix batch 7 gap: index_option parsing on table-level constraints (USING, KEY_BLOCK_SIZE, COMMENT, VISIBLE/INVISIBLE), IGNORE/REPLACE before SELECT in CTAS, bare SELECT (no AS) in CTAS, store LINEAR flag on partitions, store MATCH type on foreign keys",
+      "rules": [
+        "parseTableConstraint",
+        "parseCreateTableStmt",
+        "parsePartitionClause",
+        "parseReferenceDefinition"
+      ],
+      "depends_on": [
+        7,
+        59
+      ],
+      "tests": [
+        "TestParseCreateTableConstraintIndexOption",
+        "TestParseCreateTableIgnoreAsSelect",
+        "TestParseCreateTableBareSelect",
+        "TestParseCreateTableLinearHash",
+        "TestParseCreateTableFKMatch"
+      ]
+    },
+    {
+      "id": 68,
+      "name": "depth_fix_alter_table_default_constraint",
+      "file": "alter_table.go",
+      "status": "pending",
+      "description": "Fix batch 8 gap: ALTER COLUMN SET DEFAULT must consume the default value expression (currently skipped causing parse errors), ADD (multi-column) parenthesized form, ALTER CHECK/CONSTRAINT ENFORCED, DROP CONSTRAINT keyword",
+      "rules": [
+        "parseAlterColumn",
+        "parseAlterAdd",
+        "parseAlterDrop"
+      ],
+      "depends_on": [
+        8,
+        57,
+        58
+      ],
+      "tests": [
+        "TestParseAlterColumnSetDefault",
+        "TestParseAlterTableAddMultiColumn",
+        "TestParseAlterCheckEnforced",
+        "TestParseAlterTableDropConstraint"
+      ]
+    },
+    {
+      "id": 69,
+      "name": "depth_fix_grant_proxy_privileges",
+      "file": "grant.go",
+      "status": "pending",
+      "description": "Fix batch 15 gap: GRANT/REVOKE PROXY ON user, column-level privileges priv_type (column_list), multi-word privilege names (CREATE VIEW, ALTER ROUTINE, etc.), REVOKE ALL PRIVILEGES GRANT OPTION FROM user, IDENTIFIED WITH ... AS 'hash', ALTER USER IF EXISTS, ALTER USER DEFAULT ROLE",
+      "rules": [
+        "parseGrantStmt",
+        "parseRevokeStmt",
+        "parsePrivilegeName",
+        "parseUserSpec",
+        "parseAlterUserStmt"
+      ],
+      "depends_on": [
+        15,
+        55,
+        60,
+        61
+      ],
+      "tests": [
+        "TestParseGrantProxy",
+        "TestParseRevokeProxy",
+        "TestParseGrantColumnPrivilege",
+        "TestParseGrantMultiWordPrivilege",
+        "TestParseRevokeAllPrivileges",
+        "TestParseIdentifiedWithAs",
+        "TestParseAlterUserIfExists",
+        "TestParseAlterUserDefaultRole"
+      ]
+    },
+    {
+      "id": 70,
+      "name": "depth_fix_set_persist_show_full",
+      "file": "set_show.go",
+      "status": "pending",
+      "description": "Fix batch 13/32 gap: SET PERSIST and SET PERSIST_ONLY scopes, SHOW FULL TABLES, SHOW SCHEMAS/FIELDS synonyms, SHOW EXTENDED COLUMNS/FULL COLUMNS, SET CHARACTER SET error handling, EXPLAIN FOR CONNECTION",
+      "rules": [
+        "parseSetStmt",
+        "parseShowStmt",
+        "parseExplainStmt"
+      ],
+      "depends_on": [
+        13,
+        32,
+        40,
+        51
+      ],
+      "tests": [
+        "TestParseSetPersist",
+        "TestParseSetPersistOnly",
+        "TestParseShowFullTables",
+        "TestParseShowSchemas",
+        "TestParseShowFields",
+        "TestParseShowExtendedColumns",
+        "TestParseExplainForConnection"
+      ]
+    },
+    {
+      "id": 71,
+      "name": "depth_fix_analyze_histogram_flush",
+      "file": "utility.go",
+      "status": "pending",
+      "description": "Fix batch 20 gap: ANALYZE TABLE UPDATE HISTOGRAM ON col WITH N BUCKETS, ANALYZE TABLE DROP HISTOGRAM ON col, FLUSH TABLES WITH READ LOCK, FLUSH TABLES FOR EXPORT, FLUSH BINARY LOGS structured parsing, ALTER TABLESPACE SET ACTIVE/INACTIVE",
+      "rules": [
+        "parseAnalyzeTableStmt",
+        "parseFlushStmt",
+        "parseAlterTablespaceStmt"
+      ],
+      "depends_on": [
+        20,
+        37
+      ],
+      "tests": [
+        "TestParseAnalyzeTableUpdateHistogram",
+        "TestParseAnalyzeTableDropHistogram",
+        "TestParseFlushTablesWithReadLock",
+        "TestParseFlushTablesForExport",
+        "TestParseFlushBinaryLogs",
+        "TestParseAlterUndoTablespaceSetActive"
+      ]
+    },
+    {
+      "id": 72,
+      "name": "depth_fix_expr_group_concat",
+      "file": "expr.go",
+      "status": "pending",
+      "description": "Fix batch 3 gap: GROUP_CONCAT ORDER BY panics on non-column-ref expressions (unsafe type assertion to *nodes.ColumnRef). Should handle arbitrary expressions in ORDER BY clause.",
+      "rules": [
+        "parseGroupConcatFunc"
+      ],
+      "depends_on": [
+        3
+      ],
+      "tests": [
+        "TestParseGroupConcatOrderByExpr",
+        "TestParseGroupConcatOrderByFuncCall"
+      ]
+    },
+    {
+      "id": 73,
+      "name": "depth_fix_insert_update_delete_partition",
+      "file": "insert.go",
+      "status": "pending",
+      "description": "Fix batch 5/6 gap: INSERT/REPLACE PARTITION clause, INSERT AS row_alias (MySQL 8.0.19+), DELETE PARTITION clause, DELETE table alias, WITH CTE before UPDATE/DELETE dispatch",
+      "rules": [
+        "parseInsertOrReplace",
+        "parseDeleteStmt",
+        "parseUpdateStmt"
+      ],
+      "depends_on": [
+        5,
+        6
+      ],
+      "tests": [
+        "TestParseInsertPartition",
+        "TestParseInsertAsRowAlias",
+        "TestParseDeletePartition",
+        "TestParseDeleteTableAlias",
+        "TestParseWithUpdate",
+        "TestParseWithDelete"
+      ]
+    },
+    {
+      "id": 74,
+      "name": "depth_fix_replication_misc",
+      "file": "replication.go",
+      "status": "pending",
+      "description": "Fix batch 43/44/47 gap: PURGE BINARY LOGS BEFORE datetime expression parsing, START REPLICA UNTIL GTID set string parsing, CACHE INDEX with PARTITION and index list clauses",
+      "rules": [
+        "parsePurgeBinaryLogsStmt",
+        "parseStartReplicaStmt",
+        "parseCacheIndexStmt"
+      ],
+      "depends_on": [
+        43,
+        44,
+        47
+      ],
+      "tests": [
+        "TestParsePurgeBinaryLogsBeforeDatetime",
+        "TestParseStartReplicaUntilGtid",
+        "TestParseCacheIndexPartition"
+      ]
     }
   ],
-  "audit_round": 7
+  "audit_round": 8
 }

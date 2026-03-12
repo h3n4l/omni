@@ -12,6 +12,10 @@ type SelectStmt struct {
 	CalcFoundRows bool               // SQL_CALC_FOUND_ROWS
 	HighPriority  bool               // HIGH_PRIORITY
 	StraightJoin  bool               // STRAIGHT_JOIN hint
+	SmallResult   bool               // SQL_SMALL_RESULT
+	BigResult     bool               // SQL_BIG_RESULT
+	BufferResult  bool               // SQL_BUFFER_RESULT
+	NoCache       bool               // SQL_NO_CACHE
 	TargetList    []ExprNode         // select expressions (ResTarget)
 	From          []TableExpr        // FROM clause (TableRef / JoinClause)
 	Where         ExprNode           // WHERE condition
@@ -956,21 +960,31 @@ const (
 
 // IntoClause represents a SELECT ... INTO clause.
 type IntoClause struct {
-	Loc      Loc
-	Outfile  string
-	Dumpfile string
-	Vars     []*VariableRef
+	Loc                  Loc
+	Outfile              string
+	Dumpfile             string
+	Vars                 []*VariableRef
+	Charset              string // CHARACTER SET charset_name
+	FieldsTerminatedBy   string // FIELDS TERMINATED BY 'string'
+	FieldsEnclosedBy     string // [OPTIONALLY] ENCLOSED BY 'char'
+	FieldsOptionalEncl   bool   // OPTIONALLY keyword before ENCLOSED BY
+	FieldsEscapedBy      string // ESCAPED BY 'char'
+	LinesStartingBy      string // LINES STARTING BY 'string'
+	LinesTerminatedBy    string // LINES TERMINATED BY 'string'
+	HasFieldsClause      bool   // true if FIELDS/COLUMNS clause present
+	HasLinesClause       bool   // true if LINES clause present
 }
 
 func (c *IntoClause) nodeTag() {}
 
 // ForUpdate represents FOR UPDATE / FOR SHARE.
 type ForUpdate struct {
-	Loc        Loc
-	Share      bool // FOR SHARE instead of FOR UPDATE
-	Tables     []*TableRef
-	NoWait     bool
-	SkipLocked bool
+	Loc             Loc
+	Share           bool // FOR SHARE instead of FOR UPDATE
+	LockInShareMode bool // LOCK IN SHARE MODE (legacy syntax)
+	Tables          []*TableRef
+	NoWait          bool
+	SkipLocked      bool
 }
 
 func (f *ForUpdate) nodeTag() {}

@@ -180,6 +180,22 @@ func (p *Parser) parseSelectStmt() (*nodes.SelectStmt, error) {
 			stmt.CalcFoundRows = true
 			p.advance()
 			continue
+		case kwSQL_SMALL_RESULT:
+			stmt.SmallResult = true
+			p.advance()
+			continue
+		case kwSQL_BIG_RESULT:
+			stmt.BigResult = true
+			p.advance()
+			continue
+		case kwSQL_BUFFER_RESULT:
+			stmt.BufferResult = true
+			p.advance()
+			continue
+		case kwSQL_NO_CACHE:
+			stmt.NoCache = true
+			p.advance()
+			continue
 		}
 		break
 	}
@@ -190,6 +206,16 @@ func (p *Parser) parseSelectStmt() (*nodes.SelectStmt, error) {
 		return nil, err
 	}
 	stmt.TargetList = targets
+
+	// INTO clause (position 1: after select_expr, before FROM)
+	if p.cur.Type == kwINTO {
+		p.advance()
+		into, err := p.parseIntoClause()
+		if err != nil {
+			return nil, err
+		}
+		stmt.Into = into
+	}
 
 	// FROM clause
 	if _, ok := p.match(kwFROM); ok {
@@ -271,17 +297,24 @@ func (p *Parser) parseSelectStmt() (*nodes.SelectStmt, error) {
 		stmt.Limit = limit
 	}
 
-	// FOR UPDATE / FOR SHARE
+	// FOR UPDATE / FOR SHARE / LOCK IN SHARE MODE
 	if p.cur.Type == kwFOR {
 		fu, err := p.parseForUpdateClause()
 		if err != nil {
 			return nil, err
 		}
 		stmt.ForUpdate = fu
+	} else if p.cur.Type == kwLOCK {
+		fu, err := p.parseLockInShareMode()
+		if err != nil {
+			return nil, err
+		}
+		stmt.ForUpdate = fu
 	}
 
-	// INTO clause
-	if _, ok := p.match(kwINTO); ok {
+	// INTO clause (position 3: after locking clause)
+	if p.cur.Type == kwINTO && stmt.Into == nil {
+		p.advance()
 		into, err := p.parseIntoClause()
 		if err != nil {
 			return nil, err
@@ -357,7 +390,7 @@ func (p *Parser) isSelectTerminator() bool {
 	switch p.cur.Type {
 	case kwFROM, kwWHERE, kwGROUP, kwHAVING, kwORDER, kwLIMIT, kwFOR, kwINTO,
 		kwUNION, kwINTERSECT, kwEXCEPT, kwON, kwUSING, kwJOIN, kwINNER, kwLEFT,
-		kwRIGHT, kwCROSS, kwNATURAL, kwFULL, kwWINDOW, kwWITH, ';', tokEOF:
+		kwRIGHT, kwCROSS, kwNATURAL, kwFULL, kwWINDOW, kwWITH, kwLOCK, ';', tokEOF:
 		return true
 	}
 	return false
@@ -910,7 +943,49 @@ func (p *Parser) parseForUpdateClause() (*nodes.ForUpdate, error) {
 	return fu, nil
 }
 
+// parseLockInShareMode parses LOCK IN SHARE MODE (legacy syntax).
+//
+//	LOCK IN SHARE MODE
+func (p *Parser) parseLockInShareMode() (*nodes.ForUpdate, error) {
+	start := p.pos()
+	p.advance() // consume LOCK
+
+	if _, err := p.expect(kwIN); err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(kwSHARE); err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(kwMODE); err != nil {
+		return nil, err
+	}
+
+	return &nodes.ForUpdate{
+		Loc:             nodes.Loc{Start: start, End: p.pos()},
+		Share:           true,
+		LockInShareMode: true,
+	}, nil
+}
+
 // parseIntoClause parses INTO OUTFILE / DUMPFILE / var_list.
+//
+// Ref: https://dev.mysql.com/doc/refman/8.0/en/select.html
+//
+//	into_option: {
+//	    INTO OUTFILE 'file_name'
+//	        [CHARACTER SET charset_name]
+//	        [{FIELDS | COLUMNS}
+//	            [TERMINATED BY 'string']
+//	            [[OPTIONALLY] ENCLOSED BY 'char']
+//	            [ESCAPED BY 'char']
+//	        ]
+//	        [LINES
+//	            [STARTING BY 'string']
+//	            [TERMINATED BY 'string']
+//	        ]
+//	  | INTO DUMPFILE 'file_name'
+//	  | INTO var_name [, var_name] ...
+//	}
 func (p *Parser) parseIntoClause() (*nodes.IntoClause, error) {
 	start := p.pos()
 	into := &nodes.IntoClause{Loc: nodes.Loc{Start: start}}
@@ -922,6 +997,87 @@ func (p *Parser) parseIntoClause() (*nodes.IntoClause, error) {
 			into.Outfile = p.cur.Str
 			p.advance()
 		}
+
+		// [CHARACTER SET charset_name]
+		if p.cur.Type == kwCHARACTER {
+			p.advance()
+			p.match(kwSET)
+			if p.isIdentToken() || p.cur.Type == tokSCONST {
+				into.Charset, _, _ = p.parseIdentifier()
+			}
+		} else if p.cur.Type == kwCHARSET {
+			p.advance()
+			if p.isIdentToken() || p.cur.Type == tokSCONST {
+				into.Charset, _, _ = p.parseIdentifier()
+			}
+		}
+
+		// [{FIELDS | COLUMNS} ...]
+		if p.cur.Type == kwFIELDS || p.cur.Type == kwCOLUMNS {
+			p.advance()
+			into.HasFieldsClause = true
+
+			// [TERMINATED BY 'string']
+			if p.cur.Type == kwTERMINATED {
+				p.advance()
+				p.match(kwBY)
+				if p.cur.Type == tokSCONST {
+					into.FieldsTerminatedBy = p.cur.Str
+					p.advance()
+				}
+			}
+
+			// [[OPTIONALLY] ENCLOSED BY 'char']
+			if p.cur.Type == kwOPTIONALLY {
+				p.advance()
+				into.FieldsOptionalEncl = true
+			}
+			if p.cur.Type == kwENCLOSED {
+				p.advance()
+				p.match(kwBY)
+				if p.cur.Type == tokSCONST {
+					into.FieldsEnclosedBy = p.cur.Str
+					p.advance()
+				}
+			}
+
+			// [ESCAPED BY 'char']
+			if p.cur.Type == kwESCAPED {
+				p.advance()
+				p.match(kwBY)
+				if p.cur.Type == tokSCONST {
+					into.FieldsEscapedBy = p.cur.Str
+					p.advance()
+				}
+			}
+		}
+
+		// [LINES ...]
+		if p.cur.Type == kwLINES {
+			p.advance()
+			into.HasLinesClause = true
+
+			// [STARTING BY 'string']
+			if p.cur.Type == kwSTARTING {
+				p.advance()
+				p.match(kwBY)
+				if p.cur.Type == tokSCONST {
+					into.LinesStartingBy = p.cur.Str
+					p.advance()
+				}
+			}
+
+			// [TERMINATED BY 'string']
+			if p.cur.Type == kwTERMINATED {
+				p.advance()
+				p.match(kwBY)
+				if p.cur.Type == tokSCONST {
+					into.LinesTerminatedBy = p.cur.Str
+					p.advance()
+				}
+			}
+		}
+
 	case kwDUMPFILE:
 		p.advance()
 		if p.cur.Type == tokSCONST {

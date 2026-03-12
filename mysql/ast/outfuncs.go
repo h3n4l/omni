@@ -491,6 +491,18 @@ func writeSelectStmt(sb *strings.Builder, n *SelectStmt) {
 	if n.StraightJoin {
 		sb.WriteString(" :straight_join true")
 	}
+	if n.SmallResult {
+		sb.WriteString(" :small_result true")
+	}
+	if n.BigResult {
+		sb.WriteString(" :big_result true")
+	}
+	if n.BufferResult {
+		sb.WriteString(" :buffer_result true")
+	}
+	if n.NoCache {
+		sb.WriteString(" :no_cache true")
+	}
 	if len(n.TargetList) > 0 {
 		sb.WriteString(" :targets ")
 		writeExprNodeList(sb, n.TargetList)
@@ -2657,6 +2669,9 @@ func writeForUpdate(sb *strings.Builder, n *ForUpdate) {
 	if n.Share {
 		sb.WriteString(" :share true")
 	}
+	if n.LockInShareMode {
+		sb.WriteString(" :lock_in_share_mode true")
+	}
 	if len(n.Tables) > 0 {
 		sb.WriteString(" :tables ")
 		for i, t := range n.Tables {
@@ -2683,6 +2698,33 @@ func writeIntoClause(sb *strings.Builder, n *IntoClause) {
 	}
 	if n.Dumpfile != "" {
 		fmt.Fprintf(sb, " :dumpfile %q", n.Dumpfile)
+	}
+	if n.Charset != "" {
+		fmt.Fprintf(sb, " :charset %q", n.Charset)
+	}
+	if n.HasFieldsClause {
+		sb.WriteString(" :fields true")
+		if n.FieldsTerminatedBy != "" {
+			fmt.Fprintf(sb, " :fields_terminated_by %q", n.FieldsTerminatedBy)
+		}
+		if n.FieldsEnclosedBy != "" {
+			if n.FieldsOptionalEncl {
+				sb.WriteString(" :optionally true")
+			}
+			fmt.Fprintf(sb, " :fields_enclosed_by %q", n.FieldsEnclosedBy)
+		}
+		if n.FieldsEscapedBy != "" {
+			fmt.Fprintf(sb, " :fields_escaped_by %q", n.FieldsEscapedBy)
+		}
+	}
+	if n.HasLinesClause {
+		sb.WriteString(" :lines true")
+		if n.LinesStartingBy != "" {
+			fmt.Fprintf(sb, " :lines_starting_by %q", n.LinesStartingBy)
+		}
+		if n.LinesTerminatedBy != "" {
+			fmt.Fprintf(sb, " :lines_terminated_by %q", n.LinesTerminatedBy)
+		}
 	}
 	if len(n.Vars) > 0 {
 		sb.WriteString(" :vars ")
