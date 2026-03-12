@@ -1238,7 +1238,7 @@
       "name": "alter_rule",
       "file": "alter_misc.go",
       "status": "done",
-      "description": "New: ALTER RULE name ON table_name RENAME TO new_name. Width gap — ALTER RULE is not dispatched in parseStmt ALTER switch. Add case RULE to ALTER dispatch in parser.go, implement parseAlterRuleStmt producing RenameStmt with OBJECT_RULE. Ref: https://www.postgresql.org/docs/17/sql-alterrule.html",
+      "description": "New: ALTER RULE name ON table_name RENAME TO new_name. Width gap \u2014 ALTER RULE is not dispatched in parseStmt ALTER switch. Add case RULE to ALTER dispatch in parser.go, implement parseAlterRuleStmt producing RenameStmt with OBJECT_RULE. Ref: https://www.postgresql.org/docs/17/sql-alterrule.html",
       "rules": [
         "parseAlterRuleStmt"
       ],
@@ -1348,9 +1348,15 @@
       "file": "alter_misc.go",
       "status": "done",
       "description": "Fix batch 21 gap: parseAlterTriggerDependsOnExtension only handles [NO] DEPENDS ON EXTENSION variant. Missing ALTER TRIGGER name ON table_name RENAME TO new_name which produces RenameStmt with OBJECT_TRIGGER. Must dispatch on RENAME vs DEPENDS/NO after parsing trigger name and ON relation. Ref: https://www.postgresql.org/docs/17/sql-altertrigger.html",
-      "rules": ["parseAlterTriggerDependsOnExtension"],
-      "depends_on": [21],
-      "tests": ["alter_trigger_rename"]
+      "rules": [
+        "parseAlterTriggerDependsOnExtension"
+      ],
+      "depends_on": [
+        21
+      ],
+      "tests": [
+        "alter_trigger_rename"
+      ]
     },
     {
       "id": 53,
@@ -1358,9 +1364,15 @@
       "file": "extension.go",
       "status": "done",
       "description": "Fix batch 32 gap: parseAlterExtensionStmt only handles UPDATE, ADD, DROP. Missing ALTER EXTENSION name SET SCHEMA new_schema which produces AlterObjectSchemaStmt with OBJECT_EXTENSION. Must add SET case checking for SCHEMA keyword. Ref: https://www.postgresql.org/docs/17/sql-alterextension.html",
-      "rules": ["parseAlterExtensionStmt"],
-      "depends_on": [32],
-      "tests": ["alter_extension_set_schema"]
+      "rules": [
+        "parseAlterExtensionStmt"
+      ],
+      "depends_on": [
+        32
+      ],
+      "tests": [
+        "alter_extension_set_schema"
+      ]
     },
     {
       "id": 54,
@@ -1368,9 +1380,16 @@
       "file": "fdw.go",
       "status": "done",
       "description": "Fix batch 31 gap: parseAlterForeignServerStmt only handles VERSION and OPTIONS. Missing OWNER TO (AlterOwnerStmt with OBJECT_FOREIGN_SERVER) and RENAME TO (RenameStmt with OBJECT_FOREIGN_SERVER). Must add OWNER and RENAME cases before VERSION/OPTIONS dispatch. Ref: https://www.postgresql.org/docs/17/sql-alterserver.html",
-      "rules": ["parseAlterForeignServerStmt"],
-      "depends_on": [31],
-      "tests": ["alter_server_owner", "alter_server_rename"]
+      "rules": [
+        "parseAlterForeignServerStmt"
+      ],
+      "depends_on": [
+        31
+      ],
+      "tests": [
+        "alter_server_owner",
+        "alter_server_rename"
+      ]
     },
     {
       "id": 55,
@@ -1378,9 +1397,17 @@
       "file": "grant.go",
       "status": "done",
       "description": "Fix batch 18 gap: parseAlterRoleStmt missing RENAME TO (RenameStmt with OBJECT_ROLE). parseAlterGroupStmt missing RENAME TO (RenameStmt with OBJECT_ROLE). Must add RENAME case to both functions. ALTER USER RENAME TO is covered by parseAlterRoleStmt since ALTER USER dispatches there. Refs: https://www.postgresql.org/docs/17/sql-alterrole.html, https://www.postgresql.org/docs/17/sql-altergroup.html",
-      "rules": ["parseAlterRoleStmt", "parseAlterGroupStmt"],
-      "depends_on": [18],
-      "tests": ["alter_role_rename", "alter_group_rename"]
+      "rules": [
+        "parseAlterRoleStmt",
+        "parseAlterGroupStmt"
+      ],
+      "depends_on": [
+        18
+      ],
+      "tests": [
+        "alter_role_rename",
+        "alter_group_rename"
+      ]
     },
     {
       "id": 56,
@@ -1388,9 +1415,16 @@
       "file": "publication.go",
       "status": "done",
       "description": "Fix batch 33 gap: parseAlterPublicationStmt only handles SET/ADD/DROP. Missing OWNER TO (AlterOwnerStmt with OBJECT_PUBLICATION) and RENAME TO (RenameStmt with OBJECT_PUBLICATION). Must add OWNER and RENAME cases to the switch. Ref: https://www.postgresql.org/docs/17/sql-alterpublication.html",
-      "rules": ["parseAlterPublicationStmt"],
-      "depends_on": [33],
-      "tests": ["alter_publication_owner", "alter_publication_rename"]
+      "rules": [
+        "parseAlterPublicationStmt"
+      ],
+      "depends_on": [
+        33
+      ],
+      "tests": [
+        "alter_publication_owner",
+        "alter_publication_rename"
+      ]
     },
     {
       "id": 57,
@@ -1398,9 +1432,16 @@
       "file": "publication.go",
       "status": "done",
       "description": "Fix batch 33 gap: parseAlterSubscriptionStmt only handles SET/ADD/DROP/CONNECTION/REFRESH/ENABLE/DISABLE/SKIP. Missing OWNER TO (AlterOwnerStmt with OBJECT_SUBSCRIPTION) and RENAME TO (RenameStmt with OBJECT_SUBSCRIPTION). Must add OWNER and RENAME cases to the switch. Ref: https://www.postgresql.org/docs/17/sql-altersubscription.html",
-      "rules": ["parseAlterSubscriptionStmt"],
-      "depends_on": [33],
-      "tests": ["alter_subscription_owner", "alter_subscription_rename"]
+      "rules": [
+        "parseAlterSubscriptionStmt"
+      ],
+      "depends_on": [
+        33
+      ],
+      "tests": [
+        "alter_subscription_owner",
+        "alter_subscription_rename"
+      ]
     },
     {
       "id": 58,
@@ -1408,9 +1449,15 @@
       "file": "expr.go",
       "status": "done",
       "description": "Fix batch 3 gap: parseIsPostfix has a deferred stub for IS [NOT] [NFC|NFD|NFKC|NFKD] NORMALIZED that just returns left operand unchanged. Must produce a proper FuncCall to unicode_is_normalized(expr, form) or equivalent AST node. The unicode_normal_form rule is already implemented. Ref: https://www.postgresql.org/docs/17/functions-string.html",
-      "rules": ["parseIsPostfix"],
-      "depends_on": [3],
-      "tests": ["is_normalized"]
+      "rules": [
+        "parseIsPostfix"
+      ],
+      "depends_on": [
+        3
+      ],
+      "tests": [
+        "is_normalized"
+      ]
     },
     {
       "id": 59,
@@ -1418,9 +1465,16 @@
       "file": "fdw.go",
       "status": "done",
       "description": "Fix batch 31 gap: parseAlterFdwStmt only handles HANDLER/VALIDATOR/OPTIONS. Missing OWNER TO (AlterOwnerStmt with OBJECT_FDW) and RENAME TO (RenameStmt with OBJECT_FDW). Must add OWNER and RENAME cases before falling through to FDW options parsing, similar to pattern in parseAlterForeignServerStmt. Ref: https://www.postgresql.org/docs/17/sql-alterforeigndatawrapper.html",
-      "rules": ["parseAlterFdwStmt"],
-      "depends_on": [31],
-      "tests": ["alter_fdw_owner", "alter_fdw_rename"]
+      "rules": [
+        "parseAlterFdwStmt"
+      ],
+      "depends_on": [
+        31
+      ],
+      "tests": [
+        "alter_fdw_owner",
+        "alter_fdw_rename"
+      ]
     },
     {
       "id": 60,
@@ -1428,10 +1482,51 @@
       "file": "define.go",
       "status": "done",
       "description": "Fix batch 20 gap: parseAlterStatisticsStmt only handles SET STATISTICS value. Missing RENAME TO (RenameStmt with OBJECT_STATISTIC_EXT), OWNER TO (AlterOwnerStmt with OBJECT_STATISTIC_EXT), and SET SCHEMA (AlterObjectSchemaStmt with OBJECT_STATISTIC_EXT). Must dispatch on next token after name before expecting SET STATISTICS. Ref: https://www.postgresql.org/docs/17/sql-alterstatistics.html",
-      "rules": ["parseAlterStatisticsStmt"],
-      "depends_on": [20],
-      "tests": ["alter_statistics_rename", "alter_statistics_owner", "alter_statistics_set_schema"]
+      "rules": [
+        "parseAlterStatisticsStmt"
+      ],
+      "depends_on": [
+        20
+      ],
+      "tests": [
+        "alter_statistics_rename",
+        "alter_statistics_owner",
+        "alter_statistics_set_schema"
+      ]
+    },
+    {
+      "id": 61,
+      "name": "set_catalog_stmt",
+      "file": "set.go",
+      "status": "done",
+      "description": "Fix batch 23 gap: SET CATALOG Sconst returns nil instead of VariableSetStmt. Should construct VariableSetStmt with kind=VAR_SET_VALUE, name=\"catalog\"",
+      "rules": [
+        "parseSetRestMore"
+      ],
+      "depends_on": [
+        23
+      ],
+      "tests": [
+        "TestSetCatalog"
+      ]
+    },
+    {
+      "id": 62,
+      "name": "ext_oper_argtypes_unary",
+      "file": "extension.go",
+      "status": "done",
+      "description": "Fix batch 32 gap: parseExtOperArgtypes returns nil for single-argument operators (Typename) instead of list_make1(typ). Should return &nodes.List{Items: []nodes.Node{typ1}}",
+      "rules": [
+        "parseExtOperArgtypes"
+      ],
+      "depends_on": [
+        32
+      ],
+      "tests": [
+        "TestDropOperatorUnary",
+        "TestAlterOperatorUnary"
+      ]
     }
   ],
-  "audit_round": 4
+  "audit_round": 5
 }

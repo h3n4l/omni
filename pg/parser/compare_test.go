@@ -3403,3 +3403,44 @@ func TestCompareAlterStatisticsSetSchema(t *testing.T) {
 		})
 	}
 }
+
+func TestSetCatalog(t *testing.T) {
+	tests := []string{
+		"SET CATALOG 'test'",
+		"SET CATALOG 'mydb'",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+		})
+	}
+}
+
+func TestDropOperatorUnary(t *testing.T) {
+	tests := []string{
+		"DROP OPERATOR + (integer)",
+		"DROP OPERATOR + (NONE, integer)",
+		"DROP OPERATOR + (integer, NONE)",
+		"DROP OPERATOR IF EXISTS + (integer)",
+		"DROP OPERATOR + (integer) CASCADE",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+		})
+	}
+}
+
+func TestAlterOperatorUnary(t *testing.T) {
+	tests := []string{
+		"ALTER EXTENSION myext ADD OPERATOR + (integer)",
+		"ALTER EXTENSION myext DROP OPERATOR + (integer)",
+		"ALTER EXTENSION myext ADD OPERATOR + (NONE, integer)",
+		"ALTER EXTENSION myext ADD OPERATOR + (integer, NONE)",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+		})
+	}
+}

@@ -306,7 +306,7 @@ func (p *Parser) parseExtOperArgtypes() *nodes.List {
 	typ1, _ := p.parseTypename()
 	if p.cur.Type == ')' {
 		p.advance()
-		return nil
+		return &nodes.List{Items: []nodes.Node{typ1}}
 	}
 	p.expect(',')
 	if p.cur.Type == NONE {

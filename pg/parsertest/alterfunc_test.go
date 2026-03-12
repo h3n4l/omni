@@ -1,7 +1,6 @@
 package parsertest
 
 import (
-	"strings"
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
@@ -273,22 +272,16 @@ func TestDropOperatorIfExistsCascade(t *testing.T) {
 }
 
 // TestOperArgTypesSingleType tests that specifying only one type in oper_argtypes
-// produces a helpful error message rather than a generic "syntax error".
+// parses successfully (single-argument/unary operator syntax).
 func TestOperArgTypesSingleType(t *testing.T) {
-	// These should parse the production but produce an error (not "syntax error")
 	sqls := []string{
 		`DROP OPERATOR +(integer)`,
 		`DROP OPERATOR ~(integer)`,
 	}
 	for _, sql := range sqls {
 		_, err := yacc.Parse(sql)
-		// We expect an error, but NOT a generic "syntax error"
-		if err == nil {
-			t.Errorf("Expected error for %q, got nil", sql)
-			continue
-		}
-		if strings.Contains(err.Error(), "syntax error") {
-			t.Errorf("Got generic syntax error for %q instead of specific error: %v", sql, err)
+		if err != nil {
+			t.Errorf("Expected success for %q, got error: %v", sql, err)
 		}
 	}
 }

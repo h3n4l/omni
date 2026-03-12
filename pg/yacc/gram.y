@@ -12069,8 +12069,11 @@ set_rest_more:
 		}
 	| CATALOG_P Sconst
 		{
-			pglex.Error("current database cannot be changed")
-			$$ = nil
+			$$ = &nodes.VariableSetStmt{
+				Kind: nodes.VAR_SET_VALUE,
+				Name: "catalog",
+				Args: makeList(makeStringConst($2)),
+			}
 		}
 	| SCHEMA Sconst
 		{
@@ -13778,8 +13781,7 @@ operator_with_argtypes:
 oper_argtypes:
 	'(' Typename ')'
 		{
-			pglex.Error("missing argument, use NONE to denote the missing argument of a unary operator")
-			$$ = nil
+			$$ = &nodes.List{Items: []nodes.Node{$2}}
 		}
 	| '(' Typename ',' Typename ')'
 		{

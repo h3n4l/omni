@@ -126,11 +126,16 @@ func (p *Parser) parseSetRestMore() nodes.Node {
 		return n
 
 	case CATALOG_P:
-		// SET CATALOG is not supported; produce an error like PostgreSQL.
-		// For now, just parse it.
+		// SET CATALOG Sconst — SQL-standard syntax to change the current database.
+		// PostgreSQL parses this but rejects it at execution time.
 		p.advance() // consume CATALOG
+		s := p.cur.Str
 		p.expect(SCONST)
-		return nil
+		return &nodes.VariableSetStmt{
+			Kind: nodes.VAR_SET_VALUE,
+			Name: "catalog",
+			Args: &nodes.List{Items: []nodes.Node{makeStringConst(s)}},
+		}
 
 	case SCHEMA:
 		p.advance() // consume SCHEMA
