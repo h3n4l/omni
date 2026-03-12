@@ -705,7 +705,46 @@ func (p *Parser) matchJoinType() (nodes.JoinType, bool) {
 
 // parseForClause parses FOR XML or FOR JSON.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/relational-databases/xml/for-xml-sql-server
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/queries/select-for-clause-transact-sql
+//
+//	[ FOR { BROWSE | <XML> | <JSON> } ]
+//
+//	<XML> ::=
+//	XML
+//	{
+//	    { RAW [ ( 'ElementName' ) ] | AUTO }
+//	    [
+//	        <CommonDirectivesForXML>
+//	        [ , { XMLDATA | XMLSCHEMA [ ( 'TargetNameSpaceURI' ) ] } ]
+//	        [ , ELEMENTS [ XSINIL | ABSENT ] ]
+//	    ]
+//	  | EXPLICIT
+//	    [
+//	        <CommonDirectivesForXML>
+//	        [ , XMLDATA ]
+//	    ]
+//	  | PATH [ ( 'ElementName' ) ]
+//	    [
+//	        <CommonDirectivesForXML>
+//	        [ , ELEMENTS [ XSINIL | ABSENT ] ]
+//	    ]
+//	}
+//
+//	<CommonDirectivesForXML> ::=
+//	[ , BINARY BASE64 ]
+//	[ , TYPE ]
+//	[ , ROOT [ ( 'RootName' ) ] ]
+//
+//	<JSON> ::=
+//	JSON
+//	{
+//	    { AUTO | PATH }
+//	    [
+//	        [ , ROOT [ ( 'RootName' ) ] ]
+//	        [ , INCLUDE_NULL_VALUES ]
+//	        [ , WITHOUT_ARRAY_WRAPPER ]
+//	    ]
+//	}
 func (p *Parser) parseForClause() *nodes.ForClause {
 	loc := p.pos()
 	p.advance() // consume FOR
@@ -721,15 +760,18 @@ func (p *Parser) parseForClause() *nodes.ForClause {
 		if p.isIdentLike() || p.cur.Type == kwRAW || p.cur.Type == kwPATH {
 			fc.SubMode = strings.ToUpper(p.cur.Str)
 			p.advance()
-			// PATH('element')
+			// RAW('ElementName') or PATH('ElementName')
 			if p.cur.Type == '(' {
 				p.advance()
-				if p.cur.Type != ')' {
-					p.parseExpr() // consume the argument
+				if p.cur.Type == tokSCONST {
+					fc.ElementName = p.cur.Str
+					p.advance()
 				}
 				_, _ = p.expect(')')
 			}
 		}
+		// Parse comma-separated XML options
+		p.parseForXmlOptions(fc)
 	} else if p.cur.Type == kwJSON {
 		fc.Mode = nodes.ForJSON
 		p.advance()
@@ -738,10 +780,98 @@ func (p *Parser) parseForClause() *nodes.ForClause {
 			fc.SubMode = strings.ToUpper(p.cur.Str)
 			p.advance()
 		}
+		// Parse comma-separated JSON options
+		p.parseForJsonOptions(fc)
 	}
 
 	fc.Loc.End = p.pos()
 	return fc
+}
+
+// parseForXmlOptions parses the comma-separated options after FOR XML {RAW|AUTO|EXPLICIT|PATH}.
+//
+//	[ , BINARY BASE64 ]
+//	[ , TYPE ]
+//	[ , ROOT [ ( 'RootName' ) ] ]
+//	[ , { XMLDATA | XMLSCHEMA [ ( 'TargetNameSpaceURI' ) ] } ]
+//	[ , ELEMENTS [ XSINIL | ABSENT ] ]
+func (p *Parser) parseForXmlOptions(fc *nodes.ForClause) {
+	for {
+		if _, ok := p.match(','); !ok {
+			return
+		}
+		switch {
+		case p.matchIdentCI("BINARY"):
+			// BINARY BASE64
+			p.matchIdentCI("BASE64")
+			fc.BinaryBase64 = true
+		case p.cur.Type == kwTYPE:
+			p.advance()
+			fc.Type = true
+		case p.matchIdentCI("ROOT"):
+			fc.Root = true
+			if p.cur.Type == '(' {
+				p.advance()
+				if p.cur.Type == tokSCONST {
+					fc.RootName = p.cur.Str
+					p.advance()
+				}
+				_, _ = p.expect(')')
+			}
+		case p.matchIdentCI("XMLDATA"):
+			fc.XmlData = true
+		case p.matchIdentCI("XMLSCHEMA"):
+			fc.XmlSchema = true
+			if p.cur.Type == '(' {
+				p.advance()
+				if p.cur.Type == tokSCONST {
+					fc.XmlSchemaURI = p.cur.Str
+					p.advance()
+				}
+				_, _ = p.expect(')')
+			}
+		case p.matchIdentCI("ELEMENTS"):
+			fc.Elements = true
+			if p.matchIdentCI("XSINIL") {
+				fc.ElementsMode = "XSINIL"
+			} else if p.matchIdentCI("ABSENT") {
+				fc.ElementsMode = "ABSENT"
+			}
+		default:
+			return
+		}
+	}
+}
+
+// parseForJsonOptions parses the comma-separated options after FOR JSON {AUTO|PATH}.
+//
+//	[ , ROOT [ ( 'RootName' ) ] ]
+//	[ , INCLUDE_NULL_VALUES ]
+//	[ , WITHOUT_ARRAY_WRAPPER ]
+func (p *Parser) parseForJsonOptions(fc *nodes.ForClause) {
+	for {
+		if _, ok := p.match(','); !ok {
+			return
+		}
+		switch {
+		case p.matchIdentCI("ROOT"):
+			fc.Root = true
+			if p.cur.Type == '(' {
+				p.advance()
+				if p.cur.Type == tokSCONST {
+					fc.RootName = p.cur.Str
+					p.advance()
+				}
+				_, _ = p.expect(')')
+			}
+		case p.matchIdentCI("INCLUDE_NULL_VALUES"):
+			fc.IncludeNullValues = true
+		case p.matchIdentCI("WITHOUT_ARRAY_WRAPPER"):
+			fc.WithoutArrayWrapper = true
+		default:
+			return
+		}
+	}
 }
 
 // parseExprList parses a comma-separated list of expressions.

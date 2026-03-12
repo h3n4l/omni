@@ -1768,7 +1768,7 @@
       "id": 74,
       "name": "for_xml_json_options",
       "file": "select.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 4 gap: parse FOR XML options (TYPE, ROOT('name'), ELEMENTS XSINIL/ABSENT, XMLDATA, XMLSCHEMA), FOR JSON options (ROOT('name'), INCLUDE_NULL_VALUES, WITHOUT_ARRAY_WRAPPER)",
       "rules": [
         "parseForXmlOptions",

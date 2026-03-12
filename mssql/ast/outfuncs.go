@@ -2057,9 +2057,41 @@ func writeForClause(sb *strings.Builder, n *ForClause) {
 	if n.SubMode != "" {
 		sb.WriteString(fmt.Sprintf(" :subMode \"%s\"", escapeString(n.SubMode)))
 	}
-	if n.Options != nil {
-		sb.WriteString(" :options ")
-		writeNode(sb, n.Options)
+	if n.ElementName != "" {
+		sb.WriteString(fmt.Sprintf(" :elementName \"%s\"", escapeString(n.ElementName)))
+	}
+	if n.BinaryBase64 {
+		sb.WriteString(" :binaryBase64 true")
+	}
+	if n.Type {
+		sb.WriteString(" :type true")
+	}
+	if n.Root {
+		sb.WriteString(" :root true")
+		if n.RootName != "" {
+			sb.WriteString(fmt.Sprintf(" :rootName \"%s\"", escapeString(n.RootName)))
+		}
+	}
+	if n.Elements {
+		sb.WriteString(" :elements true")
+		if n.ElementsMode != "" {
+			sb.WriteString(fmt.Sprintf(" :elementsMode \"%s\"", escapeString(n.ElementsMode)))
+		}
+	}
+	if n.XmlData {
+		sb.WriteString(" :xmlData true")
+	}
+	if n.XmlSchema {
+		sb.WriteString(" :xmlSchema true")
+		if n.XmlSchemaURI != "" {
+			sb.WriteString(fmt.Sprintf(" :xmlSchemaURI \"%s\"", escapeString(n.XmlSchemaURI)))
+		}
+	}
+	if n.IncludeNullValues {
+		sb.WriteString(" :includeNullValues true")
+	}
+	if n.WithoutArrayWrapper {
+		sb.WriteString(" :withoutArrayWrapper true")
 	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

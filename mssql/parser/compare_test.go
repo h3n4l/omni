@@ -6928,3 +6928,310 @@ func TestParseWindowFrame(t *testing.T) {
 		})
 	}
 }
+
+func TestParseForXmlJsonOptions(t *testing.T) {
+	t.Run("for_xml_type_root", func(t *testing.T) {
+		tests := []struct {
+			sql  string
+			mode ast.ForMode
+			sub  string
+			chk  func(t *testing.T, fc *ast.ForClause)
+		}{
+			{
+				sql:  "SELECT col1 FROM t FOR XML RAW, TYPE",
+				mode: ast.ForXML, sub: "RAW",
+				chk: func(t *testing.T, fc *ast.ForClause) {
+					if !fc.Type {
+						t.Error("expected Type=true")
+					}
+				},
+			},
+			{
+				sql:  "SELECT col1 FROM t FOR XML RAW('Element'), TYPE, ROOT('MyRoot')",
+				mode: ast.ForXML, sub: "RAW",
+				chk: func(t *testing.T, fc *ast.ForClause) {
+					if fc.ElementName != "Element" {
+						t.Errorf("expected ElementName='Element', got %q", fc.ElementName)
+					}
+					if !fc.Type {
+						t.Error("expected Type=true")
+					}
+					if !fc.Root {
+						t.Error("expected Root=true")
+					}
+					if fc.RootName != "MyRoot" {
+						t.Errorf("expected RootName='MyRoot', got %q", fc.RootName)
+					}
+				},
+			},
+			{
+				sql:  "SELECT col1 FROM t FOR XML AUTO, ROOT",
+				mode: ast.ForXML, sub: "AUTO",
+				chk: func(t *testing.T, fc *ast.ForClause) {
+					if !fc.Root {
+						t.Error("expected Root=true")
+					}
+					if fc.RootName != "" {
+						t.Errorf("expected empty RootName, got %q", fc.RootName)
+					}
+				},
+			},
+			{
+				sql:  "SELECT col1 FROM t FOR XML PATH('row'), ROOT('data'), TYPE",
+				mode: ast.ForXML, sub: "PATH",
+				chk: func(t *testing.T, fc *ast.ForClause) {
+					if fc.ElementName != "row" {
+						t.Errorf("expected ElementName='row', got %q", fc.ElementName)
+					}
+					if !fc.Root {
+						t.Error("expected Root=true")
+					}
+					if fc.RootName != "data" {
+						t.Errorf("expected RootName='data', got %q", fc.RootName)
+					}
+					if !fc.Type {
+						t.Error("expected Type=true")
+					}
+				},
+			},
+			{
+				sql:  "SELECT col1 FROM t FOR XML AUTO, BINARY BASE64",
+				mode: ast.ForXML, sub: "AUTO",
+				chk: func(t *testing.T, fc *ast.ForClause) {
+					if !fc.BinaryBase64 {
+						t.Error("expected BinaryBase64=true")
+					}
+				},
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.sql, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				stmt := result.Items[0].(*ast.SelectStmt)
+				if stmt.ForClause == nil {
+					t.Fatal("expected non-nil ForClause")
+				}
+				fc := stmt.ForClause
+				if fc.Mode != tt.mode {
+					t.Errorf("expected mode %d, got %d", tt.mode, fc.Mode)
+				}
+				if fc.SubMode != tt.sub {
+					t.Errorf("expected subMode %q, got %q", tt.sub, fc.SubMode)
+				}
+				tt.chk(t, fc)
+			})
+		}
+	})
+
+	t.Run("for_xml_elements", func(t *testing.T) {
+		tests := []struct {
+			sql  string
+			chk  func(t *testing.T, fc *ast.ForClause)
+		}{
+			{
+				sql: "SELECT col1 FROM t FOR XML RAW, ELEMENTS",
+				chk: func(t *testing.T, fc *ast.ForClause) {
+					if !fc.Elements {
+						t.Error("expected Elements=true")
+					}
+					if fc.ElementsMode != "" {
+						t.Errorf("expected empty ElementsMode, got %q", fc.ElementsMode)
+					}
+				},
+			},
+			{
+				sql: "SELECT col1 FROM t FOR XML AUTO, ELEMENTS XSINIL",
+				chk: func(t *testing.T, fc *ast.ForClause) {
+					if !fc.Elements {
+						t.Error("expected Elements=true")
+					}
+					if fc.ElementsMode != "XSINIL" {
+						t.Errorf("expected ElementsMode='XSINIL', got %q", fc.ElementsMode)
+					}
+				},
+			},
+			{
+				sql: "SELECT col1 FROM t FOR XML PATH('row'), ELEMENTS ABSENT",
+				chk: func(t *testing.T, fc *ast.ForClause) {
+					if !fc.Elements {
+						t.Error("expected Elements=true")
+					}
+					if fc.ElementsMode != "ABSENT" {
+						t.Errorf("expected ElementsMode='ABSENT', got %q", fc.ElementsMode)
+					}
+				},
+			},
+			{
+				sql: "SELECT col1 FROM t FOR XML RAW, XMLDATA",
+				chk: func(t *testing.T, fc *ast.ForClause) {
+					if !fc.XmlData {
+						t.Error("expected XmlData=true")
+					}
+				},
+			},
+			{
+				sql: "SELECT col1 FROM t FOR XML AUTO, XMLSCHEMA",
+				chk: func(t *testing.T, fc *ast.ForClause) {
+					if !fc.XmlSchema {
+						t.Error("expected XmlSchema=true")
+					}
+					if fc.XmlSchemaURI != "" {
+						t.Errorf("expected empty XmlSchemaURI, got %q", fc.XmlSchemaURI)
+					}
+				},
+			},
+			{
+				sql: "SELECT col1 FROM t FOR XML AUTO, XMLSCHEMA('http://example.com/ns')",
+				chk: func(t *testing.T, fc *ast.ForClause) {
+					if !fc.XmlSchema {
+						t.Error("expected XmlSchema=true")
+					}
+					if fc.XmlSchemaURI != "http://example.com/ns" {
+						t.Errorf("expected XmlSchemaURI='http://example.com/ns', got %q", fc.XmlSchemaURI)
+					}
+				},
+			},
+			{
+				sql: "SELECT col1 FROM t FOR XML EXPLICIT, XMLDATA",
+				chk: func(t *testing.T, fc *ast.ForClause) {
+					if fc.SubMode != "EXPLICIT" {
+						t.Errorf("expected SubMode='EXPLICIT', got %q", fc.SubMode)
+					}
+					if !fc.XmlData {
+						t.Error("expected XmlData=true")
+					}
+				},
+			},
+			{
+				sql: "SELECT col1 FROM t FOR XML AUTO, TYPE, ROOT('root'), ELEMENTS XSINIL",
+				chk: func(t *testing.T, fc *ast.ForClause) {
+					if !fc.Type {
+						t.Error("expected Type=true")
+					}
+					if !fc.Root {
+						t.Error("expected Root=true")
+					}
+					if fc.RootName != "root" {
+						t.Errorf("expected RootName='root', got %q", fc.RootName)
+					}
+					if !fc.Elements {
+						t.Error("expected Elements=true")
+					}
+					if fc.ElementsMode != "XSINIL" {
+						t.Errorf("expected ElementsMode='XSINIL', got %q", fc.ElementsMode)
+					}
+				},
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.sql, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				stmt := result.Items[0].(*ast.SelectStmt)
+				if stmt.ForClause == nil {
+					t.Fatal("expected non-nil ForClause")
+				}
+				tt.chk(t, stmt.ForClause)
+			})
+		}
+	})
+
+	t.Run("for_json_root", func(t *testing.T) {
+		tests := []struct {
+			sql  string
+			chk  func(t *testing.T, fc *ast.ForClause)
+		}{
+			{
+				sql: "SELECT col1 FROM t FOR JSON PATH, ROOT('data')",
+				chk: func(t *testing.T, fc *ast.ForClause) {
+					if fc.SubMode != "PATH" {
+						t.Errorf("expected SubMode='PATH', got %q", fc.SubMode)
+					}
+					if !fc.Root {
+						t.Error("expected Root=true")
+					}
+					if fc.RootName != "data" {
+						t.Errorf("expected RootName='data', got %q", fc.RootName)
+					}
+				},
+			},
+			{
+				sql: "SELECT col1 FROM t FOR JSON AUTO, ROOT",
+				chk: func(t *testing.T, fc *ast.ForClause) {
+					if fc.SubMode != "AUTO" {
+						t.Errorf("expected SubMode='AUTO', got %q", fc.SubMode)
+					}
+					if !fc.Root {
+						t.Error("expected Root=true")
+					}
+				},
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.sql, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				stmt := result.Items[0].(*ast.SelectStmt)
+				if stmt.ForClause == nil {
+					t.Fatal("expected non-nil ForClause")
+				}
+				if stmt.ForClause.Mode != ast.ForJSON {
+					t.Error("expected ForJSON mode")
+				}
+				tt.chk(t, stmt.ForClause)
+			})
+		}
+	})
+
+	t.Run("for_json_options", func(t *testing.T) {
+		tests := []struct {
+			sql  string
+			chk  func(t *testing.T, fc *ast.ForClause)
+		}{
+			{
+				sql: "SELECT col1 FROM t FOR JSON PATH, INCLUDE_NULL_VALUES",
+				chk: func(t *testing.T, fc *ast.ForClause) {
+					if !fc.IncludeNullValues {
+						t.Error("expected IncludeNullValues=true")
+					}
+				},
+			},
+			{
+				sql: "SELECT col1 FROM t FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER",
+				chk: func(t *testing.T, fc *ast.ForClause) {
+					if !fc.WithoutArrayWrapper {
+						t.Error("expected WithoutArrayWrapper=true")
+					}
+				},
+			},
+			{
+				sql: "SELECT col1 FROM t FOR JSON PATH, ROOT('result'), INCLUDE_NULL_VALUES, WITHOUT_ARRAY_WRAPPER",
+				chk: func(t *testing.T, fc *ast.ForClause) {
+					if !fc.Root {
+						t.Error("expected Root=true")
+					}
+					if fc.RootName != "result" {
+						t.Errorf("expected RootName='result', got %q", fc.RootName)
+					}
+					if !fc.IncludeNullValues {
+						t.Error("expected IncludeNullValues=true")
+					}
+					if !fc.WithoutArrayWrapper {
+						t.Error("expected WithoutArrayWrapper=true")
+					}
+				},
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.sql, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				stmt := result.Items[0].(*ast.SelectStmt)
+				if stmt.ForClause == nil {
+					t.Fatal("expected non-nil ForClause")
+				}
+				if stmt.ForClause.Mode != ast.ForJSON {
+					t.Error("expected ForJSON mode")
+				}
+				tt.chk(t, stmt.ForClause)
+			})
+		}
+	})
+}

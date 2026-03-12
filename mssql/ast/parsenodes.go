@@ -92,8 +92,28 @@ func (n *FetchClause) nodeTag() {}
 type ForClause struct {
 	Mode    ForMode // XML or JSON
 	SubMode string  // RAW, AUTO, PATH, EXPLICIT (XML) or AUTO, PATH (JSON)
-	Options *List   // FOR XML options or FOR JSON options
-	Loc     Loc
+
+	// Element name for RAW('name') or PATH('name')
+	ElementName string
+
+	// Common directives
+	BinaryBase64 bool   // BINARY BASE64
+	Type         bool   // TYPE
+	Root         bool   // ROOT [('name')]
+	RootName     string // optional name for ROOT('name')
+
+	// XML-specific options
+	Elements       bool   // ELEMENTS
+	ElementsMode   string // "" (default), "XSINIL", "ABSENT"
+	XmlData        bool   // XMLDATA
+	XmlSchema      bool   // XMLSCHEMA [('TargetNameSpaceURI')]
+	XmlSchemaURI   string // optional target namespace URI
+
+	// JSON-specific options
+	IncludeNullValues   bool // INCLUDE_NULL_VALUES
+	WithoutArrayWrapper bool // WITHOUT_ARRAY_WRAPPER
+
+	Loc Loc
 }
 
 func (n *ForClause) nodeTag() {}
