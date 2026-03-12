@@ -1156,5 +1156,6 @@
         "alter_tablespace_opts"
       ]
     }
-  ]
+  ],
+  "audit_round": 0
 }
