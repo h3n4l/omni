@@ -2718,6 +2718,42 @@ func TestCompareAlterGeneric(t *testing.T) {
 	}
 }
 
+// TestCompareDropFuncArgtypes runs DROP FUNCTION/PROCEDURE/ROUTINE/AGGREGATE with argtypes comparison tests for batch 40.
+func TestCompareDropFuncArgtypes(t *testing.T) {
+	tests := []string{
+		// DROP FUNCTION with argtypes
+		"DROP FUNCTION myfunc(integer, text)",
+		"DROP FUNCTION myfunc()",
+		"DROP FUNCTION IF EXISTS myfunc(integer)",
+		"DROP FUNCTION myfunc(integer) CASCADE",
+		// DROP FUNCTION without argtypes (args_unspecified)
+		"DROP FUNCTION myfunc",
+		// DROP FUNCTION with schema-qualified name
+		"DROP FUNCTION myschema.myfunc(integer, text)",
+		// Multiple functions
+		"DROP FUNCTION myfunc(integer), myfunc(text)",
+		// DROP PROCEDURE
+		"DROP PROCEDURE myproc(integer, text)",
+		"DROP PROCEDURE IF EXISTS myproc(integer)",
+		// DROP ROUTINE
+		"DROP ROUTINE myroutine(integer)",
+		"DROP ROUTINE IF EXISTS myroutine(integer, text) CASCADE",
+		// DROP AGGREGATE
+		"DROP AGGREGATE myagg(*)",
+		"DROP AGGREGATE myagg(integer)",
+		"DROP AGGREGATE IF EXISTS myagg(integer) CASCADE",
+		// DROP AGGREGATE with ORDER BY (direct args, aggregated args)
+		"DROP AGGREGATE myagg(integer ORDER BY integer)",
+		// Multiple aggregates
+		"DROP AGGREGATE myagg(integer), myagg(text)",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			CompareWithYacc(t, sql)
+		})
+	}
+}
+
 // TestCompareDropOperator runs DROP OPERATOR comparison tests for batch 39.
 func TestCompareDropOperator(t *testing.T) {
 	tests := []string{

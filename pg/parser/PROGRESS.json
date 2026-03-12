@@ -1124,7 +1124,7 @@
       "id": 40,
       "name": "drop_func_argtypes",
       "file": "drop.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix DROP FUNCTION/PROCEDURE/ROUTINE/AGGREGATE to use function_with_argtypes_list instead of any_name_list. The yacc grammar (RemoveFuncStmt, RemoveAggrStmt) parses argument types like DROP FUNCTION foo(integer, text). Current parseDropAnyNameList only parses names without arg types. Refs: https://www.postgresql.org/docs/17/sql-dropfunction.html, https://www.postgresql.org/docs/17/sql-dropprocedure.html, https://www.postgresql.org/docs/17/sql-dropaggregate.html",
       "rules": [
         "RemoveFuncStmt",

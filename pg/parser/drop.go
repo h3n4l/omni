@@ -51,13 +51,13 @@ func (p *Parser) parseDropStmt() nodes.Node {
 	case EXTENSION:
 		return p.parseDropNameList(nodes.OBJECT_EXTENSION)
 	case FUNCTION:
-		return p.parseDropAnyNameList(nodes.OBJECT_FUNCTION)
+		return p.parseDropFuncStmt(nodes.OBJECT_FUNCTION)
 	case PROCEDURE:
-		return p.parseDropAnyNameList(nodes.OBJECT_PROCEDURE)
+		return p.parseDropFuncStmt(nodes.OBJECT_PROCEDURE)
 	case ROUTINE:
-		return p.parseDropAnyNameList(nodes.OBJECT_ROUTINE)
+		return p.parseDropFuncStmt(nodes.OBJECT_ROUTINE)
 	case AGGREGATE:
-		return p.parseDropAnyNameList(nodes.OBJECT_AGGREGATE)
+		return p.parseDropAggrStmt()
 	case TRIGGER:
 		return p.parseDropOnObject(nodes.OBJECT_TRIGGER)
 	case POLICY:
@@ -601,4 +601,68 @@ func (p *Parser) parseOperatorWithArgtypes() *nodes.ObjectWithArgs {
 	owa := &nodes.ObjectWithArgs{Objname: opName}
 	owa.Objargs = p.parseOperArgtypes()
 	return owa
+}
+
+// parseDropFuncStmt parses DROP FUNCTION/PROCEDURE/ROUTINE (RemoveFuncStmt).
+// Current token is FUNCTION/PROCEDURE/ROUTINE.
+//
+//	DROP FUNCTION [IF EXISTS] function_with_argtypes_list [CASCADE|RESTRICT]
+//	DROP PROCEDURE [IF EXISTS] function_with_argtypes_list [CASCADE|RESTRICT]
+//	DROP ROUTINE [IF EXISTS] function_with_argtypes_list [CASCADE|RESTRICT]
+func (p *Parser) parseDropFuncStmt(objType nodes.ObjectType) nodes.Node {
+	p.advance() // consume FUNCTION/PROCEDURE/ROUTINE
+
+	missingOk := p.parseOptIfExists()
+
+	objects := p.parseFunctionWithArgtypesList()
+	behavior := p.parseOptDropBehavior()
+
+	return &nodes.DropStmt{
+		RemoveType: int(objType),
+		Objects:    objects,
+		Behavior:   int(behavior),
+		Missing_ok: missingOk,
+	}
+}
+
+// parseFunctionWithArgtypesList parses a comma-separated list of function_with_argtypes.
+func (p *Parser) parseFunctionWithArgtypesList() *nodes.List {
+	fwa := p.parseFunctionWithArgtypes()
+	items := []nodes.Node{fwa}
+	for p.cur.Type == ',' {
+		p.advance()
+		items = append(items, p.parseFunctionWithArgtypes())
+	}
+	return &nodes.List{Items: items}
+}
+
+// parseDropAggrStmt parses DROP AGGREGATE (RemoveAggrStmt).
+// Current token is AGGREGATE.
+//
+//	DROP AGGREGATE [IF EXISTS] aggregate_with_argtypes_list [CASCADE|RESTRICT]
+func (p *Parser) parseDropAggrStmt() nodes.Node {
+	p.advance() // consume AGGREGATE
+
+	missingOk := p.parseOptIfExists()
+
+	objects := p.parseAggregateWithArgtypesList()
+	behavior := p.parseOptDropBehavior()
+
+	return &nodes.DropStmt{
+		RemoveType: int(nodes.OBJECT_AGGREGATE),
+		Objects:    objects,
+		Behavior:   int(behavior),
+		Missing_ok: missingOk,
+	}
+}
+
+// parseAggregateWithArgtypesList parses a comma-separated list of aggregate_with_argtypes.
+func (p *Parser) parseAggregateWithArgtypesList() *nodes.List {
+	agg := p.parseAggregateWithArgtypesLocal()
+	items := []nodes.Node{agg}
+	for p.cur.Type == ',' {
+		p.advance()
+		items = append(items, p.parseAggregateWithArgtypesLocal())
+	}
+	return &nodes.List{Items: items}
 }
