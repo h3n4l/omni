@@ -273,9 +273,15 @@ func (p *Parser) parseAddition() nodes.ExprNode {
 			Loc:   nodes.Loc{Start: loc},
 		}
 	}
-	// Postfix COLLATE
-	if p.cur.Type == kwCOLLATE {
-		left = p.parseCollateExpr(left)
+	// Postfix COLLATE / AT TIME ZONE (may be chained)
+	for {
+		if p.cur.Type == kwCOLLATE {
+			left = p.parseCollateExpr(left)
+		} else if p.cur.Type == kwAT {
+			left = p.parseAtTimeZoneExpr(left)
+		} else {
+			break
+		}
 	}
 	return left
 }
@@ -304,6 +310,35 @@ func (p *Parser) parseCollateExpr(expr nodes.ExprNode) nodes.ExprNode {
 		Expr:      expr,
 		Collation: collation,
 		Loc:       nodes.Loc{Start: loc},
+	}
+	node.Loc.End = p.pos()
+	return node
+}
+
+// parseAtTimeZoneExpr parses a postfix AT TIME ZONE expression.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/queries/at-time-zone-transact-sql
+//
+//	inputdate AT TIME ZONE timezone
+//
+// Can be chained: expr AT TIME ZONE 'UTC' AT TIME ZONE 'Pacific Standard Time'
+func (p *Parser) parseAtTimeZoneExpr(expr nodes.ExprNode) nodes.ExprNode {
+	loc := p.pos()
+	p.advance() // consume AT
+	if p.cur.Type != kwTIME {
+		// Not AT TIME ZONE — return original expression
+		// (AT used in some other context is handled elsewhere)
+		return expr
+	}
+	p.advance() // consume TIME
+	if _, err := p.expect(kwZONE); err != nil {
+		return expr
+	}
+	tz := p.parseMultiplication()
+	node := &nodes.AtTimeZoneExpr{
+		Expr:     expr,
+		TimeZone: tz,
+		Loc:      nodes.Loc{Start: loc},
 	}
 	node.Loc.End = p.pos()
 	return node

@@ -1984,7 +1984,7 @@
       "id": 85,
       "name": "at_time_zone",
       "file": "expr.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 3 gap: parse AT TIME ZONE postfix expression (datetime_expr AT TIME ZONE 'timezone_name'). Can be chained: expr AT TIME ZONE 'UTC' AT TIME ZONE 'Pacific Standard Time'.",
       "rules": [
         "parseAtTimeZone"

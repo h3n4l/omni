@@ -8967,3 +8967,70 @@ func TestParseCollateExpression(t *testing.T) {
 		}
 	})
 }
+
+// TestParseAtTimeZone tests AT TIME ZONE postfix expressions (batch 85).
+func TestParseAtTimeZone(t *testing.T) {
+	// Basic AT TIME ZONE with a string literal
+	t.Run("at_time_zone_literal", func(t *testing.T) {
+		sql := "SELECT SalesDate AT TIME ZONE 'Pacific Standard Time'"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		rt := stmt.TargetList.Items[0].(*ast.ResTarget)
+		atz, ok := rt.Val.(*ast.AtTimeZoneExpr)
+		if !ok {
+			t.Fatalf("expected AtTimeZoneExpr, got %T", rt.Val)
+		}
+		if atz.Expr == nil {
+			t.Fatal("AtTimeZoneExpr.Expr is nil")
+		}
+		if atz.TimeZone == nil {
+			t.Fatal("AtTimeZoneExpr.TimeZone is nil")
+		}
+		lit, ok := atz.TimeZone.(*ast.Literal)
+		if !ok {
+			t.Fatalf("expected Literal timezone, got %T", atz.TimeZone)
+		}
+		if lit.Str != "Pacific Standard Time" {
+			t.Errorf("expected timezone 'Pacific Standard Time', got %q", lit.Str)
+		}
+	})
+
+	// Chained AT TIME ZONE expressions
+	t.Run("at_time_zone_chained", func(t *testing.T) {
+		sql := "SELECT col1 AT TIME ZONE 'UTC' AT TIME ZONE 'Eastern Standard Time'"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		rt := stmt.TargetList.Items[0].(*ast.ResTarget)
+		outer, ok := rt.Val.(*ast.AtTimeZoneExpr)
+		if !ok {
+			t.Fatalf("expected outer AtTimeZoneExpr, got %T", rt.Val)
+		}
+		inner, ok := outer.Expr.(*ast.AtTimeZoneExpr)
+		if !ok {
+			t.Fatalf("expected inner AtTimeZoneExpr, got %T", outer.Expr)
+		}
+		_ = inner
+		outerTZ := outer.TimeZone.(*ast.Literal)
+		if outerTZ.Str != "Eastern Standard Time" {
+			t.Errorf("expected outer timezone 'Eastern Standard Time', got %q", outerTZ.Str)
+		}
+	})
+
+	// AT TIME ZONE with a variable
+	t.Run("at_time_zone_variable", func(t *testing.T) {
+		sql := "SELECT GETDATE() AT TIME ZONE @tz"
+		ParseAndCheck(t, sql)
+	})
+
+	// AT TIME ZONE in WHERE clause
+	t.Run("at_time_zone_in_where", func(t *testing.T) {
+		sql := "SELECT * FROM Orders WHERE OrderDate AT TIME ZONE 'UTC' > '2024-01-01'"
+		ParseAndCheck(t, sql)
+	})
+
+	// AT TIME ZONE with CAST
+	t.Run("at_time_zone_with_cast", func(t *testing.T) {
+		sql := "SELECT CAST(col1 AS DATETIMEOFFSET) AT TIME ZONE 'UTC'"
+		ParseAndCheck(t, sql)
+	})
+}

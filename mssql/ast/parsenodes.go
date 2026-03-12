@@ -1542,6 +1542,20 @@ type CollateExpr struct {
 func (n *CollateExpr) nodeTag()  {}
 func (n *CollateExpr) exprNode() {}
 
+// AtTimeZoneExpr represents the AT TIME ZONE postfix expression.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/queries/at-time-zone-transact-sql
+//
+//	inputdate AT TIME ZONE timezone
+type AtTimeZoneExpr struct {
+	Expr     ExprNode // the datetime expression
+	TimeZone ExprNode // the timezone expression (usually a string literal)
+	Loc      Loc
+}
+
+func (n *AtTimeZoneExpr) nodeTag()  {}
+func (n *AtTimeZoneExpr) exprNode() {}
+
 // ParenExpr represents a parenthesized expression.
 type ParenExpr struct {
 	Expr ExprNode

@@ -45,6 +45,7 @@ const (
 	kwAPPLY
 	kwAS
 	kwASC
+	kwAT
 	kwAUTHORIZATION
 	kwBACKUP
 	kwBEGIN
@@ -254,6 +255,7 @@ const (
 	kwWRITETEXT
 	kwXML
 	kwXACT_ABORT
+	kwZONE
 )
 
 // keywordMap maps lowercase keyword strings to token types.
@@ -262,7 +264,7 @@ var keywordMap map[string]int
 func init() {
 	keywordMap = map[string]int{
 		"add": kwADD, "all": kwALL, "alter": kwALTER, "and": kwAND, "any": kwANY,
-		"apply": kwAPPLY, "as": kwAS, "asc": kwASC, "authorization": kwAUTHORIZATION,
+		"apply": kwAPPLY, "as": kwAS, "asc": kwASC, "at": kwAT, "authorization": kwAUTHORIZATION,
 		"backup": kwBACKUP, "begin": kwBEGIN, "between": kwBETWEEN, "break": kwBREAK,
 		"browse": kwBROWSE, "bulk": kwBULK, "by": kwBY,
 		"cascade": kwCASCADE, "case": kwCASE, "cast": kwCAST, "catch": kwCATCH,
@@ -331,6 +333,7 @@ func init() {
 		"waitfor": kwWAITFOR, "when": kwWHEN, "where": kwWHERE, "while": kwWHILE,
 		"with": kwWITH, "within": kwWITHIN, "writetext": kwWRITETEXT,
 		"xml": kwXML, "xact_abort": kwXACT_ABORT,
+		"zone": kwZONE,
 	}
 }
 

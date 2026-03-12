@@ -188,6 +188,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeSubqueryComparisonExpr(sb, n)
 	case *CollateExpr:
 		writeCollateExpr(sb, n)
+	case *AtTimeZoneExpr:
+		writeAtTimeZoneExpr(sb, n)
 	case *ParenExpr:
 		writeParenExpr(sb, n)
 	case *TableRef:
@@ -1727,6 +1729,20 @@ func writeCollateExpr(sb *strings.Builder, n *CollateExpr) {
 	}
 	if n.Collation != "" {
 		sb.WriteString(fmt.Sprintf(" :collation \"%s\"", escapeString(n.Collation)))
+	}
+	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeAtTimeZoneExpr(sb *strings.Builder, n *AtTimeZoneExpr) {
+	sb.WriteString("{AT_TIME_ZONE")
+	if n.Expr != nil {
+		sb.WriteString(" :expr ")
+		writeNode(sb, n.Expr)
+	}
+	if n.TimeZone != nil {
+		sb.WriteString(" :timezone ")
+		writeNode(sb, n.TimeZone)
 	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
