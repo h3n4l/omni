@@ -488,6 +488,8 @@ const (
 	ATAlterColumnAddDrop          // ALTER COLUMN col {ADD|DROP} {ROWGUIDCOL|PERSISTED|...}
 	ATEnableFiletableNamespace    // ENABLE FILETABLE_NAMESPACE
 	ATDisableFiletableNamespace   // DISABLE FILETABLE_NAMESPACE
+	ATAddPeriod                   // ADD PERIOD FOR SYSTEM_TIME (start_col, end_col)
+	ATDropPeriod                  // DROP PERIOD FOR SYSTEM_TIME
 )
 
 // DropStmt represents a DROP statement.

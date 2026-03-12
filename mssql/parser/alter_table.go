@@ -146,11 +146,19 @@ func (p *Parser) parseAlterTableStmt() *nodes.AlterTableStmt {
 	return stmt
 }
 
-// parseAlterTableAdd parses ADD with comma-separated columns/constraints.
+// parseAlterTableAdd parses ADD with comma-separated columns/constraints,
+// or ADD PERIOD FOR SYSTEM_TIME.
 //
 //	ADD { <column_definition> | <table_constraint> } [ ,...n ]
+//	ADD PERIOD FOR SYSTEM_TIME ( start_col , end_col )
 func (p *Parser) parseAlterTableAdd() []nodes.Node {
 	p.advance() // consume ADD
+
+	// ADD PERIOD FOR SYSTEM_TIME (start_col, end_col)
+	if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "PERIOD") {
+		return p.parseAlterTableAddPeriod()
+	}
+
 	var actions []nodes.Node
 
 	for {
@@ -183,13 +191,71 @@ func (p *Parser) parseAlterTableAdd() []nodes.Node {
 	return actions
 }
 
-// parseAlterTableDrop parses DROP with comma-separated columns/constraints.
+// parseAlterTableAddPeriod parses ADD PERIOD FOR SYSTEM_TIME (start_col, end_col).
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-table-transact-sql
+//
+//	ADD PERIOD FOR SYSTEM_TIME ( system_start_time_column_name , system_end_time_column_name )
+func (p *Parser) parseAlterTableAddPeriod() []nodes.Node {
+	loc := p.pos()
+	p.advance() // consume PERIOD
+	if p.cur.Type == kwFOR {
+		p.advance() // consume FOR
+	}
+	// SYSTEM_TIME
+	if p.isIdentLike() && strings.EqualFold(p.cur.Str, "SYSTEM_TIME") {
+		p.advance()
+	}
+
+	action := &nodes.AlterTableAction{
+		Type: nodes.ATAddPeriod,
+		Loc:  nodes.Loc{Start: loc},
+	}
+
+	// ( start_col , end_col )
+	if p.cur.Type == '(' {
+		p.advance()
+		var names []nodes.Node
+		startCol, _ := p.parseIdentifier()
+		names = append(names, &nodes.String{Str: startCol})
+		p.match(',')
+		endCol, _ := p.parseIdentifier()
+		names = append(names, &nodes.String{Str: endCol})
+		p.expect(')')
+		action.Names = &nodes.List{Items: names}
+	}
+
+	action.Loc.End = p.pos()
+	return []nodes.Node{action}
+}
+
+// parseAlterTableDrop parses DROP with comma-separated columns/constraints,
+// or DROP PERIOD FOR SYSTEM_TIME.
 //
 //	DROP { [ CONSTRAINT ] [ IF EXISTS ] constraint_name [ ,...n ]
-//	     | COLUMN [ IF EXISTS ] column_name [ ,...n ] }
+//	     | COLUMN [ IF EXISTS ] column_name [ ,...n ]
+//	     | PERIOD FOR SYSTEM_TIME }
 func (p *Parser) parseAlterTableDrop() []nodes.Node {
 	p.advance() // consume DROP
 	var actions []nodes.Node
+
+	// DROP PERIOD FOR SYSTEM_TIME
+	if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "PERIOD") {
+		loc := p.pos()
+		p.advance() // consume PERIOD
+		if p.cur.Type == kwFOR {
+			p.advance() // consume FOR
+		}
+		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "SYSTEM_TIME") {
+			p.advance()
+		}
+		action := &nodes.AlterTableAction{
+			Type: nodes.ATDropPeriod,
+			Loc:  nodes.Loc{Start: loc},
+		}
+		action.Loc.End = p.pos()
+		return []nodes.Node{action}
+	}
 
 	if p.cur.Type == kwCOLUMN {
 		p.advance() // consume COLUMN

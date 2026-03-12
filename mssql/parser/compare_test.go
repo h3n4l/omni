@@ -9198,3 +9198,45 @@ func TestParseGraphTables(t *testing.T) {
 		}
 	})
 }
+
+// TestParseAlterTablePeriod tests ALTER TABLE ADD/DROP PERIOD FOR SYSTEM_TIME (batch 88).
+func TestParseAlterTablePeriod(t *testing.T) {
+	// ADD PERIOD FOR SYSTEM_TIME
+	t.Run("alter_table_add_period", func(t *testing.T) {
+		sql := "ALTER TABLE dbo.Employee ADD PERIOD FOR SYSTEM_TIME (ValidFrom, ValidTo)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.AlterTableStmt)
+		if stmt.Actions == nil || stmt.Actions.Len() != 1 {
+			t.Fatalf("expected 1 action")
+		}
+		action := stmt.Actions.Items[0].(*ast.AlterTableAction)
+		if action.Type != ast.ATAddPeriod {
+			t.Errorf("expected ATAddPeriod, got %d", action.Type)
+		}
+		if action.Names == nil || action.Names.Len() != 2 {
+			t.Fatalf("expected 2 column names")
+		}
+		start := action.Names.Items[0].(*ast.String).Str
+		end := action.Names.Items[1].(*ast.String).Str
+		if start != "ValidFrom" {
+			t.Errorf("expected start col ValidFrom, got %q", start)
+		}
+		if end != "ValidTo" {
+			t.Errorf("expected end col ValidTo, got %q", end)
+		}
+	})
+
+	// DROP PERIOD FOR SYSTEM_TIME
+	t.Run("alter_table_drop_period", func(t *testing.T) {
+		sql := "ALTER TABLE dbo.Employee DROP PERIOD FOR SYSTEM_TIME"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.AlterTableStmt)
+		if stmt.Actions == nil || stmt.Actions.Len() != 1 {
+			t.Fatalf("expected 1 action")
+		}
+		action := stmt.Actions.Items[0].(*ast.AlterTableAction)
+		if action.Type != ast.ATDropPeriod {
+			t.Errorf("expected ATDropPeriod, got %d", action.Type)
+		}
+	})
+}
