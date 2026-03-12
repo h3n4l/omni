@@ -536,7 +536,7 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 			}
 			return nil
 		}
-		// CREATE EXTERNAL DATA SOURCE / EXTERNAL TABLE / EXTERNAL FILE FORMAT
+		// CREATE EXTERNAL DATA SOURCE / EXTERNAL TABLE / EXTERNAL FILE FORMAT / EXTERNAL RESOURCE POOL
 		if p.cur.Type == kwEXTERNAL {
 			p.advance() // consume EXTERNAL
 			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "DATA") {
@@ -563,6 +563,15 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 				stmt.Loc.Start = loc
 				return stmt
 			}
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "RESOURCE") {
+				p.advance() // consume RESOURCE
+				if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "POOL") {
+					p.advance() // consume POOL
+				}
+				stmt := p.parseCreateExternalResourcePoolStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
 			return nil
 		}
 		// CREATE BROKER PRIORITY (service broker)
@@ -574,6 +583,27 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 			stmt := p.parseCreateBrokerPriorityStmt()
 			stmt.Loc.Start = loc
 			return stmt
+		}
+		// CREATE WORKLOAD GROUP
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "WORKLOAD") {
+			p.advance() // consume WORKLOAD
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "GROUP") {
+				p.advance() // consume GROUP
+			}
+			stmt := p.parseCreateWorkloadGroupStmt()
+			stmt.Loc.Start = loc
+			return stmt
+		}
+		// CREATE RESOURCE POOL
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "RESOURCE") {
+			p.advance() // consume RESOURCE
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "POOL") {
+				p.advance() // consume POOL
+				stmt := p.parseCreateResourcePoolStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			return nil
 		}
 		return nil
 	}
@@ -872,7 +902,7 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 			}
 			return nil
 		}
-		// ALTER EXTERNAL DATA SOURCE
+		// ALTER EXTERNAL DATA SOURCE / ALTER EXTERNAL RESOURCE POOL
 		if p.cur.Type == kwEXTERNAL {
 			p.advance() // consume EXTERNAL
 			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "DATA") {
@@ -881,6 +911,42 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 					p.advance() // consume SOURCE
 				}
 				stmt := p.parseAlterExternalDataSourceStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "RESOURCE") {
+				p.advance() // consume RESOURCE
+				if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "POOL") {
+					p.advance() // consume POOL
+				}
+				stmt := p.parseAlterExternalResourcePoolStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			return nil
+		}
+		// ALTER WORKLOAD GROUP
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "WORKLOAD") {
+			p.advance() // consume WORKLOAD
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "GROUP") {
+				p.advance() // consume GROUP
+			}
+			stmt := p.parseAlterWorkloadGroupStmt()
+			stmt.Loc.Start = loc
+			return stmt
+		}
+		// ALTER RESOURCE POOL / ALTER RESOURCE GOVERNOR
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "RESOURCE") {
+			p.advance() // consume RESOURCE
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "POOL") {
+				p.advance() // consume POOL
+				stmt := p.parseAlterResourcePoolStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "GOVERNOR") {
+				p.advance() // consume GOVERNOR
+				stmt := p.parseAlterResourceGovernorStmt()
 				stmt.Loc.Start = loc
 				return stmt
 			}
@@ -1112,6 +1178,29 @@ func (p *Parser) parseDropOrSecurityStmt() nodes.StmtNode {
 			stmt := p.parseSecurityKeyStmt("DROP")
 			stmt.Loc.Start = loc
 			return stmt
+		}
+		// DROP WORKLOAD GROUP
+		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "WORKLOAD") {
+			p.advance() // consume DROP
+			p.advance() // consume WORKLOAD
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "GROUP") {
+				p.advance() // consume GROUP
+			}
+			stmt := p.parseDropWorkloadGroupStmt()
+			stmt.Loc.Start = loc
+			return stmt
+		}
+		// DROP RESOURCE POOL
+		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "RESOURCE") {
+			p.advance() // consume DROP
+			p.advance() // consume RESOURCE
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "POOL") {
+				p.advance() // consume POOL
+				stmt := p.parseDropResourcePoolStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			return nil
 		}
 		return p.parseDropStmt()
 	}

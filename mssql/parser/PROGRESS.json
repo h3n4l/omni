@@ -1299,7 +1299,7 @@
       "id": 59,
       "name": "resource_governor",
       "file": "resource_governor.go",
-      "status": "pending",
+      "status": "done",
       "description": "New: CREATE/ALTER/DROP WORKLOAD GROUP, RESOURCE POOL, EXTERNAL RESOURCE POOL, ALTER RESOURCE GOVERNOR",
       "rules": ["parseCreateWorkloadGroupStmt", "parseCreateResourcePoolStmt", "parseCreateExternalResourcePoolStmt", "parseAlterResourceGovernorStmt"],
       "depends_on": [1, 3],

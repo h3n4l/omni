@@ -114,6 +114,12 @@ func (p *Parser) parseDropExternalStmt() *nodes.SecurityStmt {
 			p.advance() // consume FORMAT
 		}
 		stmt.ObjectType = "EXTERNAL FILE FORMAT"
+	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "RESOURCE") {
+		p.advance() // consume RESOURCE
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "POOL") {
+			p.advance() // consume POOL
+		}
+		stmt.ObjectType = "EXTERNAL RESOURCE POOL"
 	}
 
 	// name (possibly qualified)

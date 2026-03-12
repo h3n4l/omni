@@ -4705,3 +4705,291 @@ func TestParseEncryptionKeys(t *testing.T) {
 		})
 	}
 }
+
+// TestParseResourceGovernor tests batch 59: Resource Governor statements.
+func TestParseResourceGovernor(t *testing.T) {
+	tests := []struct {
+		sql        string
+		action     string
+		objectType string
+		name       string
+	}{
+		// CREATE WORKLOAD GROUP - basic with no options
+		{
+			sql:        "CREATE WORKLOAD GROUP newReports",
+			action:     "CREATE",
+			objectType: "WORKLOAD GROUP",
+			name:       "newReports",
+		},
+		// CREATE WORKLOAD GROUP - with multiple options
+		{
+			sql:        "CREATE WORKLOAD GROUP newReports WITH (REQUEST_MAX_MEMORY_GRANT_PERCENT = 2.5, REQUEST_MAX_CPU_TIME_SEC = 100, MAX_DOP = 4)",
+			action:     "CREATE",
+			objectType: "WORKLOAD GROUP",
+			name:       "newReports",
+		},
+		// CREATE WORKLOAD GROUP - with IMPORTANCE
+		{
+			sql:        "CREATE WORKLOAD GROUP highPriority WITH (IMPORTANCE = HIGH)",
+			action:     "CREATE",
+			objectType: "WORKLOAD GROUP",
+			name:       "highPriority",
+		},
+		// CREATE WORKLOAD GROUP - with USING
+		{
+			sql:        "CREATE WORKLOAD GROUP newReports WITH (MAX_DOP = 4) USING myPool",
+			action:     "CREATE",
+			objectType: "WORKLOAD GROUP",
+			name:       "newReports",
+		},
+		// CREATE WORKLOAD GROUP - with USING default
+		{
+			sql:        "CREATE WORKLOAD GROUP newReports USING [default]",
+			action:     "CREATE",
+			objectType: "WORKLOAD GROUP",
+			name:       "newReports",
+		},
+		// CREATE WORKLOAD GROUP - with USING pool and EXTERNAL pool
+		{
+			sql:        "CREATE WORKLOAD GROUP newReports USING myPool, EXTERNAL myExtPool",
+			action:     "CREATE",
+			objectType: "WORKLOAD GROUP",
+			name:       "newReports",
+		},
+		// CREATE WORKLOAD GROUP - with all options
+		{
+			sql:        "CREATE WORKLOAD GROUP fullGroup WITH (IMPORTANCE = MEDIUM, REQUEST_MAX_MEMORY_GRANT_PERCENT = 25, REQUEST_MAX_CPU_TIME_SEC = 60, REQUEST_MEMORY_GRANT_TIMEOUT_SEC = 30, MAX_DOP = 8, GROUP_MAX_REQUESTS = 100)",
+			action:     "CREATE",
+			objectType: "WORKLOAD GROUP",
+			name:       "fullGroup",
+		},
+		// CREATE WORKLOAD GROUP - with GROUP_MAX_TEMPDB_DATA_MB
+		{
+			sql:        "CREATE WORKLOAD GROUP tempGroup WITH (GROUP_MAX_TEMPDB_DATA_MB = 500, GROUP_MAX_TEMPDB_DATA_PERCENT = 25)",
+			action:     "CREATE",
+			objectType: "WORKLOAD GROUP",
+			name:       "tempGroup",
+		},
+		// ALTER WORKLOAD GROUP
+		{
+			sql:        "ALTER WORKLOAD GROUP [default] WITH (IMPORTANCE = LOW)",
+			action:     "ALTER",
+			objectType: "WORKLOAD GROUP",
+			name:       "default",
+		},
+		// ALTER WORKLOAD GROUP - move to different pool
+		{
+			sql:        "ALTER WORKLOAD GROUP adHoc USING [default]",
+			action:     "ALTER",
+			objectType: "WORKLOAD GROUP",
+			name:       "adHoc",
+		},
+		// ALTER WORKLOAD GROUP - with multiple options
+		{
+			sql:        "ALTER WORKLOAD GROUP myGroup WITH (MAX_DOP = 2, GROUP_MAX_REQUESTS = 50) USING poolA",
+			action:     "ALTER",
+			objectType: "WORKLOAD GROUP",
+			name:       "myGroup",
+		},
+		// DROP WORKLOAD GROUP
+		{
+			sql:        "DROP WORKLOAD GROUP adhoc",
+			action:     "DROP",
+			objectType: "WORKLOAD GROUP",
+			name:       "adhoc",
+		},
+		// CREATE RESOURCE POOL - basic with no options
+		{
+			sql:        "CREATE RESOURCE POOL bigPool",
+			action:     "CREATE",
+			objectType: "RESOURCE POOL",
+			name:       "bigPool",
+		},
+		// CREATE RESOURCE POOL - with CPU options
+		{
+			sql:        "CREATE RESOURCE POOL adhocPool WITH (MIN_CPU_PERCENT = 10, MAX_CPU_PERCENT = 20, CAP_CPU_PERCENT = 30)",
+			action:     "CREATE",
+			objectType: "RESOURCE POOL",
+			name:       "adhocPool",
+		},
+		// CREATE RESOURCE POOL - with memory options
+		{
+			sql:        "CREATE RESOURCE POOL memPool WITH (MIN_MEMORY_PERCENT = 5, MAX_MEMORY_PERCENT = 15)",
+			action:     "CREATE",
+			objectType: "RESOURCE POOL",
+			name:       "memPool",
+		},
+		// CREATE RESOURCE POOL - with IOPS options
+		{
+			sql:        "CREATE RESOURCE POOL PoolAdmin WITH (MIN_IOPS_PER_VOLUME = 200, MAX_IOPS_PER_VOLUME = 1000)",
+			action:     "CREATE",
+			objectType: "RESOURCE POOL",
+			name:       "PoolAdmin",
+		},
+		// CREATE RESOURCE POOL - with AFFINITY SCHEDULER
+		{
+			sql:        "CREATE RESOURCE POOL cpuPool WITH (AFFINITY SCHEDULER = AUTO)",
+			action:     "CREATE",
+			objectType: "RESOURCE POOL",
+			name:       "cpuPool",
+		},
+		// CREATE RESOURCE POOL - with AFFINITY SCHEDULER range
+		{
+			sql:        "CREATE RESOURCE POOL cpuPool WITH (AFFINITY SCHEDULER = (0 TO 63, 128 TO 191))",
+			action:     "CREATE",
+			objectType: "RESOURCE POOL",
+			name:       "cpuPool",
+		},
+		// CREATE RESOURCE POOL - with AFFINITY NUMANODE
+		{
+			sql:        "CREATE RESOURCE POOL numaPool WITH (AFFINITY NUMANODE = (0, 1))",
+			action:     "CREATE",
+			objectType: "RESOURCE POOL",
+			name:       "numaPool",
+		},
+		// ALTER RESOURCE POOL
+		{
+			sql:        "ALTER RESOURCE POOL [default] WITH (MAX_CPU_PERCENT = 25)",
+			action:     "ALTER",
+			objectType: "RESOURCE POOL",
+			name:       "default",
+		},
+		// ALTER RESOURCE POOL - with multiple options
+		{
+			sql:        "ALTER RESOURCE POOL adhocPool WITH (MIN_CPU_PERCENT = 10, MAX_CPU_PERCENT = 20, CAP_CPU_PERCENT = 30, MIN_MEMORY_PERCENT = 5, MAX_MEMORY_PERCENT = 15, AFFINITY SCHEDULER = (0 TO 63, 128 TO 191))",
+			action:     "ALTER",
+			objectType: "RESOURCE POOL",
+			name:       "adhocPool",
+		},
+		// DROP RESOURCE POOL
+		{
+			sql:        "DROP RESOURCE POOL big_pool",
+			action:     "DROP",
+			objectType: "RESOURCE POOL",
+			name:       "big_pool",
+		},
+		// CREATE EXTERNAL RESOURCE POOL
+		{
+			sql:        "CREATE EXTERNAL RESOURCE POOL ep_1 WITH (MAX_CPU_PERCENT = 75, MAX_MEMORY_PERCENT = 30)",
+			action:     "CREATE",
+			objectType: "EXTERNAL RESOURCE POOL",
+			name:       "ep_1",
+		},
+		// CREATE EXTERNAL RESOURCE POOL - with MAX_PROCESSES
+		{
+			sql:        "CREATE EXTERNAL RESOURCE POOL ep_2 WITH (MAX_CPU_PERCENT = 50, MAX_MEMORY_PERCENT = 25, MAX_PROCESSES = 4)",
+			action:     "CREATE",
+			objectType: "EXTERNAL RESOURCE POOL",
+			name:       "ep_2",
+		},
+		// ALTER EXTERNAL RESOURCE POOL
+		{
+			sql:        "ALTER EXTERNAL RESOURCE POOL ep_1 WITH (MAX_CPU_PERCENT = 50, MAX_MEMORY_PERCENT = 25)",
+			action:     "ALTER",
+			objectType: "EXTERNAL RESOURCE POOL",
+			name:       "ep_1",
+		},
+		// ALTER EXTERNAL RESOURCE POOL - default
+		{
+			sql:        `ALTER EXTERNAL RESOURCE POOL [default] WITH (MAX_CPU_PERCENT = 75)`,
+			action:     "ALTER",
+			objectType: "EXTERNAL RESOURCE POOL",
+			name:       "default",
+		},
+		// DROP EXTERNAL RESOURCE POOL
+		{
+			sql:        "DROP EXTERNAL RESOURCE POOL ex_pool",
+			action:     "DROP",
+			objectType: "EXTERNAL RESOURCE POOL",
+			name:       "ex_pool",
+		},
+		// ALTER RESOURCE GOVERNOR - RECONFIGURE
+		{
+			sql:        "ALTER RESOURCE GOVERNOR RECONFIGURE",
+			action:     "ALTER",
+			objectType: "RESOURCE GOVERNOR",
+			name:       "",
+		},
+		// ALTER RESOURCE GOVERNOR - DISABLE
+		{
+			sql:        "ALTER RESOURCE GOVERNOR DISABLE",
+			action:     "ALTER",
+			objectType: "RESOURCE GOVERNOR",
+			name:       "",
+		},
+		// ALTER RESOURCE GOVERNOR - RESET STATISTICS
+		{
+			sql:        "ALTER RESOURCE GOVERNOR RESET STATISTICS",
+			action:     "ALTER",
+			objectType: "RESOURCE GOVERNOR",
+			name:       "",
+		},
+		// ALTER RESOURCE GOVERNOR - WITH CLASSIFIER_FUNCTION
+		{
+			sql:        "ALTER RESOURCE GOVERNOR WITH (CLASSIFIER_FUNCTION = dbo.rg_classifier)",
+			action:     "ALTER",
+			objectType: "RESOURCE GOVERNOR",
+			name:       "",
+		},
+		// ALTER RESOURCE GOVERNOR - WITH CLASSIFIER_FUNCTION = NULL
+		{
+			sql:        "ALTER RESOURCE GOVERNOR WITH (CLASSIFIER_FUNCTION = NULL)",
+			action:     "ALTER",
+			objectType: "RESOURCE GOVERNOR",
+			name:       "",
+		},
+		// ALTER RESOURCE GOVERNOR - WITH MAX_OUTSTANDING_IO_PER_VOLUME
+		{
+			sql:        "ALTER RESOURCE GOVERNOR WITH (MAX_OUTSTANDING_IO_PER_VOLUME = 20)",
+			action:     "ALTER",
+			objectType: "RESOURCE GOVERNOR",
+			name:       "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.sql, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() != 1 {
+				t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+			}
+			stmt, ok := result.Items[0].(*ast.SecurityStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *SecurityStmt, got %T", tt.sql, result.Items[0])
+			}
+			if stmt.Action != tt.action {
+				t.Errorf("Parse(%q): action = %q, want %q", tt.sql, stmt.Action, tt.action)
+			}
+			if stmt.ObjectType != tt.objectType {
+				t.Errorf("Parse(%q): objectType = %q, want %q", tt.sql, stmt.ObjectType, tt.objectType)
+			}
+			if stmt.Name != tt.name {
+				t.Errorf("Parse(%q): name = %q, want %q", tt.sql, stmt.Name, tt.name)
+			}
+			checkLocation(t, tt.sql, "SecurityStmt", stmt.Loc)
+		})
+	}
+}
+
+// TestParseResourceGovernorIntegration tests batch 59: multi-statement integration.
+func TestParseResourceGovernorIntegration(t *testing.T) {
+	sql := `CREATE RESOURCE POOL adhocPool WITH (MIN_CPU_PERCENT = 10, MAX_CPU_PERCENT = 20);
+CREATE WORKLOAD GROUP adHoc WITH (IMPORTANCE = LOW, MAX_DOP = 4) USING adhocPool;
+ALTER RESOURCE GOVERNOR RECONFIGURE;
+ALTER WORKLOAD GROUP adHoc WITH (IMPORTANCE = MEDIUM);
+ALTER RESOURCE GOVERNOR RECONFIGURE;
+DROP WORKLOAD GROUP adHoc;
+DROP RESOURCE POOL adhocPool;
+ALTER RESOURCE GOVERNOR RECONFIGURE`
+	result := ParseAndCheck(t, sql)
+	if result.Len() != 8 {
+		for i, item := range result.Items {
+			t.Logf("  stmt[%d]: %T -> %s", i, item, ast.NodeToString(item))
+		}
+		t.Fatalf("Parse: got %d statements, want 8", result.Len())
+	}
+	for _, item := range result.Items {
+		if _, ok := item.(*ast.SecurityStmt); !ok {
+			t.Fatalf("expected *SecurityStmt, got %T: %s", item, ast.NodeToString(item))
+		}
+	}
+}
