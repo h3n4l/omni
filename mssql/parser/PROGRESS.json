@@ -1339,9 +1339,9 @@
       "id": 63,
       "name": "specialized_indexes",
       "file": "create_index.go",
-      "status": "pending",
+      "status": "done",
       "description": "New: CREATE/ALTER/DROP XML INDEX, SELECTIVE XML INDEX, SPATIAL INDEX; CREATE/ALTER/DROP AGGREGATE (CLR)",
-      "rules": ["parseCreateXmlIndexStmt", "parseCreateSelectiveXmlIndexStmt", "parseCreateSpatialIndexStmt", "parseCreateAggregateStmt"],
+      "rules": ["parseCreateXmlIndexStmt", "parseCreateSelectiveXmlIndexStmt", "parseCreateSpatialIndexStmt", "parseCreateAggregateStmt", "parseDropAggregateStmt"],
       "depends_on": [10],
       "tests": ["xml_index", "selective_xml_index", "spatial_index", "aggregate"]
     },

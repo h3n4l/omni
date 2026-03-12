@@ -5545,3 +5545,119 @@ func TestParseSecurityPolicyClassification(t *testing.T) {
 		}
 	})
 }
+
+// TestParseSpecializedIndexes tests batch 63: XML INDEX, SELECTIVE XML INDEX, SPATIAL INDEX, AGGREGATE.
+func TestParseSpecializedIndexes(t *testing.T) {
+	t.Run("xml_index", func(t *testing.T) {
+		tests := []struct {
+			sql     string
+			primary bool
+		}{
+			// CREATE PRIMARY XML INDEX
+			{`CREATE PRIMARY XML INDEX idx_xml ON dbo.Products (CatalogDescription)`, true},
+			// CREATE PRIMARY XML INDEX with options
+			{`CREATE PRIMARY XML INDEX PXML_ProductModel ON Production.ProductModel (CatalogDescription) WITH (PAD_INDEX = 1)`, true},
+			// CREATE secondary XML INDEX FOR VALUE
+			{`CREATE XML INDEX idx_xml_value ON dbo.Products (CatalogDescription) USING XML INDEX idx_xml FOR VALUE`, false},
+			// CREATE secondary XML INDEX FOR PATH
+			{`CREATE XML INDEX idx_xml_path ON dbo.Products (CatalogDescription) USING XML INDEX idx_xml FOR PATH`, false},
+			// CREATE secondary XML INDEX FOR PROPERTY
+			{`CREATE XML INDEX idx_xml_prop ON dbo.Products (CatalogDescription) USING XML INDEX idx_xml FOR PROPERTY`, false},
+		}
+		for _, tt := range tests {
+			t.Run(tt.sql, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.CreateXmlIndexStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected *CreateXmlIndexStmt, got %T", tt.sql, result.Items[0])
+				}
+				if stmt.Primary != tt.primary {
+					t.Errorf("Parse(%q): primary = %v, want %v", tt.sql, stmt.Primary, tt.primary)
+				}
+				checkLocation(t, tt.sql, "CreateXmlIndexStmt", stmt.Loc)
+			})
+		}
+	})
+
+	t.Run("selective_xml_index", func(t *testing.T) {
+		tests := []string{
+			`CREATE SELECTIVE XML INDEX sxi_index ON T (xmlcol) FOR (pathab = '/a/b')`,
+			`CREATE SELECTIVE XML INDEX sxi_index ON T (xmlcol) FOR (pathab = '/a/b') WITH (PAD_INDEX = 1)`,
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				result := ParseAndCheck(t, sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): got %d statements, want 1", sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.CreateSelectiveXmlIndexStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected *CreateSelectiveXmlIndexStmt, got %T", sql, result.Items[0])
+				}
+				checkLocation(t, sql, "CreateSelectiveXmlIndexStmt", stmt.Loc)
+			})
+		}
+	})
+
+	t.Run("spatial_index", func(t *testing.T) {
+		tests := []string{
+			`CREATE SPATIAL INDEX SIndx_SpatialTable_geometry_col1 ON SpatialTable (geometry_col)`,
+			`CREATE SPATIAL INDEX SIndx ON SpatialTable (geometry_col) USING GEOMETRY_AUTO_GRID WITH (CELLS_PER_OBJECT = 64)`,
+			`CREATE SPATIAL INDEX SIndx ON SpatialTable (geo_col) USING GEOGRAPHY_GRID WITH (GRIDS = (LEVEL_1 = MEDIUM))`,
+			`CREATE SPATIAL INDEX SIndx ON dbo.SpatialTable (geometry_col) USING GEOMETRY_GRID WITH (CELLS_PER_OBJECT = 64) ON fg1`,
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				result := ParseAndCheck(t, sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): got %d statements, want 1", sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.CreateSpatialIndexStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected *CreateSpatialIndexStmt, got %T", sql, result.Items[0])
+				}
+				checkLocation(t, sql, "CreateSpatialIndexStmt", stmt.Loc)
+			})
+		}
+	})
+
+	t.Run("aggregate", func(t *testing.T) {
+		tests := []struct {
+			sql    string
+			isDrop bool
+		}{
+			// CREATE AGGREGATE
+			{`CREATE AGGREGATE dbo.Concatenate (@input nvarchar(4000)) RETURNS nvarchar(4000) EXTERNAL NAME StringUtilities.Concatenate`, false},
+			// CREATE AGGREGATE with multiple params
+			{`CREATE AGGREGATE dbo.WeightedAvg (@value float, @weight float) RETURNS float EXTERNAL NAME MyAssembly.WeightedAvg`, false},
+			// DROP AGGREGATE
+			{`DROP AGGREGATE dbo.Concatenate`, true},
+			// DROP AGGREGATE IF EXISTS
+			{`DROP AGGREGATE IF EXISTS dbo.MyAgg`, true},
+		}
+		for _, tt := range tests {
+			t.Run(tt.sql, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+				}
+				if tt.isDrop {
+					stmt, ok := result.Items[0].(*ast.DropAggregateStmt)
+					if !ok {
+						t.Fatalf("Parse(%q): expected *DropAggregateStmt, got %T", tt.sql, result.Items[0])
+					}
+					checkLocation(t, tt.sql, "DropAggregateStmt", stmt.Loc)
+				} else {
+					stmt, ok := result.Items[0].(*ast.CreateAggregateStmt)
+					if !ok {
+						t.Fatalf("Parse(%q): expected *CreateAggregateStmt, got %T", tt.sql, result.Items[0])
+					}
+					checkLocation(t, tt.sql, "CreateAggregateStmt", stmt.Loc)
+				}
+			})
+		}
+	})
+}

@@ -342,6 +342,17 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 		stmt := p.parseCreateIndexStmt(unique)
 		stmt.Loc.Start = loc
 		return stmt
+	case kwPRIMARY:
+		// CREATE PRIMARY XML INDEX
+		p.advance() // consume PRIMARY
+		if p.cur.Type == kwXML {
+			p.advance() // consume XML
+			p.match(kwINDEX)
+			stmt := p.parseCreateXmlIndexStmt(true)
+			stmt.Loc.Start = loc
+			return stmt
+		}
+		return nil
 	case kwVIEW:
 		p.advance() // consume VIEW
 		stmt := p.parseCreateViewStmt(orAlter)
@@ -506,7 +517,7 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 			}
 			return nil
 		}
-		// CREATE XML SCHEMA COLLECTION
+		// CREATE XML SCHEMA COLLECTION / CREATE XML INDEX
 		if p.cur.Type == kwXML {
 			p.advance() // consume XML
 			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SCHEMA") {
@@ -518,7 +529,40 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 					return stmt
 				}
 			}
+			if p.cur.Type == kwINDEX {
+				p.advance() // consume INDEX
+				stmt := p.parseCreateXmlIndexStmt(false)
+				stmt.Loc.Start = loc
+				return stmt
+			}
 			return nil
+		}
+		// CREATE SELECTIVE XML INDEX
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SELECTIVE") {
+			p.advance() // consume SELECTIVE
+			if p.cur.Type == kwXML {
+				p.advance() // consume XML
+				p.match(kwINDEX)
+				stmt := p.parseCreateSelectiveXmlIndexStmt()
+				stmt.Loc.Start = loc
+				return stmt
+			}
+			return nil
+		}
+		// CREATE SPATIAL INDEX
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SPATIAL") {
+			p.advance() // consume SPATIAL
+			p.match(kwINDEX)
+			stmt := p.parseCreateSpatialIndexStmt()
+			stmt.Loc.Start = loc
+			return stmt
+		}
+		// CREATE AGGREGATE
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AGGREGATE") {
+			p.advance() // consume AGGREGATE
+			stmt := p.parseCreateAggregateStmt()
+			stmt.Loc.Start = loc
+			return stmt
 		}
 		// CREATE SECURITY POLICY
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SECURITY") {
@@ -1464,6 +1508,14 @@ func (p *Parser) parseDropOrSecurityStmt() nodes.StmtNode {
 			}
 			dropStmt.Loc.End = p.pos()
 			return dropStmt
+		}
+		// DROP AGGREGATE
+		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "AGGREGATE") {
+			p.advance() // consume DROP
+			p.advance() // consume AGGREGATE
+			stmt := p.parseDropAggregateStmt()
+			stmt.Loc.Start = loc
+			return stmt
 		}
 		// DROP SEARCH PROPERTY LIST
 		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "SEARCH") {

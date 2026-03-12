@@ -352,6 +352,16 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeSensitivityClassificationStmt(sb, n)
 	case *SignatureStmt:
 		writeSignatureStmt(sb, n)
+	case *CreateXmlIndexStmt:
+		writeCreateXmlIndexStmt(sb, n)
+	case *CreateSelectiveXmlIndexStmt:
+		writeCreateSelectiveXmlIndexStmt(sb, n)
+	case *CreateSpatialIndexStmt:
+		writeCreateSpatialIndexStmt(sb, n)
+	case *CreateAggregateStmt:
+		writeCreateAggregateStmt(sb, n)
+	case *DropAggregateStmt:
+		writeDropAggregateStmt(sb, n)
 	default:
 		sb.WriteString("{UNKNOWN}")
 	}
@@ -2823,6 +2833,112 @@ func writeAlterSearchPropertyListStmt(sb *strings.Builder, n *AlterSearchPropert
 	}
 	if n.PropertyDesc != "" {
 		fmt.Fprintf(sb, " :propertyDesc \"%s\"", escapeString(n.PropertyDesc))
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeCreateXmlIndexStmt(sb *strings.Builder, n *CreateXmlIndexStmt) {
+	sb.WriteString("{CREATEXMLINDEX")
+	if n.Primary {
+		sb.WriteString(" :primary true")
+	}
+	fmt.Fprintf(sb, " :name \"%s\"", escapeString(n.Name))
+	if n.Table != nil {
+		sb.WriteString(" :table ")
+		writeNode(sb, n.Table)
+	}
+	if n.XmlColumn != "" {
+		fmt.Fprintf(sb, " :xmlColumn \"%s\"", escapeString(n.XmlColumn))
+	}
+	if n.UsingIndex != "" {
+		fmt.Fprintf(sb, " :usingIndex \"%s\"", escapeString(n.UsingIndex))
+	}
+	if n.SecondaryFor != "" {
+		fmt.Fprintf(sb, " :secondaryFor \"%s\"", escapeString(n.SecondaryFor))
+	}
+	if n.Options != nil {
+		sb.WriteString(" :options ")
+		writeNode(sb, n.Options)
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeCreateSelectiveXmlIndexStmt(sb *strings.Builder, n *CreateSelectiveXmlIndexStmt) {
+	sb.WriteString("{CREATESELECTIVEXMLINDEX")
+	fmt.Fprintf(sb, " :name \"%s\"", escapeString(n.Name))
+	if n.Table != nil {
+		sb.WriteString(" :table ")
+		writeNode(sb, n.Table)
+	}
+	if n.XmlColumn != "" {
+		fmt.Fprintf(sb, " :xmlColumn \"%s\"", escapeString(n.XmlColumn))
+	}
+	if n.Namespaces != nil {
+		sb.WriteString(" :namespaces ")
+		writeNode(sb, n.Namespaces)
+	}
+	if n.Paths != nil {
+		sb.WriteString(" :paths ")
+		writeNode(sb, n.Paths)
+	}
+	if n.Options != nil {
+		sb.WriteString(" :options ")
+		writeNode(sb, n.Options)
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeCreateSpatialIndexStmt(sb *strings.Builder, n *CreateSpatialIndexStmt) {
+	sb.WriteString("{CREATESPATIALINDEX")
+	fmt.Fprintf(sb, " :name \"%s\"", escapeString(n.Name))
+	if n.Table != nil {
+		sb.WriteString(" :table ")
+		writeNode(sb, n.Table)
+	}
+	if n.SpatialColumn != "" {
+		fmt.Fprintf(sb, " :spatialColumn \"%s\"", escapeString(n.SpatialColumn))
+	}
+	if n.Using != "" {
+		fmt.Fprintf(sb, " :using \"%s\"", escapeString(n.Using))
+	}
+	if n.Options != nil {
+		sb.WriteString(" :options ")
+		writeNode(sb, n.Options)
+	}
+	if n.OnFileGroup != "" {
+		fmt.Fprintf(sb, " :onFileGroup \"%s\"", escapeString(n.OnFileGroup))
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeCreateAggregateStmt(sb *strings.Builder, n *CreateAggregateStmt) {
+	sb.WriteString("{CREATEAGGREGATE")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.Params != nil {
+		sb.WriteString(" :params ")
+		writeNode(sb, n.Params)
+	}
+	if n.ReturnType != nil {
+		sb.WriteString(" :returnType ")
+		writeNode(sb, n.ReturnType)
+	}
+	if n.ExternalName != "" {
+		fmt.Fprintf(sb, " :externalName \"%s\"", escapeString(n.ExternalName))
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeDropAggregateStmt(sb *strings.Builder, n *DropAggregateStmt) {
+	sb.WriteString("{DROPAGGREGATE")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.IfExists {
+		sb.WriteString(" :ifExists true")
 	}
 	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
 }

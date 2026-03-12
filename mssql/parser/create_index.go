@@ -115,6 +115,281 @@ func (p *Parser) parseIndexColumnList() *nodes.List {
 	return &nodes.List{Items: items}
 }
 
+// parseCreateXmlIndexStmt parses CREATE [PRIMARY] XML INDEX.
+// Caller has consumed CREATE [PRIMARY] XML INDEX.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-xml-index-transact-sql
+func (p *Parser) parseCreateXmlIndexStmt(primary bool) *nodes.CreateXmlIndexStmt {
+	loc := p.pos()
+	stmt := &nodes.CreateXmlIndexStmt{
+		Primary: primary,
+		Loc:     nodes.Loc{Start: loc},
+	}
+
+	// Index name
+	name, _ := p.parseIdentifier()
+	stmt.Name = name
+
+	// ON table
+	if _, ok := p.match(kwON); ok {
+		stmt.Table = p.parseTableRef()
+	}
+
+	// (xml_column)
+	if p.cur.Type == '(' {
+		p.advance()
+		col, _ := p.parseIdentifier()
+		stmt.XmlColumn = col
+		p.match(')')
+	}
+
+	// USING XML INDEX parent_index_name (secondary only)
+	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "USING") {
+		p.advance() // consume USING
+		p.match(kwXML)
+		p.match(kwINDEX)
+		idx, _ := p.parseIdentifier()
+		stmt.UsingIndex = idx
+
+		// FOR VALUE|PATH|PROPERTY
+		if _, ok := p.match(kwFOR); ok {
+			if p.isIdentLike() {
+				stmt.SecondaryFor = p.cur.Str
+				p.advance()
+			}
+		}
+	}
+
+	// WITH (options)
+	if p.cur.Type == kwWITH {
+		p.advance()
+		if p.cur.Type == '(' {
+			stmt.Options = p.parseOptionList()
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseCreateSelectiveXmlIndexStmt parses CREATE SELECTIVE XML INDEX.
+// Caller has consumed CREATE SELECTIVE XML INDEX.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-selective-xml-index-transact-sql
+func (p *Parser) parseCreateSelectiveXmlIndexStmt() *nodes.CreateSelectiveXmlIndexStmt {
+	loc := p.pos()
+	stmt := &nodes.CreateSelectiveXmlIndexStmt{
+		Loc: nodes.Loc{Start: loc},
+	}
+
+	// Index name
+	name, _ := p.parseIdentifier()
+	stmt.Name = name
+
+	// ON table
+	if _, ok := p.match(kwON); ok {
+		stmt.Table = p.parseTableRef()
+	}
+
+	// (xml_column)
+	if p.cur.Type == '(' {
+		p.advance()
+		col, _ := p.parseIdentifier()
+		stmt.XmlColumn = col
+		p.match(')')
+	}
+
+	// WITH XMLNAMESPACES (...)
+	if p.cur.Type == kwWITH {
+		p.advance()
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "XMLNAMESPACES") {
+			p.advance()
+			if p.cur.Type == '(' {
+				stmt.Namespaces = p.parseOptionList()
+			}
+		} else if p.cur.Type == '(' {
+			// This is WITH (options), handle after FOR
+			// Back up: we already consumed WITH, so parse options now
+			stmt.Options = p.parseOptionList()
+		}
+	}
+
+	// FOR (path_list)
+	if _, ok := p.match(kwFOR); ok {
+		if p.cur.Type == '(' {
+			stmt.Paths = p.parseOptionList()
+		}
+	}
+
+	// WITH (options) - if not already parsed
+	if stmt.Options == nil && p.cur.Type == kwWITH {
+		p.advance()
+		if p.cur.Type == '(' {
+			stmt.Options = p.parseOptionList()
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseCreateSpatialIndexStmt parses CREATE SPATIAL INDEX.
+// Caller has consumed CREATE SPATIAL INDEX.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-spatial-index-transact-sql
+func (p *Parser) parseCreateSpatialIndexStmt() *nodes.CreateSpatialIndexStmt {
+	loc := p.pos()
+	stmt := &nodes.CreateSpatialIndexStmt{
+		Loc: nodes.Loc{Start: loc},
+	}
+
+	// Index name
+	name, _ := p.parseIdentifier()
+	stmt.Name = name
+
+	// ON table
+	if _, ok := p.match(kwON); ok {
+		stmt.Table = p.parseTableRef()
+	}
+
+	// (spatial_column)
+	if p.cur.Type == '(' {
+		p.advance()
+		col, _ := p.parseIdentifier()
+		stmt.SpatialColumn = col
+		p.match(')')
+	}
+
+	// USING tessellation_scheme
+	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "USING") {
+		p.advance() // consume USING
+		if p.isIdentLike() {
+			stmt.Using = p.cur.Str
+			p.advance()
+		}
+	}
+
+	// WITH (options)
+	if p.cur.Type == kwWITH {
+		p.advance()
+		if p.cur.Type == '(' {
+			stmt.Options = p.parseOptionList()
+		}
+	}
+
+	// ON filegroup
+	if _, ok := p.match(kwON); ok {
+		if p.isIdentLike() {
+			stmt.OnFileGroup = p.cur.Str
+			p.advance()
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseCreateAggregateStmt parses CREATE AGGREGATE.
+// Caller has consumed CREATE AGGREGATE.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-aggregate-transact-sql
+func (p *Parser) parseCreateAggregateStmt() *nodes.CreateAggregateStmt {
+	loc := p.pos()
+	stmt := &nodes.CreateAggregateStmt{
+		Loc: nodes.Loc{Start: loc},
+	}
+
+	// [schema.]aggregate_name
+	stmt.Name = p.parseTableRef()
+
+	// (@param_name type, ...)
+	if p.cur.Type == '(' {
+		p.advance()
+		var params []nodes.Node
+		for p.cur.Type != ')' && p.cur.Type != tokEOF {
+			param := &nodes.ParamDef{Loc: nodes.Loc{Start: p.pos()}}
+			// @param_name
+			if p.cur.Type == tokVARIABLE {
+				param.Name = p.cur.Str
+				p.advance()
+			}
+			// data type
+			param.DataType = p.parseDataType()
+			params = append(params, param)
+			if _, ok := p.match(','); !ok {
+				break
+			}
+		}
+		p.match(')')
+		stmt.Params = &nodes.List{Items: params}
+	}
+
+	// RETURNS return_type
+	if p.cur.Type == kwRETURNS {
+		p.advance()
+		stmt.ReturnType = p.parseDataType()
+	}
+
+	// EXTERNAL NAME assembly_qualified_name
+	if p.cur.Type == kwEXTERNAL {
+		p.advance()
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "NAME") {
+			p.advance()
+		}
+		// Read dotted name: assembly.class[.method]
+		var parts []string
+		if p.isIdentLike() {
+			parts = append(parts, p.cur.Str)
+			p.advance()
+		}
+		for {
+			if _, ok := p.match('.'); ok {
+				if p.isIdentLike() {
+					parts = append(parts, p.cur.Str)
+					p.advance()
+				}
+			} else {
+				break
+			}
+		}
+		stmt.ExternalName = joinDots(parts)
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseDropAggregateStmt parses DROP AGGREGATE [IF EXISTS] name.
+// Caller has consumed DROP AGGREGATE.
+func (p *Parser) parseDropAggregateStmt() *nodes.DropAggregateStmt {
+	loc := p.pos()
+	stmt := &nodes.DropAggregateStmt{
+		Loc: nodes.Loc{Start: loc},
+	}
+
+	// IF EXISTS
+	if _, ok := p.match(kwIF); ok {
+		p.match(kwEXISTS)
+		stmt.IfExists = true
+	}
+
+	stmt.Name = p.parseTableRef()
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// joinDots joins string parts with dots.
+func joinDots(parts []string) string {
+	result := ""
+	for i, p := range parts {
+		if i > 0 {
+			result += "."
+		}
+		result += p
+	}
+	return result
+}
+
 // parseOptionList parses (option = value, ...) used in WITH clauses.
 func (p *Parser) parseOptionList() *nodes.List {
 	p.advance() // consume (

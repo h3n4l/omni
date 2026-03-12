@@ -2275,3 +2275,78 @@ type SignatureStmt struct {
 
 func (n *SignatureStmt) nodeTag()  {}
 func (n *SignatureStmt) stmtNode() {}
+
+// ---------- Batch 63: Specialized Indexes / Aggregate ----------
+
+// CreateXmlIndexStmt represents CREATE [PRIMARY] XML INDEX.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-xml-index-transact-sql
+type CreateXmlIndexStmt struct {
+	Primary      bool      // PRIMARY XML INDEX
+	Name         string    // index name
+	Table        *TableRef // ON table
+	XmlColumn    string    // (xml_column)
+	UsingIndex   string    // USING XML INDEX parent_index_name (secondary only)
+	SecondaryFor string    // FOR VALUE|PATH|PROPERTY (secondary only)
+	Options      *List     // WITH (options)
+	Loc          Loc
+}
+
+func (n *CreateXmlIndexStmt) nodeTag()  {}
+func (n *CreateXmlIndexStmt) stmtNode() {}
+
+// CreateSelectiveXmlIndexStmt represents CREATE SELECTIVE XML INDEX.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-selective-xml-index-transact-sql
+type CreateSelectiveXmlIndexStmt struct {
+	Name       string    // index name
+	Table      *TableRef // ON table
+	XmlColumn  string    // (xml_column)
+	Namespaces *List     // WITH XMLNAMESPACES(...) promoted paths
+	Paths      *List     // FOR (path_list) as *String items
+	Options    *List     // WITH (options)
+	Loc        Loc
+}
+
+func (n *CreateSelectiveXmlIndexStmt) nodeTag()  {}
+func (n *CreateSelectiveXmlIndexStmt) stmtNode() {}
+
+// CreateSpatialIndexStmt represents CREATE SPATIAL INDEX.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-spatial-index-transact-sql
+type CreateSpatialIndexStmt struct {
+	Name          string    // index name
+	Table         *TableRef // ON table
+	SpatialColumn string    // (spatial_column)
+	Using         string    // USING tessellation type (GEOMETRY_GRID, etc.)
+	Options       *List     // WITH (options)
+	OnFileGroup   string    // ON filegroup
+	Loc           Loc
+}
+
+func (n *CreateSpatialIndexStmt) nodeTag()  {}
+func (n *CreateSpatialIndexStmt) stmtNode() {}
+
+// CreateAggregateStmt represents CREATE AGGREGATE.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-aggregate-transact-sql
+type CreateAggregateStmt struct {
+	Name         *TableRef  // [schema.]aggregate_name
+	Params       *List      // parameters as *ParamDef
+	ReturnType   *DataType  // RETURNS type
+	ExternalName string     // EXTERNAL NAME assembly[.class]
+	Loc          Loc
+}
+
+func (n *CreateAggregateStmt) nodeTag()  {}
+func (n *CreateAggregateStmt) stmtNode() {}
+
+// DropAggregateStmt represents DROP AGGREGATE.
+type DropAggregateStmt struct {
+	Name     *TableRef // [schema.]aggregate_name
+	IfExists bool
+	Loc      Loc
+}
+
+func (n *DropAggregateStmt) nodeTag()  {}
+func (n *DropAggregateStmt) stmtNode() {}
