@@ -103,6 +103,15 @@ type Catalog struct {
 	// Dependencies.
 	deps []DepEntry
 
+	// Session and current user names.
+	// pg: src/backend/utils/init/miscinit.c — SessionUserId, CurrentUserId
+	//
+	// sessionUser is the user that authenticated the session (SET SESSION AUTHORIZATION).
+	// currentUser is the effective user (changed by SET ROLE).
+	// When SET ROLE is not active, currentUser equals sessionUser.
+	sessionUser string
+	currentUser string
+
 	// Search path (schema names). pg_catalog is always searched implicitly.
 	// Names are stored without validation — non-existent schemas are skipped
 	// at lookup time, matching PostgreSQL's behavior.
@@ -298,6 +307,42 @@ func (c *Catalog) GetRelation(schema, name string) *Relation {
 	return nil
 }
 
+// SetSessionUser sets the session user (the user that authenticated).
+// This also resets the current user to match, equivalent to RESET ROLE.
+//
+// pg: src/backend/utils/init/miscinit.c — SetSessionAuthorization
+func (c *Catalog) SetSessionUser(name string) {
+	c.sessionUser = name
+	c.currentUser = name
+}
+
+// SetRole changes the current user to the given role name.
+// In PostgreSQL this triggers search path recomputation when $user is present.
+//
+// pg: src/backend/commands/variable.c — assign_role
+// pg: src/backend/utils/init/miscinit.c — SetCurrentRoleId
+func (c *Catalog) SetRole(name string) {
+	c.currentUser = name
+}
+
+// ResetRole reverts the current user to the session user.
+// Equivalent to SET ROLE NONE or RESET ROLE.
+//
+// pg: src/backend/utils/init/miscinit.c — SetCurrentRoleId (InvalidOid case)
+func (c *Catalog) ResetRole() {
+	c.currentUser = c.sessionUser
+}
+
+// CurrentUser returns the effective current user name.
+func (c *Catalog) CurrentUser() string {
+	return c.currentUser
+}
+
+// SessionUser returns the session user name.
+func (c *Catalog) SessionUser() string {
+	return c.sessionUser
+}
+
 // SetSearchPath sets the schema search path by name.
 // Non-existent schemas are accepted and silently skipped at lookup time,
 // matching PostgreSQL's behavior.
@@ -308,27 +353,46 @@ func (c *Catalog) SetSearchPath(schemas []string) {
 }
 
 // searchPathWithCatalog resolves the search path to namespace OIDs,
-// appending pg_catalog if not explicitly listed. Non-existent schemas
-// are silently skipped.
+// expanding $user to the current user name and appending pg_catalog
+// if not explicitly listed. Non-existent schemas are silently skipped.
+//
+// pg: src/backend/catalog/namespace.c — preprocessNamespacePath, finalNamespacePath
 func (c *Catalog) searchPathWithCatalog() []uint32 {
 	hasPGCatalog := false
+
+	// Expand $user and collect schema names.
+	expanded := make([]string, 0, len(c.searchPath)+1)
 	for _, name := range c.searchPath {
+		if name == "$user" {
+			// pg: preprocessNamespacePath — "$user" substitution using GetUserId()
+			if c.currentUser != "" {
+				expanded = append(expanded, c.currentUser)
+			}
+			continue
+		}
 		if name == "pg_catalog" {
 			hasPGCatalog = true
-			break
 		}
+		expanded = append(expanded, name)
 	}
 
-	names := c.searchPath
 	if !hasPGCatalog {
-		names = append(names, "pg_catalog")
+		expanded = append(expanded, "pg_catalog")
 	}
 
-	oids := make([]uint32, 0, len(names))
-	for _, name := range names {
-		if s := c.schemaByName[name]; s != nil {
-			oids = append(oids, s.OID)
+	// Resolve to OIDs, skipping non-existent schemas and duplicates.
+	seen := make(map[uint32]bool, len(expanded))
+	oids := make([]uint32, 0, len(expanded))
+	for _, name := range expanded {
+		s := c.schemaByName[name]
+		if s == nil {
+			continue
 		}
+		if seen[s.OID] {
+			continue
+		}
+		seen[s.OID] = true
+		oids = append(oids, s.OID)
 	}
 	return oids
 }
@@ -343,8 +407,15 @@ func (c *Catalog) resolveTargetSchema(schemaName string) (*Schema, error) {
 		}
 		return s, nil
 	}
-	// First existing entry in search path.
+	// First existing entry in search path, with $user expansion.
 	for _, name := range c.searchPath {
+		if name == "$user" {
+			if c.currentUser != "" {
+				name = c.currentUser
+			} else {
+				continue
+			}
+		}
 		if s := c.schemaByName[name]; s != nil {
 			return s, nil
 		}

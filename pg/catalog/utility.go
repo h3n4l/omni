@@ -154,23 +154,7 @@ func (c *Catalog) ProcessUtility(stmt nodes.Node) error {
 		return nil
 	case *nodes.VariableSetStmt:
 		// pg: src/backend/tcop/utility.c — standard_ProcessUtility (VariableSetStmt)
-		if s.Name == "search_path" && s.Kind == nodes.VAR_SET_VALUE && s.Args != nil {
-			schemas := make([]string, 0, len(s.Args.Items))
-			for _, arg := range s.Args.Items {
-				ac, ok := arg.(*nodes.A_Const)
-				if !ok {
-					continue
-				}
-				sv, ok := ac.Val.(*nodes.String)
-				if !ok {
-					continue
-				}
-				schemas = append(schemas, sv.Str)
-			}
-			c.SetSearchPath(schemas)
-		}
-		// All other SET commands: no-op for pgddl
-		return nil
+		return c.processVariableSet(s)
 	case *nodes.TransactionStmt:
 		// BEGIN/COMMIT/ROLLBACK: no-op for pgddl
 		return nil
@@ -336,4 +320,86 @@ func (c *Catalog) ProcessUtility(stmt nodes.Node) error {
 	default:
 		return errInvalidParameterValue(fmt.Sprintf("unsupported utility statement: %T", stmt))
 	}
+}
+
+// processVariableSet handles SET/RESET variable statements.
+//
+// pg: src/backend/utils/misc/guc.c — ExecSetVariableStmt
+func (c *Catalog) processVariableSet(s *nodes.VariableSetStmt) error {
+	switch s.Name {
+	case "search_path":
+		return c.processSetSearchPath(s)
+	case "role":
+		return c.processSetRole(s)
+	}
+	// All other SET/RESET commands: no-op for pgddl.
+	return nil
+}
+
+// processSetSearchPath handles SET search_path = ...
+//
+// pg: src/backend/catalog/namespace.c — preprocessNamespacePath
+func (c *Catalog) processSetSearchPath(s *nodes.VariableSetStmt) error {
+	switch s.Kind {
+	case nodes.VAR_SET_VALUE:
+		if s.Args == nil {
+			return nil
+		}
+		schemas := make([]string, 0, len(s.Args.Items))
+		for _, arg := range s.Args.Items {
+			ac, ok := arg.(*nodes.A_Const)
+			if !ok {
+				continue
+			}
+			sv, ok := ac.Val.(*nodes.String)
+			if !ok {
+				continue
+			}
+			schemas = append(schemas, sv.Str)
+		}
+		c.SetSearchPath(schemas)
+	case nodes.VAR_SET_DEFAULT, nodes.VAR_RESET:
+		// RESET search_path / SET search_path TO DEFAULT
+		// pg: GUC default for search_path is '"$user", public'
+		c.SetSearchPath([]string{"$user", "public"})
+	}
+	return nil
+}
+
+// processSetRole handles SET ROLE, RESET ROLE, SET ROLE NONE.
+//
+// pg: src/backend/commands/variable.c — check_role, assign_role
+// pg: src/backend/utils/init/miscinit.c — SetCurrentRoleId
+func (c *Catalog) processSetRole(s *nodes.VariableSetStmt) error {
+	switch s.Kind {
+	case nodes.VAR_SET_VALUE:
+		if s.Args == nil {
+			return nil
+		}
+		// Extract the role name from the first argument.
+		// SET ROLE rolename is parsed as SET role = 'rolename'.
+		for _, arg := range s.Args.Items {
+			ac, ok := arg.(*nodes.A_Const)
+			if !ok {
+				continue
+			}
+			sv, ok := ac.Val.(*nodes.String)
+			if !ok {
+				continue
+			}
+			roleName := sv.Str
+			// pg: check_role — "none" maps to InvalidOid → reset
+			if roleName == "none" {
+				c.ResetRole()
+			} else {
+				c.SetRole(roleName)
+			}
+			return nil
+		}
+	case nodes.VAR_SET_DEFAULT, nodes.VAR_RESET:
+		// RESET ROLE / SET ROLE TO DEFAULT → revert to session user.
+		// pg: SetCurrentRoleId(InvalidOid, ...) → falls back to SessionUserId
+		c.ResetRole()
+	}
+	return nil
 }

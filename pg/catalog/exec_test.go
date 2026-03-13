@@ -361,3 +361,145 @@ func TestExecSearchPathNonExistentSchema(t *testing.T) {
 		t.Error("t1 should exist in public (nonexistent schema skipped)")
 	}
 }
+
+func TestExecSetRole(t *testing.T) {
+	c := New()
+	c.SetSessionUser("alice")
+
+	// Create a schema matching the user name.
+	results, err := c.Exec(`
+		CREATE SCHEMA alice;
+		SET search_path = "$user", public;
+		CREATE TABLE t1 (id int);
+	`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, r := range results {
+		if r.Error != nil {
+			t.Fatalf("stmt %d: unexpected error: %v", i, r.Error)
+		}
+	}
+	// t1 should be in alice ($user expands to session user "alice").
+	if c.GetRelation("alice", "t1") == nil {
+		t.Error("t1 should exist in alice schema")
+	}
+
+	// Now SET ROLE to bob. Create bob's schema first.
+	results, err = c.Exec(`
+		CREATE SCHEMA bob;
+		SET ROLE bob;
+		CREATE TABLE t2 (id int);
+	`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, r := range results {
+		if r.Error != nil {
+			t.Fatalf("stmt %d: unexpected error: %v", i, r.Error)
+		}
+	}
+	// t2 should be in bob ($user now expands to "bob").
+	if c.GetRelation("bob", "t2") == nil {
+		t.Error("t2 should exist in bob schema")
+	}
+
+	// RESET ROLE should revert to alice.
+	results, err = c.Exec(`
+		RESET ROLE;
+		CREATE TABLE t3 (id int);
+	`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, r := range results {
+		if r.Error != nil {
+			t.Fatalf("stmt %d: unexpected error: %v", i, r.Error)
+		}
+	}
+	// t3 should be in alice (reverted to session user).
+	if c.GetRelation("alice", "t3") == nil {
+		t.Error("t3 should exist in alice schema after RESET ROLE")
+	}
+}
+
+func TestExecSetRoleNone(t *testing.T) {
+	c := New()
+	c.SetSessionUser("alice")
+
+	results, err := c.Exec(`
+		CREATE SCHEMA alice;
+		CREATE SCHEMA bob;
+		SET search_path = "$user", public;
+		SET ROLE bob;
+		CREATE TABLE t1 (id int);
+		SET ROLE NONE;
+		CREATE TABLE t2 (id int);
+	`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, r := range results {
+		if r.Error != nil {
+			t.Fatalf("stmt %d: unexpected error: %v", i, r.Error)
+		}
+	}
+	// t1 in bob, t2 in alice.
+	if c.GetRelation("bob", "t1") == nil {
+		t.Error("t1 should exist in bob schema")
+	}
+	if c.GetRelation("alice", "t2") == nil {
+		t.Error("t2 should exist in alice schema after SET ROLE NONE")
+	}
+}
+
+func TestExecDollarUserNoUser(t *testing.T) {
+	// When no session user is set, $user should be skipped (no expansion).
+	c := New()
+
+	results, err := c.Exec(`
+		SET search_path = "$user", public;
+		CREATE TABLE t1 (id int);
+	`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, r := range results {
+		if r.Error != nil {
+			t.Fatalf("stmt %d: unexpected error: %v", i, r.Error)
+		}
+	}
+	// t1 should land in public since $user is skipped.
+	if c.GetRelation("public", "t1") == nil {
+		t.Error("t1 should exist in public when no session user set")
+	}
+}
+
+func TestExecResetSearchPath(t *testing.T) {
+	c := New()
+	c.SetSessionUser("alice")
+
+	results, err := c.Exec(`
+		CREATE SCHEMA myschema;
+		CREATE SCHEMA alice;
+		SET search_path = myschema;
+		CREATE TABLE t1 (id int);
+		RESET search_path;
+		CREATE TABLE t2 (id int);
+	`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, r := range results {
+		if r.Error != nil {
+			t.Fatalf("stmt %d: unexpected error: %v", i, r.Error)
+		}
+	}
+	// t1 in myschema, t2 in alice (reset to "$user", public).
+	if c.GetRelation("myschema", "t1") == nil {
+		t.Error("t1 should exist in myschema")
+	}
+	if c.GetRelation("alice", "t2") == nil {
+		t.Error("t2 should exist in alice after RESET search_path")
+	}
+}
