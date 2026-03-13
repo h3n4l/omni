@@ -2776,3 +2776,65 @@ type CopyIntoStmt struct {
 
 func (n *CopyIntoStmt) nodeTag()  {}
 func (n *CopyIntoStmt) stmtNode() {}
+
+// RenameStmt represents a RENAME statement (Azure Synapse / PDW).
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/rename-transact-sql
+//
+//	RENAME OBJECT [::] [ [ database_name . [ schema_name ] . ] | [ schema_name . ] ] table_name TO new_table_name
+//	RENAME DATABASE [::] database_name TO new_database_name
+//	RENAME OBJECT [::] [ [ database_name . [ schema_name ] . ] | [ schema_name . ] ] table_name COLUMN column_name TO new_column_name
+type RenameStmt struct {
+	ObjectType    string    // "OBJECT" or "DATABASE"
+	Name          *TableRef // object being renamed
+	NewName       string    // new name
+	ColumnName    string    // column being renamed (for RENAME OBJECT ... COLUMN)
+	NewColumnName string    // new column name
+	Loc           Loc
+}
+
+func (n *RenameStmt) nodeTag()  {}
+func (n *RenameStmt) stmtNode() {}
+
+// CreateExternalTableAsSelectStmt represents a CREATE EXTERNAL TABLE AS SELECT (CETAS) statement.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-table-as-select-transact-sql
+//
+//	CREATE EXTERNAL TABLE { [ [ database_name . [ schema_name ] . ] | schema_name . ] table_name }
+//	    [ (column_name [ , ...n ] ) ]
+//	    WITH (
+//	        LOCATION = 'hdfs_folder' | '<prefix>://<path>[:<port>]' ,
+//	        DATA_SOURCE = external_data_source_name ,
+//	        FILE_FORMAT = external_file_format_name
+//	        [ , <reject_options> [ , ...n ] ]
+//	    )
+//	    AS <select_statement>
+type CreateExternalTableAsSelectStmt struct {
+	Name    *TableRef // table name
+	Columns *List     // optional column list (String nodes)
+	Options *List     // WITH options
+	Query   Node      // the SELECT statement
+	Loc     Loc
+}
+
+func (n *CreateExternalTableAsSelectStmt) nodeTag()  {}
+func (n *CreateExternalTableAsSelectStmt) stmtNode() {}
+
+// CreateTableCloneStmt represents a CREATE TABLE AS CLONE OF statement (Fabric).
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-table-as-clone-of-transact-sql
+//
+//	CREATE TABLE
+//	    { database_name.schema_name.table_name | schema_name.table_name | table_name }
+//	AS CLONE OF
+//	    { database_name.schema_name.table_name | schema_name.table_name | table_name }
+//	    [ AT { point_in_time } ]
+type CreateTableCloneStmt struct {
+	Name       *TableRef // new table name
+	SourceName *TableRef // source table name
+	AtTime     string    // optional point-in-time (datetime string)
+	Loc        Loc
+}
+
+func (n *CreateTableCloneStmt) nodeTag()  {}
+func (n *CreateTableCloneStmt) stmtNode() {}

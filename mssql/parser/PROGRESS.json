@@ -2493,7 +2493,7 @@
       "id": 112,
       "name": "rename_cetas",
       "file": "utility.go",
-      "status": "pending",
+      "status": "done",
       "description": "New: RENAME statement (Azure Synapse/Fabric), CREATE EXTERNAL TABLE AS SELECT (CETAS), CREATE TABLE AS CLONE OF (Azure). RENAME OBJECT :: schema.old_name TO new_name",
       "rules": [
         "parseRenameStmt",

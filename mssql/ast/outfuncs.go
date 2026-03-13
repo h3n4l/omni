@@ -394,6 +394,12 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeAlterMaterializedViewStmt(sb, n)
 	case *CopyIntoStmt:
 		writeCopyIntoStmt(sb, n)
+	case *RenameStmt:
+		writeRenameStmt(sb, n)
+	case *CreateExternalTableAsSelectStmt:
+		writeCreateExternalTableAsSelectStmt(sb, n)
+	case *CreateTableCloneStmt:
+		writeCreateTableCloneStmt(sb, n)
 	default:
 		sb.WriteString("{UNKNOWN}")
 	}
@@ -3500,5 +3506,66 @@ func writeCopyIntoStmt(sb *strings.Builder, n *CopyIntoStmt) {
 		writeNode(sb, n.Options)
 	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeRenameStmt(sb *strings.Builder, n *RenameStmt) {
+	sb.WriteString("{RENAME")
+	if n.ObjectType != "" {
+		fmt.Fprintf(sb, " :objectType \"%s\"", escapeString(n.ObjectType))
+	}
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.NewName != "" {
+		fmt.Fprintf(sb, " :newName \"%s\"", escapeString(n.NewName))
+	}
+	if n.ColumnName != "" {
+		fmt.Fprintf(sb, " :columnName \"%s\"", escapeString(n.ColumnName))
+	}
+	if n.NewColumnName != "" {
+		fmt.Fprintf(sb, " :newColumnName \"%s\"", escapeString(n.NewColumnName))
+	}
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
+	sb.WriteString("}")
+}
+
+func writeCreateExternalTableAsSelectStmt(sb *strings.Builder, n *CreateExternalTableAsSelectStmt) {
+	sb.WriteString("{CETAS")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.Columns != nil {
+		sb.WriteString(" :columns ")
+		writeNode(sb, n.Columns)
+	}
+	if n.Options != nil {
+		sb.WriteString(" :options ")
+		writeNode(sb, n.Options)
+	}
+	if n.Query != nil {
+		sb.WriteString(" :query ")
+		writeNode(sb, n.Query)
+	}
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
+	sb.WriteString("}")
+}
+
+func writeCreateTableCloneStmt(sb *strings.Builder, n *CreateTableCloneStmt) {
+	sb.WriteString("{CREATETABLECLONE")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.SourceName != nil {
+		sb.WriteString(" :sourceName ")
+		writeNode(sb, n.SourceName)
+	}
+	if n.AtTime != "" {
+		fmt.Fprintf(sb, " :atTime \"%s\"", escapeString(n.AtTime))
+	}
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
 	sb.WriteString("}")
 }

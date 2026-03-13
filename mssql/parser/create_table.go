@@ -39,7 +39,8 @@ func (p *Parser) parseCreateTableStmt() *nodes.CreateTableStmt {
 	// Table name
 	stmt.Name = p.parseTableRef()
 
-	// AS NODE | AS EDGE (graph tables)
+	// AS NODE | AS EDGE (graph tables) | AS FILETABLE
+	// Note: AS CLONE OF is handled at the dispatch level (parser.go)
 	if p.cur.Type == kwAS {
 		next := p.peekNext()
 		if next.Type == tokIDENT && strings.EqualFold(next.Str, "node") {

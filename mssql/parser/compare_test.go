@@ -11450,3 +11450,243 @@ WITH (
 		}
 	})
 }
+
+// TestParseRenameCETAS tests RENAME, CETAS, and CREATE TABLE AS CLONE OF (batch 112).
+func TestParseRenameCETAS(t *testing.T) {
+	// RENAME OBJECT
+	t.Run("rename_object", func(t *testing.T) {
+		sql := `RENAME OBJECT Customer TO Customer1`
+		result := ParseAndCheck(t, sql)
+		if result.Len() == 0 {
+			t.Fatalf("Parse(%q): no statements returned", sql)
+		}
+		stmt, ok := result.Items[0].(*ast.RenameStmt)
+		if !ok {
+			t.Fatalf("expected *RenameStmt, got %T", result.Items[0])
+		}
+		if stmt.ObjectType != "OBJECT" {
+			t.Errorf("expected ObjectType OBJECT, got %s", stmt.ObjectType)
+		}
+		if stmt.NewName != "Customer1" {
+			t.Errorf("expected NewName Customer1, got %s", stmt.NewName)
+		}
+		checkLocation(t, sql, "RenameStmt", stmt.Loc)
+	})
+
+	t.Run("rename_object_qualified", func(t *testing.T) {
+		sql := `RENAME OBJECT::mydb.dbo.Customer TO Customer1`
+		result := ParseAndCheck(t, sql)
+		if result.Len() == 0 {
+			t.Fatalf("Parse(%q): no statements returned", sql)
+		}
+		stmt, ok := result.Items[0].(*ast.RenameStmt)
+		if !ok {
+			t.Fatalf("expected *RenameStmt, got %T", result.Items[0])
+		}
+		if stmt.ObjectType != "OBJECT" {
+			t.Errorf("expected ObjectType OBJECT, got %s", stmt.ObjectType)
+		}
+		if stmt.NewName != "Customer1" {
+			t.Errorf("expected NewName Customer1, got %s", stmt.NewName)
+		}
+		checkLocation(t, sql, "RenameStmt", stmt.Loc)
+	})
+
+	t.Run("rename_database", func(t *testing.T) {
+		sql := `RENAME DATABASE::AdWorks TO AdWorks2`
+		result := ParseAndCheck(t, sql)
+		if result.Len() == 0 {
+			t.Fatalf("Parse(%q): no statements returned", sql)
+		}
+		stmt, ok := result.Items[0].(*ast.RenameStmt)
+		if !ok {
+			t.Fatalf("expected *RenameStmt, got %T", result.Items[0])
+		}
+		if stmt.ObjectType != "DATABASE" {
+			t.Errorf("expected ObjectType DATABASE, got %s", stmt.ObjectType)
+		}
+		if stmt.NewName != "AdWorks2" {
+			t.Errorf("expected NewName AdWorks2, got %s", stmt.NewName)
+		}
+		checkLocation(t, sql, "RenameStmt", stmt.Loc)
+	})
+
+	t.Run("rename_column", func(t *testing.T) {
+		sql := `RENAME OBJECT::Customer COLUMN FName TO FirstName`
+		result := ParseAndCheck(t, sql)
+		if result.Len() == 0 {
+			t.Fatalf("Parse(%q): no statements returned", sql)
+		}
+		stmt, ok := result.Items[0].(*ast.RenameStmt)
+		if !ok {
+			t.Fatalf("expected *RenameStmt, got %T", result.Items[0])
+		}
+		if stmt.ColumnName != "FName" {
+			t.Errorf("expected ColumnName FName, got %s", stmt.ColumnName)
+		}
+		if stmt.NewColumnName != "FirstName" {
+			t.Errorf("expected NewColumnName FirstName, got %s", stmt.NewColumnName)
+		}
+		checkLocation(t, sql, "RenameStmt", stmt.Loc)
+	})
+
+	// CETAS
+	t.Run("cetas", func(t *testing.T) {
+		sql := `CREATE EXTERNAL TABLE dbo.export_table
+WITH (
+    LOCATION = '/export/data/',
+    DATA_SOURCE = myExternalDataSource,
+    FILE_FORMAT = myFileFormat
+)
+AS SELECT col1, col2 FROM dbo.source_table WHERE col1 > 100`
+		result := ParseAndCheck(t, sql)
+		if result.Len() == 0 {
+			t.Fatalf("Parse(%q): no statements returned", sql)
+		}
+		stmt, ok := result.Items[0].(*ast.CreateExternalTableAsSelectStmt)
+		if !ok {
+			t.Fatalf("expected *CreateExternalTableAsSelectStmt, got %T", result.Items[0])
+		}
+		if stmt.Name == nil {
+			t.Fatal("expected non-nil Name")
+		}
+		if stmt.Options == nil || stmt.Options.Len() != 3 {
+			t.Fatalf("expected 3 options, got %d", stmt.Options.Len())
+		}
+		if stmt.Query == nil {
+			t.Fatal("expected non-nil Query")
+		}
+		checkLocation(t, sql, "CreateExternalTableAsSelectStmt", stmt.Loc)
+	})
+
+	t.Run("cetas_with_columns", func(t *testing.T) {
+		sql := `CREATE EXTERNAL TABLE dbo.export_table (col1, col2)
+WITH (
+    LOCATION = '/export/',
+    DATA_SOURCE = myds,
+    FILE_FORMAT = myff
+)
+AS SELECT a, b FROM dbo.source`
+		result := ParseAndCheck(t, sql)
+		if result.Len() == 0 {
+			t.Fatalf("Parse(%q): no statements returned", sql)
+		}
+		stmt, ok := result.Items[0].(*ast.CreateExternalTableAsSelectStmt)
+		if !ok {
+			t.Fatalf("expected *CreateExternalTableAsSelectStmt, got %T", result.Items[0])
+		}
+		if stmt.Columns == nil || stmt.Columns.Len() != 2 {
+			t.Fatalf("expected 2 columns, got %d", stmt.Columns.Len())
+		}
+		if stmt.Query == nil {
+			t.Fatal("expected non-nil Query")
+		}
+		checkLocation(t, sql, "CreateExternalTableAsSelectStmt", stmt.Loc)
+	})
+
+	t.Run("cetas_with_reject", func(t *testing.T) {
+		sql := `CREATE EXTERNAL TABLE dbo.export_table
+WITH (
+    LOCATION = '/export/',
+    DATA_SOURCE = myds,
+    FILE_FORMAT = myff,
+    REJECT_TYPE = value,
+    REJECT_VALUE = 5
+)
+AS SELECT * FROM dbo.source`
+		result := ParseAndCheck(t, sql)
+		if result.Len() == 0 {
+			t.Fatalf("Parse(%q): no statements returned", sql)
+		}
+		stmt, ok := result.Items[0].(*ast.CreateExternalTableAsSelectStmt)
+		if !ok {
+			t.Fatalf("expected *CreateExternalTableAsSelectStmt, got %T", result.Items[0])
+		}
+		if stmt.Options == nil || stmt.Options.Len() != 5 {
+			t.Fatalf("expected 5 options, got %d", stmt.Options.Len())
+		}
+		checkLocation(t, sql, "CreateExternalTableAsSelectStmt", stmt.Loc)
+	})
+
+	// CREATE TABLE AS CLONE OF
+	t.Run("create_table_clone", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.Employee AS CLONE OF dbo.EmployeeUSA`
+		result := ParseAndCheck(t, sql)
+		if result.Len() == 0 {
+			t.Fatalf("Parse(%q): no statements returned", sql)
+		}
+		stmt, ok := result.Items[0].(*ast.CreateTableCloneStmt)
+		if !ok {
+			t.Fatalf("expected *CreateTableCloneStmt, got %T", result.Items[0])
+		}
+		if stmt.Name == nil {
+			t.Fatal("expected non-nil Name")
+		}
+		if stmt.SourceName == nil {
+			t.Fatal("expected non-nil SourceName")
+		}
+		if stmt.AtTime != "" {
+			t.Errorf("expected empty AtTime, got %s", stmt.AtTime)
+		}
+		checkLocation(t, sql, "CreateTableCloneStmt", stmt.Loc)
+	})
+
+	t.Run("create_table_clone_cross_schema", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.Employee AS CLONE OF dbo1.EmployeeUSA`
+		result := ParseAndCheck(t, sql)
+		if result.Len() == 0 {
+			t.Fatalf("Parse(%q): no statements returned", sql)
+		}
+		stmt, ok := result.Items[0].(*ast.CreateTableCloneStmt)
+		if !ok {
+			t.Fatalf("expected *CreateTableCloneStmt, got %T", result.Items[0])
+		}
+		if stmt.SourceName == nil || stmt.SourceName.Schema != "dbo1" {
+			t.Errorf("expected source schema dbo1")
+		}
+		checkLocation(t, sql, "CreateTableCloneStmt", stmt.Loc)
+	})
+
+	t.Run("create_table_clone_at_time", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.Employee AS CLONE OF dbo.EmployeeUSA AT '2023-05-23T14:24:10.325'`
+		result := ParseAndCheck(t, sql)
+		if result.Len() == 0 {
+			t.Fatalf("Parse(%q): no statements returned", sql)
+		}
+		stmt, ok := result.Items[0].(*ast.CreateTableCloneStmt)
+		if !ok {
+			t.Fatalf("expected *CreateTableCloneStmt, got %T", result.Items[0])
+		}
+		if stmt.AtTime != "2023-05-23T14:24:10.325" {
+			t.Errorf("expected AtTime 2023-05-23T14:24:10.325, got %s", stmt.AtTime)
+		}
+		checkLocation(t, sql, "CreateTableCloneStmt", stmt.Loc)
+	})
+
+	// Regular CREATE EXTERNAL TABLE (non-CETAS) still works
+	t.Run("create_external_table_no_cetas", func(t *testing.T) {
+		sql := `CREATE EXTERNAL TABLE dbo.ext_table (col1 INT, col2 VARCHAR(50)) WITH (LOCATION = '/data/', DATA_SOURCE = myds, FILE_FORMAT = myff)`
+		result := ParseAndCheck(t, sql)
+		if result.Len() == 0 {
+			t.Fatalf("Parse(%q): no statements returned", sql)
+		}
+		// Should parse as SecurityStmt (no AS SELECT)
+		_, ok := result.Items[0].(*ast.SecurityStmt)
+		if !ok {
+			t.Fatalf("expected *SecurityStmt for non-CETAS external table, got %T", result.Items[0])
+		}
+	})
+
+	// Regular CREATE TABLE still works
+	t.Run("create_table_normal", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.test (id INT, name VARCHAR(100))`
+		result := ParseAndCheck(t, sql)
+		if result.Len() == 0 {
+			t.Fatalf("Parse(%q): no statements returned", sql)
+		}
+		_, ok := result.Items[0].(*ast.CreateTableStmt)
+		if !ok {
+			t.Fatalf("expected *CreateTableStmt, got %T", result.Items[0])
+		}
+	})
+}

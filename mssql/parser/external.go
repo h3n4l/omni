@@ -259,6 +259,52 @@ func (p *Parser) parseCreateExternalTableStmt() *nodes.SecurityStmt {
 	return stmt
 }
 
+// parseCreateExternalTableOrCETAS dispatches between CREATE EXTERNAL TABLE and CETAS.
+// If the statement has AS <select_statement> after the WITH clause, it's CETAS.
+func (p *Parser) parseCreateExternalTableOrCETAS(createLoc int) nodes.StmtNode {
+	cetasStmt := p.parseCreateExternalTableAsSelectStmt()
+	// If it parsed a query, it's CETAS
+	if cetasStmt.Query != nil {
+		cetasStmt.Loc.Start = createLoc
+		return cetasStmt
+	}
+	// Otherwise, convert to regular SecurityStmt for backward compat
+	secStmt := &nodes.SecurityStmt{
+		Action:     "CREATE",
+		ObjectType: "EXTERNAL TABLE",
+		Loc:        nodes.Loc{Start: createLoc, End: cetasStmt.Loc.End},
+	}
+	if cetasStmt.Name != nil {
+		secStmt.Name = cetasStmt.Name.Object
+		if cetasStmt.Name.Schema != "" {
+			secStmt.Name = cetasStmt.Name.Schema + "." + secStmt.Name
+		}
+		if cetasStmt.Name.Database != "" {
+			secStmt.Name = cetasStmt.Name.Database + "." + secStmt.Name
+		}
+	}
+	if cetasStmt.Columns != nil || cetasStmt.Options != nil {
+		var opts []nodes.Node
+		if cetasStmt.Columns != nil {
+			// Encode columns the same way parseCreateExternalTableStmt did
+			var colNames []string
+			for _, c := range cetasStmt.Columns.Items {
+				if s, ok := c.(*nodes.String); ok {
+					colNames = append(colNames, strings.ToUpper(s.Str))
+				}
+			}
+			opts = append(opts, &nodes.String{Str: "COLUMNS=(" + strings.Join(colNames, " ") + ")"})
+		}
+		if cetasStmt.Options != nil {
+			opts = append(opts, cetasStmt.Options.Items...)
+		}
+		if len(opts) > 0 {
+			secStmt.Options = &nodes.List{Items: opts}
+		}
+	}
+	return secStmt
+}
+
 // parseCreateExternalFileFormatStmt parses CREATE EXTERNAL FILE FORMAT.
 //
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-file-format-transact-sql

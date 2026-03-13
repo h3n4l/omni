@@ -5,6 +5,8 @@
 package parser
 
 import (
+	"strings"
+
 	nodes "github.com/bytebase/omni/mssql/ast"
 )
 
@@ -279,6 +281,10 @@ func (p *Parser) parseStmt() nodes.StmtNode {
 				next.Str != "" && matchesKeywordCI(next.Str, "INTO") {
 				return p.parseCopyIntoStmt()
 			}
+			// RENAME OBJECT/DATABASE (Azure Synapse/PDW)
+			if matchesKeywordCI(p.cur.Str, "RENAME") {
+				return p.parseRenameStmt()
+			}
 			// REVERT (security context)
 			if matchesKeywordCI(p.cur.Str, "REVERT") {
 				return p.parseRevertStmt()
@@ -365,6 +371,29 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 		return stmt
 	case kwTABLE:
 		p.advance() // consume TABLE
+		// Check if this is CREATE TABLE ... AS CLONE OF (Fabric)
+		// Save lexer state for potential AS CLONE OF detection
+		savedLexerPos := p.lexer.pos
+		savedCur := p.cur
+		savedPrev := p.prev
+		savedNextBuf := p.nextBuf
+		savedHasNext := p.hasNext
+		tableName := p.parseTableRef()
+		if p.cur.Type == kwAS {
+			next := p.peekNext()
+			if next.Type == tokIDENT && strings.EqualFold(next.Str, "CLONE") {
+				p.advance() // consume AS
+				cloneStmt := p.parseCreateTableCloneStmt(tableName)
+				cloneStmt.Loc.Start = loc
+				return cloneStmt
+			}
+		}
+		// Not a clone — restore lexer state and parse normally
+		p.lexer.pos = savedLexerPos
+		p.cur = savedCur
+		p.prev = savedPrev
+		p.nextBuf = savedNextBuf
+		p.hasNext = savedHasNext
 		stmt := p.parseCreateTableStmt()
 		stmt.Loc.Start = loc
 		return stmt
@@ -758,9 +787,10 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 			}
 			if p.cur.Type == kwTABLE {
 				p.advance() // consume TABLE
-				stmt := p.parseCreateExternalTableStmt()
-				stmt.Loc.Start = loc
-				return stmt
+				// Could be CETAS: CREATE EXTERNAL TABLE ... WITH (...) AS SELECT
+				// Try CETAS parser which falls back to regular external table if no AS SELECT
+				cetasStmt := p.parseCreateExternalTableOrCETAS(loc)
+				return cetasStmt
 			}
 			if p.cur.Type == kwFILE || (p.isIdentLike() && matchesKeywordCI(p.cur.Str, "FILE")) {
 				p.advance() // consume FILE

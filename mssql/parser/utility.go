@@ -979,3 +979,204 @@ func (p *Parser) parseCopyIntoOption() nodes.Node {
 	// Plain flag option (unlikely for COPY INTO but handle gracefully)
 	return &nodes.String{Str: name}
 }
+
+// parseRenameStmt parses a RENAME statement (Azure Synapse / PDW).
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/rename-transact-sql
+//
+//	RENAME OBJECT [::] [ [ database_name . [ schema_name ] . ] | [ schema_name . ] ] table_name TO new_table_name
+//	RENAME DATABASE [::] database_name TO new_database_name
+//	RENAME OBJECT [::] [ [ database_name . [ schema_name ] . ] | [ schema_name . ] ] table_name COLUMN column_name TO new_column_name
+func (p *Parser) parseRenameStmt() *nodes.RenameStmt {
+	loc := p.pos()
+	p.advance() // consume RENAME
+
+	stmt := &nodes.RenameStmt{
+		Loc: nodes.Loc{Start: loc},
+	}
+
+	// OBJECT or DATABASE
+	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "OBJECT") {
+		stmt.ObjectType = "OBJECT"
+		p.advance()
+	} else if p.cur.Type == kwDATABASE {
+		stmt.ObjectType = "DATABASE"
+		p.advance()
+	}
+
+	// Optional :: separator
+	if p.cur.Type == tokCOLONCOLON {
+		p.advance() // consume ::
+	}
+
+	// Object/table/database name
+	stmt.Name = p.parseTableRef()
+
+	// Check for COLUMN rename variant
+	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "COLUMN") {
+		p.advance() // consume COLUMN
+		if p.isIdentLike() || p.cur.Type == '[' {
+			stmt.ColumnName = p.cur.Str
+			p.advance()
+		}
+	}
+
+	// TO new_name
+	if p.cur.Type == kwTO {
+		p.advance() // consume TO
+		if p.isIdentLike() || p.cur.Type == '[' {
+			if stmt.ColumnName != "" {
+				stmt.NewColumnName = p.cur.Str
+			} else {
+				stmt.NewName = p.cur.Str
+			}
+			p.advance()
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseCreateExternalTableAsSelectStmt parses CREATE EXTERNAL TABLE ... AS SELECT (CETAS).
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-table-as-select-transact-sql
+//
+//	CREATE EXTERNAL TABLE { [ [ database_name . [ schema_name ] . ] | schema_name . ] table_name }
+//	    [ (column_name [ , ...n ] ) ]
+//	    WITH (
+//	        LOCATION = 'hdfs_folder' | '<prefix>://<path>[:<port>]' ,
+//	        DATA_SOURCE = external_data_source_name ,
+//	        FILE_FORMAT = external_file_format_name
+//	        [ , <reject_options> [ , ...n ] ]
+//	    )
+//	    AS <select_statement>
+//
+//	<reject_options> ::=
+//	{
+//	    | REJECT_TYPE = value | percentage
+//	    | REJECT_VALUE = reject_value
+//	    | REJECT_SAMPLE_VALUE = reject_sample_value
+//	}
+func (p *Parser) parseCreateExternalTableAsSelectStmt() *nodes.CreateExternalTableAsSelectStmt {
+	loc := p.pos()
+	// EXTERNAL TABLE already consumed by caller
+
+	stmt := &nodes.CreateExternalTableAsSelectStmt{
+		Loc: nodes.Loc{Start: loc},
+	}
+
+	// Table name
+	stmt.Name = p.parseTableRef()
+
+	// Optional column list (may include type definitions with nested parens)
+	if p.cur.Type == '(' {
+		p.advance() // consume '('
+		depth := 1
+		var cols []nodes.Node
+		var colBuf strings.Builder
+		for depth > 0 && p.cur.Type != tokEOF {
+			if p.cur.Type == '(' {
+				depth++
+				colBuf.WriteString("(")
+				p.advance()
+			} else if p.cur.Type == ')' {
+				depth--
+				if depth > 0 {
+					colBuf.WriteString(")")
+					p.advance()
+				}
+			} else if p.cur.Type == ',' && depth == 1 {
+				// Column separator at top level
+				cols = append(cols, &nodes.String{Str: strings.TrimSpace(colBuf.String())})
+				colBuf.Reset()
+				p.advance()
+			} else {
+				if colBuf.Len() > 0 {
+					colBuf.WriteString(" ")
+				}
+				colBuf.WriteString(p.cur.Str)
+				p.advance()
+			}
+		}
+		if colBuf.Len() > 0 {
+			cols = append(cols, &nodes.String{Str: strings.TrimSpace(colBuf.String())})
+		}
+		p.match(')') // consume final ')'
+		if len(cols) > 0 {
+			stmt.Columns = &nodes.List{Items: cols}
+		}
+	}
+
+	// WITH ( options )
+	if p.cur.Type == kwWITH {
+		p.advance() // consume WITH
+		if p.cur.Type == '(' {
+			p.advance() // consume '('
+			var opts []nodes.Node
+			for p.cur.Type != ')' && p.cur.Type != tokEOF {
+				opt := p.parseCopyIntoOption() // reuse generic KEY=VALUE option parser
+				if opt != nil {
+					opts = append(opts, opt)
+				}
+				if _, ok := p.match(','); !ok {
+					break
+				}
+			}
+			p.match(')')
+			if len(opts) > 0 {
+				stmt.Options = &nodes.List{Items: opts}
+			}
+		}
+	}
+
+	// AS <select_statement>
+	if p.cur.Type == kwAS {
+		p.advance() // consume AS
+		if p.cur.Type == kwSELECT || p.cur.Type == kwWITH {
+			stmt.Query = p.parseSelectStmt()
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseCreateTableCloneStmt parses CREATE TABLE ... AS CLONE OF (Fabric).
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-table-as-clone-of-transact-sql
+//
+//	CREATE TABLE
+//	    { database_name.schema_name.table_name | schema_name.table_name | table_name }
+//	AS CLONE OF
+//	    { database_name.schema_name.table_name | schema_name.table_name | table_name }
+//	    [ AT { point_in_time } ]
+func (p *Parser) parseCreateTableCloneStmt(name *nodes.TableRef) *nodes.CreateTableCloneStmt {
+	loc := p.pos()
+	// AS CLONE OF already partially consumed; caller consumed AS, we consume CLONE OF
+
+	stmt := &nodes.CreateTableCloneStmt{
+		Name: name,
+		Loc:  nodes.Loc{Start: loc},
+	}
+
+	// consume CLONE
+	p.matchIdentCI("CLONE")
+	// consume OF
+	p.matchIdentCI("OF")
+
+	// Source table name
+	stmt.SourceName = p.parseTableRef()
+
+	// Optional AT 'point_in_time'
+	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AT") {
+		p.advance() // consume AT
+		if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
+			stmt.AtTime = p.cur.Str
+			p.advance()
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
