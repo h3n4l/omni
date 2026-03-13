@@ -784,6 +784,17 @@ type DatabaseOption struct {
 
 func (n *DatabaseOption) nodeTag() {}
 
+// SizeValue represents a structured size value with numeric part and optional unit.
+//
+//	size [KB|MB|GB|TB|%]
+type SizeValue struct {
+	Value string // numeric value (e.g. "10", "100", "5")
+	Unit  string // unit suffix: "KB", "MB", "GB", "TB", "%", or "" for bare number
+	Loc   Loc
+}
+
+func (n *SizeValue) nodeTag() {}
+
 // DatabaseFileSpec represents a file specification in CREATE DATABASE.
 //
 //	( NAME = logical_file_name, FILENAME = 'os_file_name'
@@ -791,13 +802,14 @@ func (n *DatabaseOption) nodeTag() {}
 //	  [, MAXSIZE = { max_size [KB|MB|GB|TB] | UNLIMITED }]
 //	  [, FILEGROWTH = growth_increment [KB|MB|GB|TB|%]] )
 type DatabaseFileSpec struct {
-	Name       string // logical file name
-	NewName    string // new logical name (NEWNAME, for ALTER DATABASE MODIFY FILE)
-	Filename   string // OS file path
-	Size       string // e.g. "10MB"
-	MaxSize    string // e.g. "100MB" or "UNLIMITED"
-	FileGrowth string // e.g. "5MB" or "10%"
-	Offline    bool   // OFFLINE flag (for ALTER DATABASE MODIFY FILE)
+	Name       string     // logical file name
+	NewName    string     // new logical name (NEWNAME, for ALTER DATABASE MODIFY FILE)
+	Filename   string     // OS file path
+	Size       *SizeValue // e.g. 10 MB
+	MaxSize    *SizeValue // e.g. 100 MB or nil (check MaxSizeUnlimited)
+	MaxSizeUnlimited bool // MAXSIZE = UNLIMITED
+	FileGrowth *SizeValue // e.g. 5 MB or 10 %
+	Offline    bool       // OFFLINE flag (for ALTER DATABASE MODIFY FILE)
 	Loc        Loc
 }
 

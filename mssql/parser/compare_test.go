@@ -7932,6 +7932,111 @@ func TestParseCreateDatabaseDepth(t *testing.T) {
 	})
 }
 
+// TestParseSizeValueStructured tests structured SizeValue parsing (batch 147).
+func TestParseSizeValueStructured(t *testing.T) {
+	t.Run("size_value_mb", func(t *testing.T) {
+		sql := `CREATE DATABASE mydb
+			ON PRIMARY
+			( NAME = mydb_data, FILENAME = 'C:\data\mydb.mdf', SIZE = 10MB, MAXSIZE = 100MB, FILEGROWTH = 5MB )`
+		result := ParseAndCheck(t, sql)
+		stmt, ok := result.Items[0].(*ast.CreateDatabaseStmt)
+		if !ok {
+			t.Fatalf("expected *CreateDatabaseStmt, got %T", result.Items[0])
+		}
+		if stmt.OnPrimary == nil || stmt.OnPrimary.Len() == 0 {
+			t.Fatal("expected OnPrimary filespec")
+		}
+		spec := stmt.OnPrimary.Items[0].(*ast.DatabaseFileSpec)
+		if spec.Size == nil {
+			t.Fatal("expected Size")
+		}
+		if spec.Size.Value != "10" || spec.Size.Unit != "MB" {
+			t.Errorf("expected Size 10 MB, got %s %s", spec.Size.Value, spec.Size.Unit)
+		}
+		if spec.MaxSize == nil {
+			t.Fatal("expected MaxSize")
+		}
+		if spec.MaxSize.Value != "100" || spec.MaxSize.Unit != "MB" {
+			t.Errorf("expected MaxSize 100 MB, got %s %s", spec.MaxSize.Value, spec.MaxSize.Unit)
+		}
+		if spec.FileGrowth == nil {
+			t.Fatal("expected FileGrowth")
+		}
+		if spec.FileGrowth.Value != "5" || spec.FileGrowth.Unit != "MB" {
+			t.Errorf("expected FileGrowth 5 MB, got %s %s", spec.FileGrowth.Value, spec.FileGrowth.Unit)
+		}
+	})
+
+	t.Run("size_value_percent", func(t *testing.T) {
+		sql := `CREATE DATABASE mydb
+			ON PRIMARY
+			( NAME = mydb_data, FILENAME = 'C:\data\mydb.mdf', SIZE = 5MB, MAXSIZE = UNLIMITED, FILEGROWTH = 10% )`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateDatabaseStmt)
+		spec := stmt.OnPrimary.Items[0].(*ast.DatabaseFileSpec)
+		if spec.FileGrowth == nil {
+			t.Fatal("expected FileGrowth")
+		}
+		if spec.FileGrowth.Value != "10" || spec.FileGrowth.Unit != "%" {
+			t.Errorf("expected FileGrowth 10 %%, got %s %s", spec.FileGrowth.Value, spec.FileGrowth.Unit)
+		}
+		if !spec.MaxSizeUnlimited {
+			t.Error("expected MaxSizeUnlimited true")
+		}
+		if spec.MaxSize != nil {
+			t.Error("expected MaxSize nil when UNLIMITED")
+		}
+	})
+
+	t.Run("size_value_unlimited", func(t *testing.T) {
+		sql := `CREATE DATABASE mydb
+			ON PRIMARY
+			( NAME = mydb_data, FILENAME = 'C:\data\mydb.mdf', SIZE = 1GB, MAXSIZE = UNLIMITED )`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateDatabaseStmt)
+		spec := stmt.OnPrimary.Items[0].(*ast.DatabaseFileSpec)
+		if spec.Size == nil {
+			t.Fatal("expected Size")
+		}
+		if spec.Size.Value != "1" || spec.Size.Unit != "GB" {
+			t.Errorf("expected Size 1 GB, got %s %s", spec.Size.Value, spec.Size.Unit)
+		}
+		if !spec.MaxSizeUnlimited {
+			t.Error("expected MaxSizeUnlimited true")
+		}
+	})
+
+	t.Run("size_value_kb_tb", func(t *testing.T) {
+		sql := `CREATE DATABASE mydb
+			ON PRIMARY
+			( NAME = mydb_data, FILENAME = 'C:\data\mydb.mdf', SIZE = 512KB, MAXSIZE = 2TB )`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateDatabaseStmt)
+		spec := stmt.OnPrimary.Items[0].(*ast.DatabaseFileSpec)
+		if spec.Size.Value != "512" || spec.Size.Unit != "KB" {
+			t.Errorf("expected Size 512 KB, got %s %s", spec.Size.Value, spec.Size.Unit)
+		}
+		if spec.MaxSize.Value != "2" || spec.MaxSize.Unit != "TB" {
+			t.Errorf("expected MaxSize 2 TB, got %s %s", spec.MaxSize.Value, spec.MaxSize.Unit)
+		}
+	})
+
+	t.Run("size_value_bare_number", func(t *testing.T) {
+		sql := `CREATE DATABASE mydb
+			ON PRIMARY
+			( NAME = mydb_data, FILENAME = 'C:\data\mydb.mdf', SIZE = 100 )`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateDatabaseStmt)
+		spec := stmt.OnPrimary.Items[0].(*ast.DatabaseFileSpec)
+		if spec.Size == nil {
+			t.Fatal("expected Size")
+		}
+		if spec.Size.Value != "100" || spec.Size.Unit != "" {
+			t.Errorf("expected Size 100 (no unit), got %s %s", spec.Size.Value, spec.Size.Unit)
+		}
+	})
+}
+
 // TestParseWorkloadClassifier tests CREATE/ALTER/DROP WORKLOAD CLASSIFIER (batch 80).
 func TestParseWorkloadClassifier(t *testing.T) {
 	t.Run("create_workload_classifier", func(t *testing.T) {

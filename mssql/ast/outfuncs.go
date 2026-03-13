@@ -72,6 +72,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeCreateDatabaseStmt(sb, n)
 	case *DatabaseOption:
 		writeDatabaseOption(sb, n)
+	case *SizeValue:
+		writeSizeValue(sb, n)
 	case *DatabaseFileSpec:
 		writeDatabaseFileSpec(sb, n)
 	case *DatabaseFilegroup:
@@ -1016,6 +1018,16 @@ func writeDatabaseOption(sb *strings.Builder, n *DatabaseOption) {
 	sb.WriteString("}")
 }
 
+func writeSizeValue(sb *strings.Builder, n *SizeValue) {
+	sb.WriteString("{SIZEVALUE")
+	fmt.Fprintf(sb, " :value \"%s\"", escapeString(n.Value))
+	if n.Unit != "" {
+		fmt.Fprintf(sb, " :unit \"%s\"", escapeString(n.Unit))
+	}
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
+	sb.WriteString("}")
+}
+
 func writeDatabaseFileSpec(sb *strings.Builder, n *DatabaseFileSpec) {
 	sb.WriteString("{DBFILESPEC")
 	sb.WriteString(fmt.Sprintf(" :name \"%s\"", escapeString(n.Name)))
@@ -1023,14 +1035,19 @@ func writeDatabaseFileSpec(sb *strings.Builder, n *DatabaseFileSpec) {
 		sb.WriteString(fmt.Sprintf(" :newName \"%s\"", escapeString(n.NewName)))
 	}
 	sb.WriteString(fmt.Sprintf(" :filename \"%s\"", escapeString(n.Filename)))
-	if n.Size != "" {
-		sb.WriteString(fmt.Sprintf(" :size \"%s\"", escapeString(n.Size)))
+	if n.Size != nil {
+		sb.WriteString(" :size ")
+		writeSizeValue(sb, n.Size)
 	}
-	if n.MaxSize != "" {
-		sb.WriteString(fmt.Sprintf(" :maxsize \"%s\"", escapeString(n.MaxSize)))
+	if n.MaxSizeUnlimited {
+		sb.WriteString(" :maxsize \"UNLIMITED\"")
+	} else if n.MaxSize != nil {
+		sb.WriteString(" :maxsize ")
+		writeSizeValue(sb, n.MaxSize)
 	}
-	if n.FileGrowth != "" {
-		sb.WriteString(fmt.Sprintf(" :filegrowth \"%s\"", escapeString(n.FileGrowth)))
+	if n.FileGrowth != nil {
+		sb.WriteString(" :filegrowth ")
+		writeSizeValue(sb, n.FileGrowth)
 	}
 	if n.Offline {
 		sb.WriteString(" :offline true")

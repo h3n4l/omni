@@ -3137,7 +3137,7 @@
       "id": 147,
       "name": "size_value_structured",
       "file": "create_database.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 76 gap: replace parseSizeValue() strings.Builder (line 312) with structured SizeValue AST node containing numeric value and unit (KB/MB/GB/TB/%). Currently returns plain string like '10MB'. This is the last non-lexer strings.Builder usage in the parser.",
       "rules": ["parseSizeValueStructured"],
       "depends_on": [76],

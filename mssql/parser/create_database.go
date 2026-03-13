@@ -277,7 +277,7 @@ func (p *Parser) parseDatabaseFileSpec() *nodes.DatabaseFileSpec {
 			case "MAXSIZE":
 				p.match('=')
 				if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "UNLIMITED") {
-					spec.MaxSize = "UNLIMITED"
+					spec.MaxSizeUnlimited = true
 					p.advance()
 				} else {
 					spec.MaxSize = p.parseSizeValue()
@@ -307,33 +307,38 @@ func (p *Parser) parseDatabaseFileSpec() *nodes.DatabaseFileSpec {
 	return spec
 }
 
-// parseSizeValue parses a size value like "10MB", "100GB", "5%", or just a number.
-func (p *Parser) parseSizeValue() string {
-	var sb strings.Builder
+// parseSizeValue parses a structured size value like "10MB", "100GB", "5%", or just a number.
+//
+//	size_value ::= number [ KB | MB | GB | TB | % ]
+func (p *Parser) parseSizeValue() *nodes.SizeValue {
+	sv := &nodes.SizeValue{Loc: nodes.Loc{Start: p.pos()}}
+
 	// Read the numeric part
 	if p.cur.Type == tokICONST || p.cur.Type == tokFCONST {
-		sb.WriteString(p.cur.Str)
+		sv.Value = p.cur.Str
 		p.advance()
 	} else if p.isIdentLike() {
 		// Could be a bare identifier like a number
-		sb.WriteString(p.cur.Str)
+		sv.Value = p.cur.Str
 		p.advance()
-		return sb.String()
+		sv.Loc.End = p.pos()
+		return sv
 	}
 
 	// Read the optional unit suffix: KB, MB, GB, TB, or %
 	if p.cur.Type == '%' {
-		sb.WriteString("%")
+		sv.Unit = "%"
 		p.advance()
 	} else if p.isIdentLike() {
 		unit := strings.ToUpper(p.cur.Str)
 		switch unit {
 		case "KB", "MB", "GB", "TB":
-			sb.WriteString(unit)
+			sv.Unit = unit
 			p.advance()
 		}
 	}
-	return sb.String()
+	sv.Loc.End = p.pos()
+	return sv
 }
 
 // parseDatabaseFilegroup parses a FILEGROUP clause.
