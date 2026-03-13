@@ -2318,6 +2318,67 @@ type AdminDDLStmt struct {
 func (n *AdminDDLStmt) nodeTag()  {}
 func (n *AdminDDLStmt) stmtNode() {}
 
+// AlterMaterializedViewStmt represents an ALTER MATERIALIZED VIEW statement.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/ALTER-MATERIALIZED-VIEW.html
+//
+//	ALTER MATERIALIZED VIEW [IF EXISTS] [schema.]materialized_view
+//	  { alter_mv_refresh
+//	  | ENABLE QUERY REWRITE
+//	  | DISABLE QUERY REWRITE
+//	  | COMPILE
+//	  | CONSIDER FRESH
+//	  | { ENABLE | DISABLE } CONCURRENT REFRESH
+//	  | shrink_clause
+//	  | { CACHE | NOCACHE }
+//	  | parallel_clause
+//	  | logging_clause
+//	  | ... }
+//
+//	alter_mv_refresh:
+//	  REFRESH
+//	    [ FAST | COMPLETE | FORCE ]
+//	    [ ON { COMMIT | DEMAND } ]
+//	    [ START WITH date ]
+//	    [ NEXT date ]
+//	    [ WITH PRIMARY KEY ]
+//	    [ USING ROLLBACK SEGMENT rollback_segment ]
+//	    [ USING { ENFORCED | TRUSTED } CONSTRAINTS ]
+//	    [ { ENABLE | DISABLE } ON QUERY COMPUTATION ]
+//
+//	shrink_clause:
+//	  SHRINK SPACE [ COMPACT | CASCADE ]
+type AlterMaterializedViewStmt struct {
+	Name     *ObjectName // materialized view name
+	IfExists bool        // IF EXISTS
+
+	// Action type
+	Action string // "COMPILE", "CONSIDER_FRESH", "REFRESH", "ENABLE_QUERY_REWRITE", "DISABLE_QUERY_REWRITE", "ENABLE_CONCURRENT_REFRESH", "DISABLE_CONCURRENT_REFRESH", "SHRINK", "CACHE", "NOCACHE", "PARALLEL", "NOPARALLEL", "LOGGING", "NOLOGGING"
+
+	// REFRESH clause options
+	RefreshMethod string   // "FAST", "COMPLETE", "FORCE"
+	RefreshMode   string   // "ON_COMMIT", "ON_DEMAND"
+	StartWith     ExprNode // START WITH date
+	Next          ExprNode // NEXT date
+	WithPrimaryKey bool    // WITH PRIMARY KEY
+	UsingRollbackSegment string // USING ROLLBACK SEGMENT name
+	UsingConstraints     string // "ENFORCED" or "TRUSTED"
+	EnableOnQueryComputation  bool // ENABLE ON QUERY COMPUTATION
+	DisableOnQueryComputation bool // DISABLE ON QUERY COMPUTATION
+
+	// SHRINK SPACE options
+	Compact bool // COMPACT
+	Cascade bool // CASCADE
+
+	// PARALLEL options
+	ParallelDegree string // parallel degree (number as string)
+
+	Loc Loc
+}
+
+func (n *AlterMaterializedViewStmt) nodeTag()  {}
+func (n *AlterMaterializedViewStmt) stmtNode() {}
+
 // SetRoleStmt represents a SET ROLE statement.
 //
 //	SET ROLE { role [,...] | ALL [EXCEPT role [,...]] | NONE }

@@ -328,6 +328,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeCreateProfileStmt(sb, n)
 	case *AdminDDLStmt:
 		writeAdminDDLStmt(sb, n)
+	case *AlterMaterializedViewStmt:
+		writeAlterMaterializedViewStmt(sb, n)
 	case *AlterIndexStmt:
 		writeAlterIndexStmt(sb, n)
 	case *AlterViewStmt:
@@ -3025,6 +3027,60 @@ func writeAdminDDLStmt(sb *strings.Builder, n *AdminDDLStmt) {
 	}
 	if n.IfExists {
 		sb.WriteString(" :ifExists true")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeAlterMaterializedViewStmt(sb *strings.Builder, n *AlterMaterializedViewStmt) {
+	sb.WriteString("{ALTER_MATERIALIZED_VIEW")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.IfExists {
+		sb.WriteString(" :ifExists true")
+	}
+	if n.Action != "" {
+		sb.WriteString(fmt.Sprintf(" :action %q", n.Action))
+	}
+	if n.RefreshMethod != "" {
+		sb.WriteString(fmt.Sprintf(" :refreshMethod %q", n.RefreshMethod))
+	}
+	if n.RefreshMode != "" {
+		sb.WriteString(fmt.Sprintf(" :refreshMode %q", n.RefreshMode))
+	}
+	if n.StartWith != nil {
+		sb.WriteString(" :startWith ")
+		writeNode(sb, n.StartWith)
+	}
+	if n.Next != nil {
+		sb.WriteString(" :next ")
+		writeNode(sb, n.Next)
+	}
+	if n.WithPrimaryKey {
+		sb.WriteString(" :withPrimaryKey true")
+	}
+	if n.UsingRollbackSegment != "" {
+		sb.WriteString(fmt.Sprintf(" :usingRollbackSegment %q", n.UsingRollbackSegment))
+	}
+	if n.UsingConstraints != "" {
+		sb.WriteString(fmt.Sprintf(" :usingConstraints %q", n.UsingConstraints))
+	}
+	if n.EnableOnQueryComputation {
+		sb.WriteString(" :enableOnQueryComputation true")
+	}
+	if n.DisableOnQueryComputation {
+		sb.WriteString(" :disableOnQueryComputation true")
+	}
+	if n.Compact {
+		sb.WriteString(" :compact true")
+	}
+	if n.Cascade {
+		sb.WriteString(" :cascade true")
+	}
+	if n.ParallelDegree != "" {
+		sb.WriteString(fmt.Sprintf(" :parallelDegree %q", n.ParallelDegree))
 	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

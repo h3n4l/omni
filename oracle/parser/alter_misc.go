@@ -52,15 +52,7 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 		if p.cur.Type == kwVIEW {
 			p.advance() // consume VIEW
 		}
-		stmt := &nodes.AdminDDLStmt{
-			Action:     "ALTER",
-			ObjectType: nodes.OBJECT_MATERIALIZED_VIEW,
-			Loc:        nodes.Loc{Start: start},
-		}
-		stmt.Name = p.parseObjectName()
-		p.skipToSemicolon()
-		stmt.Loc.End = p.pos()
-		return stmt
+		return p.parseAlterMaterializedViewStmt(start)
 	case kwDATABASE:
 		// Distinguish ALTER DATABASE LINK, ALTER DATABASE DICTIONARY, ALTER DATABASE
 		next := p.peekNext()
@@ -221,6 +213,272 @@ func (p *Parser) parseSetParam() *nodes.SetParam {
 		Name:  name,
 		Value: value,
 		Loc:   nodes.Loc{Start: start, End: p.pos()},
+	}
+}
+
+// parseAlterMaterializedViewStmt parses an ALTER MATERIALIZED VIEW statement.
+// Called after ALTER MATERIALIZED VIEW has been consumed.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/ALTER-MATERIALIZED-VIEW.html
+//
+//	ALTER MATERIALIZED VIEW [IF EXISTS] [schema.]materialized_view
+//	  { alter_mv_refresh
+//	  | ENABLE QUERY REWRITE
+//	  | DISABLE QUERY REWRITE
+//	  | COMPILE
+//	  | CONSIDER FRESH
+//	  | { ENABLE | DISABLE } CONCURRENT REFRESH
+//	  | SHRINK SPACE [ COMPACT | CASCADE ]
+//	  | { CACHE | NOCACHE }
+//	  | { PARALLEL [integer] | NOPARALLEL }
+//	  | { LOGGING | NOLOGGING }
+//	  | ... }
+//
+//	alter_mv_refresh:
+//	  REFRESH
+//	    [ FAST | COMPLETE | FORCE ]
+//	    [ ON { COMMIT | DEMAND } ]
+//	    [ START WITH date ]
+//	    [ NEXT date ]
+//	    [ WITH PRIMARY KEY ]
+//	    [ USING ROLLBACK SEGMENT rollback_segment ]
+//	    [ USING { ENFORCED | TRUSTED } CONSTRAINTS ]
+//	    [ { ENABLE | DISABLE } ON QUERY COMPUTATION ]
+func (p *Parser) parseAlterMaterializedViewStmt(start int) nodes.StmtNode {
+	stmt := &nodes.AlterMaterializedViewStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// IF EXISTS
+	if p.cur.Type == kwIF {
+		if p.peekNext().Type == kwEXISTS {
+			stmt.IfExists = true
+			p.advance() // consume IF
+			p.advance() // consume EXISTS
+		}
+	}
+
+	stmt.Name = p.parseObjectName()
+
+	// Parse action clause
+	switch {
+	case p.isIdentLikeStr("COMPILE"):
+		stmt.Action = "COMPILE"
+		p.advance() // consume COMPILE
+
+	case p.isIdentLikeStr("CONSIDER"):
+		stmt.Action = "CONSIDER_FRESH"
+		p.advance() // consume CONSIDER
+		if p.isIdentLikeStr("FRESH") {
+			p.advance() // consume FRESH
+		}
+
+	case p.cur.Type == kwREFRESH:
+		stmt.Action = "REFRESH"
+		p.advance() // consume REFRESH
+		p.parseAlterMViewRefreshClause(stmt)
+
+	case p.cur.Type == kwENABLE:
+		p.advance() // consume ENABLE
+		if p.isIdentLikeStr("QUERY") {
+			stmt.Action = "ENABLE_QUERY_REWRITE"
+			p.advance() // consume QUERY
+			if p.cur.Type == kwREWRITE {
+				p.advance() // consume REWRITE
+			}
+		} else if p.isIdentLikeStr("CONCURRENT") {
+			stmt.Action = "ENABLE_CONCURRENT_REFRESH"
+			p.advance() // consume CONCURRENT
+			if p.cur.Type == kwREFRESH {
+				p.advance() // consume REFRESH
+			}
+		} else {
+			stmt.Action = "ENABLE_QUERY_REWRITE"
+			p.skipToSemicolon()
+		}
+
+	case p.cur.Type == kwDISABLE:
+		p.advance() // consume DISABLE
+		if p.isIdentLikeStr("QUERY") {
+			stmt.Action = "DISABLE_QUERY_REWRITE"
+			p.advance() // consume QUERY
+			if p.cur.Type == kwREWRITE {
+				p.advance() // consume REWRITE
+			}
+		} else if p.isIdentLikeStr("CONCURRENT") {
+			stmt.Action = "DISABLE_CONCURRENT_REFRESH"
+			p.advance() // consume CONCURRENT
+			if p.cur.Type == kwREFRESH {
+				p.advance() // consume REFRESH
+			}
+		} else {
+			stmt.Action = "DISABLE_QUERY_REWRITE"
+			p.skipToSemicolon()
+		}
+
+	case p.isIdentLikeStr("SHRINK"):
+		stmt.Action = "SHRINK"
+		p.advance() // consume SHRINK
+		if p.isIdentLikeStr("SPACE") {
+			p.advance() // consume SPACE
+		}
+		if p.isIdentLikeStr("COMPACT") {
+			stmt.Compact = true
+			p.advance()
+		} else if p.cur.Type == kwCASCADE {
+			stmt.Cascade = true
+			p.advance()
+		}
+
+	case p.cur.Type == kwCACHE:
+		stmt.Action = "CACHE"
+		p.advance()
+
+	case p.cur.Type == kwNOCACHE:
+		stmt.Action = "NOCACHE"
+		p.advance()
+
+	case p.cur.Type == kwPARALLEL:
+		stmt.Action = "PARALLEL"
+		p.advance() // consume PARALLEL
+		if p.cur.Type == tokICONST {
+			stmt.ParallelDegree = p.cur.Str
+			p.advance()
+		}
+
+	case p.cur.Type == kwNOPARALLEL:
+		stmt.Action = "NOPARALLEL"
+		p.advance()
+
+	case p.cur.Type == kwLOGGING:
+		stmt.Action = "LOGGING"
+		p.advance()
+
+	case p.cur.Type == kwNOLOGGING:
+		stmt.Action = "NOLOGGING"
+		p.advance()
+
+	default:
+		// Fallback for unrecognized clauses
+		p.skipToSemicolon()
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseAlterMViewRefreshClause parses the alter_mv_refresh clause.
+// Called after REFRESH has been consumed.
+//
+//	[ FAST | COMPLETE | FORCE ]
+//	[ ON { COMMIT | DEMAND } ]
+//	[ START WITH date ]
+//	[ NEXT date ]
+//	[ WITH PRIMARY KEY ]
+//	[ USING ROLLBACK SEGMENT rollback_segment ]
+//	[ USING { ENFORCED | TRUSTED } CONSTRAINTS ]
+//	[ { ENABLE | DISABLE } ON QUERY COMPUTATION ]
+func (p *Parser) parseAlterMViewRefreshClause(stmt *nodes.AlterMaterializedViewStmt) {
+	for {
+		switch {
+		case p.isIdentLikeStr("FAST"):
+			stmt.RefreshMethod = "FAST"
+			p.advance()
+		case p.isIdentLikeStr("COMPLETE"):
+			stmt.RefreshMethod = "COMPLETE"
+			p.advance()
+		case p.cur.Type == kwFORCE:
+			stmt.RefreshMethod = "FORCE"
+			p.advance()
+		case p.cur.Type == kwON:
+			p.advance() // consume ON
+			if p.cur.Type == kwCOMMIT {
+				stmt.RefreshMode = "ON_COMMIT"
+				p.advance()
+			} else if p.isIdentLikeStr("DEMAND") {
+				stmt.RefreshMode = "ON_DEMAND"
+				p.advance()
+			} else if p.isIdentLikeStr("QUERY") {
+				// ON QUERY COMPUTATION - part of ENABLE/DISABLE ON QUERY COMPUTATION
+				// This shouldn't happen here, but handle gracefully
+				p.advance() // consume QUERY
+				if p.isIdentLikeStr("COMPUTATION") {
+					p.advance()
+				}
+			}
+		case p.cur.Type == kwSTART:
+			p.advance() // consume START
+			if p.cur.Type == kwWITH {
+				p.advance() // consume WITH
+			}
+			stmt.StartWith = p.parseExpr()
+		case p.cur.Type == kwNEXT:
+			p.advance() // consume NEXT
+			stmt.Next = p.parseExpr()
+		case p.cur.Type == kwWITH:
+			p.advance() // consume WITH
+			if p.cur.Type == kwPRIMARY {
+				p.advance() // consume PRIMARY
+				if p.cur.Type == kwKEY {
+					p.advance() // consume KEY
+				}
+				stmt.WithPrimaryKey = true
+			}
+		case p.cur.Type == kwUSING:
+			p.advance() // consume USING
+			if p.cur.Type == kwROLLBACK {
+				p.advance() // consume ROLLBACK
+				if p.isIdentLikeStr("SEGMENT") {
+					p.advance() // consume SEGMENT
+				}
+				if p.isIdentLike() {
+					stmt.UsingRollbackSegment = p.cur.Str
+					p.advance()
+				}
+			} else if p.isIdentLikeStr("ENFORCED") {
+				stmt.UsingConstraints = "ENFORCED"
+				p.advance() // consume ENFORCED
+				if p.cur.Type == kwCONSTRAINTS {
+					p.advance() // consume CONSTRAINTS
+				}
+			} else if p.isIdentLikeStr("TRUSTED") {
+				stmt.UsingConstraints = "TRUSTED"
+				p.advance() // consume TRUSTED
+				if p.cur.Type == kwCONSTRAINTS {
+					p.advance() // consume CONSTRAINTS
+				}
+			}
+		case p.cur.Type == kwENABLE:
+			p.advance() // consume ENABLE
+			if p.cur.Type == kwON {
+				p.advance() // consume ON
+				if p.isIdentLikeStr("QUERY") {
+					p.advance() // consume QUERY
+				}
+				if p.isIdentLikeStr("COMPUTATION") {
+					p.advance() // consume COMPUTATION
+				}
+				stmt.EnableOnQueryComputation = true
+			} else {
+				return // not part of REFRESH clause, back out
+			}
+		case p.cur.Type == kwDISABLE:
+			p.advance() // consume DISABLE
+			if p.cur.Type == kwON {
+				p.advance() // consume ON
+				if p.isIdentLikeStr("QUERY") {
+					p.advance() // consume QUERY
+				}
+				if p.isIdentLikeStr("COMPUTATION") {
+					p.advance() // consume COMPUTATION
+				}
+				stmt.DisableOnQueryComputation = true
+			} else {
+				return // not part of REFRESH clause, back out
+			}
+		default:
+			return
+		}
 	}
 }
 

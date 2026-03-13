@@ -1819,7 +1819,7 @@
       "id": 83,
       "name": "alter_mview_proper",
       "file": "alter_misc.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 45 gap: ALTER MATERIALIZED VIEW still uses skipToSemicolon in parseAlterStmt. Need proper parsing of REFRESH COMPLETE/FAST/FORCE/ON DEMAND/ON COMMIT, ENABLE/DISABLE QUERY REWRITE, COMPILE, CONSIDER FRESH, SHRINK SPACE",
       "rules": [
         "alter_mview_refresh",
