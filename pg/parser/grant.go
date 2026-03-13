@@ -773,6 +773,15 @@ func (p *Parser) parseAlterGroupStmt() nodes.Node {
 		return &nodes.AlterRoleStmt{
 			Role: role, Options: &nodes.List{Items: []nodes.Node{makeDefElem("rolemembers", roles)}}, Action: -1,
 		}
+	} else if p.cur.Type == RENAME {
+		p.advance()
+		p.expect(TO)
+		newname, _ := p.parseName()
+		return &nodes.RenameStmt{
+			RenameType: nodes.OBJECT_ROLE,
+			Subname:    role.Rolename,
+			Newname:    newname,
+		}
 	}
 	return nil
 }

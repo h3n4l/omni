@@ -1835,7 +1835,23 @@
         "TestJsonTableFormattedColumn",
         "TestJsonBareEmpty"
       ]
+    },
+    {
+      "id": 77,
+      "name": "alter_group_rename",
+      "file": "grant.go",
+      "status": "done",
+      "description": "Fix batch 55 gap: parseAlterGroupStmt only handles ADD USER and DROP USER, returns nil for RENAME. Must add RENAME TO case that produces RenameStmt with OBJECT_ROLE, matching parseAlterRoleStmt pattern at grant.go:717. Ref: https://www.postgresql.org/docs/17/sql-altergroup.html",
+      "rules": [
+        "parseAlterGroupStmt"
+      ],
+      "depends_on": [
+        55
+      ],
+      "tests": [
+        "TestAlterGroupRename"
+      ]
     }
   ],
-  "audit_round": 8
+  "audit_round": 9
 }

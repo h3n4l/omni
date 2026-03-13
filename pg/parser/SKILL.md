@@ -23,6 +23,29 @@ You are implementing a recursive descent PostgreSQL parser.
 
 If all batches are `"done"`, output `ALL_BATCHES_COMPLETE` and stop.
 
+## Progress Logging (MANDATORY)
+
+You MUST print progress markers to stdout at each step. This is how the pipeline operator monitors your work. Use this exact format:
+
+```
+[BATCH 64] STARTED - loc_end_select_insert_update_delete
+[BATCH 64] STEP reading_refs - Reading yacc grammar and AST definitions
+[BATCH 64] STEP writing_tests - Writing TestLocSelect, TestLocInsert
+[BATCH 64] STEP writing_code - Implementing End positions in select.go
+[BATCH 64] STEP build - Running go build
+[BATCH 64] STEP test - Running go test (5 passed, 0 failed)
+[BATCH 64] STEP commit - Committing changes
+[BATCH 64] DONE
+```
+
+If a step fails, print:
+```
+[BATCH 64] FAIL test - parseSelectNoParens: End=-1 for LIMIT clause
+[BATCH 64] RETRY - Fixing End position for LIMIT
+```
+
+**Do NOT skip these markers.** They appear in the build log and are essential for debugging pipeline issues.
+
 ## Implementation Steps for Each Batch
 
 ### Step 1: Read References

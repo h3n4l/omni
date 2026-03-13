@@ -88,6 +88,19 @@ func TestDdlCompatModifyingCTE(t *testing.T) {
 	}
 }
 
+// TestAlterGroupRename runs ALTER GROUP ... RENAME TO tests for batch 77.
+func TestAlterGroupRename(t *testing.T) {
+	tests := []string{
+		"ALTER GROUP mygroup RENAME TO newgroup",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			parseOK(t, sql)
+			CheckLocations(t, sql)
+		})
+	}
+}
+
 // TestAlterColumnReset runs ALTER COLUMN ... RESET tests for batch 73.
 func TestAlterColumnReset(t *testing.T) {
 	tests := []string{
