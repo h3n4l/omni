@@ -15725,3 +15725,92 @@ func TestParseEventNotificationOptionsDepth(t *testing.T) {
 		}
 	})
 }
+
+// TestParseResourceGovernorOuterOptionsDepth tests batch 140: structured outer options.
+func TestParseResourceGovernorOuterOptionsDepth(t *testing.T) {
+	// USING pool_name
+	t.Run("resource_governor_outer_options_structured", func(t *testing.T) {
+		sql := "CREATE WORKLOAD GROUP wg1 WITH (MAX_DOP = 4) USING myPool"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		if stmt.Options == nil {
+			t.Fatal("expected options")
+		}
+		// Find the USING option
+		var usingOpt *ast.ResourceGovernorOption
+		for _, item := range stmt.Options.Items {
+			if opt, ok := item.(*ast.ResourceGovernorOption); ok && opt.Name == "USING" {
+				usingOpt = opt
+				break
+			}
+		}
+		if usingOpt == nil {
+			t.Fatal("expected ResourceGovernorOption with Name=USING")
+		}
+		if usingOpt.Value != "MYPOOL" {
+			t.Errorf("expected value MYPOOL, got %q", usingOpt.Value)
+		}
+	})
+
+	// USING with EXTERNAL
+	t.Run("using_external_pool", func(t *testing.T) {
+		sql := "CREATE WORKLOAD GROUP wg1 USING myPool, EXTERNAL myExtPool"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		var extOpt *ast.ResourceGovernorOption
+		for _, item := range stmt.Options.Items {
+			if opt, ok := item.(*ast.ResourceGovernorOption); ok && opt.Name == "EXTERNAL" {
+				extOpt = opt
+				break
+			}
+		}
+		if extOpt == nil {
+			t.Fatal("expected EXTERNAL option")
+		}
+		if extOpt.Value != "MYEXTPOOL" {
+			t.Errorf("expected MYEXTPOOL, got %q", extOpt.Value)
+		}
+	})
+
+	// RECONFIGURE
+	t.Run("reconfigure_structured", func(t *testing.T) {
+		sql := "ALTER RESOURCE GOVERNOR RECONFIGURE"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		if stmt.Options == nil || len(stmt.Options.Items) == 0 {
+			t.Fatal("expected options")
+		}
+		opt, ok := stmt.Options.Items[0].(*ast.ResourceGovernorOption)
+		if !ok {
+			t.Fatalf("expected *ResourceGovernorOption, got %T", stmt.Options.Items[0])
+		}
+		if opt.Name != "RECONFIGURE" {
+			t.Errorf("expected RECONFIGURE, got %q", opt.Name)
+		}
+	})
+
+	// DISABLE
+	t.Run("disable_structured", func(t *testing.T) {
+		sql := "ALTER RESOURCE GOVERNOR DISABLE"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		opt := stmt.Options.Items[0].(*ast.ResourceGovernorOption)
+		if opt.Name != "DISABLE" {
+			t.Errorf("expected DISABLE, got %q", opt.Name)
+		}
+	})
+
+	// RESET STATISTICS
+	t.Run("reset_statistics_structured", func(t *testing.T) {
+		sql := "ALTER RESOURCE GOVERNOR RESET STATISTICS"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		opt := stmt.Options.Items[0].(*ast.ResourceGovernorOption)
+		if opt.Name != "RESET" {
+			t.Errorf("expected RESET, got %q", opt.Name)
+		}
+		if opt.Value != "STATISTICS" {
+			t.Errorf("expected STATISTICS, got %q", opt.Value)
+		}
+	})
+}

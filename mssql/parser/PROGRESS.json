@@ -3040,7 +3040,7 @@
       "id": 140,
       "name": "resource_governor_outer_depth",
       "file": "resource_governor.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 102 gap: replace nodes.String key=value string concatenation in parseResourceGovernorOptions() outer loop (lines 351-390) with structured ResourceGovernorOption AST nodes. The WITH clause inner parsing is structured but outer USING pool_name, RECONFIGURE, DISABLE, qualified name options still use string nodes.",
       "rules": [
         "parseResourceGovernorOuterOptionsStructured"

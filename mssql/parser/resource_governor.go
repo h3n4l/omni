@@ -359,22 +359,36 @@ func (p *Parser) parseResourceGovernorOptions() *nodes.List {
 		} else if p.isIdentLike() || p.cur.Type == kwAS || p.cur.Type == kwFOR ||
 			p.cur.Type == kwON || p.cur.Type == kwOFF || p.cur.Type == kwDEFAULT ||
 			p.cur.Type == kwNULL {
-			optStr := strings.ToUpper(p.cur.Str)
+			optLoc := p.pos()
+			name := strings.ToUpper(p.cur.Str)
 			p.advance()
+			val := ""
 			if p.cur.Type == '=' {
 				p.advance()
-				val := p.parseResourceGovernorValue()
-				optStr += "=" + val
+				val = p.parseResourceGovernorValue()
+			} else if (name == "USING" || name == "EXTERNAL") &&
+				(p.isIdentLike() || p.cur.Type == kwDEFAULT) {
+				// USING pool_name or EXTERNAL ext_pool_name (no = sign)
+				val = strings.ToUpper(p.cur.Str)
+				p.advance()
+			} else if name == "RESET" && p.isIdentLike() && matchesKeywordCI(p.cur.Str, "STATISTICS") {
+				// RESET STATISTICS
+				val = strings.ToUpper(p.cur.Str)
+				p.advance()
 			}
 			// Handle qualified names like schema.function
 			for p.cur.Type == '.' {
 				p.advance()
 				if p.isIdentLike() {
-					optStr += "." + strings.ToUpper(p.cur.Str)
+					val += "." + strings.ToUpper(p.cur.Str)
 					p.advance()
 				}
 			}
-			opts = append(opts, &nodes.String{Str: optStr})
+			opts = append(opts, &nodes.ResourceGovernorOption{
+				Name:  name,
+				Value: val,
+				Loc:   nodes.Loc{Start: optLoc, End: p.pos()},
+			})
 			if p.cur.Type == ',' {
 				p.advance()
 			}

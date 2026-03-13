@@ -132,6 +132,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeAuditSpecAction(sb, n)
 	case *EventNotificationOption:
 		writeEventNotificationOption(sb, n)
+	case *ResourceGovernorOption:
+		writeResourceGovernorOption(sb, n)
 	case *SecurityPrincipalOption:
 		writeSecurityPrincipalOption(sb, n)
 	case *CreateSchemaStmt:
@@ -1336,6 +1338,16 @@ func writeEventNotificationOption(sb *strings.Builder, n *EventNotificationOptio
 			fmt.Fprintf(sb, "\"%s\"", escapeString(name))
 		}
 		sb.WriteString(")")
+	}
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
+	sb.WriteString("}")
+}
+
+func writeResourceGovernorOption(sb *strings.Builder, n *ResourceGovernorOption) {
+	sb.WriteString("{RGOPT")
+	fmt.Fprintf(sb, " :name \"%s\"", escapeString(n.Name))
+	if n.Value != "" {
+		fmt.Fprintf(sb, " :value \"%s\"", escapeString(n.Value))
 	}
 	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
 	sb.WriteString("}")

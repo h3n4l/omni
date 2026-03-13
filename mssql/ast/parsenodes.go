@@ -1211,6 +1211,21 @@ type EventNotificationOption struct {
 
 func (n *EventNotificationOption) nodeTag() {}
 
+// ResourceGovernorOption represents a structured non-WITH option for Resource Governor statements.
+//
+// Used for outer-loop options like:
+//   - USING pool_name
+//   - EXTERNAL ext_pool_name
+//   - RECONFIGURE, DISABLE, RESET STATISTICS
+//   - key = value pairs outside WITH
+type ResourceGovernorOption struct {
+	Name  string // option keyword (e.g., "USING", "EXTERNAL", "RECONFIGURE", "DISABLE", "RESET")
+	Value string // option value (e.g., pool name, "STATISTICS", qualified name)
+	Loc   Loc
+}
+
+func (n *ResourceGovernorOption) nodeTag() {}
+
 // CreateSchemaStmt represents CREATE SCHEMA.
 //
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-schema-transact-sql
