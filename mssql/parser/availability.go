@@ -221,11 +221,9 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 	for p.cur.Type != ';' && p.cur.Type != tokEOF && p.cur.Type != kwGO {
 		switch {
 		case p.cur.Type == '(':
-			// Consume parenthesized blocks (SET options, replica options, listener options, etc.)
-			inner := p.parseNestedParens()
-			if inner != "" {
-				opts = append(opts, &nodes.String{Str: "(" + inner + ")"})
-			}
+			// Consume parenthesized blocks structurally (SET options, replica options, listener options, etc.)
+			subOpts := p.parseParenthesizedAGOptions()
+			opts = append(opts, subOpts...)
 
 		case p.cur.Type == kwWITH:
 			opts = append(opts, &nodes.String{Str: "WITH"})
@@ -456,4 +454,101 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 		return nil
 	}
 	return &nodes.List{Items: opts}
+}
+
+// parseParenthesizedAGOptions parses a parenthesized block of availability group options
+// into individual key=value String nodes instead of capturing raw text.
+//
+// Handles:
+//   - Simple key = value options: ENDPOINT_URL = 'TCP://...' → "ENDPOINT_URL='TCP://...'"
+//   - Nested options: SECONDARY_ROLE (ALLOW_CONNECTIONS = READ_ONLY) → "SECONDARY_ROLE(ALLOW_CONNECTIONS=READ_ONLY)"
+//   - Value lists: READ_ONLY_ROUTING_LIST = ('server1', 'server2') → "READ_ONLY_ROUTING_LIST=('server1', 'server2')"
+//   - Standalone keywords: DISTRIBUTED → "DISTRIBUTED"
+//   - Nested IP tuples: IP (('addr', 'mask')) → "IP(('addr', 'mask'))"
+func (p *Parser) parseParenthesizedAGOptions() []nodes.Node {
+	if p.cur.Type != '(' {
+		return nil
+	}
+	p.advance() // consume '('
+
+	var opts []nodes.Node
+	for p.cur.Type != ')' && p.cur.Type != tokEOF {
+		if p.cur.Type == ',' {
+			p.advance()
+			continue
+		}
+
+		// Handle nested parenthesized tuples (e.g., IP address tuples)
+		if p.cur.Type == '(' {
+			inner := p.parseNestedParens()
+			if inner != "" {
+				opts = append(opts, &nodes.String{Str: "(" + inner + ")"})
+			}
+			continue
+		}
+
+		// Must be an identifier, string, number, or keyword
+		if !p.isAGOptionToken() {
+			p.advance() // skip unexpected
+			continue
+		}
+
+		key := p.agOptionTokenString()
+		p.advance()
+
+		if p.cur.Type == '=' {
+			p.advance() // consume '='
+			if p.cur.Type == '(' {
+				// Value is a parenthesized list: key = ( ... )
+				inner := p.parseNestedParens()
+				opts = append(opts, &nodes.String{Str: key + "=(" + inner + ")"})
+			} else if p.isAGOptionToken() {
+				val := p.agOptionTokenString()
+				p.advance()
+				opts = append(opts, &nodes.String{Str: key + "=" + val})
+			} else {
+				opts = append(opts, &nodes.String{Str: key + "="})
+			}
+		} else if p.cur.Type == '(' {
+			// Nested parens: SECONDARY_ROLE(...), PRIMARY_ROLE(...), IP(...), ON(...)
+			subOpts := p.parseParenthesizedAGOptions()
+			var parts []string
+			for _, o := range subOpts {
+				parts = append(parts, o.(*nodes.String).Str)
+			}
+			opts = append(opts, &nodes.String{Str: key + "(" + strings.Join(parts, ", ") + ")"})
+		} else {
+			opts = append(opts, &nodes.String{Str: key})
+		}
+	}
+
+	if p.cur.Type == ')' {
+		p.advance()
+	}
+
+	return opts
+}
+
+// isAGOptionToken returns true if the current token can be part of an AG option key or value.
+func (p *Parser) isAGOptionToken() bool {
+	return p.isIdentLike() ||
+		p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST ||
+		p.cur.Type == tokICONST || p.cur.Type == tokFCONST ||
+		p.cur.Type == kwON || p.cur.Type == kwOFF ||
+		p.cur.Type == kwNULL || p.cur.Type == kwWITH ||
+		p.cur.Type == kwCREATE
+}
+
+// agOptionTokenString returns the string representation of the current token for AG options.
+func (p *Parser) agOptionTokenString() string {
+	switch p.cur.Type {
+	case tokSCONST:
+		return "'" + p.cur.Str + "'"
+	case tokNSCONST:
+		return "N'" + p.cur.Str + "'"
+	case tokICONST, tokFCONST:
+		return p.cur.Str
+	default:
+		return strings.ToUpper(p.cur.Str)
+	}
 }

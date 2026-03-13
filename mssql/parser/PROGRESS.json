@@ -2559,7 +2559,7 @@
       "id": 115,
       "name": "availability_group_options_depth",
       "file": "availability.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 66 gap: replace generic string collection in parseAvailabilityGroupOptions() (line 218) with structured parsing. REPLICA ON: 'server' WITH (ENDPOINT_URL, AVAILABILITY_MODE, FAILOVER_MODE, SEEDING_MODE, SECONDARY_ROLE, PRIMARY_ROLE, SESSION_TIMEOUT, BACKUP_PRIORITY). LISTENER: 'name' WITH (DHCP/IP addresses, PORT). parseNestedParens() calls at lines 225, 400 should be replaced with typed option nodes.",
       "rules": [
         "parseAvailabilityGroupReplicaOn",

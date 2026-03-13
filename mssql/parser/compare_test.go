@@ -12002,3 +12002,153 @@ func TestParseServerConfigOptionsDepth(t *testing.T) {
 		})
 	}
 }
+
+// TestParseAvailabilityGroupOptionsDepth tests batch 115: structured parsing of AG options.
+func TestParseAvailabilityGroupOptionsDepth(t *testing.T) {
+	tests := []struct {
+		sql      string
+		wantOpts []string
+	}{
+		// ag_replica_on_structured: REPLICA ON with all standard options parsed as key=value
+		{
+			sql: "CREATE AVAILABILITY GROUP MyAG REPLICA ON 'server1' WITH (ENDPOINT_URL = 'TCP://server1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = AUTOMATIC)",
+			wantOpts: []string{
+				"REPLICA ON", "'server1'", "WITH",
+				"ENDPOINT_URL='TCP://server1:5022'",
+				"AVAILABILITY_MODE=SYNCHRONOUS_COMMIT",
+				"FAILOVER_MODE=AUTOMATIC",
+			},
+		},
+		// ag_replica_on_structured: REPLICA ON with SEEDING_MODE, BACKUP_PRIORITY, SESSION_TIMEOUT
+		{
+			sql: "CREATE AVAILABILITY GROUP MyAG REPLICA ON 'server1' WITH (ENDPOINT_URL = 'TCP://server1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = AUTOMATIC, SEEDING_MODE = AUTOMATIC, BACKUP_PRIORITY = 50, SESSION_TIMEOUT = 10)",
+			wantOpts: []string{
+				"REPLICA ON", "'server1'", "WITH",
+				"ENDPOINT_URL='TCP://server1:5022'",
+				"AVAILABILITY_MODE=SYNCHRONOUS_COMMIT",
+				"FAILOVER_MODE=AUTOMATIC",
+				"SEEDING_MODE=AUTOMATIC",
+				"BACKUP_PRIORITY=50",
+				"SESSION_TIMEOUT=10",
+			},
+		},
+		// ag_replica_options_structured: SECONDARY_ROLE and PRIMARY_ROLE as nested option blocks
+		{
+			sql: "CREATE AVAILABILITY GROUP MyAG REPLICA ON 'server1' WITH (ENDPOINT_URL = 'TCP://server1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = AUTOMATIC, SECONDARY_ROLE (ALLOW_CONNECTIONS = READ_ONLY), PRIMARY_ROLE (ALLOW_CONNECTIONS = ALL))",
+			wantOpts: []string{
+				"REPLICA ON", "'server1'", "WITH",
+				"ENDPOINT_URL='TCP://server1:5022'",
+				"AVAILABILITY_MODE=SYNCHRONOUS_COMMIT",
+				"FAILOVER_MODE=AUTOMATIC",
+				"SECONDARY_ROLE(ALLOW_CONNECTIONS=READ_ONLY)",
+				"PRIMARY_ROLE(ALLOW_CONNECTIONS=ALL)",
+			},
+		},
+		// ag_replica_options_structured: PRIMARY_ROLE with READ_ONLY_ROUTING_LIST
+		{
+			sql: "CREATE AVAILABILITY GROUP MyAG REPLICA ON 'server1' WITH (ENDPOINT_URL = 'TCP://server1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = AUTOMATIC, PRIMARY_ROLE (ALLOW_CONNECTIONS = ALL, READ_ONLY_ROUTING_LIST = ('server2', 'server3')))",
+			wantOpts: []string{
+				"REPLICA ON", "'server1'", "WITH",
+				"ENDPOINT_URL='TCP://server1:5022'",
+				"AVAILABILITY_MODE=SYNCHRONOUS_COMMIT",
+				"FAILOVER_MODE=AUTOMATIC",
+				"PRIMARY_ROLE(ALLOW_CONNECTIONS=ALL, READ_ONLY_ROUTING_LIST=('server2' , 'server3'))",
+			},
+		},
+		// ag_listener_structured: LISTENER with IP and PORT
+		{
+			sql: "CREATE AVAILABILITY GROUP MyAG REPLICA ON 'server1' WITH (ENDPOINT_URL = 'TCP://server1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = AUTOMATIC) LISTENER 'MyListener' (WITH IP (('10.120.19.155', '255.255.254.0')), PORT = 1433)",
+			wantOpts: []string{
+				"REPLICA ON", "'server1'", "WITH",
+				"ENDPOINT_URL='TCP://server1:5022'",
+				"AVAILABILITY_MODE=SYNCHRONOUS_COMMIT",
+				"FAILOVER_MODE=AUTOMATIC",
+				"LISTENER='MyListener'",
+				"WITH", "IP(('10.120.19.155' , '255.255.254.0'))", "PORT=1433",
+			},
+		},
+		// ag_listener_structured: LISTENER with DHCP
+		{
+			sql: "CREATE AVAILABILITY GROUP MyAG REPLICA ON 'server1' WITH (ENDPOINT_URL = 'TCP://server1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = AUTOMATIC) LISTENER 'MyListener' (WITH DHCP ON ('10.120.19.0', '255.255.254.0'))",
+			wantOpts: []string{
+				"REPLICA ON", "'server1'", "WITH",
+				"ENDPOINT_URL='TCP://server1:5022'",
+				"AVAILABILITY_MODE=SYNCHRONOUS_COMMIT",
+				"FAILOVER_MODE=AUTOMATIC",
+				"LISTENER='MyListener'",
+				"WITH", "DHCP", "ON('10.120.19.0', '255.255.254.0')",
+			},
+		},
+		// SET options parsed structurally
+		{
+			sql: "ALTER AVAILABILITY GROUP MyAG SET (AUTOMATED_BACKUP_PREFERENCE = SECONDARY, DB_FAILOVER = ON, HEALTH_CHECK_TIMEOUT = 30000)",
+			wantOpts: []string{
+				"SET",
+				"AUTOMATED_BACKUP_PREFERENCE=SECONDARY",
+				"DB_FAILOVER=ON",
+				"HEALTH_CHECK_TIMEOUT=30000",
+			},
+		},
+		// MODIFY LISTENER with ADD IP
+		{
+			sql: "ALTER AVAILABILITY GROUP MyAG MODIFY LISTENER 'MyListener' (ADD IP ('10.120.19.200', '255.255.254.0'))",
+			wantOpts: []string{
+				"MODIFY LISTENER='MyListener'",
+				"ADD", "IP('10.120.19.200', '255.255.254.0')",
+			},
+		},
+		// MODIFY LISTENER with PORT
+		{
+			sql: "ALTER AVAILABILITY GROUP MyAG MODIFY LISTENER 'MyListener' (PORT = 5022)",
+			wantOpts: []string{
+				"MODIFY LISTENER='MyListener'",
+				"PORT=5022",
+			},
+		},
+		// Distributed AG: AVAILABILITY GROUP ON with structured WITH options
+		{
+			sql: "CREATE AVAILABILITY GROUP MyDistAG WITH (DISTRIBUTED) AVAILABILITY GROUP ON 'AG1' WITH (LISTENER_URL = 'TCP://server1:5022', AVAILABILITY_MODE = ASYNCHRONOUS_COMMIT, FAILOVER_MODE = MANUAL, SEEDING_MODE = AUTOMATIC), 'AG2' WITH (LISTENER_URL = 'TCP://server2:5022', AVAILABILITY_MODE = ASYNCHRONOUS_COMMIT, FAILOVER_MODE = MANUAL, SEEDING_MODE = AUTOMATIC)",
+			wantOpts: []string{
+				"WITH", "DISTRIBUTED",
+				"AVAILABILITY GROUP ON", "'AG1'", "WITH",
+				"LISTENER_URL='TCP://server1:5022'",
+				"AVAILABILITY_MODE=ASYNCHRONOUS_COMMIT",
+				"FAILOVER_MODE=MANUAL",
+				"SEEDING_MODE=AUTOMATIC",
+				"'AG2'", "WITH",
+				"LISTENER_URL='TCP://server2:5022'",
+				"AVAILABILITY_MODE=ASYNCHRONOUS_COMMIT",
+				"FAILOVER_MODE=MANUAL",
+				"SEEDING_MODE=AUTOMATIC",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.sql, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() != 1 {
+				t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+			}
+			stmt, ok := result.Items[0].(*ast.SecurityStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *SecurityStmt, got %T", tt.sql, result.Items[0])
+			}
+			if stmt.Options == nil || len(stmt.Options.Items) != len(tt.wantOpts) {
+				var gotStrs []string
+				if stmt.Options != nil {
+					for _, item := range stmt.Options.Items {
+						gotStrs = append(gotStrs, item.(*ast.String).Str)
+					}
+				}
+				t.Fatalf("Parse(%q): got %d options %v, want %d %v", tt.sql, len(gotStrs), gotStrs, len(tt.wantOpts), tt.wantOpts)
+			}
+			for i, want := range tt.wantOpts {
+				got := stmt.Options.Items[i].(*ast.String).Str
+				if got != want {
+					t.Errorf("Parse(%q): option[%d] = %q, want %q", tt.sql, i, got, want)
+				}
+			}
+			checkLocation(t, tt.sql, "SecurityStmt", stmt.Loc)
+		})
+	}
+}
