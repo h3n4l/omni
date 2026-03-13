@@ -12,6 +12,8 @@ dashboard
 **/parser/logs/
 **/parser/driver.sh
 **/parser/status.sh
+**/parser/.phase
+**/parser/PROGRESS_SUMMARY.json
 
 # WIP files
 *.wip
@@ -22,6 +24,9 @@ dashboard
 *.swp
 *.swo
 *~
+
+# Claude Code
+.claude/
 
 # OS
 .DS_Store
