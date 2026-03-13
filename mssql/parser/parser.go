@@ -274,6 +274,11 @@ func (p *Parser) parseStmt() nodes.StmtNode {
 				next.Str != "" && matchesKeywordCI(next.Str, "CONVERSATION") {
 				return p.parseMoveConversationStmt()
 			}
+			// COPY INTO (Azure Synapse/Fabric bulk load)
+			if matchesKeywordCI(p.cur.Str, "COPY") &&
+				next.Str != "" && matchesKeywordCI(next.Str, "INTO") {
+				return p.parseCopyIntoStmt()
+			}
 			// REVERT (security context)
 			if matchesKeywordCI(p.cur.Str, "REVERT") {
 				return p.parseRevertStmt()

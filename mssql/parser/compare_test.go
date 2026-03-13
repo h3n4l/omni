@@ -11303,3 +11303,150 @@ func TestParseMaterializedView(t *testing.T) {
 		})
 	}
 }
+
+// TestParseCopyInto tests the COPY INTO statement parser (batch 111).
+func TestParseCopyInto(t *testing.T) {
+	t.Run("copy_into_basic", func(t *testing.T) {
+		sql := `COPY INTO dbo.lineitem FROM 'https://myaccount.blob.core.windows.net/myblobcontainer/folder1/' WITH (FILE_TYPE = 'CSV')`
+		result := ParseAndCheck(t, sql)
+		if result.Len() == 0 {
+			t.Fatalf("Parse(%q): no statements returned", sql)
+		}
+		stmt, ok := result.Items[0].(*ast.CopyIntoStmt)
+		if !ok {
+			t.Fatalf("expected *CopyIntoStmt, got %T", result.Items[0])
+		}
+		if stmt.Table == nil {
+			t.Fatal("expected non-nil Table")
+		}
+		if stmt.Sources == nil || stmt.Sources.Len() != 1 {
+			t.Fatal("expected 1 source")
+		}
+		if stmt.Options == nil || stmt.Options.Len() != 1 {
+			t.Fatal("expected 1 option")
+		}
+		checkLocation(t, sql, "CopyIntoStmt", stmt.Loc)
+	})
+
+	t.Run("copy_into_with_options", func(t *testing.T) {
+		sql := `COPY INTO dbo.lineitem
+FROM 'https://myaccount.blob.core.windows.net/myblobcontainer/folder1/'
+WITH (
+    FILE_TYPE = 'CSV',
+    FIELDTERMINATOR = '|',
+    ROWTERMINATOR = '0x0A',
+    FIRSTROW = 2,
+    ENCODING = 'UTF8',
+    DATEFORMAT = 'ymd',
+    MAXERRORS = 10,
+    COMPRESSION = 'Gzip',
+    FIELDQUOTE = '"',
+    IDENTITY_INSERT = 'ON',
+    AUTO_CREATE_TABLE = 'OFF'
+)`
+		result := ParseAndCheck(t, sql)
+		if result.Len() == 0 {
+			t.Fatalf("Parse(%q): no statements returned", sql)
+		}
+		stmt, ok := result.Items[0].(*ast.CopyIntoStmt)
+		if !ok {
+			t.Fatalf("expected *CopyIntoStmt, got %T", result.Items[0])
+		}
+		if stmt.Options == nil || stmt.Options.Len() != 11 {
+			t.Fatalf("expected 11 options, got %d", stmt.Options.Len())
+		}
+		checkLocation(t, sql, "CopyIntoStmt", stmt.Loc)
+	})
+
+	t.Run("copy_into_multiple_sources", func(t *testing.T) {
+		sql := `COPY INTO dbo.lineitem FROM 'https://myaccount.blob.core.windows.net/container/file1.csv', 'https://myaccount.blob.core.windows.net/container/file2.csv' WITH (FILE_TYPE = 'CSV')`
+		result := ParseAndCheck(t, sql)
+		if result.Len() == 0 {
+			t.Fatalf("Parse(%q): no statements returned", sql)
+		}
+		stmt, ok := result.Items[0].(*ast.CopyIntoStmt)
+		if !ok {
+			t.Fatalf("expected *CopyIntoStmt, got %T", result.Items[0])
+		}
+		if stmt.Sources == nil || stmt.Sources.Len() != 2 {
+			t.Fatalf("expected 2 sources, got %d", stmt.Sources.Len())
+		}
+		checkLocation(t, sql, "CopyIntoStmt", stmt.Loc)
+	})
+
+	t.Run("copy_into_column_list", func(t *testing.T) {
+		sql := `COPY INTO dbo.lineitem (col1, col2 DEFAULT 'N/A', col3 3) FROM 'https://myaccount.blob.core.windows.net/container/data.csv' WITH (FILE_TYPE = 'CSV')`
+		result := ParseAndCheck(t, sql)
+		if result.Len() == 0 {
+			t.Fatalf("Parse(%q): no statements returned", sql)
+		}
+		stmt, ok := result.Items[0].(*ast.CopyIntoStmt)
+		if !ok {
+			t.Fatalf("expected *CopyIntoStmt, got %T", result.Items[0])
+		}
+		if stmt.ColumnList == nil || stmt.ColumnList.Len() != 3 {
+			t.Fatalf("expected 3 columns, got %d", stmt.ColumnList.Len())
+		}
+		checkLocation(t, sql, "CopyIntoStmt", stmt.Loc)
+	})
+
+	t.Run("copy_into_credential", func(t *testing.T) {
+		sql := `COPY INTO dbo.lineitem FROM 'https://myaccount.blob.core.windows.net/container/' WITH (FILE_TYPE = 'PARQUET', CREDENTIAL = (IDENTITY = 'Shared Access Signature', SECRET = 'mysastoken'))`
+		result := ParseAndCheck(t, sql)
+		if result.Len() == 0 {
+			t.Fatalf("Parse(%q): no statements returned", sql)
+		}
+		stmt, ok := result.Items[0].(*ast.CopyIntoStmt)
+		if !ok {
+			t.Fatalf("expected *CopyIntoStmt, got %T", result.Items[0])
+		}
+		if stmt.Options == nil || stmt.Options.Len() != 2 {
+			t.Fatalf("expected 2 options, got %d", stmt.Options.Len())
+		}
+		checkLocation(t, sql, "CopyIntoStmt", stmt.Loc)
+	})
+
+	t.Run("copy_into_file_format", func(t *testing.T) {
+		sql := `COPY INTO dbo.lineitem FROM 'https://myaccount.blob.core.windows.net/container/' WITH (FILE_FORMAT = myfileformat)`
+		result := ParseAndCheck(t, sql)
+		if result.Len() == 0 {
+			t.Fatalf("Parse(%q): no statements returned", sql)
+		}
+		stmt, ok := result.Items[0].(*ast.CopyIntoStmt)
+		if !ok {
+			t.Fatalf("expected *CopyIntoStmt, got %T", result.Items[0])
+		}
+		if stmt.Options == nil || stmt.Options.Len() != 1 {
+			t.Fatalf("expected 1 option, got %d", stmt.Options.Len())
+		}
+		checkLocation(t, sql, "CopyIntoStmt", stmt.Loc)
+	})
+
+	t.Run("copy_into_errorfile", func(t *testing.T) {
+		sql := `COPY INTO dbo.lineitem FROM 'https://myaccount.blob.core.windows.net/container/' WITH (FILE_TYPE = 'ORC', ERRORFILE = 'https://myaccount.blob.core.windows.net/errors/')`
+		result := ParseAndCheck(t, sql)
+		if result.Len() == 0 {
+			t.Fatalf("Parse(%q): no statements returned", sql)
+		}
+		stmt, ok := result.Items[0].(*ast.CopyIntoStmt)
+		if !ok {
+			t.Fatalf("expected *CopyIntoStmt, got %T", result.Items[0])
+		}
+		if stmt.Options == nil || stmt.Options.Len() != 2 {
+			t.Fatalf("expected 2 options, got %d", stmt.Options.Len())
+		}
+		checkLocation(t, sql, "CopyIntoStmt", stmt.Loc)
+	})
+
+	t.Run("copy_into_schema_only", func(t *testing.T) {
+		sql := `COPY INTO myschema.mytable FROM 'https://storage.blob.core.windows.net/data/*.parquet' WITH (FILE_TYPE = 'PARQUET')`
+		result := ParseAndCheck(t, sql)
+		if result.Len() == 0 {
+			t.Fatalf("Parse(%q): no statements returned", sql)
+		}
+		_, ok := result.Items[0].(*ast.CopyIntoStmt)
+		if !ok {
+			t.Fatalf("expected *CopyIntoStmt, got %T", result.Items[0])
+		}
+	})
+}

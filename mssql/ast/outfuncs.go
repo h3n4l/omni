@@ -392,6 +392,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeCreateMaterializedViewStmt(sb, n)
 	case *AlterMaterializedViewStmt:
 		writeAlterMaterializedViewStmt(sb, n)
+	case *CopyIntoStmt:
+		writeCopyIntoStmt(sb, n)
 	default:
 		sb.WriteString("{UNKNOWN}")
 	}
@@ -3474,6 +3476,28 @@ func writeAlterMaterializedViewStmt(sb *strings.Builder, n *AlterMaterializedVie
 	}
 	if n.Action != "" {
 		sb.WriteString(fmt.Sprintf(" :action \"%s\"", escapeString(n.Action)))
+	}
+	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeCopyIntoStmt(sb *strings.Builder, n *CopyIntoStmt) {
+	sb.WriteString("{COPYINTO")
+	if n.Table != nil {
+		sb.WriteString(" :table ")
+		writeNode(sb, n.Table)
+	}
+	if n.ColumnList != nil {
+		sb.WriteString(" :columnList ")
+		writeNode(sb, n.ColumnList)
+	}
+	if n.Sources != nil {
+		sb.WriteString(" :sources ")
+		writeNode(sb, n.Sources)
+	}
+	if n.Options != nil {
+		sb.WriteString(" :options ")
+		writeNode(sb, n.Options)
 	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

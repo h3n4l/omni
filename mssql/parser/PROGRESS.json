@@ -2475,7 +2475,7 @@
       "id": 111,
       "name": "copy_into",
       "file": "utility.go",
-      "status": "pending",
+      "status": "done",
       "description": "New: COPY INTO statement for bulk data loading (Azure Synapse/Fabric). BNF: COPY INTO table_name [ (column_list) ] FROM 'external_location' [,...n] WITH ( option = value [,...n] )",
       "rules": [
         "parseCopyIntoStmt"

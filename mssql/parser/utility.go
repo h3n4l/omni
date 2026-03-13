@@ -788,3 +788,194 @@ func (p *Parser) parseSetuserStmt() *nodes.SecurityStmt {
 	stmt.Loc.End = p.pos()
 	return stmt
 }
+
+// parseCopyIntoStmt parses a COPY INTO statement (Azure Synapse / Fabric).
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/copy-into-transact-sql
+//
+//	COPY INTO [ schema. ] table_name
+//	[ ( Column_name [ DEFAULT Default_value ] [ Field_number ] [ ,...n ] ) ]
+//	FROM '<external_location>' [ , ...n ]
+//	WITH
+//	(
+//	  [ FILE_TYPE = { 'CSV' | 'PARQUET' | 'ORC' } ]
+//	  [ , FILE_FORMAT = EXTERNAL FILE FORMAT OBJECT ]
+//	  [ , CREDENTIAL = ( AZURE CREDENTIAL ) ]
+//	  [ , ERRORFILE = '[http(s)://storageaccount/container]/errorfile_directory[/]' ]
+//	  [ , ERRORFILE_CREDENTIAL = ( AZURE CREDENTIAL ) ]
+//	  [ , MAXERRORS = max_errors ]
+//	  [ , COMPRESSION = { 'Gzip' | 'DefaultCodec' | 'Snappy' } ]
+//	  [ , FIELDQUOTE = 'string_delimiter' ]
+//	  [ , FIELDTERMINATOR = 'field_terminator' ]
+//	  [ , ROWTERMINATOR = 'row_terminator' ]
+//	  [ , FIRSTROW = first_row ]
+//	  [ , DATEFORMAT = 'date_format' ]
+//	  [ , ENCODING = { 'UTF8' | 'UTF16' } ]
+//	  [ , IDENTITY_INSERT = { 'ON' | 'OFF' } ]
+//	  [ , AUTO_CREATE_TABLE = { 'ON' | 'OFF' } ]
+//	)
+func (p *Parser) parseCopyIntoStmt() *nodes.CopyIntoStmt {
+	loc := p.pos()
+	p.advance() // consume COPY
+
+	// INTO keyword
+	p.matchIdentCI("INTO")
+
+	stmt := &nodes.CopyIntoStmt{
+		Loc: nodes.Loc{Start: loc},
+	}
+
+	// Table name (possibly qualified: schema.table)
+	stmt.Table = p.parseTableRef()
+
+	// Optional column list: ( Column_name [ DEFAULT value ] [ field_number ] [,...n] )
+	if p.cur.Type == '(' {
+		p.advance() // consume '('
+		var cols []nodes.Node
+		for p.cur.Type != ')' && p.cur.Type != tokEOF {
+			// Each entry is: Column_name [ DEFAULT value ] [ field_number ]
+			// We store the whole thing as a string for simplicity
+			if p.isIdentLike() || p.cur.Type == '[' {
+				colStr := p.cur.Str
+				p.advance()
+
+				// Check for DEFAULT value
+				if p.matchIdentCI("DEFAULT") {
+					defVal := ""
+					switch p.cur.Type {
+					case tokSCONST, tokNSCONST:
+						defVal = "'" + p.cur.Str + "'"
+						p.advance()
+					case tokICONST, tokFCONST:
+						defVal = p.cur.Str
+						p.advance()
+					default:
+						if p.isIdentLike() {
+							defVal = p.cur.Str
+							p.advance()
+						}
+					}
+					colStr += " DEFAULT " + defVal
+				}
+
+				// Check for field_number (integer)
+				if p.cur.Type == tokICONST {
+					colStr += " " + p.cur.Str
+					p.advance()
+				}
+
+				cols = append(cols, &nodes.String{Str: colStr})
+			} else {
+				p.advance() // skip unexpected
+			}
+
+			if _, ok := p.match(','); !ok {
+				break
+			}
+		}
+		p.match(')')
+		if len(cols) > 0 {
+			stmt.ColumnList = &nodes.List{Items: cols}
+		}
+	}
+
+	// FROM '<external_location>' [ , ...n ]
+	if p.cur.Type == kwFROM {
+		p.advance() // consume FROM
+		var sources []nodes.Node
+		for {
+			if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
+				sources = append(sources, &nodes.String{Str: p.cur.Str})
+				p.advance()
+			} else {
+				break
+			}
+			if _, ok := p.match(','); !ok {
+				break
+			}
+		}
+		if len(sources) > 0 {
+			stmt.Sources = &nodes.List{Items: sources}
+		}
+	}
+
+	// WITH ( option [,...n] )
+	if p.cur.Type == kwWITH {
+		p.advance() // consume WITH
+		if p.cur.Type == '(' {
+			p.advance() // consume '('
+			var opts []nodes.Node
+			for p.cur.Type != ')' && p.cur.Type != tokEOF {
+				opt := p.parseCopyIntoOption()
+				if opt != nil {
+					opts = append(opts, opt)
+				}
+				if _, ok := p.match(','); !ok {
+					break
+				}
+			}
+			p.match(')')
+			if len(opts) > 0 {
+				stmt.Options = &nodes.List{Items: opts}
+			}
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseCopyIntoOption parses a single COPY INTO WITH option.
+// Options can be:
+//   - KEY = 'string_value'
+//   - KEY = numeric_value
+//   - KEY = identifier (e.g., FILE_FORMAT = myformat)
+//   - CREDENTIAL = ( ... ) -- parenthesized credential
+//   - ERRORFILE_CREDENTIAL = ( ... ) -- parenthesized credential
+func (p *Parser) parseCopyIntoOption() nodes.Node {
+	if !p.isIdentLike() && p.cur.Type != kwFILE {
+		return nil
+	}
+
+	name := strings.ToUpper(p.cur.Str)
+	p.advance()
+
+	// Check for = sign
+	if p.cur.Type == '=' {
+		p.advance() // consume '='
+
+		// Special handling for CREDENTIAL and ERRORFILE_CREDENTIAL: value in parens
+		if (name == "CREDENTIAL" || name == "ERRORFILE_CREDENTIAL") && p.cur.Type == '(' {
+			p.advance() // consume '('
+			var parts []string
+			for p.cur.Type != ')' && p.cur.Type != tokEOF {
+				parts = append(parts, p.cur.Str)
+				p.advance()
+			}
+			p.match(')')
+			return &nodes.String{Str: name + "=(" + strings.Join(parts, " ") + ")"}
+		}
+
+		var valStr string
+		switch p.cur.Type {
+		case tokSCONST, tokNSCONST:
+			valStr = "'" + p.cur.Str + "'"
+			p.advance()
+		case tokICONST:
+			valStr = p.cur.Str
+			p.advance()
+		case tokFCONST:
+			valStr = p.cur.Str
+			p.advance()
+		default:
+			if p.isIdentLike() {
+				valStr = p.cur.Str
+				p.advance()
+			}
+		}
+		return &nodes.String{Str: name + "=" + valStr}
+	}
+
+	// Plain flag option (unlikely for COPY INTO but handle gracefully)
+	return &nodes.String{Str: name}
+}
