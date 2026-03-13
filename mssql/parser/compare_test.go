@@ -8999,6 +8999,124 @@ func TestParseAlterTableFiletable(t *testing.T) {
 	})
 }
 
+// TestParseAlterTableColumnOptionsStringsDepth tests batch 152: ALTER COLUMN ADD/DROP options use AlterColumnOption typed nodes.
+func TestParseAlterTableColumnOptionsStringsDepth(t *testing.T) {
+	t.Run("alter_column_options_typed", func(t *testing.T) {
+		tests := []struct {
+			name       string
+			sql        string
+			wantAction string
+			wantOption string
+		}{
+			{"add_rowguidcol", "ALTER TABLE t1 ALTER COLUMN c1 ADD ROWGUIDCOL", "ADD", "ROWGUIDCOL"},
+			{"drop_rowguidcol", "ALTER TABLE t1 ALTER COLUMN c1 DROP ROWGUIDCOL", "DROP", "ROWGUIDCOL"},
+			{"add_persisted", "ALTER TABLE t1 ALTER COLUMN c1 ADD PERSISTED", "ADD", "PERSISTED"},
+			{"drop_persisted", "ALTER TABLE t1 ALTER COLUMN c1 DROP PERSISTED", "DROP", "PERSISTED"},
+			{"add_sparse", "ALTER TABLE t1 ALTER COLUMN c1 ADD SPARSE", "ADD", "SPARSE"},
+			{"drop_sparse", "ALTER TABLE t1 ALTER COLUMN c1 DROP SPARSE", "DROP", "SPARSE"},
+			{"add_hidden", "ALTER TABLE t1 ALTER COLUMN c1 ADD HIDDEN", "ADD", "HIDDEN"},
+			{"drop_hidden", "ALTER TABLE t1 ALTER COLUMN c1 DROP HIDDEN", "DROP", "HIDDEN"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				stmt := result.Items[0].(*ast.AlterTableStmt)
+				action := stmt.Actions.Items[0].(*ast.AlterTableAction)
+				if action.Type != ast.ATAlterColumnAddDrop {
+					t.Fatalf("expected ATAlterColumnAddDrop, got %d", action.Type)
+				}
+				if action.Options == nil || action.Options.Len() != 1 {
+					t.Fatalf("expected 1 option, got %v", action.Options)
+				}
+				opt, ok := action.Options.Items[0].(*ast.AlterColumnOption)
+				if !ok {
+					t.Fatalf("expected *AlterColumnOption, got %T", action.Options.Items[0])
+				}
+				if opt.Action != tt.wantAction {
+					t.Errorf("expected action %s, got %s", tt.wantAction, opt.Action)
+				}
+				if opt.Option != tt.wantOption {
+					t.Errorf("expected option %s, got %s", tt.wantOption, opt.Option)
+				}
+				if opt.Loc.Start == 0 && opt.Loc.End == 0 {
+					t.Error("AlterColumnOption has zero Loc")
+				}
+			})
+		}
+	})
+
+	t.Run("alter_column_not_for_replication_typed", func(t *testing.T) {
+		sql := "ALTER TABLE t1 ALTER COLUMN c1 ADD NOT FOR REPLICATION"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.AlterTableStmt)
+		action := stmt.Actions.Items[0].(*ast.AlterTableAction)
+		opt := action.Options.Items[0].(*ast.AlterColumnOption)
+		if opt.Action != "ADD" {
+			t.Errorf("expected action ADD, got %s", opt.Action)
+		}
+		if opt.Option != "NOT FOR REPLICATION" {
+			t.Errorf("expected option NOT FOR REPLICATION, got %s", opt.Option)
+		}
+	})
+
+	t.Run("alter_column_add_masked", func(t *testing.T) {
+		sql := "ALTER TABLE t1 ALTER COLUMN c1 ADD MASKED WITH (FUNCTION = 'default()')"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.AlterTableStmt)
+		action := stmt.Actions.Items[0].(*ast.AlterTableAction)
+		opt := action.Options.Items[0].(*ast.AlterColumnOption)
+		if opt.Action != "ADD" {
+			t.Errorf("expected action ADD, got %s", opt.Action)
+		}
+		if opt.Option != "MASKED" {
+			t.Errorf("expected option MASKED, got %s", opt.Option)
+		}
+		if opt.MaskFunction != "default()" {
+			t.Errorf("expected mask function 'default()', got '%s'", opt.MaskFunction)
+		}
+	})
+
+	t.Run("alter_column_drop_masked", func(t *testing.T) {
+		sql := "ALTER TABLE t1 ALTER COLUMN c1 DROP MASKED"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.AlterTableStmt)
+		action := stmt.Actions.Items[0].(*ast.AlterTableAction)
+		opt := action.Options.Items[0].(*ast.AlterColumnOption)
+		if opt.Action != "DROP" {
+			t.Errorf("expected action DROP, got %s", opt.Action)
+		}
+		if opt.Option != "MASKED" {
+			t.Errorf("expected option MASKED, got %s", opt.Option)
+		}
+	})
+
+	t.Run("no_string_nodes", func(t *testing.T) {
+		// Verify no *ast.String nodes remain in alter column add/drop options
+		tests := []string{
+			"ALTER TABLE t1 ALTER COLUMN c1 ADD ROWGUIDCOL",
+			"ALTER TABLE t1 ALTER COLUMN c1 DROP PERSISTED",
+			"ALTER TABLE t1 ALTER COLUMN c1 ADD MASKED WITH (FUNCTION = 'email()')",
+			"ALTER TABLE t1 ALTER COLUMN c1 ADD NOT FOR REPLICATION",
+			"ALTER TABLE t1 ALTER COLUMN c1 ADD SPARSE",
+			"ALTER TABLE t1 ALTER COLUMN c1 DROP HIDDEN",
+		}
+		for _, sql := range tests {
+			t.Run(sql[30:], func(t *testing.T) {
+				result := ParseAndCheck(t, sql)
+				stmt := result.Items[0].(*ast.AlterTableStmt)
+				action := stmt.Actions.Items[0].(*ast.AlterTableAction)
+				if action.Options != nil {
+					for _, item := range action.Options.Items {
+						if _, ok := item.(*ast.String); ok {
+							t.Errorf("Parse(%q): found *ast.String in options, expected AlterColumnOption", sql)
+						}
+					}
+				}
+			})
+		}
+	})
+}
+
 // TestParseTableHints tests table hints parsing (batch 83).
 func TestParseTableHints(t *testing.T) {
 	// NOLOCK hint

@@ -276,6 +276,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeComputedColumnDef(sb, n)
 	case *AlterTableAction:
 		writeAlterTableAction(sb, n)
+	case *AlterColumnOption:
+		writeAlterColumnOption(sb, n)
 	case *ReturnsTableDef:
 		writeReturnsTableDef(sb, n)
 	case *ExecArg:
@@ -2679,6 +2681,16 @@ func writeAlterTableAction(sb *strings.Builder, n *AlterTableAction) {
 	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
+}
+
+func writeAlterColumnOption(sb *strings.Builder, n *AlterColumnOption) {
+	sb.WriteString("{ALTCOLOPT")
+	fmt.Fprintf(sb, " :action \"%s\"", escapeString(n.Action))
+	fmt.Fprintf(sb, " :option \"%s\"", escapeString(n.Option))
+	if n.MaskFunction != "" {
+		fmt.Fprintf(sb, " :maskFunction \"%s\"", escapeString(n.MaskFunction))
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
 }
 
 func writeReturnsTableDef(sb *strings.Builder, n *ReturnsTableDef) {

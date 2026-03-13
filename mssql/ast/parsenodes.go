@@ -503,6 +503,23 @@ const (
 	ATDropPeriod                  // DROP PERIOD FOR SYSTEM_TIME
 )
 
+// AlterColumnOption represents a typed ADD/DROP option in ALTER COLUMN.
+// Replaces nodes.String concatenations in parseAlterColumnAddDrop.
+//
+// Examples:
+//   - Action="ADD", Option="ROWGUIDCOL"
+//   - Action="DROP", Option="PERSISTED"
+//   - Action="ADD", Option="MASKED", MaskFunction="default()"
+//   - Action="DROP", Option="NOT FOR REPLICATION"
+type AlterColumnOption struct {
+	Action       string // "ADD" or "DROP"
+	Option       string // e.g., "ROWGUIDCOL", "PERSISTED", "SPARSE", "HIDDEN", "MASKED", "NOT FOR REPLICATION"
+	MaskFunction string // only for MASKED WITH (FUNCTION = '...')
+	Loc          Loc
+}
+
+func (n *AlterColumnOption) nodeTag() {}
+
 // DropStmt represents a DROP statement.
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-table-transact-sql
 type DropStmt struct {

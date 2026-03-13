@@ -402,34 +402,53 @@ func (p *Parser) parseAlterColumnAddDrop(loc int, colName string) *nodes.AlterTa
 	}
 	p.advance() // consume ADD/DROP
 
-	var optItems []nodes.Node
-	optItems = append(optItems, &nodes.String{Str: addOrDrop})
+	optLoc := p.pos()
+	opt := &nodes.AlterColumnOption{
+		Action: addOrDrop,
+		Loc:    nodes.Loc{Start: optLoc},
+	}
 
 	// Determine what's being added/dropped
 	switch {
 	case p.cur.Type == kwROWGUIDCOL:
-		optItems = append(optItems, &nodes.String{Str: "ROWGUIDCOL"})
+		opt.Option = "ROWGUIDCOL"
 		p.advance()
 	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "PERSISTED"):
-		optItems = append(optItems, &nodes.String{Str: "PERSISTED"})
+		opt.Option = "PERSISTED"
 		p.advance()
 	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "SPARSE"):
-		optItems = append(optItems, &nodes.String{Str: "SPARSE"})
+		opt.Option = "SPARSE"
 		p.advance()
 	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "HIDDEN"):
-		optItems = append(optItems, &nodes.String{Str: "HIDDEN"})
+		opt.Option = "HIDDEN"
 		p.advance()
 	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "MASKED"):
-		optItems = append(optItems, &nodes.String{Str: "MASKED"})
+		opt.Option = "MASKED"
 		p.advance()
 		// WITH ( FUNCTION = 'mask_function' )
 		if p.cur.Type == kwWITH {
 			p.advance() // consume WITH
 			if p.cur.Type == '(' {
-				opts := p.parseKeyValueOptionList()
-				if opts != nil {
-					optItems = append(optItems, opts.Items...)
+				p.advance() // consume (
+				// Parse FUNCTION = 'mask_function'
+				for p.cur.Type != ')' && p.cur.Type != tokEOF {
+					if p.isIdentLike() && strings.EqualFold(p.cur.Str, "FUNCTION") {
+						p.advance() // consume FUNCTION
+						if p.cur.Type == '=' {
+							p.advance() // consume =
+						}
+						if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
+							opt.MaskFunction = p.cur.Str
+							p.advance()
+						}
+					} else {
+						p.advance()
+					}
+					if _, ok := p.match(','); !ok {
+						break
+					}
 				}
+				p.expect(')')
 			}
 		}
 	case p.cur.Type == kwNOT:
@@ -441,16 +460,17 @@ func (p *Parser) parseAlterColumnAddDrop(loc int, colName string) *nodes.AlterTa
 		if p.cur.Type == kwREPLICATION {
 			p.advance() // REPLICATION
 		}
-		optItems = append(optItems, &nodes.String{Str: "NOT FOR REPLICATION"})
+		opt.Option = "NOT FOR REPLICATION"
 	default:
 		// Unknown option, consume as normalized uppercase identifier
 		if p.isIdentLike() {
-			optItems = append(optItems, &nodes.String{Str: strings.ToUpper(p.cur.Str)})
+			opt.Option = strings.ToUpper(p.cur.Str)
 			p.advance()
 		}
 	}
 
-	action.Options = &nodes.List{Items: optItems}
+	opt.Loc.End = p.pos()
+	action.Options = &nodes.List{Items: []nodes.Node{opt}}
 	action.Loc.End = p.pos()
 	return action
 }
