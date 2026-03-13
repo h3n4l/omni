@@ -669,15 +669,19 @@ func (p *Parser) parseExternalSetOptions() *nodes.List {
 			continue
 		}
 		if p.isIdentLike() || p.cur.Type == kwON || p.cur.Type == kwOFF {
+			optLoc := p.pos()
 			key := strings.ToUpper(p.cur.Str)
 			p.advance()
+			val := ""
 			if p.cur.Type == '=' {
 				p.advance() // consume '='
-				val := p.parseExternalOptionValue()
-				opts = append(opts, &nodes.String{Str: key + "=" + val})
-			} else {
-				opts = append(opts, &nodes.String{Str: key})
+				val = p.parseExternalOptionValue()
 			}
+			opts = append(opts, &nodes.ExternalOption{
+				Key:   key,
+				Value: val,
+				Loc:   nodes.Loc{Start: optLoc, End: p.pos()},
+			})
 		} else {
 			break
 		}
@@ -968,53 +972,3 @@ func (p *Parser) parseExternalFileSpec() []nodes.Node {
 	return opts
 }
 
-// parseNestedParens consumes content between ( and ) including nested parens.
-func (p *Parser) parseNestedParens() string {
-	if p.cur.Type != '(' {
-		return ""
-	}
-	p.advance() // consume '('
-	var buf strings.Builder
-	depth := 1
-	first := true
-	for depth > 0 && p.cur.Type != tokEOF {
-		if p.cur.Type == '(' {
-			depth++
-			buf.WriteString("(")
-			p.advance()
-			first = true
-			continue
-		}
-		if p.cur.Type == ')' {
-			depth--
-			if depth > 0 {
-				buf.WriteString(")")
-				p.advance()
-			}
-			continue
-		}
-		if !first {
-			buf.WriteString(" ")
-		}
-		first = false
-		if p.cur.Type == ',' {
-			// replace comma with a comma-space representation
-			buf.WriteString(",")
-			p.advance()
-			continue
-		}
-		if p.cur.Type == '=' {
-			buf.WriteString("=")
-			p.advance()
-			continue
-		}
-		if p.cur.Type == tokSCONST {
-			buf.WriteString("'" + p.cur.Str + "'")
-		} else {
-			buf.WriteString(strings.ToUpper(p.cur.Str))
-		}
-		p.advance()
-	}
-	p.match(')') // consume final ')'
-	return buf.String()
-}

@@ -3056,7 +3056,7 @@
       "id": 141,
       "name": "external_cleanup_depth",
       "file": "external.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 124 gap: remove dead parseNestedParens() function (lines 971-1020, defined but never called). Replace nodes.String formatting in parseExternalSetOptions() (lines 665-690) with structured ExternalOption AST nodes (key, value) instead of key=value string concatenation.",
       "rules": [
         "removeDeadParseNestedParens",

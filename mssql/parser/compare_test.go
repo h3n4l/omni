@@ -15814,3 +15814,62 @@ func TestParseResourceGovernorOuterOptionsDepth(t *testing.T) {
 		}
 	})
 }
+
+// TestParseExternalCleanupDepth tests batch 141: structured external SET options.
+func TestParseExternalCleanupDepth(t *testing.T) {
+	// ALTER EXTERNAL DATA SOURCE SET with structured options
+	t.Run("external_set_options_structured", func(t *testing.T) {
+		sql := "ALTER EXTERNAL DATA SOURCE myDS SET LOCATION = 'https://newserver.blob.core.windows.net', CREDENTIAL = newCred"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		if stmt.Options == nil {
+			t.Fatal("expected options")
+		}
+		var locOpt, credOpt *ast.ExternalOption
+		for _, item := range stmt.Options.Items {
+			if opt, ok := item.(*ast.ExternalOption); ok {
+				if opt.Key == "LOCATION" {
+					locOpt = opt
+				}
+				if opt.Key == "CREDENTIAL" {
+					credOpt = opt
+				}
+			}
+		}
+		if locOpt == nil {
+			t.Fatal("expected ExternalOption with Key=LOCATION")
+		}
+		if locOpt.Value != "'https://newserver.blob.core.windows.net'" {
+			t.Errorf("expected location value, got %q", locOpt.Value)
+		}
+		if credOpt == nil {
+			t.Fatal("expected ExternalOption with Key=CREDENTIAL")
+		}
+		if credOpt.Value != "NEWCRED" {
+			t.Errorf("expected NEWCRED, got %q", credOpt.Value)
+		}
+	})
+
+	// Single SET option
+	t.Run("external_set_single_option", func(t *testing.T) {
+		sql := "ALTER EXTERNAL DATA SOURCE myDS SET CREDENTIAL = myCred"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		if stmt.Options == nil {
+			t.Fatal("expected options")
+		}
+		var found *ast.ExternalOption
+		for _, item := range stmt.Options.Items {
+			if opt, ok := item.(*ast.ExternalOption); ok {
+				found = opt
+				break
+			}
+		}
+		if found == nil {
+			t.Fatal("expected ExternalOption")
+		}
+		if found.Key != "CREDENTIAL" {
+			t.Errorf("expected CREDENTIAL, got %q", found.Key)
+		}
+	})
+}

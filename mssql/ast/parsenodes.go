@@ -1226,6 +1226,17 @@ type ResourceGovernorOption struct {
 
 func (n *ResourceGovernorOption) nodeTag() {}
 
+// ExternalOption represents a structured key=value option for external object statements.
+//
+// Used by ALTER EXTERNAL DATA SOURCE SET options and similar.
+type ExternalOption struct {
+	Key   string // option key (e.g., "LOCATION", "CREDENTIAL")
+	Value string // option value
+	Loc   Loc
+}
+
+func (n *ExternalOption) nodeTag() {}
+
 // CreateSchemaStmt represents CREATE SCHEMA.
 //
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-schema-transact-sql
