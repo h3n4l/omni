@@ -67,7 +67,12 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 	case kwSYNONYM:
 		return p.parseCreateSynonymStmt(start, orReplace, public)
 	case kwDATABASE:
-		return p.parseCreateDatabaseLinkStmt(start, public)
+		// Distinguish CREATE DATABASE LINK from CREATE DATABASE
+		next := p.peekNext()
+		if next.Type == kwLINK {
+			return p.parseCreateDatabaseLinkStmt(start, public)
+		}
+		return p.parseCreateDatabaseStmt(start)
 	case kwTYPE:
 		return p.parseCreateTypeStmt(start, orReplace)
 	case kwPROCEDURE:
@@ -97,7 +102,7 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 		if p.isIdentLikeStr("NO") || p.cur.Type == kwNOT {
 			return p.parseCreateViewStmt(start, orReplace)
 		}
-		// Check for BIGFILE/SMALLFILE/UNDO TABLESPACE
+		// Check for BIGFILE/SMALLFILE/UNDO TABLESPACE, CONTROLFILE
 		if p.isIdentLike() {
 			switch p.cur.Str {
 			case "BIGFILE":
@@ -118,6 +123,9 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 					p.advance()
 					return p.parseCreateTablespaceStmt(start, false, false, false, true)
 				}
+			case "CONTROLFILE":
+				p.advance() // consume CONTROLFILE
+				return p.parseCreateControlfileStmt(start)
 			}
 		}
 		// Check for DIMENSION, FLASHBACK ARCHIVE

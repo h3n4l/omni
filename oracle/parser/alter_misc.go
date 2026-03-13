@@ -44,7 +44,17 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 	case kwMATERIALIZED:
 		return p.parseAlterGeneric(start, nodes.OBJECT_MATERIALIZED_VIEW)
 	case kwDATABASE:
-		return p.parseAlterGeneric(start, nodes.OBJECT_DATABASE_LINK)
+		// Distinguish ALTER DATABASE LINK, ALTER DATABASE DICTIONARY, ALTER DATABASE
+		next := p.peekNext()
+		if next.Type == kwLINK {
+			return p.parseAlterGeneric(start, nodes.OBJECT_DATABASE_LINK)
+		}
+		p.advance() // consume DATABASE
+		if p.isIdentLikeStr("DICTIONARY") {
+			p.advance() // consume DICTIONARY
+			return p.parseAlterDatabaseDictionaryStmt(start)
+		}
+		return p.parseAlterDatabaseStmt(start)
 	case kwSYNONYM:
 		return p.parseAlterGeneric(start, nodes.OBJECT_SYNONYM)
 	case kwUSER, kwROLE, kwPROFILE,

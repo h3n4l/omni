@@ -1808,3 +1808,192 @@ func TestParseCreateDimensionFull(t *testing.T) {
 		})
 	}
 }
+
+// TestParseCreateDatabase tests CREATE DATABASE statements.
+func TestParseCreateDatabase(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		{"basic", "CREATE DATABASE mydb"},
+		{"with_user_sys_password", "CREATE DATABASE mydb USER SYS IDENTIFIED BY password"},
+		{"with_logfile", "CREATE DATABASE mydb LOGFILE GROUP 1 '/u01/log1.log' SIZE 100M"},
+		{"with_maxlogfiles", "CREATE DATABASE mydb MAXLOGFILES 16 MAXLOGMEMBERS 3"},
+		{"with_maxdatafiles", "CREATE DATABASE mydb MAXDATAFILES 100 MAXINSTANCES 8"},
+		{"with_archivelog", "CREATE DATABASE mydb ARCHIVELOG"},
+		{"with_noarchivelog", "CREATE DATABASE mydb NOARCHIVELOG"},
+		{"with_character_set", "CREATE DATABASE mydb CHARACTER SET AL32UTF8"},
+		{"with_national_character_set", "CREATE DATABASE mydb NATIONAL CHARACTER SET AL16UTF16"},
+		{"with_datafile", "CREATE DATABASE mydb DATAFILE '/u01/data01.dbf' SIZE 500M AUTOEXTEND ON"},
+		{"with_default_tablespace", "CREATE DATABASE mydb DEFAULT TABLESPACE users DATAFILE '/u01/users01.dbf' SIZE 100M"},
+		{"with_undo_tablespace", "CREATE DATABASE mydb UNDO TABLESPACE undots DATAFILE '/u01/undo01.dbf' SIZE 200M"},
+		{"with_default_temp_tablespace", "CREATE DATABASE mydb DEFAULT TEMPORARY TABLESPACE temp TEMPFILE '/u01/temp01.dbf' SIZE 100M"},
+		{"with_force_logging", "CREATE DATABASE mydb FORCE LOGGING"},
+		{"complex", "CREATE DATABASE proddb USER SYS IDENTIFIED BY oracle LOGFILE GROUP 1 '/u01/redo01.log' SIZE 50M MAXLOGFILES 16 MAXDATAFILES 1024 ARCHIVELOG CHARACTER SET AL32UTF8 DATAFILE '/u01/system01.dbf' SIZE 700M"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() != 1 {
+				t.Fatalf("expected 1 statement, got %d", result.Len())
+			}
+			raw := result.Items[0].(*ast.RawStmt)
+			stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+			if !ok {
+				t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+			}
+			if stmt.Action != "CREATE" {
+				t.Errorf("expected action CREATE, got %q", stmt.Action)
+			}
+			if stmt.ObjectType != ast.OBJECT_DATABASE {
+				t.Errorf("expected object type OBJECT_DATABASE, got %d", stmt.ObjectType)
+			}
+		})
+	}
+}
+
+// TestParseAlterDatabase tests ALTER DATABASE statements.
+func TestParseAlterDatabase(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		{"mount", "ALTER DATABASE MOUNT"},
+		{"open", "ALTER DATABASE OPEN"},
+		{"open_resetlogs", "ALTER DATABASE OPEN RESETLOGS"},
+		{"archivelog", "ALTER DATABASE ARCHIVELOG"},
+		{"noarchivelog", "ALTER DATABASE NOARCHIVELOG"},
+		{"force_logging", "ALTER DATABASE FORCE LOGGING"},
+		{"no_force_logging", "ALTER DATABASE NO FORCE LOGGING"},
+		{"rename_file", "ALTER DATABASE RENAME FILE '/u01/old.dbf' TO '/u01/new.dbf'"},
+		{"backup_controlfile", "ALTER DATABASE BACKUP CONTROLFILE TO '/backup/control01.bkp'"},
+		{"backup_controlfile_trace", "ALTER DATABASE BACKUP CONTROLFILE TO TRACE"},
+		{"add_logfile", "ALTER DATABASE ADD LOGFILE GROUP 3 '/u01/redo03.log' SIZE 50M"},
+		{"drop_logfile", "ALTER DATABASE DROP LOGFILE GROUP 2"},
+		{"add_datafile", "ALTER DATABASE ADD DATAFILE '/u01/data02.dbf' SIZE 500M"},
+		{"recover", "ALTER DATABASE RECOVER AUTOMATIC"},
+		{"set_default_tablespace", "ALTER DATABASE SET DEFAULT TABLESPACE users"},
+		{"flashback_on", "ALTER DATABASE FLASHBACK ON"},
+		{"flashback_off", "ALTER DATABASE FLASHBACK OFF"},
+		{"named", "ALTER DATABASE mydb MOUNT"},
+		{"enable_block_change_tracking", "ALTER DATABASE ENABLE BLOCK CHANGE TRACKING"},
+		{"standby", "ALTER DATABASE ACTIVATE STANDBY DATABASE"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() != 1 {
+				t.Fatalf("expected 1 statement, got %d", result.Len())
+			}
+			raw := result.Items[0].(*ast.RawStmt)
+			stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+			if !ok {
+				t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+			}
+			if stmt.Action != "ALTER" {
+				t.Errorf("expected action ALTER, got %q", stmt.Action)
+			}
+			if stmt.ObjectType != ast.OBJECT_DATABASE {
+				t.Errorf("expected object type OBJECT_DATABASE, got %d", stmt.ObjectType)
+			}
+		})
+	}
+}
+
+// TestParseCreateControlfile tests CREATE CONTROLFILE statements.
+func TestParseCreateControlfile(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		{"basic_noresetlogs", "CREATE CONTROLFILE REUSE DATABASE mydb NORESETLOGS NOARCHIVELOG"},
+		{"resetlogs", "CREATE CONTROLFILE DATABASE mydb RESETLOGS ARCHIVELOG"},
+		{"set_database", "CREATE CONTROLFILE SET DATABASE newdb RESETLOGS"},
+		{"with_logfile", "CREATE CONTROLFILE REUSE DATABASE mydb NORESETLOGS LOGFILE GROUP 1 '/u01/log1.log' SIZE 500K, GROUP 2 '/u01/log2.log' SIZE 500K"},
+		{"with_datafile", "CREATE CONTROLFILE DATABASE mydb NORESETLOGS DATAFILE '/u01/data1.dbf', '/u01/data2.dbf'"},
+		{"with_maxlogfiles", "CREATE CONTROLFILE DATABASE mydb NORESETLOGS MAXLOGFILES 32 MAXLOGMEMBERS 2 MAXDATAFILES 100"},
+		{"with_maxinstances", "CREATE CONTROLFILE DATABASE mydb NORESETLOGS MAXINSTANCES 8 MAXLOGHISTORY 449"},
+		{"with_character_set", "CREATE CONTROLFILE DATABASE mydb NORESETLOGS CHARACTER SET WE8DEC"},
+		{"with_force_logging", "CREATE CONTROLFILE DATABASE mydb NORESETLOGS FORCE LOGGING"},
+		{"full_example", "CREATE CONTROLFILE REUSE DATABASE \"demo\" NORESETLOGS NOARCHIVELOG MAXLOGFILES 32 MAXLOGMEMBERS 2 MAXDATAFILES 32 MAXINSTANCES 1 MAXLOGHISTORY 449 LOGFILE GROUP 1 '/path/log1.f' SIZE 500K, GROUP 2 '/path/log2.f' SIZE 500K DATAFILE '/path/db1.f', '/path/db2.dbf' CHARACTER SET WE8DEC"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() != 1 {
+				t.Fatalf("expected 1 statement, got %d", result.Len())
+			}
+			raw := result.Items[0].(*ast.RawStmt)
+			stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+			if !ok {
+				t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+			}
+			if stmt.Action != "CREATE" {
+				t.Errorf("expected action CREATE, got %q", stmt.Action)
+			}
+			if stmt.ObjectType != ast.OBJECT_CONTROLFILE {
+				t.Errorf("expected object type OBJECT_CONTROLFILE, got %d", stmt.ObjectType)
+			}
+		})
+	}
+}
+
+// TestParseAlterDatabaseDictionary tests ALTER DATABASE DICTIONARY statements.
+func TestParseAlterDatabaseDictionary(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		{"encrypt_credentials", "ALTER DATABASE DICTIONARY ENCRYPT CREDENTIALS"},
+		{"rekey_credentials", "ALTER DATABASE DICTIONARY REKEY CREDENTIALS"},
+		{"delete_credentials_key", "ALTER DATABASE DICTIONARY DELETE CREDENTIALS KEY"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() != 1 {
+				t.Fatalf("expected 1 statement, got %d", result.Len())
+			}
+			raw := result.Items[0].(*ast.RawStmt)
+			stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+			if !ok {
+				t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+			}
+			if stmt.Action != "ALTER" {
+				t.Errorf("expected action ALTER, got %q", stmt.Action)
+			}
+			if stmt.ObjectType != ast.OBJECT_DATABASE_DICTIONARY {
+				t.Errorf("expected object type OBJECT_DATABASE_DICTIONARY, got %d", stmt.ObjectType)
+			}
+		})
+	}
+}
+
+// TestParseCreateDatabaseLinkStillWorks verifies CREATE DATABASE LINK still works after dispatch changes.
+func TestParseCreateDatabaseLinkStillWorks(t *testing.T) {
+	result := ParseAndCheck(t, "CREATE DATABASE LINK remote_db CONNECT TO admin IDENTIFIED BY pass USING 'srv'")
+	if result.Len() != 1 {
+		t.Fatalf("expected 1 statement, got %d", result.Len())
+	}
+	raw := result.Items[0].(*ast.RawStmt)
+	_, ok := raw.Stmt.(*ast.CreateDatabaseLinkStmt)
+	if !ok {
+		t.Fatalf("expected *CreateDatabaseLinkStmt, got %T", raw.Stmt)
+	}
+}
+
+// TestParseAlterDatabaseLinkStillWorks verifies ALTER DATABASE LINK still works after dispatch changes.
+func TestParseAlterDatabaseLinkStillWorks(t *testing.T) {
+	result := ParseAndCheck(t, "ALTER DATABASE LINK remote_db CONNECT TO admin IDENTIFIED BY pass")
+	if result.Len() != 1 {
+		t.Fatalf("expected 1 statement, got %d", result.Len())
+	}
+	raw := result.Items[0].(*ast.RawStmt)
+	stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+	if !ok {
+		t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+	}
+	if stmt.ObjectType != ast.OBJECT_DATABASE_LINK {
+		t.Errorf("expected OBJECT_DATABASE_LINK, got %d", stmt.ObjectType)
+	}
+}
