@@ -140,7 +140,11 @@ func (p *Parser) parseCreateFulltextIndexStmt() *nodes.CreateFulltextIndexStmt {
 //	ALTER FULLTEXT INDEX ON table_name
 //	    { ENABLE | DISABLE
 //	    | SET CHANGE_TRACKING { MANUAL | AUTO | OFF }
-//	    | ADD ( column_name [...] ) [ WITH NO POPULATION ]
+//	    | ADD ( column_name
+//	          [ TYPE COLUMN type_column_name ]
+//	          [ LANGUAGE language_term ]
+//	          [ STATISTICAL_SEMANTICS ]
+//	        [ ,...n ] ) [ WITH NO POPULATION ]
 //	    | ALTER COLUMN column_name { ADD | DROP } STATISTICAL_SEMANTICS [ WITH NO POPULATION ]
 //	    | DROP ( column_name [,...n] ) [ WITH NO POPULATION ]
 //	    | START { FULL | INCREMENTAL | UPDATE } POPULATION
@@ -161,26 +165,182 @@ func (p *Parser) parseAlterFulltextIndexStmt() *nodes.AlterFulltextIndexStmt {
 		stmt.Table = p.parseTableRef()
 	}
 
-	// Action
-	var action strings.Builder
-	if p.isIdentLike() || p.cur.Type == kwSET || p.cur.Type == kwADD ||
-		p.cur.Type == kwALTER || p.cur.Type == kwDROP {
-		action.WriteString(strings.ToUpper(p.cur.Str))
+	// Action dispatch
+	switch {
+	case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "ENABLE"):
+		stmt.Action = "ENABLE"
 		p.advance()
-		// consume rest of action
-		for p.isIdentLike() || p.cur.Type == kwCHECK || p.cur.Type == kwOFF {
-			action.WriteString(" ")
-			action.WriteString(strings.ToUpper(p.cur.Str))
+
+	case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "DISABLE"):
+		stmt.Action = "DISABLE"
+		p.advance()
+
+	case p.cur.Type == kwSET:
+		stmt.Action = "SET"
+		p.advance()
+		// CHANGE_TRACKING { MANUAL | AUTO | OFF }
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CHANGE_TRACKING") {
 			p.advance()
-			if action.Len() > 50 {
-				break
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "MANUAL") {
+				stmt.ChangeTracking = "MANUAL"
+				p.advance()
+			} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AUTO") {
+				stmt.ChangeTracking = "AUTO"
+				p.advance()
+			} else if p.cur.Type == kwOFF {
+				stmt.ChangeTracking = "OFF"
+				p.advance()
 			}
 		}
+
+	case p.cur.Type == kwADD:
+		stmt.Action = "ADD"
+		p.advance()
+		// ( column_name [ TYPE COLUMN ... ] [ LANGUAGE ... ] [ STATISTICAL_SEMANTICS ] [,...n] )
+		if p.cur.Type == '(' {
+			p.advance()
+			var cols []nodes.Node
+			for p.cur.Type != ')' && p.cur.Type != tokEOF {
+				if p.isIdentLike() {
+					col := p.cur.Str
+					p.advance()
+					// TYPE COLUMN type_col_name
+					if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "TYPE") {
+						p.advance()
+						if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "COLUMN") {
+							p.advance()
+						}
+						if p.isIdentLike() {
+							p.advance()
+						}
+					}
+					// LANGUAGE term
+					if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LANGUAGE") {
+						p.advance()
+						if p.isIdentLike() || p.cur.Type == tokICONST || p.cur.Type == tokSCONST {
+							p.advance()
+						}
+					}
+					// STATISTICAL_SEMANTICS
+					if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "STATISTICAL_SEMANTICS") {
+						p.advance()
+					}
+					cols = append(cols, &nodes.String{Str: col})
+				}
+				if _, ok := p.match(','); !ok {
+					break
+				}
+			}
+			p.match(')')
+			if len(cols) > 0 {
+				stmt.Columns = &nodes.List{Items: cols}
+			}
+		}
+		// WITH NO POPULATION
+		stmt.WithNoPopulation = p.parseWithNoPopulation()
+
+	case p.cur.Type == kwALTER:
+		stmt.Action = "ALTER"
+		p.advance()
+		// COLUMN column_name { ADD | DROP } STATISTICAL_SEMANTICS
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "COLUMN") {
+			p.advance()
+			if p.isIdentLike() {
+				stmt.ColumnName = p.cur.Str
+				p.advance()
+			}
+			if p.cur.Type == kwADD {
+				stmt.ColumnAction = "ADD"
+				p.advance()
+			} else if p.cur.Type == kwDROP {
+				stmt.ColumnAction = "DROP"
+				p.advance()
+			}
+			// STATISTICAL_SEMANTICS
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "STATISTICAL_SEMANTICS") {
+				p.advance()
+			}
+		}
+		// WITH NO POPULATION
+		stmt.WithNoPopulation = p.parseWithNoPopulation()
+
+	case p.cur.Type == kwDROP:
+		stmt.Action = "DROP"
+		p.advance()
+		// ( column_name [,...n] )
+		if p.cur.Type == '(' {
+			p.advance()
+			var cols []nodes.Node
+			for p.cur.Type != ')' && p.cur.Type != tokEOF {
+				if p.isIdentLike() {
+					cols = append(cols, &nodes.String{Str: p.cur.Str})
+					p.advance()
+				}
+				if _, ok := p.match(','); !ok {
+					break
+				}
+			}
+			p.match(')')
+			if len(cols) > 0 {
+				stmt.Columns = &nodes.List{Items: cols}
+			}
+		}
+		// WITH NO POPULATION
+		stmt.WithNoPopulation = p.parseWithNoPopulation()
+
+	case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "START"):
+		stmt.Action = "START"
+		p.advance()
+		// { FULL | INCREMENTAL | UPDATE } POPULATION
+		if p.isIdentLike() {
+			stmt.PopulationType = strings.ToUpper(p.cur.Str)
+			p.advance()
+		}
+		// POPULATION
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "POPULATION") {
+			p.advance()
+		}
+
+	case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "STOP"):
+		stmt.Action = "STOP"
+		p.advance()
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "POPULATION") {
+			p.advance()
+		}
+
+	case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "PAUSE"):
+		stmt.Action = "PAUSE"
+		p.advance()
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "POPULATION") {
+			p.advance()
+		}
+
+	case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "RESUME"):
+		stmt.Action = "RESUME"
+		p.advance()
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "POPULATION") {
+			p.advance()
+		}
 	}
-	stmt.Action = action.String()
 
 	stmt.Loc.End = p.pos()
 	return stmt
+}
+
+// parseWithNoPopulation checks for and consumes WITH NO POPULATION.
+func (p *Parser) parseWithNoPopulation() bool {
+	if p.cur.Type == kwWITH {
+		next := p.peekNext()
+		if next.Type == tokIDENT && matchesKeywordCI(next.Str, "NO") {
+			p.advance() // consume WITH
+			p.advance() // consume NO
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "POPULATION") {
+				p.advance()
+			}
+			return true
+		}
+	}
+	return false
 }
 
 // parseCreateFulltextCatalogStmt parses a CREATE FULLTEXT CATALOG statement.
@@ -565,10 +725,7 @@ func (p *Parser) parseAlterSearchPropertyListStmt() *nodes.AlterSearchPropertyLi
 								p.advance()
 							}
 						default:
-							// skip unknown option value
-							if p.isIdentLike() || p.cur.Type == tokSCONST || p.cur.Type == tokICONST {
-								p.advance()
-							}
+							// unknown option - break out rather than silently skipping
 						}
 					}
 					if _, ok := p.match(','); !ok {

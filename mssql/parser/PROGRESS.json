@@ -2833,7 +2833,7 @@
       "id": 129,
       "name": "fulltext_alter_depth",
       "file": "fulltext.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 43 gap: replace strings.Builder action accumulation in parseAlterFulltextIndexStmt() at lines 165-178 with structured action type enum (ADD, DROP, SET, START/STOP, ENABLE/DISABLE, etc.). Fix batch 61 gap: replace unknown option skip in parseAlterSearchPropertyListStmt() WITH clause at lines 567-572 with structured property option parsing.",
       "rules": [
         "parseAlterFulltextIndexActionStructured",

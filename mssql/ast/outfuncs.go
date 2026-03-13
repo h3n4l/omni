@@ -2959,6 +2959,25 @@ func writeAlterFulltextIndexStmt(sb *strings.Builder, n *AlterFulltextIndexStmt)
 		writeNode(sb, n.Table)
 	}
 	fmt.Fprintf(sb, " :action \"%s\"", escapeString(n.Action))
+	if n.ChangeTracking != "" {
+		fmt.Fprintf(sb, " :changeTracking \"%s\"", escapeString(n.ChangeTracking))
+	}
+	if n.Columns != nil {
+		sb.WriteString(" :columns ")
+		writeNode(sb, n.Columns)
+	}
+	if n.ColumnName != "" {
+		fmt.Fprintf(sb, " :columnName \"%s\"", escapeString(n.ColumnName))
+	}
+	if n.ColumnAction != "" {
+		fmt.Fprintf(sb, " :columnAction \"%s\"", escapeString(n.ColumnAction))
+	}
+	if n.PopulationType != "" {
+		fmt.Fprintf(sb, " :populationType \"%s\"", escapeString(n.PopulationType))
+	}
+	if n.WithNoPopulation {
+		sb.WriteString(" :withNoPopulation true")
+	}
 	if n.Options != nil {
 		sb.WriteString(" :options ")
 		writeNode(sb, n.Options)

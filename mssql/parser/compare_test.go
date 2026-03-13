@@ -14542,3 +14542,130 @@ func TestParseSecurityKeysRemainingDepth(t *testing.T) {
 		}
 	})
 }
+
+// TestParseFulltextAlterDepth tests batch 129: structured ALTER FULLTEXT INDEX actions
+// and structured search property list option parsing.
+func TestParseFulltextAlterDepth(t *testing.T) {
+	t.Run("alter_fulltext_index_action_structured", func(t *testing.T) {
+		tests := []struct {
+			name   string
+			sql    string
+			action string
+		}{
+			{"enable", "ALTER FULLTEXT INDEX ON dbo.Products ENABLE", "ENABLE"},
+			{"disable", "ALTER FULLTEXT INDEX ON dbo.Products DISABLE", "DISABLE"},
+			{"set_change_tracking_manual", "ALTER FULLTEXT INDEX ON dbo.Products SET CHANGE_TRACKING MANUAL", "SET"},
+			{"set_change_tracking_auto", "ALTER FULLTEXT INDEX ON dbo.Products SET CHANGE_TRACKING AUTO", "SET"},
+			{"set_change_tracking_off", "ALTER FULLTEXT INDEX ON dbo.Products SET CHANGE_TRACKING OFF", "SET"},
+			{"add_columns", "ALTER FULLTEXT INDEX ON dbo.Products ADD (Name, Description)", "ADD"},
+			{"add_columns_with_no_population", "ALTER FULLTEXT INDEX ON dbo.Products ADD (Name) WITH NO POPULATION", "ADD"},
+			{"add_columns_type_column_language", "ALTER FULLTEXT INDEX ON dbo.Products ADD (Name TYPE COLUMN nvarchar LANGUAGE 1033 STATISTICAL_SEMANTICS)", "ADD"},
+			{"alter_column_add_semantics", "ALTER FULLTEXT INDEX ON dbo.Products ALTER COLUMN Name ADD STATISTICAL_SEMANTICS", "ALTER"},
+			{"alter_column_drop_semantics", "ALTER FULLTEXT INDEX ON dbo.Products ALTER COLUMN Name DROP STATISTICAL_SEMANTICS WITH NO POPULATION", "ALTER"},
+			{"drop_columns", "ALTER FULLTEXT INDEX ON dbo.Products DROP (Name, Description)", "DROP"},
+			{"drop_columns_with_no_population", "ALTER FULLTEXT INDEX ON dbo.Products DROP (Name) WITH NO POPULATION", "DROP"},
+			{"start_full_population", "ALTER FULLTEXT INDEX ON dbo.Products START FULL POPULATION", "START"},
+			{"start_incremental_population", "ALTER FULLTEXT INDEX ON dbo.Products START INCREMENTAL POPULATION", "START"},
+			{"start_update_population", "ALTER FULLTEXT INDEX ON dbo.Products START UPDATE POPULATION", "START"},
+			{"stop_population", "ALTER FULLTEXT INDEX ON dbo.Products STOP POPULATION", "STOP"},
+			{"pause_population", "ALTER FULLTEXT INDEX ON dbo.Products PAUSE POPULATION", "PAUSE"},
+			{"resume_population", "ALTER FULLTEXT INDEX ON dbo.Products RESUME POPULATION", "RESUME"},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.AlterFulltextIndexStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected *AlterFulltextIndexStmt, got %T", tt.sql, result.Items[0])
+				}
+				if stmt.Action != tt.action {
+					t.Errorf("Parse(%q): action = %q, want %q", tt.sql, stmt.Action, tt.action)
+				}
+				checkLocation(t, tt.sql, "AlterFulltextIndexStmt", stmt.Loc)
+				s1 := ast.NodeToString(result.Items[0])
+				s2 := ast.NodeToString(result.Items[0])
+				if s1 != s2 {
+					t.Errorf("Parse(%q): serialization not deterministic", tt.sql)
+				}
+			})
+		}
+	})
+
+	t.Run("alter_fulltext_index_structured_fields", func(t *testing.T) {
+		t.Run("change_tracking_manual", func(t *testing.T) {
+			result := ParseAndCheck(t, "ALTER FULLTEXT INDEX ON dbo.T SET CHANGE_TRACKING MANUAL")
+			stmt := result.Items[0].(*ast.AlterFulltextIndexStmt)
+			if stmt.ChangeTracking != "MANUAL" {
+				t.Errorf("ChangeTracking = %q, want MANUAL", stmt.ChangeTracking)
+			}
+		})
+
+		t.Run("add_columns_parsed", func(t *testing.T) {
+			result := ParseAndCheck(t, "ALTER FULLTEXT INDEX ON dbo.T ADD (col1, col2)")
+			stmt := result.Items[0].(*ast.AlterFulltextIndexStmt)
+			if stmt.Columns == nil || len(stmt.Columns.Items) != 2 {
+				t.Errorf("expected 2 columns, got %v", stmt.Columns)
+			}
+		})
+
+		t.Run("alter_column_fields", func(t *testing.T) {
+			result := ParseAndCheck(t, "ALTER FULLTEXT INDEX ON dbo.T ALTER COLUMN Name ADD STATISTICAL_SEMANTICS")
+			stmt := result.Items[0].(*ast.AlterFulltextIndexStmt)
+			if stmt.ColumnName != "Name" {
+				t.Errorf("ColumnName = %q, want Name", stmt.ColumnName)
+			}
+			if stmt.ColumnAction != "ADD" {
+				t.Errorf("ColumnAction = %q, want ADD", stmt.ColumnAction)
+			}
+		})
+
+		t.Run("start_population_type", func(t *testing.T) {
+			result := ParseAndCheck(t, "ALTER FULLTEXT INDEX ON dbo.T START FULL POPULATION")
+			stmt := result.Items[0].(*ast.AlterFulltextIndexStmt)
+			if stmt.PopulationType != "FULL" {
+				t.Errorf("PopulationType = %q, want FULL", stmt.PopulationType)
+			}
+		})
+
+		t.Run("with_no_population", func(t *testing.T) {
+			result := ParseAndCheck(t, "ALTER FULLTEXT INDEX ON dbo.T DROP (col1) WITH NO POPULATION")
+			stmt := result.Items[0].(*ast.AlterFulltextIndexStmt)
+			if !stmt.WithNoPopulation {
+				t.Error("expected WithNoPopulation = true")
+			}
+		})
+	})
+
+	t.Run("search_property_list_option_structured", func(t *testing.T) {
+		tests := []struct {
+			name string
+			sql  string
+		}{
+			{"add_with_all_options", "ALTER SEARCH PROPERTY LIST mylist ADD 'Title' WITH (PROPERTY_SET_GUID = 'F29F85E0-4FF9-1068-AB91-08002B27B3D9', PROPERTY_INT_ID = 2, PROPERTY_DESCRIPTION = 'System.Title')"},
+			{"add_with_required_options_only", "ALTER SEARCH PROPERTY LIST mylist ADD 'Author' WITH (PROPERTY_SET_GUID = 'F29F85E0-4FF9-1068-AB91-08002B27B3D9', PROPERTY_INT_ID = 4)"},
+			{"drop_property", "ALTER SEARCH PROPERTY LIST mylist DROP 'Title'"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.AlterSearchPropertyListStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected *AlterSearchPropertyListStmt, got %T", tt.sql, result.Items[0])
+				}
+				checkLocation(t, tt.sql, "AlterSearchPropertyListStmt", stmt.Loc)
+				s1 := ast.NodeToString(result.Items[0])
+				s2 := ast.NodeToString(result.Items[0])
+				if s1 != s2 {
+					t.Errorf("Parse(%q): serialization not deterministic", tt.sql)
+				}
+			})
+		}
+	})
+}

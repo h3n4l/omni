@@ -2221,10 +2221,16 @@ func (n *CreateFulltextIndexStmt) stmtNode() {}
 //
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-fulltext-index-transact-sql
 type AlterFulltextIndexStmt struct {
-	Table   *TableRef
-	Action  string // ENABLE, DISABLE, START UPDATE POPULATION, etc.
-	Options *List  // additional options as String nodes
-	Loc     Loc
+	Table            *TableRef
+	Action           string // ENABLE, DISABLE, SET, ADD, ALTER, DROP, START, STOP, PAUSE, RESUME
+	ChangeTracking   string // MANUAL, AUTO, OFF (for SET CHANGE_TRACKING)
+	Columns          *List  // column names for ADD/DROP (String nodes)
+	ColumnName       string // column name for ALTER COLUMN
+	ColumnAction     string // ADD or DROP (for ALTER COLUMN ... STATISTICAL_SEMANTICS)
+	PopulationType   string // FULL, INCREMENTAL, UPDATE (for START ... POPULATION)
+	WithNoPopulation bool   // WITH NO POPULATION (for ADD/DROP/ALTER COLUMN)
+	Options          *List  // additional options as String nodes
+	Loc              Loc
 }
 
 func (n *AlterFulltextIndexStmt) nodeTag()  {}
