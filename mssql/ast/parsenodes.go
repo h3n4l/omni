@@ -2979,3 +2979,57 @@ type PredictStmt struct {
 
 func (n *PredictStmt) nodeTag()  {}
 func (n *PredictStmt) stmtNode() {}
+
+// ---------- Batch 127: Structured Query Hints ----------
+
+// QueryHint represents a single query hint in an OPTION clause.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/queries/hints-transact-sql-query
+//
+//	query_hint ::=
+//	    { HASH | ORDER } GROUP
+//	  | { CONCAT | HASH | MERGE } UNION
+//	  | { LOOP | MERGE | HASH } JOIN
+//	  | EXPAND VIEWS
+//	  | FAST number_rows
+//	  | FORCE ORDER
+//	  | { FORCE | DISABLE } EXTERNALPUSHDOWN
+//	  | { FORCE | DISABLE } SCALEOUTEXECUTION
+//	  | IGNORE_NONCLUSTERED_COLUMNSTORE_INDEX
+//	  | KEEP PLAN
+//	  | KEEPFIXED PLAN
+//	  | MAX_GRANT_PERCENT = percent
+//	  | MIN_GRANT_PERCENT = percent
+//	  | MAXDOP number_of_processors
+//	  | MAXRECURSION number
+//	  | NO_PERFORMANCE_SPOOL
+//	  | OPTIMIZE FOR ( @variable_name { UNKNOWN | = literal } [ , ...n ] )
+//	  | OPTIMIZE FOR UNKNOWN
+//	  | PARAMETERIZATION { SIMPLE | FORCED }
+//	  | QUERYTRACEON trace_flag
+//	  | RECOMPILE
+//	  | ROBUST PLAN
+//	  | USE HINT ( 'hint_name' [ , ...n ] )
+//	  | USE PLAN N'xml_plan'
+//	  | TABLE HINT ( exposed_object_name [ , <table_hint> [ , ...n ] ] )
+type QueryHint struct {
+	Kind       string   // Hint kind: "RECOMPILE", "HASH JOIN", "OPTIMIZE FOR", "TABLE HINT", etc.
+	Value      ExprNode // Numeric value for MAXDOP, MAXRECURSION, FAST, QUERYTRACEON, MAX_GRANT_PERCENT, MIN_GRANT_PERCENT
+	StrValue   string   // String value for PARAMETERIZATION mode, USE PLAN xml string
+	Params     *List    // OPTIMIZE FOR params (*OptimizeForParam list), USE HINT string values
+	TableName  *TableRef // exposed_object_name for TABLE HINT
+	TableHints *List    // list of *TableHint for TABLE HINT
+	Loc        Loc
+}
+
+func (n *QueryHint) nodeTag() {}
+
+// OptimizeForParam represents a single parameter in OPTIMIZE FOR (@var = val | UNKNOWN).
+type OptimizeForParam struct {
+	Variable string   // @variable_name
+	Unknown  bool     // true if UNKNOWN
+	Value    ExprNode // literal value when not UNKNOWN
+	Loc      Loc
+}
+
+func (n *OptimizeForParam) nodeTag() {}

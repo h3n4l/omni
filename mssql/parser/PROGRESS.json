@@ -2795,7 +2795,7 @@
       "id": 127,
       "name": "select_query_hint_remaining_depth",
       "file": "select.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 92/97 gap: replace strings.Builder in parseQueryHint() at lines 1268-1591 with structured QueryHint AST nodes (typed hint kind + typed parameters). Replace manual parenthesis depth tracking at lines 1522-1545 for TABLE HINT args with parseTableHint() reuse. Fix fallback expression parsing at lines 1565-1585 for unknown hints with proper error or structured unknown hint node.",
       "rules": [
         "parseQueryHintStructured"

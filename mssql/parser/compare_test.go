@@ -9603,9 +9603,9 @@ func TestParseOptionQueryHints(t *testing.T) {
 		if stmt.OptionClause == nil || stmt.OptionClause.Len() != 1 {
 			t.Fatalf("expected 1 hint")
 		}
-		hint := stmt.OptionClause.Items[0].(*ast.String).Str
-		if hint != "RECOMPILE" {
-			t.Errorf("expected RECOMPILE, got %q", hint)
+		hint := stmt.OptionClause.Items[0].(*ast.QueryHint)
+		if hint.Kind != "RECOMPILE" {
+			t.Errorf("expected RECOMPILE, got %q", hint.Kind)
 		}
 	})
 
@@ -9617,9 +9617,19 @@ func TestParseOptionQueryHints(t *testing.T) {
 		if stmt.OptionClause == nil || stmt.OptionClause.Len() != 1 {
 			t.Fatalf("expected 1 hint")
 		}
-		hint := stmt.OptionClause.Items[0].(*ast.String).Str
-		if !strings.Contains(hint, "OPTIMIZE FOR") {
-			t.Errorf("expected OPTIMIZE FOR hint, got %q", hint)
+		hint := stmt.OptionClause.Items[0].(*ast.QueryHint)
+		if hint.Kind != "OPTIMIZE FOR" {
+			t.Errorf("expected OPTIMIZE FOR hint, got %q", hint.Kind)
+		}
+		if hint.Params == nil || hint.Params.Len() != 1 {
+			t.Fatalf("expected 1 param")
+		}
+		param := hint.Params.Items[0].(*ast.OptimizeForParam)
+		if param.Variable != "@id" {
+			t.Errorf("expected @id, got %q", param.Variable)
+		}
+		if param.Unknown {
+			t.Errorf("expected not UNKNOWN")
 		}
 	})
 
@@ -9628,9 +9638,9 @@ func TestParseOptionQueryHints(t *testing.T) {
 		sql := "SELECT * FROM t OPTION (OPTIMIZE FOR UNKNOWN)"
 		result := ParseAndCheck(t, sql)
 		stmt := result.Items[0].(*ast.SelectStmt)
-		hint := stmt.OptionClause.Items[0].(*ast.String).Str
-		if hint != "OPTIMIZE FOR UNKNOWN" {
-			t.Errorf("expected 'OPTIMIZE FOR UNKNOWN', got %q", hint)
+		hint := stmt.OptionClause.Items[0].(*ast.QueryHint)
+		if hint.Kind != "OPTIMIZE FOR UNKNOWN" {
+			t.Errorf("expected 'OPTIMIZE FOR UNKNOWN', got %q", hint.Kind)
 		}
 	})
 
@@ -9639,9 +9649,9 @@ func TestParseOptionQueryHints(t *testing.T) {
 		sql := "SELECT * FROM t1 JOIN t2 ON t1.id = t2.id OPTION (HASH JOIN)"
 		result := ParseAndCheck(t, sql)
 		stmt := result.Items[0].(*ast.SelectStmt)
-		hint := stmt.OptionClause.Items[0].(*ast.String).Str
-		if hint != "HASH JOIN" {
-			t.Errorf("expected 'HASH JOIN', got %q", hint)
+		hint := stmt.OptionClause.Items[0].(*ast.QueryHint)
+		if hint.Kind != "HASH JOIN" {
+			t.Errorf("expected 'HASH JOIN', got %q", hint.Kind)
 		}
 	})
 
@@ -9650,9 +9660,12 @@ func TestParseOptionQueryHints(t *testing.T) {
 		sql := "SELECT * FROM t OPTION (MAXDOP 4)"
 		result := ParseAndCheck(t, sql)
 		stmt := result.Items[0].(*ast.SelectStmt)
-		hint := stmt.OptionClause.Items[0].(*ast.String).Str
-		if hint != "MAXDOP 4" {
-			t.Errorf("expected 'MAXDOP 4', got %q", hint)
+		hint := stmt.OptionClause.Items[0].(*ast.QueryHint)
+		if hint.Kind != "MAXDOP" {
+			t.Errorf("expected 'MAXDOP', got %q", hint.Kind)
+		}
+		if hint.Value == nil {
+			t.Fatalf("expected Value to be set")
 		}
 	})
 
@@ -9664,6 +9677,18 @@ func TestParseOptionQueryHints(t *testing.T) {
 		if stmt.OptionClause == nil || stmt.OptionClause.Len() != 3 {
 			t.Fatalf("expected 3 hints, got %d", stmt.OptionClause.Len())
 		}
+		h0 := stmt.OptionClause.Items[0].(*ast.QueryHint)
+		h1 := stmt.OptionClause.Items[1].(*ast.QueryHint)
+		h2 := stmt.OptionClause.Items[2].(*ast.QueryHint)
+		if h0.Kind != "RECOMPILE" {
+			t.Errorf("hint 0: expected RECOMPILE, got %q", h0.Kind)
+		}
+		if h1.Kind != "MAXDOP" {
+			t.Errorf("hint 1: expected MAXDOP, got %q", h1.Kind)
+		}
+		if h2.Kind != "FORCE ORDER" {
+			t.Errorf("hint 2: expected FORCE ORDER, got %q", h2.Kind)
+		}
 	})
 
 	// OPTION (KEEP PLAN)
@@ -9671,9 +9696,9 @@ func TestParseOptionQueryHints(t *testing.T) {
 		sql := "SELECT * FROM t OPTION (KEEP PLAN)"
 		result := ParseAndCheck(t, sql)
 		stmt := result.Items[0].(*ast.SelectStmt)
-		hint := stmt.OptionClause.Items[0].(*ast.String).Str
-		if hint != "KEEP PLAN" {
-			t.Errorf("expected 'KEEP PLAN', got %q", hint)
+		hint := stmt.OptionClause.Items[0].(*ast.QueryHint)
+		if hint.Kind != "KEEP PLAN" {
+			t.Errorf("expected 'KEEP PLAN', got %q", hint.Kind)
 		}
 	})
 
@@ -9682,9 +9707,9 @@ func TestParseOptionQueryHints(t *testing.T) {
 		sql := "SELECT * FROM t OPTION (ROBUST PLAN)"
 		result := ParseAndCheck(t, sql)
 		stmt := result.Items[0].(*ast.SelectStmt)
-		hint := stmt.OptionClause.Items[0].(*ast.String).Str
-		if hint != "ROBUST PLAN" {
-			t.Errorf("expected 'ROBUST PLAN', got %q", hint)
+		hint := stmt.OptionClause.Items[0].(*ast.QueryHint)
+		if hint.Kind != "ROBUST PLAN" {
+			t.Errorf("expected 'ROBUST PLAN', got %q", hint.Kind)
 		}
 	})
 
@@ -9693,9 +9718,19 @@ func TestParseOptionQueryHints(t *testing.T) {
 		sql := "SELECT * FROM t OPTION (TABLE HINT(t, NOLOCK))"
 		result := ParseAndCheck(t, sql)
 		stmt := result.Items[0].(*ast.SelectStmt)
-		hint := stmt.OptionClause.Items[0].(*ast.String).Str
-		if hint != "TABLE HINT(t, NOLOCK)" {
-			t.Errorf("expected 'TABLE HINT(t, NOLOCK)', got %q", hint)
+		hint := stmt.OptionClause.Items[0].(*ast.QueryHint)
+		if hint.Kind != "TABLE HINT" {
+			t.Errorf("expected 'TABLE HINT', got %q", hint.Kind)
+		}
+		if hint.TableName == nil || hint.TableName.Object != "t" {
+			t.Errorf("expected table name 't'")
+		}
+		if hint.TableHints == nil || hint.TableHints.Len() != 1 {
+			t.Fatalf("expected 1 table hint")
+		}
+		th := hint.TableHints.Items[0].(*ast.TableHint)
+		if th.Name != "NOLOCK" {
+			t.Errorf("expected NOLOCK, got %q", th.Name)
 		}
 	})
 
@@ -9704,9 +9739,19 @@ func TestParseOptionQueryHints(t *testing.T) {
 		sql := "SELECT * FROM t OPTION (TABLE HINT(dbo.t, INDEX(IX_1)))"
 		result := ParseAndCheck(t, sql)
 		stmt := result.Items[0].(*ast.SelectStmt)
-		hint := stmt.OptionClause.Items[0].(*ast.String).Str
-		if hint != "TABLE HINT(dbo.t, INDEX(IX_1))" {
-			t.Errorf("expected 'TABLE HINT(dbo.t, INDEX(IX_1))', got %q", hint)
+		hint := stmt.OptionClause.Items[0].(*ast.QueryHint)
+		if hint.Kind != "TABLE HINT" {
+			t.Errorf("expected 'TABLE HINT', got %q", hint.Kind)
+		}
+		if hint.TableName == nil || hint.TableName.Schema != "dbo" || hint.TableName.Object != "t" {
+			t.Errorf("expected table name 'dbo.t'")
+		}
+		if hint.TableHints == nil || hint.TableHints.Len() != 1 {
+			t.Fatalf("expected 1 table hint")
+		}
+		th := hint.TableHints.Items[0].(*ast.TableHint)
+		if th.Name != "INDEX" {
+			t.Errorf("expected INDEX, got %q", th.Name)
 		}
 	})
 
@@ -9715,9 +9760,153 @@ func TestParseOptionQueryHints(t *testing.T) {
 		sql := "SELECT * FROM t OPTION (TABLE HINT(t, NOLOCK, NOWAIT))"
 		result := ParseAndCheck(t, sql)
 		stmt := result.Items[0].(*ast.SelectStmt)
-		hint := stmt.OptionClause.Items[0].(*ast.String).Str
-		if hint != "TABLE HINT(t, NOLOCK, NOWAIT)" {
-			t.Errorf("expected 'TABLE HINT(t, NOLOCK, NOWAIT)', got %q", hint)
+		hint := stmt.OptionClause.Items[0].(*ast.QueryHint)
+		if hint.Kind != "TABLE HINT" {
+			t.Errorf("expected 'TABLE HINT', got %q", hint.Kind)
+		}
+		if hint.TableHints == nil || hint.TableHints.Len() != 2 {
+			t.Fatalf("expected 2 table hints, got %d", hint.TableHints.Len())
+		}
+	})
+}
+
+// TestParseSelectQueryHintRemainingDepth tests structured query hints (batch 127).
+func TestParseSelectQueryHintRemainingDepth(t *testing.T) {
+	// Structured RECOMPILE hint
+	t.Run("query_hint_structured_recompile", func(t *testing.T) {
+		sql := "SELECT * FROM t OPTION (RECOMPILE)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		hint := stmt.OptionClause.Items[0].(*ast.QueryHint)
+		if hint.Kind != "RECOMPILE" {
+			t.Errorf("expected RECOMPILE, got %q", hint.Kind)
+		}
+		if hint.Loc.Start == 0 && hint.Loc.End == 0 {
+			t.Errorf("expected non-zero Loc")
+		}
+	})
+
+	// Structured OPTIMIZE FOR with value and UNKNOWN params
+	t.Run("query_hint_structured_optimize_for", func(t *testing.T) {
+		sql := "SELECT * FROM t WHERE x = @x AND y = @y OPTION (OPTIMIZE FOR (@x = 5, @y UNKNOWN))"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		hint := stmt.OptionClause.Items[0].(*ast.QueryHint)
+		if hint.Kind != "OPTIMIZE FOR" {
+			t.Errorf("expected 'OPTIMIZE FOR', got %q", hint.Kind)
+		}
+		if hint.Params == nil || hint.Params.Len() != 2 {
+			t.Fatalf("expected 2 params, got %d", hint.Params.Len())
+		}
+		p0 := hint.Params.Items[0].(*ast.OptimizeForParam)
+		if p0.Variable != "@x" || p0.Unknown || p0.Value == nil {
+			t.Errorf("param 0: expected @x = value, got var=%q unknown=%v value=%v", p0.Variable, p0.Unknown, p0.Value)
+		}
+		p1 := hint.Params.Items[1].(*ast.OptimizeForParam)
+		if p1.Variable != "@y" || !p1.Unknown {
+			t.Errorf("param 1: expected @y UNKNOWN, got var=%q unknown=%v", p1.Variable, p1.Unknown)
+		}
+	})
+
+	// Structured TABLE HINT reusing parseTableHint()
+	t.Run("query_hint_structured_table_hint", func(t *testing.T) {
+		sql := "SELECT * FROM t OPTION (TABLE HINT(t, INDEX(IX_1), NOLOCK))"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		hint := stmt.OptionClause.Items[0].(*ast.QueryHint)
+		if hint.Kind != "TABLE HINT" {
+			t.Errorf("expected 'TABLE HINT', got %q", hint.Kind)
+		}
+		if hint.TableName == nil || hint.TableName.Object != "t" {
+			t.Errorf("expected table name 't'")
+		}
+		if hint.TableHints == nil || hint.TableHints.Len() != 2 {
+			t.Fatalf("expected 2 table hints, got %d", hint.TableHints.Len())
+		}
+		th0 := hint.TableHints.Items[0].(*ast.TableHint)
+		if th0.Name != "INDEX" || th0.IndexValues == nil {
+			t.Errorf("expected INDEX hint with values, got %q", th0.Name)
+		}
+		th1 := hint.TableHints.Items[1].(*ast.TableHint)
+		if th1.Name != "NOLOCK" {
+			t.Errorf("expected NOLOCK, got %q", th1.Name)
+		}
+	})
+
+	// Structured unknown hint with name = value
+	t.Run("query_hint_structured_unknown", func(t *testing.T) {
+		sql := "SELECT * FROM t OPTION (MAX_GRANT_PERCENT = 25)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		hint := stmt.OptionClause.Items[0].(*ast.QueryHint)
+		if hint.Kind != "MAX_GRANT_PERCENT" {
+			t.Errorf("expected 'MAX_GRANT_PERCENT', got %q", hint.Kind)
+		}
+		if hint.Value == nil {
+			t.Fatalf("expected Value to be set")
+		}
+	})
+
+	// USE HINT with string list
+	t.Run("query_hint_use_hint", func(t *testing.T) {
+		sql := "SELECT * FROM t OPTION (USE HINT('DISABLE_OPTIMIZED_NESTED_LOOP', 'FORCE_LEGACY_CARDINALITY_ESTIMATION'))"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		hint := stmt.OptionClause.Items[0].(*ast.QueryHint)
+		if hint.Kind != "USE HINT" {
+			t.Errorf("expected 'USE HINT', got %q", hint.Kind)
+		}
+		if hint.Params == nil || hint.Params.Len() != 2 {
+			t.Fatalf("expected 2 hint name params, got %d", hint.Params.Len())
+		}
+	})
+
+	// PARAMETERIZATION with mode
+	t.Run("query_hint_parameterization", func(t *testing.T) {
+		sql := "SELECT * FROM t OPTION (PARAMETERIZATION FORCED)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		hint := stmt.OptionClause.Items[0].(*ast.QueryHint)
+		if hint.Kind != "PARAMETERIZATION" {
+			t.Errorf("expected PARAMETERIZATION, got %q", hint.Kind)
+		}
+		if hint.StrValue != "FORCED" {
+			t.Errorf("expected FORCED, got %q", hint.StrValue)
+		}
+	})
+
+	// QUERYTRACEON
+	t.Run("query_hint_querytraceon", func(t *testing.T) {
+		sql := "SELECT * FROM t OPTION (QUERYTRACEON 4199)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		hint := stmt.OptionClause.Items[0].(*ast.QueryHint)
+		if hint.Kind != "QUERYTRACEON" {
+			t.Errorf("expected QUERYTRACEON, got %q", hint.Kind)
+		}
+		if hint.Value == nil {
+			t.Fatalf("expected trace flag value")
+		}
+	})
+
+	// TABLE HINT with FORCESEEK
+	t.Run("query_hint_table_hint_forceseek", func(t *testing.T) {
+		sql := "SELECT * FROM t OPTION (TABLE HINT(t, FORCESEEK(IX_1(col1, col2))))"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		hint := stmt.OptionClause.Items[0].(*ast.QueryHint)
+		if hint.Kind != "TABLE HINT" {
+			t.Errorf("expected 'TABLE HINT', got %q", hint.Kind)
+		}
+		if hint.TableHints == nil || hint.TableHints.Len() != 1 {
+			t.Fatalf("expected 1 table hint")
+		}
+		th := hint.TableHints.Items[0].(*ast.TableHint)
+		if th.Name != "FORCESEEK" {
+			t.Errorf("expected FORCESEEK, got %q", th.Name)
+		}
+		if th.ForceSeekColumns == nil || th.ForceSeekColumns.Len() != 2 {
+			t.Errorf("expected 2 forceseek columns")
 		}
 	})
 }

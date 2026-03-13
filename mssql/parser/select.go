@@ -1263,330 +1263,304 @@ func (p *Parser) parseOptionClause() *nodes.List {
 }
 
 // parseQueryHint parses a single query hint within an OPTION clause.
-// Returns a String node with the structured hint text.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/queries/hints-transact-sql-query
+//
+//	query_hint ::=
+//	    { HASH | ORDER } GROUP
+//	  | { CONCAT | HASH | MERGE } UNION
+//	  | { LOOP | MERGE | HASH } JOIN
+//	  | EXPAND VIEWS
+//	  | FAST number_rows
+//	  | FORCE ORDER
+//	  | { FORCE | DISABLE } EXTERNALPUSHDOWN
+//	  | { FORCE | DISABLE } SCALEOUTEXECUTION
+//	  | IGNORE_NONCLUSTERED_COLUMNSTORE_INDEX
+//	  | KEEP PLAN
+//	  | KEEPFIXED PLAN
+//	  | MAX_GRANT_PERCENT = percent
+//	  | MIN_GRANT_PERCENT = percent
+//	  | MAXDOP number_of_processors
+//	  | MAXRECURSION number
+//	  | NO_PERFORMANCE_SPOOL
+//	  | OPTIMIZE FOR ( @variable_name { UNKNOWN | = literal } [ , ...n ] )
+//	  | OPTIMIZE FOR UNKNOWN
+//	  | PARAMETERIZATION { SIMPLE | FORCED }
+//	  | QUERYTRACEON trace_flag
+//	  | RECOMPILE
+//	  | ROBUST PLAN
+//	  | USE HINT ( 'hint_name' [ , ...n ] )
+//	  | USE PLAN N'xml_plan'
+//	  | TABLE HINT ( exposed_object_name [ , <table_hint> [ , ...n ] ] )
 func (p *Parser) parseQueryHint() nodes.Node {
-	var buf strings.Builder
+	loc := p.pos()
 
-	// Handle keyword-based hints
 	switch {
 	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "RECOMPILE"):
-		buf.WriteString("RECOMPILE")
 		p.advance()
+		return &nodes.QueryHint{Kind: "RECOMPILE", Loc: nodes.Loc{Start: loc, End: p.pos()}}
 
 	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "OPTIMIZE"):
-		buf.WriteString("OPTIMIZE")
 		p.advance()
 		if p.cur.Type == kwFOR {
-			buf.WriteString(" FOR")
 			p.advance()
-			// OPTIMIZE FOR UNKNOWN
 			if p.isIdentLike() && strings.EqualFold(p.cur.Str, "UNKNOWN") {
-				buf.WriteString(" UNKNOWN")
 				p.advance()
-			} else if p.cur.Type == '(' {
-				// OPTIMIZE FOR ( @var = val | UNKNOWN [,...n] )
-				buf.WriteString(" (")
+				return &nodes.QueryHint{Kind: "OPTIMIZE FOR UNKNOWN", Loc: nodes.Loc{Start: loc, End: p.pos()}}
+			}
+			if p.cur.Type == '(' {
 				p.advance()
-				first := true
+				var params []nodes.Node
 				for p.cur.Type != ')' && p.cur.Type != tokEOF {
-					if !first {
-						buf.WriteString(", ")
-					}
-					first = false
-					if p.cur.Type == tokVARIABLE {
-						buf.WriteString(p.cur.Str)
-						p.advance()
-						if p.cur.Type == '=' {
-							buf.WriteString(" = ")
-							p.advance()
-							// literal value
-							if p.cur.Str != "" {
-								buf.WriteString(p.cur.Str)
-							}
-							p.advance()
-						} else if p.isIdentLike() && strings.EqualFold(p.cur.Str, "UNKNOWN") {
-							buf.WriteString(" UNKNOWN")
-							p.advance()
-						}
+					param := p.parseOptimizeForParam()
+					if param != nil {
+						params = append(params, param)
 					}
 					if _, ok := p.match(','); !ok {
 						break
 					}
 				}
-				p.expect(')')
-				buf.WriteString(")")
+				_, _ = p.expect(')')
+				hint := &nodes.QueryHint{Kind: "OPTIMIZE FOR", Loc: nodes.Loc{Start: loc, End: p.pos()}}
+				if len(params) > 0 {
+					hint.Params = &nodes.List{Items: params}
+				}
+				return hint
 			}
 		}
+		return &nodes.QueryHint{Kind: "OPTIMIZE", Loc: nodes.Loc{Start: loc, End: p.pos()}}
 
 	case p.isIdentLike() && (strings.EqualFold(p.cur.Str, "LOOP") ||
 		strings.EqualFold(p.cur.Str, "HASH") ||
 		strings.EqualFold(p.cur.Str, "MERGE")):
-		buf.WriteString(strings.ToUpper(p.cur.Str))
+		prefix := strings.ToUpper(p.cur.Str)
 		p.advance()
-		// JOIN | UNION | GROUP
 		if p.cur.Type == kwJOIN {
-			buf.WriteString(" JOIN")
 			p.advance()
+			return &nodes.QueryHint{Kind: prefix + " JOIN", Loc: nodes.Loc{Start: loc, End: p.pos()}}
 		} else if p.cur.Type == kwUNION {
-			buf.WriteString(" UNION")
 			p.advance()
+			return &nodes.QueryHint{Kind: prefix + " UNION", Loc: nodes.Loc{Start: loc, End: p.pos()}}
 		} else if p.cur.Type == kwGROUP {
-			buf.WriteString(" GROUP")
 			p.advance()
+			return &nodes.QueryHint{Kind: prefix + " GROUP", Loc: nodes.Loc{Start: loc, End: p.pos()}}
 		}
+		return &nodes.QueryHint{Kind: prefix, Loc: nodes.Loc{Start: loc, End: p.pos()}}
 
 	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "CONCAT"):
-		buf.WriteString("CONCAT")
 		p.advance()
 		if p.cur.Type == kwUNION {
-			buf.WriteString(" UNION")
 			p.advance()
+			return &nodes.QueryHint{Kind: "CONCAT UNION", Loc: nodes.Loc{Start: loc, End: p.pos()}}
 		}
+		return &nodes.QueryHint{Kind: "CONCAT", Loc: nodes.Loc{Start: loc, End: p.pos()}}
 
 	case p.cur.Type == kwORDER:
-		buf.WriteString("ORDER")
 		p.advance()
 		if p.cur.Type == kwGROUP {
-			buf.WriteString(" GROUP")
 			p.advance()
+			return &nodes.QueryHint{Kind: "ORDER GROUP", Loc: nodes.Loc{Start: loc, End: p.pos()}}
 		}
+		return &nodes.QueryHint{Kind: "ORDER", Loc: nodes.Loc{Start: loc, End: p.pos()}}
 
 	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "FORCE"):
-		buf.WriteString("FORCE")
 		p.advance()
 		if p.cur.Type == kwORDER {
-			buf.WriteString(" ORDER")
 			p.advance()
+			return &nodes.QueryHint{Kind: "FORCE ORDER", Loc: nodes.Loc{Start: loc, End: p.pos()}}
 		} else if p.isIdentLike() {
-			buf.WriteString(" ")
-			buf.WriteString(strings.ToUpper(p.cur.Str))
+			suffix := strings.ToUpper(p.cur.Str)
 			p.advance()
+			return &nodes.QueryHint{Kind: "FORCE " + suffix, Loc: nodes.Loc{Start: loc, End: p.pos()}}
 		}
+		return &nodes.QueryHint{Kind: "FORCE", Loc: nodes.Loc{Start: loc, End: p.pos()}}
 
 	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "MAXDOP"):
-		buf.WriteString("MAXDOP")
 		p.advance()
+		hint := &nodes.QueryHint{Kind: "MAXDOP", Loc: nodes.Loc{Start: loc}}
 		if p.cur.Type == tokICONST {
-			buf.WriteString(" ")
-			buf.WriteString(p.cur.Str)
-			p.advance()
+			hint.Value = p.parsePrimary()
 		}
+		hint.Loc.End = p.pos()
+		return hint
 
 	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "MAXRECURSION"):
-		buf.WriteString("MAXRECURSION")
 		p.advance()
+		hint := &nodes.QueryHint{Kind: "MAXRECURSION", Loc: nodes.Loc{Start: loc}}
 		if p.cur.Type == tokICONST {
-			buf.WriteString(" ")
-			buf.WriteString(p.cur.Str)
-			p.advance()
+			hint.Value = p.parsePrimary()
 		}
+		hint.Loc.End = p.pos()
+		return hint
 
 	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "FAST"):
-		buf.WriteString("FAST")
 		p.advance()
+		hint := &nodes.QueryHint{Kind: "FAST", Loc: nodes.Loc{Start: loc}}
 		if p.cur.Type == tokICONST {
-			buf.WriteString(" ")
-			buf.WriteString(p.cur.Str)
-			p.advance()
+			hint.Value = p.parsePrimary()
 		}
+		hint.Loc.End = p.pos()
+		return hint
+
+	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "QUERYTRACEON"):
+		p.advance()
+		hint := &nodes.QueryHint{Kind: "QUERYTRACEON", Loc: nodes.Loc{Start: loc}}
+		if p.cur.Type == tokICONST {
+			hint.Value = p.parsePrimary()
+		}
+		hint.Loc.End = p.pos()
+		return hint
 
 	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "EXPAND"):
-		buf.WriteString("EXPAND")
 		p.advance()
 		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "VIEWS") {
-			buf.WriteString(" VIEWS")
 			p.advance()
+			return &nodes.QueryHint{Kind: "EXPAND VIEWS", Loc: nodes.Loc{Start: loc, End: p.pos()}}
 		}
+		return &nodes.QueryHint{Kind: "EXPAND", Loc: nodes.Loc{Start: loc, End: p.pos()}}
 
 	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "KEEP"):
-		buf.WriteString("KEEP")
 		p.advance()
 		if p.cur.Type == kwPLAN {
-			buf.WriteString(" PLAN")
 			p.advance()
+			return &nodes.QueryHint{Kind: "KEEP PLAN", Loc: nodes.Loc{Start: loc, End: p.pos()}}
 		}
+		return &nodes.QueryHint{Kind: "KEEP", Loc: nodes.Loc{Start: loc, End: p.pos()}}
 
 	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "KEEPFIXED"):
-		buf.WriteString("KEEPFIXED")
 		p.advance()
 		if p.cur.Type == kwPLAN {
-			buf.WriteString(" PLAN")
 			p.advance()
+			return &nodes.QueryHint{Kind: "KEEPFIXED PLAN", Loc: nodes.Loc{Start: loc, End: p.pos()}}
 		}
+		return &nodes.QueryHint{Kind: "KEEPFIXED", Loc: nodes.Loc{Start: loc, End: p.pos()}}
 
 	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "ROBUST"):
-		buf.WriteString("ROBUST")
 		p.advance()
 		if p.cur.Type == kwPLAN {
-			buf.WriteString(" PLAN")
 			p.advance()
+			return &nodes.QueryHint{Kind: "ROBUST PLAN", Loc: nodes.Loc{Start: loc, End: p.pos()}}
 		}
+		return &nodes.QueryHint{Kind: "ROBUST", Loc: nodes.Loc{Start: loc, End: p.pos()}}
 
 	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "PARAMETERIZATION"):
-		buf.WriteString("PARAMETERIZATION")
 		p.advance()
+		hint := &nodes.QueryHint{Kind: "PARAMETERIZATION", Loc: nodes.Loc{Start: loc}}
 		if p.isIdentLike() {
-			buf.WriteString(" ")
-			buf.WriteString(strings.ToUpper(p.cur.Str))
+			hint.StrValue = strings.ToUpper(p.cur.Str)
 			p.advance()
 		}
+		hint.Loc.End = p.pos()
+		return hint
 
 	case p.cur.Type == kwUSE:
-		buf.WriteString("USE")
 		p.advance()
 		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "HINT") {
-			buf.WriteString(" HINT")
 			p.advance()
+			hint := &nodes.QueryHint{Kind: "USE HINT", Loc: nodes.Loc{Start: loc}}
 			if p.cur.Type == '(' {
 				p.advance()
-				first := true
+				var hintNames []nodes.Node
 				for p.cur.Type != ')' && p.cur.Type != tokEOF {
-					if !first {
-						buf.WriteString(", ")
-					}
-					first = false
 					if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
-						buf.WriteString("'")
-						buf.WriteString(p.cur.Str)
-						buf.WriteString("'")
+						hintNames = append(hintNames, &nodes.String{Str: p.cur.Str})
 						p.advance()
 					}
 					p.match(',')
 				}
-				p.expect(')')
+				_, _ = p.expect(')')
+				if len(hintNames) > 0 {
+					hint.Params = &nodes.List{Items: hintNames}
+				}
 			}
+			hint.Loc.End = p.pos()
+			return hint
 		} else if p.cur.Type == kwPLAN {
-			buf.WriteString(" PLAN")
 			p.advance()
-			// N'xml_plan'
+			hint := &nodes.QueryHint{Kind: "USE PLAN", Loc: nodes.Loc{Start: loc}}
 			if p.cur.Type == tokNSCONST || p.cur.Type == tokSCONST {
-				buf.WriteString(" ")
-				buf.WriteString(p.cur.Str)
+				hint.StrValue = p.cur.Str
 				p.advance()
 			}
+			hint.Loc.End = p.pos()
+			return hint
 		}
+		return &nodes.QueryHint{Kind: "USE", Loc: nodes.Loc{Start: loc, End: p.pos()}}
 
 	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "DISABLE"):
-		buf.WriteString("DISABLE")
 		p.advance()
 		if p.isIdentLike() {
-			buf.WriteString(" ")
-			buf.WriteString(strings.ToUpper(p.cur.Str))
+			suffix := strings.ToUpper(p.cur.Str)
 			p.advance()
+			return &nodes.QueryHint{Kind: "DISABLE " + suffix, Loc: nodes.Loc{Start: loc, End: p.pos()}}
 		}
+		return &nodes.QueryHint{Kind: "DISABLE", Loc: nodes.Loc{Start: loc, End: p.pos()}}
 
 	case p.cur.Type == kwTABLE:
-		buf.WriteString("TABLE")
 		p.advance()
 		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "HINT") {
-			buf.WriteString(" HINT")
 			p.advance()
-			// Parse TABLE HINT(exposed_object_name, hint [,...n])
-			//
-			// Ref: https://learn.microsoft.com/en-us/sql/t-sql/queries/hints-transact-sql-query
-			//
-			//   TABLE HINT ( exposed_object_name [ , <table_hint> [ , ...n ] ] )
-			//   <table_hint> ::= NOLOCK | READUNCOMMITTED | UPDLOCK | REPEATABLEREAD
-			//                  | SERIALIZABLE | READCOMMITTED | TABLOCK | TABLOCKX
-			//                  | PAGLOCK | ROWLOCK | NOWAIT | READPAST | XLOCK
-			//                  | SNAPSHOT | NOEXPAND | HOLDLOCK | KEEPIDENTITY
-			//                  | KEEPDEFAULTS | IGNORE_CONSTRAINTS | IGNORE_TRIGGERS
-			//                  | INDEX ( index_val [, ...n] )
-			//                  | FORCESEEK [ ( index_val ( col [, ...n] ) ) ]
-			//                  | FORCESCAN | SPATIAL_WINDOW_MAX_CELLS = n
+			hint := &nodes.QueryHint{Kind: "TABLE HINT", Loc: nodes.Loc{Start: loc}}
 			if p.cur.Type == '(' {
-				p.advance() // consume '('
-				buf.WriteByte('(')
-				// exposed_object_name (may be multi-part)
-				first := true
-				for p.cur.Type != ',' && p.cur.Type != ')' && p.cur.Type != tokEOF {
-					if !first {
-						buf.WriteByte('.')
-					}
-					buf.WriteString(p.cur.Str)
-					p.advance()
-					if p.cur.Type == '.' {
-						p.advance()
-					}
-					first = false
-				}
-				// Parse comma-separated hints
+				p.advance()
+				// Parse exposed_object_name as a TableRef
+				hint.TableName = p.parseTableRef()
+				// Parse comma-separated table hints reusing parseTableHint()
+				var hints []nodes.Node
 				for p.cur.Type == ',' {
-					buf.WriteString(", ")
-					p.advance() // consume ','
-					if p.isIdentLike() || p.cur.Type >= kwADD {
-						hintName := strings.ToUpper(p.cur.Str)
-						buf.WriteString(hintName)
-						p.advance()
-						// INDEX(...), FORCESEEK(...) may have parenthesized args
-						if p.cur.Type == '(' {
-							depth := 1
-							p.advance()
-							buf.WriteByte('(')
-							for depth > 0 && p.cur.Type != tokEOF {
-								if p.cur.Type == '(' {
-									depth++
-									buf.WriteByte('(')
-								} else if p.cur.Type == ')' {
-									depth--
-									if depth > 0 {
-										buf.WriteByte(')')
-									}
-								} else {
-									buf.WriteString(p.cur.Str)
-								}
-								if depth > 0 {
-									p.advance()
-									if p.cur.Type == ',' && depth > 0 {
-										buf.WriteString(", ")
-									}
-								}
-							}
-							buf.WriteByte(')')
-							p.advance() // consume final ')'
-						}
-						// SPATIAL_WINDOW_MAX_CELLS = n
-						if p.cur.Type == '=' {
-							p.advance()
-							buf.WriteString(" = ")
-							if p.cur.Str != "" {
-								buf.WriteString(p.cur.Str)
-							}
-							p.advance()
-						}
+					p.advance()
+					th := p.parseTableHint()
+					if th != nil {
+						hints = append(hints, th)
 					}
 				}
-				buf.WriteByte(')')
-				p.match(')') // consume final ')'
+				if len(hints) > 0 {
+					hint.TableHints = &nodes.List{Items: hints}
+				}
+				_, _ = p.expect(')')
 			}
+			hint.Loc.End = p.pos()
+			return hint
 		}
+		return &nodes.QueryHint{Kind: "TABLE", Loc: nodes.Loc{Start: loc, End: p.pos()}}
 
 	default:
-		// Unknown or keyword-based hint: try to parse as expression
+		// Unknown hint with name = value pattern (e.g., MAX_GRANT_PERCENT = 10)
 		if p.isIdentLike() {
-			buf.WriteString(strings.ToUpper(p.cur.Str))
+			name := strings.ToUpper(p.cur.Str)
 			p.advance()
-			// Handle optional value after hint name (e.g., MAX_GRANT_PERCENT = 10)
+			hint := &nodes.QueryHint{Kind: name, Loc: nodes.Loc{Start: loc}}
 			if p.cur.Type == '=' {
 				p.advance()
-				buf.WriteString(" = ")
-				if p.cur.Str != "" {
-					buf.WriteString(p.cur.Str)
-				}
-				p.advance()
+				hint.Value = p.parsePrimary()
 			}
-		} else {
-			// Fallback: parse as expression
-			expr := p.parseExpr()
-			if expr != nil {
-				return expr
-			}
-			return nil
+			hint.Loc.End = p.pos()
+			return hint
 		}
-	}
-
-	if buf.Len() == 0 {
 		return nil
 	}
-	return &nodes.String{Str: buf.String()}
+}
+
+// parseOptimizeForParam parses a single OPTIMIZE FOR parameter.
+//
+//	@variable_name { UNKNOWN | = literal_constant }
+func (p *Parser) parseOptimizeForParam() *nodes.OptimizeForParam {
+	if p.cur.Type != tokVARIABLE {
+		return nil
+	}
+	loc := p.pos()
+	param := &nodes.OptimizeForParam{
+		Variable: p.cur.Str,
+		Loc:      nodes.Loc{Start: loc},
+	}
+	p.advance()
+	if p.cur.Type == '=' {
+		p.advance()
+		param.Value = p.parsePrimary()
+	} else if p.isIdentLike() && strings.EqualFold(p.cur.Str, "UNKNOWN") {
+		param.Unknown = true
+		p.advance()
+	}
+	param.Loc.End = p.pos()
+	return param
 }

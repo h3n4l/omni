@@ -412,6 +412,10 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeCreateTableCloneStmt(sb, n)
 	case *PredictStmt:
 		writePredictStmt(sb, n)
+	case *QueryHint:
+		writeQueryHint(sb, n)
+	case *OptimizeForParam:
+		writeOptimizeForParam(sb, n)
 	default:
 		sb.WriteString("{UNKNOWN}")
 	}
@@ -3689,6 +3693,46 @@ func writePredictStmt(sb *strings.Builder, n *PredictStmt) {
 	if n.WithColumns != nil && len(n.WithColumns.Items) > 0 {
 		sb.WriteString(" :withColumns ")
 		writeNode(sb, n.WithColumns)
+	}
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
+	sb.WriteString("}")
+}
+
+func writeQueryHint(sb *strings.Builder, n *QueryHint) {
+	sb.WriteString("{QUERYHINT")
+	fmt.Fprintf(sb, " :kind \"%s\"", escapeString(n.Kind))
+	if n.Value != nil {
+		sb.WriteString(" :value ")
+		writeNode(sb, n.Value)
+	}
+	if n.StrValue != "" {
+		fmt.Fprintf(sb, " :strValue \"%s\"", escapeString(n.StrValue))
+	}
+	if n.Params != nil {
+		sb.WriteString(" :params ")
+		writeNode(sb, n.Params)
+	}
+	if n.TableName != nil {
+		sb.WriteString(" :tableName ")
+		writeNode(sb, n.TableName)
+	}
+	if n.TableHints != nil {
+		sb.WriteString(" :tableHints ")
+		writeNode(sb, n.TableHints)
+	}
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
+	sb.WriteString("}")
+}
+
+func writeOptimizeForParam(sb *strings.Builder, n *OptimizeForParam) {
+	sb.WriteString("{OPTIMIZEFORPARAM")
+	fmt.Fprintf(sb, " :variable \"%s\"", escapeString(n.Variable))
+	if n.Unknown {
+		sb.WriteString(" :unknown true")
+	}
+	if n.Value != nil {
+		sb.WriteString(" :value ")
+		writeNode(sb, n.Value)
 	}
 	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
 	sb.WriteString("}")
