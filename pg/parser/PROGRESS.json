@@ -1778,7 +1778,7 @@
       "id": 74,
       "name": "grant_object_rangevar",
       "file": "grant.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix GRANT/REVOKE object list AST structure. parseGrantObjectAnyNameList() returns *nodes.List items but yacc returns *nodes.RangeVar. After parsing ON TABLE any_name_list, convert each AnyName (a List of name parts) into a RangeVar with Schemaname/Relname populated, matching yacc's grant_target_list behavior.",
       "rules": [
         "parseGrantObjectAnyNameList",

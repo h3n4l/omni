@@ -239,14 +239,14 @@ func (p *Parser) parseGrantObjectAnyNameList() *nodes.List {
 	if err != nil {
 		return nil
 	}
-	result := &nodes.List{Items: []nodes.Node{name}}
+	result := &nodes.List{Items: []nodes.Node{makeRangeVarFromAnyName(name)}}
 	for p.cur.Type == ',' {
 		p.advance()
 		name, err = p.parseAnyName()
 		if err != nil {
 			break
 		}
-		result.Items = append(result.Items, name)
+		result.Items = append(result.Items, makeRangeVarFromAnyName(name))
 	}
 	return result
 }
