@@ -12268,7 +12268,7 @@ func TestParseAvailabilityGroupOptionsDepth(t *testing.T) {
 				"ENDPOINT_URL='TCP://server1:5022'",
 				"AVAILABILITY_MODE=SYNCHRONOUS_COMMIT",
 				"FAILOVER_MODE=AUTOMATIC",
-				"PRIMARY_ROLE(ALLOW_CONNECTIONS=ALL, READ_ONLY_ROUTING_LIST=('server2' , 'server3'))",
+				"PRIMARY_ROLE(ALLOW_CONNECTIONS=ALL, READ_ONLY_ROUTING_LIST=('server2', 'server3'))",
 			},
 		},
 		// ag_listener_structured: LISTENER with IP and PORT
@@ -12280,7 +12280,7 @@ func TestParseAvailabilityGroupOptionsDepth(t *testing.T) {
 				"AVAILABILITY_MODE=SYNCHRONOUS_COMMIT",
 				"FAILOVER_MODE=AUTOMATIC",
 				"LISTENER='MyListener'",
-				"WITH", "IP(('10.120.19.155' , '255.255.254.0'))", "PORT=1433",
+				"WITH", "IP(('10.120.19.155', '255.255.254.0'))", "PORT=1433",
 			},
 		},
 		// ag_listener_structured: LISTENER with DHCP
@@ -12341,6 +12341,119 @@ func TestParseAvailabilityGroupOptionsDepth(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.sql, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() != 1 {
+				t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+			}
+			stmt, ok := result.Items[0].(*ast.SecurityStmt)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *SecurityStmt, got %T", tt.sql, result.Items[0])
+			}
+			if stmt.Options == nil || len(stmt.Options.Items) != len(tt.wantOpts) {
+				var gotStrs []string
+				if stmt.Options != nil {
+					for _, item := range stmt.Options.Items {
+						gotStrs = append(gotStrs, item.(*ast.String).Str)
+					}
+				}
+				t.Fatalf("Parse(%q): got %d options %v, want %d %v", tt.sql, len(gotStrs), gotStrs, len(tt.wantOpts), tt.wantOpts)
+			}
+			for i, want := range tt.wantOpts {
+				got := stmt.Options.Items[i].(*ast.String).Str
+				if got != want {
+					t.Errorf("Parse(%q): option[%d] = %q, want %q", tt.sql, i, got, want)
+				}
+			}
+			checkLocation(t, tt.sql, "SecurityStmt", stmt.Loc)
+		})
+	}
+}
+
+// TestParseAvailabilityRemainingDepth tests batch 125: structured AG parsing fixes.
+func TestParseAvailabilityRemainingDepth(t *testing.T) {
+	tests := []struct {
+		name     string
+		sql      string
+		wantOpts []string
+	}{
+		// ag_nested_parens_structured: IP tuples parsed as structured comma-separated values
+		{
+			name: "ag_nested_parens_structured_ip_tuple",
+			sql:  "CREATE AVAILABILITY GROUP MyAG REPLICA ON 'server1' WITH (ENDPOINT_URL = 'TCP://server1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = AUTOMATIC) LISTENER 'MyListener' (WITH IP (('10.0.0.1', '255.255.255.0'), ('10.0.0.2', '255.255.255.0')), PORT = 1433)",
+			wantOpts: []string{
+				"REPLICA ON", "'server1'", "WITH",
+				"ENDPOINT_URL='TCP://server1:5022'",
+				"AVAILABILITY_MODE=SYNCHRONOUS_COMMIT",
+				"FAILOVER_MODE=AUTOMATIC",
+				"LISTENER='MyListener'",
+				"WITH", "IP(('10.0.0.1', '255.255.255.0'), ('10.0.0.2', '255.255.255.0'))", "PORT=1433",
+			},
+		},
+		// ag_nested_parens_structured: key = (value_list) uses recursive parsing
+		{
+			name: "ag_nested_parens_structured_value_list",
+			sql:  "CREATE AVAILABILITY GROUP MyAG REPLICA ON 'server1' WITH (ENDPOINT_URL = 'TCP://server1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = AUTOMATIC, PRIMARY_ROLE (READ_ONLY_ROUTING_LIST = ('server2', 'server3', 'server4')))",
+			wantOpts: []string{
+				"REPLICA ON", "'server1'", "WITH",
+				"ENDPOINT_URL='TCP://server1:5022'",
+				"AVAILABILITY_MODE=SYNCHRONOUS_COMMIT",
+				"FAILOVER_MODE=AUTOMATIC",
+				"PRIMARY_ROLE(READ_ONLY_ROUTING_LIST=('server2', 'server3', 'server4'))",
+			},
+		},
+		// ag_listener_string_structured: LISTENER with structured name parsing
+		{
+			name: "ag_listener_string_structured",
+			sql:  "ALTER AVAILABILITY GROUP MyAG ADD LISTENER 'NewListener' (WITH DHCP)",
+			wantOpts: []string{
+				"ADD LISTENER='NewListener'",
+				"WITH", "DHCP",
+			},
+		},
+		// ag_listener_string_structured: REMOVE LISTENER
+		{
+			name: "ag_remove_listener_structured",
+			sql:  "ALTER AVAILABILITY GROUP MyAG REMOVE LISTENER 'OldListener'",
+			wantOpts: []string{
+				"REMOVE LISTENER='OldListener'",
+			},
+		},
+		// ag_listener_string_structured: RESTART LISTENER
+		{
+			name: "ag_restart_listener_structured",
+			sql:  "ALTER AVAILABILITY GROUP MyAG RESTART LISTENER 'MyListener'",
+			wantOpts: []string{
+				"RESTART LISTENER='MyListener'",
+			},
+		},
+		// ag_listener_string_structured: MODIFY LISTENER with PORT
+		{
+			name: "ag_modify_listener_port",
+			sql:  "ALTER AVAILABILITY GROUP MyAG MODIFY LISTENER 'MyListener' (PORT = 5022)",
+			wantOpts: []string{
+				"MODIFY LISTENER='MyListener'",
+				"PORT=5022",
+			},
+		},
+		// ag_grant_deny_database: GRANT CREATE ANY DATABASE
+		{
+			name: "ag_grant_create_any_database",
+			sql:  "ALTER AVAILABILITY GROUP MyAG GRANT CREATE ANY DATABASE",
+			wantOpts: []string{
+				"GRANT CREATE ANY DATABASE",
+			},
+		},
+		// ag_grant_deny_database: DENY CREATE ANY DATABASE
+		{
+			name: "ag_deny_create_any_database",
+			sql:  "ALTER AVAILABILITY GROUP MyAG DENY CREATE ANY DATABASE",
+			wantOpts: []string{
+				"DENY CREATE ANY DATABASE",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			result := ParseAndCheck(t, tt.sql)
 			if result.Len() != 1 {
 				t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())

@@ -2755,7 +2755,7 @@
       "id": 125,
       "name": "availability_remaining_depth",
       "file": "availability.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 115 gap: replace 2 parseNestedParens() calls at lines 483, 503 in parseParenthesizedAGOptions() with structured IP address tuple and key=value list parsing. Replace manual string concatenation for LISTENER/ADD LISTENER/REMOVE LISTENER/MODIFY LISTENER/RESTART LISTENER options at lines 268-346, 408-413 with structured AST nodes. Fix GRANT/DENY CREATE ANY DATABASE token skip at lines 380-390.",
       "rules": [
         "parseParenthesizedAGOptionsStructured",

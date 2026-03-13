@@ -2,6 +2,7 @@
 package parser
 
 import (
+	"fmt"
 	"strings"
 
 	nodes "github.com/bytebase/omni/mssql/ast"
@@ -211,6 +212,15 @@ func (p *Parser) parseDropAvailabilityGroupStmt() *nodes.SecurityStmt {
 	return stmt
 }
 
+// agListenerOptString builds a structured listener option string from action and name.
+// Example: agListenerOptString("ADD LISTENER", "MyListener") → "ADD LISTENER='MyListener'"
+func agListenerOptString(action, name string) string {
+	if name != "" {
+		return fmt.Sprintf("%s='%s'", action, name)
+	}
+	return action
+}
+
 // parseAvailabilityGroupOptions consumes the remaining clauses of
 // CREATE/ALTER AVAILABILITY GROUP: WITH, FOR DATABASE, REPLICA ON,
 // AVAILABILITY GROUP ON, LISTENER, SET, ADD DATABASE, REMOVE DATABASE,
@@ -265,12 +275,8 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 
 		case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LISTENER"):
 			p.advance() // consume LISTENER
-			optStr := "LISTENER"
-			if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
-				optStr += "='" + p.cur.Str + "'"
-				p.advance()
-			}
-			opts = append(opts, &nodes.String{Str: optStr})
+			name := p.consumeAGListenerName()
+			opts = append(opts, &nodes.String{Str: agListenerOptString("LISTENER", name)})
 
 		case p.cur.Type == kwSET:
 			opts = append(opts, &nodes.String{Str: "SET"})
@@ -292,12 +298,8 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 				opts = append(opts, &nodes.String{Str: "ADD REPLICA ON"})
 			} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LISTENER") {
 				p.advance() // consume LISTENER
-				optStr := "ADD LISTENER"
-				if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
-					optStr += "='" + p.cur.Str + "'"
-					p.advance()
-				}
-				opts = append(opts, &nodes.String{Str: optStr})
+				name := p.consumeAGListenerName()
+				opts = append(opts, &nodes.String{Str: agListenerOptString("ADD LISTENER", name)})
 			} else {
 				opts = append(opts, &nodes.String{Str: "ADD"})
 			}
@@ -318,12 +320,8 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 				opts = append(opts, &nodes.String{Str: "REMOVE REPLICA ON"})
 			} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LISTENER") {
 				p.advance() // consume LISTENER
-				optStr := "REMOVE LISTENER"
-				if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
-					optStr += "='" + p.cur.Str + "'"
-					p.advance()
-				}
-				opts = append(opts, &nodes.String{Str: optStr})
+				name := p.consumeAGListenerName()
+				opts = append(opts, &nodes.String{Str: agListenerOptString("REMOVE LISTENER", name)})
 			} else {
 				opts = append(opts, &nodes.String{Str: "REMOVE"})
 			}
@@ -338,12 +336,8 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 				opts = append(opts, &nodes.String{Str: "MODIFY REPLICA ON"})
 			} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LISTENER") {
 				p.advance() // consume LISTENER
-				optStr := "MODIFY LISTENER"
-				if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
-					optStr += "='" + p.cur.Str + "'"
-					p.advance()
-				}
-				opts = append(opts, &nodes.String{Str: optStr})
+				name := p.consumeAGListenerName()
+				opts = append(opts, &nodes.String{Str: agListenerOptString("MODIFY LISTENER", name)})
 			} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AVAILABILITY") {
 				p.advance() // consume AVAILABILITY
 				if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "GROUP") {
@@ -375,19 +369,13 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 
 		case p.cur.Type == kwGRANT:
 			p.advance() // consume GRANT
+			p.consumeAGCreateAnyDatabase()
 			opts = append(opts, &nodes.String{Str: "GRANT CREATE ANY DATABASE"})
-			// skip tokens: CREATE ANY DATABASE
-			for p.isIdentLike() || p.cur.Type == kwCREATE {
-				p.advance()
-			}
 
 		case p.cur.Type == kwDENY:
 			p.advance() // consume DENY
+			p.consumeAGCreateAnyDatabase()
 			opts = append(opts, &nodes.String{Str: "DENY CREATE ANY DATABASE"})
-			// skip tokens: CREATE ANY DATABASE
-			for p.isIdentLike() || p.cur.Type == kwCREATE {
-				p.advance()
-			}
 
 		case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "FAILOVER"):
 			opts = append(opts, &nodes.String{Str: "FAILOVER"})
@@ -405,12 +393,8 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 			p.advance() // consume RESTART
 			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LISTENER") {
 				p.advance() // consume LISTENER
-				optStr := "RESTART LISTENER"
-				if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
-					optStr += "='" + p.cur.Str + "'"
-					p.advance()
-				}
-				opts = append(opts, &nodes.String{Str: optStr})
+				name := p.consumeAGListenerName()
+				opts = append(opts, &nodes.String{Str: agListenerOptString("RESTART LISTENER", name)})
 			} else {
 				opts = append(opts, &nodes.String{Str: "RESTART"})
 			}
@@ -456,6 +440,32 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 	return &nodes.List{Items: opts}
 }
 
+// consumeAGListenerName consumes a string constant listener name if present.
+// Returns the listener name, or empty string if no string constant follows.
+func (p *Parser) consumeAGListenerName() string {
+	if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
+		name := p.cur.Str
+		p.advance()
+		return name
+	}
+	return ""
+}
+
+// consumeAGCreateAnyDatabase explicitly consumes the tokens CREATE ANY DATABASE.
+// This replaces the previous generic loop that blindly consumed all identifier/CREATE tokens.
+func (p *Parser) consumeAGCreateAnyDatabase() {
+	// Expect: CREATE ANY DATABASE
+	if p.cur.Type == kwCREATE {
+		p.advance()
+	}
+	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "ANY") {
+		p.advance()
+	}
+	if p.cur.Type == kwDATABASE {
+		p.advance()
+	}
+}
+
 // parseParenthesizedAGOptions parses a parenthesized block of availability group options
 // into individual key=value String nodes instead of capturing raw text.
 //
@@ -478,11 +488,11 @@ func (p *Parser) parseParenthesizedAGOptions() []nodes.Node {
 			continue
 		}
 
-		// Handle nested parenthesized tuples (e.g., IP address tuples)
+		// Handle nested parenthesized tuples (e.g., IP address tuples like ('addr', 'mask'))
 		if p.cur.Type == '(' {
-			inner := p.parseNestedParens()
-			if inner != "" {
-				opts = append(opts, &nodes.String{Str: "(" + inner + ")"})
+			tupleStr := p.parseAGParenTuple()
+			if tupleStr != "" {
+				opts = append(opts, &nodes.String{Str: "(" + tupleStr + ")"})
 			}
 			continue
 		}
@@ -496,12 +506,18 @@ func (p *Parser) parseParenthesizedAGOptions() []nodes.Node {
 		key := p.agOptionTokenString()
 		p.advance()
 
-		if p.cur.Type == '=' {
+		switch {
+		case p.cur.Type == '=':
 			p.advance() // consume '='
 			if p.cur.Type == '(' {
 				// Value is a parenthesized list: key = ( ... )
-				inner := p.parseNestedParens()
-				opts = append(opts, &nodes.String{Str: key + "=(" + inner + ")"})
+				// Parse recursively for structured key=value or value list handling
+				subOpts := p.parseParenthesizedAGOptions()
+				var parts []string
+				for _, o := range subOpts {
+					parts = append(parts, o.(*nodes.String).Str)
+				}
+				opts = append(opts, &nodes.String{Str: key + "=(" + strings.Join(parts, ", ") + ")"})
 			} else if p.isAGOptionToken() {
 				val := p.agOptionTokenString()
 				p.advance()
@@ -509,7 +525,7 @@ func (p *Parser) parseParenthesizedAGOptions() []nodes.Node {
 			} else {
 				opts = append(opts, &nodes.String{Str: key + "="})
 			}
-		} else if p.cur.Type == '(' {
+		case p.cur.Type == '(':
 			// Nested parens: SECONDARY_ROLE(...), PRIMARY_ROLE(...), IP(...), ON(...)
 			subOpts := p.parseParenthesizedAGOptions()
 			var parts []string
@@ -517,7 +533,7 @@ func (p *Parser) parseParenthesizedAGOptions() []nodes.Node {
 				parts = append(parts, o.(*nodes.String).Str)
 			}
 			opts = append(opts, &nodes.String{Str: key + "(" + strings.Join(parts, ", ") + ")"})
-		} else {
+		default:
 			opts = append(opts, &nodes.String{Str: key})
 		}
 	}
@@ -527,6 +543,36 @@ func (p *Parser) parseParenthesizedAGOptions() []nodes.Node {
 	}
 
 	return opts
+}
+
+// parseAGParenTuple parses a parenthesized tuple of comma-separated values,
+// such as IP address tuples: ('10.0.0.1', '255.255.255.0').
+// Returns the inner content formatted as comma-separated values (e.g., "'10.0.0.1', '255.255.255.0'").
+func (p *Parser) parseAGParenTuple() string {
+	if p.cur.Type != '(' {
+		return ""
+	}
+	p.advance() // consume '('
+
+	var parts []string
+	for p.cur.Type != ')' && p.cur.Type != tokEOF {
+		if p.cur.Type == ',' {
+			p.advance()
+			continue
+		}
+		if p.isAGOptionToken() {
+			parts = append(parts, p.agOptionTokenString())
+			p.advance()
+		} else {
+			p.advance() // skip unexpected
+		}
+	}
+
+	if p.cur.Type == ')' {
+		p.advance()
+	}
+
+	return strings.Join(parts, ", ")
 }
 
 // isAGOptionToken returns true if the current token can be part of an AG option key or value.
