@@ -3157,7 +3157,7 @@
       "id": 149,
       "name": "availability_options_strings_depth",
       "file": "availability.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 125/142 gap: replace 40 remaining nodes.String concatenations in availability.go with typed AST nodes. Major areas: ALTER AG action types (WITH, FOR DATABASE, REPLICA ON, ADD/REMOVE/MODIFY DATABASE/REPLICA/LISTENER at lines 239-399), key=value option pairs (lines 424-429), IP address tuple strings (lines 497-504), nested option key=value pairs (lines 523-540). Many were partially structured in batches 115/125/142 but still emit nodes.String.",
       "rules": ["parseAvailabilityGroupOptionsStructuredFinal"],
       "depends_on": [115, 125, 142],

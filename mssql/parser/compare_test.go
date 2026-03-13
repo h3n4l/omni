@@ -6035,6 +6035,24 @@ func TestParseExternalLanguage(t *testing.T) {
 	}
 }
 
+// agOptStr extracts the display string from an AG option node (AvailabilityGroupOption or String).
+func agOptStr(n ast.Node) string {
+	switch opt := n.(type) {
+	case *ast.AvailabilityGroupOption:
+		if opt.Value == "" {
+			return opt.Name
+		}
+		if opt.Name == "" {
+			return opt.Value
+		}
+		return opt.Name + "=" + opt.Value
+	case *ast.String:
+		return opt.Str
+	default:
+		return ""
+	}
+}
+
 // TestParseCreateAvailabilityGroup tests batch 66: CREATE AVAILABILITY GROUP.
 func TestParseCreateAvailabilityGroup(t *testing.T) {
 	tests := []string{
@@ -11819,7 +11837,7 @@ func TestParseEndpointUnknownProtocolOptions(t *testing.T) {
 				var gotStrs []string
 				if stmt.Options != nil {
 					for _, item := range stmt.Options.Items {
-						gotStrs = append(gotStrs, item.(*ast.String).Str)
+						gotStrs = append(gotStrs, agOptStr(item))
 					}
 				}
 				t.Fatalf("Parse(%q): got %d options %v, want at least %d %v", tt.sql, len(gotStrs), gotStrs, len(tt.wantOpts), tt.wantOpts)
@@ -11835,7 +11853,7 @@ func TestParseEndpointUnknownProtocolOptions(t *testing.T) {
 				if !found {
 					var gotStrs []string
 					for _, item := range stmt.Options.Items {
-						gotStrs = append(gotStrs, item.(*ast.String).Str)
+						gotStrs = append(gotStrs, agOptStr(item))
 					}
 					t.Errorf("Parse(%q): expected option %q not found in %v", tt.sql, want, gotStrs)
 				}
@@ -12883,7 +12901,7 @@ func TestParseServerConfigOptionsDepth(t *testing.T) {
 				if len(stmt.Options.Items) != len(tt.wantOpts) {
 					var gotStrs []string
 					for _, item := range stmt.Options.Items {
-						gotStrs = append(gotStrs, item.(*ast.String).Str)
+						gotStrs = append(gotStrs, agOptStr(item))
 					}
 					t.Fatalf("Parse(%q): got %d options %v, want %d %v", tt.sql, len(stmt.Options.Items), gotStrs, len(tt.wantOpts), tt.wantOpts)
 				}
@@ -13033,13 +13051,13 @@ func TestParseAvailabilityGroupOptionsDepth(t *testing.T) {
 				var gotStrs []string
 				if stmt.Options != nil {
 					for _, item := range stmt.Options.Items {
-						gotStrs = append(gotStrs, item.(*ast.String).Str)
+						gotStrs = append(gotStrs, agOptStr(item))
 					}
 				}
 				t.Fatalf("Parse(%q): got %d options %v, want %d %v", tt.sql, len(gotStrs), gotStrs, len(tt.wantOpts), tt.wantOpts)
 			}
 			for i, want := range tt.wantOpts {
-				got := stmt.Options.Items[i].(*ast.String).Str
+				got := agOptStr(stmt.Options.Items[i])
 				if got != want {
 					t.Errorf("Parse(%q): option[%d] = %q, want %q", tt.sql, i, got, want)
 				}
@@ -13146,13 +13164,13 @@ func TestParseAvailabilityRemainingDepth(t *testing.T) {
 				var gotStrs []string
 				if stmt.Options != nil {
 					for _, item := range stmt.Options.Items {
-						gotStrs = append(gotStrs, item.(*ast.String).Str)
+						gotStrs = append(gotStrs, agOptStr(item))
 					}
 				}
 				t.Fatalf("Parse(%q): got %d options %v, want %d %v", tt.sql, len(gotStrs), gotStrs, len(tt.wantOpts), tt.wantOpts)
 			}
 			for i, want := range tt.wantOpts {
-				got := stmt.Options.Items[i].(*ast.String).Str
+				got := agOptStr(stmt.Options.Items[i])
 				if got != want {
 					t.Errorf("Parse(%q): option[%d] = %q, want %q", tt.sql, i, got, want)
 				}
@@ -14779,7 +14797,7 @@ func TestParseServerConfigRemainingDepth(t *testing.T) {
 				if len(stmt.Options.Items) != len(tt.wantOpts) {
 					var gotStrs []string
 					for _, item := range stmt.Options.Items {
-						gotStrs = append(gotStrs, item.(*ast.String).Str)
+						gotStrs = append(gotStrs, agOptStr(item))
 					}
 					t.Fatalf("Parse(%q): got %d options %v, want %d %v", tt.sql, len(stmt.Options.Items), gotStrs, len(tt.wantOpts), tt.wantOpts)
 				}
@@ -14840,7 +14858,7 @@ func TestParseServerConfigRemainingDepth(t *testing.T) {
 				if len(stmt.Options.Items) != len(tt.wantOpts) {
 					var gotStrs []string
 					for _, item := range stmt.Options.Items {
-						gotStrs = append(gotStrs, item.(*ast.String).Str)
+						gotStrs = append(gotStrs, agOptStr(item))
 					}
 					t.Fatalf("Parse(%q): got %d options %v, want %d %v", tt.sql, len(stmt.Options.Items), gotStrs, len(tt.wantOpts), tt.wantOpts)
 				}
@@ -15671,7 +15689,7 @@ func TestParseEndpointRemainingDepth(t *testing.T) {
 					if !found {
 						var gotStrs []string
 						for _, item := range stmt.Options.Items {
-							gotStrs = append(gotStrs, item.(*ast.String).Str)
+							gotStrs = append(gotStrs, agOptStr(item))
 						}
 						t.Errorf("Parse(%q): expected option %q not found in %v", tt.sql, want, gotStrs)
 					}
@@ -16194,9 +16212,9 @@ func TestParseAvailabilitySkipCleanupDepth(t *testing.T) {
 		}
 		// Verify no UNEXPECTED_TOKEN markers in well-formed input
 		for _, item := range stmt.Options.Items {
-			if s, ok := item.(*ast.String); ok {
-				if len(s.Str) > 16 && s.Str[:16] == "UNEXPECTED_TOKEN" {
-					t.Errorf("unexpected token marker found in valid input: %q", s.Str)
+			if opt, ok := item.(*ast.AvailabilityGroupOption); ok {
+				if opt.Name == "UNEXPECTED_TOKEN" {
+					t.Errorf("unexpected token marker found in valid input: %q", opt.Value)
 				}
 			}
 		}
@@ -16605,4 +16623,188 @@ func TestParseServiceBrokerOptionsStringsDepth(t *testing.T) {
 			ParseAndCheck(t, sql)
 		})
 	}
+}
+
+// TestParseAvailabilityOptionsStringsFinal tests batch 149: typed AvailabilityGroupOption nodes.
+func TestParseAvailabilityOptionsStringsFinal(t *testing.T) {
+	// Helper to get AG option from SecurityStmt
+	getOpt := func(t *testing.T, result *ast.List, idx int) *ast.AvailabilityGroupOption {
+		t.Helper()
+		stmt, ok := result.Items[0].(*ast.SecurityStmt)
+		if !ok {
+			t.Fatalf("expected *SecurityStmt, got %T", result.Items[0])
+		}
+		if stmt.Options == nil || idx >= len(stmt.Options.Items) {
+			t.Fatalf("option index %d out of range (have %d)", idx, len(stmt.Options.Items))
+		}
+		opt, ok := stmt.Options.Items[idx].(*ast.AvailabilityGroupOption)
+		if !ok {
+			t.Fatalf("option[%d]: expected *AvailabilityGroupOption, got %T", idx, stmt.Options.Items[idx])
+		}
+		return opt
+	}
+
+	// ag_alter_actions_final: all action types emit typed AvailabilityGroupOption nodes
+	t.Run("ag_alter_actions_final", func(t *testing.T) {
+		tests := []struct {
+			sql      string
+			wantName string
+			wantVal  string
+			idx      int
+		}{
+			{"ALTER AVAILABILITY GROUP MyAG SET (DB_FAILOVER = ON)", "SET", "", 0},
+			{"ALTER AVAILABILITY GROUP MyAG ADD DATABASE MyDB", "ADD DATABASE", "MyDB", 0},
+			{"ALTER AVAILABILITY GROUP MyAG REMOVE DATABASE OldDB", "REMOVE DATABASE", "OldDB", 0},
+			{"ALTER AVAILABILITY GROUP MyAG ADD REPLICA ON", "ADD REPLICA ON", "", 0},
+			{"ALTER AVAILABILITY GROUP MyAG MODIFY REPLICA ON", "MODIFY REPLICA ON", "", 0},
+			{"ALTER AVAILABILITY GROUP MyAG REMOVE REPLICA ON", "REMOVE REPLICA ON", "", 0},
+			{"ALTER AVAILABILITY GROUP MyAG JOIN", "JOIN", "", 0},
+			{"ALTER AVAILABILITY GROUP MyAG JOIN AVAILABILITY GROUP ON", "JOIN AVAILABILITY GROUP ON", "", 0},
+			{"ALTER AVAILABILITY GROUP MyAG MODIFY AVAILABILITY GROUP ON", "MODIFY AVAILABILITY GROUP ON", "", 0},
+			{"ALTER AVAILABILITY GROUP MyAG GRANT CREATE ANY DATABASE", "GRANT CREATE ANY DATABASE", "", 0},
+			{"ALTER AVAILABILITY GROUP MyAG DENY CREATE ANY DATABASE", "DENY CREATE ANY DATABASE", "", 0},
+			{"ALTER AVAILABILITY GROUP MyAG FAILOVER", "FAILOVER", "", 0},
+			{"ALTER AVAILABILITY GROUP MyAG FORCE_FAILOVER_ALLOW_DATA_LOSS", "FORCE_FAILOVER_ALLOW_DATA_LOSS", "", 0},
+			{"ALTER AVAILABILITY GROUP MyAG OFFLINE", "OFFLINE", "", 0},
+			{"ALTER AVAILABILITY GROUP MyAG ADD LISTENER 'MyListener' (WITH DHCP)", "ADD LISTENER", "'MyListener'", 0},
+			{"ALTER AVAILABILITY GROUP MyAG REMOVE LISTENER 'MyListener'", "REMOVE LISTENER", "'MyListener'", 0},
+			{"ALTER AVAILABILITY GROUP MyAG RESTART LISTENER 'MyListener'", "RESTART LISTENER", "'MyListener'", 0},
+			{"ALTER AVAILABILITY GROUP MyAG MODIFY LISTENER 'MyListener' (PORT = 5022)", "MODIFY LISTENER", "'MyListener'", 0},
+		}
+		for _, tt := range tests {
+			t.Run(tt.wantName, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				opt := getOpt(t, result, tt.idx)
+				if opt.Name != tt.wantName {
+					t.Errorf("Name = %q, want %q", opt.Name, tt.wantName)
+				}
+				if opt.Value != tt.wantVal {
+					t.Errorf("Value = %q, want %q", opt.Value, tt.wantVal)
+				}
+				if opt.Loc.Start < 0 || opt.Loc.End <= opt.Loc.Start {
+					t.Errorf("bad location: %v", opt.Loc)
+				}
+			})
+		}
+	})
+
+	// ag_key_value_opts_final: key=value options emit typed AvailabilityGroupOption
+	t.Run("ag_key_value_opts_final", func(t *testing.T) {
+		sql := "ALTER AVAILABILITY GROUP MyAG SET (AUTOMATED_BACKUP_PREFERENCE = SECONDARY, DB_FAILOVER = ON, HEALTH_CHECK_TIMEOUT = 30000)"
+		result := ParseAndCheck(t, sql)
+		// SET is option[0], then key=value options from parenthesized block
+		setOpt := getOpt(t, result, 0)
+		if setOpt.Name != "SET" {
+			t.Errorf("option[0] Name = %q, want SET", setOpt.Name)
+		}
+		// AUTOMATED_BACKUP_PREFERENCE=SECONDARY
+		opt1 := getOpt(t, result, 1)
+		if opt1.Name != "AUTOMATED_BACKUP_PREFERENCE" || opt1.Value != "SECONDARY" {
+			t.Errorf("option[1] = %q/%q, want AUTOMATED_BACKUP_PREFERENCE/SECONDARY", opt1.Name, opt1.Value)
+		}
+		// DB_FAILOVER=ON
+		opt2 := getOpt(t, result, 2)
+		if opt2.Name != "DB_FAILOVER" || opt2.Value != "ON" {
+			t.Errorf("option[2] = %q/%q, want DB_FAILOVER/ON", opt2.Name, opt2.Value)
+		}
+		// HEALTH_CHECK_TIMEOUT=30000
+		opt3 := getOpt(t, result, 3)
+		if opt3.Name != "HEALTH_CHECK_TIMEOUT" || opt3.Value != "30000" {
+			t.Errorf("option[3] = %q/%q, want HEALTH_CHECK_TIMEOUT/30000", opt3.Name, opt3.Value)
+		}
+	})
+
+	// ag_ip_tuples_final: IP tuples emit typed AvailabilityGroupOption
+	t.Run("ag_ip_tuples_final", func(t *testing.T) {
+		sql := "CREATE AVAILABILITY GROUP MyAG REPLICA ON 'server1' WITH (ENDPOINT_URL = 'TCP://server1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = AUTOMATIC) LISTENER 'MyListener' (WITH IP (('10.0.0.1', '255.255.255.0')), PORT = 1433)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		if stmt.Options == nil {
+			t.Fatal("expected options")
+		}
+		// Verify all options are typed
+		for i, item := range stmt.Options.Items {
+			if _, ok := item.(*ast.AvailabilityGroupOption); !ok {
+				t.Errorf("option[%d]: expected *AvailabilityGroupOption, got %T", i, item)
+			}
+		}
+		// Verify the IP tuple is correctly structured (nested parens are collapsed into Name)
+		found := false
+		for _, item := range stmt.Options.Items {
+			opt := item.(*ast.AvailabilityGroupOption)
+			if opt.Name == "IP(('10.0.0.1', '255.255.255.0'))" && opt.Value == "" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			var strs []string
+			for _, item := range stmt.Options.Items {
+				opt := item.(*ast.AvailabilityGroupOption)
+				strs = append(strs, fmt.Sprintf("N=%q V=%q", opt.Name, opt.Value))
+			}
+			t.Errorf("IP tuple option not found in %v", strs)
+		}
+	})
+
+	// ag_create_with_opts_final: CREATE AG WITH clause options
+	t.Run("ag_create_with_opts_final", func(t *testing.T) {
+		sql := "CREATE AVAILABILITY GROUP MyAG WITH (CLUSTER_TYPE = WSFC) FOR DATABASE MyDB REPLICA ON 'server1' WITH (ENDPOINT_URL = 'TCP://server1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = AUTOMATIC)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		if stmt.Options == nil {
+			t.Fatal("expected options")
+		}
+		// All items should be AvailabilityGroupOption
+		for i, item := range stmt.Options.Items {
+			if _, ok := item.(*ast.AvailabilityGroupOption); !ok {
+				t.Errorf("option[%d]: expected *AvailabilityGroupOption, got %T", i, item)
+			}
+		}
+		// Check WITH option
+		opt0 := getOpt(t, result, 0)
+		if opt0.Name != "WITH" {
+			t.Errorf("option[0] Name = %q, want WITH", opt0.Name)
+		}
+		// Check CLUSTER_TYPE=WSFC
+		opt1 := getOpt(t, result, 1)
+		if opt1.Name != "CLUSTER_TYPE" || opt1.Value != "WSFC" {
+			t.Errorf("option[1] = %q/%q, want CLUSTER_TYPE/WSFC", opt1.Name, opt1.Value)
+		}
+	})
+
+	// ag_nested_role_opts_final: nested SECONDARY_ROLE/PRIMARY_ROLE options
+	t.Run("ag_nested_role_opts_final", func(t *testing.T) {
+		sql := "CREATE AVAILABILITY GROUP MyAG REPLICA ON 'server1' WITH (ENDPOINT_URL = 'TCP://server1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = AUTOMATIC, SECONDARY_ROLE (ALLOW_CONNECTIONS = READ_ONLY), PRIMARY_ROLE (ALLOW_CONNECTIONS = ALL))"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		// Find SECONDARY_ROLE option
+		foundSec := false
+		foundPri := false
+		for _, item := range stmt.Options.Items {
+			opt := item.(*ast.AvailabilityGroupOption)
+			if opt.Name == "SECONDARY_ROLE(ALLOW_CONNECTIONS=READ_ONLY)" && opt.Value == "" {
+				foundSec = true
+			}
+			if opt.Name == "PRIMARY_ROLE(ALLOW_CONNECTIONS=ALL)" && opt.Value == "" {
+				foundPri = true
+			}
+		}
+		if !foundSec {
+			t.Error("SECONDARY_ROLE option not found")
+		}
+		if !foundPri {
+			t.Error("PRIMARY_ROLE option not found")
+		}
+	})
+
+	// ag_for_database_final: FOR DATABASE with single db (avoids REPLICA being consumed as db name)
+	t.Run("ag_for_database_final", func(t *testing.T) {
+		sql := "ALTER AVAILABILITY GROUP MyAG ADD DATABASE TestDB"
+		result := ParseAndCheck(t, sql)
+		opt := getOpt(t, result, 0)
+		if opt.Name != "ADD DATABASE" || opt.Value != "TestDB" {
+			t.Errorf("option[0] = %q/%q, want ADD DATABASE/TestDB", opt.Name, opt.Value)
+		}
+	})
 }

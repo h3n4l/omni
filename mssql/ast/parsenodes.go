@@ -1160,6 +1160,23 @@ type SecurityStmt struct {
 func (n *SecurityStmt) nodeTag()  {}
 func (n *SecurityStmt) stmtNode() {}
 
+// AvailabilityGroupOption represents a typed option in a CREATE/ALTER AVAILABILITY GROUP statement.
+// Replaces nodes.String concatenations with structured Name + Value pairs.
+//
+// Examples:
+//   - Action keywords: Name="WITH", Value=""
+//   - Key=value pairs: Name="ENDPOINT_URL", Value="'TCP://server1:5022'"
+//   - Actions with args: Name="ADD DATABASE", Value="MyDB"
+//   - Nested options: Name="SECONDARY_ROLE", Value="(ALLOW_CONNECTIONS=READ_ONLY)"
+//   - IP tuples: Name="", Value="('10.0.0.1', '255.255.255.0')"
+type AvailabilityGroupOption struct {
+	Name  string // option name (e.g., WITH, SET, REPLICA ON, ENDPOINT_URL)
+	Value string // option value (may be empty for flag-like options)
+	Loc   Loc
+}
+
+func (n *AvailabilityGroupOption) nodeTag() {}
+
 // AuditSpecAction represents a single ADD or DROP action in an AUDIT SPECIFICATION.
 //
 // For server audit specs: ADD ( audit_action_group_name )

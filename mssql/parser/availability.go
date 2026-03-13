@@ -2,7 +2,6 @@
 package parser
 
 import (
-	"fmt"
 	"strings"
 
 	nodes "github.com/bytebase/omni/mssql/ast"
@@ -212,13 +211,9 @@ func (p *Parser) parseDropAvailabilityGroupStmt() *nodes.SecurityStmt {
 	return stmt
 }
 
-// agListenerOptString builds a structured listener option string from action and name.
-// Example: agListenerOptString("ADD LISTENER", "MyListener") → "ADD LISTENER='MyListener'"
-func agListenerOptString(action, name string) string {
-	if name != "" {
-		return fmt.Sprintf("%s='%s'", action, name)
-	}
-	return action
+// newAGOpt creates an AvailabilityGroupOption with the given name, value, and location.
+func newAGOpt(name, value string, loc nodes.Loc) *nodes.AvailabilityGroupOption {
+	return &nodes.AvailabilityGroupOption{Name: name, Value: value, Loc: loc}
 }
 
 // parseAvailabilityGroupOptions consumes the remaining clauses of
@@ -229,6 +224,7 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 	var opts []nodes.Node
 
 	for p.cur.Type != ';' && p.cur.Type != tokEOF && p.cur.Type != kwGO {
+		start := p.pos()
 		switch {
 		case p.cur.Type == '(':
 			// Consume parenthesized blocks structurally (SET options, replica options, listener options, etc.)
@@ -236,8 +232,8 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 			opts = append(opts, subOpts...)
 
 		case p.cur.Type == kwWITH:
-			opts = append(opts, &nodes.String{Str: "WITH"})
 			p.advance()
+			opts = append(opts, newAGOpt("WITH", "", nodes.Loc{Start: start, End: p.pos()}))
 
 		case p.cur.Type == kwFOR:
 			p.advance()
@@ -251,9 +247,9 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 						p.advance()
 					}
 				}
-				opts = append(opts, &nodes.String{Str: "FOR DATABASE " + strings.Join(dbs, ", ")})
+				opts = append(opts, newAGOpt("FOR DATABASE", strings.Join(dbs, ", "), nodes.Loc{Start: start, End: p.pos()}))
 			} else {
-				opts = append(opts, &nodes.String{Str: "FOR"})
+				opts = append(opts, newAGOpt("FOR", "", nodes.Loc{Start: start, End: p.pos()}))
 			}
 
 		case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "REPLICA"):
@@ -261,7 +257,7 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 			if p.cur.Type == kwON {
 				p.advance() // consume ON
 			}
-			opts = append(opts, &nodes.String{Str: "REPLICA ON"})
+			opts = append(opts, newAGOpt("REPLICA ON", "", nodes.Loc{Start: start, End: p.pos()}))
 
 		case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AVAILABILITY"):
 			p.advance() // consume AVAILABILITY
@@ -271,37 +267,38 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 			if p.cur.Type == kwON {
 				p.advance() // consume ON
 			}
-			opts = append(opts, &nodes.String{Str: "AVAILABILITY GROUP ON"})
+			opts = append(opts, newAGOpt("AVAILABILITY GROUP ON", "", nodes.Loc{Start: start, End: p.pos()}))
 
 		case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LISTENER"):
 			p.advance() // consume LISTENER
 			name := p.consumeAGListenerName()
-			opts = append(opts, &nodes.String{Str: agListenerOptString("LISTENER", name)})
+			opts = append(opts, newAGOpt("LISTENER", p.agQuoteName(name), nodes.Loc{Start: start, End: p.pos()}))
 
 		case p.cur.Type == kwSET:
-			opts = append(opts, &nodes.String{Str: "SET"})
 			p.advance()
+			opts = append(opts, newAGOpt("SET", "", nodes.Loc{Start: start, End: p.pos()}))
 
 		case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "ADD"):
 			p.advance() // consume ADD
 			if p.cur.Type == kwDATABASE {
 				p.advance()
 				if p.isIdentLike() || p.cur.Type == tokSCONST {
-					opts = append(opts, &nodes.String{Str: "ADD DATABASE " + p.cur.Str})
+					dbName := p.cur.Str
 					p.advance()
+					opts = append(opts, newAGOpt("ADD DATABASE", dbName, nodes.Loc{Start: start, End: p.pos()}))
 				}
 			} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "REPLICA") {
 				p.advance() // consume REPLICA
 				if p.cur.Type == kwON {
 					p.advance() // consume ON
 				}
-				opts = append(opts, &nodes.String{Str: "ADD REPLICA ON"})
+				opts = append(opts, newAGOpt("ADD REPLICA ON", "", nodes.Loc{Start: start, End: p.pos()}))
 			} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LISTENER") {
 				p.advance() // consume LISTENER
 				name := p.consumeAGListenerName()
-				opts = append(opts, &nodes.String{Str: agListenerOptString("ADD LISTENER", name)})
+				opts = append(opts, newAGOpt("ADD LISTENER", p.agQuoteName(name), nodes.Loc{Start: start, End: p.pos()}))
 			} else {
-				opts = append(opts, &nodes.String{Str: "ADD"})
+				opts = append(opts, newAGOpt("ADD", "", nodes.Loc{Start: start, End: p.pos()}))
 			}
 
 		case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "REMOVE"):
@@ -309,21 +306,22 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 			if p.cur.Type == kwDATABASE {
 				p.advance()
 				if p.isIdentLike() || p.cur.Type == tokSCONST {
-					opts = append(opts, &nodes.String{Str: "REMOVE DATABASE " + p.cur.Str})
+					dbName := p.cur.Str
 					p.advance()
+					opts = append(opts, newAGOpt("REMOVE DATABASE", dbName, nodes.Loc{Start: start, End: p.pos()}))
 				}
 			} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "REPLICA") {
 				p.advance() // consume REPLICA
 				if p.cur.Type == kwON {
 					p.advance() // consume ON
 				}
-				opts = append(opts, &nodes.String{Str: "REMOVE REPLICA ON"})
+				opts = append(opts, newAGOpt("REMOVE REPLICA ON", "", nodes.Loc{Start: start, End: p.pos()}))
 			} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LISTENER") {
 				p.advance() // consume LISTENER
 				name := p.consumeAGListenerName()
-				opts = append(opts, &nodes.String{Str: agListenerOptString("REMOVE LISTENER", name)})
+				opts = append(opts, newAGOpt("REMOVE LISTENER", p.agQuoteName(name), nodes.Loc{Start: start, End: p.pos()}))
 			} else {
-				opts = append(opts, &nodes.String{Str: "REMOVE"})
+				opts = append(opts, newAGOpt("REMOVE", "", nodes.Loc{Start: start, End: p.pos()}))
 			}
 
 		case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "MODIFY"):
@@ -333,11 +331,11 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 				if p.cur.Type == kwON {
 					p.advance() // consume ON
 				}
-				opts = append(opts, &nodes.String{Str: "MODIFY REPLICA ON"})
+				opts = append(opts, newAGOpt("MODIFY REPLICA ON", "", nodes.Loc{Start: start, End: p.pos()}))
 			} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LISTENER") {
 				p.advance() // consume LISTENER
 				name := p.consumeAGListenerName()
-				opts = append(opts, &nodes.String{Str: agListenerOptString("MODIFY LISTENER", name)})
+				opts = append(opts, newAGOpt("MODIFY LISTENER", p.agQuoteName(name), nodes.Loc{Start: start, End: p.pos()}))
 			} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AVAILABILITY") {
 				p.advance() // consume AVAILABILITY
 				if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "GROUP") {
@@ -346,9 +344,9 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 				if p.cur.Type == kwON {
 					p.advance() // consume ON
 				}
-				opts = append(opts, &nodes.String{Str: "MODIFY AVAILABILITY GROUP ON"})
+				opts = append(opts, newAGOpt("MODIFY AVAILABILITY GROUP ON", "", nodes.Loc{Start: start, End: p.pos()}))
 			} else {
-				opts = append(opts, &nodes.String{Str: "MODIFY"})
+				opts = append(opts, newAGOpt("MODIFY", "", nodes.Loc{Start: start, End: p.pos()}))
 			}
 
 		case p.cur.Type == kwJOIN:
@@ -362,46 +360,46 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 				if p.cur.Type == kwON {
 					p.advance() // consume ON
 				}
-				opts = append(opts, &nodes.String{Str: "JOIN AVAILABILITY GROUP ON"})
+				opts = append(opts, newAGOpt("JOIN AVAILABILITY GROUP ON", "", nodes.Loc{Start: start, End: p.pos()}))
 			} else {
-				opts = append(opts, &nodes.String{Str: "JOIN"})
+				opts = append(opts, newAGOpt("JOIN", "", nodes.Loc{Start: start, End: p.pos()}))
 			}
 
 		case p.cur.Type == kwGRANT:
 			p.advance() // consume GRANT
 			p.consumeAGCreateAnyDatabase()
-			opts = append(opts, &nodes.String{Str: "GRANT CREATE ANY DATABASE"})
+			opts = append(opts, newAGOpt("GRANT CREATE ANY DATABASE", "", nodes.Loc{Start: start, End: p.pos()}))
 
 		case p.cur.Type == kwDENY:
 			p.advance() // consume DENY
 			p.consumeAGCreateAnyDatabase()
-			opts = append(opts, &nodes.String{Str: "DENY CREATE ANY DATABASE"})
+			opts = append(opts, newAGOpt("DENY CREATE ANY DATABASE", "", nodes.Loc{Start: start, End: p.pos()}))
 
 		case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "FAILOVER"):
-			opts = append(opts, &nodes.String{Str: "FAILOVER"})
 			p.advance()
+			opts = append(opts, newAGOpt("FAILOVER", "", nodes.Loc{Start: start, End: p.pos()}))
 
 		case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "FORCE_FAILOVER_ALLOW_DATA_LOSS"):
-			opts = append(opts, &nodes.String{Str: "FORCE_FAILOVER_ALLOW_DATA_LOSS"})
 			p.advance()
+			opts = append(opts, newAGOpt("FORCE_FAILOVER_ALLOW_DATA_LOSS", "", nodes.Loc{Start: start, End: p.pos()}))
 
 		case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "OFFLINE"):
-			opts = append(opts, &nodes.String{Str: "OFFLINE"})
 			p.advance()
+			opts = append(opts, newAGOpt("OFFLINE", "", nodes.Loc{Start: start, End: p.pos()}))
 
 		case p.isIdentLike() && matchesKeywordCI(p.cur.Str, "RESTART"):
 			p.advance() // consume RESTART
 			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LISTENER") {
 				p.advance() // consume LISTENER
 				name := p.consumeAGListenerName()
-				opts = append(opts, &nodes.String{Str: agListenerOptString("RESTART LISTENER", name)})
+				opts = append(opts, newAGOpt("RESTART LISTENER", p.agQuoteName(name), nodes.Loc{Start: start, End: p.pos()}))
 			} else {
-				opts = append(opts, &nodes.String{Str: "RESTART"})
+				opts = append(opts, newAGOpt("RESTART", "", nodes.Loc{Start: start, End: p.pos()}))
 			}
 
 		case p.cur.Type == kwON:
-			opts = append(opts, &nodes.String{Str: "ON"})
 			p.advance()
+			opts = append(opts, newAGOpt("ON", "", nodes.Loc{Start: start, End: p.pos()}))
 
 		case p.cur.Type == ',':
 			p.advance() // skip commas
@@ -421,18 +419,18 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 						val = "'" + p.cur.Str + "'"
 					}
 					p.advance()
-					opts = append(opts, &nodes.String{Str: key + "=" + val})
+					opts = append(opts, newAGOpt(key, val, nodes.Loc{Start: start, End: p.pos()}))
 				} else {
-					opts = append(opts, &nodes.String{Str: key + "="})
+					opts = append(opts, newAGOpt(key, "", nodes.Loc{Start: start, End: p.pos()}))
 				}
 			} else {
-				opts = append(opts, &nodes.String{Str: key})
+				opts = append(opts, newAGOpt(key, "", nodes.Loc{Start: start, End: p.pos()}))
 			}
 
 		default:
 			// Record unexpected token instead of silently skipping
-			opts = append(opts, &nodes.String{Str: "UNEXPECTED_TOKEN:" + p.cur.Str})
 			p.advance()
+			opts = append(opts, newAGOpt("UNEXPECTED_TOKEN", p.cur.Str, nodes.Loc{Start: start, End: p.pos()}))
 		}
 	}
 
@@ -440,6 +438,14 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 		return nil
 	}
 	return &nodes.List{Items: opts}
+}
+
+// agQuoteName wraps a listener name in single quotes if non-empty, for display consistency.
+func (p *Parser) agQuoteName(name string) string {
+	if name != "" {
+		return "'" + name + "'"
+	}
+	return ""
 }
 
 // consumeAGListenerName consumes a string constant listener name if present.
@@ -469,14 +475,14 @@ func (p *Parser) consumeAGCreateAnyDatabase() {
 }
 
 // parseParenthesizedAGOptions parses a parenthesized block of availability group options
-// into individual key=value String nodes instead of capturing raw text.
+// into individual AvailabilityGroupOption nodes instead of capturing raw text.
 //
 // Handles:
-//   - Simple key = value options: ENDPOINT_URL = 'TCP://...' → "ENDPOINT_URL='TCP://...'"
-//   - Nested options: SECONDARY_ROLE (ALLOW_CONNECTIONS = READ_ONLY) → "SECONDARY_ROLE(ALLOW_CONNECTIONS=READ_ONLY)"
-//   - Value lists: READ_ONLY_ROUTING_LIST = ('server1', 'server2') → "READ_ONLY_ROUTING_LIST=('server1', 'server2')"
-//   - Standalone keywords: DISTRIBUTED → "DISTRIBUTED"
-//   - Nested IP tuples: IP (('addr', 'mask')) → "IP(('addr', 'mask'))"
+//   - Simple key = value options: ENDPOINT_URL = 'TCP://...' → Name="ENDPOINT_URL" Value="'TCP://...'"
+//   - Nested options: SECONDARY_ROLE (ALLOW_CONNECTIONS = READ_ONLY) → Name="SECONDARY_ROLE" Value="(ALLOW_CONNECTIONS=READ_ONLY)"
+//   - Value lists: READ_ONLY_ROUTING_LIST = ('server1', 'server2') → Name="READ_ONLY_ROUTING_LIST" Value="('server1', 'server2')"
+//   - Standalone keywords: DISTRIBUTED → Name="DISTRIBUTED" Value=""
+//   - Nested IP tuples: IP (('addr', 'mask')) → Name="IP" Value="(('addr', 'mask'))"
 func (p *Parser) parseParenthesizedAGOptions() []nodes.Node {
 	if p.cur.Type != '(' {
 		return nil
@@ -490,19 +496,21 @@ func (p *Parser) parseParenthesizedAGOptions() []nodes.Node {
 			continue
 		}
 
+		start := p.pos()
+
 		// Handle nested parenthesized tuples (e.g., IP address tuples like ('addr', 'mask'))
 		if p.cur.Type == '(' {
 			tupleStr := p.parseAGParenTuple()
 			if tupleStr != "" {
-				opts = append(opts, &nodes.String{Str: "(" + tupleStr + ")"})
+				opts = append(opts, newAGOpt("", "("+tupleStr+")", nodes.Loc{Start: start, End: p.pos()}))
 			}
 			continue
 		}
 
 		// Must be an identifier, string, number, or keyword
 		if !p.isAGOptionToken() {
-			opts = append(opts, &nodes.String{Str: "UNEXPECTED_TOKEN:" + p.cur.Str})
 			p.advance()
+			opts = append(opts, newAGOpt("UNEXPECTED_TOKEN", p.cur.Str, nodes.Loc{Start: start, End: p.pos()}))
 			continue
 		}
 
@@ -514,30 +522,30 @@ func (p *Parser) parseParenthesizedAGOptions() []nodes.Node {
 			p.advance() // consume '='
 			if p.cur.Type == '(' {
 				// Value is a parenthesized list: key = ( ... )
-				// Parse recursively for structured key=value or value list handling
 				subOpts := p.parseParenthesizedAGOptions()
 				var parts []string
 				for _, o := range subOpts {
-					parts = append(parts, o.(*nodes.String).Str)
+					parts = append(parts, agOptDisplayStr(o))
 				}
-				opts = append(opts, &nodes.String{Str: key + "=(" + strings.Join(parts, ", ") + ")"})
+				opts = append(opts, newAGOpt(key, "("+strings.Join(parts, ", ")+")", nodes.Loc{Start: start, End: p.pos()}))
 			} else if p.isAGOptionToken() {
 				val := p.agOptionTokenString()
 				p.advance()
-				opts = append(opts, &nodes.String{Str: key + "=" + val})
+				opts = append(opts, newAGOpt(key, val, nodes.Loc{Start: start, End: p.pos()}))
 			} else {
-				opts = append(opts, &nodes.String{Str: key + "="})
+				opts = append(opts, newAGOpt(key, "", nodes.Loc{Start: start, End: p.pos()}))
 			}
 		case p.cur.Type == '(':
-			// Nested parens: SECONDARY_ROLE(...), PRIMARY_ROLE(...), IP(...), ON(...)
+			// Nested parens without '=': SECONDARY_ROLE(...), PRIMARY_ROLE(...), IP(...), ON(...)
+			// Collapse into Name to distinguish from key=(list) format
 			subOpts := p.parseParenthesizedAGOptions()
 			var parts []string
 			for _, o := range subOpts {
-				parts = append(parts, o.(*nodes.String).Str)
+				parts = append(parts, agOptDisplayStr(o))
 			}
-			opts = append(opts, &nodes.String{Str: key + "(" + strings.Join(parts, ", ") + ")"})
+			opts = append(opts, newAGOpt(key+"("+strings.Join(parts, ", ")+")", "", nodes.Loc{Start: start, End: p.pos()}))
 		default:
-			opts = append(opts, &nodes.String{Str: key})
+			opts = append(opts, newAGOpt(key, "", nodes.Loc{Start: start, End: p.pos()}))
 		}
 	}
 
@@ -546,6 +554,27 @@ func (p *Parser) parseParenthesizedAGOptions() []nodes.Node {
 	}
 
 	return opts
+}
+
+// agOptDisplayStr returns the display string for an AG option node,
+// reconstructing the original key=value format.
+// Nested parens are collapsed into Name (e.g. "SECONDARY_ROLE(...)").
+// Key=value pairs use Name + "=" + Value.
+func agOptDisplayStr(n nodes.Node) string {
+	switch opt := n.(type) {
+	case *nodes.AvailabilityGroupOption:
+		if opt.Value == "" {
+			return opt.Name
+		}
+		if opt.Name == "" {
+			return opt.Value
+		}
+		return opt.Name + "=" + opt.Value
+	case *nodes.String:
+		return opt.Str
+	default:
+		return ""
+	}
 }
 
 // parseAGParenTuple parses a parenthesized tuple of comma-separated values,
