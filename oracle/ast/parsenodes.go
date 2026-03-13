@@ -2370,6 +2370,183 @@ func (n *DisassociateStatisticsStmt) nodeTag()  {}
 func (n *DisassociateStatisticsStmt) stmtNode() {}
 
 // ---------------------------------------------------------------------------
+// CREATE TABLESPACE
+// ---------------------------------------------------------------------------
+
+// CreateTablespaceStmt represents a CREATE TABLESPACE statement.
+//
+//	CREATE [ BIGFILE | SMALLFILE ]
+//	    { permanent_tablespace_clause
+//	    | temporary_tablespace_clause
+//	    | undo_tablespace_clause }
+type CreateTablespaceStmt struct {
+	Name       *ObjectName          // tablespace name
+	Bigfile    bool                 // BIGFILE
+	Smallfile  bool                 // SMALLFILE
+	Temporary  bool                 // TEMPORARY
+	Undo       bool                 // UNDO
+	Datafiles  []*DatafileClause    // DATAFILE / TEMPFILE clauses
+	Size       string               // SIZE value (e.g. "100M")
+	Autoextend *AutoextendClause    // AUTOEXTEND ON/OFF
+	Logging    string               // LOGGING / NOLOGGING / FORCE LOGGING
+	Online     bool                 // ONLINE (default)
+	Offline    bool                 // OFFLINE
+	Extent     string               // EXTENT MANAGEMENT LOCAL (AUTOALLOCATE/UNIFORM)
+	Segment    string               // SEGMENT SPACE MANAGEMENT AUTO/MANUAL
+	Blocksize  string               // BLOCKSIZE value
+	Retention  string               // RETENTION GUARANTEE / NOGUARANTEE
+	Encryption string               // ENCRYPTION clause text
+	Compress   string               // DEFAULT COMPRESS / NOCOMPRESS
+	MaxSize    string               // MAXSIZE value
+	Options    []string             // remaining unparsed option tokens
+	Loc        Loc
+}
+
+func (n *CreateTablespaceStmt) nodeTag()  {}
+func (n *CreateTablespaceStmt) stmtNode() {}
+
+// DatafileClause represents a DATAFILE or TEMPFILE specification.
+type DatafileClause struct {
+	Filename   string // file path string
+	Size       string // SIZE value
+	Reuse      bool   // REUSE
+	Autoextend *AutoextendClause
+	Loc        Loc
+}
+
+func (n *DatafileClause) nodeTag() {}
+
+// AutoextendClause represents AUTOEXTEND ON/OFF.
+type AutoextendClause struct {
+	On      bool   // ON vs OFF
+	Next    string // NEXT size
+	MaxSize string // MAXSIZE value or UNLIMITED
+	Loc     Loc
+}
+
+func (n *AutoextendClause) nodeTag() {}
+
+// ---------------------------------------------------------------------------
+// CREATE CLUSTER
+// ---------------------------------------------------------------------------
+
+// CreateClusterStmt represents a CREATE CLUSTER statement.
+//
+//	CREATE CLUSTER [ schema. ] cluster
+//	    ( column datatype [ SORT ] [, ...] )
+//	    [ physical_attributes_clause ]
+//	    [ SIZE size_clause ]
+//	    [ TABLESPACE tablespace ]
+//	    [ { INDEX | [ SINGLE TABLE ] HASHKEYS integer [ HASH IS expr ] } ]
+//	    [ parallel_clause ]
+//	    [ NOROWDEPENDENCIES | ROWDEPENDENCIES ]
+//	    [ CACHE | NOCACHE ]
+type CreateClusterStmt struct {
+	Name        *ObjectName          // cluster name
+	Columns     []*ClusterColumn     // cluster key columns
+	PctFree     *int                 // PCTFREE value
+	PctUsed     *int                 // PCTUSED value
+	InitTrans   *int                 // INITRANS value
+	Size        string               // SIZE value
+	Tablespace  string               // TABLESPACE name
+	IsIndex     bool                 // INDEX (explicit)
+	IsHash      bool                 // HASHKEYS specified
+	HashKeys    string               // HASHKEYS integer value
+	SingleTable bool                 // SINGLE TABLE
+	HashExpr    ExprNode             // HASH IS expr
+	Cache       bool                 // CACHE
+	NoCache     bool                 // NOCACHE
+	Parallel    string               // PARALLEL / NOPARALLEL / PARALLEL n
+	RowDep      bool                 // ROWDEPENDENCIES
+	NoRowDep    bool                 // NOROWDEPENDENCIES
+	Storage     []string             // STORAGE clause tokens
+	Loc         Loc
+}
+
+func (n *CreateClusterStmt) nodeTag()  {}
+func (n *CreateClusterStmt) stmtNode() {}
+
+// ClusterColumn represents a column in a cluster key.
+type ClusterColumn struct {
+	Name     string   // column name
+	DataType *TypeName // column data type
+	Sort     bool      // SORT keyword
+	Loc      Loc
+}
+
+func (n *ClusterColumn) nodeTag() {}
+
+// ---------------------------------------------------------------------------
+// CREATE DIMENSION
+// ---------------------------------------------------------------------------
+
+// CreateDimensionStmt represents a CREATE DIMENSION statement.
+//
+//	CREATE DIMENSION [ schema. ] dimension
+//	    level_clause ...
+//	    { hierarchy_clause | attribute_clause | extended_attribute_clause } ...
+type CreateDimensionStmt struct {
+	Name        *ObjectName            // dimension name
+	Levels      []*DimensionLevel      // LEVEL clauses
+	Hierarchies []*DimensionHierarchy  // HIERARCHY clauses
+	Attributes  []*DimensionAttribute  // ATTRIBUTE clauses
+	Loc         Loc
+}
+
+func (n *CreateDimensionStmt) nodeTag()  {}
+func (n *CreateDimensionStmt) stmtNode() {}
+
+// DimensionLevel represents a LEVEL clause in CREATE DIMENSION.
+//
+//	LEVEL level IS ( level_table.level_column [, ...] ) [ SKIP WHEN NULL ]
+type DimensionLevel struct {
+	Name         string        // level name
+	Columns      []*ObjectName // table.column references
+	SkipWhenNull bool          // SKIP WHEN NULL
+	Loc          Loc
+}
+
+func (n *DimensionLevel) nodeTag() {}
+
+// DimensionHierarchy represents a HIERARCHY clause in CREATE DIMENSION.
+//
+//	HIERARCHY hierarchy_name ( child_level CHILD OF parent_level [CHILD OF ...] )
+//	    [ JOIN KEY ( child_key_column [, ...] ) REFERENCES parent_level ] ...
+type DimensionHierarchy struct {
+	Name      string                  // hierarchy name
+	Levels    []string                // level names from child to top parent
+	JoinKeys  []*DimensionJoinKey     // JOIN KEY clauses
+	Loc       Loc
+}
+
+func (n *DimensionHierarchy) nodeTag() {}
+
+// DimensionJoinKey represents a JOIN KEY clause in a dimension hierarchy.
+//
+//	JOIN KEY ( child_key_column [, ...] ) REFERENCES parent_level
+type DimensionJoinKey struct {
+	ChildKeys   []*ObjectName // child key columns
+	ParentLevel string        // parent level name
+	Loc         Loc
+}
+
+func (n *DimensionJoinKey) nodeTag() {}
+
+// DimensionAttribute represents an ATTRIBUTE clause in CREATE DIMENSION.
+//
+//	ATTRIBUTE level DETERMINES ( dependent_column [, ...] )
+//	-- or extended form:
+//	ATTRIBUTE attr_name LEVEL level DETERMINES ( dependent_column [, ...] )
+type DimensionAttribute struct {
+	AttrName    string        // attribute name (may be same as level)
+	LevelName   string        // level name (for extended form)
+	Columns     []*ObjectName // dependent columns
+	Loc         Loc
+}
+
+func (n *DimensionAttribute) nodeTag() {}
+
+// ---------------------------------------------------------------------------
 // Star expression (SELECT *)
 // ---------------------------------------------------------------------------
 

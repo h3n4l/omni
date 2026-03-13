@@ -15,36 +15,58 @@ You are implementing a recursive descent Oracle PL/SQL parser.
 
 ## Your Task
 
-1. Read `oracle/parser/PROGRESS.json`
+1. Read `oracle/parser/PROGRESS_SUMMARY.json` (lightweight version — done batches are compressed, only pending/failed/in_progress have full detail)
 2. Pick the next batch to work on:
    - If any batch has `"status": "in_progress"`, **resume that batch** (it was interrupted mid-work — read the existing code in its target file and continue from where it left off)
    - Otherwise, find the first batch with `"status": "pending"` whose dependencies (by id) are all `"done"`
    - If any batch has `"status": "failed"`, **retry it** (reset to `"in_progress"` and try again)
 3. Implement that batch following the steps below
-4. Update `PROGRESS.json`:
+4. Update `oracle/parser/PROGRESS.json` (the full file, NOT the summary):
    - Set `"in_progress"` before starting work
    - Set `"done"` only after `go build` and `go test` pass
    - Set `"failed"` with `"error"` if you cannot make tests pass
 
 If all batches are `"done"`, output `ALL_BATCHES_COMPLETE` and stop.
 
+## Progress Logging (MANDATORY)
+
+You MUST print progress markers to stdout at each step. This is how the pipeline operator monitors your work. Use this exact format:
+
+```
+[BATCH N] STARTED - batch_name
+[BATCH N] STEP reading_refs - Reading BNF and AST definitions
+[BATCH N] STEP writing_tests - Writing test cases
+[BATCH N] STEP writing_code - Implementing parse functions
+[BATCH N] STEP build - Running go build
+[BATCH N] STEP test - Running go test (X passed, Y failed)
+[BATCH N] STEP commit - Committing changes
+[BATCH N] DONE
+```
+
+If a step fails, print:
+```
+[BATCH N] FAIL test - description of failure
+[BATCH N] RETRY - what you're fixing
+```
+
+**Do NOT skip these markers.** They appear in the build log and are essential for debugging pipeline issues.
+
 ## Implementation Steps for Each Batch
 
-### Step 1: Fetch Complete BNF from Official Documentation (MANDATORY)
+### Step 1: Read Official Documentation (MANDATORY)
 
 **This is the most critical step. Do NOT skip it. Do NOT write BNF from memory.**
 
-For every grammar rule in the batch, you MUST:
+Documentation has been **pre-fetched** to local files. For every grammar rule in the batch:
 
-1. **Fetch the official Oracle 23c SQL/PL-SQL documentation page** using the WebFetch tool
+1. **First check local docs**: Read from `oracle/parser/docs/{STATEMENT-NAME}.txt` (e.g., `CREATE-TABLE.txt`, `ALTER-TABLESPACE.txt`)
+   - Use the Read tool to read these files — they contain the full page text with BNF
+2. **Only if the local file is missing**, use WebFetch as fallback:
    - SQL Reference: `https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/{command}.html`
-     - e.g., `ALTER-TABLE.html`, `CREATE-TRIGGER.html`, `MERGE.html`
    - PL/SQL Reference: `https://docs.oracle.com/en/database/oracle/oracle-database/23/lnpls/{topic}.html`
-2. **Extract the COMPLETE BNF/syntax diagram** from the page — every branch, every option, every sub-clause
-3. **Do NOT abbreviate** — never write `...` or truncate the BNF. If a statement has 50 lines of BNF, write all 50 lines
-4. **For sub-clauses that have their own doc page**, fetch those too (e.g., CREATE TABLE's `column_definition`, `constraint_clause`, `partitioning_clause` etc. each link to separate pages)
-
-If WebFetch fails, use WebSearch to find the correct URL, then fetch it.
+3. **Extract the COMPLETE BNF/syntax diagram** — every branch, every option, every sub-clause
+4. **Do NOT abbreviate** — never write `...` or truncate the BNF
+5. **For sub-clauses that have their own doc page**, check `oracle/parser/docs/` first, then WebFetch if missing
 
 ### Step 2: Read AST and Existing Code
 

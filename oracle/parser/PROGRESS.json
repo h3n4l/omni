@@ -1347,7 +1347,7 @@
       "id": 60,
       "name": "admin_ddl_option_parsing",
       "file": "create_admin.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 41/42 gap: parseAdminDDLStmt uses skipToSemicolon for TABLESPACE, DIRECTORY, CONTEXT, CLUSTER, DIMENSION, FLASHBACK ARCHIVE, JAVA, LIBRARY options. Parse DATAFILE, SIZE, AUTOEXTEND, LOGGING/NOLOGGING for tablespace; HASH IS/SIZE for cluster; LEVEL/HIERARCHY/JOIN KEY for dimension.",
       "rules": [
         "tablespace_datafile_clause",

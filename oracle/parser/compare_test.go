@@ -1615,3 +1615,196 @@ func TestParseCreateProfileFull(t *testing.T) {
 		})
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Batch 60: admin_ddl_option_parsing
+// ---------------------------------------------------------------------------
+
+func TestParseCreateTablespaceFull(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		// Basic tablespace with DATAFILE and SIZE
+		{"datafile_size", "CREATE TABLESPACE users DATAFILE '/u01/users01.dbf' SIZE 100M"},
+		// Multiple datafiles
+		{"multi_datafile", "CREATE TABLESPACE data01 DATAFILE '/u01/data01.dbf' SIZE 500M, '/u01/data02.dbf' SIZE 500M"},
+		// AUTOEXTEND ON
+		{"autoextend_on", "CREATE TABLESPACE users DATAFILE '/u01/users01.dbf' SIZE 100M AUTOEXTEND ON NEXT 10M MAXSIZE 1G"},
+		// AUTOEXTEND OFF
+		{"autoextend_off", "CREATE TABLESPACE users DATAFILE '/u01/users01.dbf' SIZE 100M AUTOEXTEND OFF"},
+		// AUTOEXTEND UNLIMITED
+		{"autoextend_unlimited", "CREATE TABLESPACE users DATAFILE '/u01/users01.dbf' SIZE 100M AUTOEXTEND ON MAXSIZE UNLIMITED"},
+		// LOGGING/NOLOGGING
+		{"logging", "CREATE TABLESPACE data01 DATAFILE '/u01/data01.dbf' SIZE 100M LOGGING"},
+		{"nologging", "CREATE TABLESPACE data01 DATAFILE '/u01/data01.dbf' SIZE 100M NOLOGGING"},
+		// ONLINE/OFFLINE
+		{"online", "CREATE TABLESPACE data01 DATAFILE '/u01/data01.dbf' SIZE 100M ONLINE"},
+		{"offline", "CREATE TABLESPACE data01 DATAFILE '/u01/data01.dbf' SIZE 100M OFFLINE"},
+		// EXTENT MANAGEMENT LOCAL
+		{"extent_local_auto", "CREATE TABLESPACE data01 DATAFILE '/u01/data01.dbf' SIZE 100M EXTENT MANAGEMENT LOCAL AUTOALLOCATE"},
+		{"extent_local_uniform", "CREATE TABLESPACE data01 DATAFILE '/u01/data01.dbf' SIZE 100M EXTENT MANAGEMENT LOCAL UNIFORM SIZE 1M"},
+		// SEGMENT SPACE MANAGEMENT
+		{"segment_auto", "CREATE TABLESPACE data01 DATAFILE '/u01/data01.dbf' SIZE 100M SEGMENT SPACE MANAGEMENT AUTO"},
+		{"segment_manual", "CREATE TABLESPACE data01 DATAFILE '/u01/data01.dbf' SIZE 100M SEGMENT SPACE MANAGEMENT MANUAL"},
+		// BIGFILE / SMALLFILE
+		{"bigfile", "CREATE BIGFILE TABLESPACE big_ts DATAFILE '/u01/big.dbf' SIZE 10G"},
+		{"smallfile", "CREATE SMALLFILE TABLESPACE small_ts DATAFILE '/u01/small.dbf' SIZE 100M"},
+		// TEMPORARY tablespace
+		{"temporary", "CREATE TEMPORARY TABLESPACE temp_ts TEMPFILE '/u01/temp01.dbf' SIZE 500M"},
+		// UNDO tablespace
+		{"undo", "CREATE UNDO TABLESPACE undo_ts DATAFILE '/u01/undo01.dbf' SIZE 200M"},
+		// BLOCKSIZE
+		{"blocksize", "CREATE TABLESPACE data01 DATAFILE '/u01/data01.dbf' SIZE 100M BLOCKSIZE 8K"},
+		// Retention
+		{"retention_guarantee", "CREATE UNDO TABLESPACE undo_ts DATAFILE '/u01/undo01.dbf' SIZE 200M RETENTION GUARANTEE"},
+		{"retention_noguarantee", "CREATE UNDO TABLESPACE undo_ts DATAFILE '/u01/undo01.dbf' SIZE 200M RETENTION NOGUARANTEE"},
+		// DEFAULT COMPRESS
+		{"compress", "CREATE TABLESPACE data01 DATAFILE '/u01/data01.dbf' SIZE 100M DEFAULT COMPRESS"},
+		{"nocompress", "CREATE TABLESPACE data01 DATAFILE '/u01/data01.dbf' SIZE 100M DEFAULT NOCOMPRESS"},
+		// REUSE
+		{"datafile_reuse", "CREATE TABLESPACE users DATAFILE '/u01/users01.dbf' SIZE 100M REUSE"},
+		// Combined options
+		{"combined", "CREATE TABLESPACE data01 DATAFILE '/u01/data01.dbf' SIZE 500M AUTOEXTEND ON NEXT 50M MAXSIZE 2G LOGGING EXTENT MANAGEMENT LOCAL AUTOALLOCATE SEGMENT SPACE MANAGEMENT AUTO"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tc.sql)
+			if result.Len() != 1 {
+				t.Fatalf("expected 1 statement, got %d", result.Len())
+			}
+			raw := result.Items[0].(*ast.RawStmt)
+			_, ok := raw.Stmt.(*ast.CreateTablespaceStmt)
+			if !ok {
+				t.Fatalf("expected *CreateTablespaceStmt, got %T", raw.Stmt)
+			}
+		})
+	}
+}
+
+func TestParseCreateClusterFull(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		// Basic indexed cluster
+		{"basic", "CREATE CLUSTER personnel (department NUMBER(4))"},
+		// With SIZE
+		{"with_size", "CREATE CLUSTER personnel (department NUMBER(4)) SIZE 512"},
+		// With TABLESPACE
+		{"with_tablespace", "CREATE CLUSTER emp_dept (deptno NUMBER(3)) SIZE 600 TABLESPACE users"},
+		// Hash cluster with HASHKEYS
+		{"hash_basic", "CREATE CLUSTER language (cust_language VARCHAR2(3)) SIZE 512 HASHKEYS 10"},
+		// Hash cluster with HASH IS expression
+		{"hash_expr", "CREATE CLUSTER address (postal_code NUMBER, country_id CHAR(2)) HASHKEYS 20 HASH IS MOD(postal_code + country_id, 101)"},
+		// SINGLE TABLE hash cluster
+		{"single_table", "CREATE CLUSTER cust_orders (customer_id NUMBER(6)) SIZE 512 SINGLE TABLE HASHKEYS 100"},
+		// INDEX clause explicit
+		{"index_explicit", "CREATE CLUSTER my_cluster (id NUMBER) INDEX"},
+		// CACHE / NOCACHE
+		{"cache", "CREATE CLUSTER my_cluster (id NUMBER) CACHE"},
+		{"nocache", "CREATE CLUSTER my_cluster (id NUMBER) NOCACHE"},
+		// Physical attributes
+		{"pctfree", "CREATE CLUSTER my_cluster (id NUMBER) PCTFREE 20"},
+		// SORT column
+		{"sort_column", "CREATE CLUSTER sorted_cl (id NUMBER, ts DATE SORT) HASHKEYS 100"},
+		// Multiple columns
+		{"multi_col", "CREATE CLUSTER mc (a NUMBER, b VARCHAR2(10))"},
+		// STORAGE clause (parsed but not deeply)
+		{"storage", "CREATE CLUSTER personnel (department NUMBER(4)) SIZE 512 STORAGE (INITIAL 100K NEXT 50K)"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tc.sql)
+			if result.Len() != 1 {
+				t.Fatalf("expected 1 statement, got %d", result.Len())
+			}
+			raw := result.Items[0].(*ast.RawStmt)
+			_, ok := raw.Stmt.(*ast.CreateClusterStmt)
+			if !ok {
+				t.Fatalf("expected *CreateClusterStmt, got %T", raw.Stmt)
+			}
+		})
+	}
+}
+
+func TestParseCreateDimensionFull(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		// Basic dimension with single level
+		{"single_level", "CREATE DIMENSION time_dim LEVEL day IS (t.day_id)"},
+		// Multiple levels
+		{"multi_level", `CREATE DIMENSION time_dim
+			LEVEL day IS (t.day_id)
+			LEVEL month IS (t.month_id)
+			LEVEL year IS (t.year_id)`},
+		// Hierarchy
+		{"hierarchy", `CREATE DIMENSION time_dim
+			LEVEL day IS (t.day_id)
+			LEVEL month IS (t.month_id)
+			LEVEL year IS (t.year_id)
+			HIERARCHY time_rollup (
+				day CHILD OF month CHILD OF year
+			)`},
+		// Attribute
+		{"attribute", `CREATE DIMENSION time_dim
+			LEVEL day IS (t.day_id)
+			LEVEL month IS (t.month_id)
+			ATTRIBUTE day DETERMINES (t.day_name)`},
+		// Extended attribute
+		{"extended_attr", `CREATE DIMENSION time_dim
+			LEVEL day IS (t.day_id)
+			ATTRIBUTE day_info LEVEL day DETERMINES (t.day_name, t.day_desc)`},
+		// JOIN KEY
+		{"join_key", `CREATE DIMENSION customers_dim
+			LEVEL customer IS (customers.cust_id)
+			LEVEL city IS (customers.cust_city)
+			LEVEL country IS (countries.country_id)
+			HIERARCHY geog_rollup (
+				customer CHILD OF city CHILD OF country
+				JOIN KEY (customers.country_id) REFERENCES country
+			)`},
+		// SKIP WHEN NULL
+		{"skip_when_null", `CREATE DIMENSION customers_dim
+			LEVEL customer IS (customers.cust_id)
+			LEVEL status IS (customers.cust_marital_status) SKIP WHEN NULL
+			LEVEL city IS (customers.cust_city)`},
+		// Full example from Oracle docs
+		{"full_example", `CREATE DIMENSION customers_dim
+			LEVEL customer IS (customers.cust_id)
+			LEVEL city IS (customers.cust_city)
+			LEVEL state IS (customers.cust_state_province)
+			LEVEL country IS (countries.country_id)
+			LEVEL subregion IS (countries.country_subregion)
+			LEVEL region IS (countries.country_region)
+			HIERARCHY geog_rollup (
+				customer CHILD OF
+				city CHILD OF
+				state CHILD OF
+				country CHILD OF
+				subregion CHILD OF
+				region
+				JOIN KEY (customers.country_id) REFERENCES country
+			)
+			ATTRIBUTE customer DETERMINES
+			(cust_first_name, cust_last_name, cust_gender,
+			 cust_marital_status, cust_year_of_birth,
+			 cust_income_level, cust_credit_limit)
+			ATTRIBUTE country DETERMINES (countries.country_name)`},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tc.sql)
+			if result.Len() != 1 {
+				t.Fatalf("expected 1 statement, got %d", result.Len())
+			}
+			raw := result.Items[0].(*ast.RawStmt)
+			_, ok := raw.Stmt.(*ast.CreateDimensionStmt)
+			if !ok {
+				t.Fatalf("expected *CreateDimensionStmt, got %T", raw.Stmt)
+			}
+		})
+	}
+}

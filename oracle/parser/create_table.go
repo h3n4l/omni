@@ -82,10 +82,43 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 		kwTABLESPACE, kwDIRECTORY, kwCONTEXT,
 		kwCLUSTER, kwJAVA, kwLIBRARY, kwSCHEMA:
 		return p.parseCreateAdminObject(start)
+	case kwTEMPORARY:
+		// CREATE TEMPORARY TABLESPACE (standalone, not GLOBAL TEMPORARY TABLE)
+		if !global && !private {
+			p.advance() // consume TEMPORARY
+			if p.cur.Type == kwTABLESPACE {
+				p.advance() // consume TABLESPACE
+				return p.parseCreateTablespaceStmt(start, false, false, true, false)
+			}
+		}
+		return nil
 	default:
 		// Check for "NO FORCE VIEW"
 		if p.isIdentLikeStr("NO") || p.cur.Type == kwNOT {
 			return p.parseCreateViewStmt(start, orReplace)
+		}
+		// Check for BIGFILE/SMALLFILE/UNDO TABLESPACE
+		if p.isIdentLike() {
+			switch p.cur.Str {
+			case "BIGFILE":
+				p.advance()
+				if p.cur.Type == kwTABLESPACE {
+					p.advance()
+					return p.parseCreateTablespaceStmt(start, true, false, false, false)
+				}
+			case "SMALLFILE":
+				p.advance()
+				if p.cur.Type == kwTABLESPACE {
+					p.advance()
+					return p.parseCreateTablespaceStmt(start, false, true, false, false)
+				}
+			case "UNDO":
+				p.advance()
+				if p.cur.Type == kwTABLESPACE {
+					p.advance()
+					return p.parseCreateTablespaceStmt(start, false, false, false, true)
+				}
+			}
 		}
 		// Check for DIMENSION, FLASHBACK ARCHIVE
 		if adminStmt := p.parseCreateAdminObject(start); adminStmt != nil {

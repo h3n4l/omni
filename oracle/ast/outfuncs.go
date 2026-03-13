@@ -340,6 +340,26 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeAssociateStatisticsStmt(sb, n)
 	case *DisassociateStatisticsStmt:
 		writeDisassociateStatisticsStmt(sb, n)
+	case *CreateTablespaceStmt:
+		writeCreateTablespaceStmt(sb, n)
+	case *CreateClusterStmt:
+		writeCreateClusterStmt(sb, n)
+	case *CreateDimensionStmt:
+		writeCreateDimensionStmt(sb, n)
+	case *DatafileClause:
+		writeDatafileClause(sb, n)
+	case *AutoextendClause:
+		writeAutoextendClause(sb, n)
+	case *ClusterColumn:
+		writeClusterColumn(sb, n)
+	case *DimensionLevel:
+		writeDimensionLevel(sb, n)
+	case *DimensionHierarchy:
+		writeDimensionHierarchy(sb, n)
+	case *DimensionJoinKey:
+		writeDimensionJoinKey(sb, n)
+	case *DimensionAttribute:
+		writeDimensionAttribute(sb, n)
 
 	// PL/SQL nodes
 	case *PLSQLBlock:
@@ -3545,6 +3565,313 @@ func writePLSQLCall(sb *strings.Builder, n *PLSQLCall) {
 	if n.Name != nil {
 		sb.WriteString(" :name ")
 		writeNode(sb, n.Name)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeCreateTablespaceStmt(sb *strings.Builder, n *CreateTablespaceStmt) {
+	sb.WriteString("{CREATE_TABLESPACE")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.Bigfile {
+		sb.WriteString(" :bigfile true")
+	}
+	if n.Smallfile {
+		sb.WriteString(" :smallfile true")
+	}
+	if n.Temporary {
+		sb.WriteString(" :temporary true")
+	}
+	if n.Undo {
+		sb.WriteString(" :undo true")
+	}
+	if len(n.Datafiles) > 0 {
+		sb.WriteString(" :datafiles (")
+		for i, d := range n.Datafiles {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, d)
+		}
+		sb.WriteString(")")
+	}
+	if n.Size != "" {
+		sb.WriteString(fmt.Sprintf(" :size %q", n.Size))
+	}
+	if n.Autoextend != nil {
+		sb.WriteString(" :autoextend ")
+		writeNode(sb, n.Autoextend)
+	}
+	if n.Logging != "" {
+		sb.WriteString(fmt.Sprintf(" :logging %q", n.Logging))
+	}
+	if n.Online {
+		sb.WriteString(" :online true")
+	}
+	if n.Offline {
+		sb.WriteString(" :offline true")
+	}
+	if n.Extent != "" {
+		sb.WriteString(fmt.Sprintf(" :extent %q", n.Extent))
+	}
+	if n.Segment != "" {
+		sb.WriteString(fmt.Sprintf(" :segment %q", n.Segment))
+	}
+	if n.Blocksize != "" {
+		sb.WriteString(fmt.Sprintf(" :blocksize %q", n.Blocksize))
+	}
+	if n.Retention != "" {
+		sb.WriteString(fmt.Sprintf(" :retention %q", n.Retention))
+	}
+	if n.Encryption != "" {
+		sb.WriteString(fmt.Sprintf(" :encryption %q", n.Encryption))
+	}
+	if n.Compress != "" {
+		sb.WriteString(fmt.Sprintf(" :compress %q", n.Compress))
+	}
+	if n.MaxSize != "" {
+		sb.WriteString(fmt.Sprintf(" :maxsize %q", n.MaxSize))
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeDatafileClause(sb *strings.Builder, n *DatafileClause) {
+	sb.WriteString("{DATAFILE")
+	if n.Filename != "" {
+		sb.WriteString(fmt.Sprintf(" :filename %q", n.Filename))
+	}
+	if n.Size != "" {
+		sb.WriteString(fmt.Sprintf(" :size %q", n.Size))
+	}
+	if n.Reuse {
+		sb.WriteString(" :reuse true")
+	}
+	if n.Autoextend != nil {
+		sb.WriteString(" :autoextend ")
+		writeNode(sb, n.Autoextend)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeAutoextendClause(sb *strings.Builder, n *AutoextendClause) {
+	sb.WriteString("{AUTOEXTEND")
+	if n.On {
+		sb.WriteString(" :on true")
+	}
+	if n.Next != "" {
+		sb.WriteString(fmt.Sprintf(" :next %q", n.Next))
+	}
+	if n.MaxSize != "" {
+		sb.WriteString(fmt.Sprintf(" :maxsize %q", n.MaxSize))
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeCreateClusterStmt(sb *strings.Builder, n *CreateClusterStmt) {
+	sb.WriteString("{CREATE_CLUSTER")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if len(n.Columns) > 0 {
+		sb.WriteString(" :columns (")
+		for i, c := range n.Columns {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, c)
+		}
+		sb.WriteString(")")
+	}
+	if n.PctFree != nil {
+		sb.WriteString(fmt.Sprintf(" :pctfree %d", *n.PctFree))
+	}
+	if n.PctUsed != nil {
+		sb.WriteString(fmt.Sprintf(" :pctused %d", *n.PctUsed))
+	}
+	if n.InitTrans != nil {
+		sb.WriteString(fmt.Sprintf(" :initrans %d", *n.InitTrans))
+	}
+	if n.Size != "" {
+		sb.WriteString(fmt.Sprintf(" :size %q", n.Size))
+	}
+	if n.Tablespace != "" {
+		sb.WriteString(fmt.Sprintf(" :tablespace %q", n.Tablespace))
+	}
+	if n.IsIndex {
+		sb.WriteString(" :isIndex true")
+	}
+	if n.IsHash {
+		sb.WriteString(" :isHash true")
+	}
+	if n.HashKeys != "" {
+		sb.WriteString(fmt.Sprintf(" :hashkeys %q", n.HashKeys))
+	}
+	if n.SingleTable {
+		sb.WriteString(" :singleTable true")
+	}
+	if n.HashExpr != nil {
+		sb.WriteString(" :hashExpr ")
+		writeNode(sb, n.HashExpr)
+	}
+	if n.Cache {
+		sb.WriteString(" :cache true")
+	}
+	if n.NoCache {
+		sb.WriteString(" :nocache true")
+	}
+	if n.Parallel != "" {
+		sb.WriteString(fmt.Sprintf(" :parallel %q", n.Parallel))
+	}
+	if n.RowDep {
+		sb.WriteString(" :rowdep true")
+	}
+	if n.NoRowDep {
+		sb.WriteString(" :norowdep true")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeClusterColumn(sb *strings.Builder, n *ClusterColumn) {
+	sb.WriteString("{CLUSTER_COL")
+	sb.WriteString(fmt.Sprintf(" :name %q", n.Name))
+	if n.DataType != nil {
+		sb.WriteString(" :datatype ")
+		writeNode(sb, n.DataType)
+	}
+	if n.Sort {
+		sb.WriteString(" :sort true")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeCreateDimensionStmt(sb *strings.Builder, n *CreateDimensionStmt) {
+	sb.WriteString("{CREATE_DIMENSION")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if len(n.Levels) > 0 {
+		sb.WriteString(" :levels (")
+		for i, l := range n.Levels {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, l)
+		}
+		sb.WriteString(")")
+	}
+	if len(n.Hierarchies) > 0 {
+		sb.WriteString(" :hierarchies (")
+		for i, h := range n.Hierarchies {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, h)
+		}
+		sb.WriteString(")")
+	}
+	if len(n.Attributes) > 0 {
+		sb.WriteString(" :attributes (")
+		for i, a := range n.Attributes {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, a)
+		}
+		sb.WriteString(")")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeDimensionLevel(sb *strings.Builder, n *DimensionLevel) {
+	sb.WriteString("{DIM_LEVEL")
+	sb.WriteString(fmt.Sprintf(" :name %q", n.Name))
+	if len(n.Columns) > 0 {
+		sb.WriteString(" :columns (")
+		for i, c := range n.Columns {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, c)
+		}
+		sb.WriteString(")")
+	}
+	if n.SkipWhenNull {
+		sb.WriteString(" :skipWhenNull true")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeDimensionHierarchy(sb *strings.Builder, n *DimensionHierarchy) {
+	sb.WriteString("{DIM_HIERARCHY")
+	sb.WriteString(fmt.Sprintf(" :name %q", n.Name))
+	if len(n.Levels) > 0 {
+		sb.WriteString(" :levels (")
+		for i, l := range n.Levels {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			sb.WriteString(fmt.Sprintf("%q", l))
+		}
+		sb.WriteString(")")
+	}
+	if len(n.JoinKeys) > 0 {
+		sb.WriteString(" :joinKeys (")
+		for i, j := range n.JoinKeys {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, j)
+		}
+		sb.WriteString(")")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeDimensionJoinKey(sb *strings.Builder, n *DimensionJoinKey) {
+	sb.WriteString("{DIM_JOIN_KEY")
+	if len(n.ChildKeys) > 0 {
+		sb.WriteString(" :childKeys (")
+		for i, k := range n.ChildKeys {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, k)
+		}
+		sb.WriteString(")")
+	}
+	sb.WriteString(fmt.Sprintf(" :parentLevel %q", n.ParentLevel))
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeDimensionAttribute(sb *strings.Builder, n *DimensionAttribute) {
+	sb.WriteString("{DIM_ATTR")
+	sb.WriteString(fmt.Sprintf(" :attrName %q", n.AttrName))
+	if n.LevelName != "" {
+		sb.WriteString(fmt.Sprintf(" :levelName %q", n.LevelName))
+	}
+	if len(n.Columns) > 0 {
+		sb.WriteString(" :columns (")
+		for i, c := range n.Columns {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, c)
+		}
+		sb.WriteString(")")
 	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
