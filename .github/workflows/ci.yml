@@ -19,6 +19,11 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
 
+      - name: Check generated code is up to date
+        run: |
+          go generate ./pg/ast/...
+          git diff --exit-code pg/ast/walk_generated.go
+
       - name: Build
         run: go build ./...
 
