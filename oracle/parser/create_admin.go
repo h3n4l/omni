@@ -109,6 +109,9 @@ func (p *Parser) parseCreateAdminObject(start int) nodes.StmtNode {
 					p.advance()
 					return p.parseCreateProfileStmt(start, true)
 				}
+			case "DISKGROUP":
+				p.advance()
+				return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_DISKGROUP, start)
 			}
 		}
 		return nil
@@ -179,6 +182,9 @@ func (p *Parser) parseDropAdminObject(start int) nodes.StmtNode {
 					p.advance()
 				}
 				return p.parseAdminDDLStmt("DROP", nodes.OBJECT_FLASHBACK_ARCHIVE, start)
+			case "DISKGROUP":
+				p.advance()
+				return p.parseAdminDDLStmt("DROP", nodes.OBJECT_DISKGROUP, start)
 			}
 		}
 		return nil
@@ -931,6 +937,9 @@ func (p *Parser) parseAlterAdminObject(start int) nodes.StmtNode {
 			case "DIMENSION":
 				p.advance()
 				return p.parseAdminDDLStmt("ALTER", nodes.OBJECT_DIMENSION, start)
+			case "DISKGROUP":
+				p.advance()
+				return p.parseAdminDDLStmt("ALTER", nodes.OBJECT_DISKGROUP, start)
 			}
 		}
 		return nil

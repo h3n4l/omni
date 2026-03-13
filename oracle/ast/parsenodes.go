@@ -93,6 +93,7 @@ const (
 	OBJECT_DATABASE
 	OBJECT_CONTROLFILE
 	OBJECT_DATABASE_DICTIONARY
+	OBJECT_DISKGROUP
 )
 
 // ConstraintType represents constraint types.

@@ -1997,3 +1997,103 @@ func TestParseAlterDatabaseLinkStillWorks(t *testing.T) {
 		t.Errorf("expected OBJECT_DATABASE_LINK, got %d", stmt.ObjectType)
 	}
 }
+
+// TestParseCreateDiskgroup tests CREATE DISKGROUP statements.
+func TestParseCreateDiskgroup(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		{"basic", "CREATE DISKGROUP dg1 DISK '/dev/sda1' NAME disk1"},
+		{"normal_redundancy", "CREATE DISKGROUP dg1 NORMAL REDUNDANCY DISK '/dev/sda1', '/dev/sdb1'"},
+		{"high_redundancy", "CREATE DISKGROUP dg1 HIGH REDUNDANCY DISK '/dev/sda1', '/dev/sdb1', '/dev/sdc1'"},
+		{"external_redundancy", "CREATE DISKGROUP dg1 EXTERNAL REDUNDANCY DISK '/dev/sda1'"},
+		{"with_failgroup", "CREATE DISKGROUP dg1 NORMAL REDUNDANCY FAILGROUP fg1 DISK '/dev/sda1' FAILGROUP fg2 DISK '/dev/sdb1'"},
+		{"with_attribute", "CREATE DISKGROUP dg1 DISK '/dev/sda1' ATTRIBUTE 'compatible.asm' = '19.0'"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() != 1 {
+				t.Fatalf("expected 1 statement, got %d", result.Len())
+			}
+			raw := result.Items[0].(*ast.RawStmt)
+			stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+			if !ok {
+				t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+			}
+			if stmt.Action != "CREATE" {
+				t.Errorf("expected action CREATE, got %q", stmt.Action)
+			}
+			if stmt.ObjectType != ast.OBJECT_DISKGROUP {
+				t.Errorf("expected OBJECT_DISKGROUP, got %d", stmt.ObjectType)
+			}
+		})
+	}
+}
+
+// TestParseAlterDiskgroup tests ALTER DISKGROUP statements.
+func TestParseAlterDiskgroup(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		{"add_disk", "ALTER DISKGROUP dg1 ADD DISK '/dev/sdc1' NAME disk3"},
+		{"drop_disk", "ALTER DISKGROUP dg1 DROP DISK disk2"},
+		{"resize_disk", "ALTER DISKGROUP dg1 RESIZE DISK disk1 SIZE 500M"},
+		{"rebalance", "ALTER DISKGROUP dg1 REBALANCE POWER 5"},
+		{"mount", "ALTER DISKGROUP dg1 MOUNT"},
+		{"dismount", "ALTER DISKGROUP dg1 DISMOUNT"},
+		{"check_all", "ALTER DISKGROUP dg1 CHECK ALL"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() != 1 {
+				t.Fatalf("expected 1 statement, got %d", result.Len())
+			}
+			raw := result.Items[0].(*ast.RawStmt)
+			stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+			if !ok {
+				t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+			}
+			if stmt.Action != "ALTER" {
+				t.Errorf("expected action ALTER, got %q", stmt.Action)
+			}
+			if stmt.ObjectType != ast.OBJECT_DISKGROUP {
+				t.Errorf("expected OBJECT_DISKGROUP, got %d", stmt.ObjectType)
+			}
+		})
+	}
+}
+
+// TestParseDropDiskgroup tests DROP DISKGROUP statements.
+func TestParseDropDiskgroup(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		{"basic", "DROP DISKGROUP dg1"},
+		{"force", "DROP DISKGROUP dg1 FORCE"},
+		{"including_contents", "DROP DISKGROUP dg1 INCLUDING CONTENTS"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() != 1 {
+				t.Fatalf("expected 1 statement, got %d", result.Len())
+			}
+			raw := result.Items[0].(*ast.RawStmt)
+			stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+			if !ok {
+				t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+			}
+			if stmt.Action != "DROP" {
+				t.Errorf("expected action DROP, got %q", stmt.Action)
+			}
+			if stmt.ObjectType != ast.OBJECT_DISKGROUP {
+				t.Errorf("expected OBJECT_DISKGROUP, got %d", stmt.ObjectType)
+			}
+		})
+	}
+}

@@ -1391,7 +1391,7 @@
       "id": 62,
       "name": "diskgroup",
       "file": "database.go",
-      "status": "pending",
+      "status": "done",
       "description": "New: CREATE DISKGROUP, ALTER DISKGROUP, DROP DISKGROUP. ASM disk group management.",
       "rules": [
         "create_diskgroup_stmt",
