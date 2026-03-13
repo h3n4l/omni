@@ -2396,6 +2396,39 @@ type ServiceBrokerStmt struct {
 func (n *ServiceBrokerStmt) nodeTag()  {}
 func (n *ServiceBrokerStmt) stmtNode() {}
 
+// ReceiveStmt represents a RECEIVE statement with structured fields.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/receive-transact-sql
+//
+//	RECEIVE [ TOP ( n ) ]
+//	    <column_specifier> [ ,...n ]
+//	    FROM <queue>
+//	    [ INTO table_variable ]
+//	    [ WHERE { conversation_handle = @handle | conversation_group_id = @group_id } ]
+type ReceiveStmt struct {
+	Top         ExprNode   // optional TOP (n) expression
+	Columns     *List      // list of ReceiveColumn nodes, or nil for *
+	AllColumns  bool       // true if RECEIVE *
+	Queue       *TableRef  // FROM queue
+	IntoVar     string     // INTO @table_variable
+	WhereClause ExprNode   // WHERE condition
+	Loc         Loc
+}
+
+func (n *ReceiveStmt) nodeTag()  {}
+func (n *ReceiveStmt) stmtNode() {}
+
+// ReceiveColumn represents a column entry in a RECEIVE statement.
+//
+//	{ column_name | expression } [ [ AS ] column_alias ]
+type ReceiveColumn struct {
+	Expr  ExprNode // column expression
+	Alias string   // optional alias (with or without AS)
+	Loc   Loc
+}
+
+func (n *ReceiveColumn) nodeTag() {}
+
 // ---------- Batch 47: MISC UTILITY ----------
 
 // CheckpointStmt represents CHECKPOINT [checkpoint_duration].

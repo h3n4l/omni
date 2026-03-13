@@ -2,7 +2,6 @@
 package parser
 
 import (
-	"fmt"
 	"strings"
 
 	nodes "github.com/bytebase/omni/mssql/ast"
@@ -429,98 +428,79 @@ func (p *Parser) parseSendStmt() *nodes.ServiceBrokerStmt {
 //
 //	<queue> ::=
 //	{ database_name.schema_name.queue_name | schema_name.queue_name | queue_name }
-func (p *Parser) parseReceiveStmt() *nodes.ServiceBrokerStmt {
+func (p *Parser) parseReceiveStmt() *nodes.ReceiveStmt {
 	loc := p.pos()
 	p.advance() // consume RECEIVE
 
-	stmt := &nodes.ServiceBrokerStmt{
-		Action:     "RECEIVE",
-		ObjectType: "QUEUE",
-		Loc:        nodes.Loc{Start: loc},
+	stmt := &nodes.ReceiveStmt{
+		Loc: nodes.Loc{Start: loc},
 	}
-
-	var opts []nodes.Node
 
 	// TOP (n)
 	if p.cur.Type == kwTOP {
 		p.advance()
 		if p.cur.Type == '(' {
 			p.advance()
-			topExpr := p.parseExpr()
-			if topExpr != nil {
-				opts = append(opts, &nodes.String{Str: "TOP=" + exprToString(topExpr)})
-			}
+			stmt.Top = p.parseExpr()
 			p.match(')')
 		}
 	}
 
 	// column list: * or column_name [AS alias] [,...n]
 	if p.cur.Type == '*' {
-		opts = append(opts, &nodes.String{Str: "COLUMNS=*"})
+		stmt.AllColumns = true
 		p.advance()
 	} else {
-		var cols []string
+		var cols []nodes.Node
 		for p.cur.Type != kwFROM && p.cur.Type != tokEOF && p.cur.Type != ';' {
+			col := &nodes.ReceiveColumn{
+				Loc: nodes.Loc{Start: p.pos()},
+			}
 			// Parse column expression (simple: column_name or expression)
-			colStr := ""
 			if p.isIdentLike() || p.cur.Type == tokVARIABLE {
-				colStr = p.cur.Str
+				col.Expr = &nodes.ColumnRef{Column: p.cur.Str, Loc: nodes.Loc{Start: p.pos(), End: p.pos() + len(p.cur.Str)}}
 				p.advance()
 			} else {
-				// complex expression, skip until comma or AS or FROM
-				expr := p.parseExpr()
-				if expr != nil {
-					colStr = exprToString(expr)
-				}
+				col.Expr = p.parseExpr()
 			}
 			// optional alias: [AS] alias
 			if p.cur.Type == kwAS {
 				p.advance()
 				if p.isIdentLike() {
-					colStr += " AS " + p.cur.Str
+					col.Alias = p.cur.Str
 					p.advance()
 				}
 			} else if p.isIdentLike() && p.cur.Type != kwFROM && p.cur.Type != kwINTO && p.cur.Type != kwWHERE {
-				// alias without AS - be careful not to consume FROM/INTO/WHERE
-				colStr += " AS " + p.cur.Str
+				// alias without AS
+				col.Alias = p.cur.Str
 				p.advance()
 			}
-			if colStr != "" {
-				cols = append(cols, colStr)
+			col.Loc.End = p.pos()
+			if col.Expr != nil {
+				cols = append(cols, col)
 			}
 			if _, ok := p.match(','); !ok {
 				break
 			}
 		}
 		if len(cols) > 0 {
-			opts = append(opts, &nodes.String{Str: "COLUMNS=" + strings.Join(cols, ",")})
+			stmt.Columns = &nodes.List{Items: cols}
 		}
 	}
 
 	// FROM queue
 	if _, ok := p.match(kwFROM); ok {
-		ref := p.parseTableRef()
-		if ref != nil {
-			queueName := ref.Object
-			if ref.Schema != "" {
-				queueName = ref.Schema + "." + queueName
-			}
-			if ref.Database != "" {
-				queueName = ref.Database + "." + queueName
-			}
-			stmt.Name = ref.Object
-			opts = append(opts, &nodes.String{Str: "FROM=" + queueName})
-		}
+		stmt.Queue = p.parseTableRef()
 	}
 
 	// INTO table_variable
 	if p.cur.Type == kwINTO {
 		p.advance()
 		if p.cur.Type == tokVARIABLE {
-			opts = append(opts, &nodes.String{Str: "INTO=" + p.cur.Str})
+			stmt.IntoVar = p.cur.Str
 			p.advance()
 		} else if p.isIdentLike() {
-			opts = append(opts, &nodes.String{Str: "INTO=" + p.cur.Str})
+			stmt.IntoVar = p.cur.Str
 			p.advance()
 		}
 	}
@@ -528,51 +508,11 @@ func (p *Parser) parseReceiveStmt() *nodes.ServiceBrokerStmt {
 	// WHERE clause
 	if p.cur.Type == kwWHERE {
 		p.advance()
-		whereExpr := p.parseExpr()
-		if whereExpr != nil {
-			opts = append(opts, &nodes.String{Str: "WHERE"})
-		}
+		stmt.WhereClause = p.parseExpr()
 	}
 
-	if len(opts) > 0 {
-		stmt.Options = &nodes.List{Items: opts}
-	}
 	stmt.Loc.End = p.pos()
 	return stmt
-}
-
-// exprToString returns a simple string representation of an expression node.
-func exprToString(n nodes.Node) string {
-	if n == nil {
-		return ""
-	}
-	switch v := n.(type) {
-	case *nodes.String:
-		return v.Str
-	case *nodes.Integer:
-		return fmt.Sprintf("%d", v.Ival)
-	case *nodes.ColumnRef:
-		var parts []string
-		if v.Server != "" {
-			parts = append(parts, v.Server)
-		}
-		if v.Database != "" {
-			parts = append(parts, v.Database)
-		}
-		if v.Schema != "" {
-			parts = append(parts, v.Schema)
-		}
-		if v.Table != "" {
-			parts = append(parts, v.Table)
-		}
-		if v.Column != "" {
-			parts = append(parts, v.Column)
-		}
-		return strings.Join(parts, ".")
-	case *nodes.VariableRef:
-		return v.Name
-	}
-	return "expr"
 }
 
 // parseBeginConversationStmt parses BEGIN DIALOG CONVERSATION.

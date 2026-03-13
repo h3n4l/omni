@@ -6931,35 +6931,6 @@ func TestParseServiceBrokerDepth(t *testing.T) {
 			name: "begin_dialog_minimal",
 			sql:  "BEGIN DIALOG @dialog_handle FROM SERVICE [//MyApp/Initiator] TO SERVICE '//MyApp/Target'",
 		},
-		// RECEIVE - column list and INTO
-		{
-			name: "receive_star",
-			sql:  "RECEIVE * FROM ExpenseQueue",
-		},
-		{
-			name: "receive_columns",
-			sql:  "RECEIVE conversation_handle, message_type_name, message_body FROM ExpenseQueue",
-		},
-		{
-			name: "receive_top",
-			sql:  "RECEIVE TOP (1) * FROM ExpenseQueue",
-		},
-		{
-			name: "receive_into",
-			sql:  "RECEIVE TOP (1) conversation_handle, message_body FROM ExpenseQueue INTO @tableVar",
-		},
-		{
-			name: "receive_where_handle",
-			sql:  "RECEIVE * FROM ExpenseQueue WHERE conversation_handle = @handle",
-		},
-		{
-			name: "receive_where_group",
-			sql:  "RECEIVE * FROM ExpenseQueue WHERE conversation_group_id = @group_id",
-		},
-		{
-			name: "receive_with_alias",
-			sql:  "RECEIVE message_type_name AS MsgType, message_body AS Body FROM ExpenseQueue",
-		},
 		// CREATE CONTRACT - message type definitions
 		{
 			name: "contract_single_initiator",
@@ -7067,6 +7038,118 @@ func TestParseServiceBrokerDepth(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestParseReceiveColumnListDepth tests structured RECEIVE column list parsing (batch 145).
+func TestParseReceiveColumnListDepth(t *testing.T) {
+	t.Run("receive_column_structured", func(t *testing.T) {
+		sql := "RECEIVE conversation_handle, message_type_name, message_body FROM ExpenseQueue"
+		result := ParseAndCheck(t, sql)
+		if result.Len() == 0 {
+			t.Fatalf("Parse(%q): no statements returned", sql)
+		}
+		stmt, ok := result.Items[0].(*ast.ReceiveStmt)
+		if !ok {
+			t.Fatalf("expected *ReceiveStmt, got %T", result.Items[0])
+		}
+		if stmt.AllColumns {
+			t.Errorf("expected AllColumns=false")
+		}
+		if stmt.Columns == nil || stmt.Columns.Len() != 3 {
+			t.Fatalf("expected 3 columns, got %d", stmt.Columns.Len())
+		}
+		col0, ok := stmt.Columns.Items[0].(*ast.ReceiveColumn)
+		if !ok {
+			t.Fatalf("expected *ReceiveColumn, got %T", stmt.Columns.Items[0])
+		}
+		if col0.Alias != "" {
+			t.Errorf("expected no alias for col0, got %q", col0.Alias)
+		}
+		if stmt.Queue == nil || stmt.Queue.Object != "ExpenseQueue" {
+			t.Errorf("expected queue=ExpenseQueue")
+		}
+		checkLocation(t, sql, "ReceiveStmt", stmt.Loc)
+	})
+
+	t.Run("receive_column_alias_structured", func(t *testing.T) {
+		sql := "RECEIVE message_type_name AS MsgType, message_body AS Body FROM ExpenseQueue"
+		result := ParseAndCheck(t, sql)
+		if result.Len() == 0 {
+			t.Fatalf("Parse(%q): no statements returned", sql)
+		}
+		stmt, ok := result.Items[0].(*ast.ReceiveStmt)
+		if !ok {
+			t.Fatalf("expected *ReceiveStmt, got %T", result.Items[0])
+		}
+		if stmt.Columns == nil || stmt.Columns.Len() != 2 {
+			t.Fatalf("expected 2 columns, got %d", stmt.Columns.Len())
+		}
+		col0, ok := stmt.Columns.Items[0].(*ast.ReceiveColumn)
+		if !ok {
+			t.Fatalf("expected *ReceiveColumn, got %T", stmt.Columns.Items[0])
+		}
+		if col0.Alias != "MsgType" {
+			t.Errorf("expected alias 'MsgType', got %q", col0.Alias)
+		}
+		col1, ok := stmt.Columns.Items[1].(*ast.ReceiveColumn)
+		if !ok {
+			t.Fatalf("expected *ReceiveColumn, got %T", stmt.Columns.Items[1])
+		}
+		if col1.Alias != "Body" {
+			t.Errorf("expected alias 'Body', got %q", col1.Alias)
+		}
+	})
+
+	t.Run("receive_star", func(t *testing.T) {
+		sql := "RECEIVE * FROM ExpenseQueue"
+		result := ParseAndCheck(t, sql)
+		stmt, ok := result.Items[0].(*ast.ReceiveStmt)
+		if !ok {
+			t.Fatalf("expected *ReceiveStmt, got %T", result.Items[0])
+		}
+		if !stmt.AllColumns {
+			t.Errorf("expected AllColumns=true")
+		}
+	})
+
+	t.Run("receive_top", func(t *testing.T) {
+		sql := "RECEIVE TOP (1) * FROM ExpenseQueue"
+		result := ParseAndCheck(t, sql)
+		stmt, ok := result.Items[0].(*ast.ReceiveStmt)
+		if !ok {
+			t.Fatalf("expected *ReceiveStmt, got %T", result.Items[0])
+		}
+		if stmt.Top == nil {
+			t.Errorf("expected Top to be set")
+		}
+		if !stmt.AllColumns {
+			t.Errorf("expected AllColumns=true")
+		}
+	})
+
+	t.Run("receive_into", func(t *testing.T) {
+		sql := "RECEIVE TOP (1) conversation_handle, message_body FROM ExpenseQueue INTO @tableVar"
+		result := ParseAndCheck(t, sql)
+		stmt, ok := result.Items[0].(*ast.ReceiveStmt)
+		if !ok {
+			t.Fatalf("expected *ReceiveStmt, got %T", result.Items[0])
+		}
+		if stmt.IntoVar != "@tableVar" {
+			t.Errorf("expected IntoVar='@tableVar', got %q", stmt.IntoVar)
+		}
+	})
+
+	t.Run("receive_where", func(t *testing.T) {
+		sql := "RECEIVE * FROM ExpenseQueue WHERE conversation_handle = @handle"
+		result := ParseAndCheck(t, sql)
+		stmt, ok := result.Items[0].(*ast.ReceiveStmt)
+		if !ok {
+			t.Fatalf("expected *ReceiveStmt, got %T", result.Items[0])
+		}
+		if stmt.WhereClause == nil {
+			t.Errorf("expected WhereClause to be set")
+		}
+	})
 }
 
 // TestParseWindowFrame tests ROWS/RANGE/GROUPS window frame specification in OVER clause (batch 73).

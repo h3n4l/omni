@@ -3117,7 +3117,7 @@
       "id": 145,
       "name": "receive_column_list_depth",
       "file": "service_broker.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 72 gap: replace string concatenation for RECEIVE column list (lines 450-496) with structured ReceiveColumn AST nodes containing expression, optional alias, and optional INTO. Currently builds COLUMNS=col1 AS alias,col2 as a flat string, losing AST structure. Also replace FROM=, INTO=, TOP= string formatting with typed ReceiveOption nodes.",
       "rules": ["parseReceiveColumnListStructured"],
       "depends_on": [72],

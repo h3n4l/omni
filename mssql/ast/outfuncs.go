@@ -344,6 +344,10 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeAlterAssemblyStmt(sb, n)
 	case *ServiceBrokerStmt:
 		writeServiceBrokerStmt(sb, n)
+	case *ReceiveStmt:
+		writeReceiveStmt(sb, n)
+	case *ReceiveColumn:
+		writeReceiveColumn(sb, n)
 	case *CheckpointStmt:
 		writeCheckpointStmt(sb, n)
 	case *ReconfigureStmt:
@@ -3176,6 +3180,45 @@ func writeServiceBrokerStmt(sb *strings.Builder, n *ServiceBrokerStmt) {
 	if n.Options != nil {
 		sb.WriteString(" :options ")
 		writeNode(sb, n.Options)
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeReceiveStmt(sb *strings.Builder, n *ReceiveStmt) {
+	sb.WriteString("{RECEIVE")
+	if n.Top != nil {
+		sb.WriteString(" :top ")
+		writeNode(sb, n.Top)
+	}
+	if n.AllColumns {
+		sb.WriteString(" :allColumns true")
+	}
+	if n.Columns != nil {
+		sb.WriteString(" :columns ")
+		writeNode(sb, n.Columns)
+	}
+	if n.Queue != nil {
+		sb.WriteString(" :queue ")
+		writeNode(sb, n.Queue)
+	}
+	if n.IntoVar != "" {
+		fmt.Fprintf(sb, " :intoVar \"%s\"", escapeString(n.IntoVar))
+	}
+	if n.WhereClause != nil {
+		sb.WriteString(" :where ")
+		writeNode(sb, n.WhereClause)
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeReceiveColumn(sb *strings.Builder, n *ReceiveColumn) {
+	sb.WriteString("{RECEIVE_COLUMN")
+	if n.Expr != nil {
+		sb.WriteString(" :expr ")
+		writeNode(sb, n.Expr)
+	}
+	if n.Alias != "" {
+		fmt.Fprintf(sb, " :alias \"%s\"", escapeString(n.Alias))
 	}
 	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
 }
