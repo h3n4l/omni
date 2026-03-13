@@ -15096,3 +15096,126 @@ func TestParseAlterDatabaseUnknownDepth(t *testing.T) {
 		}
 	})
 }
+
+// TestParseEndpointRemainingDepth tests batch 133: structured endpoint option parsing,
+// removal of skipParenthesized, and elimination of generic p.advance() skips.
+func TestParseEndpointRemainingDepth(t *testing.T) {
+	t.Run("generic_value_structured", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			sql      string
+			wantOpts []string
+		}{
+			{
+				"generic_protocol_parenthesized_value",
+				"CREATE ENDPOINT ep1 AS CUSTOM_PROTO (AUTH = (BASIC, DIGEST), PORT = 8080) FOR TSQL ()",
+				[]string{
+					"AS=CUSTOM_PROTO",
+					"AUTH=BASIC,DIGEST",
+					"PORT=8080",
+					"FOR=TSQL",
+				},
+			},
+			{
+				"generic_protocol_nested_parens_value",
+				"CREATE ENDPOINT ep1 AS CUSTOM_PROTO (METHODS = (GET, POST, PUT)) FOR TSQL ()",
+				[]string{
+					"AS=CUSTOM_PROTO",
+					"METHODS=GET,POST,PUT",
+					"FOR=TSQL",
+				},
+			},
+			{
+				"generic_protocol_flag_option",
+				"CREATE ENDPOINT ep1 AS CUSTOM_PROTO (VERBOSE) FOR TSQL ()",
+				[]string{
+					"AS=CUSTOM_PROTO",
+					"VERBOSE",
+					"FOR=TSQL",
+				},
+			},
+			{
+				"endpoint_payload_unknown_option_key_value",
+				"CREATE ENDPOINT ep1 AS TCP (LISTENER_PORT = 4022) FOR SERVICE_BROKER (AUTHENTICATION = WINDOWS, CUSTOM_OPT = myval)",
+				[]string{
+					"AS=TCP",
+					"LISTENER_PORT=4022",
+					"FOR=SERVICE_BROKER",
+					"AUTHENTICATION=WINDOWS",
+					"CUSTOM_OPT=MYVAL",
+				},
+			},
+			{
+				"endpoint_options_unknown_toplevel_keyword",
+				"CREATE ENDPOINT ep1 AFFINITY = ADMIN AS TCP (LISTENER_PORT = 4022) FOR TSQL ()",
+				[]string{
+					"AFFINITY=ADMIN",
+					"AS=TCP",
+					"LISTENER_PORT=4022",
+					"FOR=TSQL",
+				},
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.SecurityStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected *SecurityStmt, got %T", tt.sql, result.Items[0])
+				}
+				if stmt.Options == nil {
+					t.Fatalf("Parse(%q): options is nil", tt.sql)
+				}
+				for _, want := range tt.wantOpts {
+					found := false
+					for _, item := range stmt.Options.Items {
+						if s, ok := item.(*ast.String); ok && s.Str == want {
+							found = true
+							break
+						}
+					}
+					if !found {
+						var gotStrs []string
+						for _, item := range stmt.Options.Items {
+							gotStrs = append(gotStrs, item.(*ast.String).Str)
+						}
+						t.Errorf("Parse(%q): expected option %q not found in %v", tt.sql, want, gotStrs)
+					}
+				}
+				checkLocation(t, tt.sql, "SecurityStmt", stmt.Loc)
+			})
+		}
+	})
+
+	t.Run("no_skip_parens", func(t *testing.T) {
+		// Verify that skipParenthesized is removed by confirming these still parse correctly
+		tests := []struct {
+			name string
+			sql  string
+		}{
+			{
+				"alter_endpoint_basic",
+				"ALTER ENDPOINT ep1 STATE = STARTED AS TCP (LISTENER_PORT = 5022) FOR SERVICE_BROKER (AUTHENTICATION = WINDOWS)",
+			},
+			{
+				"create_endpoint_db_mirroring_full",
+				"CREATE ENDPOINT ep1 AS TCP (LISTENER_PORT = 7022) FOR DATABASE_MIRRORING (AUTHENTICATION = CERTIFICATE MyCert, ENCRYPTION = REQUIRED ALGORITHM AES, ROLE = ALL)",
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+				}
+				_, ok := result.Items[0].(*ast.SecurityStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected *SecurityStmt, got %T", tt.sql, result.Items[0])
+				}
+			})
+		}
+	})
+}

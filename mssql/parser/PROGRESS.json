@@ -2909,7 +2909,7 @@
       "id": 133,
       "name": "endpoint_remaining_depth",
       "file": "endpoint.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 116 gap: replace parseNestedParens() call at line 299 in parseEndpointGenericProtocolOptions() with structured key=value pair parsing. Remove skipParenthesized() function (lines 602-620) and replace its usage. Fix generic p.advance() skips for unknown tokens at lines 212-213 in parseEndpointOptions() and line 490 in parseEndpointPayloadOptions().",
       "rules": [
         "parseEndpointGenericValueStructured",

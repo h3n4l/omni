@@ -209,8 +209,28 @@ func (p *Parser) parseEndpointOptions() *nodes.List {
 			}
 
 		default:
-			// Unknown token - skip
-			p.advance()
+			// Unknown top-level option as KEY = VALUE or bare keyword
+			if p.isIdentLike() {
+				key := strings.ToUpper(p.cur.Str)
+				p.advance()
+				if p.cur.Type == '=' {
+					p.advance()
+					if p.isIdentLike() || p.cur.Type == tokSCONST || p.cur.Type == tokICONST || p.cur.Type == tokFCONST {
+						val := strings.ToUpper(p.cur.Str)
+						if p.cur.Type == tokSCONST {
+							val = "'" + p.cur.Str + "'"
+						} else if p.cur.Type == tokICONST || p.cur.Type == tokFCONST {
+							val = p.cur.Str
+						}
+						opts = append(opts, &nodes.String{Str: key + "=" + val})
+						p.advance()
+					}
+				} else {
+					opts = append(opts, &nodes.String{Str: key})
+				}
+			} else {
+				p.advance()
+			}
 		}
 	}
 
@@ -295,9 +315,29 @@ func (p *Parser) parseEndpointGenericProtocolOptions(opts *[]nodes.Node) {
 			if p.cur.Type == '=' {
 				p.advance()
 				if p.cur.Type == '(' {
-					// Parenthesized value list
-					inner := p.parseNestedParens()
-					*opts = append(*opts, &nodes.String{Str: key + "=(" + inner + ")"})
+					// Parenthesized value list: ( val1, val2, ... )
+					p.advance() // consume '('
+					var vals []string
+					for p.cur.Type != ')' && p.cur.Type != tokEOF {
+						if p.cur.Type == ',' {
+							p.advance()
+							continue
+						}
+						if p.isIdentLike() || p.cur.Type == tokSCONST || p.cur.Type == tokICONST || p.cur.Type == tokFCONST {
+							val := strings.ToUpper(p.cur.Str)
+							if p.cur.Type == tokSCONST {
+								val = "'" + p.cur.Str + "'"
+							} else if p.cur.Type == tokICONST || p.cur.Type == tokFCONST {
+								val = p.cur.Str
+							}
+							vals = append(vals, val)
+							p.advance()
+						} else {
+							p.advance()
+						}
+					}
+					p.match(')') // consume ')'
+					*opts = append(*opts, &nodes.String{Str: key + "=" + strings.Join(vals, ",")})
 				} else if p.isIdentLike() || p.cur.Type == tokSCONST || p.cur.Type == tokICONST || p.cur.Type == tokFCONST {
 					val := strings.ToUpper(p.cur.Str)
 					if p.cur.Type == tokSCONST {
@@ -487,7 +527,28 @@ func (p *Parser) parseEndpointPayloadOptions(payloadType string, opts *[]nodes.N
 			}
 
 		default:
-			p.advance()
+			// Unknown payload option as KEY = VALUE or bare keyword
+			if p.isIdentLike() {
+				key := strings.ToUpper(p.cur.Str)
+				p.advance()
+				if p.cur.Type == '=' {
+					p.advance()
+					if p.isIdentLike() || p.cur.Type == tokSCONST || p.cur.Type == tokICONST || p.cur.Type == tokFCONST {
+						val := strings.ToUpper(p.cur.Str)
+						if p.cur.Type == tokSCONST {
+							val = "'" + p.cur.Str + "'"
+						} else if p.cur.Type == tokICONST || p.cur.Type == tokFCONST {
+							val = p.cur.Str
+						}
+						*opts = append(*opts, &nodes.String{Str: key + "=" + val})
+						p.advance()
+					}
+				} else {
+					*opts = append(*opts, &nodes.String{Str: key})
+				}
+			} else {
+				p.advance()
+			}
 		}
 	}
 
@@ -599,22 +660,3 @@ func (p *Parser) parseEndpointEncryption(payloadType string) string {
 	return val
 }
 
-// skipParenthesized skips a parenthesized block (including nested parens).
-func (p *Parser) skipParenthesized() {
-	if p.cur.Type != '(' {
-		return
-	}
-	p.advance()
-	depth := 1
-	for depth > 0 && p.cur.Type != tokEOF {
-		if p.cur.Type == '(' {
-			depth++
-		} else if p.cur.Type == ')' {
-			depth--
-		}
-		if depth > 0 {
-			p.advance()
-		}
-	}
-	p.match(')')
-}
