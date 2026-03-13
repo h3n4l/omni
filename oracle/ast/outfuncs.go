@@ -334,6 +334,14 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeAlterViewStmt(sb, n)
 	case *AlterSequenceStmt:
 		writeAlterSequenceStmt(sb, n)
+	case *AlterProcedureStmt:
+		writeAlterProcedureStmt(sb, n)
+	case *AlterFunctionStmt:
+		writeAlterFunctionStmt(sb, n)
+	case *AlterPackageStmt:
+		writeAlterPackageStmt(sb, n)
+	case *AlterTriggerStmt:
+		writeAlterTriggerStmt(sb, n)
 	case *SetRoleStmt:
 		writeSetRoleStmt(sb, n)
 	case *SetConstraintsStmt:
@@ -4069,6 +4077,108 @@ func writeAlterSequenceStmt(sb *strings.Builder, n *AlterSequenceStmt) {
 	}
 	if n.Session {
 		sb.WriteString(" :session true")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeCompileFields(sb *strings.Builder, compile bool, debug bool, reuseSettings bool, compilerParams []*SetParam) {
+	if compile {
+		sb.WriteString(" :compile true")
+	}
+	if debug {
+		sb.WriteString(" :debug true")
+	}
+	if reuseSettings {
+		sb.WriteString(" :reuseSettings true")
+	}
+	if len(compilerParams) > 0 {
+		sb.WriteString(" :compilerParams (")
+		for i, p := range compilerParams {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, p)
+		}
+		sb.WriteString(")")
+	}
+}
+
+func writeAlterProcedureStmt(sb *strings.Builder, n *AlterProcedureStmt) {
+	sb.WriteString("{ALTER_PROCEDURE")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.IfExists {
+		sb.WriteString(" :ifExists true")
+	}
+	writeCompileFields(sb, n.Compile, n.Debug, n.ReuseSettings, n.CompilerParams)
+	if n.Editionable {
+		sb.WriteString(" :editionable true")
+	}
+	if n.NonEditionable {
+		sb.WriteString(" :nonEditionable true")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeAlterFunctionStmt(sb *strings.Builder, n *AlterFunctionStmt) {
+	sb.WriteString("{ALTER_FUNCTION")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.IfExists {
+		sb.WriteString(" :ifExists true")
+	}
+	writeCompileFields(sb, n.Compile, n.Debug, n.ReuseSettings, n.CompilerParams)
+	if n.Editionable {
+		sb.WriteString(" :editionable true")
+	}
+	if n.NonEditionable {
+		sb.WriteString(" :nonEditionable true")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeAlterPackageStmt(sb *strings.Builder, n *AlterPackageStmt) {
+	sb.WriteString("{ALTER_PACKAGE")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	writeCompileFields(sb, n.Compile, n.Debug, n.ReuseSettings, n.CompilerParams)
+	if n.CompileTarget != "" {
+		sb.WriteString(fmt.Sprintf(" :compileTarget %q", n.CompileTarget))
+	}
+	if n.Editionable {
+		sb.WriteString(" :editionable true")
+	}
+	if n.NonEditionable {
+		sb.WriteString(" :nonEditionable true")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeAlterTriggerStmt(sb *strings.Builder, n *AlterTriggerStmt) {
+	sb.WriteString("{ALTER_TRIGGER")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.IfExists {
+		sb.WriteString(" :ifExists true")
+	}
+	if n.Action != "" {
+		sb.WriteString(fmt.Sprintf(" :action %q", n.Action))
+	}
+	writeCompileFields(sb, n.Action == "COMPILE", n.Debug, n.ReuseSettings, n.CompilerParams)
+	if n.NewName != "" {
+		sb.WriteString(fmt.Sprintf(" :newName %q", n.NewName))
 	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

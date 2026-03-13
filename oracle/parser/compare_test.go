@@ -1051,12 +1051,82 @@ func TestParseCreateMviewLog(t *testing.T) {
 
 func TestParseAlterProcedure(t *testing.T) {
 	tests := []string{
+		// ALTER PROCEDURE
 		"ALTER PROCEDURE my_proc COMPILE",
+		"ALTER PROCEDURE hr.my_proc COMPILE DEBUG",
+		"ALTER PROCEDURE my_proc COMPILE REUSE SETTINGS",
+		"ALTER PROCEDURE my_proc COMPILE DEBUG REUSE SETTINGS",
+		"ALTER PROCEDURE IF EXISTS my_proc COMPILE",
+		"ALTER PROCEDURE my_proc EDITIONABLE",
+		"ALTER PROCEDURE my_proc NONEDITIONABLE",
+		"ALTER PROCEDURE my_proc COMPILE PLSQL_OPTIMIZE_LEVEL = 2 REUSE SETTINGS",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseAlterFunction(t *testing.T) {
+	tests := []string{
 		"ALTER FUNCTION my_func COMPILE",
+		"ALTER FUNCTION hr.my_func COMPILE DEBUG",
+		"ALTER FUNCTION my_func COMPILE REUSE SETTINGS",
+		"ALTER FUNCTION IF EXISTS my_func COMPILE DEBUG REUSE SETTINGS",
+		"ALTER FUNCTION my_func EDITIONABLE",
+		"ALTER FUNCTION my_func NONEDITIONABLE",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseAlterPackage(t *testing.T) {
+	tests := []string{
+		"ALTER PACKAGE my_pkg COMPILE",
+		"ALTER PACKAGE hr.my_pkg COMPILE BODY",
+		"ALTER PACKAGE my_pkg COMPILE SPECIFICATION",
+		"ALTER PACKAGE my_pkg COMPILE PACKAGE",
+		"ALTER PACKAGE my_pkg COMPILE BODY DEBUG",
+		"ALTER PACKAGE my_pkg COMPILE BODY REUSE SETTINGS",
+		"ALTER PACKAGE my_pkg COMPILE BODY DEBUG REUSE SETTINGS",
+		"ALTER PACKAGE my_pkg EDITIONABLE",
+		"ALTER PACKAGE my_pkg NONEDITIONABLE",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseAlterTrigger(t *testing.T) {
+	tests := []string{
 		"ALTER TRIGGER my_trigger ENABLE",
 		"ALTER TRIGGER my_trigger DISABLE",
+		"ALTER TRIGGER hr.my_trigger ENABLE",
+		"ALTER TRIGGER my_trigger COMPILE",
+		"ALTER TRIGGER my_trigger COMPILE DEBUG",
+		"ALTER TRIGGER my_trigger COMPILE DEBUG REUSE SETTINGS",
+		"ALTER TRIGGER my_trigger RENAME TO new_trigger_name",
+		"ALTER TRIGGER IF EXISTS my_trigger ENABLE",
+		"ALTER TRIGGER my_trigger EDITIONABLE",
+		"ALTER TRIGGER my_trigger NONEDITIONABLE",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseAlterProcedureLegacy(t *testing.T) {
+	// Legacy tests that should still pass
+	tests := []string{
 		"ALTER TYPE my_type COMPILE",
-		"ALTER PACKAGE my_pkg COMPILE",
 		"ALTER MATERIALIZED VIEW mv1 COMPILE",
 	}
 	for _, sql := range tests {

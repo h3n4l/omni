@@ -2723,6 +2723,95 @@ func (n *AlterSequenceStmt) nodeTag()  {}
 func (n *AlterSequenceStmt) stmtNode() {}
 
 // ---------------------------------------------------------------------------
+// ALTER PROCEDURE / FUNCTION / PACKAGE / TRIGGER statements
+// ---------------------------------------------------------------------------
+
+// AlterProcedureStmt represents an ALTER PROCEDURE statement.
+//
+//	ALTER PROCEDURE [IF EXISTS] [schema.]procedure_name
+//	    { COMPILE [DEBUG] [compiler_parameters_clause ...] [REUSE SETTINGS] }
+//	    [ EDITIONABLE | NONEDITIONABLE ]
+type AlterProcedureStmt struct {
+	Name            *ObjectName  // procedure name
+	IfExists        bool         // IF EXISTS
+	Compile         bool         // COMPILE
+	Debug           bool         // COMPILE DEBUG
+	ReuseSettings   bool         // REUSE SETTINGS
+	CompilerParams  []*SetParam  // compiler_parameters_clause (name=value pairs)
+	Editionable     bool         // EDITIONABLE
+	NonEditionable  bool         // NONEDITIONABLE
+	Loc             Loc
+}
+
+func (n *AlterProcedureStmt) nodeTag()  {}
+func (n *AlterProcedureStmt) stmtNode() {}
+
+// AlterFunctionStmt represents an ALTER FUNCTION statement.
+//
+//	ALTER FUNCTION [IF EXISTS] [schema.]function_name
+//	    { COMPILE [DEBUG] [compiler_parameters_clause ...] [REUSE SETTINGS] }
+//	    [ EDITIONABLE | NONEDITIONABLE ]
+type AlterFunctionStmt struct {
+	Name            *ObjectName  // function name
+	IfExists        bool         // IF EXISTS
+	Compile         bool         // COMPILE
+	Debug           bool         // COMPILE DEBUG
+	ReuseSettings   bool         // REUSE SETTINGS
+	CompilerParams  []*SetParam  // compiler_parameters_clause (name=value pairs)
+	Editionable     bool         // EDITIONABLE
+	NonEditionable  bool         // NONEDITIONABLE
+	Loc             Loc
+}
+
+func (n *AlterFunctionStmt) nodeTag()  {}
+func (n *AlterFunctionStmt) stmtNode() {}
+
+// AlterPackageStmt represents an ALTER PACKAGE statement.
+//
+//	ALTER PACKAGE [schema.]package_name
+//	    { COMPILE [ PACKAGE | BODY | SPECIFICATION ] [DEBUG]
+//	      [compiler_parameters_clause ...] [REUSE SETTINGS] }
+//	    [ EDITIONABLE | NONEDITIONABLE ]
+type AlterPackageStmt struct {
+	Name            *ObjectName  // package name
+	Compile         bool         // COMPILE
+	CompileTarget   string       // "PACKAGE", "BODY", "SPECIFICATION", or "" (default)
+	Debug           bool         // COMPILE DEBUG
+	ReuseSettings   bool         // REUSE SETTINGS
+	CompilerParams  []*SetParam  // compiler_parameters_clause (name=value pairs)
+	Editionable     bool         // EDITIONABLE
+	NonEditionable  bool         // NONEDITIONABLE
+	Loc             Loc
+}
+
+func (n *AlterPackageStmt) nodeTag()  {}
+func (n *AlterPackageStmt) stmtNode() {}
+
+// AlterTriggerStmt represents an ALTER TRIGGER statement.
+//
+//	ALTER TRIGGER [IF EXISTS] [schema.]trigger_name
+//	  { ENABLE
+//	  | DISABLE
+//	  | COMPILE [DEBUG] [compiler_parameters_clause ...] [REUSE SETTINGS]
+//	  | RENAME TO new_name
+//	  | EDITIONABLE
+//	  | NONEDITIONABLE
+//	  }
+type AlterTriggerStmt struct {
+	Name            *ObjectName  // trigger name
+	IfExists        bool         // IF EXISTS
+	Action          string       // "ENABLE", "DISABLE", "COMPILE", "RENAME", "EDITIONABLE", "NONEDITIONABLE"
+	Debug           bool         // COMPILE DEBUG
+	ReuseSettings   bool         // REUSE SETTINGS
+	CompilerParams  []*SetParam  // compiler_parameters_clause (name=value pairs)
+	NewName         string       // RENAME TO new_name
+	Loc             Loc
+}
+
+func (n *AlterTriggerStmt) nodeTag()  {}
+func (n *AlterTriggerStmt) stmtNode() {}
+
+// ---------------------------------------------------------------------------
 // Star expression (SELECT *)
 // ---------------------------------------------------------------------------
 

@@ -32,15 +32,15 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 	case kwTABLE:
 		return p.parseAlterTableStmt(start)
 	case kwPROCEDURE:
-		return p.parseAlterGeneric(start, nodes.OBJECT_PROCEDURE)
+		return p.parseAlterProcedureStmt(start)
 	case kwFUNCTION:
-		return p.parseAlterGeneric(start, nodes.OBJECT_FUNCTION)
+		return p.parseAlterFunctionStmt(start)
 	case kwTRIGGER:
-		return p.parseAlterGeneric(start, nodes.OBJECT_TRIGGER)
+		return p.parseAlterTriggerStmt(start)
 	case kwTYPE:
 		return p.parseAlterGeneric(start, nodes.OBJECT_TYPE)
 	case kwPACKAGE:
-		return p.parseAlterGeneric(start, nodes.OBJECT_PACKAGE)
+		return p.parseAlterPackageStmt(start)
 	case kwMATERIALIZED:
 		// Check for MATERIALIZED ZONEMAP vs MATERIALIZED VIEW
 		p.advance() // consume MATERIALIZED
@@ -752,6 +752,251 @@ func (p *Parser) parseAlterSequenceStmt(start int) nodes.StmtNode {
 	}
 
 done:
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseCompileClause parses COMPILE [DEBUG] [compiler_parameters_clause ...] [REUSE SETTINGS].
+// Returns (debug, reuseSettings, compilerParams).
+func (p *Parser) parseCompileClause() (bool, bool, []*nodes.SetParam) {
+	var debug bool
+	var reuseSettings bool
+	var compilerParams []*nodes.SetParam
+
+	// Optional DEBUG
+	if p.isIdentLikeStr("DEBUG") {
+		debug = true
+		p.advance()
+	}
+
+	// Optional compiler_parameters_clause (name = value pairs) and REUSE SETTINGS
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		if p.isIdentLikeStr("REUSE") {
+			p.advance() // consume REUSE
+			if p.isIdentLikeStr("SETTINGS") {
+				p.advance() // consume SETTINGS
+			}
+			reuseSettings = true
+			break
+		}
+		// Check for compiler parameter: identifier = value
+		if p.isIdentLike() && p.peekNext().Type == '=' {
+			name := p.parseIdentifier()
+			p.advance() // consume '='
+			value := p.parseExpr()
+			compilerParams = append(compilerParams, &nodes.SetParam{
+				Name:  name,
+				Value: value,
+				Loc:   nodes.Loc{Start: p.pos(), End: p.pos()},
+			})
+			continue
+		}
+		break
+	}
+
+	return debug, reuseSettings, compilerParams
+}
+
+// parseAlterProcedureStmt parses an ALTER PROCEDURE statement.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/ALTER-PROCEDURE.html
+//
+//	ALTER PROCEDURE [IF EXISTS] [schema.]procedure_name
+//	    { COMPILE [DEBUG] [compiler_parameters_clause ...] [REUSE SETTINGS] }
+//	    [ EDITIONABLE | NONEDITIONABLE ]
+func (p *Parser) parseAlterProcedureStmt(start int) nodes.StmtNode {
+	p.advance() // consume PROCEDURE
+
+	stmt := &nodes.AlterProcedureStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// IF EXISTS
+	if p.cur.Type == kwIF {
+		if p.peekNext().Type == kwEXISTS {
+			stmt.IfExists = true
+			p.advance() // consume IF
+			p.advance() // consume EXISTS
+		}
+	}
+
+	stmt.Name = p.parseObjectName()
+
+	// Parse action
+	switch {
+	case p.isIdentLikeStr("COMPILE"):
+		stmt.Compile = true
+		p.advance() // consume COMPILE
+		stmt.Debug, stmt.ReuseSettings, stmt.CompilerParams = p.parseCompileClause()
+	case p.isIdentLikeStr("EDITIONABLE"):
+		stmt.Editionable = true
+		p.advance()
+	case p.isIdentLikeStr("NONEDITIONABLE"):
+		stmt.NonEditionable = true
+		p.advance()
+	default:
+		p.skipToSemicolon()
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseAlterFunctionStmt parses an ALTER FUNCTION statement.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/ALTER-FUNCTION.html
+//
+//	ALTER FUNCTION [IF EXISTS] [schema.]function_name
+//	    { COMPILE [DEBUG] [compiler_parameters_clause ...] [REUSE SETTINGS] }
+//	    [ EDITIONABLE | NONEDITIONABLE ]
+func (p *Parser) parseAlterFunctionStmt(start int) nodes.StmtNode {
+	p.advance() // consume FUNCTION
+
+	stmt := &nodes.AlterFunctionStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// IF EXISTS
+	if p.cur.Type == kwIF {
+		if p.peekNext().Type == kwEXISTS {
+			stmt.IfExists = true
+			p.advance() // consume IF
+			p.advance() // consume EXISTS
+		}
+	}
+
+	stmt.Name = p.parseObjectName()
+
+	// Parse action
+	switch {
+	case p.isIdentLikeStr("COMPILE"):
+		stmt.Compile = true
+		p.advance() // consume COMPILE
+		stmt.Debug, stmt.ReuseSettings, stmt.CompilerParams = p.parseCompileClause()
+	case p.isIdentLikeStr("EDITIONABLE"):
+		stmt.Editionable = true
+		p.advance()
+	case p.isIdentLikeStr("NONEDITIONABLE"):
+		stmt.NonEditionable = true
+		p.advance()
+	default:
+		p.skipToSemicolon()
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseAlterPackageStmt parses an ALTER PACKAGE statement.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/ALTER-PACKAGE.html
+//
+//	ALTER PACKAGE [schema.]package_name
+//	    { COMPILE [ PACKAGE | BODY | SPECIFICATION ] [DEBUG]
+//	      [compiler_parameters_clause ...] [REUSE SETTINGS] }
+//	    [ EDITIONABLE | NONEDITIONABLE ]
+func (p *Parser) parseAlterPackageStmt(start int) nodes.StmtNode {
+	p.advance() // consume PACKAGE
+
+	stmt := &nodes.AlterPackageStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	stmt.Name = p.parseObjectName()
+
+	// Parse action
+	switch {
+	case p.isIdentLikeStr("COMPILE"):
+		stmt.Compile = true
+		p.advance() // consume COMPILE
+
+		// Optional PACKAGE | BODY | SPECIFICATION
+		switch {
+		case p.cur.Type == kwPACKAGE:
+			stmt.CompileTarget = "PACKAGE"
+			p.advance()
+		case p.cur.Type == kwBODY:
+			stmt.CompileTarget = "BODY"
+			p.advance()
+		case p.isIdentLikeStr("SPECIFICATION"):
+			stmt.CompileTarget = "SPECIFICATION"
+			p.advance()
+		}
+
+		stmt.Debug, stmt.ReuseSettings, stmt.CompilerParams = p.parseCompileClause()
+	case p.isIdentLikeStr("EDITIONABLE"):
+		stmt.Editionable = true
+		p.advance()
+	case p.isIdentLikeStr("NONEDITIONABLE"):
+		stmt.NonEditionable = true
+		p.advance()
+	default:
+		p.skipToSemicolon()
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseAlterTriggerStmt parses an ALTER TRIGGER statement.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/ALTER-TRIGGER.html
+//
+//	ALTER TRIGGER [IF EXISTS] [schema.]trigger_name
+//	  { ENABLE
+//	  | DISABLE
+//	  | COMPILE [DEBUG] [compiler_parameters_clause ...] [REUSE SETTINGS]
+//	  | RENAME TO new_name
+//	  | EDITIONABLE
+//	  | NONEDITIONABLE
+//	  }
+func (p *Parser) parseAlterTriggerStmt(start int) nodes.StmtNode {
+	p.advance() // consume TRIGGER
+
+	stmt := &nodes.AlterTriggerStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// IF EXISTS
+	if p.cur.Type == kwIF {
+		if p.peekNext().Type == kwEXISTS {
+			stmt.IfExists = true
+			p.advance() // consume IF
+			p.advance() // consume EXISTS
+		}
+	}
+
+	stmt.Name = p.parseObjectName()
+
+	// Parse action
+	switch {
+	case p.cur.Type == kwENABLE:
+		stmt.Action = "ENABLE"
+		p.advance()
+	case p.cur.Type == kwDISABLE:
+		stmt.Action = "DISABLE"
+		p.advance()
+	case p.isIdentLikeStr("COMPILE"):
+		stmt.Action = "COMPILE"
+		p.advance() // consume COMPILE
+		stmt.Debug, stmt.ReuseSettings, stmt.CompilerParams = p.parseCompileClause()
+	case p.cur.Type == kwRENAME:
+		stmt.Action = "RENAME"
+		p.advance() // consume RENAME
+		if p.cur.Type == kwTO {
+			p.advance() // consume TO
+		}
+		stmt.NewName = p.parseIdentifier()
+	case p.isIdentLikeStr("EDITIONABLE"):
+		stmt.Action = "EDITIONABLE"
+		p.advance()
+	case p.isIdentLikeStr("NONEDITIONABLE"):
+		stmt.Action = "NONEDITIONABLE"
+		p.advance()
+	default:
+		p.skipToSemicolon()
+	}
+
 	stmt.Loc.End = p.pos()
 	return stmt
 }

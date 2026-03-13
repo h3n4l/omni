@@ -1774,7 +1774,7 @@
       "id": 81,
       "name": "alter_plsql_compile",
       "file": "alter_misc.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 45 gap: ALTER PROCEDURE, ALTER FUNCTION, ALTER PACKAGE, ALTER TRIGGER still route through parseAlterGeneric with skipToSemicolon. These all support COMPILE [DEBUG] [REUSE SETTINGS], EDITIONABLE/NONEDITIONABLE. ALTER TRIGGER also supports ENABLE/DISABLE/RENAME TO",
       "rules": [
         "alter_procedure_compile",
