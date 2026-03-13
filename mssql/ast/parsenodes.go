@@ -406,10 +406,11 @@ type ConstraintDef struct {
 	Expr       ExprNode // CHECK expression, default expression
 	RefTable   *TableRef
 	RefColumns *List // FK referenced columns
-	OnDelete   ReferentialAction
-	OnUpdate   ReferentialAction
-	Clustered  *bool // true=CLUSTERED, false=NONCLUSTERED, nil=unspecified
-	Loc        Loc
+	OnDelete        ReferentialAction
+	OnUpdate        ReferentialAction
+	Clustered       *bool // true=CLUSTERED, false=NONCLUSTERED, nil=unspecified
+	EdgeConnections *List // list of *EdgeConnectionDef for EDGE CONSTRAINT
+	Loc             Loc
 }
 
 func (n *ConstraintDef) nodeTag() {}
@@ -424,7 +425,17 @@ const (
 	ConstraintDefault
 	ConstraintForeignKey
 	ConstraintNotNull
+	ConstraintEdge // EDGE CONSTRAINT CONNECTION (...)
 )
+
+// EdgeConnectionDef represents a single edge constraint connection clause (FromTable TO ToTable).
+type EdgeConnectionDef struct {
+	FromTable *TableRef
+	ToTable   *TableRef
+	Loc       Loc
+}
+
+func (n *EdgeConnectionDef) nodeTag() {}
 
 // ReferentialAction enumerates FK actions.
 type ReferentialAction int

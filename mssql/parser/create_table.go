@@ -158,6 +158,20 @@ func (p *Parser) parseCreateTableStmt() *nodes.CreateTableStmt {
 		stmt.TableOptions = p.parseTableOptions()
 	}
 
+	// AS NODE | AS EDGE (graph tables) -- can also appear after closing paren
+	if !stmt.IsNode && !stmt.IsEdge && p.cur.Type == kwAS {
+		next := p.peekNext()
+		if next.Type == tokIDENT && strings.EqualFold(next.Str, "node") {
+			p.advance() // AS
+			p.advance() // NODE
+			stmt.IsNode = true
+		} else if next.Type == tokIDENT && strings.EqualFold(next.Str, "edge") {
+			p.advance() // AS
+			p.advance() // EDGE
+			stmt.IsEdge = true
+		}
+	}
+
 	stmt.Loc.End = p.pos()
 	return stmt
 }
@@ -784,11 +798,51 @@ func (p *Parser) parseTableConstraint() *nodes.ConstraintDef {
 			p.parseIdentifier() // column name (not stored separately but consumed)
 		}
 	default:
-		return nil
+		// Check for EDGE CONSTRAINT: CONSTRAINT name CONNECTION (...)
+		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "CONNECTION") {
+			cd.Type = nodes.ConstraintEdge
+			cd.EdgeConnections = p.parseEdgeConstraintConnections()
+			p.parseReferentialActions(cd)
+		} else {
+			return nil
+		}
 	}
 
 	cd.Loc.End = p.pos()
 	return cd
+}
+
+// parseEdgeConstraintConnections parses CONNECTION ( from_table TO to_table [, ...] ).
+//
+// Ref: https://learn.microsoft.com/en-us/sql/relational-databases/tables/graph-edge-constraints
+//
+//	CONNECTION ( from_table TO to_table [ , from_table TO to_table ... ] )
+func (p *Parser) parseEdgeConstraintConnections() *nodes.List {
+	p.advance() // consume CONNECTION
+
+	var conns []nodes.Node
+	if _, err := p.expect('('); err != nil {
+		return nil
+	}
+
+	for {
+		loc := p.pos()
+		fromTable := p.parseTableRef()
+		p.match(kwTO)
+		toTable := p.parseTableRef()
+		conn := &nodes.EdgeConnectionDef{
+			FromTable: fromTable,
+			ToTable:   toTable,
+			Loc:       nodes.Loc{Start: loc, End: p.pos()},
+		}
+		conns = append(conns, conn)
+		if _, ok := p.match(','); !ok {
+			break
+		}
+	}
+
+	p.expect(')')
+	return &nodes.List{Items: conns}
 }
 
 // parseClusteredOption parses optional CLUSTERED/NONCLUSTERED.

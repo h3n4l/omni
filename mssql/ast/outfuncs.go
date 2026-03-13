@@ -232,6 +232,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeTableOption(sb, n)
 	case *ConstraintDef:
 		writeConstraintDef(sb, n)
+	case *EdgeConnectionDef:
+		writeEdgeConnectionDef(sb, n)
 	case *MergeWhenClause:
 		writeMergeWhenClause(sb, n)
 	case *IndexColumn:
@@ -2202,6 +2204,24 @@ func writeConstraintDef(sb *strings.Builder, n *ConstraintDef) {
 	}
 	if n.Clustered != nil {
 		sb.WriteString(fmt.Sprintf(" :clustered %t", *n.Clustered))
+	}
+	if n.EdgeConnections != nil {
+		sb.WriteString(" :edgeConnections ")
+		writeNode(sb, n.EdgeConnections)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeEdgeConnectionDef(sb *strings.Builder, n *EdgeConnectionDef) {
+	sb.WriteString("{EDGECONN")
+	if n.FromTable != nil {
+		sb.WriteString(" :from ")
+		writeNode(sb, n.FromTable)
+	}
+	if n.ToTable != nil {
+		sb.WriteString(" :to ")
+		writeNode(sb, n.ToTable)
 	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

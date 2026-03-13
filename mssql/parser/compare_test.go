@@ -12461,3 +12461,135 @@ func TestParsePredictStmt(t *testing.T) {
 		})
 	}
 }
+
+// TestParseEdgeConstraint tests EDGE CONSTRAINT for graph tables (batch 119).
+func TestParseEdgeConstraint(t *testing.T) {
+	// CREATE TABLE with single edge constraint connection
+	t.Run("create_table_edge_constraint_single", func(t *testing.T) {
+		sql := `CREATE TABLE bought (
+			PurchaseCount INT,
+			CONSTRAINT EC_BOUGHT CONNECTION (Customer TO Product)
+		) AS EDGE`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		if !stmt.IsEdge {
+			t.Error("expected IsEdge=true")
+		}
+		if stmt.Constraints == nil || stmt.Constraints.Len() != 1 {
+			t.Fatalf("expected 1 constraint, got %d", stmt.Constraints.Len())
+		}
+		cd := stmt.Constraints.Items[0].(*ast.ConstraintDef)
+		if cd.Type != ast.ConstraintEdge {
+			t.Errorf("expected ConstraintEdge, got %d", cd.Type)
+		}
+		if cd.Name != "EC_BOUGHT" {
+			t.Errorf("expected constraint name EC_BOUGHT, got %q", cd.Name)
+		}
+		if cd.EdgeConnections == nil || cd.EdgeConnections.Len() != 1 {
+			t.Fatalf("expected 1 edge connection")
+		}
+		conn := cd.EdgeConnections.Items[0].(*ast.EdgeConnectionDef)
+		if conn.FromTable.Object != "Customer" {
+			t.Errorf("expected from=Customer, got %q", conn.FromTable.Object)
+		}
+		if conn.ToTable.Object != "Product" {
+			t.Errorf("expected to=Product, got %q", conn.ToTable.Object)
+		}
+	})
+
+	// CREATE TABLE with multiple edge constraint connections
+	t.Run("create_table_edge_constraint_multi", func(t *testing.T) {
+		sql := `CREATE TABLE bought (
+			PurchaseCount INT,
+			CONSTRAINT EC_BOUGHT CONNECTION (Customer TO Product, Supplier TO Product)
+		) AS EDGE`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		if stmt.Constraints == nil || stmt.Constraints.Len() != 1 {
+			t.Fatalf("expected 1 constraint")
+		}
+		cd := stmt.Constraints.Items[0].(*ast.ConstraintDef)
+		if cd.EdgeConnections == nil || cd.EdgeConnections.Len() != 2 {
+			t.Fatalf("expected 2 edge connections, got %d", cd.EdgeConnections.Len())
+		}
+	})
+
+	// CREATE TABLE edge constraint with ON DELETE NO ACTION
+	t.Run("create_table_edge_constraint_on_delete_no_action", func(t *testing.T) {
+		sql := `CREATE TABLE bought (
+			PurchaseCount INT,
+			CONSTRAINT EC_BOUGHT CONNECTION (Customer TO Product) ON DELETE NO ACTION
+		) AS EDGE`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		cd := stmt.Constraints.Items[0].(*ast.ConstraintDef)
+		if cd.OnDelete != ast.RefActNoAction {
+			t.Errorf("expected OnDelete=NoAction, got %d", cd.OnDelete)
+		}
+	})
+
+	// CREATE TABLE edge constraint with ON DELETE CASCADE
+	t.Run("create_table_edge_constraint_on_delete_cascade", func(t *testing.T) {
+		sql := `CREATE TABLE bought (
+			PurchaseCount INT,
+			CONSTRAINT EC_BOUGHT CONNECTION (Customer TO Product) ON DELETE CASCADE
+		) AS EDGE`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		cd := stmt.Constraints.Items[0].(*ast.ConstraintDef)
+		if cd.OnDelete != ast.RefActCascade {
+			t.Errorf("expected OnDelete=Cascade, got %d", cd.OnDelete)
+		}
+	})
+
+	// ALTER TABLE ADD edge constraint
+	t.Run("alter_table_add_edge_constraint", func(t *testing.T) {
+		sql := "ALTER TABLE bought ADD CONSTRAINT EC_BOUGHT1 CONNECTION (Customer TO Product)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.AlterTableStmt)
+		if stmt.Actions == nil || stmt.Actions.Len() != 1 {
+			t.Fatalf("expected 1 action")
+		}
+		action := stmt.Actions.Items[0].(*ast.AlterTableAction)
+		if action.Type != ast.ATAddConstraint {
+			t.Errorf("expected ATAddConstraint, got %d", action.Type)
+		}
+		if action.Constraint.Type != ast.ConstraintEdge {
+			t.Errorf("expected ConstraintEdge")
+		}
+		if action.Constraint.EdgeConnections == nil || action.Constraint.EdgeConnections.Len() != 1 {
+			t.Fatalf("expected 1 edge connection")
+		}
+	})
+
+	// ALTER TABLE DROP edge constraint
+	t.Run("alter_table_drop_edge_constraint", func(t *testing.T) {
+		sql := "ALTER TABLE bought DROP CONSTRAINT EC_BOUGHT"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.AlterTableStmt)
+		if stmt.Actions == nil || stmt.Actions.Len() != 1 {
+			t.Fatalf("expected 1 action")
+		}
+		action := stmt.Actions.Items[0].(*ast.AlterTableAction)
+		if action.Type != ast.ATDropConstraint {
+			t.Errorf("expected ATDropConstraint, got %d", action.Type)
+		}
+	})
+
+	// Edge constraint with schema-qualified table names
+	t.Run("create_table_edge_constraint_schema_qualified", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.bought (
+			CONSTRAINT EC_BOUGHT CONNECTION (dbo.Customer TO dbo.Product)
+		) AS EDGE`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		cd := stmt.Constraints.Items[0].(*ast.ConstraintDef)
+		conn := cd.EdgeConnections.Items[0].(*ast.EdgeConnectionDef)
+		if conn.FromTable.Schema != "dbo" || conn.FromTable.Object != "Customer" {
+			t.Errorf("expected from=dbo.Customer, got %s.%s", conn.FromTable.Schema, conn.FromTable.Object)
+		}
+		if conn.ToTable.Schema != "dbo" || conn.ToTable.Object != "Product" {
+			t.Errorf("expected to=dbo.Product, got %s.%s", conn.ToTable.Schema, conn.ToTable.Object)
+		}
+	})
+}
