@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // =============================================================================
@@ -13,7 +12,7 @@ import (
 
 func TestCreateCastWithFunction(t *testing.T) {
 	input := "CREATE CAST (bigint AS int4) WITH FUNCTION int4(bigint)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -40,7 +39,7 @@ func TestCreateCastWithFunction(t *testing.T) {
 
 func TestCreateCastWithoutFunction(t *testing.T) {
 	input := "CREATE CAST (bigint AS int4) WITHOUT FUNCTION"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -55,7 +54,7 @@ func TestCreateCastWithoutFunction(t *testing.T) {
 
 func TestCreateCastWithInout(t *testing.T) {
 	input := "CREATE CAST (bigint AS int4) WITH INOUT"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -67,7 +66,7 @@ func TestCreateCastWithInout(t *testing.T) {
 
 func TestCreateCastAsAssignment(t *testing.T) {
 	input := "CREATE CAST (bigint AS int4) WITH FUNCTION int4(bigint) AS ASSIGNMENT"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -79,7 +78,7 @@ func TestCreateCastAsAssignment(t *testing.T) {
 
 func TestCreateCastAsImplicit(t *testing.T) {
 	input := "CREATE CAST (bigint AS int4) WITH FUNCTION int4(bigint) AS IMPLICIT"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -95,7 +94,7 @@ func TestCreateCastAsImplicit(t *testing.T) {
 
 func TestDropCast(t *testing.T) {
 	input := "DROP CAST (bigint AS int4)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -110,7 +109,7 @@ func TestDropCast(t *testing.T) {
 
 func TestDropCastIfExists(t *testing.T) {
 	input := "DROP CAST IF EXISTS (bigint AS int4) CASCADE"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -129,7 +128,7 @@ func TestDropCastIfExists(t *testing.T) {
 
 func TestCreateConversion(t *testing.T) {
 	input := "CREATE CONVERSION myconv FOR 'UTF8' TO 'LATIN1' FROM utf8_to_iso8859_1"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -150,7 +149,7 @@ func TestCreateConversion(t *testing.T) {
 
 func TestCreateDefaultConversion(t *testing.T) {
 	input := "CREATE DEFAULT CONVERSION myconv FOR 'UTF8' TO 'LATIN1' FROM utf8_to_iso8859_1"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -166,7 +165,7 @@ func TestCreateDefaultConversion(t *testing.T) {
 
 func TestCreateTransform(t *testing.T) {
 	input := "CREATE TRANSFORM FOR int LANGUAGE plpgsql (FROM SQL WITH FUNCTION from_func(int), TO SQL WITH FUNCTION to_func(int))"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -187,7 +186,7 @@ func TestCreateTransform(t *testing.T) {
 
 func TestDropTransform(t *testing.T) {
 	input := "DROP TRANSFORM FOR int LANGUAGE plpgsql"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

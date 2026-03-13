@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // =============================================================================
@@ -14,7 +13,7 @@ import (
 // TestCreateExtensionBasic tests: CREATE EXTENSION pgcrypto
 func TestCreateExtensionBasic(t *testing.T) {
 	input := "CREATE EXTENSION pgcrypto"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -36,7 +35,7 @@ func TestCreateExtensionBasic(t *testing.T) {
 // TestCreateExtensionIfNotExists tests: CREATE EXTENSION IF NOT EXISTS pgcrypto
 func TestCreateExtensionIfNotExists(t *testing.T) {
 	input := "CREATE EXTENSION IF NOT EXISTS pgcrypto"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -52,7 +51,7 @@ func TestCreateExtensionIfNotExists(t *testing.T) {
 // TestCreateExtensionSchema tests: CREATE EXTENSION pgcrypto SCHEMA public
 func TestCreateExtensionSchema(t *testing.T) {
 	input := "CREATE EXTENSION pgcrypto SCHEMA public"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -75,7 +74,7 @@ func TestCreateExtensionSchema(t *testing.T) {
 // TestCreateExtensionVersion tests: CREATE EXTENSION pgcrypto VERSION '1.3'
 func TestCreateExtensionVersion(t *testing.T) {
 	input := "CREATE EXTENSION pgcrypto VERSION '1.3'"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -95,7 +94,7 @@ func TestCreateExtensionVersion(t *testing.T) {
 // TestCreateExtensionCascade tests: CREATE EXTENSION pgcrypto CASCADE
 func TestCreateExtensionCascade(t *testing.T) {
 	input := "CREATE EXTENSION pgcrypto CASCADE"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -112,7 +111,7 @@ func TestCreateExtensionCascade(t *testing.T) {
 // TestAlterExtensionUpdate tests: ALTER EXTENSION pgcrypto UPDATE
 func TestAlterExtensionUpdate(t *testing.T) {
 	input := "ALTER EXTENSION pgcrypto UPDATE"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -128,7 +127,7 @@ func TestAlterExtensionUpdate(t *testing.T) {
 // TestAlterExtensionUpdateTo tests: ALTER EXTENSION pgcrypto UPDATE TO '2.0'
 func TestAlterExtensionUpdateTo(t *testing.T) {
 	input := "ALTER EXTENSION pgcrypto UPDATE TO '2.0'"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -148,7 +147,7 @@ func TestAlterExtensionUpdateTo(t *testing.T) {
 // TestAlterExtensionAddTable tests: ALTER EXTENSION pgcrypto ADD TABLE t1
 func TestAlterExtensionAddTable(t *testing.T) {
 	input := "ALTER EXTENSION pgcrypto ADD TABLE t1"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -174,7 +173,7 @@ func TestAlterExtensionAddTable(t *testing.T) {
 // TestCreateTablespaceBasic tests: CREATE TABLESPACE ts LOCATION '/data'
 func TestCreateTablespaceBasic(t *testing.T) {
 	input := "CREATE TABLESPACE ts LOCATION '/data'"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -196,7 +195,7 @@ func TestCreateTablespaceBasic(t *testing.T) {
 // TestCreateTablespaceOwner tests: CREATE TABLESPACE ts OWNER myuser LOCATION '/data'
 func TestCreateTablespaceOwner(t *testing.T) {
 	input := "CREATE TABLESPACE ts OWNER myuser LOCATION '/data'"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -212,7 +211,7 @@ func TestCreateTablespaceOwner(t *testing.T) {
 // TestDropTablespace tests: DROP TABLESPACE ts
 func TestDropTablespace(t *testing.T) {
 	input := "DROP TABLESPACE ts"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -231,7 +230,7 @@ func TestDropTablespace(t *testing.T) {
 // TestDropTablespaceIfExists tests: DROP TABLESPACE IF EXISTS ts
 func TestDropTablespaceIfExists(t *testing.T) {
 	input := "DROP TABLESPACE IF EXISTS ts"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -244,7 +243,7 @@ func TestDropTablespaceIfExists(t *testing.T) {
 // TestAlterTablespaceSet tests: ALTER TABLESPACE ts SET (seq_page_cost = 2)
 func TestAlterTablespaceSet(t *testing.T) {
 	input := "ALTER TABLESPACE ts SET (seq_page_cost = 2)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -266,7 +265,7 @@ func TestAlterTablespaceSet(t *testing.T) {
 // TestAlterTablespaceReset tests: ALTER TABLESPACE ts RESET (seq_page_cost)
 func TestAlterTablespaceReset(t *testing.T) {
 	input := "ALTER TABLESPACE ts RESET (seq_page_cost)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -283,7 +282,7 @@ func TestAlterTablespaceReset(t *testing.T) {
 // TestCreateAmIndex tests: CREATE ACCESS METHOD myam TYPE INDEX HANDLER handler_func
 func TestCreateAmIndex(t *testing.T) {
 	input := "CREATE ACCESS METHOD myam TYPE INDEX HANDLER handler_func"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -309,7 +308,7 @@ func TestCreateAmIndex(t *testing.T) {
 // TestCreateAmTable tests: CREATE ACCESS METHOD myam TYPE TABLE HANDLER handler_func
 func TestCreateAmTable(t *testing.T) {
 	input := "CREATE ACCESS METHOD myam TYPE TABLE HANDLER handler_func"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

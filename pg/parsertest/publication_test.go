@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // =============================================================================
@@ -14,7 +13,7 @@ import (
 // TestCreatePublicationBasic tests: CREATE PUBLICATION pub
 func TestCreatePublicationBasic(t *testing.T) {
 	input := "CREATE PUBLICATION pub"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -36,7 +35,7 @@ func TestCreatePublicationBasic(t *testing.T) {
 // TestCreatePublicationForAllTables tests: CREATE PUBLICATION pub FOR ALL TABLES
 func TestCreatePublicationForAllTables(t *testing.T) {
 	input := "CREATE PUBLICATION pub FOR ALL TABLES"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -49,7 +48,7 @@ func TestCreatePublicationForAllTables(t *testing.T) {
 // TestCreatePublicationForTable tests: CREATE PUBLICATION pub FOR TABLE t1
 func TestCreatePublicationForTable(t *testing.T) {
 	input := "CREATE PUBLICATION pub FOR TABLE t1"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -72,7 +71,7 @@ func TestCreatePublicationForTable(t *testing.T) {
 // TestCreatePublicationForMultipleTables tests: CREATE PUBLICATION pub FOR TABLE t1, TABLE t2
 func TestCreatePublicationForMultipleTables(t *testing.T) {
 	input := "CREATE PUBLICATION pub FOR TABLE t1, TABLE t2"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -85,7 +84,7 @@ func TestCreatePublicationForMultipleTables(t *testing.T) {
 // TestCreatePublicationForTableWhere tests: CREATE PUBLICATION pub FOR TABLE t1 WHERE (col > 0)
 func TestCreatePublicationForTableWhere(t *testing.T) {
 	input := "CREATE PUBLICATION pub FOR TABLE t1 WHERE (col > 0)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -102,7 +101,7 @@ func TestCreatePublicationForTableWhere(t *testing.T) {
 // TestCreatePublicationForTablesInSchema tests: CREATE PUBLICATION pub FOR TABLES IN SCHEMA public
 func TestCreatePublicationForTablesInSchema(t *testing.T) {
 	input := "CREATE PUBLICATION pub FOR TABLES IN SCHEMA public"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -122,7 +121,7 @@ func TestCreatePublicationForTablesInSchema(t *testing.T) {
 // TestCreatePublicationWithOptions tests: CREATE PUBLICATION pub FOR ALL TABLES WITH (publish = 'insert')
 func TestCreatePublicationWithOptions(t *testing.T) {
 	input := "CREATE PUBLICATION pub FOR ALL TABLES WITH (publish = 'insert')"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -146,7 +145,7 @@ func TestCreatePublicationWithOptions(t *testing.T) {
 // TestAlterPublicationSetOptions tests: ALTER PUBLICATION pub SET (publish = 'insert,update')
 func TestAlterPublicationSetOptions(t *testing.T) {
 	input := "ALTER PUBLICATION pub SET (publish = 'insert,update')"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -165,7 +164,7 @@ func TestAlterPublicationSetOptions(t *testing.T) {
 // TestAlterPublicationAddTable tests: ALTER PUBLICATION pub ADD TABLE t3
 func TestAlterPublicationAddTable(t *testing.T) {
 	input := "ALTER PUBLICATION pub ADD TABLE t3"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -181,7 +180,7 @@ func TestAlterPublicationAddTable(t *testing.T) {
 // TestAlterPublicationDropTable tests: ALTER PUBLICATION pub DROP TABLE t1
 func TestAlterPublicationDropTable(t *testing.T) {
 	input := "ALTER PUBLICATION pub DROP TABLE t1"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

@@ -4,13 +4,12 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 func TestJsonObjectAggFilter(t *testing.T) {
 	input := "SELECT JSON_OBJECTAGG(k VALUE v) FILTER (WHERE k IS NOT NULL) FROM t"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -33,7 +32,7 @@ func TestJsonObjectAggFilter(t *testing.T) {
 func TestJsonArrayAggOver(t *testing.T) {
 	input := "SELECT JSON_ARRAYAGG(v) OVER (PARTITION BY grp) FROM t"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -56,7 +55,7 @@ func TestJsonArrayAggOver(t *testing.T) {
 func TestJsonObjectAggNoFilterNoOver(t *testing.T) {
 	input := "SELECT JSON_OBJECTAGG(k VALUE v) FROM t"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

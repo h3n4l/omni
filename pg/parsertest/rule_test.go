@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // =============================================================================
@@ -14,7 +13,7 @@ import (
 // TestCreateRuleDoNothing tests: CREATE RULE r AS ON INSERT TO t DO NOTHING
 func TestCreateRuleDoNothing(t *testing.T) {
 	input := "CREATE RULE r AS ON INSERT TO t DO NOTHING"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -45,7 +44,7 @@ func TestCreateRuleDoNothing(t *testing.T) {
 // TestCreateRuleDoInsteadNothing tests: CREATE RULE r AS ON INSERT TO t DO INSTEAD NOTHING
 func TestCreateRuleDoInsteadNothing(t *testing.T) {
 	input := "CREATE RULE r AS ON INSERT TO t DO INSTEAD NOTHING"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -58,7 +57,7 @@ func TestCreateRuleDoInsteadNothing(t *testing.T) {
 // TestCreateRuleDoAlsoInsert tests: CREATE RULE r AS ON INSERT TO t DO ALSO INSERT INTO log DEFAULT VALUES
 func TestCreateRuleDoAlsoInsert(t *testing.T) {
 	input := "CREATE RULE r AS ON INSERT TO t DO ALSO INSERT INTO log DEFAULT VALUES"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -78,7 +77,7 @@ func TestCreateRuleDoAlsoInsert(t *testing.T) {
 // TestCreateRuleMultipleActions tests: CREATE RULE r AS ON DELETE TO t DO (INSERT INTO log DEFAULT VALUES)
 func TestCreateRuleMultipleActions(t *testing.T) {
 	input := "CREATE RULE r AS ON DELETE TO t DO (INSERT INTO log DEFAULT VALUES)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -94,7 +93,7 @@ func TestCreateRuleMultipleActions(t *testing.T) {
 // TestCreateOrReplaceRule tests: CREATE OR REPLACE RULE r AS ON UPDATE TO t WHERE OLD.id > 0 DO NOTHING
 func TestCreateOrReplaceRule(t *testing.T) {
 	input := "CREATE OR REPLACE RULE r AS ON UPDATE TO t WHERE OLD.id > 0 DO NOTHING"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -113,7 +112,7 @@ func TestCreateOrReplaceRule(t *testing.T) {
 // TestCreateRuleOnSelect tests: CREATE RULE r AS ON SELECT TO v DO INSTEAD SELECT * FROM t
 func TestCreateRuleOnSelect(t *testing.T) {
 	input := "CREATE RULE r AS ON SELECT TO v DO INSTEAD SELECT * FROM t"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -136,7 +135,7 @@ func TestCreateRuleOnSelect(t *testing.T) {
 // TestCreateLanguageSimple tests: CREATE LANGUAGE plpgsql
 func TestCreateLanguageSimple(t *testing.T) {
 	input := "CREATE LANGUAGE plpgsql"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -152,7 +151,7 @@ func TestCreateLanguageSimple(t *testing.T) {
 // TestCreateTrustedLanguageWithHandler tests: CREATE TRUSTED LANGUAGE plpgsql HANDLER plpgsql_call_handler INLINE plpgsql_inline_handler VALIDATOR plpgsql_validator
 func TestCreateTrustedLanguageWithHandler(t *testing.T) {
 	input := "CREATE TRUSTED LANGUAGE plpgsql HANDLER plpgsql_call_handler INLINE plpgsql_inline_handler VALIDATOR plpgsql_validator"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -177,7 +176,7 @@ func TestCreateTrustedLanguageWithHandler(t *testing.T) {
 // TestCreateOrReplaceLanguage tests: CREATE OR REPLACE LANGUAGE plpgsql HANDLER plpgsql_call_handler
 func TestCreateOrReplaceLanguage(t *testing.T) {
 	input := "CREATE OR REPLACE LANGUAGE plpgsql HANDLER plpgsql_call_handler"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

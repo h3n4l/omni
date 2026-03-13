@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // =============================================================================
@@ -14,7 +13,7 @@ import (
 // TestAlterFunctionImmutable tests: ALTER FUNCTION func(integer) IMMUTABLE
 func TestAlterFunctionImmutable(t *testing.T) {
 	input := "ALTER FUNCTION func(integer) IMMUTABLE"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -49,7 +48,7 @@ func TestAlterFunctionImmutable(t *testing.T) {
 // TestAlterFunctionStableStrict tests: ALTER FUNCTION func(integer) STABLE STRICT
 func TestAlterFunctionStableStrict(t *testing.T) {
 	input := "ALTER FUNCTION func(integer) STABLE STRICT"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -62,7 +61,7 @@ func TestAlterFunctionStableStrict(t *testing.T) {
 // TestAlterFunctionSecurityDefiner tests: ALTER FUNCTION func(integer) SECURITY DEFINER
 func TestAlterFunctionSecurityDefiner(t *testing.T) {
 	input := "ALTER FUNCTION func(integer) SECURITY DEFINER"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -76,7 +75,7 @@ func TestAlterFunctionSecurityDefiner(t *testing.T) {
 // TestAlterFunctionCost tests: ALTER FUNCTION func(integer) COST 100
 func TestAlterFunctionCost(t *testing.T) {
 	input := "ALTER FUNCTION func(integer) COST 100"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -90,7 +89,7 @@ func TestAlterFunctionCost(t *testing.T) {
 // TestAlterFunctionRows tests: ALTER FUNCTION func(integer) ROWS 1000
 func TestAlterFunctionRows(t *testing.T) {
 	input := "ALTER FUNCTION func(integer) ROWS 1000"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -104,7 +103,7 @@ func TestAlterFunctionRows(t *testing.T) {
 // TestAlterProcedureSecurityInvoker tests: ALTER PROCEDURE proc(integer) SECURITY INVOKER
 func TestAlterProcedureSecurityInvoker(t *testing.T) {
 	input := "ALTER PROCEDURE proc(integer) SECURITY INVOKER"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -121,7 +120,7 @@ func TestAlterProcedureSecurityInvoker(t *testing.T) {
 // TestDropFunction tests: DROP FUNCTION func(integer)
 func TestDropFunction(t *testing.T) {
 	input := "DROP FUNCTION func(integer)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -140,7 +139,7 @@ func TestDropFunction(t *testing.T) {
 // TestDropFunctionIfExists tests: DROP FUNCTION IF EXISTS func(integer)
 func TestDropFunctionIfExists(t *testing.T) {
 	input := "DROP FUNCTION IF EXISTS func(integer)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -153,7 +152,7 @@ func TestDropFunctionIfExists(t *testing.T) {
 // TestDropFunctionCascade tests: DROP FUNCTION func(integer) CASCADE
 func TestDropFunctionCascade(t *testing.T) {
 	input := "DROP FUNCTION func(integer) CASCADE"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -166,7 +165,7 @@ func TestDropFunctionCascade(t *testing.T) {
 // TestDropFunctionTwoArgs tests: DROP FUNCTION func(integer, text)
 func TestDropFunctionTwoArgs(t *testing.T) {
 	input := "DROP FUNCTION func(integer, text)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -186,7 +185,7 @@ func TestDropFunctionTwoArgs(t *testing.T) {
 // TestDropProcedure tests: DROP PROCEDURE proc(integer)
 func TestDropProcedure(t *testing.T) {
 	input := "DROP PROCEDURE proc(integer)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -203,7 +202,7 @@ func TestDropProcedure(t *testing.T) {
 // TestDropAggregate tests: DROP AGGREGATE myagg(integer)
 func TestDropAggregate(t *testing.T) {
 	input := "DROP AGGREGATE myagg(integer)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -219,7 +218,7 @@ func TestDropAggregate(t *testing.T) {
 // TestDropAggregateIfExistsCascade tests: DROP AGGREGATE IF EXISTS myagg(integer) CASCADE
 func TestDropAggregateIfExistsCascade(t *testing.T) {
 	input := "DROP AGGREGATE IF EXISTS myagg(integer) CASCADE"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -239,7 +238,7 @@ func TestDropAggregateIfExistsCascade(t *testing.T) {
 // TestDropOperator tests: DROP OPERATOR +(integer, integer)
 func TestDropOperator(t *testing.T) {
 	input := "DROP OPERATOR +(integer, integer)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -255,7 +254,7 @@ func TestDropOperator(t *testing.T) {
 // TestDropOperatorIfExistsCascade tests: DROP OPERATOR IF EXISTS =(text, text) CASCADE
 func TestDropOperatorIfExistsCascade(t *testing.T) {
 	input := "DROP OPERATOR IF EXISTS =(text, text) CASCADE"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -279,7 +278,7 @@ func TestOperArgTypesSingleType(t *testing.T) {
 		`DROP OPERATOR ~(integer)`,
 	}
 	for _, sql := range sqls {
-		_, err := yacc.Parse(sql)
+		_, err := parse(sql)
 		if err != nil {
 			t.Errorf("Expected success for %q, got error: %v", sql, err)
 		}

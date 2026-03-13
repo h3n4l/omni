@@ -4,13 +4,12 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 func TestParseSelectDistinct(t *testing.T) {
 	input := "SELECT DISTINCT id FROM t"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -35,7 +34,7 @@ func TestParseSelectDistinct(t *testing.T) {
 func TestParseSelectDistinctMultipleColumns(t *testing.T) {
 	input := "SELECT DISTINCT a, b, c FROM t"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -58,7 +57,7 @@ func TestParseSelectDistinctMultipleColumns(t *testing.T) {
 func TestParseSelectDistinctOn(t *testing.T) {
 	input := "SELECT DISTINCT ON (a) a, b FROM t"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -90,7 +89,7 @@ func TestParseSelectDistinctOn(t *testing.T) {
 func TestParseSelectWithoutDistinct(t *testing.T) {
 	input := "SELECT id FROM t"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

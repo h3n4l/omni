@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // =============================================================================
@@ -13,7 +12,7 @@ import (
 
 func TestCreateTableAs(t *testing.T) {
 	input := "CREATE TABLE t AS SELECT 1"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -37,7 +36,7 @@ func TestCreateTableAs(t *testing.T) {
 
 func TestCreateTableAsFrom(t *testing.T) {
 	input := "CREATE TABLE t AS SELECT * FROM other"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -49,7 +48,7 @@ func TestCreateTableAsFrom(t *testing.T) {
 
 func TestCreateTableIfNotExistsAs(t *testing.T) {
 	input := "CREATE TABLE IF NOT EXISTS t AS SELECT 1"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -61,7 +60,7 @@ func TestCreateTableIfNotExistsAs(t *testing.T) {
 
 func TestCreateTableAsWithData(t *testing.T) {
 	input := "CREATE TABLE t AS SELECT 1 WITH DATA"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -73,7 +72,7 @@ func TestCreateTableAsWithData(t *testing.T) {
 
 func TestCreateTableAsWithNoData(t *testing.T) {
 	input := "CREATE TABLE t AS SELECT 1 WITH NO DATA"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -89,7 +88,7 @@ func TestCreateTableAsWithNoData(t *testing.T) {
 
 func TestCreateMatView(t *testing.T) {
 	input := "CREATE MATERIALIZED VIEW mv AS SELECT 1"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -107,7 +106,7 @@ func TestCreateMatView(t *testing.T) {
 
 func TestCreateMatViewIfNotExists(t *testing.T) {
 	input := "CREATE MATERIALIZED VIEW IF NOT EXISTS mv AS SELECT 1"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -119,7 +118,7 @@ func TestCreateMatViewIfNotExists(t *testing.T) {
 
 func TestCreateMatViewWithNoData(t *testing.T) {
 	input := "CREATE MATERIALIZED VIEW mv AS SELECT 1 WITH NO DATA"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -135,7 +134,7 @@ func TestCreateMatViewWithNoData(t *testing.T) {
 
 func TestRefreshMatView(t *testing.T) {
 	input := "REFRESH MATERIALIZED VIEW mv"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -153,7 +152,7 @@ func TestRefreshMatView(t *testing.T) {
 
 func TestRefreshMatViewConcurrently(t *testing.T) {
 	input := "REFRESH MATERIALIZED VIEW CONCURRENTLY mv"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -165,7 +164,7 @@ func TestRefreshMatViewConcurrently(t *testing.T) {
 
 func TestRefreshMatViewWithData(t *testing.T) {
 	input := "REFRESH MATERIALIZED VIEW mv WITH DATA"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -177,7 +176,7 @@ func TestRefreshMatViewWithData(t *testing.T) {
 
 func TestRefreshMatViewWithNoData(t *testing.T) {
 	input := "REFRESH MATERIALIZED VIEW mv WITH NO DATA"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

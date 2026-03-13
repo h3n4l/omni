@@ -4,13 +4,12 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // parseIndexStmt is a helper that parses input and returns the first statement as *nodes.IndexStmt.
 func parseIndexStmt(t *testing.T, input string) *nodes.IndexStmt {
 	t.Helper()
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

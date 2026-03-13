@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // =============================================================================
@@ -14,7 +13,7 @@ import (
 // TestCreateFdwBasic tests: CREATE FOREIGN DATA WRAPPER myfdw
 func TestCreateFdwBasic(t *testing.T) {
 	input := "CREATE FOREIGN DATA WRAPPER myfdw"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -39,7 +38,7 @@ func TestCreateFdwBasic(t *testing.T) {
 // TestCreateFdwHandlerValidator tests: CREATE FOREIGN DATA WRAPPER myfdw HANDLER fdw_handler VALIDATOR fdw_validator
 func TestCreateFdwHandlerValidator(t *testing.T) {
 	input := "CREATE FOREIGN DATA WRAPPER myfdw HANDLER fdw_handler VALIDATOR fdw_validator"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -68,7 +67,7 @@ func TestCreateFdwHandlerValidator(t *testing.T) {
 // TestCreateFdwNoHandlerNoValidator tests: CREATE FOREIGN DATA WRAPPER myfdw NO HANDLER NO VALIDATOR
 func TestCreateFdwNoHandlerNoValidator(t *testing.T) {
 	input := "CREATE FOREIGN DATA WRAPPER myfdw NO HANDLER NO VALIDATOR"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -89,7 +88,7 @@ func TestCreateFdwNoHandlerNoValidator(t *testing.T) {
 // TestCreateFdwOptions tests: CREATE FOREIGN DATA WRAPPER myfdw OPTIONS (debug 'true')
 func TestCreateFdwOptions(t *testing.T) {
 	input := "CREATE FOREIGN DATA WRAPPER myfdw OPTIONS (debug 'true')"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -114,7 +113,7 @@ func TestCreateFdwOptions(t *testing.T) {
 // TestAlterFdwOptionsAdd tests: ALTER FOREIGN DATA WRAPPER myfdw OPTIONS (ADD debug 'true')
 func TestAlterFdwOptionsAdd(t *testing.T) {
 	input := "ALTER FOREIGN DATA WRAPPER myfdw OPTIONS (ADD debug 'true')"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -140,7 +139,7 @@ func TestAlterFdwOptionsAdd(t *testing.T) {
 // TestAlterFdwHandler tests: ALTER FOREIGN DATA WRAPPER myfdw HANDLER new_handler
 func TestAlterFdwHandler(t *testing.T) {
 	input := "ALTER FOREIGN DATA WRAPPER myfdw HANDLER new_handler"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -157,7 +156,7 @@ func TestAlterFdwHandler(t *testing.T) {
 // TestAlterFdwOptionsSet tests: ALTER FOREIGN DATA WRAPPER myfdw OPTIONS (SET debug 'false')
 func TestAlterFdwOptionsSet(t *testing.T) {
 	input := "ALTER FOREIGN DATA WRAPPER myfdw OPTIONS (SET debug 'false')"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -174,7 +173,7 @@ func TestAlterFdwOptionsSet(t *testing.T) {
 // TestAlterFdwOptionsDrop tests: ALTER FOREIGN DATA WRAPPER myfdw OPTIONS (DROP debug)
 func TestAlterFdwOptionsDrop(t *testing.T) {
 	input := "ALTER FOREIGN DATA WRAPPER myfdw OPTIONS (DROP debug)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -201,7 +200,7 @@ func TestAlterFdwOptionsDrop(t *testing.T) {
 // TestCreateServerBasic tests: CREATE SERVER myserver FOREIGN DATA WRAPPER myfdw
 func TestCreateServerBasic(t *testing.T) {
 	input := "CREATE SERVER myserver FOREIGN DATA WRAPPER myfdw"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -223,7 +222,7 @@ func TestCreateServerBasic(t *testing.T) {
 // TestCreateServerIfNotExists tests: CREATE SERVER IF NOT EXISTS myserver FOREIGN DATA WRAPPER myfdw
 func TestCreateServerIfNotExists(t *testing.T) {
 	input := "CREATE SERVER IF NOT EXISTS myserver FOREIGN DATA WRAPPER myfdw"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -239,7 +238,7 @@ func TestCreateServerIfNotExists(t *testing.T) {
 // TestCreateServerFull tests: CREATE SERVER myserver TYPE 'postgres' VERSION '15' FOREIGN DATA WRAPPER myfdw OPTIONS (host 'localhost', port '5432')
 func TestCreateServerFull(t *testing.T) {
 	input := "CREATE SERVER myserver TYPE 'postgres' VERSION '15' FOREIGN DATA WRAPPER myfdw OPTIONS (host 'localhost', port '5432')"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -276,7 +275,7 @@ func TestCreateServerFull(t *testing.T) {
 // TestAlterServerVersion tests: ALTER SERVER myserver VERSION '16'
 func TestAlterServerVersion(t *testing.T) {
 	input := "ALTER SERVER myserver VERSION '16'"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -298,7 +297,7 @@ func TestAlterServerVersion(t *testing.T) {
 // TestAlterServerOptions tests: ALTER SERVER myserver OPTIONS (SET host 'newhost')
 func TestAlterServerOptions(t *testing.T) {
 	input := "ALTER SERVER myserver OPTIONS (SET host 'newhost')"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -321,7 +320,7 @@ func TestAlterServerOptions(t *testing.T) {
 // TestAlterServerVersionAndOptions tests: ALTER SERVER myserver VERSION '16' OPTIONS (SET host 'newhost')
 func TestAlterServerVersionAndOptions(t *testing.T) {
 	input := "ALTER SERVER myserver VERSION '16' OPTIONS (SET host 'newhost')"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -344,7 +343,7 @@ func TestAlterServerVersionAndOptions(t *testing.T) {
 // TestCreateForeignTableBasic tests: CREATE FOREIGN TABLE ft (id integer, name text) SERVER myserver
 func TestCreateForeignTableBasic(t *testing.T) {
 	input := "CREATE FOREIGN TABLE ft (id integer, name text) SERVER myserver"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -378,7 +377,7 @@ func TestCreateForeignTableBasic(t *testing.T) {
 // TestCreateForeignTableIfNotExistsWithOptions tests: CREATE FOREIGN TABLE IF NOT EXISTS ft (id integer) SERVER myserver OPTIONS (table_name 'remote_table')
 func TestCreateForeignTableIfNotExistsWithOptions(t *testing.T) {
 	input := "CREATE FOREIGN TABLE IF NOT EXISTS ft (id integer) SERVER myserver OPTIONS (table_name 'remote_table')"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -398,7 +397,7 @@ func TestCreateForeignTableIfNotExistsWithOptions(t *testing.T) {
 // TestCreateForeignTableSchemaQualified tests: CREATE FOREIGN TABLE myschema.ft (id integer) SERVER myserver
 func TestCreateForeignTableSchemaQualified(t *testing.T) {
 	input := "CREATE FOREIGN TABLE myschema.ft (id integer) SERVER myserver"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -418,7 +417,7 @@ func TestCreateForeignTableSchemaQualified(t *testing.T) {
 // TestCreateUserMappingCurrentUser tests: CREATE USER MAPPING FOR CURRENT_USER SERVER myserver OPTIONS (user 'me', password 'secret')
 func TestCreateUserMappingCurrentUser(t *testing.T) {
 	input := "CREATE USER MAPPING FOR CURRENT_USER SERVER myserver OPTIONS (user 'me', password 'secret')"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -443,7 +442,7 @@ func TestCreateUserMappingCurrentUser(t *testing.T) {
 // TestCreateUserMappingIfNotExistsPublic tests: CREATE USER MAPPING IF NOT EXISTS FOR PUBLIC SERVER myserver
 func TestCreateUserMappingIfNotExistsPublic(t *testing.T) {
 	input := "CREATE USER MAPPING IF NOT EXISTS FOR PUBLIC SERVER myserver"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -457,7 +456,7 @@ func TestCreateUserMappingIfNotExistsPublic(t *testing.T) {
 // TestCreateUserMappingNamedUser tests: CREATE USER MAPPING FOR myuser SERVER myserver
 func TestCreateUserMappingNamedUser(t *testing.T) {
 	input := "CREATE USER MAPPING FOR myuser SERVER myserver"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -474,7 +473,7 @@ func TestCreateUserMappingNamedUser(t *testing.T) {
 // USER is a reserved keyword requiring special handling via auth_ident
 func TestCreateUserMappingForUser(t *testing.T) {
 	input := "CREATE USER MAPPING FOR USER SERVER myserver"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -491,7 +490,7 @@ func TestCreateUserMappingForUser(t *testing.T) {
 // TestAlterUserMapping tests: ALTER USER MAPPING FOR CURRENT_USER SERVER myserver OPTIONS (SET password 'new')
 func TestAlterUserMapping(t *testing.T) {
 	input := "ALTER USER MAPPING FOR CURRENT_USER SERVER myserver OPTIONS (SET password 'new')"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -521,7 +520,7 @@ func TestAlterUserMapping(t *testing.T) {
 // TestDropUserMapping tests: DROP USER MAPPING FOR CURRENT_USER SERVER myserver
 func TestDropUserMapping(t *testing.T) {
 	input := "DROP USER MAPPING FOR CURRENT_USER SERVER myserver"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -543,7 +542,7 @@ func TestDropUserMapping(t *testing.T) {
 // TestDropUserMappingIfExists tests: DROP USER MAPPING IF EXISTS FOR PUBLIC SERVER myserver
 func TestDropUserMappingIfExists(t *testing.T) {
 	input := "DROP USER MAPPING IF EXISTS FOR PUBLIC SERVER myserver"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -560,7 +559,7 @@ func TestDropUserMappingIfExists(t *testing.T) {
 // TestImportForeignSchemaBasic tests: IMPORT FOREIGN SCHEMA remote_schema FROM SERVER myserver INTO local_schema
 func TestImportForeignSchemaBasic(t *testing.T) {
 	input := "IMPORT FOREIGN SCHEMA remote_schema FROM SERVER myserver INTO local_schema"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -585,7 +584,7 @@ func TestImportForeignSchemaBasic(t *testing.T) {
 // TestImportForeignSchemaLimitTo tests: IMPORT FOREIGN SCHEMA remote_schema LIMIT TO (t1, t2) FROM SERVER myserver INTO local_schema
 func TestImportForeignSchemaLimitTo(t *testing.T) {
 	input := "IMPORT FOREIGN SCHEMA remote_schema LIMIT TO (t1, t2) FROM SERVER myserver INTO local_schema"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -601,7 +600,7 @@ func TestImportForeignSchemaLimitTo(t *testing.T) {
 // TestImportForeignSchemaExcept tests: IMPORT FOREIGN SCHEMA remote_schema EXCEPT (t3) FROM SERVER myserver INTO local_schema
 func TestImportForeignSchemaExcept(t *testing.T) {
 	input := "IMPORT FOREIGN SCHEMA remote_schema EXCEPT (t3) FROM SERVER myserver INTO local_schema"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -617,7 +616,7 @@ func TestImportForeignSchemaExcept(t *testing.T) {
 // TestImportForeignSchemaWithOptions tests: IMPORT FOREIGN SCHEMA remote_schema FROM SERVER myserver INTO local_schema OPTIONS (import_default 'true')
 func TestImportForeignSchemaWithOptions(t *testing.T) {
 	input := "IMPORT FOREIGN SCHEMA remote_schema FROM SERVER myserver INTO local_schema OPTIONS (import_default 'true')"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -638,7 +637,7 @@ func TestImportForeignSchemaWithOptions(t *testing.T) {
 // TestCreateFdwHandlerOnly tests: CREATE FOREIGN DATA WRAPPER myfdw HANDLER fdw_handler
 func TestCreateFdwHandlerOnly(t *testing.T) {
 	input := "CREATE FOREIGN DATA WRAPPER myfdw HANDLER fdw_handler"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -655,7 +654,7 @@ func TestCreateFdwHandlerOnly(t *testing.T) {
 // TestCreateFdwSchemaQualifiedHandler tests: CREATE FOREIGN DATA WRAPPER myfdw HANDLER myschema.fdw_handler
 func TestCreateFdwSchemaQualifiedHandler(t *testing.T) {
 	input := "CREATE FOREIGN DATA WRAPPER myfdw HANDLER myschema.fdw_handler"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -680,7 +679,7 @@ func TestCreateFdwSchemaQualifiedHandler(t *testing.T) {
 // TestAlterFdwMultipleAlterOptions tests: ALTER FOREIGN DATA WRAPPER myfdw OPTIONS (ADD key1 'val1', SET key2 'val2', DROP key3)
 func TestAlterFdwMultipleAlterOptions(t *testing.T) {
 	input := "ALTER FOREIGN DATA WRAPPER myfdw OPTIONS (ADD key1 'val1', SET key2 'val2', DROP key3)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -705,7 +704,7 @@ func TestAlterFdwMultipleAlterOptions(t *testing.T) {
 // TestCreateForeignTableEmpty tests: CREATE FOREIGN TABLE ft () SERVER myserver
 func TestCreateForeignTableEmpty(t *testing.T) {
 	input := "CREATE FOREIGN TABLE ft () SERVER myserver"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

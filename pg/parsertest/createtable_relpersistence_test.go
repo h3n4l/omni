@@ -4,13 +4,12 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 func TestCreateTempTableRelpersistence(t *testing.T) {
 	input := "CREATE TEMP TABLE t (id int)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -28,7 +27,7 @@ func TestCreateTempTableRelpersistence(t *testing.T) {
 func TestCreateUnloggedTable(t *testing.T) {
 	input := "CREATE UNLOGGED TABLE t (id int)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -46,7 +45,7 @@ func TestCreateUnloggedTable(t *testing.T) {
 func TestCreatePermanentTable(t *testing.T) {
 	input := "CREATE TABLE t (id int)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -64,7 +63,7 @@ func TestCreatePermanentTable(t *testing.T) {
 func TestCreateTempTableRelpersistenceIfNotExists(t *testing.T) {
 	input := "CREATE TEMP TABLE IF NOT EXISTS t (id int)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -82,7 +81,7 @@ func TestCreateTempTableRelpersistenceIfNotExists(t *testing.T) {
 func TestCreateTempViewRelpersistence(t *testing.T) {
 	input := "CREATE TEMP VIEW v AS SELECT 1"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -100,7 +99,7 @@ func TestCreateTempViewRelpersistence(t *testing.T) {
 func TestCreatePermanentViewRelpersistence(t *testing.T) {
 	input := "CREATE VIEW v AS SELECT 1"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

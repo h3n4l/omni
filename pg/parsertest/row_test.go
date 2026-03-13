@@ -4,14 +4,13 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 func TestParseExplicitRow(t *testing.T) {
 	// ROW(1, 2, 3) should produce RowExpr with COERCE_EXPLICIT_CALL, 3 elements
 	input := "SELECT ROW(1, 2, 3)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -67,7 +66,7 @@ func TestParseEmptyRow(t *testing.T) {
 	// ROW() should produce RowExpr with COERCE_EXPLICIT_CALL and nil/empty Args
 	input := "SELECT ROW()"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -108,7 +107,7 @@ func TestParseImplicitRow(t *testing.T) {
 	// (1, 2, 3) should produce RowExpr with COERCE_IMPLICIT_CAST, 3 elements
 	input := "SELECT (1, 2, 3)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -165,7 +164,7 @@ func TestParseImplicitRowTwoElements(t *testing.T) {
 	// This is the minimum for an implicit row (distinguishes from parenthesized expr)
 	input := "SELECT (1, 2)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -221,7 +220,7 @@ func TestParseRowComparison(t *testing.T) {
 	// ROW(a, b) = ROW(1, 2) should produce A_Expr with RowExpr operands
 	input := "SELECT * FROM t WHERE ROW(a, b) = ROW(1, 2)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -278,7 +277,7 @@ func TestParseImplicitRowComparison(t *testing.T) {
 	// (x, y) = (1, 2) should use implicit row on both sides
 	input := "SELECT * FROM t WHERE (x, y) = (1, 2)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -335,7 +334,7 @@ func TestParseExplicitRowSingleElement(t *testing.T) {
 	// ROW(42) should produce RowExpr with COERCE_EXPLICIT_CALL, 1 element
 	input := "SELECT ROW(42)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -388,7 +387,7 @@ func TestParseSingleParenExprNotRow(t *testing.T) {
 	// (42) should NOT be a RowExpr - it should be a simple parenthesized expression
 	input := "SELECT (42)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

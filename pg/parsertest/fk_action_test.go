@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // findFKConstraint finds a FOREIGN KEY constraint in table elements.
@@ -32,7 +31,7 @@ func findFKConstraint(t *testing.T, stmt *nodes.CreateStmt) *nodes.Constraint {
 func TestForeignKeyOnDeleteSetNullColumns(t *testing.T) {
 	input := "CREATE TABLE t (a int, b int, FOREIGN KEY (a) REFERENCES p(id) ON DELETE SET NULL (a, b))"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -58,7 +57,7 @@ func TestForeignKeyOnDeleteSetNullColumns(t *testing.T) {
 func TestForeignKeyOnDeleteSetDefaultColumns(t *testing.T) {
 	input := "CREATE TABLE t (a int, FOREIGN KEY (a) REFERENCES p(id) ON DELETE SET DEFAULT (a))"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -84,7 +83,7 @@ func TestForeignKeyOnDeleteSetDefaultColumns(t *testing.T) {
 func TestForeignKeyOnDeleteSetNullNoColumns(t *testing.T) {
 	input := "CREATE TABLE t (a int, FOREIGN KEY (a) REFERENCES p(id) ON DELETE SET NULL)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

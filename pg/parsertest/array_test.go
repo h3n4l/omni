@@ -4,14 +4,13 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 func TestParseArrayConstructor(t *testing.T) {
 	// ARRAY[1, 2, 3] should produce A_ArrayExpr with 3 elements
 	input := "SELECT ARRAY[1, 2, 3]"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -63,7 +62,7 @@ func TestParseArraySubquery(t *testing.T) {
 	// ARRAY(SELECT id FROM t) should produce SubLink with ARRAY_SUBLINK
 	input := "SELECT ARRAY(SELECT id FROM t)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -118,7 +117,7 @@ func TestParseEmptyArray(t *testing.T) {
 	// ARRAY[] should produce A_ArrayExpr with nil/empty Elements
 	input := "SELECT ARRAY[]"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -155,7 +154,7 @@ func TestParseArraySubscript(t *testing.T) {
 	// arr[1] should produce A_Indirection with A_Indices(Uidx=1)
 	input := "SELECT arr[1] FROM t"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -225,7 +224,7 @@ func TestParseArraySlice(t *testing.T) {
 	// arr[1:3] should produce A_Indirection with A_Indices(IsSlice=true, Lidx=1, Uidx=3)
 	input := "SELECT arr[1:3] FROM t"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -308,7 +307,7 @@ func TestParseNestedArray(t *testing.T) {
 	// ARRAY[[1,2],[3,4]] should produce A_ArrayExpr with nested A_ArrayExpr elements
 	input := "SELECT ARRAY[[1,2],[3,4]]"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -382,7 +381,7 @@ func TestParseArrayInWhere(t *testing.T) {
 	// arr[1] = 5 in WHERE clause
 	input := "SELECT * FROM t WHERE arr[1] = 5"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // =============================================================================
@@ -14,7 +13,7 @@ import (
 // TestCreateTriggerBeforeInsert tests: CREATE TRIGGER trig BEFORE INSERT ON t EXECUTE FUNCTION func()
 func TestCreateTriggerBeforeInsert(t *testing.T) {
 	input := "CREATE TRIGGER trig BEFORE INSERT ON t EXECUTE FUNCTION func()"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -45,7 +44,7 @@ func TestCreateTriggerBeforeInsert(t *testing.T) {
 // TestCreateTriggerAfterUpdate tests: CREATE TRIGGER trig AFTER UPDATE ON t EXECUTE FUNCTION func()
 func TestCreateTriggerAfterUpdate(t *testing.T) {
 	input := "CREATE TRIGGER trig AFTER UPDATE ON t EXECUTE FUNCTION func()"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -61,7 +60,7 @@ func TestCreateTriggerAfterUpdate(t *testing.T) {
 // TestCreateTriggerAfterInsertOrUpdate tests: CREATE TRIGGER trig AFTER INSERT OR UPDATE ON t EXECUTE FUNCTION func()
 func TestCreateTriggerAfterInsertOrUpdate(t *testing.T) {
 	input := "CREATE TRIGGER trig AFTER INSERT OR UPDATE ON t EXECUTE FUNCTION func()"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -75,7 +74,7 @@ func TestCreateTriggerAfterInsertOrUpdate(t *testing.T) {
 // TestCreateTriggerBeforeDeleteForEachRow tests: CREATE TRIGGER trig BEFORE DELETE ON t FOR EACH ROW EXECUTE FUNCTION func()
 func TestCreateTriggerBeforeDeleteForEachRow(t *testing.T) {
 	input := "CREATE TRIGGER trig BEFORE DELETE ON t FOR EACH ROW EXECUTE FUNCTION func()"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -91,7 +90,7 @@ func TestCreateTriggerBeforeDeleteForEachRow(t *testing.T) {
 // TestCreateTriggerUpdateOfColumns tests: CREATE TRIGGER trig AFTER UPDATE OF col1, col2 ON t EXECUTE FUNCTION func()
 func TestCreateTriggerUpdateOfColumns(t *testing.T) {
 	input := "CREATE TRIGGER trig AFTER UPDATE OF col1, col2 ON t EXECUTE FUNCTION func()"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -107,7 +106,7 @@ func TestCreateTriggerUpdateOfColumns(t *testing.T) {
 // TestCreateTriggerInsteadOf tests: CREATE TRIGGER trig INSTEAD OF INSERT ON v EXECUTE FUNCTION func()
 func TestCreateTriggerInsteadOf(t *testing.T) {
 	input := "CREATE TRIGGER trig INSTEAD OF INSERT ON v EXECUTE FUNCTION func()"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -120,7 +119,7 @@ func TestCreateTriggerInsteadOf(t *testing.T) {
 // TestCreateTriggerWithWhen tests: CREATE TRIGGER trig BEFORE INSERT ON t FOR EACH ROW WHEN (NEW.active) EXECUTE FUNCTION func()
 func TestCreateTriggerWithWhen(t *testing.T) {
 	input := "CREATE TRIGGER trig BEFORE INSERT ON t FOR EACH ROW WHEN (NEW.active) EXECUTE FUNCTION func()"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -136,7 +135,7 @@ func TestCreateTriggerWithWhen(t *testing.T) {
 // TestCreateOrReplaceTrigger tests: CREATE OR REPLACE TRIGGER trig BEFORE INSERT ON t EXECUTE FUNCTION func()
 func TestCreateOrReplaceTrigger(t *testing.T) {
 	input := "CREATE OR REPLACE TRIGGER trig BEFORE INSERT ON t EXECUTE FUNCTION func()"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -149,7 +148,7 @@ func TestCreateOrReplaceTrigger(t *testing.T) {
 // TestCreateConstraintTrigger tests: CREATE CONSTRAINT TRIGGER trig AFTER INSERT ON t DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION func()
 func TestCreateConstraintTrigger(t *testing.T) {
 	input := "CREATE CONSTRAINT TRIGGER trig AFTER INSERT ON t DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION func()"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -171,7 +170,7 @@ func TestCreateConstraintTrigger(t *testing.T) {
 // TestCreateTriggerWithProcedure tests: CREATE TRIGGER trig BEFORE INSERT ON t EXECUTE PROCEDURE func()
 func TestCreateTriggerWithProcedure(t *testing.T) {
 	input := "CREATE TRIGGER trig BEFORE INSERT ON t EXECUTE PROCEDURE func()"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -188,7 +187,7 @@ func TestCreateTriggerWithProcedure(t *testing.T) {
 // TestCreateEventTrigger tests: CREATE EVENT TRIGGER etrig ON ddl_command_start EXECUTE FUNCTION func()
 func TestCreateEventTrigger(t *testing.T) {
 	input := "CREATE EVENT TRIGGER etrig ON ddl_command_start EXECUTE FUNCTION func()"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -210,7 +209,7 @@ func TestCreateEventTrigger(t *testing.T) {
 // TestCreateEventTriggerWithWhen tests: CREATE EVENT TRIGGER etrig ON ddl_command_start WHEN TAG IN ('CREATE TABLE', 'DROP TABLE') EXECUTE FUNCTION func()
 func TestCreateEventTriggerWithWhen(t *testing.T) {
 	input := "CREATE EVENT TRIGGER etrig ON ddl_command_start WHEN TAG IN ('CREATE TABLE', 'DROP TABLE') EXECUTE FUNCTION func()"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -236,7 +235,7 @@ func TestCreateEventTriggerWithWhen(t *testing.T) {
 // TestAlterEventTriggerEnable tests: ALTER EVENT TRIGGER etrig ENABLE
 func TestAlterEventTriggerEnable(t *testing.T) {
 	input := "ALTER EVENT TRIGGER etrig ENABLE"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -255,7 +254,7 @@ func TestAlterEventTriggerEnable(t *testing.T) {
 // TestAlterEventTriggerDisable tests: ALTER EVENT TRIGGER etrig DISABLE
 func TestAlterEventTriggerDisable(t *testing.T) {
 	input := "ALTER EVENT TRIGGER etrig DISABLE"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

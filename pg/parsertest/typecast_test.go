@@ -4,13 +4,12 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // helper: parse a single SELECT statement and return the SelectStmt.
 func parseSelect(t *testing.T, input string) *nodes.SelectStmt {
 	t.Helper()
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error for %q: %v", input, err)
 	}

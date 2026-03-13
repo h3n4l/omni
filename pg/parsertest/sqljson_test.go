@@ -3,7 +3,6 @@ package parsertest
 import (
 	"testing"
 
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // =============================================================================
@@ -17,7 +16,7 @@ func TestJsonTableFormattedColumn(t *testing.T) {
 		`SELECT * FROM JSON_TABLE(jsonb '{"a":"1"}', '$' COLUMNS (a text FORMAT JSON PATH '$.a' WITH WRAPPER))`,
 	}
 	for _, sql := range sqls {
-		_, err := yacc.Parse(sql)
+		_, err := parse(sql)
 		if err != nil {
 			label := sql
 			if len(label) > 60 {
@@ -35,7 +34,7 @@ func TestJsonBareEmpty(t *testing.T) {
 		`SELECT JSON_VALUE(jsonb '1', '$' EMPTY ON ERROR)`,
 	}
 	for _, sql := range sqls {
-		_, err := yacc.Parse(sql)
+		_, err := parse(sql)
 		if err != nil {
 			label := sql
 			if len(label) > 60 {

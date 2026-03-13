@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // =============================================================================
@@ -13,7 +12,7 @@ import (
 
 func TestAlterTableSetSchema(t *testing.T) {
 	input := "ALTER TABLE t SET SCHEMA new_schema"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -34,7 +33,7 @@ func TestAlterTableSetSchema(t *testing.T) {
 
 func TestAlterViewSetSchema(t *testing.T) {
 	input := "ALTER VIEW v SET SCHEMA new_schema"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -49,7 +48,7 @@ func TestAlterViewSetSchema(t *testing.T) {
 
 func TestAlterSequenceSetSchema(t *testing.T) {
 	input := "ALTER SEQUENCE s SET SCHEMA new_schema"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -64,7 +63,7 @@ func TestAlterSequenceSetSchema(t *testing.T) {
 
 func TestAlterFunctionSetSchema(t *testing.T) {
 	input := "ALTER FUNCTION f(int) SET SCHEMA new_schema"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -79,7 +78,7 @@ func TestAlterFunctionSetSchema(t *testing.T) {
 
 func TestAlterTypeSetSchema(t *testing.T) {
 	input := "ALTER TYPE mytype SET SCHEMA new_schema"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -94,7 +93,7 @@ func TestAlterTypeSetSchema(t *testing.T) {
 
 func TestAlterMatViewSetSchema(t *testing.T) {
 	input := "ALTER MATERIALIZED VIEW mv SET SCHEMA new_schema"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -115,7 +114,7 @@ func TestAlterTableOwnerTo(t *testing.T) {
 	// ALTER TABLE ... OWNER TO is handled by AlterTableStmt via alter_table_cmd
 	// with AT_ChangeOwner, same as PostgreSQL
 	input := "ALTER TABLE t OWNER TO new_owner"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -146,7 +145,7 @@ func TestAlterViewOwnerTo(t *testing.T) {
 	// is handled by AlterTableStmt for simple cases. However, PG also has
 	// AlterOwnerStmt for many object types. Let's test one that uses AlterOwnerStmt.
 	input := "ALTER FUNCTION f(int) OWNER TO new_owner"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -162,7 +161,7 @@ func TestAlterViewOwnerTo(t *testing.T) {
 func TestAlterDomainOwnerTo(t *testing.T) {
 	// Test ALTER DOMAIN ... OWNER TO (handled by AlterOwnerStmt)
 	input := "ALTER DOMAIN mydom OWNER TO new_owner"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -180,7 +179,7 @@ func TestAlterDomainOwnerTo(t *testing.T) {
 
 func TestAlterDatabaseOwnerTo(t *testing.T) {
 	input := "ALTER DATABASE d OWNER TO new_owner"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -195,7 +194,7 @@ func TestAlterDatabaseOwnerTo(t *testing.T) {
 
 func TestAlterSchemaOwnerTo(t *testing.T) {
 	input := "ALTER SCHEMA s OWNER TO new_owner"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -211,7 +210,7 @@ func TestAlterSchemaOwnerTo(t *testing.T) {
 
 func TestAlterFunctionDependsOnExtension(t *testing.T) {
 	input := "ALTER FUNCTION f(int) DEPENDS ON EXTENSION ext"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -233,7 +232,7 @@ func TestAlterFunctionDependsOnExtension(t *testing.T) {
 
 func TestAlterFunctionNoDependsOnExtension(t *testing.T) {
 	input := "ALTER FUNCTION f(int) NO DEPENDS ON EXTENSION ext"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -249,7 +248,7 @@ func TestAlterFunctionNoDependsOnExtension(t *testing.T) {
 
 func TestAlterOperatorSet(t *testing.T) {
 	input := "ALTER OPERATOR +(int, int) SET (RESTRICT = func)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -271,7 +270,7 @@ func TestAlterOperatorSet(t *testing.T) {
 
 func TestAlterTypeSet(t *testing.T) {
 	input := "ALTER TYPE mytype SET (RECEIVE = func)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -290,7 +289,7 @@ func TestAlterTypeSet(t *testing.T) {
 
 func TestAlterDefaultPrivilegesGrantOnTables(t *testing.T) {
 	input := "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO PUBLIC"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -314,7 +313,7 @@ func TestAlterDefaultPrivilegesGrantOnTables(t *testing.T) {
 
 func TestAlterDefaultPrivilegesRevokeOnFunctions(t *testing.T) {
 	input := "ALTER DEFAULT PRIVILEGES FOR ROLE admin REVOKE ALL ON FUNCTIONS FROM PUBLIC"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -333,7 +332,7 @@ func TestAlterDefaultPrivilegesRevokeOnFunctions(t *testing.T) {
 
 func TestAlterTSDictionary(t *testing.T) {
 	input := "ALTER TEXT SEARCH DICTIONARY mydict (STOPWORDS = 'english')"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -351,7 +350,7 @@ func TestAlterTSDictionary(t *testing.T) {
 
 func TestAlterTSConfigAddMapping(t *testing.T) {
 	input := "ALTER TEXT SEARCH CONFIGURATION myconfig ADD MAPPING FOR word WITH simple"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -369,7 +368,7 @@ func TestAlterTSConfigAddMapping(t *testing.T) {
 
 func TestAlterTSConfigDropMapping(t *testing.T) {
 	input := "ALTER TEXT SEARCH CONFIGURATION myconfig DROP MAPPING FOR word"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

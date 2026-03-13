@@ -4,13 +4,12 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // parseCreateFunctionStmt is a helper that parses input and returns the first statement as *nodes.CreateFunctionStmt.
 func parseCreateFunctionStmt(t *testing.T, input string) *nodes.CreateFunctionStmt {
 	t.Helper()
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -421,7 +420,7 @@ func TestFuncTypePctType(t *testing.T) {
 	}
 	for _, sql := range sqls {
 		t.Run(sql[:40], func(t *testing.T) {
-			_, err := yacc.Parse(sql)
+			_, err := parse(sql)
 			if err != nil {
 				t.Errorf("Parse(%q) failed: %v", sql[:60], err)
 			}

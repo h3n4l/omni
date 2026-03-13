@@ -4,14 +4,13 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // TestUpdateBasic tests: UPDATE t SET name = 'new' WHERE id = 1
 func TestUpdateBasic(t *testing.T) {
 	input := "UPDATE t SET name = 'new' WHERE id = 1"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -88,7 +87,7 @@ func TestUpdateBasic(t *testing.T) {
 func TestUpdateMultipleColumns(t *testing.T) {
 	input := "UPDATE t SET name = 'new', age = 30 WHERE id = 1"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -143,7 +142,7 @@ func TestUpdateMultipleColumns(t *testing.T) {
 func TestUpdateWithFrom(t *testing.T) {
 	input := "UPDATE t SET name = t2.name FROM t2 WHERE t.id = t2.id"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -186,7 +185,7 @@ func TestUpdateWithFrom(t *testing.T) {
 func TestUpdateReturning(t *testing.T) {
 	input := "UPDATE t SET name = 'new' RETURNING id, name"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -240,7 +239,7 @@ func TestUpdateReturning(t *testing.T) {
 func TestUpdateReturningStar(t *testing.T) {
 	input := "UPDATE t SET name = 'new' RETURNING *"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -279,7 +278,7 @@ func TestUpdateReturningStar(t *testing.T) {
 func TestUpdateWithAlias(t *testing.T) {
 	input := "UPDATE t AS target SET name = 'new'"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -307,7 +306,7 @@ func TestUpdateWithAlias(t *testing.T) {
 func TestUpdateWithCTE(t *testing.T) {
 	input := "WITH cte AS (SELECT 1) UPDATE t SET name = 'new'"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -344,7 +343,7 @@ func TestUpdateWithCTE(t *testing.T) {
 func TestUpdateNoWhere(t *testing.T) {
 	input := "UPDATE t SET active = false"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -412,7 +411,7 @@ func TestUpdateTableExpressions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := yacc.Parse(tt.input)
+			result, err := parse(tt.input)
 			if err != nil {
 				t.Fatalf("Parse error for %q: %v", tt.input, err)
 			}

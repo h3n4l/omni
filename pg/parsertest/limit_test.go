@@ -4,13 +4,12 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 func TestParseLimitOnly(t *testing.T) {
 	input := "SELECT * FROM t LIMIT 10"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -54,7 +53,7 @@ func TestParseLimitOnly(t *testing.T) {
 func TestParseOffsetOnly(t *testing.T) {
 	input := "SELECT * FROM t OFFSET 5"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -86,7 +85,7 @@ func TestParseOffsetOnly(t *testing.T) {
 func TestParseLimitOffset(t *testing.T) {
 	input := "SELECT * FROM t LIMIT 10 OFFSET 5"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -123,7 +122,7 @@ func TestParseOffsetLimit(t *testing.T) {
 	// Reversed order: OFFSET before LIMIT
 	input := "SELECT * FROM t OFFSET 5 LIMIT 10"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -159,7 +158,7 @@ func TestParseOffsetLimit(t *testing.T) {
 func TestParseLimitAll(t *testing.T) {
 	input := "SELECT * FROM t LIMIT ALL"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -187,7 +186,7 @@ func TestParseLimitAll(t *testing.T) {
 func TestParseFetchFirstRowsOnly(t *testing.T) {
 	input := "SELECT * FROM t FETCH FIRST 5 ROWS ONLY"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -214,7 +213,7 @@ func TestParseFetchNextRowOnly(t *testing.T) {
 	// FETCH NEXT ROW ONLY implies LIMIT 1
 	input := "SELECT * FROM t FETCH NEXT ROW ONLY"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -240,7 +239,7 @@ func TestParseFetchNextRowOnly(t *testing.T) {
 func TestParseOrderByLimit(t *testing.T) {
 	input := "SELECT * FROM t ORDER BY id LIMIT 10 OFFSET 5"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -285,7 +284,7 @@ func TestParseOrderByLimit(t *testing.T) {
 func TestParseCTEWithLimit(t *testing.T) {
 	input := "WITH cte AS (SELECT 1) SELECT * FROM cte LIMIT 5"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -318,7 +317,7 @@ func TestParseCTEWithLimit(t *testing.T) {
 func TestParseFetchFirstWithTies(t *testing.T) {
 	input := "SELECT * FROM t FETCH FIRST 3 ROWS WITH TIES"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -345,7 +344,7 @@ func TestParseFetchNextRowWithTies(t *testing.T) {
 	// FETCH NEXT ROW WITH TIES implies LIMIT 1 WITH TIES
 	input := "SELECT * FROM t FETCH NEXT ROW WITH TIES"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -372,7 +371,7 @@ func TestParseLimitExpression(t *testing.T) {
 	// LIMIT with an expression instead of a simple constant
 	input := "SELECT * FROM t LIMIT 5 + 5"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

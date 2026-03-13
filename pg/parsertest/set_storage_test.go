@@ -4,13 +4,12 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 func TestAlterColumnSetStoragePlain(t *testing.T) {
 	input := "ALTER TABLE t ALTER COLUMN c SET STORAGE PLAIN"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -33,7 +32,7 @@ func TestAlterColumnSetStoragePlain(t *testing.T) {
 func TestAlterColumnSetStorageExternal(t *testing.T) {
 	input := "ALTER TABLE t ALTER c SET STORAGE EXTERNAL"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -53,7 +52,7 @@ func TestAlterColumnSetStorageExternal(t *testing.T) {
 func TestAlterColumnSetStorageDefault(t *testing.T) {
 	input := "ALTER TABLE t ALTER COLUMN c SET STORAGE DEFAULT"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

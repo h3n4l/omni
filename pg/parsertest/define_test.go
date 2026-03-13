@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // =============================================================================
@@ -15,7 +14,7 @@ import (
 func TestCreateAggregateNewStyle(t *testing.T) {
 	input := "CREATE AGGREGATE myagg(integer) (SFUNC = int4_avg_accum, STYPE = _int8)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -53,7 +52,7 @@ func TestCreateAggregateNewStyle(t *testing.T) {
 func TestCreateAggregateMultiArg(t *testing.T) {
 	input := "CREATE AGGREGATE myagg(integer, integer) (SFUNC = f, STYPE = int8)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -75,7 +74,7 @@ func TestCreateAggregateMultiArg(t *testing.T) {
 func TestCreateAggregateStar(t *testing.T) {
 	input := "CREATE AGGREGATE myagg(*) (SFUNC = f, STYPE = int8)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -98,7 +97,7 @@ func TestCreateAggregateStar(t *testing.T) {
 func TestCreateAggregateOldStyle(t *testing.T) {
 	input := "CREATE AGGREGATE myagg(basetype = integer, sfunc = f, stype = int8)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -123,7 +122,7 @@ func TestCreateAggregateOldStyle(t *testing.T) {
 func TestCreateAggregateOrReplace(t *testing.T) {
 	input := "CREATE OR REPLACE AGGREGATE myagg(integer) (SFUNC = f, STYPE = int8)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -146,7 +145,7 @@ func TestCreateAggregateOrReplace(t *testing.T) {
 func TestCreateOperatorBasic(t *testing.T) {
 	input := "CREATE OPERATOR === (leftarg = text, rightarg = text, procedure = texteq)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -174,7 +173,7 @@ func TestCreateOperatorBasic(t *testing.T) {
 func TestCreateOperatorPlus(t *testing.T) {
 	input := "CREATE OPERATOR + (leftarg = integer, rightarg = integer, procedure = int4pl)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -196,7 +195,7 @@ func TestCreateOperatorPlus(t *testing.T) {
 func TestCreateOperatorSchemaQualified(t *testing.T) {
 	input := "CREATE OPERATOR myschema.+ (leftarg = integer, rightarg = integer, procedure = int4pl)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -228,7 +227,7 @@ func TestCreateOperatorSchemaQualified(t *testing.T) {
 func TestCreateTypeShell(t *testing.T) {
 	input := "CREATE TYPE mytype"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -256,7 +255,7 @@ func TestCreateTypeShell(t *testing.T) {
 func TestCreateTypeBase(t *testing.T) {
 	input := "CREATE TYPE mytype (INPUT = mytype_in, OUTPUT = mytype_out)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -278,7 +277,7 @@ func TestCreateTypeBase(t *testing.T) {
 func TestCreateTypeComposite(t *testing.T) {
 	input := "CREATE TYPE complex AS (r float8, i float8)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -313,7 +312,7 @@ func TestCreateTypeComposite(t *testing.T) {
 func TestCreateTypeEnum(t *testing.T) {
 	input := "CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy')"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -345,7 +344,7 @@ func TestCreateTypeEnum(t *testing.T) {
 func TestCreateTypeEnumEmpty(t *testing.T) {
 	input := "CREATE TYPE mood AS ENUM ()"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -364,7 +363,7 @@ func TestCreateTypeEnumEmpty(t *testing.T) {
 func TestCreateTypeRange(t *testing.T) {
 	input := "CREATE TYPE float8_range AS RANGE (SUBTYPE = float8)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -393,7 +392,7 @@ func TestCreateTypeRange(t *testing.T) {
 func TestCreateTextSearchParser(t *testing.T) {
 	input := "CREATE TEXT SEARCH PARSER myparser (START = prsd_start, GETTOKEN = prsd_nexttoken, END = prsd_end, LEXTYPES = prsd_lextype)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -421,7 +420,7 @@ func TestCreateTextSearchParser(t *testing.T) {
 func TestCreateTextSearchDictionary(t *testing.T) {
 	input := "CREATE TEXT SEARCH DICTIONARY mydict (TEMPLATE = simple, STOPWORDS = english)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -446,7 +445,7 @@ func TestCreateTextSearchDictionary(t *testing.T) {
 func TestCreateTextSearchTemplate(t *testing.T) {
 	input := "CREATE TEXT SEARCH TEMPLATE mytempl (INIT = dsimple_init, LEXIZE = dsimple_lexize)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -468,7 +467,7 @@ func TestCreateTextSearchTemplate(t *testing.T) {
 func TestCreateTextSearchConfiguration(t *testing.T) {
 	input := "CREATE TEXT SEARCH CONFIGURATION myconfig (PARSER = default)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -494,7 +493,7 @@ func TestCreateTextSearchConfiguration(t *testing.T) {
 func TestCreateCollationDefinition(t *testing.T) {
 	input := "CREATE COLLATION mycoll (LOCALE = 'en_US.utf8')"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -525,7 +524,7 @@ func TestCreateCollationDefinition(t *testing.T) {
 func TestCreateCollationIfNotExists(t *testing.T) {
 	input := "CREATE COLLATION IF NOT EXISTS mycoll (LOCALE = 'en_US.utf8')"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -547,7 +546,7 @@ func TestCreateCollationIfNotExists(t *testing.T) {
 func TestCreateCollationFrom(t *testing.T) {
 	input := `CREATE COLLATION mycoll FROM "C"`
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -577,7 +576,7 @@ func TestCreateCollationFrom(t *testing.T) {
 func TestCreateCollationIfNotExistsFrom(t *testing.T) {
 	input := `CREATE COLLATION IF NOT EXISTS mycoll FROM "C"`
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -614,7 +613,7 @@ func TestCreateCollationIfNotExistsFrom(t *testing.T) {
 func TestCreateTypeCompositeEmpty(t *testing.T) {
 	input := "CREATE TYPE empty_type AS ()"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -634,7 +633,7 @@ func TestCreateTypeCompositeEmpty(t *testing.T) {
 func TestCreateTypeSchemaQualified(t *testing.T) {
 	input := "CREATE TYPE myschema.mytype (INPUT = mytype_in, OUTPUT = mytype_out)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -662,7 +661,7 @@ func TestCreateTypeSchemaQualified(t *testing.T) {
 func TestDefElemNoValue(t *testing.T) {
 	input := "CREATE TYPE mytype (PASSEDBYVALUE)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -688,7 +687,7 @@ func TestDefElemNoValue(t *testing.T) {
 func TestDefElemNumericValue(t *testing.T) {
 	input := "CREATE TYPE mytype (INTERNALLENGTH = 16)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -711,7 +710,7 @@ func TestDefElemNumericValue(t *testing.T) {
 func TestDefElemStringValue(t *testing.T) {
 	input := "CREATE TEXT SEARCH DICTIONARY d (TEMPLATE = simple, STOPWORDS = 'english')"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -742,7 +741,7 @@ func TestDefElemStringValue(t *testing.T) {
 func TestCreateTypeRangeMultipleParams(t *testing.T) {
 	input := "CREATE TYPE r AS RANGE (SUBTYPE = float8, SUBTYPE_OPCLASS = float8_ops)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -761,7 +760,7 @@ func TestCreateTypeRangeMultipleParams(t *testing.T) {
 func TestCreateCompositeTypeSchemaQualified(t *testing.T) {
 	input := "CREATE TYPE myschema.complex AS (r float8, i float8)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

@@ -4,13 +4,12 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 func TestParseGroupByDistinct(t *testing.T) {
 	input := "SELECT a, count(*) FROM t GROUP BY DISTINCT a"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -38,7 +37,7 @@ func TestParseGroupByDistinct(t *testing.T) {
 func TestParseGroupByWithoutDistinct(t *testing.T) {
 	input := "SELECT a, count(*) FROM t GROUP BY a"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -58,7 +57,7 @@ func TestParseGroupByWithoutDistinct(t *testing.T) {
 func TestParseGroupByAll(t *testing.T) {
 	input := "SELECT a, count(*) FROM t GROUP BY ALL a"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

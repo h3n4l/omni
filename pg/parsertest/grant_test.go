@@ -4,13 +4,12 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // helper to parse and extract a single GrantStmt
 func parseGrantStmt(t *testing.T, input string) *nodes.GrantStmt {
 	t.Helper()
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -376,7 +375,7 @@ func TestGrantRevokeTableDriven(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := yacc.Parse(tt.input)
+			result, err := parse(tt.input)
 			if err != nil {
 				t.Fatalf("Parse error for %q: %v", tt.input, err)
 			}

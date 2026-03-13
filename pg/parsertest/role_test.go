@@ -4,13 +4,12 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // helper to parse and extract a single CreateRoleStmt
 func parseCreateRoleStmt(t *testing.T, input string) *nodes.CreateRoleStmt {
 	t.Helper()
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error for %q: %v", input, err)
 	}
@@ -27,7 +26,7 @@ func parseCreateRoleStmt(t *testing.T, input string) *nodes.CreateRoleStmt {
 // helper to parse and extract a single AlterRoleStmt
 func parseAlterRoleStmt(t *testing.T, input string) *nodes.AlterRoleStmt {
 	t.Helper()
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error for %q: %v", input, err)
 	}
@@ -44,7 +43,7 @@ func parseAlterRoleStmt(t *testing.T, input string) *nodes.AlterRoleStmt {
 // helper to parse and extract a single AlterRoleSetStmt
 func parseAlterRoleSetStmt(t *testing.T, input string) *nodes.AlterRoleSetStmt {
 	t.Helper()
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error for %q: %v", input, err)
 	}
@@ -61,7 +60,7 @@ func parseAlterRoleSetStmt(t *testing.T, input string) *nodes.AlterRoleSetStmt {
 // helper to parse and extract a single DropRoleStmt
 func parseDropRoleStmt(t *testing.T, input string) *nodes.DropRoleStmt {
 	t.Helper()
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error for %q: %v", input, err)
 	}
@@ -78,7 +77,7 @@ func parseDropRoleStmt(t *testing.T, input string) *nodes.DropRoleStmt {
 // helper to parse and extract a single GrantRoleStmt
 func parseGrantRoleStmt(t *testing.T, input string) *nodes.GrantRoleStmt {
 	t.Helper()
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error for %q: %v", input, err)
 	}
@@ -765,7 +764,7 @@ func TestRoleManagementTableDriven(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := yacc.Parse(tt.input)
+			result, err := parse(tt.input)
 			if err != nil {
 				t.Fatalf("Parse error for %q: %v", tt.input, err)
 			}

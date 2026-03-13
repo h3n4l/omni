@@ -4,6 +4,13 @@ import (
 	nodes "github.com/bytebase/omni/pg/ast"
 )
 
+// ON CONFLICT action constants matching PostgreSQL's values.
+const (
+	ONCONFLICT_NONE    = 0
+	ONCONFLICT_NOTHING = 1
+	ONCONFLICT_UPDATE  = 2
+)
+
 // parseInsertStmt parses an INSERT statement.
 //
 // Ref: https://www.postgresql.org/docs/17/sql-insert.html

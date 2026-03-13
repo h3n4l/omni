@@ -4,13 +4,13 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
+	"github.com/bytebase/omni/pg/parser"
 )
 
 // parseViewStmt is a helper that parses input and returns the first statement as *nodes.ViewStmt.
 func parseViewStmt(t *testing.T, input string) *nodes.ViewStmt {
 	t.Helper()
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -46,7 +46,7 @@ func TestCreateViewBasic(t *testing.T) {
 	if stmt.Query == nil {
 		t.Fatal("expected Query to be set")
 	}
-	if stmt.WithCheckOption != yacc.VIEW_CHECK_OPTION_NONE {
+	if stmt.WithCheckOption != parser.VIEW_CHECK_OPTION_NONE {
 		t.Errorf("expected WithCheckOption NONE (0), got %d", stmt.WithCheckOption)
 	}
 }
@@ -67,7 +67,7 @@ func TestCreateOrReplaceView(t *testing.T) {
 	if stmt.Query == nil {
 		t.Fatal("expected Query to be set")
 	}
-	if stmt.WithCheckOption != yacc.VIEW_CHECK_OPTION_NONE {
+	if stmt.WithCheckOption != parser.VIEW_CHECK_OPTION_NONE {
 		t.Errorf("expected WithCheckOption NONE (0), got %d", stmt.WithCheckOption)
 	}
 }
@@ -153,8 +153,8 @@ func TestCreateViewWithCheckOption(t *testing.T) {
 	if stmt.View.Relname != "v" {
 		t.Errorf("expected View.Relname 'v', got %q", stmt.View.Relname)
 	}
-	if stmt.WithCheckOption != yacc.VIEW_CHECK_OPTION_LOCAL {
-		t.Errorf("expected WithCheckOption LOCAL (%d), got %d", yacc.VIEW_CHECK_OPTION_LOCAL, stmt.WithCheckOption)
+	if stmt.WithCheckOption != parser.VIEW_CHECK_OPTION_LOCAL {
+		t.Errorf("expected WithCheckOption LOCAL (%d), got %d", parser.VIEW_CHECK_OPTION_LOCAL, stmt.WithCheckOption)
 	}
 	if stmt.Query == nil {
 		t.Fatal("expected Query to be set")
@@ -171,8 +171,8 @@ func TestCreateViewWithCascadedCheckOption(t *testing.T) {
 	if stmt.View.Relname != "v" {
 		t.Errorf("expected View.Relname 'v', got %q", stmt.View.Relname)
 	}
-	if stmt.WithCheckOption != yacc.VIEW_CHECK_OPTION_CASCADED {
-		t.Errorf("expected WithCheckOption CASCADED (%d), got %d", yacc.VIEW_CHECK_OPTION_CASCADED, stmt.WithCheckOption)
+	if stmt.WithCheckOption != parser.VIEW_CHECK_OPTION_CASCADED {
+		t.Errorf("expected WithCheckOption CASCADED (%d), got %d", parser.VIEW_CHECK_OPTION_CASCADED, stmt.WithCheckOption)
 	}
 	if stmt.Query == nil {
 		t.Fatal("expected Query to be set")
@@ -189,8 +189,8 @@ func TestCreateViewWithLocalCheckOption(t *testing.T) {
 	if stmt.View.Relname != "v" {
 		t.Errorf("expected View.Relname 'v', got %q", stmt.View.Relname)
 	}
-	if stmt.WithCheckOption != yacc.VIEW_CHECK_OPTION_LOCAL {
-		t.Errorf("expected WithCheckOption LOCAL (%d), got %d", yacc.VIEW_CHECK_OPTION_LOCAL, stmt.WithCheckOption)
+	if stmt.WithCheckOption != parser.VIEW_CHECK_OPTION_LOCAL {
+		t.Errorf("expected WithCheckOption LOCAL (%d), got %d", parser.VIEW_CHECK_OPTION_LOCAL, stmt.WithCheckOption)
 	}
 	if stmt.Query == nil {
 		t.Fatal("expected Query to be set")

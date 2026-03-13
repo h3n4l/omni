@@ -4,13 +4,12 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 func TestTableCheckNotValid(t *testing.T) {
 	input := "CREATE TABLE t (x int, CHECK (x > 0) NOT VALID)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -39,7 +38,7 @@ func TestTableCheckNotValid(t *testing.T) {
 func TestTableCheckValid(t *testing.T) {
 	input := "CREATE TABLE t (x int, CHECK (x > 0))"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -69,7 +68,7 @@ func TestColumnCheckInitiallyValid(t *testing.T) {
 	// still have InitiallyValid=true to match PostgreSQL defaults).
 	input := "CREATE TABLE t (x int CHECK (x > 0))"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

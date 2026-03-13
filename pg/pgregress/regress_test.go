@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bytebase/omni/pg/yacc"
+	"github.com/bytebase/omni/pg/parser"
 )
 
 var update = flag.Bool("update", false, "regenerate known_failures.json from current parse results")
@@ -103,7 +103,7 @@ func TestPGRegress(t *testing.T) {
 						}
 					}
 				}
-				_, parseErr := yacc.Parse(sqlToParse)
+				_, parseErr := parser.Parse(sqlToParse)
 
 				isKnown := intSliceContains(kf, i)
 
@@ -233,7 +233,7 @@ func TestPGRegressStats(t *testing.T) {
 					}
 				}
 			}
-			if _, err := yacc.Parse(sql); err == nil {
+			if _, err := parser.Parse(sql); err == nil {
 				passed++
 			} else if stmt.HasPsqlVar {
 				psqlVar++

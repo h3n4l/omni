@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // =============================================================================
@@ -14,7 +13,7 @@ import (
 // TestCreatePolicyUsing tests: CREATE POLICY p ON t USING (true)
 func TestCreatePolicyUsing(t *testing.T) {
 	input := "CREATE POLICY p ON t USING (true)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -45,7 +44,7 @@ func TestCreatePolicyUsing(t *testing.T) {
 // TestCreatePolicyForSelectToPublic tests: CREATE POLICY p ON t FOR SELECT TO PUBLIC USING (true)
 func TestCreatePolicyForSelectToPublic(t *testing.T) {
 	input := "CREATE POLICY p ON t FOR SELECT TO PUBLIC USING (true)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -61,7 +60,7 @@ func TestCreatePolicyForSelectToPublic(t *testing.T) {
 // TestCreatePolicyPermissiveAll tests: CREATE POLICY p ON t AS PERMISSIVE FOR ALL TO role1 USING (col > 0)
 func TestCreatePolicyPermissiveAll(t *testing.T) {
 	input := "CREATE POLICY p ON t AS permissive FOR ALL TO role1 USING (col > 0)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -80,7 +79,7 @@ func TestCreatePolicyPermissiveAll(t *testing.T) {
 // TestCreatePolicyInsertWithCheck tests: CREATE POLICY p ON t FOR INSERT WITH CHECK (col > 0)
 func TestCreatePolicyInsertWithCheck(t *testing.T) {
 	input := "CREATE POLICY p ON t FOR INSERT WITH CHECK (col > 0)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -96,7 +95,7 @@ func TestCreatePolicyInsertWithCheck(t *testing.T) {
 // TestCreatePolicyRestrictive tests: CREATE POLICY p ON t AS RESTRICTIVE FOR UPDATE USING (true) WITH CHECK (true)
 func TestCreatePolicyRestrictive(t *testing.T) {
 	input := "CREATE POLICY p ON t AS restrictive FOR UPDATE USING (true) WITH CHECK (true)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -118,7 +117,7 @@ func TestCreatePolicyRestrictive(t *testing.T) {
 // TestCreatePolicyForDelete tests: CREATE POLICY p ON t FOR DELETE USING (true)
 func TestCreatePolicyForDelete(t *testing.T) {
 	input := "CREATE POLICY p ON t FOR DELETE USING (true)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -135,7 +134,7 @@ func TestCreatePolicyForDelete(t *testing.T) {
 // TestAlterPolicyUsing tests: ALTER POLICY p ON t USING (col > 5)
 func TestAlterPolicyUsing(t *testing.T) {
 	input := "ALTER POLICY p ON t USING (col > 5)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -157,7 +156,7 @@ func TestAlterPolicyUsing(t *testing.T) {
 // TestAlterPolicyToRoles tests: ALTER POLICY p ON t TO role1, role2
 func TestAlterPolicyToRoles(t *testing.T) {
 	input := "ALTER POLICY p ON t TO role1, role2"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -170,7 +169,7 @@ func TestAlterPolicyToRoles(t *testing.T) {
 // TestAlterPolicyWithCheck tests: ALTER POLICY p ON t USING (true) WITH CHECK (col > 0)
 func TestAlterPolicyWithCheck(t *testing.T) {
 	input := "ALTER POLICY p ON t USING (true) WITH CHECK (col > 0)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

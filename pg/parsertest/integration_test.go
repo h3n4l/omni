@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // TestParseAndSerialize tests parsing SQL and serializing the result.
@@ -53,7 +52,7 @@ func TestParseAndSerialize(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := yacc.Parse(tt.input)
+			result, err := parse(tt.input)
 			if err != nil {
 				t.Fatalf("Parse error for %q: %v", tt.input, err)
 			}
@@ -100,7 +99,7 @@ func TestParseAndSerialize(t *testing.T) {
 func TestParseMultipleStatements(t *testing.T) {
 	input := "SELECT 1; SELECT 2; SELECT 3"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -150,7 +149,7 @@ func TestParseExpressions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := yacc.Parse(tt.input)
+			result, err := parse(tt.input)
 			if err != nil {
 				t.Fatalf("Parse error for %q: %v", tt.input, err)
 			}
@@ -179,7 +178,7 @@ func TestParseQualifiedNames(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := yacc.Parse(tt.input)
+			result, err := parse(tt.input)
 			if err != nil {
 				t.Fatalf("Parse error for %q: %v", tt.input, err)
 			}
@@ -213,7 +212,7 @@ func TestParseColumnAlias(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := yacc.Parse(tt.input)
+			result, err := parse(tt.input)
 			if err != nil {
 				t.Fatalf("Parse error for %q: %v", tt.input, err)
 			}

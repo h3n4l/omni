@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // =============================================================================
@@ -14,7 +13,7 @@ import (
 // TestCreateSubscriptionBasic tests: CREATE SUBSCRIPTION sub CONNECTION 'host=localhost' PUBLICATION pub1
 func TestCreateSubscriptionBasic(t *testing.T) {
 	input := "CREATE SUBSCRIPTION sub CONNECTION 'host=localhost' PUBLICATION pub1"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -43,7 +42,7 @@ func TestCreateSubscriptionBasic(t *testing.T) {
 // TestCreateSubscriptionMultiplePubs tests: CREATE SUBSCRIPTION sub CONNECTION 'host=localhost' PUBLICATION pub1, pub2
 func TestCreateSubscriptionMultiplePubs(t *testing.T) {
 	input := "CREATE SUBSCRIPTION sub CONNECTION 'host=localhost' PUBLICATION pub1, pub2"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -56,7 +55,7 @@ func TestCreateSubscriptionMultiplePubs(t *testing.T) {
 // TestCreateSubscriptionWithOptions tests: CREATE SUBSCRIPTION sub CONNECTION 'connstr' PUBLICATION pub WITH (slot_name = 'none')
 func TestCreateSubscriptionWithOptions(t *testing.T) {
 	input := "CREATE SUBSCRIPTION sub CONNECTION 'connstr' PUBLICATION pub WITH (slot_name = 'none')"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -77,7 +76,7 @@ func TestCreateSubscriptionWithOptions(t *testing.T) {
 // TestAlterSubscriptionConnection tests: ALTER SUBSCRIPTION sub CONNECTION 'new_conn'
 func TestAlterSubscriptionConnection(t *testing.T) {
 	input := "ALTER SUBSCRIPTION sub CONNECTION 'new_conn'"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -99,7 +98,7 @@ func TestAlterSubscriptionConnection(t *testing.T) {
 // TestAlterSubscriptionSetPublication tests: ALTER SUBSCRIPTION sub SET PUBLICATION pub2
 func TestAlterSubscriptionSetPublication(t *testing.T) {
 	input := "ALTER SUBSCRIPTION sub SET PUBLICATION pub2"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -115,7 +114,7 @@ func TestAlterSubscriptionSetPublication(t *testing.T) {
 // TestAlterSubscriptionRefresh tests: ALTER SUBSCRIPTION sub REFRESH PUBLICATION
 func TestAlterSubscriptionRefresh(t *testing.T) {
 	input := "ALTER SUBSCRIPTION sub REFRESH PUBLICATION"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -128,7 +127,7 @@ func TestAlterSubscriptionRefresh(t *testing.T) {
 // TestAlterSubscriptionEnable tests: ALTER SUBSCRIPTION sub ENABLE
 func TestAlterSubscriptionEnable(t *testing.T) {
 	input := "ALTER SUBSCRIPTION sub ENABLE"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -153,7 +152,7 @@ func TestAlterSubscriptionEnable(t *testing.T) {
 // TestAlterSubscriptionDisable tests: ALTER SUBSCRIPTION sub DISABLE
 func TestAlterSubscriptionDisable(t *testing.T) {
 	input := "ALTER SUBSCRIPTION sub DISABLE"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -171,7 +170,7 @@ func TestAlterSubscriptionDisable(t *testing.T) {
 // TestAlterSubscriptionSetOptions tests: ALTER SUBSCRIPTION sub SET (slot_name = 'myslot')
 func TestAlterSubscriptionSetOptions(t *testing.T) {
 	input := "ALTER SUBSCRIPTION sub SET (slot_name = 'myslot')"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -187,7 +186,7 @@ func TestAlterSubscriptionSetOptions(t *testing.T) {
 // TestAlterSubscriptionAddPublication tests: ALTER SUBSCRIPTION sub ADD PUBLICATION pub2
 func TestAlterSubscriptionAddPublication(t *testing.T) {
 	input := "ALTER SUBSCRIPTION sub ADD PUBLICATION pub2"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -200,7 +199,7 @@ func TestAlterSubscriptionAddPublication(t *testing.T) {
 // TestAlterSubscriptionDropPublication tests: ALTER SUBSCRIPTION sub DROP PUBLICATION pub1
 func TestAlterSubscriptionDropPublication(t *testing.T) {
 	input := "ALTER SUBSCRIPTION sub DROP PUBLICATION pub1"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -217,7 +216,7 @@ func TestAlterSubscriptionDropPublication(t *testing.T) {
 // TestDropSubscription tests: DROP SUBSCRIPTION sub
 func TestDropSubscription(t *testing.T) {
 	input := "DROP SUBSCRIPTION sub"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -236,7 +235,7 @@ func TestDropSubscription(t *testing.T) {
 // TestDropSubscriptionIfExists tests: DROP SUBSCRIPTION IF EXISTS sub
 func TestDropSubscriptionIfExists(t *testing.T) {
 	input := "DROP SUBSCRIPTION IF EXISTS sub"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // =============================================================================
@@ -13,7 +12,7 @@ import (
 
 func TestCreateOpClass(t *testing.T) {
 	input := "CREATE OPERATOR CLASS myclass DEFAULT FOR TYPE int4 USING btree AS OPERATOR 1 <, FUNCTION 1 btint4cmp(int4, int4)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -34,7 +33,7 @@ func TestCreateOpClass(t *testing.T) {
 
 func TestCreateOpClassNonDefault(t *testing.T) {
 	input := "CREATE OPERATOR CLASS myclass FOR TYPE int4 USING btree AS OPERATOR 1 <"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -50,7 +49,7 @@ func TestCreateOpClassNonDefault(t *testing.T) {
 
 func TestCreateOpFamily(t *testing.T) {
 	input := "CREATE OPERATOR FAMILY myfam USING btree"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -69,7 +68,7 @@ func TestCreateOpFamily(t *testing.T) {
 
 func TestAlterOpFamilyAdd(t *testing.T) {
 	input := "ALTER OPERATOR FAMILY myfam USING btree ADD OPERATOR 1 <(int4, int4)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -87,7 +86,7 @@ func TestAlterOpFamilyAdd(t *testing.T) {
 
 func TestAlterOpFamilyDrop(t *testing.T) {
 	input := "ALTER OPERATOR FAMILY myfam USING btree DROP OPERATOR 1 (int4, int4)"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -103,7 +102,7 @@ func TestAlterOpFamilyDrop(t *testing.T) {
 
 func TestDropOpClass(t *testing.T) {
 	input := "DROP OPERATOR CLASS myclass USING btree"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -118,7 +117,7 @@ func TestDropOpClass(t *testing.T) {
 
 func TestDropOpClassIfExists(t *testing.T) {
 	input := "DROP OPERATOR CLASS IF EXISTS myclass USING btree CASCADE"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -133,7 +132,7 @@ func TestDropOpClassIfExists(t *testing.T) {
 
 func TestDropOpFamily(t *testing.T) {
 	input := "DROP OPERATOR FAMILY myfam USING btree"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

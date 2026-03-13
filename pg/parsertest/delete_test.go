@@ -4,14 +4,13 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // TestDeleteBasic tests: DELETE FROM t WHERE id = 1
 func TestDeleteBasic(t *testing.T) {
 	input := "DELETE FROM t WHERE id = 1"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -62,7 +61,7 @@ func TestDeleteBasic(t *testing.T) {
 func TestDeleteAllRows(t *testing.T) {
 	input := "DELETE FROM t"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -94,7 +93,7 @@ func TestDeleteAllRows(t *testing.T) {
 func TestDeleteWithUsing(t *testing.T) {
 	input := "DELETE FROM t USING t2 WHERE t.id = t2.id"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -132,7 +131,7 @@ func TestDeleteWithUsing(t *testing.T) {
 func TestDeleteReturning(t *testing.T) {
 	input := "DELETE FROM t WHERE id = 1 RETURNING id"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -168,7 +167,7 @@ func TestDeleteReturning(t *testing.T) {
 func TestDeleteReturningStar(t *testing.T) {
 	input := "DELETE FROM t RETURNING *"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -207,7 +206,7 @@ func TestDeleteReturningStar(t *testing.T) {
 func TestDeleteWithAlias(t *testing.T) {
 	input := "DELETE FROM t AS target WHERE target.id = 1"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -235,7 +234,7 @@ func TestDeleteWithAlias(t *testing.T) {
 func TestDeleteWithCTE(t *testing.T) {
 	input := "WITH cte AS (SELECT 1) DELETE FROM t WHERE id IN (SELECT * FROM cte)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -277,7 +276,7 @@ func TestDeleteWithCTE(t *testing.T) {
 func TestDeleteSchemaQualified(t *testing.T) {
 	input := "DELETE FROM myschema.t WHERE id = 1"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -319,7 +318,7 @@ func TestDeleteTableExpressions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := yacc.Parse(tt.input)
+			result, err := parse(tt.input)
 			if err != nil {
 				t.Fatalf("Parse error for %q: %v", tt.input, err)
 			}

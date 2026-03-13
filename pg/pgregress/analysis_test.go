@@ -11,7 +11,7 @@ import (
 	"testing"
 	"unicode"
 
-	"github.com/bytebase/omni/pg/yacc"
+	"github.com/bytebase/omni/pg/parser"
 )
 
 // TestAnalyzeFailures reads known_failures.json, parses every failing statement,
@@ -69,7 +69,7 @@ func TestAnalyzeFailures(t *testing.T) {
 				continue
 			}
 			stmt := stmts[idx]
-			_, parseErr := yacc.Parse(stmt.SQL)
+			_, parseErr := parser.Parse(stmt.SQL)
 			errMsg := ""
 			if parseErr != nil {
 				errMsg = parseErr.Error()

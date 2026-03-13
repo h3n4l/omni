@@ -4,14 +4,13 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // TestParseBasicCTE tests parsing a basic CTE: WITH cte AS (SELECT 1) SELECT * FROM cte
 func TestParseBasicCTE(t *testing.T) {
 	input := "WITH cte AS (SELECT 1) SELECT * FROM cte"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -84,7 +83,7 @@ func TestParseBasicCTE(t *testing.T) {
 func TestParseRecursiveCTE(t *testing.T) {
 	input := "WITH RECURSIVE cte AS (SELECT 1 UNION ALL SELECT n FROM cte) SELECT * FROM cte"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -141,7 +140,7 @@ func TestParseRecursiveCTE(t *testing.T) {
 func TestParseMultipleCTEs(t *testing.T) {
 	input := "WITH cte1 AS (SELECT 1), cte2 AS (SELECT 2) SELECT * FROM cte1, cte2"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -195,7 +194,7 @@ func TestParseMultipleCTEs(t *testing.T) {
 func TestParseCTEWithColumnNames(t *testing.T) {
 	input := "WITH cte(a, b) AS (SELECT 1, 2) SELECT * FROM cte"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -253,7 +252,7 @@ func TestParseCTEWithColumnNames(t *testing.T) {
 func TestParseCTEWithOrderBy(t *testing.T) {
 	input := "WITH cte AS (SELECT 1 AS n) SELECT * FROM cte ORDER BY n"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -301,7 +300,7 @@ func TestParseCTETableExpressions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := yacc.Parse(tt.input)
+			result, err := parse(tt.input)
 			if err != nil {
 				t.Fatalf("Parse error for %q: %v", tt.input, err)
 			}

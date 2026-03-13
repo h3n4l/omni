@@ -4,14 +4,13 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // TestCreateTableBasic tests: CREATE TABLE t (id integer, name varchar(100))
 func TestCreateTableBasic(t *testing.T) {
 	input := "CREATE TABLE t (id integer, name varchar(100))"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -75,7 +74,7 @@ func TestCreateTableBasic(t *testing.T) {
 func TestCreateTableIfNotExists(t *testing.T) {
 	input := "CREATE TABLE IF NOT EXISTS t (id integer)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -102,7 +101,7 @@ func TestCreateTableIfNotExists(t *testing.T) {
 func TestCreateTableColumnNotNull(t *testing.T) {
 	input := "CREATE TABLE t (id integer NOT NULL)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -127,7 +126,7 @@ func TestCreateTableColumnNotNull(t *testing.T) {
 func TestCreateTableColumnDefault(t *testing.T) {
 	input := "CREATE TABLE t (id integer DEFAULT 0)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -165,7 +164,7 @@ func TestCreateTableColumnDefault(t *testing.T) {
 func TestCreateTableColumnPrimaryKey(t *testing.T) {
 	input := "CREATE TABLE t (id integer PRIMARY KEY)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -187,7 +186,7 @@ func TestCreateTableColumnPrimaryKey(t *testing.T) {
 func TestCreateTableColumnUnique(t *testing.T) {
 	input := "CREATE TABLE t (name varchar UNIQUE)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -209,7 +208,7 @@ func TestCreateTableColumnUnique(t *testing.T) {
 func TestCreateTableColumnCheck(t *testing.T) {
 	input := "CREATE TABLE t (age integer CHECK (age > 0))"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -243,7 +242,7 @@ func TestCreateTableColumnCheck(t *testing.T) {
 func TestCreateTableColumnReferences(t *testing.T) {
 	input := "CREATE TABLE t (user_id integer REFERENCES users(id))"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -278,7 +277,7 @@ func TestCreateTableColumnReferences(t *testing.T) {
 func TestCreateTableTablePrimaryKey(t *testing.T) {
 	input := "CREATE TABLE t (id integer, name text, PRIMARY KEY (id))"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -309,7 +308,7 @@ func TestCreateTableTablePrimaryKey(t *testing.T) {
 func TestCreateTableTableUnique(t *testing.T) {
 	input := "CREATE TABLE t (id integer, name text, UNIQUE (name))"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -339,7 +338,7 @@ func TestCreateTableTableUnique(t *testing.T) {
 func TestCreateTableTableForeignKey(t *testing.T) {
 	input := "CREATE TABLE t (id integer, FOREIGN KEY (id) REFERENCES t2(id))"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -385,7 +384,7 @@ func TestCreateTableTableForeignKey(t *testing.T) {
 func TestCreateTableNamedConstraint(t *testing.T) {
 	input := "CREATE TABLE t (id integer CONSTRAINT pk_id PRIMARY KEY)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -410,7 +409,7 @@ func TestCreateTableNamedConstraint(t *testing.T) {
 func TestCreateTableMultipleConstraints(t *testing.T) {
 	input := "CREATE TABLE t (id integer NOT NULL PRIMARY KEY, name varchar(100) NOT NULL DEFAULT 'unknown')"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -473,7 +472,7 @@ func TestCreateTableMultipleConstraints(t *testing.T) {
 func TestCreateTableSchemaQualified(t *testing.T) {
 	input := "CREATE TABLE myschema.t (id integer)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -494,7 +493,7 @@ func TestCreateTableSchemaQualified(t *testing.T) {
 func TestCreateTempTable(t *testing.T) {
 	input := "CREATE TEMP TABLE t (id integer)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -548,7 +547,7 @@ func TestCreateTableTableDriven(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := yacc.Parse(tt.input)
+			result, err := parse(tt.input)
 			if err != nil {
 				t.Fatalf("Parse error for %q: %v", tt.input, err)
 			}

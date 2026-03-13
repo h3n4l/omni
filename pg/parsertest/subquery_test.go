@@ -4,14 +4,13 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 func TestParseScalarSubquery(t *testing.T) {
 	// SELECT (SELECT 1) -- scalar subquery as expression
 	input := "SELECT (SELECT 1)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -78,7 +77,7 @@ func TestParseScalarSubquery(t *testing.T) {
 func TestParseExistsSubquery(t *testing.T) {
 	input := "SELECT * FROM t WHERE EXISTS (SELECT 1 FROM t2)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -130,7 +129,7 @@ func TestParseExistsSubquery(t *testing.T) {
 func TestParseInSubquery(t *testing.T) {
 	input := "SELECT * FROM t WHERE id IN (SELECT id FROM t2)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -186,7 +185,7 @@ func TestParseInSubquery(t *testing.T) {
 func TestParseNotInSubquery(t *testing.T) {
 	input := "SELECT * FROM t WHERE id NOT IN (SELECT id FROM t2)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -242,7 +241,7 @@ func TestParseNotInSubquery(t *testing.T) {
 func TestParseEqualAnySubquery(t *testing.T) {
 	input := "SELECT * FROM t WHERE id = ANY (SELECT id FROM t2)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -296,7 +295,7 @@ func TestParseEqualAnySubquery(t *testing.T) {
 func TestParseEqualAllSubquery(t *testing.T) {
 	input := "SELECT * FROM t WHERE id = ALL (SELECT id FROM t2)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -339,7 +338,7 @@ func TestParseEqualAllSubquery(t *testing.T) {
 func TestParseInSubqueryWithLimit(t *testing.T) {
 	input := "SELECT * FROM t WHERE id IN (SELECT id FROM t2 LIMIT 5)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -385,7 +384,7 @@ func TestParseGreaterThanSomeSubquery(t *testing.T) {
 	// SOME is a synonym for ANY
 	input := "SELECT * FROM t WHERE id > SOME (SELECT id FROM t2)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -419,7 +418,7 @@ func TestParseGreaterThanSomeSubquery(t *testing.T) {
 func TestParseLessThanAllSubquery(t *testing.T) {
 	input := "SELECT * FROM t WHERE id < ALL (SELECT id FROM t2)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -452,7 +451,7 @@ func TestParseLessThanAllSubquery(t *testing.T) {
 func TestParseNotEqualsAnySubquery(t *testing.T) {
 	input := "SELECT * FROM t WHERE id <> ANY (SELECT id FROM t2)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -486,7 +485,7 @@ func TestParseExistsWithAnd(t *testing.T) {
 	// Test EXISTS combined with another condition via AND
 	input := "SELECT * FROM t WHERE x = 1 AND EXISTS (SELECT 1 FROM t2)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -526,7 +525,7 @@ func TestParseScalarSubqueryInExpression(t *testing.T) {
 	// Test scalar subquery used in an expression context
 	input := "SELECT (SELECT 1) + 2"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

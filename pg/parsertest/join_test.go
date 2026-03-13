@@ -4,14 +4,13 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // TestParseCrossJoin verifies CROSS JOIN produces a JoinExpr with JOIN_INNER and no quals.
 func TestParseCrossJoin(t *testing.T) {
 	input := "SELECT * FROM t1 CROSS JOIN t2"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -61,7 +60,7 @@ func TestParseCrossJoin(t *testing.T) {
 func TestParseInnerJoinOn(t *testing.T) {
 	input := "SELECT * FROM t1 INNER JOIN t2 ON t1.id = t2.id"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -96,7 +95,7 @@ func TestParseInnerJoinOn(t *testing.T) {
 func TestParseLeftJoinOn(t *testing.T) {
 	input := "SELECT * FROM t1 LEFT JOIN t2 ON t1.id = t2.id"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -119,7 +118,7 @@ func TestParseLeftJoinOn(t *testing.T) {
 func TestParseRightJoinOn(t *testing.T) {
 	input := "SELECT * FROM t1 RIGHT JOIN t2 ON t1.id = t2.id"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -142,7 +141,7 @@ func TestParseRightJoinOn(t *testing.T) {
 func TestParseFullJoinOn(t *testing.T) {
 	input := "SELECT * FROM t1 FULL JOIN t2 ON t1.id = t2.id"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -165,7 +164,7 @@ func TestParseFullJoinOn(t *testing.T) {
 func TestParseLeftOuterJoinOn(t *testing.T) {
 	input := "SELECT * FROM t1 LEFT OUTER JOIN t2 ON t1.id = t2.id"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -188,7 +187,7 @@ func TestParseLeftOuterJoinOn(t *testing.T) {
 func TestParseJoinUsing(t *testing.T) {
 	input := "SELECT * FROM t1 JOIN t2 USING (id)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -226,7 +225,7 @@ func TestParseJoinUsing(t *testing.T) {
 func TestParseJoinUsingMultipleColumns(t *testing.T) {
 	input := "SELECT * FROM t1 JOIN t2 USING (a, b)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -258,7 +257,7 @@ func TestParseJoinUsingMultipleColumns(t *testing.T) {
 func TestParseNaturalJoin(t *testing.T) {
 	input := "SELECT * FROM t1 NATURAL JOIN t2"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -287,7 +286,7 @@ func TestParseNaturalJoin(t *testing.T) {
 func TestParseNaturalLeftJoin(t *testing.T) {
 	input := "SELECT * FROM t1 NATURAL LEFT JOIN t2"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -311,7 +310,7 @@ func TestParseNaturalLeftJoin(t *testing.T) {
 func TestParseChainedJoins(t *testing.T) {
 	input := "SELECT * FROM t1 JOIN t2 ON t1.id = t2.id JOIN t3 ON t2.id = t3.id"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -373,7 +372,7 @@ func TestParseChainedJoins(t *testing.T) {
 func TestParseImplicitInnerJoinOn(t *testing.T) {
 	input := "SELECT * FROM t1 JOIN t2 ON t1.id = t2.id"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -399,7 +398,7 @@ func TestParseImplicitInnerJoinOn(t *testing.T) {
 func TestParseRightOuterJoin(t *testing.T) {
 	input := "SELECT * FROM t1 RIGHT OUTER JOIN t2 ON t1.id = t2.id"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -419,7 +418,7 @@ func TestParseRightOuterJoin(t *testing.T) {
 func TestParseFullOuterJoin(t *testing.T) {
 	input := "SELECT * FROM t1 FULL OUTER JOIN t2 ON t1.id = t2.id"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -439,7 +438,7 @@ func TestParseFullOuterJoin(t *testing.T) {
 func TestParseJoinWithWhereClause(t *testing.T) {
 	input := "SELECT * FROM t1 JOIN t2 ON t1.id = t2.id WHERE t1.active = true"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -587,7 +586,7 @@ func TestParseJoinAllTypes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := yacc.Parse(tt.input)
+			result, err := parse(tt.input)
 			if err != nil {
 				t.Fatalf("Parse error for %q: %v", tt.input, err)
 			}

@@ -4,14 +4,13 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // TestCreateSchemaBasic tests: CREATE SCHEMA myschema
 func TestCreateSchemaBasic(t *testing.T) {
 	input := "CREATE SCHEMA myschema"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -40,7 +39,7 @@ func TestCreateSchemaBasic(t *testing.T) {
 func TestCreateSchemaIfNotExists(t *testing.T) {
 	input := "CREATE SCHEMA IF NOT EXISTS myschema"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -62,7 +61,7 @@ func TestCreateSchemaIfNotExists(t *testing.T) {
 func TestCreateSchemaAuthorization(t *testing.T) {
 	input := "CREATE SCHEMA AUTHORIZATION myrole"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -84,7 +83,7 @@ func TestCreateSchemaAuthorization(t *testing.T) {
 func TestCreateSchemaWithAuthorization(t *testing.T) {
 	input := "CREATE SCHEMA myschema AUTHORIZATION myrole"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -109,7 +108,7 @@ func TestCreateSchemaWithAuthorization(t *testing.T) {
 func TestCreateSchemaIfNotExistsAuth(t *testing.T) {
 	input := "CREATE SCHEMA IF NOT EXISTS AUTHORIZATION myrole"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -131,7 +130,7 @@ func TestCreateSchemaIfNotExistsAuth(t *testing.T) {
 func TestCreateSchemaWithTable(t *testing.T) {
 	input := "CREATE SCHEMA myschema CREATE TABLE t(id int)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -156,7 +155,7 @@ func TestCreateSchemaWithTable(t *testing.T) {
 func TestCreateSchemaWithMultipleElements(t *testing.T) {
 	input := "CREATE SCHEMA myschema CREATE TABLE t(id int) CREATE VIEW v AS SELECT 1"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // =============================================================================
@@ -13,7 +12,7 @@ import (
 
 func TestCreateStatistics(t *testing.T) {
 	input := "CREATE STATISTICS mystat ON col1, col2 FROM t"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -34,7 +33,7 @@ func TestCreateStatistics(t *testing.T) {
 
 func TestCreateStatisticsIfNotExists(t *testing.T) {
 	input := "CREATE STATISTICS IF NOT EXISTS mystat (dependencies) ON col1, col2 FROM t"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -49,7 +48,7 @@ func TestCreateStatisticsIfNotExists(t *testing.T) {
 
 func TestCreateStatisticsMultipleTypes(t *testing.T) {
 	input := "CREATE STATISTICS mystat (ndistinct, dependencies) ON col1, col2 FROM t"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -66,7 +65,7 @@ func TestCreateStatisticsFuncExpr(t *testing.T) {
 		`CREATE STATISTICS s3 ON abs(a), b, c FROM t1`,
 	}
 	for _, sql := range sqls {
-		_, err := yacc.Parse(sql)
+		_, err := parse(sql)
 		if err != nil {
 			t.Errorf("Parse(%q) failed: %v", sql, err)
 		}
@@ -79,7 +78,7 @@ func TestCreateStatisticsFuncExpr(t *testing.T) {
 
 func TestAlterStatistics(t *testing.T) {
 	input := "ALTER STATISTICS mystat SET STATISTICS 100"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

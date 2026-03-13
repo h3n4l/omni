@@ -4,14 +4,14 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
+	"github.com/bytebase/omni/pg/parser"
 )
 
 // TestInsertBasicValues tests: INSERT INTO t VALUES (1, 'hello')
 func TestInsertBasicValues(t *testing.T) {
 	input := "INSERT INTO t VALUES (1, 'hello')"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -104,7 +104,7 @@ func TestInsertBasicValues(t *testing.T) {
 func TestInsertWithColumns(t *testing.T) {
 	input := "INSERT INTO t (id, name) VALUES (1, 'hello')"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -150,7 +150,7 @@ func TestInsertWithColumns(t *testing.T) {
 func TestInsertSelect(t *testing.T) {
 	input := "INSERT INTO t SELECT * FROM t2"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -198,7 +198,7 @@ func TestInsertSelect(t *testing.T) {
 func TestInsertDefaultValues(t *testing.T) {
 	input := "INSERT INTO t DEFAULT VALUES"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -228,7 +228,7 @@ func TestInsertDefaultValues(t *testing.T) {
 func TestInsertReturning(t *testing.T) {
 	input := "INSERT INTO t VALUES (1) RETURNING id"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -271,7 +271,7 @@ func TestInsertReturning(t *testing.T) {
 func TestInsertOnConflictDoNothing(t *testing.T) {
 	input := "INSERT INTO t VALUES (1) ON CONFLICT DO NOTHING"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -286,8 +286,8 @@ func TestInsertOnConflictDoNothing(t *testing.T) {
 		t.Fatal("expected OnConflictClause to be set")
 	}
 
-	if stmt.OnConflictClause.Action != yacc.ONCONFLICT_NOTHING {
-		t.Errorf("expected yacc.ONCONFLICT_NOTHING (%d), got %d", yacc.ONCONFLICT_NOTHING, stmt.OnConflictClause.Action)
+	if stmt.OnConflictClause.Action != parser.ONCONFLICT_NOTHING {
+		t.Errorf("expected parser.ONCONFLICT_NOTHING (%d), got %d", parser.ONCONFLICT_NOTHING, stmt.OnConflictClause.Action)
 	}
 
 	// No infer clause for bare DO NOTHING
@@ -300,7 +300,7 @@ func TestInsertOnConflictDoNothing(t *testing.T) {
 func TestInsertOnConflictDoUpdate(t *testing.T) {
 	input := "INSERT INTO t VALUES (1) ON CONFLICT DO UPDATE SET name = 'new'"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -315,8 +315,8 @@ func TestInsertOnConflictDoUpdate(t *testing.T) {
 		t.Fatal("expected OnConflictClause to be set")
 	}
 
-	if stmt.OnConflictClause.Action != yacc.ONCONFLICT_UPDATE {
-		t.Errorf("expected yacc.ONCONFLICT_UPDATE (%d), got %d", yacc.ONCONFLICT_UPDATE, stmt.OnConflictClause.Action)
+	if stmt.OnConflictClause.Action != parser.ONCONFLICT_UPDATE {
+		t.Errorf("expected parser.ONCONFLICT_UPDATE (%d), got %d", parser.ONCONFLICT_UPDATE, stmt.OnConflictClause.Action)
 	}
 
 	// Verify SET clause
@@ -350,7 +350,7 @@ func TestInsertOnConflictDoUpdate(t *testing.T) {
 func TestInsertMultipleValuesRows(t *testing.T) {
 	input := "INSERT INTO t VALUES (1, 'a'), (2, 'b'), (3, 'c')"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -405,7 +405,7 @@ func TestInsertMultipleValuesRows(t *testing.T) {
 func TestInsertWithCTE(t *testing.T) {
 	input := "WITH cte AS (SELECT 1) INSERT INTO t SELECT * FROM cte"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -458,7 +458,7 @@ func TestInsertWithCTE(t *testing.T) {
 func TestInsertWithAlias(t *testing.T) {
 	input := "INSERT INTO t AS target VALUES (1)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -486,7 +486,7 @@ func TestInsertWithAlias(t *testing.T) {
 func TestInsertOnConflictWithInfer(t *testing.T) {
 	input := "INSERT INTO t VALUES (1) ON CONFLICT (id) DO NOTHING"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -500,8 +500,8 @@ func TestInsertOnConflictWithInfer(t *testing.T) {
 		t.Fatal("expected OnConflictClause to be set")
 	}
 
-	if stmt.OnConflictClause.Action != yacc.ONCONFLICT_NOTHING {
-		t.Errorf("expected yacc.ONCONFLICT_NOTHING, got %d", stmt.OnConflictClause.Action)
+	if stmt.OnConflictClause.Action != parser.ONCONFLICT_NOTHING {
+		t.Errorf("expected parser.ONCONFLICT_NOTHING, got %d", stmt.OnConflictClause.Action)
 	}
 
 	// Verify infer clause
@@ -527,7 +527,7 @@ func TestInsertOnConflictWithInfer(t *testing.T) {
 func TestInsertOnConflictDoUpdateWithWhere(t *testing.T) {
 	input := "INSERT INTO t VALUES (1) ON CONFLICT DO UPDATE SET name = 'new' WHERE id > 0"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -541,8 +541,8 @@ func TestInsertOnConflictDoUpdateWithWhere(t *testing.T) {
 		t.Fatal("expected OnConflictClause to be set")
 	}
 
-	if stmt.OnConflictClause.Action != yacc.ONCONFLICT_UPDATE {
-		t.Errorf("expected yacc.ONCONFLICT_UPDATE, got %d", stmt.OnConflictClause.Action)
+	if stmt.OnConflictClause.Action != parser.ONCONFLICT_UPDATE {
+		t.Errorf("expected parser.ONCONFLICT_UPDATE, got %d", stmt.OnConflictClause.Action)
 	}
 
 	// Verify WHERE clause on ON CONFLICT
@@ -563,7 +563,7 @@ func TestInsertOnConflictDoUpdateWithWhere(t *testing.T) {
 func TestInsertReturningMultiple(t *testing.T) {
 	input := "INSERT INTO t VALUES (1, 'a') RETURNING id, name"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -582,7 +582,7 @@ func TestInsertReturningMultiple(t *testing.T) {
 func TestInsertReturningAll(t *testing.T) {
 	input := "INSERT INTO t VALUES (1) RETURNING *"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -621,7 +621,7 @@ func TestInsertReturningAll(t *testing.T) {
 func TestInsertSchemaQualifiedTable(t *testing.T) {
 	input := "INSERT INTO myschema.t VALUES (1)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -670,7 +670,7 @@ func TestInsertTableExpressions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := yacc.Parse(tt.input)
+			result, err := parse(tt.input)
 			if err != nil {
 				t.Fatalf("Parse error for %q: %v", tt.input, err)
 			}

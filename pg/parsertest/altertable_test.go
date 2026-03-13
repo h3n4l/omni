@@ -4,14 +4,13 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // TestAlterTableAddColumn tests: ALTER TABLE t ADD COLUMN name text
 func TestAlterTableAddColumn(t *testing.T) {
 	input := "ALTER TABLE t ADD COLUMN name text"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -62,7 +61,7 @@ func TestAlterTableAddColumn(t *testing.T) {
 func TestAlterTableAddColumnWithoutKeyword(t *testing.T) {
 	input := "ALTER TABLE t ADD name text"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -82,7 +81,7 @@ func TestAlterTableAddColumnWithoutKeyword(t *testing.T) {
 func TestAlterTableAddColumnIfNotExists(t *testing.T) {
 	input := "ALTER TABLE t ADD COLUMN IF NOT EXISTS name text"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -105,7 +104,7 @@ func TestAlterTableAddColumnIfNotExists(t *testing.T) {
 func TestAlterTableDropColumn(t *testing.T) {
 	input := "ALTER TABLE t DROP COLUMN name"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -127,7 +126,7 @@ func TestAlterTableDropColumn(t *testing.T) {
 func TestAlterTableDropColumnIfExistsCascade(t *testing.T) {
 	input := "ALTER TABLE t DROP COLUMN IF EXISTS name CASCADE"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -152,7 +151,7 @@ func TestAlterTableDropColumnIfExistsCascade(t *testing.T) {
 func TestAlterTableAlterColumnSetDefault(t *testing.T) {
 	input := "ALTER TABLE t ALTER COLUMN name SET DEFAULT 'unknown'"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -185,7 +184,7 @@ func TestAlterTableAlterColumnSetDefault(t *testing.T) {
 func TestAlterTableAlterColumnDropDefault(t *testing.T) {
 	input := "ALTER TABLE t ALTER COLUMN name DROP DEFAULT"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -207,7 +206,7 @@ func TestAlterTableAlterColumnDropDefault(t *testing.T) {
 func TestAlterTableAlterColumnSetNotNull(t *testing.T) {
 	input := "ALTER TABLE t ALTER COLUMN name SET NOT NULL"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -226,7 +225,7 @@ func TestAlterTableAlterColumnSetNotNull(t *testing.T) {
 func TestAlterTableAlterColumnDropNotNull(t *testing.T) {
 	input := "ALTER TABLE t ALTER COLUMN name DROP NOT NULL"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -245,7 +244,7 @@ func TestAlterTableAlterColumnDropNotNull(t *testing.T) {
 func TestAlterTableAlterColumnType(t *testing.T) {
 	input := "ALTER TABLE t ALTER COLUMN name TYPE varchar(200)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -274,7 +273,7 @@ func TestAlterTableAlterColumnType(t *testing.T) {
 func TestAlterTableAddConstraint(t *testing.T) {
 	input := "ALTER TABLE t ADD CONSTRAINT pk_id PRIMARY KEY (id)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -303,7 +302,7 @@ func TestAlterTableAddConstraint(t *testing.T) {
 func TestAlterTableDropConstraint(t *testing.T) {
 	input := "ALTER TABLE t DROP CONSTRAINT pk_id"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -325,7 +324,7 @@ func TestAlterTableDropConstraint(t *testing.T) {
 func TestAlterTableDropConstraintIfExistsCascade(t *testing.T) {
 	input := "ALTER TABLE t DROP CONSTRAINT IF EXISTS pk_id CASCADE"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -350,7 +349,7 @@ func TestAlterTableDropConstraintIfExistsCascade(t *testing.T) {
 func TestAlterTableMultipleCommands(t *testing.T) {
 	input := "ALTER TABLE t ADD COLUMN a integer, DROP COLUMN b"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -384,7 +383,7 @@ func TestAlterTableMultipleCommands(t *testing.T) {
 func TestAlterTableIfNotExists(t *testing.T) {
 	input := "ALTER TABLE IF EXISTS t ADD COLUMN name text"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -402,7 +401,7 @@ func TestAlterTableIfNotExists(t *testing.T) {
 func TestAlterTableRenameTo(t *testing.T) {
 	input := "ALTER TABLE t RENAME TO t2"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -429,7 +428,7 @@ func TestAlterTableRenameTo(t *testing.T) {
 func TestAlterTableRenameIfExists(t *testing.T) {
 	input := "ALTER TABLE IF EXISTS t RENAME TO t2"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -450,7 +449,7 @@ func TestAlterTableRenameIfExists(t *testing.T) {
 func TestAlterTableRenameColumnExplicit(t *testing.T) {
 	input := "ALTER TABLE t RENAME COLUMN old_name TO new_name"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -477,7 +476,7 @@ func TestAlterTableRenameColumnExplicit(t *testing.T) {
 func TestAlterTableRenameColumnImplicit(t *testing.T) {
 	input := "ALTER TABLE t RENAME old_name TO new_name"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -498,7 +497,7 @@ func TestAlterTableRenameColumnImplicit(t *testing.T) {
 func TestAlterTableRenameConstraint(t *testing.T) {
 	input := "ALTER TABLE t RENAME CONSTRAINT old_con TO new_con"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -522,7 +521,7 @@ func TestAlterTableRenameConstraint(t *testing.T) {
 func TestAlterTableSchemaQualified(t *testing.T) {
 	input := "ALTER TABLE myschema.t ADD COLUMN name text"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -543,7 +542,7 @@ func TestAlterTableSchemaQualified(t *testing.T) {
 func TestAlterTableDropColumnRestrict(t *testing.T) {
 	input := "ALTER TABLE t DROP COLUMN name RESTRICT"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -559,7 +558,7 @@ func TestAlterTableDropColumnRestrict(t *testing.T) {
 func TestAlterTableDropColumnCascade(t *testing.T) {
 	input := "ALTER TABLE t DROP COLUMN name CASCADE"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -612,7 +611,7 @@ func TestAlterTableTableDriven(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := yacc.Parse(tt.input)
+			result, err := parse(tt.input)
 			if err != nil {
 				t.Fatalf("Parse error for %q: %v", tt.input, err)
 			}

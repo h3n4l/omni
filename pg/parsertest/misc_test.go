@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // =============================================================================
@@ -13,7 +12,7 @@ import (
 
 func TestDropOwned(t *testing.T) {
 	input := "DROP OWNED BY myrole"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -31,7 +30,7 @@ func TestDropOwned(t *testing.T) {
 
 func TestDropOwnedCascade(t *testing.T) {
 	input := "DROP OWNED BY myrole CASCADE"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -43,7 +42,7 @@ func TestDropOwnedCascade(t *testing.T) {
 
 func TestDropOwnedMultipleRoles(t *testing.T) {
 	input := "DROP OWNED BY role1, role2"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -59,7 +58,7 @@ func TestDropOwnedMultipleRoles(t *testing.T) {
 
 func TestReassignOwned(t *testing.T) {
 	input := "REASSIGN OWNED BY myrole TO newrole"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -77,7 +76,7 @@ func TestReassignOwned(t *testing.T) {
 
 func TestReassignOwnedMultipleRoles(t *testing.T) {
 	input := "REASSIGN OWNED BY role1, role2 TO newrole"
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

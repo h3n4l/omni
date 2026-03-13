@@ -4,13 +4,12 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // helper to parse and extract a single CreatedbStmt
 func parseCreatedbStmt(t *testing.T, input string) *nodes.CreatedbStmt {
 	t.Helper()
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error for %q: %v", input, err)
 	}
@@ -27,7 +26,7 @@ func parseCreatedbStmt(t *testing.T, input string) *nodes.CreatedbStmt {
 // helper to parse and extract a single AlterDatabaseStmt
 func parseAlterDatabaseStmt(t *testing.T, input string) *nodes.AlterDatabaseStmt {
 	t.Helper()
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error for %q: %v", input, err)
 	}
@@ -44,7 +43,7 @@ func parseAlterDatabaseStmt(t *testing.T, input string) *nodes.AlterDatabaseStmt
 // helper to parse and extract a single AlterDatabaseSetStmt
 func parseAlterDatabaseSetStmt(t *testing.T, input string) *nodes.AlterDatabaseSetStmt {
 	t.Helper()
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error for %q: %v", input, err)
 	}
@@ -61,7 +60,7 @@ func parseAlterDatabaseSetStmt(t *testing.T, input string) *nodes.AlterDatabaseS
 // helper to parse and extract a single DropdbStmt
 func parseDropdbStmt(t *testing.T, input string) *nodes.DropdbStmt {
 	t.Helper()
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error for %q: %v", input, err)
 	}
@@ -78,7 +77,7 @@ func parseDropdbStmt(t *testing.T, input string) *nodes.DropdbStmt {
 // helper to parse and extract a single AlterSystemStmt
 func parseAlterSystemStmt(t *testing.T, input string) *nodes.AlterSystemStmt {
 	t.Helper()
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error for %q: %v", input, err)
 	}

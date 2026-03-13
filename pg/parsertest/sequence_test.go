@@ -4,14 +4,13 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // TestCreateSequenceBasic tests: CREATE SEQUENCE seq
 func TestCreateSequenceBasic(t *testing.T) {
 	input := "CREATE SEQUENCE seq"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -40,7 +39,7 @@ func TestCreateSequenceBasic(t *testing.T) {
 func TestCreateSequenceIfNotExists(t *testing.T) {
 	input := "CREATE SEQUENCE IF NOT EXISTS seq"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -62,7 +61,7 @@ func TestCreateSequenceIfNotExists(t *testing.T) {
 func TestCreateTempSequence(t *testing.T) {
 	input := "CREATE TEMP SEQUENCE seq"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -84,7 +83,7 @@ func TestCreateTempSequence(t *testing.T) {
 func TestCreateSequenceIncrement(t *testing.T) {
 	input := "CREATE SEQUENCE seq INCREMENT 5"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -107,7 +106,7 @@ func TestCreateSequenceIncrement(t *testing.T) {
 func TestCreateSequenceIncrementByStart(t *testing.T) {
 	input := "CREATE SEQUENCE seq INCREMENT BY 5 START WITH 100"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -136,7 +135,7 @@ func TestCreateSequenceIncrementByStart(t *testing.T) {
 func TestCreateSequenceMinMaxValue(t *testing.T) {
 	input := "CREATE SEQUENCE seq MINVALUE 1 MAXVALUE 1000"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -165,7 +164,7 @@ func TestCreateSequenceMinMaxValue(t *testing.T) {
 func TestCreateSequenceNoMinMaxValue(t *testing.T) {
 	input := "CREATE SEQUENCE seq NO MINVALUE NO MAXVALUE"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -200,7 +199,7 @@ func TestCreateSequenceNoMinMaxValue(t *testing.T) {
 func TestCreateSequenceCycle(t *testing.T) {
 	input := "CREATE SEQUENCE seq CYCLE"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -224,7 +223,7 @@ func TestCreateSequenceCycle(t *testing.T) {
 func TestCreateSequenceCache(t *testing.T) {
 	input := "CREATE SEQUENCE seq CACHE 20"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -248,7 +247,7 @@ func TestCreateSequenceCache(t *testing.T) {
 func TestCreateSequenceOwnedBy(t *testing.T) {
 	input := "CREATE SEQUENCE seq OWNED BY t.id"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -272,7 +271,7 @@ func TestCreateSequenceOwnedBy(t *testing.T) {
 func TestAlterSequenceRestart(t *testing.T) {
 	input := "ALTER SEQUENCE seq RESTART"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -298,7 +297,7 @@ func TestAlterSequenceRestart(t *testing.T) {
 func TestAlterSequenceRestartWith(t *testing.T) {
 	input := "ALTER SEQUENCE seq RESTART WITH 100"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -324,7 +323,7 @@ func TestAlterSequenceRestartWith(t *testing.T) {
 func TestAlterSequenceIncrement(t *testing.T) {
 	input := "ALTER SEQUENCE seq INCREMENT BY 10"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -347,7 +346,7 @@ func TestAlterSequenceIncrement(t *testing.T) {
 func TestAlterSequenceIfExists(t *testing.T) {
 	input := "ALTER SEQUENCE IF EXISTS seq INCREMENT 5"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

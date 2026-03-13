@@ -4,14 +4,13 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // TestCreateDomainBasic tests: CREATE DOMAIN d AS integer
 func TestCreateDomainBasic(t *testing.T) {
 	input := "CREATE DOMAIN d AS integer"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -40,7 +39,7 @@ func TestCreateDomainBasic(t *testing.T) {
 func TestCreateDomainSchemaQualified(t *testing.T) {
 	input := "CREATE DOMAIN myschema.d AS text"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -65,7 +64,7 @@ func TestCreateDomainSchemaQualified(t *testing.T) {
 func TestCreateDomainNotNull(t *testing.T) {
 	input := "CREATE DOMAIN d AS integer NOT NULL"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -88,7 +87,7 @@ func TestCreateDomainNotNull(t *testing.T) {
 func TestCreateDomainDefault(t *testing.T) {
 	input := "CREATE DOMAIN d AS text DEFAULT 'hello'"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -111,7 +110,7 @@ func TestCreateDomainDefault(t *testing.T) {
 func TestCreateDomainCheck(t *testing.T) {
 	input := "CREATE DOMAIN d AS integer CHECK (VALUE > 0)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -134,7 +133,7 @@ func TestCreateDomainCheck(t *testing.T) {
 func TestCreateDomainWithoutAs(t *testing.T) {
 	input := "CREATE DOMAIN d integer"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -153,7 +152,7 @@ func TestCreateDomainWithoutAs(t *testing.T) {
 func TestAlterDomainSetDefault(t *testing.T) {
 	input := "ALTER DOMAIN d SET DEFAULT 5"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -175,7 +174,7 @@ func TestAlterDomainSetDefault(t *testing.T) {
 func TestAlterDomainDropDefault(t *testing.T) {
 	input := "ALTER DOMAIN d DROP DEFAULT"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -197,7 +196,7 @@ func TestAlterDomainDropDefault(t *testing.T) {
 func TestAlterDomainSetNotNull(t *testing.T) {
 	input := "ALTER DOMAIN d SET NOT NULL"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -216,7 +215,7 @@ func TestAlterDomainSetNotNull(t *testing.T) {
 func TestAlterDomainDropNotNull(t *testing.T) {
 	input := "ALTER DOMAIN d DROP NOT NULL"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -235,7 +234,7 @@ func TestAlterDomainDropNotNull(t *testing.T) {
 func TestAlterDomainAddConstraint(t *testing.T) {
 	input := "ALTER DOMAIN d ADD CONSTRAINT c CHECK (VALUE > 0)"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -257,7 +256,7 @@ func TestAlterDomainAddConstraint(t *testing.T) {
 func TestAlterDomainDropConstraint(t *testing.T) {
 	input := "ALTER DOMAIN d DROP CONSTRAINT c"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -279,7 +278,7 @@ func TestAlterDomainDropConstraint(t *testing.T) {
 func TestAlterDomainDropConstraintIfExistsCascade(t *testing.T) {
 	input := "ALTER DOMAIN d DROP CONSTRAINT IF EXISTS c CASCADE"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -307,7 +306,7 @@ func TestAlterDomainDropConstraintIfExistsCascade(t *testing.T) {
 func TestAlterDomainValidateConstraint(t *testing.T) {
 	input := "ALTER DOMAIN d VALIDATE CONSTRAINT c"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -329,7 +328,7 @@ func TestAlterDomainValidateConstraint(t *testing.T) {
 func TestAlterEnumAddValue(t *testing.T) {
 	input := "ALTER TYPE myenum ADD VALUE 'new'"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -351,7 +350,7 @@ func TestAlterEnumAddValue(t *testing.T) {
 func TestAlterEnumAddValueIfNotExists(t *testing.T) {
 	input := "ALTER TYPE myenum ADD VALUE IF NOT EXISTS 'new'"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -373,7 +372,7 @@ func TestAlterEnumAddValueIfNotExists(t *testing.T) {
 func TestAlterEnumAddValueBefore(t *testing.T) {
 	input := "ALTER TYPE myenum ADD VALUE 'new' BEFORE 'old'"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -398,7 +397,7 @@ func TestAlterEnumAddValueBefore(t *testing.T) {
 func TestAlterEnumAddValueAfter(t *testing.T) {
 	input := "ALTER TYPE myenum ADD VALUE 'new' AFTER 'old'"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -423,7 +422,7 @@ func TestAlterEnumAddValueAfter(t *testing.T) {
 func TestAlterEnumRenameValue(t *testing.T) {
 	input := "ALTER TYPE myenum RENAME VALUE 'old' TO 'new'"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -445,7 +444,7 @@ func TestAlterEnumRenameValue(t *testing.T) {
 func TestAlterCollationRefreshVersion(t *testing.T) {
 	input := "ALTER COLLATION myschema.mycoll REFRESH VERSION"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -470,7 +469,7 @@ func TestAlterCollationRefreshVersion(t *testing.T) {
 func TestAlterCompositeTypeAddAttribute(t *testing.T) {
 	input := "ALTER TYPE mytype ADD ATTRIBUTE a integer"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -499,7 +498,7 @@ func TestAlterCompositeTypeAddAttribute(t *testing.T) {
 func TestAlterCompositeTypeDropAttribute(t *testing.T) {
 	input := "ALTER TYPE mytype DROP ATTRIBUTE a"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -528,7 +527,7 @@ func TestAlterCompositeTypeDropAttribute(t *testing.T) {
 func TestAlterCompositeTypeAlterAttribute(t *testing.T) {
 	input := "ALTER TYPE mytype ALTER ATTRIBUTE a TYPE text"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}

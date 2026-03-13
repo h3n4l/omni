@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	nodes "github.com/bytebase/omni/pg/ast"
-	"github.com/bytebase/omni/pg/yacc"
 )
 
 // TestCaseSearched tests a searched CASE (no argument after CASE keyword).
@@ -12,7 +11,7 @@ import (
 func TestCaseSearched(t *testing.T) {
 	input := "SELECT CASE WHEN x = 1 THEN 'one' ELSE 'other' END FROM t"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -92,7 +91,7 @@ func TestCaseSearched(t *testing.T) {
 func TestCaseSimple(t *testing.T) {
 	input := "SELECT CASE status WHEN 1 THEN 'active' WHEN 2 THEN 'inactive' END FROM t"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -167,7 +166,7 @@ func TestCaseSimple(t *testing.T) {
 func TestCaseMultipleWhen(t *testing.T) {
 	input := "SELECT CASE WHEN a > 0 THEN 'pos' WHEN a < 0 THEN 'neg' ELSE 'zero' END FROM t"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -231,7 +230,7 @@ func TestCaseMultipleWhen(t *testing.T) {
 func TestCaseWithoutElse(t *testing.T) {
 	input := "SELECT CASE WHEN x = 1 THEN 'one' END FROM t"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -259,7 +258,7 @@ func TestCaseWithoutElse(t *testing.T) {
 func TestCaseNested(t *testing.T) {
 	input := "SELECT CASE WHEN x = 1 THEN CASE WHEN y = 1 THEN 'a' ELSE 'b' END ELSE 'c' END FROM t"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -327,7 +326,7 @@ func TestCaseNested(t *testing.T) {
 func TestCaseInWhere(t *testing.T) {
 	input := "SELECT * FROM t WHERE CASE WHEN x > 0 THEN true ELSE false END"
 
-	result, err := yacc.Parse(input)
+	result, err := parse(input)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
