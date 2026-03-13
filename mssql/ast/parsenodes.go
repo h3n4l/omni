@@ -661,6 +661,31 @@ type CreateTriggerStmt struct {
 func (n *CreateTriggerStmt) nodeTag()  {}
 func (n *CreateTriggerStmt) stmtNode() {}
 
+// TriggerEvent represents a typed event in a trigger event list.
+// Replaces nodes.String for INSERT, UPDATE, DELETE, LOGON, and DDL event types.
+type TriggerEvent struct {
+	Name string // event name: "INSERT", "UPDATE", "DELETE", "LOGON", or DDL event type
+	Loc  Loc
+}
+
+func (n *TriggerEvent) nodeTag() {}
+
+// TriggerOption represents a typed WITH option in a CREATE TRIGGER statement.
+// Replaces nodes.String for ENCRYPTION, EXECUTE AS, NATIVE_COMPILATION, SCHEMABINDING.
+//
+// Examples:
+//   - Name="ENCRYPTION"
+//   - Name="EXECUTE AS", Value="CALLER"
+//   - Name="NATIVE_COMPILATION"
+//   - Name="SCHEMABINDING"
+type TriggerOption struct {
+	Name  string // option name
+	Value string // option value (for EXECUTE AS)
+	Loc   Loc
+}
+
+func (n *TriggerOption) nodeTag() {}
+
 // EnableDisableTriggerStmt represents ENABLE TRIGGER or DISABLE TRIGGER.
 //
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/enable-trigger-transact-sql

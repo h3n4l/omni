@@ -9920,9 +9920,9 @@ func TestParseTriggerWithOptions(t *testing.T) {
 		if stmt.TriggerOptions == nil || stmt.TriggerOptions.Len() != 1 {
 			t.Fatalf("expected 1 trigger option, got %v", stmt.TriggerOptions)
 		}
-		opt := stmt.TriggerOptions.Items[0].(*ast.String).Str
-		if opt != "ENCRYPTION" {
-			t.Errorf("expected ENCRYPTION option, got %q", opt)
+		opt := stmt.TriggerOptions.Items[0].(*ast.TriggerOption)
+		if opt.Name != "ENCRYPTION" {
+			t.Errorf("expected ENCRYPTION option, got %q", opt.Name)
 		}
 		if stmt.TriggerType != "AFTER" {
 			t.Errorf("expected AFTER trigger type, got %q", stmt.TriggerType)
@@ -9937,9 +9937,9 @@ func TestParseTriggerWithOptions(t *testing.T) {
 		if stmt.TriggerOptions == nil || stmt.TriggerOptions.Len() != 1 {
 			t.Fatalf("expected 1 trigger option")
 		}
-		opt := stmt.TriggerOptions.Items[0].(*ast.String).Str
-		if opt != "EXECUTE AS OWNER" {
-			t.Errorf("expected 'EXECUTE AS OWNER', got %q", opt)
+		opt := stmt.TriggerOptions.Items[0].(*ast.TriggerOption)
+		if opt.Name != "EXECUTE AS" || opt.Value != "OWNER" {
+			t.Errorf("expected 'EXECUTE AS' with value 'OWNER', got name=%q value=%q", opt.Name, opt.Value)
 		}
 	})
 
@@ -9951,9 +9951,9 @@ func TestParseTriggerWithOptions(t *testing.T) {
 		if stmt.TriggerOptions == nil || stmt.TriggerOptions.Len() != 1 {
 			t.Fatalf("expected 1 trigger option")
 		}
-		opt := stmt.TriggerOptions.Items[0].(*ast.String).Str
-		if opt != "EXECUTE AS dbo" {
-			t.Errorf("expected 'EXECUTE AS dbo', got %q", opt)
+		opt := stmt.TriggerOptions.Items[0].(*ast.TriggerOption)
+		if opt.Name != "EXECUTE AS" || opt.Value != "dbo" {
+			t.Errorf("expected 'EXECUTE AS' with value 'dbo', got name=%q value=%q", opt.Name, opt.Value)
 		}
 	})
 
@@ -9975,9 +9975,106 @@ func TestParseTriggerWithOptions(t *testing.T) {
 		if stmt.TriggerOptions == nil || stmt.TriggerOptions.Len() != 1 {
 			t.Fatalf("expected 1 trigger option")
 		}
-		opt := stmt.TriggerOptions.Items[0].(*ast.String).Str
-		if opt != "SCHEMABINDING" {
-			t.Errorf("expected SCHEMABINDING, got %q", opt)
+		opt := stmt.TriggerOptions.Items[0].(*ast.TriggerOption)
+		if opt.Name != "SCHEMABINDING" {
+			t.Errorf("expected SCHEMABINDING, got %q", opt.Name)
+		}
+	})
+}
+
+// TestParseTriggerEventOptionsStringsDepth tests batch 153: trigger events and options use typed nodes.
+func TestParseTriggerEventOptionsStringsDepth(t *testing.T) {
+	t.Run("trigger_events_typed", func(t *testing.T) {
+		tests := []struct {
+			name       string
+			sql        string
+			wantEvents []string
+		}{
+			{"dml_insert_update_delete", "CREATE TRIGGER tr1 ON t1 AFTER INSERT, UPDATE, DELETE AS SELECT 1", []string{"INSERT", "UPDATE", "DELETE"}},
+			{"dml_insert_only", "CREATE TRIGGER tr1 ON t1 FOR INSERT AS SELECT 1", []string{"INSERT"}},
+			{"logon_trigger", "CREATE TRIGGER tr1 ON ALL SERVER AFTER LOGON AS SELECT 1", []string{"LOGON"}},
+			{"ddl_event_types", "CREATE TRIGGER tr1 ON DATABASE AFTER CREATE_TABLE, ALTER_TABLE AS SELECT 1", []string{"CREATE_TABLE", "ALTER_TABLE"}},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				stmt := result.Items[0].(*ast.CreateTriggerStmt)
+				if stmt.Events == nil || stmt.Events.Len() != len(tt.wantEvents) {
+					t.Fatalf("expected %d events, got %v", len(tt.wantEvents), stmt.Events)
+				}
+				for i, want := range tt.wantEvents {
+					evt, ok := stmt.Events.Items[i].(*ast.TriggerEvent)
+					if !ok {
+						t.Fatalf("expected *TriggerEvent at index %d, got %T", i, stmt.Events.Items[i])
+					}
+					if evt.Name != want {
+						t.Errorf("event[%d]: expected %s, got %s", i, want, evt.Name)
+					}
+				}
+			})
+		}
+	})
+
+	t.Run("trigger_options_typed", func(t *testing.T) {
+		tests := []struct {
+			name      string
+			sql       string
+			wantName  string
+			wantValue string
+		}{
+			{"encryption", "CREATE TRIGGER tr1 ON t1 WITH ENCRYPTION AFTER INSERT AS SELECT 1", "ENCRYPTION", ""},
+			{"schemabinding", "CREATE TRIGGER tr1 ON t1 WITH SCHEMABINDING AFTER INSERT AS SELECT 1", "SCHEMABINDING", ""},
+			{"native_compilation", "CREATE TRIGGER tr1 ON t1 WITH NATIVE_COMPILATION, SCHEMABINDING AFTER INSERT AS SELECT 1", "NATIVE_COMPILATION", ""},
+			{"execute_as_caller", "CREATE TRIGGER tr1 ON t1 WITH EXECUTE AS CALLER AFTER INSERT AS SELECT 1", "EXECUTE AS", "CALLER"},
+			{"execute_as_self", "CREATE TRIGGER tr1 ON t1 WITH EXECUTE AS SELF AFTER INSERT AS SELECT 1", "EXECUTE AS", "SELF"},
+			{"execute_as_user", "CREATE TRIGGER tr1 ON t1 WITH EXECUTE AS 'appuser' AFTER INSERT AS SELECT 1", "EXECUTE AS", "appuser"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				stmt := result.Items[0].(*ast.CreateTriggerStmt)
+				if stmt.TriggerOptions == nil || stmt.TriggerOptions.Len() < 1 {
+					t.Fatalf("expected at least 1 trigger option, got %v", stmt.TriggerOptions)
+				}
+				opt, ok := stmt.TriggerOptions.Items[0].(*ast.TriggerOption)
+				if !ok {
+					t.Fatalf("expected *TriggerOption, got %T", stmt.TriggerOptions.Items[0])
+				}
+				if opt.Name != tt.wantName {
+					t.Errorf("expected option name %q, got %q", tt.wantName, opt.Name)
+				}
+				if opt.Value != tt.wantValue {
+					t.Errorf("expected option value %q, got %q", tt.wantValue, opt.Value)
+				}
+			})
+		}
+	})
+
+	t.Run("no_string_nodes", func(t *testing.T) {
+		tests := []string{
+			"CREATE TRIGGER tr1 ON t1 WITH ENCRYPTION, EXECUTE AS OWNER AFTER INSERT, UPDATE AS SELECT 1",
+			"CREATE TRIGGER tr1 ON ALL SERVER WITH SCHEMABINDING AFTER LOGON AS SELECT 1",
+			"CREATE TRIGGER tr1 ON DATABASE AFTER CREATE_TABLE, DROP_TABLE AS SELECT 1",
+		}
+		for _, sql := range tests {
+			t.Run(sql[:40], func(t *testing.T) {
+				result := ParseAndCheck(t, sql)
+				stmt := result.Items[0].(*ast.CreateTriggerStmt)
+				if stmt.Events != nil {
+					for _, item := range stmt.Events.Items {
+						if _, ok := item.(*ast.String); ok {
+							t.Errorf("Parse(%q): found *ast.String in Events, expected TriggerEvent", sql)
+						}
+					}
+				}
+				if stmt.TriggerOptions != nil {
+					for _, item := range stmt.TriggerOptions.Items {
+						if _, ok := item.(*ast.String); ok {
+							t.Errorf("Parse(%q): found *ast.String in TriggerOptions, expected TriggerOption", sql)
+						}
+					}
+				}
+			})
 		}
 	})
 }

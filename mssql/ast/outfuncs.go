@@ -62,6 +62,10 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeCreateViewStmt(sb, n)
 	case *CreateTriggerStmt:
 		writeCreateTriggerStmt(sb, n)
+	case *TriggerEvent:
+		writeTriggerEvent(sb, n)
+	case *TriggerOption:
+		writeTriggerOption(sb, n)
 	case *EnableDisableTriggerStmt:
 		writeEnableDisableTriggerStmt(sb, n)
 	case *CreateFunctionStmt:
@@ -881,6 +885,19 @@ func writeCreateTriggerStmt(sb *strings.Builder, n *CreateTriggerStmt) {
 	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
+}
+
+func writeTriggerEvent(sb *strings.Builder, n *TriggerEvent) {
+	fmt.Fprintf(sb, "{TRGEVT :name \"%s\" :loc %d %d}", escapeString(n.Name), n.Loc.Start, n.Loc.End)
+}
+
+func writeTriggerOption(sb *strings.Builder, n *TriggerOption) {
+	sb.WriteString("{TRGOPT")
+	fmt.Fprintf(sb, " :name \"%s\"", escapeString(n.Name))
+	if n.Value != "" {
+		fmt.Fprintf(sb, " :value \"%s\"", escapeString(n.Value))
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
 }
 
 func writeEnableDisableTriggerStmt(sb *strings.Builder, n *EnableDisableTriggerStmt) {

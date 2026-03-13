@@ -3272,7 +3272,7 @@
       "id": 153,
       "name": "trigger_event_options_strings_depth",
       "file": "create_trigger.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 89 gap: replace 9 remaining nodes.String values in create_trigger.go with typed AST nodes. Trigger event list (INSERT, UPDATE, DELETE, LOGON at lines 106-118) uses nodes.String instead of typed TriggerEvent enum. WITH options (ENCRYPTION, EXECUTE AS, NATIVE_COMPILATION, SCHEMABINDING at lines 184-205) use nodes.String instead of typed TriggerOption nodes.",
       "rules": [
         "parseTriggerEventsTyped",
