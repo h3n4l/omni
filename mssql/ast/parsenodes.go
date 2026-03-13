@@ -1140,12 +1140,38 @@ type SecurityStmt struct {
 	Action     string // CREATE, ALTER, DROP, ADD
 	ObjectType string // USER, LOGIN, ROLE, APPLICATION ROLE
 	Name       string // principal name
-	Options    *List  // generic list of key=value or String option nodes
+	Options    *List  // list of *SecurityPrincipalOption nodes
 	Loc        Loc
 }
 
 func (n *SecurityStmt) nodeTag()  {}
 func (n *SecurityStmt) stmtNode() {}
+
+// SecurityPrincipalOption represents a single structured option for security principal statements.
+//
+// Flag options: MUST_CHANGE, HASHED, ENABLE, DISABLE, NO REVERT,
+//
+//	CHECK_EXPIRATION, CHECK_POLICY, ALLOW_ENCRYPTED_VALUE_MODIFICATIONS
+//
+// Key=value options: PASSWORD, DEFAULT_SCHEMA, DEFAULT_LANGUAGE, DEFAULT_DATABASE,
+//
+//	CREDENTIAL, SID, NAME, LOGIN, FROM, AUTHORIZATION,
+//	ADD MEMBER, DROP MEMBER, COOKIE, OLD_PASSWORD
+//
+// ON/OFF options: CHECK_EXPIRATION, CHECK_POLICY
+type SecurityPrincipalOption struct {
+	Name  string // option name
+	Value string // option value (may be empty for flags)
+
+	// PASSWORD sub-options
+	MustChange  bool // MUST_CHANGE
+	Hashed      bool // HASHED
+	OldPassword string // OLD_PASSWORD = 'old' (ALTER LOGIN)
+
+	Loc Loc
+}
+
+func (n *SecurityPrincipalOption) nodeTag() {}
 
 // CreateSchemaStmt represents CREATE SCHEMA.
 //

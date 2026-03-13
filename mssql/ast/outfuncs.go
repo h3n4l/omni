@@ -128,6 +128,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		sb.WriteString(fmt.Sprintf("{SAVETRANS :name \"%s\" :loc %d %d}", escapeString(n.Name), n.Loc.Start, n.Loc.End))
 	case *SecurityStmt:
 		writeSecurityStmt(sb, n)
+	case *SecurityPrincipalOption:
+		writeSecurityPrincipalOption(sb, n)
 	case *CreateSchemaStmt:
 		writeCreateSchemaStmt(sb, n)
 	case *AlterSchemaStmt:
@@ -1237,6 +1239,25 @@ func writeSecurityStmt(sb *strings.Builder, n *SecurityStmt) {
 	if n.Options != nil && len(n.Options.Items) > 0 {
 		sb.WriteString(" :options ")
 		writeNode(sb, n.Options)
+	}
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
+	sb.WriteString("}")
+}
+
+func writeSecurityPrincipalOption(sb *strings.Builder, n *SecurityPrincipalOption) {
+	sb.WriteString("{SECURITYOPTION")
+	fmt.Fprintf(sb, " :name \"%s\"", escapeString(n.Name))
+	if n.Value != "" {
+		fmt.Fprintf(sb, " :value \"%s\"", escapeString(n.Value))
+	}
+	if n.MustChange {
+		sb.WriteString(" :mustChange true")
+	}
+	if n.Hashed {
+		sb.WriteString(" :hashed true")
+	}
+	if n.OldPassword != "" {
+		fmt.Fprintf(sb, " :oldPassword \"%s\"", escapeString(n.OldPassword))
 	}
 	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
 	sb.WriteString("}")

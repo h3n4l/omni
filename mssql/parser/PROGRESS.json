@@ -2694,7 +2694,7 @@
       "id": 122,
       "name": "security_principal_options_depth",
       "file": "security_principals.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 30 gap: replace generic key=value loop in parseSecurityPrincipalWithOptions() with type-specific structured parsing. CREATE USER: WITH PASSWORD, DEFAULT_SCHEMA, DEFAULT_LANGUAGE, ALLOW_ENCRYPTED_VALUE_MODIFICATIONS, SID. CREATE LOGIN: WITH PASSWORD (MUST_CHANGE, HASHED), DEFAULT_DATABASE, DEFAULT_LANGUAGE, CHECK_EXPIRATION, CHECK_POLICY, CREDENTIAL, SID, FROM WINDOWS/CERTIFICATE/ASYMMETRIC KEY/EXTERNAL PROVIDER. CREATE ROLE: AUTHORIZATION. CREATE APPLICATION ROLE: WITH PASSWORD, DEFAULT_SCHEMA.",
       "rules": [
         "parseCreateUserWithOptions",
