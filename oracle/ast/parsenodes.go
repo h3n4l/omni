@@ -2578,6 +2578,151 @@ type DimensionAttribute struct {
 func (n *DimensionAttribute) nodeTag() {}
 
 // ---------------------------------------------------------------------------
+// ALTER INDEX statement
+// ---------------------------------------------------------------------------
+
+// AlterIndexStmt represents an ALTER INDEX statement.
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/ALTER-INDEX.html
+//
+//	ALTER INDEX [IF EXISTS] [schema.]index_name
+//	{   REBUILD [PARTITION partition | SUBPARTITION subpartition]
+//	          [TABLESPACE tablespace] [ONLINE] [REVERSE | NOREVERSE]
+//	          [PARALLEL integer | NOPARALLEL] [COMPRESS integer | NOCOMPRESS]
+//	          [LOGGING | NOLOGGING]
+//	  | RENAME TO new_name
+//	  | COALESCE [CLEANUP [ONLY]] [PARALLEL integer | NOPARALLEL]
+//	  | { MONITORING | NOMONITORING } USAGE
+//	  | USABLE | UNUSABLE [ONLINE]
+//	  | VISIBLE | INVISIBLE
+//	  | ENABLE | DISABLE | COMPILE
+//	  | SHRINK SPACE [COMPACT] [CASCADE]
+//	  | PARALLEL integer | NOPARALLEL
+//	  | LOGGING | NOLOGGING
+//	  | DEALLOCATE UNUSED [KEEP integer [K|M|G|T]]
+//	  | ALLOCATE EXTENT [(SIZE integer [K|M|G|T]) (DATAFILE 'file') (INSTANCE integer)]
+//	  | UPDATE BLOCK REFERENCES
+//	  | INDEXING {FULL | PARTIAL}
+//	}
+type AlterIndexStmt struct {
+	Name     *ObjectName // index name
+	IfExists bool        // IF EXISTS
+	Action   string      // action keyword: "REBUILD", "RENAME", "COALESCE", etc.
+	// REBUILD options
+	Partition    string // REBUILD PARTITION name
+	Subpartition string // REBUILD SUBPARTITION name
+	Tablespace   string // TABLESPACE name
+	Online       bool   // ONLINE
+	Reverse      bool   // REVERSE
+	NoReverse    bool   // NOREVERSE
+	// RENAME
+	NewName string // RENAME TO new_name
+	// COALESCE
+	Cleanup     bool // CLEANUP
+	CleanupOnly bool // CLEANUP ONLY
+	// SHRINK SPACE
+	Compact  bool // COMPACT
+	Cascade  bool // CASCADE
+	// PARALLEL
+	Parallel   string // parallel degree or ""
+	NoParallel bool   // NOPARALLEL
+	// LOGGING
+	Logging   bool // LOGGING
+	NoLogging bool // NOLOGGING
+	// COMPRESS
+	Compress   string // COMPRESS [n]
+	NoCompress bool   // NOCOMPRESS
+	// INDEXING
+	IndexingFull    bool // INDEXING FULL
+	IndexingPartial bool // INDEXING PARTIAL
+	Loc             Loc
+}
+
+func (n *AlterIndexStmt) nodeTag()  {}
+func (n *AlterIndexStmt) stmtNode() {}
+
+// ---------------------------------------------------------------------------
+// ALTER VIEW statement
+// ---------------------------------------------------------------------------
+
+// AlterViewStmt represents an ALTER VIEW statement.
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/ALTER-VIEW.html
+//
+//	ALTER VIEW [IF EXISTS] [schema.]view
+//	{   COMPILE
+//	  | ADD out_of_line_constraint
+//	  | MODIFY CONSTRAINT constraint_name { RELY | NORELY }
+//	  | DROP CONSTRAINT constraint_name
+//	  | { READ ONLY | READ WRITE }
+//	  | { EDITIONABLE | NONEDITIONABLE }
+//	}
+type AlterViewStmt struct {
+	Name           *ObjectName      // view name
+	IfExists       bool             // IF EXISTS
+	Action         string           // "COMPILE", "ADD_CONSTRAINT", "MODIFY_CONSTRAINT", "DROP_CONSTRAINT", "READ_ONLY", "READ_WRITE", "EDITIONABLE", "NONEDITIONABLE"
+	Constraint     *TableConstraint // for ADD constraint
+	ConstraintName string           // for MODIFY/DROP CONSTRAINT
+	Rely           bool             // MODIFY CONSTRAINT ... RELY
+	NoRely         bool             // MODIFY CONSTRAINT ... NORELY
+	Loc            Loc
+}
+
+func (n *AlterViewStmt) nodeTag()  {}
+func (n *AlterViewStmt) stmtNode() {}
+
+// ---------------------------------------------------------------------------
+// ALTER SEQUENCE statement
+// ---------------------------------------------------------------------------
+
+// AlterSequenceStmt represents an ALTER SEQUENCE statement.
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/ALTER-SEQUENCE.html
+//
+//	ALTER SEQUENCE [IF EXISTS] [schema.]sequence_name
+//	  [ INCREMENT BY integer ]
+//	  [ MAXVALUE integer | NOMAXVALUE ]
+//	  [ MINVALUE integer | NOMINVALUE ]
+//	  [ CYCLE | NOCYCLE ]
+//	  [ CACHE integer | NOCACHE ]
+//	  [ ORDER | NOORDER ]
+//	  [ KEEP | NOKEEP ]
+//	  [ RESTART [ WITH integer ] ]
+//	  [ SCALE [ EXTEND | NOEXTEND ] | NOSCALE ]
+//	  [ SHARD [ EXTEND | NOEXTEND ] | NOSHARD ]
+//	  [ GLOBAL | SESSION ]
+type AlterSequenceStmt struct {
+	Name          *ObjectName // sequence name
+	IfExists      bool        // IF EXISTS
+	IncrementBy   ExprNode    // INCREMENT BY value
+	MaxValue      ExprNode    // MAXVALUE value
+	MinValue      ExprNode    // MINVALUE value
+	NoMaxValue    bool        // NOMAXVALUE
+	NoMinValue    bool        // NOMINVALUE
+	Cycle         bool        // CYCLE
+	NoCycle       bool        // NOCYCLE
+	Cache         ExprNode    // CACHE n
+	NoCache       bool        // NOCACHE
+	Order         bool        // ORDER
+	NoOrder       bool        // NOORDER
+	Keep          bool        // KEEP
+	NoKeep        bool        // NOKEEP
+	Restart       bool        // RESTART
+	RestartWith   ExprNode    // RESTART WITH value
+	Scale         bool        // SCALE
+	NoScale       bool        // NOSCALE
+	ScaleExtend   bool        // SCALE EXTEND
+	ScaleNoExtend bool        // SCALE NOEXTEND
+	Shard         bool        // SHARD
+	NoShard       bool        // NOSHARD
+	ShardExtend   bool        // SHARD EXTEND
+	ShardNoExtend bool        // SHARD NOEXTEND
+	Global        bool        // GLOBAL
+	Session       bool        // SESSION
+	Loc           Loc
+}
+
+func (n *AlterSequenceStmt) nodeTag()  {}
+func (n *AlterSequenceStmt) stmtNode() {}
+
+// ---------------------------------------------------------------------------
 // Star expression (SELECT *)
 // ---------------------------------------------------------------------------
 

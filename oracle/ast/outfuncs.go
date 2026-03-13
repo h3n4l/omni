@@ -328,6 +328,12 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeCreateProfileStmt(sb, n)
 	case *AdminDDLStmt:
 		writeAdminDDLStmt(sb, n)
+	case *AlterIndexStmt:
+		writeAlterIndexStmt(sb, n)
+	case *AlterViewStmt:
+		writeAlterViewStmt(sb, n)
+	case *AlterSequenceStmt:
+		writeAlterSequenceStmt(sb, n)
 	case *SetRoleStmt:
 		writeSetRoleStmt(sb, n)
 	case *SetConstraintsStmt:
@@ -3872,6 +3878,197 @@ func writeDimensionAttribute(sb *strings.Builder, n *DimensionAttribute) {
 			writeNode(sb, c)
 		}
 		sb.WriteString(")")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeAlterIndexStmt(sb *strings.Builder, n *AlterIndexStmt) {
+	sb.WriteString("{ALTER_INDEX")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.IfExists {
+		sb.WriteString(" :ifExists true")
+	}
+	sb.WriteString(fmt.Sprintf(" :action %q", n.Action))
+	if n.Partition != "" {
+		sb.WriteString(fmt.Sprintf(" :partition %q", n.Partition))
+	}
+	if n.Subpartition != "" {
+		sb.WriteString(fmt.Sprintf(" :subpartition %q", n.Subpartition))
+	}
+	if n.Tablespace != "" {
+		sb.WriteString(fmt.Sprintf(" :tablespace %q", n.Tablespace))
+	}
+	if n.Online {
+		sb.WriteString(" :online true")
+	}
+	if n.Reverse {
+		sb.WriteString(" :reverse true")
+	}
+	if n.NoReverse {
+		sb.WriteString(" :noreverse true")
+	}
+	if n.NewName != "" {
+		sb.WriteString(fmt.Sprintf(" :newName %q", n.NewName))
+	}
+	if n.Cleanup {
+		sb.WriteString(" :cleanup true")
+	}
+	if n.CleanupOnly {
+		sb.WriteString(" :cleanupOnly true")
+	}
+	if n.Compact {
+		sb.WriteString(" :compact true")
+	}
+	if n.Cascade {
+		sb.WriteString(" :cascade true")
+	}
+	if n.Parallel != "" {
+		sb.WriteString(fmt.Sprintf(" :parallel %q", n.Parallel))
+	}
+	if n.NoParallel {
+		sb.WriteString(" :noparallel true")
+	}
+	if n.Logging {
+		sb.WriteString(" :logging true")
+	}
+	if n.NoLogging {
+		sb.WriteString(" :nologging true")
+	}
+	if n.Compress != "" {
+		sb.WriteString(fmt.Sprintf(" :compress %q", n.Compress))
+	}
+	if n.NoCompress {
+		sb.WriteString(" :nocompress true")
+	}
+	if n.IndexingFull {
+		sb.WriteString(" :indexingFull true")
+	}
+	if n.IndexingPartial {
+		sb.WriteString(" :indexingPartial true")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeAlterViewStmt(sb *strings.Builder, n *AlterViewStmt) {
+	sb.WriteString("{ALTER_VIEW")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.IfExists {
+		sb.WriteString(" :ifExists true")
+	}
+	sb.WriteString(fmt.Sprintf(" :action %q", n.Action))
+	if n.Constraint != nil {
+		sb.WriteString(" :constraint ")
+		writeNode(sb, n.Constraint)
+	}
+	if n.ConstraintName != "" {
+		sb.WriteString(fmt.Sprintf(" :constraintName %q", n.ConstraintName))
+	}
+	if n.Rely {
+		sb.WriteString(" :rely true")
+	}
+	if n.NoRely {
+		sb.WriteString(" :norely true")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeAlterSequenceStmt(sb *strings.Builder, n *AlterSequenceStmt) {
+	sb.WriteString("{ALTER_SEQUENCE")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.IfExists {
+		sb.WriteString(" :ifExists true")
+	}
+	if n.IncrementBy != nil {
+		sb.WriteString(" :incrementBy ")
+		writeNode(sb, n.IncrementBy)
+	}
+	if n.MaxValue != nil {
+		sb.WriteString(" :maxValue ")
+		writeNode(sb, n.MaxValue)
+	}
+	if n.MinValue != nil {
+		sb.WriteString(" :minValue ")
+		writeNode(sb, n.MinValue)
+	}
+	if n.NoMaxValue {
+		sb.WriteString(" :noMaxValue true")
+	}
+	if n.NoMinValue {
+		sb.WriteString(" :noMinValue true")
+	}
+	if n.Cycle {
+		sb.WriteString(" :cycle true")
+	}
+	if n.NoCycle {
+		sb.WriteString(" :noCycle true")
+	}
+	if n.Cache != nil {
+		sb.WriteString(" :cache ")
+		writeNode(sb, n.Cache)
+	}
+	if n.NoCache {
+		sb.WriteString(" :noCache true")
+	}
+	if n.Order {
+		sb.WriteString(" :order true")
+	}
+	if n.NoOrder {
+		sb.WriteString(" :noOrder true")
+	}
+	if n.Keep {
+		sb.WriteString(" :keep true")
+	}
+	if n.NoKeep {
+		sb.WriteString(" :noKeep true")
+	}
+	if n.Restart {
+		sb.WriteString(" :restart true")
+	}
+	if n.RestartWith != nil {
+		sb.WriteString(" :restartWith ")
+		writeNode(sb, n.RestartWith)
+	}
+	if n.Scale {
+		sb.WriteString(" :scale true")
+	}
+	if n.NoScale {
+		sb.WriteString(" :noScale true")
+	}
+	if n.ScaleExtend {
+		sb.WriteString(" :scaleExtend true")
+	}
+	if n.ScaleNoExtend {
+		sb.WriteString(" :scaleNoExtend true")
+	}
+	if n.Shard {
+		sb.WriteString(" :shard true")
+	}
+	if n.NoShard {
+		sb.WriteString(" :noShard true")
+	}
+	if n.ShardExtend {
+		sb.WriteString(" :shardExtend true")
+	}
+	if n.ShardNoExtend {
+		sb.WriteString(" :shardNoExtend true")
+	}
+	if n.Global {
+		sb.WriteString(" :global true")
+	}
+	if n.Session {
+		sb.WriteString(" :session true")
 	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

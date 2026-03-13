@@ -1748,7 +1748,220 @@
         "truncate_cluster",
         "drop_type_body"
       ]
+    },
+    {
+      "id": 80,
+      "name": "alter_index_view_sequence_proper",
+      "file": "alter_misc.go",
+      "status": "done",
+      "description": "Fix batch 52 gap: ALTER INDEX, ALTER VIEW, ALTER SEQUENCE still route through parseAlterGeneric which uses skipToSemicolon. Need dedicated parsers: ALTER INDEX REBUILD/RENAME/COALESCE/MONITORING/UNUSABLE/INVISIBLE/SHRINK; ALTER VIEW COMPILE/ADD CONSTRAINT/READ ONLY; ALTER SEQUENCE INCREMENT BY/MAXVALUE/MINVALUE/CYCLE/CACHE/ORDER/KEEP/NOKEEP/SCALE/SHARD",
+      "rules": [
+        "alter_index_stmt_proper",
+        "alter_view_stmt_proper",
+        "alter_sequence_stmt_proper"
+      ],
+      "depends_on": [
+        52
+      ],
+      "tests": [
+        "alter_index_rebuild",
+        "alter_index_rename",
+        "alter_view_compile",
+        "alter_sequence_options"
+      ]
+    },
+    {
+      "id": 81,
+      "name": "alter_plsql_compile",
+      "file": "alter_misc.go",
+      "status": "pending",
+      "description": "Fix batch 45 gap: ALTER PROCEDURE, ALTER FUNCTION, ALTER PACKAGE, ALTER TRIGGER still route through parseAlterGeneric with skipToSemicolon. These all support COMPILE [DEBUG] [REUSE SETTINGS], EDITIONABLE/NONEDITIONABLE. ALTER TRIGGER also supports ENABLE/DISABLE/RENAME TO",
+      "rules": [
+        "alter_procedure_compile",
+        "alter_function_compile",
+        "alter_package_compile",
+        "alter_trigger_enable_disable"
+      ],
+      "depends_on": [
+        45
+      ],
+      "tests": [
+        "alter_procedure_compile",
+        "alter_function_compile",
+        "alter_package_compile_body",
+        "alter_trigger_enable",
+        "alter_trigger_disable"
+      ]
+    },
+    {
+      "id": 82,
+      "name": "alter_type_proper",
+      "file": "alter_misc.go",
+      "status": "pending",
+      "description": "Fix batch 45 gap: ALTER TYPE still routes through parseAlterGeneric with skipToSemicolon. ALTER TYPE supports ADD/DROP/MODIFY ATTRIBUTE, ADD/DROP MAP/ORDER/MEMBER/STATIC METHOD, COMPILE, NOT INSTANTIABLE/FINAL, INVALIDATE, CASCADE",
+      "rules": [
+        "alter_type_add_attribute",
+        "alter_type_drop_attribute",
+        "alter_type_modify_attribute",
+        "alter_type_compile",
+        "alter_type_method"
+      ],
+      "depends_on": [
+        45
+      ],
+      "tests": [
+        "alter_type_add_attribute",
+        "alter_type_compile",
+        "alter_type_drop_method"
+      ]
+    },
+    {
+      "id": 83,
+      "name": "alter_mview_proper",
+      "file": "alter_misc.go",
+      "status": "pending",
+      "description": "Fix batch 45 gap: ALTER MATERIALIZED VIEW still uses skipToSemicolon in parseAlterStmt. Need proper parsing of REFRESH COMPLETE/FAST/FORCE/ON DEMAND/ON COMMIT, ENABLE/DISABLE QUERY REWRITE, COMPILE, CONSIDER FRESH, SHRINK SPACE",
+      "rules": [
+        "alter_mview_refresh",
+        "alter_mview_query_rewrite",
+        "alter_mview_compile",
+        "alter_mview_shrink"
+      ],
+      "depends_on": [
+        45
+      ],
+      "tests": [
+        "alter_mview_refresh_fast",
+        "alter_mview_enable_query_rewrite",
+        "alter_mview_compile"
+      ]
+    },
+    {
+      "id": 84,
+      "name": "alter_dblink_synonym_proper",
+      "file": "alter_misc.go",
+      "status": "pending",
+      "description": "Fix batch 45 gap: ALTER DATABASE LINK and ALTER SYNONYM still route through parseAlterGeneric with skipToSemicolon. ALTER DATABASE LINK supports CONNECT TO user IDENTIFIED BY password [AUTHENTICATED BY]. ALTER SYNONYM supports COMPILE/EDITIONABLE/NONEDITIONABLE",
+      "rules": [
+        "alter_dblink_connect_to",
+        "alter_synonym_compile"
+      ],
+      "depends_on": [
+        45
+      ],
+      "tests": [
+        "alter_dblink_connect_to",
+        "alter_synonym_compile",
+        "alter_synonym_editionable"
+      ]
+    },
+    {
+      "id": 85,
+      "name": "create_schema_proper",
+      "file": "create_admin.go",
+      "status": "pending",
+      "description": "Fix batch 53 gap: CREATE SCHEMA dispatches to parseAdminDDLStmt with wrong OBJECT_TABLE type and skips to semicolon. Need proper parseCreateSchemaStmt that parses AUTHORIZATION schema_name followed by CREATE TABLE/VIEW and GRANT statements terminated by semicolons",
+      "rules": [
+        "create_schema_stmt_proper",
+        "schema_body_stmts"
+      ],
+      "depends_on": [
+        53
+      ],
+      "tests": [
+        "create_schema_basic",
+        "create_schema_with_tables_views_grants"
+      ]
+    },
+    {
+      "id": 86,
+      "name": "create_database_proper",
+      "file": "database.go",
+      "status": "pending",
+      "description": "Fix batch 61 gap: parseCreateDatabaseStmt parses name only, skips all clauses. Need to parse USER SYS/SYSTEM IDENTIFIED BY, CONTROLFILE REUSE, LOGFILE, MAXLOGFILES/MAXLOGMEMBERS/MAXDATAFILES/MAXINSTANCES, ARCHIVELOG/NOARCHIVELOG, CHARACTER SET, DEFAULT TABLESPACE, UNDO TABLESPACE",
+      "rules": [
+        "create_database_user_clause",
+        "create_database_logfile_clause",
+        "create_database_limits",
+        "create_database_charset",
+        "create_database_tablespace_defaults"
+      ],
+      "depends_on": [
+        61
+      ],
+      "tests": [
+        "create_database_full",
+        "create_database_minimal"
+      ]
+    },
+    {
+      "id": 87,
+      "name": "alter_database_proper",
+      "file": "database.go",
+      "status": "pending",
+      "description": "Fix batch 61 gap: parseAlterDatabaseStmt and parseCreateControlfileStmt and parseAlterDatabaseDictionaryStmt are all stubs that skip to semicolon. ALTER DATABASE needs MOUNT/OPEN/RECOVER/DATAFILE/LOGFILE/RENAME FILE/SET clauses. CREATE CONTROLFILE needs REUSE/SET DATABASE/LOGFILE/DATAFILE. ALTER DATABASE DICTIONARY needs ENCRYPT/REKEY/DELETE CREDENTIALS",
+      "rules": [
+        "alter_database_mount_open",
+        "alter_database_datafile",
+        "alter_database_logfile",
+        "create_controlfile_clauses",
+        "alter_database_dictionary_encrypt"
+      ],
+      "depends_on": [
+        61
+      ],
+      "tests": [
+        "alter_database_mount",
+        "alter_database_open",
+        "create_controlfile_basic",
+        "alter_database_dictionary_encrypt"
+      ]
+    },
+    {
+      "id": 88,
+      "name": "alter_session_full",
+      "file": "alter_misc.go",
+      "status": "pending",
+      "description": "Fix batch 17 gap: ALTER SESSION non-SET clauses use skipToSemicolon. Need to parse ALTER SESSION ADVISE {COMMIT|ROLLBACK|NOTHING}, ALTER SESSION CLOSE DATABASE LINK name, ALTER SESSION ENABLE/DISABLE {COMMIT IN PROCEDURE|GUARD|PARALLEL DML/DDL/QUERY|RESUMABLE}, ALTER SESSION FORCE PARALLEL {DML|DDL|QUERY} [PARALLEL n]",
+      "rules": [
+        "alter_session_advise",
+        "alter_session_close_dblink",
+        "alter_session_enable_disable",
+        "alter_session_force_parallel"
+      ],
+      "depends_on": [
+        17
+      ],
+      "tests": [
+        "alter_session_advise_commit",
+        "alter_session_close_dblink",
+        "alter_session_enable_parallel_dml"
+      ]
+    },
+    {
+      "id": 89,
+      "name": "alter_system_full",
+      "file": "alter_misc.go",
+      "status": "pending",
+      "description": "Fix batch 17 gap: ALTER SYSTEM non-SET/KILL clauses use skipToSemicolon. Need to parse ALTER SYSTEM FLUSH {SHARED_POOL|BUFFER_CACHE|GLOBAL CONTEXT|REDO}, CHECKPOINT [GLOBAL|LOCAL], SWITCH LOGFILE, ARCHIVE LOG, DISCONNECT SESSION, CANCEL SQL, ENABLE/DISABLE RESTRICTED SESSION, RESUME, SUSPEND, QUIESCE RESTRICTED, UNQUIESCE, SHUTDOWN [IMMEDIATE] DISPATCHER",
+      "rules": [
+        "alter_system_flush",
+        "alter_system_checkpoint",
+        "alter_system_switch_logfile",
+        "alter_system_archive_log",
+        "alter_system_disconnect_session",
+        "alter_system_restricted_session"
+      ],
+      "depends_on": [
+        17
+      ],
+      "tests": [
+        "alter_system_flush_shared_pool",
+        "alter_system_checkpoint",
+        "alter_system_switch_logfile",
+        "alter_system_enable_restricted_session"
+      ]
     }
   ],
-  "audit_round": 1
+  "audit_round": 2
 }

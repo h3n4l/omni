@@ -2684,3 +2684,647 @@ func TestBatch79_TruncateClusterDropTypeBody(t *testing.T) {
 		}
 	})
 }
+
+// TestParseAlterIndexProper tests ALTER INDEX with proper parsing.
+func TestParseAlterIndexProper(t *testing.T) {
+	// REBUILD
+	t.Run("alter_index_rebuild", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INDEX my_idx REBUILD")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterIndexStmt)
+		if !ok {
+			t.Fatalf("expected *AlterIndexStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "REBUILD" {
+			t.Errorf("expected REBUILD, got %q", stmt.Action)
+		}
+	})
+
+	// REBUILD ONLINE TABLESPACE
+	t.Run("alter_index_rebuild_online_tablespace", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INDEX hr.idx1 REBUILD ONLINE TABLESPACE users_ts")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterIndexStmt)
+		if !ok {
+			t.Fatalf("expected *AlterIndexStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "REBUILD" {
+			t.Errorf("expected REBUILD, got %q", stmt.Action)
+		}
+		if !stmt.Online {
+			t.Error("expected Online=true")
+		}
+		if stmt.Tablespace != "USERS_TS" {
+			t.Errorf("expected USERS_TS, got %q", stmt.Tablespace)
+		}
+	})
+
+	// REBUILD PARTITION
+	t.Run("alter_index_rebuild_partition", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INDEX idx1 REBUILD PARTITION p1 TABLESPACE ts1 ONLINE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterIndexStmt)
+		if !ok {
+			t.Fatalf("expected *AlterIndexStmt, got %T", raw.Stmt)
+		}
+		if stmt.Partition != "P1" {
+			t.Errorf("expected P1, got %q", stmt.Partition)
+		}
+	})
+
+	// REBUILD REVERSE
+	t.Run("alter_index_rebuild_reverse", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INDEX idx1 REBUILD REVERSE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterIndexStmt)
+		if !stmt.Reverse {
+			t.Error("expected Reverse=true")
+		}
+	})
+
+	// RENAME TO
+	t.Run("alter_index_rename", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INDEX old_idx RENAME TO new_idx")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterIndexStmt)
+		if !ok {
+			t.Fatalf("expected *AlterIndexStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "RENAME" {
+			t.Errorf("expected RENAME, got %q", stmt.Action)
+		}
+		if stmt.NewName != "NEW_IDX" {
+			t.Errorf("expected NEW_IDX, got %q", stmt.NewName)
+		}
+	})
+
+	// COALESCE
+	t.Run("alter_index_coalesce", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INDEX idx1 COALESCE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterIndexStmt)
+		if stmt.Action != "COALESCE" {
+			t.Errorf("expected COALESCE, got %q", stmt.Action)
+		}
+	})
+
+	// COALESCE CLEANUP ONLY
+	t.Run("alter_index_coalesce_cleanup_only", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INDEX idx1 COALESCE CLEANUP ONLY")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterIndexStmt)
+		if !stmt.Cleanup {
+			t.Error("expected Cleanup=true")
+		}
+		if !stmt.CleanupOnly {
+			t.Error("expected CleanupOnly=true")
+		}
+	})
+
+	// MONITORING USAGE
+	t.Run("alter_index_monitoring_usage", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INDEX idx1 MONITORING USAGE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterIndexStmt)
+		if stmt.Action != "MONITORING_USAGE" {
+			t.Errorf("expected MONITORING_USAGE, got %q", stmt.Action)
+		}
+	})
+
+	// NOMONITORING USAGE
+	t.Run("alter_index_nomonitoring_usage", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INDEX idx1 NOMONITORING USAGE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterIndexStmt)
+		if stmt.Action != "NOMONITORING_USAGE" {
+			t.Errorf("expected NOMONITORING_USAGE, got %q", stmt.Action)
+		}
+	})
+
+	// UNUSABLE
+	t.Run("alter_index_unusable", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INDEX idx1 UNUSABLE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterIndexStmt)
+		if stmt.Action != "UNUSABLE" {
+			t.Errorf("expected UNUSABLE, got %q", stmt.Action)
+		}
+	})
+
+	// UNUSABLE ONLINE
+	t.Run("alter_index_unusable_online", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INDEX idx1 UNUSABLE ONLINE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterIndexStmt)
+		if stmt.Action != "UNUSABLE" {
+			t.Errorf("expected UNUSABLE, got %q", stmt.Action)
+		}
+		if !stmt.Online {
+			t.Error("expected Online=true")
+		}
+	})
+
+	// VISIBLE
+	t.Run("alter_index_visible", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INDEX idx1 VISIBLE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterIndexStmt)
+		if stmt.Action != "VISIBLE" {
+			t.Errorf("expected VISIBLE, got %q", stmt.Action)
+		}
+	})
+
+	// INVISIBLE
+	t.Run("alter_index_invisible", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INDEX idx1 INVISIBLE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterIndexStmt)
+		if stmt.Action != "INVISIBLE" {
+			t.Errorf("expected INVISIBLE, got %q", stmt.Action)
+		}
+	})
+
+	// ENABLE
+	t.Run("alter_index_enable", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INDEX idx1 ENABLE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterIndexStmt)
+		if stmt.Action != "ENABLE" {
+			t.Errorf("expected ENABLE, got %q", stmt.Action)
+		}
+	})
+
+	// DISABLE
+	t.Run("alter_index_disable", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INDEX idx1 DISABLE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterIndexStmt)
+		if stmt.Action != "DISABLE" {
+			t.Errorf("expected DISABLE, got %q", stmt.Action)
+		}
+	})
+
+	// COMPILE
+	t.Run("alter_index_compile", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INDEX idx1 COMPILE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterIndexStmt)
+		if stmt.Action != "COMPILE" {
+			t.Errorf("expected COMPILE, got %q", stmt.Action)
+		}
+	})
+
+	// SHRINK SPACE
+	t.Run("alter_index_shrink_space", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INDEX idx1 SHRINK SPACE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterIndexStmt)
+		if stmt.Action != "SHRINK_SPACE" {
+			t.Errorf("expected SHRINK_SPACE, got %q", stmt.Action)
+		}
+	})
+
+	// SHRINK SPACE COMPACT CASCADE
+	t.Run("alter_index_shrink_space_compact_cascade", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INDEX idx1 SHRINK SPACE COMPACT CASCADE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterIndexStmt)
+		if !stmt.Compact {
+			t.Error("expected Compact=true")
+		}
+		if !stmt.Cascade {
+			t.Error("expected Cascade=true")
+		}
+	})
+
+	// PARALLEL
+	t.Run("alter_index_parallel", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INDEX idx1 PARALLEL 4")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterIndexStmt)
+		if stmt.Action != "PARALLEL" {
+			t.Errorf("expected PARALLEL, got %q", stmt.Action)
+		}
+		if stmt.Parallel != "4" {
+			t.Errorf("expected 4, got %q", stmt.Parallel)
+		}
+	})
+
+	// NOPARALLEL
+	t.Run("alter_index_noparallel", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INDEX idx1 NOPARALLEL")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterIndexStmt)
+		if stmt.Action != "NOPARALLEL" {
+			t.Errorf("expected NOPARALLEL, got %q", stmt.Action)
+		}
+	})
+
+	// LOGGING
+	t.Run("alter_index_logging", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INDEX idx1 LOGGING")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterIndexStmt)
+		if stmt.Action != "LOGGING" {
+			t.Errorf("expected LOGGING, got %q", stmt.Action)
+		}
+	})
+
+	// NOLOGGING
+	t.Run("alter_index_nologging", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INDEX idx1 NOLOGGING")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterIndexStmt)
+		if stmt.Action != "NOLOGGING" {
+			t.Errorf("expected NOLOGGING, got %q", stmt.Action)
+		}
+	})
+
+	// UPDATE BLOCK REFERENCES
+	t.Run("alter_index_update_block_references", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INDEX idx1 UPDATE BLOCK REFERENCES")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterIndexStmt)
+		if stmt.Action != "UPDATE_BLOCK_REFERENCES" {
+			t.Errorf("expected UPDATE_BLOCK_REFERENCES, got %q", stmt.Action)
+		}
+	})
+
+	// IF EXISTS
+	t.Run("alter_index_if_exists", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INDEX IF EXISTS idx1 REBUILD")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterIndexStmt)
+		if !stmt.IfExists {
+			t.Error("expected IfExists=true")
+		}
+	})
+}
+
+// TestParseAlterViewProper tests ALTER VIEW with proper parsing.
+func TestParseAlterViewProper(t *testing.T) {
+	// COMPILE
+	t.Run("alter_view_compile", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER VIEW hr.emp_view COMPILE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterViewStmt)
+		if !ok {
+			t.Fatalf("expected *AlterViewStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "COMPILE" {
+			t.Errorf("expected COMPILE, got %q", stmt.Action)
+		}
+	})
+
+	// ADD CONSTRAINT
+	t.Run("alter_view_add_constraint", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER VIEW emp_view ADD CONSTRAINT pk_emp PRIMARY KEY (emp_id) DISABLE NOVALIDATE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterViewStmt)
+		if !ok {
+			t.Fatalf("expected *AlterViewStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "ADD_CONSTRAINT" {
+			t.Errorf("expected ADD_CONSTRAINT, got %q", stmt.Action)
+		}
+		if stmt.Constraint == nil {
+			t.Fatal("expected non-nil Constraint")
+		}
+	})
+
+	// MODIFY CONSTRAINT ... RELY
+	t.Run("alter_view_modify_constraint_rely", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER VIEW emp_view MODIFY CONSTRAINT pk_emp RELY")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterViewStmt)
+		if stmt.Action != "MODIFY_CONSTRAINT" {
+			t.Errorf("expected MODIFY_CONSTRAINT, got %q", stmt.Action)
+		}
+		if stmt.ConstraintName != "PK_EMP" {
+			t.Errorf("expected PK_EMP, got %q", stmt.ConstraintName)
+		}
+		if !stmt.Rely {
+			t.Error("expected Rely=true")
+		}
+	})
+
+	// MODIFY CONSTRAINT ... NORELY
+	t.Run("alter_view_modify_constraint_norely", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER VIEW emp_view MODIFY CONSTRAINT pk_emp NORELY")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterViewStmt)
+		if !stmt.NoRely {
+			t.Error("expected NoRely=true")
+		}
+	})
+
+	// DROP CONSTRAINT
+	t.Run("alter_view_drop_constraint", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER VIEW emp_view DROP CONSTRAINT pk_emp")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterViewStmt)
+		if stmt.Action != "DROP_CONSTRAINT" {
+			t.Errorf("expected DROP_CONSTRAINT, got %q", stmt.Action)
+		}
+		if stmt.ConstraintName != "PK_EMP" {
+			t.Errorf("expected PK_EMP, got %q", stmt.ConstraintName)
+		}
+	})
+
+	// READ ONLY
+	t.Run("alter_view_read_only", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER VIEW emp_view READ ONLY")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterViewStmt)
+		if stmt.Action != "READ_ONLY" {
+			t.Errorf("expected READ_ONLY, got %q", stmt.Action)
+		}
+	})
+
+	// READ WRITE
+	t.Run("alter_view_read_write", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER VIEW emp_view READ WRITE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterViewStmt)
+		if stmt.Action != "READ_WRITE" {
+			t.Errorf("expected READ_WRITE, got %q", stmt.Action)
+		}
+	})
+
+	// EDITIONABLE
+	t.Run("alter_view_editionable", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER VIEW emp_view EDITIONABLE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterViewStmt)
+		if stmt.Action != "EDITIONABLE" {
+			t.Errorf("expected EDITIONABLE, got %q", stmt.Action)
+		}
+	})
+
+	// NONEDITIONABLE
+	t.Run("alter_view_noneditionable", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER VIEW emp_view NONEDITIONABLE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterViewStmt)
+		if stmt.Action != "NONEDITIONABLE" {
+			t.Errorf("expected NONEDITIONABLE, got %q", stmt.Action)
+		}
+	})
+
+	// IF EXISTS
+	t.Run("alter_view_if_exists", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER VIEW IF EXISTS emp_view COMPILE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterViewStmt)
+		if !stmt.IfExists {
+			t.Error("expected IfExists=true")
+		}
+	})
+}
+
+// TestParseAlterSequenceProper tests ALTER SEQUENCE with proper parsing.
+func TestParseAlterSequenceProper(t *testing.T) {
+	// Basic options
+	t.Run("alter_sequence_increment_by", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER SEQUENCE seq1 INCREMENT BY 5")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterSequenceStmt)
+		if !ok {
+			t.Fatalf("expected *AlterSequenceStmt, got %T", raw.Stmt)
+		}
+		if stmt.IncrementBy == nil {
+			t.Error("expected non-nil IncrementBy")
+		}
+	})
+
+	// MAXVALUE / NOMAXVALUE
+	t.Run("alter_sequence_maxvalue", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER SEQUENCE seq1 MAXVALUE 1000")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterSequenceStmt)
+		if stmt.MaxValue == nil {
+			t.Error("expected non-nil MaxValue")
+		}
+	})
+
+	t.Run("alter_sequence_nomaxvalue", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER SEQUENCE seq1 NOMAXVALUE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterSequenceStmt)
+		if !stmt.NoMaxValue {
+			t.Error("expected NoMaxValue=true")
+		}
+	})
+
+	// MINVALUE / NOMINVALUE
+	t.Run("alter_sequence_minvalue", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER SEQUENCE seq1 MINVALUE 1")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterSequenceStmt)
+		if stmt.MinValue == nil {
+			t.Error("expected non-nil MinValue")
+		}
+	})
+
+	t.Run("alter_sequence_nominvalue", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER SEQUENCE seq1 NOMINVALUE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterSequenceStmt)
+		if !stmt.NoMinValue {
+			t.Error("expected NoMinValue=true")
+		}
+	})
+
+	// CYCLE / NOCYCLE
+	t.Run("alter_sequence_cycle", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER SEQUENCE seq1 CYCLE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterSequenceStmt)
+		if !stmt.Cycle {
+			t.Error("expected Cycle=true")
+		}
+	})
+
+	t.Run("alter_sequence_nocycle", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER SEQUENCE seq1 NOCYCLE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterSequenceStmt)
+		if !stmt.NoCycle {
+			t.Error("expected NoCycle=true")
+		}
+	})
+
+	// CACHE / NOCACHE
+	t.Run("alter_sequence_cache", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER SEQUENCE seq1 CACHE 20")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterSequenceStmt)
+		if stmt.Cache == nil {
+			t.Error("expected non-nil Cache")
+		}
+	})
+
+	t.Run("alter_sequence_nocache", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER SEQUENCE seq1 NOCACHE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterSequenceStmt)
+		if !stmt.NoCache {
+			t.Error("expected NoCache=true")
+		}
+	})
+
+	// ORDER / NOORDER
+	t.Run("alter_sequence_order", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER SEQUENCE seq1 ORDER")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterSequenceStmt)
+		if !stmt.Order {
+			t.Error("expected Order=true")
+		}
+	})
+
+	t.Run("alter_sequence_noorder", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER SEQUENCE seq1 NOORDER")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterSequenceStmt)
+		if !stmt.NoOrder {
+			t.Error("expected NoOrder=true")
+		}
+	})
+
+	// KEEP / NOKEEP
+	t.Run("alter_sequence_keep", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER SEQUENCE seq1 KEEP")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterSequenceStmt)
+		if !stmt.Keep {
+			t.Error("expected Keep=true")
+		}
+	})
+
+	t.Run("alter_sequence_nokeep", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER SEQUENCE seq1 NOKEEP")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterSequenceStmt)
+		if !stmt.NoKeep {
+			t.Error("expected NoKeep=true")
+		}
+	})
+
+	// SCALE / NOSCALE
+	t.Run("alter_sequence_scale_extend", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER SEQUENCE seq1 SCALE EXTEND")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterSequenceStmt)
+		if !stmt.Scale {
+			t.Error("expected Scale=true")
+		}
+		if !stmt.ScaleExtend {
+			t.Error("expected ScaleExtend=true")
+		}
+	})
+
+	t.Run("alter_sequence_noscale", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER SEQUENCE seq1 NOSCALE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterSequenceStmt)
+		if !stmt.NoScale {
+			t.Error("expected NoScale=true")
+		}
+	})
+
+	// SHARD / NOSHARD
+	t.Run("alter_sequence_shard_extend", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER SEQUENCE seq1 SHARD EXTEND")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterSequenceStmt)
+		if !stmt.Shard {
+			t.Error("expected Shard=true")
+		}
+		if !stmt.ShardExtend {
+			t.Error("expected ShardExtend=true")
+		}
+	})
+
+	t.Run("alter_sequence_noshard", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER SEQUENCE seq1 NOSHARD")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterSequenceStmt)
+		if !stmt.NoShard {
+			t.Error("expected NoShard=true")
+		}
+	})
+
+	// RESTART
+	t.Run("alter_sequence_restart", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER SEQUENCE seq1 RESTART")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterSequenceStmt)
+		if !stmt.Restart {
+			t.Error("expected Restart=true")
+		}
+	})
+
+	t.Run("alter_sequence_restart_with", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER SEQUENCE seq1 RESTART WITH 100")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterSequenceStmt)
+		if !stmt.Restart {
+			t.Error("expected Restart=true")
+		}
+		if stmt.RestartWith == nil {
+			t.Error("expected non-nil RestartWith")
+		}
+	})
+
+	// GLOBAL / SESSION
+	t.Run("alter_sequence_global", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER SEQUENCE seq1 GLOBAL")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterSequenceStmt)
+		if !stmt.Global {
+			t.Error("expected Global=true")
+		}
+	})
+
+	t.Run("alter_sequence_session", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER SEQUENCE seq1 SESSION")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterSequenceStmt)
+		if !stmt.Session {
+			t.Error("expected Session=true")
+		}
+	})
+
+	// Multiple options
+	t.Run("alter_sequence_multiple_options", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER SEQUENCE seq1 INCREMENT BY 10 MAXVALUE 9999 CACHE 50 CYCLE ORDER")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterSequenceStmt)
+		if stmt.IncrementBy == nil {
+			t.Error("expected non-nil IncrementBy")
+		}
+		if stmt.MaxValue == nil {
+			t.Error("expected non-nil MaxValue")
+		}
+		if stmt.Cache == nil {
+			t.Error("expected non-nil Cache")
+		}
+		if !stmt.Cycle {
+			t.Error("expected Cycle=true")
+		}
+		if !stmt.Order {
+			t.Error("expected Order=true")
+		}
+	})
+
+	// IF EXISTS
+	t.Run("alter_sequence_if_exists", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER SEQUENCE IF EXISTS seq1 INCREMENT BY 1")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterSequenceStmt)
+		if !stmt.IfExists {
+			t.Error("expected IfExists=true")
+		}
+	})
+}

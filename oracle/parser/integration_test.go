@@ -37,8 +37,8 @@ func TestIntegrationAllStatementTypes(t *testing.T) {
 
 		// DDL - ALTER
 		{"ALTER_TABLE", "ALTER TABLE t ADD (col NUMBER)", "*ast.AlterTableStmt"},
-		{"ALTER_INDEX", "ALTER INDEX idx REBUILD", "*ast.AdminDDLStmt"},
-		{"ALTER_SEQUENCE", "ALTER SEQUENCE seq INCREMENT BY 2", "*ast.AdminDDLStmt"},
+		{"ALTER_INDEX", "ALTER INDEX idx REBUILD", "*ast.AlterIndexStmt"},
+		{"ALTER_SEQUENCE", "ALTER SEQUENCE seq INCREMENT BY 2", "*ast.AlterSequenceStmt"},
 		{"ALTER_SESSION", "ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD'", "*ast.AlterSessionStmt"},
 
 		// DDL - DROP

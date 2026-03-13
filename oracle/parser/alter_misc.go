@@ -24,11 +24,11 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 	case kwSYSTEM:
 		return p.parseAlterSystemStmt(start)
 	case kwINDEX:
-		return p.parseAlterGeneric(start, nodes.OBJECT_INDEX)
+		return p.parseAlterIndexStmt(start)
 	case kwVIEW:
-		return p.parseAlterGeneric(start, nodes.OBJECT_VIEW)
+		return p.parseAlterViewStmt(start)
 	case kwSEQUENCE:
-		return p.parseAlterGeneric(start, nodes.OBJECT_SEQUENCE)
+		return p.parseAlterSequenceStmt(start)
 	case kwTABLE:
 		return p.parseAlterTableStmt(start)
 	case kwPROCEDURE:
@@ -252,6 +252,506 @@ func (p *Parser) parseAlterGeneric(start int, objType nodes.ObjectType) nodes.St
 	// Skip remainder of the statement (clauses vary greatly by object type).
 	p.skipToSemicolon()
 
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseAlterIndexStmt parses an ALTER INDEX statement.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/ALTER-INDEX.html
+//
+//	ALTER INDEX [IF EXISTS] [schema.]index_name
+//	{   REBUILD [PARTITION partition | SUBPARTITION subpartition]
+//	          [TABLESPACE tablespace] [ONLINE] [REVERSE | NOREVERSE]
+//	          [PARALLEL integer | NOPARALLEL] [COMPRESS integer | NOCOMPRESS]
+//	          [LOGGING | NOLOGGING]
+//	  | RENAME TO new_name
+//	  | COALESCE [CLEANUP [ONLY]] [PARALLEL integer | NOPARALLEL]
+//	  | { MONITORING | NOMONITORING } USAGE
+//	  | USABLE | UNUSABLE [ONLINE]
+//	  | VISIBLE | INVISIBLE
+//	  | ENABLE | DISABLE | COMPILE
+//	  | SHRINK SPACE [COMPACT] [CASCADE]
+//	  | PARALLEL integer | NOPARALLEL
+//	  | LOGGING | NOLOGGING
+//	  | UPDATE BLOCK REFERENCES
+//	  | INDEXING {FULL | PARTIAL}
+//	}
+func (p *Parser) parseAlterIndexStmt(start int) nodes.StmtNode {
+	p.advance() // consume INDEX
+
+	stmt := &nodes.AlterIndexStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// IF EXISTS
+	if p.cur.Type == kwIF {
+		next := p.peekNext()
+		if next.Type == kwEXISTS {
+			stmt.IfExists = true
+			p.advance() // consume IF
+			p.advance() // consume EXISTS
+		}
+	}
+
+	// Parse index name
+	stmt.Name = p.parseObjectName()
+
+	// Parse action
+	switch {
+	case p.isIdentLikeStr("REBUILD"):
+		stmt.Action = "REBUILD"
+		p.advance() // consume REBUILD
+		// Optional PARTITION/SUBPARTITION and rebuild options
+		for p.cur.Type != ';' && p.cur.Type != tokEOF {
+			switch {
+			case p.cur.Type == kwPARTITION:
+				p.advance() // consume PARTITION
+				stmt.Partition = p.parseIdentifier()
+			case p.isIdentLikeStr("SUBPARTITION"):
+				p.advance() // consume SUBPARTITION
+				stmt.Subpartition = p.parseIdentifier()
+			case p.cur.Type == kwTABLESPACE:
+				p.advance() // consume TABLESPACE
+				stmt.Tablespace = p.parseIdentifier()
+			case p.cur.Type == kwONLINE:
+				stmt.Online = true
+				p.advance()
+			case p.cur.Type == kwREVERSE:
+				stmt.Reverse = true
+				p.advance()
+			case p.isIdentLikeStr("NOREVERSE"):
+				stmt.NoReverse = true
+				p.advance()
+			case p.cur.Type == kwPARALLEL:
+				p.advance() // consume PARALLEL
+				if p.cur.Type == tokICONST {
+					stmt.Parallel = p.cur.Str
+					p.advance()
+				}
+			case p.cur.Type == kwNOPARALLEL:
+				stmt.NoParallel = true
+				p.advance()
+			case p.cur.Type == kwCOMPRESS:
+				p.advance() // consume COMPRESS
+				if p.cur.Type == tokICONST {
+					stmt.Compress = p.cur.Str
+					p.advance()
+				} else {
+					stmt.Compress = "1"
+				}
+			case p.cur.Type == kwNOCOMPRESS:
+				stmt.NoCompress = true
+				p.advance()
+			case p.cur.Type == kwLOGGING:
+				stmt.Logging = true
+				p.advance()
+			case p.cur.Type == kwNOLOGGING:
+				stmt.NoLogging = true
+				p.advance()
+			default:
+				goto done
+			}
+		}
+
+	case p.cur.Type == kwRENAME:
+		stmt.Action = "RENAME"
+		p.advance() // consume RENAME
+		if p.cur.Type == kwTO {
+			p.advance() // consume TO
+		}
+		stmt.NewName = p.parseIdentifier()
+
+	case p.isIdentLikeStr("COALESCE"):
+		stmt.Action = "COALESCE"
+		p.advance() // consume COALESCE
+		if p.isIdentLikeStr("CLEANUP") {
+			stmt.Cleanup = true
+			p.advance() // consume CLEANUP
+			if p.isIdentLikeStr("ONLY") {
+				stmt.CleanupOnly = true
+				p.advance() // consume ONLY
+			}
+		}
+		// Optional parallel clause
+		if p.cur.Type == kwPARALLEL {
+			p.advance()
+			if p.cur.Type == tokICONST {
+				stmt.Parallel = p.cur.Str
+				p.advance()
+			}
+		} else if p.cur.Type == kwNOPARALLEL {
+			stmt.NoParallel = true
+			p.advance()
+		}
+
+	case p.isIdentLikeStr("MONITORING"):
+		stmt.Action = "MONITORING_USAGE"
+		p.advance() // consume MONITORING
+		if p.isIdentLikeStr("USAGE") {
+			p.advance() // consume USAGE
+		}
+
+	case p.isIdentLikeStr("NOMONITORING"):
+		stmt.Action = "NOMONITORING_USAGE"
+		p.advance() // consume NOMONITORING
+		if p.isIdentLikeStr("USAGE") {
+			p.advance() // consume USAGE
+		}
+
+	case p.isIdentLikeStr("UNUSABLE"):
+		stmt.Action = "UNUSABLE"
+		p.advance() // consume UNUSABLE
+		if p.cur.Type == kwONLINE {
+			stmt.Online = true
+			p.advance()
+		}
+
+	case p.isIdentLikeStr("USABLE"):
+		stmt.Action = "USABLE"
+		p.advance() // consume USABLE
+
+	case p.isIdentLikeStr("VISIBLE"):
+		stmt.Action = "VISIBLE"
+		p.advance() // consume VISIBLE
+
+	case p.cur.Type == kwINVISIBLE:
+		stmt.Action = "INVISIBLE"
+		p.advance() // consume INVISIBLE
+
+	case p.cur.Type == kwENABLE:
+		stmt.Action = "ENABLE"
+		p.advance() // consume ENABLE
+
+	case p.cur.Type == kwDISABLE:
+		stmt.Action = "DISABLE"
+		p.advance() // consume DISABLE
+
+	case p.isIdentLikeStr("COMPILE"):
+		stmt.Action = "COMPILE"
+		p.advance() // consume COMPILE
+
+	case p.isIdentLikeStr("SHRINK"):
+		stmt.Action = "SHRINK_SPACE"
+		p.advance() // consume SHRINK
+		if p.isIdentLikeStr("SPACE") {
+			p.advance() // consume SPACE
+		}
+		if p.isIdentLikeStr("COMPACT") {
+			stmt.Compact = true
+			p.advance()
+		}
+		if p.cur.Type == kwCASCADE {
+			stmt.Cascade = true
+			p.advance()
+		}
+
+	case p.cur.Type == kwPARALLEL:
+		stmt.Action = "PARALLEL"
+		p.advance() // consume PARALLEL
+		if p.cur.Type == tokICONST {
+			stmt.Parallel = p.cur.Str
+			p.advance()
+		}
+
+	case p.cur.Type == kwNOPARALLEL:
+		stmt.Action = "NOPARALLEL"
+		p.advance() // consume NOPARALLEL
+
+	case p.cur.Type == kwLOGGING:
+		stmt.Action = "LOGGING"
+		p.advance() // consume LOGGING
+
+	case p.cur.Type == kwNOLOGGING:
+		stmt.Action = "NOLOGGING"
+		p.advance() // consume NOLOGGING
+
+	case p.isIdentLikeStr("UPDATE"):
+		stmt.Action = "UPDATE_BLOCK_REFERENCES"
+		p.advance() // consume UPDATE
+		if p.isIdentLikeStr("BLOCK") {
+			p.advance() // consume BLOCK
+		}
+		if p.isIdentLikeStr("REFERENCES") {
+			p.advance() // consume REFERENCES
+		}
+
+	case p.isIdentLikeStr("INDEXING"):
+		p.advance() // consume INDEXING
+		if p.isIdentLikeStr("FULL") {
+			stmt.Action = "INDEXING"
+			stmt.IndexingFull = true
+			p.advance()
+		} else if p.isIdentLikeStr("PARTIAL") {
+			stmt.Action = "INDEXING"
+			stmt.IndexingPartial = true
+			p.advance()
+		}
+
+	default:
+		// Unknown action — skip remaining tokens
+		p.skipToSemicolon()
+	}
+
+done:
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseAlterViewStmt parses an ALTER VIEW statement.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/ALTER-VIEW.html
+//
+//	ALTER VIEW [IF EXISTS] [schema.]view
+//	{   COMPILE
+//	  | ADD out_of_line_constraint
+//	  | MODIFY CONSTRAINT constraint_name { RELY | NORELY }
+//	  | DROP CONSTRAINT constraint_name
+//	  | { READ ONLY | READ WRITE }
+//	  | { EDITIONABLE | NONEDITIONABLE }
+//	}
+func (p *Parser) parseAlterViewStmt(start int) nodes.StmtNode {
+	p.advance() // consume VIEW
+
+	stmt := &nodes.AlterViewStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// IF EXISTS
+	if p.cur.Type == kwIF {
+		next := p.peekNext()
+		if next.Type == kwEXISTS {
+			stmt.IfExists = true
+			p.advance() // consume IF
+			p.advance() // consume EXISTS
+		}
+	}
+
+	// Parse view name
+	stmt.Name = p.parseObjectName()
+
+	// Parse action
+	switch {
+	case p.isIdentLikeStr("COMPILE"), p.isIdentLikeStr("RECOMPILE"):
+		stmt.Action = "COMPILE"
+		p.advance()
+
+	case p.cur.Type == kwADD:
+		stmt.Action = "ADD_CONSTRAINT"
+		p.advance() // consume ADD
+		stmt.Constraint = p.parseTableConstraint()
+
+	case p.cur.Type == kwMODIFY:
+		p.advance() // consume MODIFY
+		if p.cur.Type == kwCONSTRAINT {
+			stmt.Action = "MODIFY_CONSTRAINT"
+			p.advance() // consume CONSTRAINT
+			stmt.ConstraintName = p.parseIdentifier()
+			if p.cur.Type == kwRELY {
+				stmt.Rely = true
+				p.advance()
+			} else if p.isIdentLikeStr("NORELY") {
+				stmt.NoRely = true
+				p.advance()
+			}
+		} else {
+			p.skipToSemicolon()
+		}
+
+	case p.cur.Type == kwDROP:
+		p.advance() // consume DROP
+		if p.cur.Type == kwCONSTRAINT {
+			stmt.Action = "DROP_CONSTRAINT"
+			p.advance() // consume CONSTRAINT
+			stmt.ConstraintName = p.parseIdentifier()
+		} else {
+			p.skipToSemicolon()
+		}
+
+	case p.cur.Type == kwREAD:
+		p.advance() // consume READ
+		if p.isIdentLikeStr("ONLY") {
+			stmt.Action = "READ_ONLY"
+			p.advance()
+		} else if p.cur.Type == kwWRITE {
+			stmt.Action = "READ_WRITE"
+			p.advance()
+		}
+
+	case p.isIdentLikeStr("EDITIONABLE"):
+		stmt.Action = "EDITIONABLE"
+		p.advance()
+
+	case p.isIdentLikeStr("NONEDITIONABLE"):
+		stmt.Action = "NONEDITIONABLE"
+		p.advance()
+
+	default:
+		p.skipToSemicolon()
+	}
+
+	// Skip optional trailing clauses (DISABLE NOVALIDATE on constraints, etc.)
+	if stmt.Action == "ADD_CONSTRAINT" {
+		// Consume DISABLE/ENABLE NOVALIDATE/VALIDATE after constraint
+		for p.cur.Type != ';' && p.cur.Type != tokEOF {
+			if p.cur.Type == kwDISABLE || p.cur.Type == kwENABLE || p.isIdentLikeStr("NOVALIDATE") || p.isIdentLikeStr("VALIDATE") {
+				p.advance()
+			} else {
+				break
+			}
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseAlterSequenceStmt parses an ALTER SEQUENCE statement.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/ALTER-SEQUENCE.html
+//
+//	ALTER SEQUENCE [IF EXISTS] [schema.]sequence_name
+//	  [ INCREMENT BY integer ]
+//	  [ MAXVALUE integer | NOMAXVALUE ]
+//	  [ MINVALUE integer | NOMINVALUE ]
+//	  [ CYCLE | NOCYCLE ]
+//	  [ CACHE integer | NOCACHE ]
+//	  [ ORDER | NOORDER ]
+//	  [ KEEP | NOKEEP ]
+//	  [ RESTART [ WITH integer ] ]
+//	  [ SCALE [ EXTEND | NOEXTEND ] | NOSCALE ]
+//	  [ SHARD [ EXTEND | NOEXTEND ] | NOSHARD ]
+//	  [ GLOBAL | SESSION ]
+func (p *Parser) parseAlterSequenceStmt(start int) nodes.StmtNode {
+	p.advance() // consume SEQUENCE
+
+	stmt := &nodes.AlterSequenceStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// IF EXISTS
+	if p.cur.Type == kwIF {
+		next := p.peekNext()
+		if next.Type == kwEXISTS {
+			stmt.IfExists = true
+			p.advance() // consume IF
+			p.advance() // consume EXISTS
+		}
+	}
+
+	// Parse sequence name
+	stmt.Name = p.parseObjectName()
+
+	// Parse sequence options (loop, multiple may be specified)
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		switch {
+		case p.cur.Type == kwINCREMENT:
+			p.advance() // consume INCREMENT
+			if p.cur.Type == kwBY {
+				p.advance() // consume BY
+			}
+			stmt.IncrementBy = p.parseExpr()
+
+		case p.cur.Type == kwMAXVALUE:
+			p.advance() // consume MAXVALUE
+			stmt.MaxValue = p.parseExpr()
+
+		case p.cur.Type == kwNOMAXVALUE:
+			stmt.NoMaxValue = true
+			p.advance()
+
+		case p.cur.Type == kwMINVALUE:
+			p.advance() // consume MINVALUE
+			stmt.MinValue = p.parseExpr()
+
+		case p.cur.Type == kwNOMINVALUE:
+			stmt.NoMinValue = true
+			p.advance()
+
+		case p.cur.Type == kwCYCLE:
+			stmt.Cycle = true
+			p.advance()
+
+		case p.cur.Type == kwNOCYCLE:
+			stmt.NoCycle = true
+			p.advance()
+
+		case p.cur.Type == kwCACHE:
+			p.advance() // consume CACHE
+			stmt.Cache = p.parseExpr()
+
+		case p.cur.Type == kwNOCACHE:
+			stmt.NoCache = true
+			p.advance()
+
+		case p.cur.Type == kwORDER:
+			stmt.Order = true
+			p.advance()
+
+		case p.cur.Type == kwNOORDER:
+			stmt.NoOrder = true
+			p.advance()
+
+		case p.cur.Type == kwKEEP:
+			stmt.Keep = true
+			p.advance()
+
+		case p.isIdentLikeStr("NOKEEP"):
+			stmt.NoKeep = true
+			p.advance()
+
+		case p.isIdentLikeStr("RESTART"):
+			stmt.Restart = true
+			p.advance() // consume RESTART
+			if p.cur.Type == kwWITH {
+				p.advance() // consume WITH
+				stmt.RestartWith = p.parseExpr()
+			}
+
+		case p.isIdentLikeStr("SCALE"):
+			stmt.Scale = true
+			p.advance() // consume SCALE
+			if p.isIdentLikeStr("EXTEND") {
+				stmt.ScaleExtend = true
+				p.advance()
+			} else if p.isIdentLikeStr("NOEXTEND") {
+				stmt.ScaleNoExtend = true
+				p.advance()
+			}
+
+		case p.isIdentLikeStr("NOSCALE"):
+			stmt.NoScale = true
+			p.advance()
+
+		case p.isIdentLikeStr("SHARD"):
+			stmt.Shard = true
+			p.advance() // consume SHARD
+			if p.isIdentLikeStr("EXTEND") {
+				stmt.ShardExtend = true
+				p.advance()
+			} else if p.isIdentLikeStr("NOEXTEND") {
+				stmt.ShardNoExtend = true
+				p.advance()
+			}
+
+		case p.isIdentLikeStr("NOSHARD"):
+			stmt.NoShard = true
+			p.advance()
+
+		case p.cur.Type == kwGLOBAL:
+			stmt.Global = true
+			p.advance()
+
+		case p.cur.Type == kwSESSION:
+			stmt.Session = true
+			p.advance()
+
+		default:
+			goto done
+		}
+	}
+
+done:
 	stmt.Loc.End = p.pos()
 	return stmt
 }
