@@ -1773,7 +1773,69 @@
       "tests": [
         "TestAlterColumnReset"
       ]
+    },
+    {
+      "id": 74,
+      "name": "grant_object_rangevar",
+      "file": "grant.go",
+      "status": "pending",
+      "description": "Fix GRANT/REVOKE object list AST structure. parseGrantObjectAnyNameList() returns *nodes.List items but yacc returns *nodes.RangeVar. After parsing ON TABLE any_name_list, convert each AnyName (a List of name parts) into a RangeVar with Schemaname/Relname populated, matching yacc's grant_target_list behavior.",
+      "rules": [
+        "parseGrantObjectAnyNameList",
+        "grant_target_list"
+      ],
+      "depends_on": [
+        15
+      ],
+      "tests": [
+        "TestGrantSelectOnTable",
+        "TestGrantSelectDefaultTable",
+        "TestGrantWithGrantOption",
+        "TestRevokeSelect"
+      ]
+    },
+    {
+      "id": 75,
+      "name": "alter_role_all_create_group_user",
+      "file": "grant.go",
+      "status": "pending",
+      "description": "Fix 2 gaps in role management. (1) ALTER ROLE ALL SET: parseAlterRoleStmt() calls parseRoleSpec() immediately, but ALL is a reserved keyword that parseRoleSpec/parseColId cannot handle. Must check for ALL token before parseRoleSpec, set role to nil, then proceed to parse SET/RESET/IN DATABASE. (2) CREATE GROUP ... USER: parseCreateGroupStmt() calls parseOptRoleList() which delegates to parseCreateOptRoleElem(), but the bare USER keyword is not handled as a role option. Must recognize USER as a synonym for ROLE in CREATE GROUP context and parse the following role list as rolemembers DefElem.",
+      "rules": [
+        "parseAlterRoleStmt",
+        "parseCreateGroupStmt",
+        "AlterRoleAllStmt"
+      ],
+      "depends_on": [
+        15
+      ],
+      "tests": [
+        "TestAlterRoleAllSetTimezone",
+        "TestAlterRoleAllInDatabaseSetTimezone",
+        "TestRoleManagementTableDriven/create_group_with_user",
+        "TestRoleManagementTableDriven/alter_role_all_set",
+        "TestRoleManagementTableDriven/alter_role_all_in_database_set",
+        "TestRoleManagementTableDriven/alter_user_all_set"
+      ]
+    },
+    {
+      "id": 76,
+      "name": "json_table_format_empty_behavior",
+      "file": "json.go",
+      "status": "pending",
+      "description": "Fix 2 JSON/SQL gaps. (1) JSON_TABLE COLUMNS with FORMAT clause: parseJsonTableColumnDefinition() does not handle FORMAT JSON/JSONB specifier on REGULAR columns (e.g. COLUMNS(j jsonb FORMAT JSON)). Must parse optional FORMAT keyword after type in column definitions. (2) Bare EMPTY behavior in JSON_QUERY/JSON_VALUE: parseJsonBehaviorClauseOpt() does not recognize EMPTY as a standalone behavior type (EMPTY ARRAY/OBJECT). Statements like JSON_QUERY(..., '$[*]' EMPTY ON EMPTY) and JSON_VALUE(..., '$' EMPTY ON ERROR) fail. Must add EMPTY as a valid json_behavior_type that produces JSON_BEHAVIOR_EMPTY_ARRAY or JSON_BEHAVIOR_EMPTY_OBJECT.",
+      "rules": [
+        "parseJsonTableColumnDefinition",
+        "parseJsonBehaviorClauseOpt",
+        "json_behavior_type"
+      ],
+      "depends_on": [
+        42
+      ],
+      "tests": [
+        "TestJsonTableFormattedColumn",
+        "TestJsonBareEmpty"
+      ]
     }
   ],
-  "audit_round": 7
+  "audit_round": 8
 }
