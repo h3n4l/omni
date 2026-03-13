@@ -430,7 +430,9 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 			}
 
 		default:
-			p.advance() // skip unexpected tokens
+			// Record unexpected token instead of silently skipping
+			opts = append(opts, &nodes.String{Str: "UNEXPECTED_TOKEN:" + p.cur.Str})
+			p.advance()
 		}
 	}
 
@@ -499,7 +501,8 @@ func (p *Parser) parseParenthesizedAGOptions() []nodes.Node {
 
 		// Must be an identifier, string, number, or keyword
 		if !p.isAGOptionToken() {
-			p.advance() // skip unexpected
+			opts = append(opts, &nodes.String{Str: "UNEXPECTED_TOKEN:" + p.cur.Str})
+			p.advance()
 			continue
 		}
 
@@ -564,7 +567,8 @@ func (p *Parser) parseAGParenTuple() string {
 			parts = append(parts, p.agOptionTokenString())
 			p.advance()
 		} else {
-			p.advance() // skip unexpected
+			parts = append(parts, "UNEXPECTED:"+p.cur.Str)
+			p.advance()
 		}
 	}
 

@@ -15873,3 +15873,42 @@ func TestParseExternalCleanupDepth(t *testing.T) {
 		}
 	})
 }
+
+// TestParseAvailabilitySkipCleanupDepth tests batch 142: unexpected token error recovery.
+func TestParseAvailabilitySkipCleanupDepth(t *testing.T) {
+	// Valid AG statements should still parse without UNEXPECTED tokens
+	t.Run("availability_group_unexpected_token_error", func(t *testing.T) {
+		sql := "ALTER AVAILABILITY GROUP myAG MODIFY REPLICA ON 'server1' WITH (ENDPOINT_URL = 'TCP://server1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		if stmt.Options == nil {
+			t.Fatal("expected options")
+		}
+		// Verify no UNEXPECTED_TOKEN markers in well-formed input
+		for _, item := range stmt.Options.Items {
+			if s, ok := item.(*ast.String); ok {
+				if len(s.Str) > 16 && s.Str[:16] == "UNEXPECTED_TOKEN" {
+					t.Errorf("unexpected token marker found in valid input: %q", s.Str)
+				}
+			}
+		}
+	})
+
+	// Verify standard parsing still works
+	t.Run("availability_group_valid_options", func(t *testing.T) {
+		sql := "CREATE AVAILABILITY GROUP myAG WITH (CLUSTER_TYPE = NONE) FOR REPLICA ON 'srv1' WITH (ENDPOINT_URL = 'TCP://srv1:5022')"
+		result := ParseAndCheck(t, sql)
+		if result.Len() != 1 {
+			t.Fatalf("expected 1 statement, got %d", result.Len())
+		}
+	})
+
+	// ALTER AVAILABILITY GROUP with LISTENER
+	t.Run("availability_group_listener", func(t *testing.T) {
+		sql := "ALTER AVAILABILITY GROUP myAG ADD LISTENER 'myListener' (WITH IP (('10.0.0.1', '255.255.255.0')), PORT = 5022)"
+		result := ParseAndCheck(t, sql)
+		if result.Len() != 1 {
+			t.Fatalf("expected 1 statement, got %d", result.Len())
+		}
+	})
+}

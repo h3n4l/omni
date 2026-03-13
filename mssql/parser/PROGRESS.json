@@ -3073,7 +3073,7 @@
       "id": 142,
       "name": "availability_skip_cleanup_depth",
       "file": "availability.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 125 gap: replace p.advance() // skip unexpected tokens at lines 433, 502, 567 with structured error handling or explicit unknown-token error recovery. These default-case token skips silently consume malformed input without raising parse errors.",
       "rules": [
         "parseAvailabilityGroupOptionDefault"
