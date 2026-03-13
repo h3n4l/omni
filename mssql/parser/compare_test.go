@@ -14036,3 +14036,142 @@ func TestParseExternalNestedParensDepth(t *testing.T) {
 		}
 	})
 }
+
+// TestParseServerConfigRemainingDepth tests batch 126: structured parsing of
+// server config remaining depth issues.
+func TestParseServerConfigRemainingDepth(t *testing.T) {
+	t.Run("server_config_remaining_structured", func(t *testing.T) {
+		// Unknown option type should still parse the statement with detected keyword
+		sql := "ALTER SERVER CONFIGURATION SET UNKNOWN_OPTION = 42"
+		result, _ := Parse(sql)
+		if result.Len() != 1 {
+			t.Fatalf("Parse(%q): got %d statements, want 1", sql, result.Len())
+		}
+		stmt, ok := result.Items[0].(*ast.AlterServerConfigurationStmt)
+		if !ok {
+			t.Fatalf("Parse(%q): expected *AlterServerConfigurationStmt, got %T", sql, result.Items[0])
+		}
+		// Unknown option type should still be detected by the first keyword
+		if stmt.OptionType == "" {
+			t.Errorf("Parse(%q): expected non-empty optionType", sql)
+		}
+		checkLocation(t, sql, "AlterServerConfigurationStmt", stmt.Loc)
+	})
+
+	t.Run("buffer_pool_extension_structured", func(t *testing.T) {
+		tests := []struct {
+			sql      string
+			wantOpts []string
+		}{
+			// Standard ON with FILENAME and SIZE
+			{
+				sql:      `ALTER SERVER CONFIGURATION SET BUFFER POOL EXTENSION ON (FILENAME = 'D:\cache.bpe', SIZE = 20 GB)`,
+				wantOpts: []string{"ON", `FILENAME='D:\cache.bpe'`, "SIZE=20 GB"},
+			},
+			// SIZE without unit suffix
+			{
+				sql:      `ALTER SERVER CONFIGURATION SET BUFFER POOL EXTENSION ON (FILENAME = 'cache.bpe', SIZE = 100)`,
+				wantOpts: []string{"ON", `FILENAME='cache.bpe'`, "SIZE=100"},
+			},
+			// OFF
+			{
+				sql:      "ALTER SERVER CONFIGURATION SET BUFFER POOL EXTENSION OFF",
+				wantOpts: []string{"OFF"},
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.sql, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.AlterServerConfigurationStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected *AlterServerConfigurationStmt, got %T", tt.sql, result.Items[0])
+				}
+				if stmt.OptionType != "BUFFER POOL EXTENSION" {
+					t.Errorf("Parse(%q): optionType = %q, want %q", tt.sql, stmt.OptionType, "BUFFER POOL EXTENSION")
+				}
+				if stmt.Options == nil {
+					t.Fatalf("Parse(%q): expected options, got nil", tt.sql)
+				}
+				if len(stmt.Options.Items) != len(tt.wantOpts) {
+					var gotStrs []string
+					for _, item := range stmt.Options.Items {
+						gotStrs = append(gotStrs, item.(*ast.String).Str)
+					}
+					t.Fatalf("Parse(%q): got %d options %v, want %d %v", tt.sql, len(stmt.Options.Items), gotStrs, len(tt.wantOpts), tt.wantOpts)
+				}
+				for i, want := range tt.wantOpts {
+					got := stmt.Options.Items[i].(*ast.String).Str
+					if got != want {
+						t.Errorf("Parse(%q): option[%d] = %q, want %q", tt.sql, i, got, want)
+					}
+				}
+				checkLocation(t, tt.sql, "AlterServerConfigurationStmt", stmt.Loc)
+			})
+		}
+	})
+
+	t.Run("suspend_snapshot_structured", func(t *testing.T) {
+		tests := []struct {
+			sql      string
+			wantOpts []string
+		}{
+			// ON with GROUP (single db)
+			{
+				sql:      "ALTER SERVER CONFIGURATION SET SUSPEND_FOR_SNAPSHOT_BACKUP = ON (GROUP = (mydb))",
+				wantOpts: []string{"ON", "GROUP=mydb"},
+			},
+			// ON with GROUP (multiple dbs) and MODE
+			{
+				sql:      "ALTER SERVER CONFIGURATION SET SUSPEND_FOR_SNAPSHOT_BACKUP = ON (GROUP = (db1, db2, db3), MODE = COPY_ONLY)",
+				wantOpts: []string{"ON", "GROUP=db1, db2, db3", "MODE=COPY_ONLY"},
+			},
+			// Simple ON
+			{
+				sql:      "ALTER SERVER CONFIGURATION SET SUSPEND_FOR_SNAPSHOT_BACKUP = ON",
+				wantOpts: []string{"ON"},
+			},
+			// OFF
+			{
+				sql:      "ALTER SERVER CONFIGURATION SET SUSPEND_FOR_SNAPSHOT_BACKUP = OFF",
+				wantOpts: []string{"OFF"},
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.sql, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.AlterServerConfigurationStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected *AlterServerConfigurationStmt, got %T", tt.sql, result.Items[0])
+				}
+				if stmt.OptionType != "SUSPEND_FOR_SNAPSHOT_BACKUP" {
+					t.Errorf("Parse(%q): optionType = %q, want %q", tt.sql, stmt.OptionType, "SUSPEND_FOR_SNAPSHOT_BACKUP")
+				}
+				if stmt.Options == nil {
+					t.Fatalf("Parse(%q): expected options, got nil", tt.sql)
+				}
+				if len(stmt.Options.Items) != len(tt.wantOpts) {
+					var gotStrs []string
+					for _, item := range stmt.Options.Items {
+						gotStrs = append(gotStrs, item.(*ast.String).Str)
+					}
+					t.Fatalf("Parse(%q): got %d options %v, want %d %v", tt.sql, len(stmt.Options.Items), gotStrs, len(tt.wantOpts), tt.wantOpts)
+				}
+				for i, want := range tt.wantOpts {
+					got := stmt.Options.Items[i].(*ast.String).Str
+					if got != want {
+						t.Errorf("Parse(%q): option[%d] = %q, want %q", tt.sql, i, got, want)
+					}
+				}
+				checkLocation(t, tt.sql, "AlterServerConfigurationStmt", stmt.Loc)
+			})
+		}
+	})
+}

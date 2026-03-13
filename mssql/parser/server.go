@@ -249,9 +249,17 @@ func (p *Parser) parseAlterServerConfigurationStmt() *nodes.AlterServerConfigura
 		stmt.OptionType = "SUSPEND_FOR_SNAPSHOT_BACKUP"
 		opts = p.parseServerConfigSuspendForSnapshotBackup()
 	} else {
-		// Unknown option type - consume remaining tokens generically
-		stmt.OptionType = "UNKNOWN"
-		opts = p.consumeServerConfigOptions()
+		// Unknown option type - record the keyword and skip to statement boundary
+		if p.isIdentLike() {
+			stmt.OptionType = strings.ToUpper(p.cur.Str)
+			p.advance()
+		} else {
+			stmt.OptionType = "UNKNOWN"
+		}
+		// Skip remaining tokens until statement boundary
+		for p.cur.Type != tokEOF && p.cur.Type != ';' {
+			p.advance()
+		}
 	}
 
 	if len(opts) > 0 {
@@ -481,9 +489,12 @@ func (p *Parser) parseServerConfigBufferPoolExtension() []nodes.Node {
 		if p.cur.Type == '(' {
 			p.advance() // consume (
 			for p.cur.Type != ')' && p.cur.Type != tokEOF {
-				if !p.isIdentLike() {
-					p.advance()
+				if p.cur.Type == ',' {
+					p.advance() // consume comma separator
 					continue
+				}
+				if !p.isIdentLike() {
+					break // unexpected token - stop parsing options
 				}
 				key := p.cur.Str // FILENAME or SIZE
 				p.advance()
@@ -503,18 +514,16 @@ func (p *Parser) parseServerConfigBufferPoolExtension() []nodes.Node {
 						p.advance()
 						// Check for KB/MB/GB suffix
 						if p.isIdentLike() {
-							upper := p.cur.Str
-							if matchesKeywordCI(upper, "KB") || matchesKeywordCI(upper, "MB") || matchesKeywordCI(upper, "GB") {
+							upper := strings.ToUpper(p.cur.Str)
+							if upper == "KB" || upper == "MB" || upper == "GB" {
 								val += " " + upper
 								p.advance()
 							}
 						}
 						opts = append(opts, &nodes.String{Str: "SIZE=" + val})
 					}
-				}
-
-				if p.cur.Type == ',' {
-					p.advance() // consume comma
+				} else {
+					break // unknown option key - stop parsing
 				}
 			}
 			if p.cur.Type == ')' {
@@ -624,7 +633,14 @@ func (p *Parser) parseServerConfigSuspendForSnapshotBackup() []nodes.Node {
 		p.advance() // consume outer (
 
 		for p.cur.Type != ')' && p.cur.Type != tokEOF {
-			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "GROUP") {
+			if p.cur.Type == ',' {
+				p.advance() // consume comma between GROUP and MODE
+				continue
+			}
+			if !p.isIdentLike() {
+				break // unexpected token
+			}
+			if matchesKeywordCI(p.cur.Str, "GROUP") {
 				p.advance() // consume GROUP
 				if p.cur.Type == '=' {
 					p.advance() // consume =
@@ -645,16 +661,9 @@ func (p *Parser) parseServerConfigSuspendForSnapshotBackup() []nodes.Node {
 					if p.cur.Type == ')' {
 						p.advance() // consume inner )
 					}
-					val := ""
-					for i, db := range dbs {
-						if i > 0 {
-							val += ", "
-						}
-						val += db
-					}
-					opts = append(opts, &nodes.String{Str: "GROUP=" + val})
+					opts = append(opts, &nodes.String{Str: "GROUP=" + strings.Join(dbs, ", ")})
 				}
-			} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "MODE") {
+			} else if matchesKeywordCI(p.cur.Str, "MODE") {
 				p.advance() // consume MODE
 				if p.cur.Type == '=' {
 					p.advance() // consume =
@@ -664,11 +673,7 @@ func (p *Parser) parseServerConfigSuspendForSnapshotBackup() []nodes.Node {
 					p.advance()
 				}
 			} else {
-				p.advance()
-			}
-
-			if p.cur.Type == ',' {
-				p.advance() // consume comma between GROUP and MODE
+				break // unknown option - stop parsing
 			}
 		}
 		if p.cur.Type == ')' {
@@ -676,53 +681,6 @@ func (p *Parser) parseServerConfigSuspendForSnapshotBackup() []nodes.Node {
 		}
 	}
 
-	return opts
-}
-
-// consumeServerConfigOptions consumes remaining tokens for an ALTER SERVER CONFIGURATION
-// option until a statement boundary (semicolon or EOF), collecting them as string nodes.
-// Used as a fallback for unknown option types.
-func (p *Parser) consumeServerConfigOptions() []nodes.Node {
-	var opts []nodes.Node
-	depth := 0
-
-	for p.cur.Type != tokEOF && p.cur.Type != ';' {
-		if p.cur.Type == '(' {
-			depth++
-			opts = append(opts, &nodes.String{Str: "("})
-			p.advance()
-			continue
-		}
-		if p.cur.Type == ')' {
-			depth--
-			opts = append(opts, &nodes.String{Str: ")"})
-			p.advance()
-			if depth <= 0 {
-				break
-			}
-			continue
-		}
-		if p.cur.Type == ',' {
-			opts = append(opts, &nodes.String{Str: ","})
-			p.advance()
-			continue
-		}
-
-		// Collect the token value
-		if p.cur.Type == tokSCONST {
-			opts = append(opts, &nodes.String{Str: "'" + p.cur.Str + "'"})
-		} else if p.cur.Type == tokICONST || p.cur.Type == tokFCONST {
-			opts = append(opts, &nodes.String{Str: p.cur.Str})
-		} else if p.cur.Type == '=' {
-			opts = append(opts, &nodes.String{Str: "="})
-		} else if p.isIdentLike() || p.cur.Type == kwON || p.cur.Type == kwOFF || p.cur.Type == kwNULL || p.cur.Type == kwDEFAULT || p.cur.Type == kwTO || p.cur.Type == kwKEY || p.cur.Type == kwFILE {
-			opts = append(opts, &nodes.String{Str: p.cur.Str})
-		} else {
-			// Unknown token type - collect the string representation
-			opts = append(opts, &nodes.String{Str: p.cur.Str})
-		}
-		p.advance()
-	}
 	return opts
 }
 

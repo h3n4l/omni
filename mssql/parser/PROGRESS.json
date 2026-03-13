@@ -2775,7 +2775,7 @@
       "id": 126,
       "name": "server_config_remaining_depth",
       "file": "server.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 114 gap: replace consumeServerConfigOptions() generic token-to-String fallback at lines 689-727 (called from line 254) with structured option parsing per config type. Fix buffer pool extension non-identifier token skip at lines 483-519. Fix SUSPEND_FOR_SNAPSHOT_BACKUP database list string accumulation at lines 648-654 and unknown token skip at line 667.",
       "rules": [
         "parseServerConfigRemainingOptions",
