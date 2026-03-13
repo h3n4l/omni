@@ -2727,7 +2727,260 @@
       "tests": [
         "dbcc_with_options_structured"
       ]
+    },
+    {
+      "id": 124,
+      "name": "external_nested_parens_depth",
+      "file": "external.go",
+      "status": "done",
+      "description": "Fix batch 57/65 gap: replace 7 parseNestedParens() calls in external library/language/option parsing with structured parsing. Lines 400, 457, 514, 520, 578 (library/language FROM/SET/ADD clause file specs with CONTENT/FILENAME/PATH sub-options), line 715 (FORMAT_OPTIONS parenthesized list), line 761 (SHARDED function syntax). Also replace string builder in CREATE EXTERNAL TABLE column parsing at lines 222-245 with structured column definition nodes.",
+      "rules": [
+        "parseExternalLibraryFromClause",
+        "parseExternalLanguageFromClause",
+        "parseExternalFormatOptionsStructured",
+        "parseExternalColumnDefsStructured"
+      ],
+      "depends_on": [
+        57,
+        65
+      ],
+      "tests": [
+        "external_library_from_structured",
+        "external_language_from_structured",
+        "external_format_options_structured",
+        "external_table_columns_structured"
+      ]
+    },
+    {
+      "id": 125,
+      "name": "availability_remaining_depth",
+      "file": "availability.go",
+      "status": "pending",
+      "description": "Fix batch 115 gap: replace 2 parseNestedParens() calls at lines 483, 503 in parseParenthesizedAGOptions() with structured IP address tuple and key=value list parsing. Replace manual string concatenation for LISTENER/ADD LISTENER/REMOVE LISTENER/MODIFY LISTENER/RESTART LISTENER options at lines 268-346, 408-413 with structured AST nodes. Fix GRANT/DENY CREATE ANY DATABASE token skip at lines 380-390.",
+      "rules": [
+        "parseParenthesizedAGOptionsStructured",
+        "parseAGListenerOptionsStructured",
+        "parseAGGrantDenyCreateDatabase"
+      ],
+      "depends_on": [
+        115
+      ],
+      "tests": [
+        "ag_nested_parens_structured",
+        "ag_listener_string_structured",
+        "ag_grant_deny_database"
+      ]
+    },
+    {
+      "id": 126,
+      "name": "server_config_remaining_depth",
+      "file": "server.go",
+      "status": "pending",
+      "description": "Fix batch 114 gap: replace consumeServerConfigOptions() generic token-to-String fallback at lines 689-727 (called from line 254) with structured option parsing per config type. Fix buffer pool extension non-identifier token skip at lines 483-519. Fix SUSPEND_FOR_SNAPSHOT_BACKUP database list string accumulation at lines 648-654 and unknown token skip at line 667.",
+      "rules": [
+        "parseServerConfigRemainingOptions",
+        "parseBufferPoolExtensionStructured",
+        "parseSuspendForSnapshotStructured"
+      ],
+      "depends_on": [
+        114
+      ],
+      "tests": [
+        "server_config_remaining_structured",
+        "buffer_pool_extension_structured",
+        "suspend_snapshot_structured"
+      ]
+    },
+    {
+      "id": 127,
+      "name": "select_query_hint_remaining_depth",
+      "file": "select.go",
+      "status": "pending",
+      "description": "Fix batch 92/97 gap: replace strings.Builder in parseQueryHint() at lines 1268-1591 with structured QueryHint AST nodes (typed hint kind + typed parameters). Replace manual parenthesis depth tracking at lines 1522-1545 for TABLE HINT args with parseTableHint() reuse. Fix fallback expression parsing at lines 1565-1585 for unknown hints with proper error or structured unknown hint node.",
+      "rules": [
+        "parseQueryHintStructured"
+      ],
+      "depends_on": [
+        92,
+        97
+      ],
+      "tests": [
+        "query_hint_structured_recompile",
+        "query_hint_structured_optimize_for",
+        "query_hint_structured_table_hint",
+        "query_hint_structured_unknown"
+      ]
+    },
+    {
+      "id": 128,
+      "name": "security_keys_remaining_depth",
+      "file": "security_keys.go",
+      "status": "pending",
+      "description": "Fix batch 98 gap: replace strings.Builder in parseSecurityKeyStmtColumn() at lines 353-376 with structured ADD/DROP VALUE AST nodes. Replace parseSecurityKeyOptions() string accumulation at lines 675-702 and unstructured for-loop at lines 645-753 with structured ENCRYPTION BY / DECRYPTION BY mechanism nodes reusing parseEncryptingMechanism().",
+      "rules": [
+        "parseSecurityKeyStmtColumnStructured",
+        "parseSecurityKeyOptionsRemaining"
+      ],
+      "depends_on": [
+        98
+      ],
+      "tests": [
+        "security_key_column_structured",
+        "security_key_options_remaining_structured"
+      ]
+    },
+    {
+      "id": 129,
+      "name": "fulltext_alter_depth",
+      "file": "fulltext.go",
+      "status": "pending",
+      "description": "Fix batch 43 gap: replace strings.Builder action accumulation in parseAlterFulltextIndexStmt() at lines 165-178 with structured action type enum (ADD, DROP, SET, START/STOP, ENABLE/DISABLE, etc.). Fix batch 61 gap: replace unknown option skip in parseAlterSearchPropertyListStmt() WITH clause at lines 567-572 with structured property option parsing.",
+      "rules": [
+        "parseAlterFulltextIndexActionStructured",
+        "parseSearchPropertyListOptionStructured"
+      ],
+      "depends_on": [
+        43,
+        61
+      ],
+      "tests": [
+        "alter_fulltext_index_action_structured",
+        "search_property_list_option_structured"
+      ]
+    },
+    {
+      "id": 130,
+      "name": "security_misc_remaining_depth",
+      "file": "security_misc.go",
+      "status": "pending",
+      "description": "Fix batch 62 gap: replace strings.Builder in parseSignatureCryptoItem() at lines 511-560 with structured CryptoItem AST node (mechanism type, name, optional password/signature). Fix token loop in parseAddSensitivityClassificationStmt() at lines 349-369 with structured label/information_type/rank option parsing.",
+      "rules": [
+        "parseSignatureCryptoItemStructured",
+        "parseSensitivityClassificationOptions"
+      ],
+      "depends_on": [
+        62
+      ],
+      "tests": [
+        "signature_crypto_item_structured",
+        "sensitivity_classification_options_structured"
+      ]
+    },
+    {
+      "id": 131,
+      "name": "utility_cetas_dbscoped_depth",
+      "file": "utility.go",
+      "status": "pending",
+      "description": "Fix batch 112 gap: replace strings.Builder with manual depth tracking in parseCreateExternalTableAsSelectStmt() column parsing at lines 1077-1104 with structured column definition list. Fix batch 67 gap: replace string accumulation in parseAlterDatabaseScopedConfigStmt() at lines 622-679 with structured SET option = value nodes.",
+      "rules": [
+        "parseCETASColumnDefsStructured",
+        "parseAlterDbScopedConfigStructured"
+      ],
+      "depends_on": [
+        112,
+        67
+      ],
+      "tests": [
+        "cetas_column_defs_structured",
+        "alter_db_scoped_config_structured"
+      ]
+    },
+    {
+      "id": 132,
+      "name": "alter_database_unknown_depth",
+      "file": "alter_objects.go",
+      "status": "pending",
+      "description": "Fix batch 117 gap: replace parseNestedParens() call at line 140 and mixed skip-loop at lines 137-146 in parseAlterDatabaseStmt() unknown action handler with structured parsing or explicit error for unsupported actions. Replace string concatenation in parseAlterDatabaseSubOptions() at lines 448-476 and parseAlterDatabaseTermination() at lines 498-508 with structured AST nodes.",
+      "rules": [
+        "parseAlterDatabaseUnknownActionStructured",
+        "parseAlterDatabaseSubOptionsStructured",
+        "parseAlterDatabaseTerminationStructured"
+      ],
+      "depends_on": [
+        117
+      ],
+      "tests": [
+        "alter_database_unknown_structured",
+        "alter_database_sub_options_structured",
+        "alter_database_termination_structured"
+      ]
+    },
+    {
+      "id": 133,
+      "name": "endpoint_remaining_depth",
+      "file": "endpoint.go",
+      "status": "pending",
+      "description": "Fix batch 116 gap: replace parseNestedParens() call at line 299 in parseEndpointGenericProtocolOptions() with structured key=value pair parsing. Remove skipParenthesized() function (lines 602-620) and replace its usage. Fix generic p.advance() skips for unknown tokens at lines 212-213 in parseEndpointOptions() and line 490 in parseEndpointPayloadOptions().",
+      "rules": [
+        "parseEndpointGenericValueStructured",
+        "removeSkipParenthesized"
+      ],
+      "depends_on": [
+        116
+      ],
+      "tests": [
+        "endpoint_generic_value_structured",
+        "endpoint_no_skip_parens"
+      ]
+    },
+    {
+      "id": 134,
+      "name": "declare_set_isolation_depth",
+      "file": "declare_set.go",
+      "status": "pending",
+      "description": "Fix batch 41 gap: replace strings.Builder in SET TRANSACTION ISOLATION LEVEL parsing at lines 173-180 with structured isolation level enum node (READ UNCOMMITTED, READ COMMITTED, REPEATABLE READ, SERIALIZABLE, SNAPSHOT) instead of raw string accumulation.",
+      "rules": [
+        "parseSetIsolationLevelStructured"
+      ],
+      "depends_on": [
+        41
+      ],
+      "tests": [
+        "set_isolation_level_structured"
+      ]
+    },
+    {
+      "id": 135,
+      "name": "misc_unknown_skip_depth",
+      "file": "create_table.go",
+      "status": "pending",
+      "description": "Fix remaining shallow unknown-token-skip patterns across multiple files: create_table.go:280-281 (SYSTEM_VERSIONING sub-option value consumed without validation), alter_table.go:447-449 (ALTER COLUMN unknown option consumed as string), event.go:145 (event notification unknown token p.advance()), backup_restore.go:381 (unknown backup/restore option treated as flag).",
+      "rules": [
+        "parseSystemVersioningSubOptionStructured",
+        "parseAlterColumnOptionStructured",
+        "parseEventNotificationOptionStructured",
+        "parseBackupRestoreUnknownOptionStructured"
+      ],
+      "depends_on": [
+        8,
+        9,
+        56,
+        34
+      ],
+      "tests": [
+        "system_versioning_sub_option",
+        "alter_column_option_structured",
+        "event_notification_option_structured",
+        "backup_restore_unknown_option"
+      ]
+    },
+    {
+      "id": 136,
+      "name": "alter_authorization_entity_depth",
+      "file": "security_principals.go",
+      "status": "pending",
+      "description": "Fix batch 53 gap: replace token accumulation loop in parseAlterAuthorizationStmt() at lines 593-609 with structured entity type parsing. BNF: ALTER AUTHORIZATION ON [ entity_type :: ] entity_name TO { principal_name | SCHEMA OWNER }. Entity types: OBJECT, SCHEMA, DATABASE, ASSEMBLY, ROLE, TYPE, XML SCHEMA COLLECTION, etc.",
+      "rules": [
+        "parseAlterAuthorizationEntityStructured"
+      ],
+      "depends_on": [
+        53
+      ],
+      "tests": [
+        "alter_authorization_entity_structured",
+        "alter_authorization_to_schema_owner"
+      ]
     }
   ],
-  "audit_round": 13
+  "audit_round": 14
 }

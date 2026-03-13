@@ -13713,3 +13713,213 @@ func TestParseDbccWithOptionsDepth(t *testing.T) {
 		}
 	})
 }
+
+// TestParseExternalNestedParensDepth tests batch 124: structured parsing of external library/language
+// file specs, FORMAT_OPTIONS, SHARDED(), and external table column definitions.
+func TestParseExternalNestedParensDepth(t *testing.T) {
+	// Test structured FROM clause parsing for CREATE EXTERNAL LIBRARY
+	t.Run("external_library_from_structured", func(t *testing.T) {
+		tests := []struct {
+			sql         string
+			wantOptions []string
+		}{
+			{
+				sql:         "CREATE EXTERNAL LIBRARY customPackage FROM (CONTENT = 'C:\\temp\\pkg.zip') WITH (LANGUAGE = 'R')",
+				wantOptions: []string{"CONTENT", "LANGUAGE"},
+			},
+			{
+				sql:         "CREATE EXTERNAL LIBRARY customLib FROM (CONTENT = 'C:\\temp\\lib.zip', PLATFORM = WINDOWS) WITH (LANGUAGE = 'R')",
+				wantOptions: []string{"CONTENT", "PLATFORM", "LANGUAGE"},
+			},
+			{
+				sql:         "CREATE EXTERNAL LIBRARY customLib FROM (CONTENT = 0xABC123) WITH (LANGUAGE = 'R')",
+				wantOptions: []string{"CONTENT", "LANGUAGE"},
+			},
+			{
+				sql:         "ALTER EXTERNAL LIBRARY customPackage SET (CONTENT = 'C:\\temp\\pkg.zip') WITH (LANGUAGE = 'R')",
+				wantOptions: []string{"CONTENT", "LANGUAGE"},
+			},
+			{
+				sql:         "ALTER EXTERNAL LIBRARY customLib AUTHORIZATION dbo SET (CONTENT = 'C:\\temp\\lib.zip', PLATFORM = LINUX) WITH (LANGUAGE = 'Python')",
+				wantOptions: []string{"CONTENT", "PLATFORM", "LANGUAGE"},
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.sql, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.SecurityStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected *SecurityStmt, got %T", tt.sql, result.Items[0])
+				}
+				if stmt.Options == nil {
+					t.Fatalf("Parse(%q): expected options, got nil", tt.sql)
+				}
+				if len(stmt.Options.Items) < len(tt.wantOptions) {
+					t.Errorf("Parse(%q): got %d options, want at least %d", tt.sql, len(stmt.Options.Items), len(tt.wantOptions))
+				}
+				checkLocation(t, tt.sql, "SecurityStmt", stmt.Loc)
+			})
+		}
+	})
+
+	// Test structured FROM clause parsing for CREATE/ALTER EXTERNAL LANGUAGE
+	t.Run("external_language_from_structured", func(t *testing.T) {
+		tests := []struct {
+			sql         string
+			wantOptions int // minimum number of options expected
+		}{
+			{
+				sql:         "CREATE EXTERNAL LANGUAGE Java FROM (CONTENT = N'C:\\temp\\java.zip', FILE_NAME = 'javaextension.dll')",
+				wantOptions: 2,
+			},
+			{
+				sql:         "CREATE EXTERNAL LANGUAGE Java FROM (CONTENT = N'C:\\temp\\java.zip', FILE_NAME = 'javaextension.dll', PLATFORM = WINDOWS)",
+				wantOptions: 3,
+			},
+			{
+				sql:         "CREATE EXTERNAL LANGUAGE Java FROM (CONTENT = N'C:\\temp\\java.zip', FILE_NAME = 'javaextension.dll', PLATFORM = WINDOWS), (CONTENT = N'C:\\temp\\java.tar.gz', FILE_NAME = 'javaextension.so', PLATFORM = LINUX)",
+				wantOptions: 6,
+			},
+			{
+				sql:         "ALTER EXTERNAL LANGUAGE Java SET (CONTENT = N'C:\\temp\\java.zip', FILE_NAME = 'javaextension.dll')",
+				wantOptions: 2,
+			},
+			{
+				sql:         "ALTER EXTERNAL LANGUAGE Java ADD (CONTENT = N'C:\\temp\\java.tar.gz', FILE_NAME = 'javaextension.so', PLATFORM = LINUX)",
+				wantOptions: 3,
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.sql, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): got %d statements, want 1", tt.sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.SecurityStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected *SecurityStmt, got %T", tt.sql, result.Items[0])
+				}
+				if stmt.Options == nil {
+					t.Fatalf("Parse(%q): expected options, got nil", tt.sql)
+				}
+				if len(stmt.Options.Items) < tt.wantOptions {
+					t.Errorf("Parse(%q): got %d options, want at least %d", tt.sql, len(stmt.Options.Items), tt.wantOptions)
+				}
+				checkLocation(t, tt.sql, "SecurityStmt", stmt.Loc)
+			})
+		}
+	})
+
+	// Test structured FORMAT_OPTIONS parsing
+	t.Run("external_format_options_structured", func(t *testing.T) {
+		tests := []string{
+			`CREATE EXTERNAL FILE FORMAT CsvFormat WITH (
+				FORMAT_TYPE = DELIMITEDTEXT,
+				FORMAT_OPTIONS (FIELD_TERMINATOR = ',', STRING_DELIMITER = '"', FIRST_ROW = 2, USE_TYPE_DEFAULT = TRUE)
+			)`,
+			`CREATE EXTERNAL FILE FORMAT JsonFormat WITH (
+				FORMAT_TYPE = JSON,
+				FORMAT_OPTIONS (FIELD_TERMINATOR = '\t')
+			)`,
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				result := ParseAndCheck(t, sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): got %d statements, want 1", sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.SecurityStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected *SecurityStmt, got %T", sql, result.Items[0])
+				}
+				if stmt.Options == nil {
+					t.Fatalf("Parse(%q): expected options, got nil", sql)
+				}
+				checkLocation(t, sql, "SecurityStmt", stmt.Loc)
+			})
+		}
+	})
+
+	// Test SHARDED() structured parsing through external data source options
+	t.Run("sharded_structured", func(t *testing.T) {
+		sql := "CREATE EXTERNAL DATA SOURCE MyDS WITH (LOCATION = 'hdfs://myhost:8020', TYPE = HADOOP)"
+		result := ParseAndCheck(t, sql)
+		if result.Len() != 1 {
+			t.Fatalf("Parse(%q): got %d statements, want 1", sql, result.Len())
+		}
+		stmt, ok := result.Items[0].(*ast.SecurityStmt)
+		if !ok {
+			t.Fatalf("Parse(%q): expected *SecurityStmt, got %T", sql, result.Items[0])
+		}
+		if stmt.Options == nil {
+			t.Fatalf("Parse(%q): expected options, got nil", sql)
+		}
+		checkLocation(t, sql, "SecurityStmt", stmt.Loc)
+	})
+
+	// Test structured column def parsing (CETAS path produces ColumnDef nodes from fallback)
+	t.Run("external_table_columns_structured", func(t *testing.T) {
+		tests := []string{
+			`CREATE EXTERNAL TABLE dbo.ClickStream (
+				url VARCHAR(50),
+				event_date DATE,
+				user_ip VARCHAR(50)
+			)
+			WITH (
+				LOCATION = '/data/',
+				DATA_SOURCE = MySource,
+				FILE_FORMAT = CsvFormat
+			)`,
+			`CREATE EXTERNAL TABLE dbo.DataTable (
+				id INT NOT NULL,
+				name NVARCHAR(100) NULL,
+				value FLOAT
+			)
+			WITH (
+				LOCATION = '/data/',
+				DATA_SOURCE = MySource,
+				FILE_FORMAT = CsvFormat,
+				DISTRIBUTION = REPLICATED
+			)`,
+			`CREATE EXTERNAL TABLE dbo.RoundRobin (
+				col1 BIGINT
+			)
+			WITH (
+				LOCATION = '/data/',
+				DATA_SOURCE = MySource,
+				FILE_FORMAT = ParquetFormat,
+				DISTRIBUTION = REPLICATED
+			)`,
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				result := ParseAndCheck(t, sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): got %d statements, want 1", sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.SecurityStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected *SecurityStmt, got %T", sql, result.Items[0])
+				}
+				if stmt.Options == nil {
+					t.Fatalf("Parse(%q): expected options, got nil", sql)
+				}
+				// Verify columns are encoded as ColumnDef nodes
+				foundColDef := false
+				for _, item := range stmt.Options.Items {
+					if _, ok := item.(*ast.ColumnDef); ok {
+						foundColDef = true
+						break
+					}
+				}
+				if !foundColDef {
+					t.Errorf("Parse(%q): expected ColumnDef nodes in options, got none", sql)
+				}
+				checkLocation(t, sql, "SecurityStmt", stmt.Loc)
+			})
+		}
+	})
+}

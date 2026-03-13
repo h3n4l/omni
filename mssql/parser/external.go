@@ -218,31 +218,17 @@ func (p *Parser) parseCreateExternalTableStmt() *nodes.SecurityStmt {
 	// ( column_definition [ , ... ] )
 	if p.cur.Type == '(' {
 		p.advance() // consume '('
-		depth := 1
-		var colBuf strings.Builder
-		colBuf.WriteString("COLUMNS=(")
-		for depth > 0 && p.cur.Type != tokEOF {
-			if p.cur.Type == '(' {
-				depth++
-				colBuf.WriteString("(")
+		for p.cur.Type != ')' && p.cur.Type != tokEOF {
+			if p.cur.Type == ',' {
 				p.advance()
-			} else if p.cur.Type == ')' {
-				depth--
-				if depth > 0 {
-					colBuf.WriteString(")")
-					p.advance()
-				}
-			} else {
-				if colBuf.Len() > len("COLUMNS=(") {
-					colBuf.WriteString(" ")
-				}
-				colBuf.WriteString(strings.ToUpper(p.cur.Str))
-				p.advance()
+				continue
+			}
+			col := p.parseColumnDef()
+			if col != nil {
+				opts = append(opts, col)
 			}
 		}
-		colBuf.WriteString(")")
-		p.match(')') // consume final ')'
-		opts = append(opts, &nodes.String{Str: colBuf.String()})
+		p.match(')') // consume ')'
 	}
 
 	// WITH ( options )
@@ -286,14 +272,12 @@ func (p *Parser) parseCreateExternalTableOrCETAS(createLoc int) nodes.StmtNode {
 	if cetasStmt.Columns != nil || cetasStmt.Options != nil {
 		var opts []nodes.Node
 		if cetasStmt.Columns != nil {
-			// Encode columns the same way parseCreateExternalTableStmt did
-			var colNames []string
+			// Include column names as ColumnDef nodes
 			for _, c := range cetasStmt.Columns.Items {
 				if s, ok := c.(*nodes.String); ok {
-					colNames = append(colNames, strings.ToUpper(s.Str))
+					opts = append(opts, &nodes.ColumnDef{Name: s.Str})
 				}
 			}
-			opts = append(opts, &nodes.String{Str: "COLUMNS=(" + strings.Join(colNames, " ") + ")"})
 		}
 		if cetasStmt.Options != nil {
 			opts = append(opts, cetasStmt.Options.Items...)
@@ -394,16 +378,27 @@ func (p *Parser) parseCreateExternalLibraryStmt() *nodes.SecurityStmt {
 	}
 
 	// FROM (CONTENT = ...) or FROM literal
+	var fileSpecOpts []nodes.Node
 	if p.cur.Type == kwFROM {
 		p.advance()
 		if p.cur.Type == '(' {
-			p.parseNestedParens()
+			fileSpecOpts = append(fileSpecOpts, p.parseExternalFileSpec()...)
 		} else if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
+			fileSpecOpts = append(fileSpecOpts, &nodes.String{Str: "CONTENT='" + p.cur.Str + "'"})
 			p.advance()
 		}
 	}
 
-	stmt.Options = p.parseExternalWithOptions()
+	withOpts := p.parseExternalWithOptions()
+	// Merge file spec options with WITH options
+	var allOpts []nodes.Node
+	allOpts = append(allOpts, fileSpecOpts...)
+	if withOpts != nil {
+		allOpts = append(allOpts, withOpts.Items...)
+	}
+	if len(allOpts) > 0 {
+		stmt.Options = &nodes.List{Items: allOpts}
+	}
 	stmt.Loc.End = p.pos()
 	return stmt
 }
@@ -451,14 +446,23 @@ func (p *Parser) parseAlterExternalLibraryStmt() *nodes.SecurityStmt {
 	}
 
 	// SET (CONTENT = ...) or ADD/REMOVE
+	var fileSpecOpts []nodes.Node
 	if p.cur.Type == kwSET || (p.isIdentLike() && (matchesKeywordCI(p.cur.Str, "ADD") || matchesKeywordCI(p.cur.Str, "REMOVE"))) {
 		p.advance()
 		if p.cur.Type == '(' {
-			p.parseNestedParens()
+			fileSpecOpts = append(fileSpecOpts, p.parseExternalFileSpec()...)
 		}
 	}
 
-	stmt.Options = p.parseExternalWithOptions()
+	withOpts := p.parseExternalWithOptions()
+	var allOpts []nodes.Node
+	allOpts = append(allOpts, fileSpecOpts...)
+	if withOpts != nil {
+		allOpts = append(allOpts, withOpts.Items...)
+	}
+	if len(allOpts) > 0 {
+		stmt.Options = &nodes.List{Items: allOpts}
+	}
 	stmt.Loc.End = p.pos()
 	return stmt
 }
@@ -508,20 +512,24 @@ func (p *Parser) parseCreateExternalLanguageStmt() *nodes.SecurityStmt {
 	}
 
 	// FROM <file_spec> [ ,...2 ]
+	var fileSpecOpts []nodes.Node
 	if p.cur.Type == kwFROM {
 		p.advance()
 		if p.cur.Type == '(' {
-			p.parseNestedParens()
+			fileSpecOpts = append(fileSpecOpts, p.parseExternalFileSpec()...)
 		}
 		// handle additional file_spec separated by commas
 		for p.cur.Type == ',' {
 			p.advance() // consume ','
 			if p.cur.Type == '(' {
-				p.parseNestedParens()
+				fileSpecOpts = append(fileSpecOpts, p.parseExternalFileSpec()...)
 			}
 		}
 	}
 
+	if len(fileSpecOpts) > 0 {
+		stmt.Options = &nodes.List{Items: fileSpecOpts}
+	}
 	stmt.Loc.End = p.pos()
 	return stmt
 }
@@ -572,10 +580,11 @@ func (p *Parser) parseAlterExternalLanguageStmt() *nodes.SecurityStmt {
 	}
 
 	// SET | ADD | REMOVE PLATFORM
+	var fileSpecOpts []nodes.Node
 	if p.cur.Type == kwSET || (p.isIdentLike() && matchesKeywordCI(p.cur.Str, "ADD")) {
 		p.advance()
 		if p.cur.Type == '(' {
-			p.parseNestedParens()
+			fileSpecOpts = append(fileSpecOpts, p.parseExternalFileSpec()...)
 		}
 	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "REMOVE") {
 		p.advance() // consume REMOVE
@@ -583,10 +592,14 @@ func (p *Parser) parseAlterExternalLanguageStmt() *nodes.SecurityStmt {
 			p.advance() // consume PLATFORM
 		}
 		if p.isIdentLike() {
+			fileSpecOpts = append(fileSpecOpts, &nodes.String{Str: "REMOVE_PLATFORM=" + strings.ToUpper(p.cur.Str)})
 			p.advance() // consume platform name (WINDOWS/LINUX)
 		}
 	}
 
+	if len(fileSpecOpts) > 0 {
+		stmt.Options = &nodes.List{Items: fileSpecOpts}
+	}
 	stmt.Loc.End = p.pos()
 	return stmt
 }
@@ -711,9 +724,13 @@ func (p *Parser) parseExternalWithOptions() *nodes.List {
 				val := p.parseExternalOptionValue()
 				opts = append(opts, &nodes.String{Str: key + "=" + val})
 			} else if p.cur.Type == '(' {
-				// FORMAT_OPTIONS ( ... )
-				inner := p.parseNestedParens()
-				opts = append(opts, &nodes.String{Str: key + "(" + inner + ")"})
+				// FORMAT_OPTIONS ( key = value [, ...] )
+				innerOpts := p.parseExternalFileSpec()
+				for _, o := range innerOpts {
+					if s, ok := o.(*nodes.String); ok {
+						opts = append(opts, &nodes.String{Str: key + "." + s.Str})
+					}
+				}
 			} else {
 				opts = append(opts, &nodes.String{Str: key})
 			}
@@ -758,8 +775,22 @@ func (p *Parser) parseExternalOptionValue() string {
 		p.advance()
 		// check for function-like syntax: SHARDED(col)
 		if p.cur.Type == '(' {
-			inner := p.parseNestedParens()
-			val += "(" + inner + ")"
+			p.advance() // consume '('
+			var args []string
+			for p.cur.Type != ')' && p.cur.Type != tokEOF {
+				if p.cur.Type == ',' {
+					p.advance()
+					continue
+				}
+				if p.isIdentLike() {
+					args = append(args, strings.ToUpper(p.cur.Str))
+				} else {
+					args = append(args, p.cur.Str)
+				}
+				p.advance()
+			}
+			p.match(')') // consume ')'
+			val += "(" + strings.Join(args, ", ") + ")"
 		}
 	default:
 		val = p.cur.Str
@@ -904,6 +935,41 @@ func (p *Parser) parseDropExternalModelStmt() *nodes.SecurityStmt {
 
 	stmt.Loc.End = p.pos()
 	return stmt
+}
+
+// parseExternalFileSpec parses a parenthesized list of key = value options.
+// Used for file specs: (CONTENT = '...', PLATFORM = WINDOWS, FILE_NAME = '...')
+// and FORMAT_OPTIONS: (FIELD_TERMINATOR = ',', FIRST_ROW = 2, ...)
+// Returns a list of nodes.String items in "KEY=VALUE" format.
+func (p *Parser) parseExternalFileSpec() []nodes.Node {
+	if p.cur.Type != '(' {
+		return nil
+	}
+	p.advance() // consume '('
+
+	var opts []nodes.Node
+	for p.cur.Type != ')' && p.cur.Type != tokEOF {
+		if p.cur.Type == ',' {
+			p.advance()
+			continue
+		}
+		if p.isIdentLike() || p.cur.Type == kwON || p.cur.Type == kwOFF || p.cur.Type == kwNULL {
+			key := strings.ToUpper(p.cur.Str)
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance() // consume '='
+				val := p.parseExternalOptionValue()
+				opts = append(opts, &nodes.String{Str: key + "=" + val})
+			} else {
+				opts = append(opts, &nodes.String{Str: key})
+			}
+		} else {
+			// skip unexpected tokens
+			p.advance()
+		}
+	}
+	p.match(')') // consume ')'
+	return opts
 }
 
 // parseNestedParens consumes content between ( and ) including nested parens.
