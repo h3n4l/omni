@@ -328,6 +328,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeCreateProfileStmt(sb, n)
 	case *AdminDDLStmt:
 		writeAdminDDLStmt(sb, n)
+	case *DDLOption:
+		writeDDLOption(sb, n)
 	case *CreateSchemaStmt:
 		writeCreateSchemaStmt(sb, n)
 	case *AlterDatabaseLinkStmt:
@@ -3033,6 +3035,24 @@ func writeAdminDDLStmt(sb *strings.Builder, n *AdminDDLStmt) {
 	}
 	if n.IfExists {
 		sb.WriteString(" :ifExists true")
+	}
+	if n.Options != nil && len(n.Options.Items) > 0 {
+		sb.WriteString(" :options ")
+		writeNode(sb, n.Options)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeDDLOption(sb *strings.Builder, n *DDLOption) {
+	sb.WriteString("{DDL_OPTION")
+	sb.WriteString(fmt.Sprintf(" :key %q", n.Key))
+	if n.Value != "" {
+		sb.WriteString(fmt.Sprintf(" :value %q", n.Value))
+	}
+	if n.Items != nil && len(n.Items.Items) > 0 {
+		sb.WriteString(" :items ")
+		writeNode(sb, n.Items)
 	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

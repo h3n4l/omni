@@ -1877,7 +1877,7 @@
       "id": 86,
       "name": "create_database_proper",
       "file": "database.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 61 gap: parseCreateDatabaseStmt parses name only, skips all clauses. Need to parse USER SYS/SYSTEM IDENTIFIED BY, CONTROLFILE REUSE, LOGFILE, MAXLOGFILES/MAXLOGMEMBERS/MAXDATAFILES/MAXINSTANCES, ARCHIVELOG/NOARCHIVELOG, CHARACTER SET, DEFAULT TABLESPACE, UNDO TABLESPACE",
       "rules": [
         "create_database_user_clause",

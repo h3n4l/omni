@@ -1906,24 +1906,39 @@ func TestParseCreateDimensionFull(t *testing.T) {
 // TestParseCreateDatabase tests CREATE DATABASE statements.
 func TestParseCreateDatabase(t *testing.T) {
 	tests := []struct {
-		name string
-		sql  string
+		name     string
+		sql      string
+		minOpts  int // minimum expected options count
+		checkName string // expected database name (empty = no check)
 	}{
-		{"basic", "CREATE DATABASE mydb"},
-		{"with_user_sys_password", "CREATE DATABASE mydb USER SYS IDENTIFIED BY password"},
-		{"with_logfile", "CREATE DATABASE mydb LOGFILE GROUP 1 '/u01/log1.log' SIZE 100M"},
-		{"with_maxlogfiles", "CREATE DATABASE mydb MAXLOGFILES 16 MAXLOGMEMBERS 3"},
-		{"with_maxdatafiles", "CREATE DATABASE mydb MAXDATAFILES 100 MAXINSTANCES 8"},
-		{"with_archivelog", "CREATE DATABASE mydb ARCHIVELOG"},
-		{"with_noarchivelog", "CREATE DATABASE mydb NOARCHIVELOG"},
-		{"with_character_set", "CREATE DATABASE mydb CHARACTER SET AL32UTF8"},
-		{"with_national_character_set", "CREATE DATABASE mydb NATIONAL CHARACTER SET AL16UTF16"},
-		{"with_datafile", "CREATE DATABASE mydb DATAFILE '/u01/data01.dbf' SIZE 500M AUTOEXTEND ON"},
-		{"with_default_tablespace", "CREATE DATABASE mydb DEFAULT TABLESPACE users DATAFILE '/u01/users01.dbf' SIZE 100M"},
-		{"with_undo_tablespace", "CREATE DATABASE mydb UNDO TABLESPACE undots DATAFILE '/u01/undo01.dbf' SIZE 200M"},
-		{"with_default_temp_tablespace", "CREATE DATABASE mydb DEFAULT TEMPORARY TABLESPACE temp TEMPFILE '/u01/temp01.dbf' SIZE 100M"},
-		{"with_force_logging", "CREATE DATABASE mydb FORCE LOGGING"},
-		{"complex", "CREATE DATABASE proddb USER SYS IDENTIFIED BY oracle LOGFILE GROUP 1 '/u01/redo01.log' SIZE 50M MAXLOGFILES 16 MAXDATAFILES 1024 ARCHIVELOG CHARACTER SET AL32UTF8 DATAFILE '/u01/system01.dbf' SIZE 700M"},
+		{"basic", "CREATE DATABASE mydb", 0, "MYDB"},
+		{"no_name", "CREATE DATABASE USER SYS IDENTIFIED BY pass1", 1, ""},
+		{"with_user_sys_password", "CREATE DATABASE mydb USER SYS IDENTIFIED BY password", 1, "MYDB"},
+		{"with_user_system_password", "CREATE DATABASE mydb USER SYSTEM IDENTIFIED BY syspass", 1, "MYDB"},
+		{"with_both_users", "CREATE DATABASE mydb USER SYS IDENTIFIED BY pass1 USER SYSTEM IDENTIFIED BY pass2", 2, "MYDB"},
+		{"controlfile_reuse", "CREATE DATABASE mydb CONTROLFILE REUSE", 1, "MYDB"},
+		{"with_logfile", "CREATE DATABASE mydb LOGFILE GROUP 1 '/u01/log1.log' SIZE 100M", 1, "MYDB"},
+		{"with_logfile_multiple_groups", "CREATE DATABASE mydb LOGFILE GROUP 1 '/u01/log1.log' SIZE 100M, GROUP 2 '/u01/log2.log' SIZE 100M", 1, "MYDB"},
+		{"with_maxlogfiles", "CREATE DATABASE mydb MAXLOGFILES 16 MAXLOGMEMBERS 3", 2, "MYDB"},
+		{"with_maxloghistory", "CREATE DATABASE mydb MAXLOGHISTORY 100", 1, "MYDB"},
+		{"with_maxdatafiles", "CREATE DATABASE mydb MAXDATAFILES 100 MAXINSTANCES 8", 2, "MYDB"},
+		{"with_archivelog", "CREATE DATABASE mydb ARCHIVELOG", 1, "MYDB"},
+		{"with_noarchivelog", "CREATE DATABASE mydb NOARCHIVELOG", 1, "MYDB"},
+		{"with_force_logging", "CREATE DATABASE mydb FORCE LOGGING", 1, "MYDB"},
+		{"with_set_standby_nologging", "CREATE DATABASE mydb SET STANDBY NOLOGGING FOR DATA AVAILABILITY", 1, "MYDB"},
+		{"with_character_set", "CREATE DATABASE mydb CHARACTER SET AL32UTF8", 1, "MYDB"},
+		{"with_national_character_set", "CREATE DATABASE mydb NATIONAL CHARACTER SET AL16UTF16", 1, "MYDB"},
+		{"with_set_default_bigfile", "CREATE DATABASE mydb SET DEFAULT BIGFILE TABLESPACE", 1, "MYDB"},
+		{"with_set_default_smallfile", "CREATE DATABASE mydb SET DEFAULT SMALLFILE TABLESPACE", 1, "MYDB"},
+		{"with_default_tablespace", "CREATE DATABASE mydb DEFAULT TABLESPACE users DATAFILE '/u01/users01.dbf' SIZE 100M", 1, "MYDB"},
+		{"with_bigfile_default_tablespace", "CREATE DATABASE mydb BIGFILE DEFAULT TABLESPACE users DATAFILE '/u01/users01.dbf' SIZE 100M", 1, "MYDB"},
+		{"with_undo_tablespace", "CREATE DATABASE mydb UNDO TABLESPACE undots DATAFILE '/u01/undo01.dbf' SIZE 200M", 1, "MYDB"},
+		{"with_default_temp_tablespace", "CREATE DATABASE mydb DEFAULT TEMPORARY TABLESPACE temp TEMPFILE '/u01/temp01.dbf' SIZE 100M", 1, "MYDB"},
+		{"with_datafile", "CREATE DATABASE mydb DATAFILE '/u01/data01.dbf' SIZE 500M AUTOEXTEND ON", 1, "MYDB"},
+		{"with_set_time_zone", "CREATE DATABASE mydb SET TIME_ZONE = '+00:00'", 1, "MYDB"},
+		{"with_set_time_zone_region", "CREATE DATABASE mydb SET TIME_ZONE = 'US/Eastern'", 1, "MYDB"},
+		{"with_enable_pluggable_database", "CREATE DATABASE mydb ENABLE PLUGGABLE DATABASE", 1, "MYDB"},
+		{"complex", "CREATE DATABASE proddb USER SYS IDENTIFIED BY oracle USER SYSTEM IDENTIFIED BY manager CONTROLFILE REUSE LOGFILE GROUP 1 '/u01/redo01.log' SIZE 50M MAXLOGFILES 16 MAXLOGMEMBERS 3 MAXDATAFILES 1024 MAXINSTANCES 8 ARCHIVELOG FORCE LOGGING CHARACTER SET AL32UTF8 NATIONAL CHARACTER SET AL16UTF16 DATAFILE '/u01/system01.dbf' SIZE 700M DEFAULT TABLESPACE users DATAFILE '/u01/users01.dbf' SIZE 500M DEFAULT TEMPORARY TABLESPACE temp TEMPFILE '/u01/temp01.dbf' SIZE 100M UNDO TABLESPACE undots DATAFILE '/u01/undo01.dbf' SIZE 200M", 15, "PRODDB"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1941,6 +1956,20 @@ func TestParseCreateDatabase(t *testing.T) {
 			}
 			if stmt.ObjectType != ast.OBJECT_DATABASE {
 				t.Errorf("expected object type OBJECT_DATABASE, got %d", stmt.ObjectType)
+			}
+			if tt.checkName != "" && (stmt.Name == nil || stmt.Name.Name != tt.checkName) {
+				name := ""
+				if stmt.Name != nil {
+					name = stmt.Name.Name
+				}
+				t.Errorf("expected name %q, got %q", tt.checkName, name)
+			}
+			optCount := 0
+			if stmt.Options != nil {
+				optCount = len(stmt.Options.Items)
+			}
+			if optCount < tt.minOpts {
+				t.Errorf("expected at least %d options, got %d", tt.minOpts, optCount)
 			}
 		})
 	}

@@ -48,17 +48,501 @@ func (p *Parser) parseCreateDatabaseStmt(start int) nodes.StmtNode {
 
 	// Optional database name — peek at the next token to see if it's an identifier
 	// (not a keyword that starts a clause like USER, LOGFILE, etc.)
-	if p.isIdentLike() || p.cur.Type == tokQIDENT {
+	if (p.isIdentLike() || p.cur.Type == tokQIDENT) && !p.isCreateDatabaseClauseKeyword() {
 		stmt.Name = p.parseObjectName()
 	}
 
-	// Skip remaining tokens until ;/EOF
+	// Parse CREATE DATABASE clauses
+	opts := &nodes.List{}
 	for p.cur.Type != ';' && p.cur.Type != tokEOF {
-		p.advance()
+		optStart := p.pos()
+
+		switch {
+		// USER SYS IDENTIFIED BY password / USER SYSTEM IDENTIFIED BY password
+		case p.cur.Type == kwUSER:
+			p.advance() // consume USER
+			userType := ""
+			if p.isIdentLike() {
+				userType = p.cur.Str // SYS or SYSTEM
+				p.advance()
+			}
+			if p.cur.Type == kwIDENTIFIED {
+				p.advance() // IDENTIFIED
+				if p.isIdentLike() && p.cur.Str == "BY" {
+					p.advance() // BY
+				}
+			}
+			password := ""
+			if p.isIdentLike() || p.cur.Type == tokSCONST {
+				password = p.cur.Str
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "USER_" + userType, Value: password,
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// CONTROLFILE REUSE
+		case p.isIdentLike() && p.cur.Str == "CONTROLFILE":
+			p.advance() // CONTROLFILE
+			if p.isIdentLike() && p.cur.Str == "REUSE" {
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "CONTROLFILE_REUSE",
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// LOGFILE GROUP n 'file' SIZE ... [, GROUP n 'file' SIZE ...]
+		case p.isIdentLike() && p.cur.Str == "LOGFILE":
+			p.advance() // LOGFILE
+			logItems := &nodes.List{}
+			for {
+				lfStart := p.pos()
+				groupNum := ""
+				if p.cur.Type == kwGROUP {
+					p.advance() // GROUP
+					if p.cur.Type == tokICONST {
+						groupNum = p.cur.Str
+						p.advance()
+					}
+				}
+				// Parse file specs
+				var files []*nodes.DatafileClause
+				for p.cur.Type == tokSCONST {
+					df := p.parseDatafileClause()
+					if df != nil {
+						files = append(files, df)
+					}
+					if p.cur.Type == ',' && (p.isIdentLike() || p.cur.Type == tokSCONST) {
+						// Could be next file or next GROUP — peek
+						break
+					}
+				}
+				fileList := &nodes.List{}
+				for _, f := range files {
+					fileList.Items = append(fileList.Items, f)
+				}
+				logItems.Items = append(logItems.Items, &nodes.DDLOption{
+					Key: "LOGFILE_GROUP", Value: groupNum,
+					Items: fileList,
+					Loc:   nodes.Loc{Start: lfStart, End: p.pos()},
+				})
+				// Check for comma-separated groups
+				if p.cur.Type == ',' {
+					p.advance()
+					continue
+				}
+				break
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "LOGFILE", Items: logItems,
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// MAXLOGFILES integer
+		case p.isIdentLike() && p.cur.Str == "MAXLOGFILES":
+			p.advance()
+			val := ""
+			if p.cur.Type == tokICONST {
+				val = p.cur.Str
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "MAXLOGFILES", Value: val,
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// MAXLOGMEMBERS integer
+		case p.isIdentLike() && p.cur.Str == "MAXLOGMEMBERS":
+			p.advance()
+			val := ""
+			if p.cur.Type == tokICONST {
+				val = p.cur.Str
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "MAXLOGMEMBERS", Value: val,
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// MAXLOGHISTORY integer
+		case p.isIdentLike() && p.cur.Str == "MAXLOGHISTORY":
+			p.advance()
+			val := ""
+			if p.cur.Type == tokICONST {
+				val = p.cur.Str
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "MAXLOGHISTORY", Value: val,
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// MAXDATAFILES integer
+		case p.isIdentLike() && p.cur.Str == "MAXDATAFILES":
+			p.advance()
+			val := ""
+			if p.cur.Type == tokICONST {
+				val = p.cur.Str
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "MAXDATAFILES", Value: val,
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// MAXINSTANCES integer
+		case p.isIdentLike() && p.cur.Str == "MAXINSTANCES":
+			p.advance()
+			val := ""
+			if p.cur.Type == tokICONST {
+				val = p.cur.Str
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "MAXINSTANCES", Value: val,
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// ARCHIVELOG
+		case p.isIdentLike() && p.cur.Str == "ARCHIVELOG":
+			p.advance()
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "ARCHIVELOG",
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// NOARCHIVELOG
+		case p.isIdentLike() && p.cur.Str == "NOARCHIVELOG":
+			p.advance()
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "NOARCHIVELOG",
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// FORCE LOGGING
+		case p.cur.Type == kwFORCE:
+			p.advance() // FORCE
+			if p.cur.Type == kwLOGGING {
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "FORCE_LOGGING",
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// SET STANDBY NOLOGGING FOR ... / SET DEFAULT ... TABLESPACE / SET TIME_ZONE ...
+		case p.cur.Type == kwSET:
+			p.advance() // SET
+			if p.isIdentLike() && p.cur.Str == "STANDBY" {
+				// SET STANDBY NOLOGGING FOR { DATA AVAILABILITY | LOAD PERFORMANCE }
+				p.advance() // STANDBY
+				if p.cur.Type == kwNOLOGGING {
+					p.advance() // NOLOGGING
+				}
+				if p.cur.Type == kwFOR {
+					p.advance() // FOR
+				}
+				val := ""
+				if p.isIdentLike() && p.cur.Str == "DATA" {
+					p.advance()
+					if p.isIdentLike() && p.cur.Str == "AVAILABILITY" {
+						p.advance()
+					}
+					val = "DATA AVAILABILITY"
+				} else if p.isIdentLike() && p.cur.Str == "LOAD" {
+					p.advance()
+					if p.isIdentLike() && p.cur.Str == "PERFORMANCE" {
+						p.advance()
+					}
+					val = "LOAD PERFORMANCE"
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{
+					Key: "SET_STANDBY_NOLOGGING", Value: val,
+					Loc: nodes.Loc{Start: optStart, End: p.pos()},
+				})
+			} else if p.cur.Type == kwDEFAULT {
+				// SET DEFAULT { BIGFILE | SMALLFILE } TABLESPACE
+				p.advance() // DEFAULT
+				val := ""
+				if p.isIdentLike() && (p.cur.Str == "BIGFILE" || p.cur.Str == "SMALLFILE") {
+					val = p.cur.Str
+					p.advance()
+				}
+				if p.isIdentLike() && p.cur.Str == "TABLESPACE" {
+					p.advance()
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{
+					Key: "SET_DEFAULT_TABLESPACE_TYPE", Value: val,
+					Loc: nodes.Loc{Start: optStart, End: p.pos()},
+				})
+			} else if p.isIdentLike() && p.cur.Str == "TIME_ZONE" {
+				// SET TIME_ZONE = 'value'
+				p.advance() // TIME_ZONE
+				if p.cur.Type == '=' {
+					p.advance()
+				}
+				val := ""
+				if p.cur.Type == tokSCONST {
+					val = p.cur.Str
+					p.advance()
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{
+					Key: "SET_TIME_ZONE", Value: val,
+					Loc: nodes.Loc{Start: optStart, End: p.pos()},
+				})
+			} else {
+				// Unknown SET clause, skip token
+				p.advance()
+			}
+
+		// CHARACTER SET charset
+		case p.isIdentLike() && p.cur.Str == "CHARACTER":
+			p.advance() // CHARACTER
+			if p.cur.Type == kwSET {
+				p.advance() // SET
+			}
+			val := ""
+			if p.isIdentLike() || p.cur.Type == tokQIDENT {
+				val = p.cur.Str
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "CHARACTER_SET", Value: val,
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// NATIONAL CHARACTER SET charset
+		case p.isIdentLike() && p.cur.Str == "NATIONAL":
+			p.advance() // NATIONAL
+			if p.isIdentLike() && p.cur.Str == "CHARACTER" {
+				p.advance()
+			}
+			if p.cur.Type == kwSET {
+				p.advance()
+			}
+			val := ""
+			if p.isIdentLike() || p.cur.Type == tokQIDENT {
+				val = p.cur.Str
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "NATIONAL_CHARACTER_SET", Value: val,
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// DATAFILE 'file' SIZE ... (standalone datafile spec, not part of tablespace)
+		case p.isIdentLike() && p.cur.Str == "DATAFILE":
+			p.advance() // DATAFILE
+			fileList := &nodes.List{}
+			for p.cur.Type == tokSCONST {
+				df := p.parseDatafileClause()
+				if df != nil {
+					fileList.Items = append(fileList.Items, df)
+				}
+				if p.cur.Type == ',' {
+					p.advance()
+					continue
+				}
+				break
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "DATAFILE", Items: fileList,
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// BIGFILE / SMALLFILE DEFAULT TABLESPACE
+		case p.isIdentLike() && (p.cur.Str == "BIGFILE" || p.cur.Str == "SMALLFILE"):
+			fileType := p.cur.Str
+			p.advance()
+			if p.cur.Type == kwDEFAULT {
+				// BIGFILE/SMALLFILE DEFAULT TABLESPACE ...
+				p.advance() // DEFAULT
+				if p.isIdentLike() && p.cur.Str == "TABLESPACE" {
+					p.advance() // TABLESPACE
+				}
+				tsName := ""
+				if p.isIdentLike() || p.cur.Type == tokQIDENT {
+					tsName = p.cur.Str
+					p.advance()
+				}
+				// Parse DATAFILE spec
+				fileList := &nodes.List{}
+				if p.isIdentLike() && p.cur.Str == "DATAFILE" {
+					p.advance()
+					for p.cur.Type == tokSCONST {
+						df := p.parseDatafileClause()
+						if df != nil {
+							fileList.Items = append(fileList.Items, df)
+						}
+						if p.cur.Type == ',' {
+							p.advance()
+							continue
+						}
+						break
+					}
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{
+					Key: "DEFAULT_TABLESPACE", Value: fileType + " " + tsName,
+					Items: fileList,
+					Loc:   nodes.Loc{Start: optStart, End: p.pos()},
+				})
+			} else {
+				// Just BIGFILE/SMALLFILE without DEFAULT — skip
+				opts.Items = append(opts.Items, &nodes.DDLOption{
+					Key: "FILE_TYPE", Value: fileType,
+					Loc: nodes.Loc{Start: optStart, End: p.pos()},
+				})
+			}
+
+		// DEFAULT TABLESPACE / DEFAULT TEMPORARY TABLESPACE
+		case p.cur.Type == kwDEFAULT:
+			p.advance() // DEFAULT
+			if p.cur.Type == kwTEMPORARY {
+				// DEFAULT TEMPORARY TABLESPACE name TEMPFILE ...
+				p.advance() // TEMPORARY
+				if p.isIdentLike() && p.cur.Str == "TABLESPACE" {
+					p.advance() // TABLESPACE
+				}
+				tsName := ""
+				if p.isIdentLike() || p.cur.Type == tokQIDENT {
+					tsName = p.cur.Str
+					p.advance()
+				}
+				fileList := &nodes.List{}
+				if p.isIdentLike() && p.cur.Str == "TEMPFILE" {
+					p.advance()
+					for p.cur.Type == tokSCONST {
+						df := p.parseDatafileClause()
+						if df != nil {
+							fileList.Items = append(fileList.Items, df)
+						}
+						if p.cur.Type == ',' {
+							p.advance()
+							continue
+						}
+						break
+					}
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{
+					Key: "DEFAULT_TEMPORARY_TABLESPACE", Value: tsName,
+					Items: fileList,
+					Loc:   nodes.Loc{Start: optStart, End: p.pos()},
+				})
+			} else if p.isIdentLike() && p.cur.Str == "TABLESPACE" {
+				// DEFAULT TABLESPACE name DATAFILE ...
+				p.advance() // TABLESPACE
+				tsName := ""
+				if p.isIdentLike() || p.cur.Type == tokQIDENT {
+					tsName = p.cur.Str
+					p.advance()
+				}
+				fileList := &nodes.List{}
+				if p.isIdentLike() && p.cur.Str == "DATAFILE" {
+					p.advance()
+					for p.cur.Type == tokSCONST {
+						df := p.parseDatafileClause()
+						if df != nil {
+							fileList.Items = append(fileList.Items, df)
+						}
+						if p.cur.Type == ',' {
+							p.advance()
+							continue
+						}
+						break
+					}
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{
+					Key: "DEFAULT_TABLESPACE", Value: tsName,
+					Items: fileList,
+					Loc:   nodes.Loc{Start: optStart, End: p.pos()},
+				})
+			} else {
+				// Unknown DEFAULT clause
+				p.advance()
+			}
+
+		// UNDO TABLESPACE name DATAFILE ...
+		case p.isIdentLike() && p.cur.Str == "UNDO":
+			p.advance() // UNDO
+			if p.isIdentLike() && p.cur.Str == "TABLESPACE" {
+				p.advance() // TABLESPACE
+			}
+			tsName := ""
+			if p.isIdentLike() || p.cur.Type == tokQIDENT {
+				tsName = p.cur.Str
+				p.advance()
+			}
+			fileList := &nodes.List{}
+			if p.isIdentLike() && p.cur.Str == "DATAFILE" {
+				p.advance()
+				for p.cur.Type == tokSCONST {
+					df := p.parseDatafileClause()
+					if df != nil {
+						fileList.Items = append(fileList.Items, df)
+					}
+					if p.cur.Type == ',' {
+						p.advance()
+						continue
+					}
+					break
+				}
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "UNDO_TABLESPACE", Value: tsName,
+				Items: fileList,
+				Loc:   nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// ENABLE PLUGGABLE DATABASE
+		case p.cur.Type == kwENABLE:
+			p.advance() // ENABLE
+			if p.isIdentLike() && p.cur.Str == "PLUGGABLE" {
+				p.advance() // PLUGGABLE
+				if p.cur.Type == kwDATABASE {
+					p.advance() // DATABASE
+				}
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "ENABLE_PLUGGABLE_DATABASE",
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		default:
+			// Unknown token, advance to avoid infinite loop
+			p.advance()
+		}
+	}
+
+	if len(opts.Items) > 0 {
+		stmt.Options = opts
 	}
 
 	stmt.Loc.End = p.pos()
 	return stmt
+}
+
+// isCreateDatabaseClauseKeyword returns true if the current token starts
+// a CREATE DATABASE clause (and is not a database name).
+func (p *Parser) isCreateDatabaseClauseKeyword() bool {
+	switch p.cur.Type {
+	case kwUSER, kwFORCE, kwSET, kwDEFAULT, kwENABLE:
+		return true
+	}
+	if p.isIdentLike() {
+		switch p.cur.Str {
+		case "CONTROLFILE", "LOGFILE", "DATAFILE", "TEMPFILE",
+			"MAXLOGFILES", "MAXLOGMEMBERS", "MAXLOGHISTORY",
+			"MAXDATAFILES", "MAXINSTANCES",
+			"ARCHIVELOG", "NOARCHIVELOG",
+			"CHARACTER", "NATIONAL",
+			"BIGFILE", "SMALLFILE",
+			"UNDO", "PLUGGABLE":
+			return true
+		}
+	}
+	return false
 }
 
 // parseCreateControlfileStmt parses a CREATE CONTROLFILE statement.

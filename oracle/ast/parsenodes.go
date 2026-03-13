@@ -2312,11 +2312,22 @@ type AdminDDLStmt struct {
 	Name       *ObjectName // object name
 	OrReplace  bool        // OR REPLACE
 	IfExists   bool        // IF EXISTS (for DROP)
+	Options    *List       // parsed DDL options (list of *DDLOption)
 	Loc        Loc
 }
 
 func (n *AdminDDLStmt) nodeTag()  {}
 func (n *AdminDDLStmt) stmtNode() {}
+
+// DDLOption represents a parsed key-value option in a DDL statement.
+type DDLOption struct {
+	Key   string // option name (e.g. "MAXLOGFILES", "CHARACTER_SET", "USER_SYS")
+	Value string // option value (e.g. "16", "AL32UTF8", "password")
+	Items *List  // sub-items (e.g. list of DatafileClause for LOGFILE)
+	Loc   Loc
+}
+
+func (n *DDLOption) nodeTag() {}
 
 // CreateSchemaStmt represents a CREATE SCHEMA statement.
 //
