@@ -128,6 +128,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		sb.WriteString(fmt.Sprintf("{SAVETRANS :name \"%s\" :loc %d %d}", escapeString(n.Name), n.Loc.Start, n.Loc.End))
 	case *SecurityStmt:
 		writeSecurityStmt(sb, n)
+	case *AuditSpecAction:
+		writeAuditSpecAction(sb, n)
 	case *SecurityPrincipalOption:
 		writeSecurityPrincipalOption(sb, n)
 	case *CreateSchemaStmt:
@@ -1251,6 +1253,46 @@ func writeSecurityStmt(sb *strings.Builder, n *SecurityStmt) {
 	if n.Options != nil && len(n.Options.Items) > 0 {
 		sb.WriteString(" :options ")
 		writeNode(sb, n.Options)
+	}
+	if n.WhereClause != nil {
+		sb.WriteString(" :where ")
+		writeNode(sb, n.WhereClause)
+	}
+	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
+	sb.WriteString("}")
+}
+
+func writeAuditSpecAction(sb *strings.Builder, n *AuditSpecAction) {
+	sb.WriteString("{AUDITACTION")
+	fmt.Fprintf(sb, " :action \"%s\"", escapeString(n.Action))
+	if n.GroupName != "" {
+		fmt.Fprintf(sb, " :groupName \"%s\"", escapeString(n.GroupName))
+	}
+	if len(n.Actions) > 0 {
+		sb.WriteString(" :actions (")
+		for i, a := range n.Actions {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			fmt.Fprintf(sb, "\"%s\"", escapeString(a))
+		}
+		sb.WriteString(")")
+	}
+	if n.ClassName != "" {
+		fmt.Fprintf(sb, " :className \"%s\"", escapeString(n.ClassName))
+	}
+	if n.Securable != "" {
+		fmt.Fprintf(sb, " :securable \"%s\"", escapeString(n.Securable))
+	}
+	if len(n.Principals) > 0 {
+		sb.WriteString(" :principals (")
+		for i, p := range n.Principals {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			fmt.Fprintf(sb, "\"%s\"", escapeString(p))
+		}
+		sb.WriteString(")")
 	}
 	fmt.Fprintf(sb, " :loc %d %d", n.Loc.Start, n.Loc.End)
 	sb.WriteString("}")

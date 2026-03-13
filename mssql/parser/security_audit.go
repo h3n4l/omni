@@ -45,7 +45,7 @@ func (p *Parser) parseCreateServerAuditStmt() *nodes.SecurityStmt {
 	}
 
 	// Consume rest of statement (TO, WITH, WHERE clauses)
-	stmt.Options = p.parseAuditOptions()
+	stmt.Options, stmt.WhereClause = p.parseAuditOptions()
 
 	stmt.Loc.End = p.pos()
 	return stmt
@@ -79,7 +79,7 @@ func (p *Parser) parseAlterServerAuditStmt() *nodes.SecurityStmt {
 		p.advance()
 	}
 
-	stmt.Options = p.parseAuditOptions()
+	stmt.Options, stmt.WhereClause = p.parseAuditOptions()
 
 	stmt.Loc.End = p.pos()
 	return stmt
@@ -295,7 +295,7 @@ func (p *Parser) parseDropDatabaseAuditSpecStmt() *nodes.SecurityStmt {
 //	    [ NOT ] <predicate_factor> [ { AND | OR } [ NOT ] <predicate_factor> ] [, ...n]
 //	<predicate_factor> ::=
 //	    event_field_name { = | <> | != | > | >= | < | <= | LIKE } { number | 'string' }
-func (p *Parser) parseAuditOptions() *nodes.List {
+func (p *Parser) parseAuditOptions() (*nodes.List, nodes.ExprNode) {
 	var opts []nodes.Node
 
 	// REMOVE WHERE (ALTER only)
@@ -306,9 +306,9 @@ func (p *Parser) parseAuditOptions() *nodes.List {
 		}
 		opts = append(opts, &nodes.String{Str: "REMOVE WHERE"})
 		if len(opts) == 0 {
-			return nil
+			return nil, nil
 		}
-		return &nodes.List{Items: opts}
+		return &nodes.List{Items: opts}, nil
 	}
 
 	// MODIFY NAME = new_name (ALTER only)
@@ -325,9 +325,9 @@ func (p *Parser) parseAuditOptions() *nodes.List {
 			p.advance()
 		}
 		if len(opts) == 0 {
-			return nil
+			return nil, nil
 		}
-		return &nodes.List{Items: opts}
+		return &nodes.List{Items: opts}, nil
 	}
 
 	// TO clause
@@ -432,27 +432,17 @@ func (p *Parser) parseAuditOptions() *nodes.List {
 		}
 	}
 
-	// WHERE clause
+	// WHERE clause - parse as a proper expression
+	var whereClause nodes.ExprNode
 	if p.cur.Type == kwWHERE {
 		p.advance()
-		// Parse predicate expression: collect tokens until ; or EOF or GO
-		var predParts []string
-		for p.cur.Type != ';' && p.cur.Type != tokEOF && p.cur.Type != kwGO {
-			if p.isStatementStart() {
-				break
-			}
-			predParts = append(predParts, p.cur.Str)
-			p.advance()
-		}
-		if len(predParts) > 0 {
-			opts = append(opts, &nodes.String{Str: "WHERE=" + strings.Join(predParts, " ")})
-		}
+		whereClause = p.parseExpr()
 	}
 
 	if len(opts) == 0 {
-		return nil
+		return nil, whereClause
 	}
-	return &nodes.List{Items: opts}
+	return &nodes.List{Items: opts}, whereClause
 }
 
 // parseAuditSpecOptions parses FOR SERVER AUDIT / ADD / DROP / WITH STATE portions.
@@ -480,34 +470,7 @@ func (p *Parser) parseAuditSpecOptions() *nodes.List {
 	// ADD/DROP ( ... ) clauses and WITH
 	for p.cur.Type != ';' && p.cur.Type != tokEOF && p.cur.Type != kwGO {
 		if p.cur.Type == kwADD || p.cur.Type == kwDROP {
-			action := strings.ToUpper(p.cur.Str)
-			p.advance()
-			if p.cur.Type == '(' {
-				p.advance()
-				// Consume until matching )
-				depth := 1
-				var innerParts []string
-				for depth > 0 && p.cur.Type != tokEOF {
-					if p.cur.Type == '(' {
-						depth++
-					} else if p.cur.Type == ')' {
-						depth--
-						if depth == 0 {
-							break
-						}
-					}
-					if p.isIdentLike() || p.cur.Type == kwON || p.cur.Type == kwSELECT ||
-						p.cur.Type == kwINSERT || p.cur.Type == kwUPDATE || p.cur.Type == kwDELETE ||
-						p.cur.Type == kwEXECUTE || p.cur.Type == kwEXEC {
-						innerParts = append(innerParts, strings.ToUpper(p.cur.Str))
-					}
-					p.advance()
-				}
-				p.match(')')
-				if len(innerParts) > 0 {
-					opts = append(opts, &nodes.String{Str: action + "(" + strings.Join(innerParts, " ") + ")"})
-				}
-			}
+			opts = append(opts, p.parseAuditSpecAction())
 		} else if p.cur.Type == kwWITH {
 			p.advance()
 			if p.cur.Type == '(' {
@@ -542,4 +505,115 @@ func (p *Parser) parseAuditSpecOptions() *nodes.List {
 		return nil
 	}
 	return &nodes.List{Items: opts}
+}
+
+// parseAuditSpecAction parses a single ADD or DROP action in an audit specification.
+//
+//	ADD ( { <audit_action_specification> | audit_action_group_name } )
+//	DROP ( { <audit_action_specification> | audit_action_group_name } )
+//
+//	<audit_action_specification> ::=
+//	    action [ ,...n ] ON [ class :: ] securable BY principal [ ,...n ]
+func (p *Parser) parseAuditSpecAction() *nodes.AuditSpecAction {
+	loc := p.pos()
+	action := strings.ToUpper(p.cur.Str)
+	p.advance()
+
+	node := &nodes.AuditSpecAction{
+		Action: action,
+		Loc:    nodes.Loc{Start: loc},
+	}
+
+	if p.cur.Type != '(' {
+		node.Loc.End = p.pos()
+		return node
+	}
+	p.advance()
+
+	// Parse the contents inside parentheses.
+	// It's either:
+	//   1. audit_action_group_name (e.g., FAILED_LOGIN_GROUP)
+	//   2. action [,...n] ON [class ::] securable BY principal [,...n]
+	//
+	// We distinguish by looking for ON keyword after the first identifier(s).
+
+	// Collect action/group names until ON, BY, or )
+	var names []string
+	for p.cur.Type != ')' && p.cur.Type != tokEOF {
+		if p.cur.Type == kwON {
+			break
+		}
+		if p.isIdentLike() || p.cur.Type == kwSELECT || p.cur.Type == kwINSERT ||
+			p.cur.Type == kwUPDATE || p.cur.Type == kwDELETE ||
+			p.cur.Type == kwEXECUTE || p.cur.Type == kwEXEC {
+			names = append(names, strings.ToUpper(p.cur.Str))
+			p.advance()
+			if p.cur.Type == ',' {
+				p.advance()
+				continue
+			}
+		} else {
+			break
+		}
+	}
+
+	if p.cur.Type == kwON {
+		// This is an audit_action_specification: actions ON [class::] securable BY principals
+		node.Actions = names
+		p.advance() // consume ON
+
+		// Parse [class ::] securable
+		// Could be: OBJECT::dbo.MyTable, SCHEMA::dbo, DATABASE::mydb, or just dbo.MyTable
+		var securableParts []string
+		for p.cur.Type != ')' && p.cur.Type != tokEOF {
+			if p.isIdentLike() || p.cur.Type == kwSELECT || p.cur.Type == kwDELETE {
+				word := p.cur.Str
+				p.advance()
+				if p.cur.Type == tokCOLONCOLON {
+					// This is a class name
+					node.ClassName = strings.ToUpper(word)
+					p.advance() // consume ::
+					continue
+				}
+				securableParts = append(securableParts, word)
+				// Check for dotted name
+				for p.cur.Type == '.' {
+					p.advance()
+					if p.isIdentLike() || p.cur.Type == kwDEFAULT {
+						securableParts = append(securableParts, p.cur.Str)
+						p.advance()
+					}
+				}
+			}
+			break
+		}
+		if len(securableParts) > 0 {
+			node.Securable = strings.Join(securableParts, ".")
+		}
+
+		// BY principal [,...n]
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "BY") {
+			p.advance()
+			for p.cur.Type != ')' && p.cur.Type != tokEOF {
+				if p.isIdentLike() || p.cur.Type == kwPUBLIC {
+					node.Principals = append(node.Principals, p.cur.Str)
+					p.advance()
+				}
+				if p.cur.Type == ',' {
+					p.advance()
+					continue
+				}
+				break
+			}
+		}
+	} else {
+		// Simple audit action group name
+		if len(names) > 0 {
+			node.GroupName = strings.Join(names, "_")
+		}
+	}
+
+	p.match(')')
+	node.Loc.End = p.pos()
+	return node
 }

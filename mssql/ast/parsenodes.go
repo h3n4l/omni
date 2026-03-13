@@ -1137,15 +1137,32 @@ func (n *SaveTransStmt) stmtNode() {}
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-application-role-transact-sql
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-role-transact-sql
 type SecurityStmt struct {
-	Action     string // CREATE, ALTER, DROP, ADD
-	ObjectType string // USER, LOGIN, ROLE, APPLICATION ROLE
-	Name       string // principal name
-	Options    *List  // list of *SecurityPrincipalOption nodes
-	Loc        Loc
+	Action      string   // CREATE, ALTER, DROP, ADD
+	ObjectType  string   // USER, LOGIN, ROLE, APPLICATION ROLE
+	Name        string   // principal name
+	Options     *List    // list of *SecurityPrincipalOption nodes
+	WhereClause ExprNode // WHERE predicate (for SERVER AUDIT)
+	Loc         Loc
 }
 
 func (n *SecurityStmt) nodeTag()  {}
 func (n *SecurityStmt) stmtNode() {}
+
+// AuditSpecAction represents a single ADD or DROP action in an AUDIT SPECIFICATION.
+//
+// For server audit specs: ADD ( audit_action_group_name )
+// For database audit specs: ADD ( action [,...n] ON [class ::] securable BY principal [,...n] )
+type AuditSpecAction struct {
+	Action     string   // "ADD" or "DROP"
+	GroupName  string   // audit_action_group_name (e.g., "FAILED_LOGIN_GROUP") — used when no ON/BY
+	Actions    []string // action names (e.g., ["SELECT", "INSERT"]) for database audit specs
+	ClassName  string   // "OBJECT", "SCHEMA", "DATABASE" etc. (before ::)
+	Securable  string   // fully qualified securable name (after :: or after ON without class)
+	Principals []string // principal names (after BY)
+	Loc        Loc
+}
+
+func (n *AuditSpecAction) nodeTag() {}
 
 // SecurityPrincipalOption represents a single structured option for security principal statements.
 //

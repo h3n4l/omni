@@ -3004,7 +3004,7 @@
       "id": 138,
       "name": "audit_spec_actions_where_depth",
       "file": "security_audit.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 96 gap: replace raw token string collection in WHERE clause predicate (line 440) with parsed expression using p.parseExpr(). Replace manual parenthesis depth tracking in ADD/DROP audit spec actions (lines 481-539) with structured AuditSpecAction AST nodes containing action type and group list instead of string concatenation.",
       "rules": [
         "parseAuditSpecWhereExpr",

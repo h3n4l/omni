@@ -10194,20 +10194,8 @@ func TestParseServerAuditOptionsDepth(t *testing.T) {
 		sql := "CREATE SERVER AUDIT MyAudit TO FILE (FILEPATH = 'C:\\audit\\') WHERE object_name = 'SensitiveData'"
 		result := ParseAndCheck(t, sql)
 		stmt := result.Items[0].(*ast.SecurityStmt)
-		if stmt.Options == nil {
-			t.Fatal("expected options")
-		}
-		// Find WHERE option
-		found := false
-		for _, item := range stmt.Options.Items {
-			s := item.(*ast.String).Str
-			if len(s) > 6 && s[:6] == "WHERE=" {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Error("expected WHERE predicate in options")
+		if stmt.WhereClause == nil {
+			t.Fatal("expected WhereClause to be set")
 		}
 	})
 
@@ -15489,4 +15477,155 @@ func TestParseCtasSynapse(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestParseAuditSpecActionsWhereDepth tests batch 138: structured WHERE expressions
+// and structured ADD/DROP audit spec actions.
+func TestParseAuditSpecActionsWhereDepth(t *testing.T) {
+	// WHERE clause parsed as expression
+	t.Run("audit_spec_where_expr", func(t *testing.T) {
+		sql := "CREATE SERVER AUDIT MyAudit TO FILE (FILEPATH = 'C:\\audit\\') WHERE object_name = 'SensitiveData'"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		if stmt.WhereClause == nil {
+			t.Fatal("expected WhereClause to be set")
+		}
+		binExpr, ok := stmt.WhereClause.(*ast.BinaryExpr)
+		if !ok {
+			t.Fatalf("expected *BinaryExpr, got %T", stmt.WhereClause)
+		}
+		if binExpr.Op != ast.BinOpEq {
+			t.Errorf("expected op BinOpEq, got %v", binExpr.Op)
+		}
+	})
+
+	// WHERE clause with AND
+	t.Run("audit_spec_where_and", func(t *testing.T) {
+		sql := "CREATE SERVER AUDIT MyAudit TO APPLICATION_LOG WHERE object_name = 'tbl1' AND database_name <> 'tempdb'"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		if stmt.WhereClause == nil {
+			t.Fatal("expected WhereClause to be set")
+		}
+		binExpr, ok := stmt.WhereClause.(*ast.BinaryExpr)
+		if !ok {
+			t.Fatalf("expected *BinaryExpr for AND, got %T", stmt.WhereClause)
+		}
+		if binExpr.Op != ast.BinOpAnd {
+			t.Errorf("expected op BinOpAnd, got %v", binExpr.Op)
+		}
+	})
+
+	// ADD with simple audit action group name (server audit spec)
+	t.Run("audit_spec_add_drop_structured", func(t *testing.T) {
+		sql := "CREATE SERVER AUDIT SPECIFICATION MySpec FOR SERVER AUDIT MyAudit ADD (FAILED_LOGIN_GROUP)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		if stmt.Options == nil {
+			t.Fatal("expected options")
+		}
+		var found *ast.AuditSpecAction
+		for _, item := range stmt.Options.Items {
+			if a, ok := item.(*ast.AuditSpecAction); ok {
+				found = a
+				break
+			}
+		}
+		if found == nil {
+			t.Fatal("expected AuditSpecAction in options")
+		}
+		if found.Action != "ADD" {
+			t.Errorf("expected ADD, got %q", found.Action)
+		}
+		if found.GroupName != "FAILED_LOGIN_GROUP" {
+			t.Errorf("expected FAILED_LOGIN_GROUP, got %q", found.GroupName)
+		}
+	})
+
+	// ADD with database audit action specification
+	t.Run("audit_spec_add_action_spec", func(t *testing.T) {
+		sql := "CREATE DATABASE AUDIT SPECIFICATION MyDbSpec FOR SERVER AUDIT MyAudit ADD (SELECT ON OBJECT::dbo.MyTable BY public)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		if stmt.Options == nil {
+			t.Fatal("expected options")
+		}
+		var found *ast.AuditSpecAction
+		for _, item := range stmt.Options.Items {
+			if a, ok := item.(*ast.AuditSpecAction); ok {
+				found = a
+				break
+			}
+		}
+		if found == nil {
+			t.Fatal("expected AuditSpecAction in options")
+		}
+		if found.Action != "ADD" {
+			t.Errorf("expected ADD, got %q", found.Action)
+		}
+		if len(found.Actions) != 1 || found.Actions[0] != "SELECT" {
+			t.Errorf("expected actions [SELECT], got %v", found.Actions)
+		}
+		if found.ClassName != "OBJECT" {
+			t.Errorf("expected className OBJECT, got %q", found.ClassName)
+		}
+		if found.Securable != "dbo.MyTable" {
+			t.Errorf("expected securable dbo.MyTable, got %q", found.Securable)
+		}
+		if len(found.Principals) != 1 || found.Principals[0] != "public" {
+			t.Errorf("expected principals [public], got %v", found.Principals)
+		}
+	})
+
+	// DROP with audit action specification
+	t.Run("audit_spec_drop_action_spec", func(t *testing.T) {
+		sql := "ALTER DATABASE AUDIT SPECIFICATION MyDbSpec FOR SERVER AUDIT MyAudit DROP (SELECT ON OBJECT::dbo.MyTable BY public) WITH (STATE = OFF)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		if stmt.Options == nil {
+			t.Fatal("expected options")
+		}
+		var dropFound *ast.AuditSpecAction
+		withStateFound := false
+		for _, item := range stmt.Options.Items {
+			if a, ok := item.(*ast.AuditSpecAction); ok && a.Action == "DROP" {
+				dropFound = a
+			}
+			if s, ok := item.(*ast.String); ok && s.Str == "STATE=OFF" {
+				withStateFound = true
+			}
+		}
+		if dropFound == nil {
+			t.Fatal("expected DROP AuditSpecAction")
+		}
+		if !withStateFound {
+			t.Error("expected STATE=OFF option")
+		}
+	})
+
+	// Multiple actions in database audit spec
+	t.Run("audit_spec_multi_action", func(t *testing.T) {
+		sql := "CREATE DATABASE AUDIT SPECIFICATION MySpec FOR SERVER AUDIT MyAudit ADD (SELECT, INSERT, UPDATE ON SCHEMA::dbo BY public)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		var found *ast.AuditSpecAction
+		for _, item := range stmt.Options.Items {
+			if a, ok := item.(*ast.AuditSpecAction); ok {
+				found = a
+				break
+			}
+		}
+		if found == nil {
+			t.Fatal("expected AuditSpecAction")
+		}
+		if len(found.Actions) != 3 {
+			t.Errorf("expected 3 actions, got %d: %v", len(found.Actions), found.Actions)
+		}
+		if found.ClassName != "SCHEMA" {
+			t.Errorf("expected className SCHEMA, got %q", found.ClassName)
+		}
+		if found.Securable != "dbo" {
+			t.Errorf("expected securable dbo, got %q", found.Securable)
+		}
+	})
 }
