@@ -131,23 +131,20 @@ func (p *Parser) parseAlterDatabaseStmt() *nodes.AlterDatabaseStmt {
 			stmt.Action = "REMOVE"
 			p.parseAlterDatabaseRemove(stmt)
 		default:
-			// Unknown action - record and collect remaining tokens as options
+			// Unknown action - record and collect remaining tokens as structured key=value options
 			stmt.Action = action
 			p.advance()
 			var opts []nodes.Node
 			for p.cur.Type != tokEOF && p.cur.Type != ';' && !p.isStatementStart() {
-				if p.cur.Type == '(' {
-					inner := p.parseNestedParens()
-					if inner != "" {
-						opts = append(opts, &nodes.String{Str: "(" + inner + ")"})
-					}
-				} else if p.isIdentLike() || p.cur.Type == tokSCONST || p.cur.Type == tokICONST {
-					opts = append(opts, &nodes.String{Str: strings.ToUpper(p.cur.Str)})
+				if p.cur.Type == ',' {
 					p.advance()
-				} else if p.cur.Type == '=' || p.cur.Type == ',' {
-					p.advance()
+					continue
+				}
+				opt := p.parseAlterDatabaseUnknownOption()
+				if opt != "" {
+					opts = append(opts, &nodes.String{Str: opt})
 				} else {
-					p.advance()
+					break
 				}
 			}
 			if len(opts) > 0 {
@@ -445,26 +442,25 @@ func (p *Parser) parseAlterDatabaseSubOptions() string {
 	p.advance() // consume (
 	var parts []string
 	for p.cur.Type != ')' && p.cur.Type != tokEOF {
-		var sb strings.Builder
 		// key
+		key := ""
 		if p.isIdentLike() {
-			sb.WriteString(strings.ToUpper(p.cur.Str))
+			key = strings.ToUpper(p.cur.Str)
 			p.advance()
 		}
 		// = value
 		if p.cur.Type == '=' {
-			sb.WriteString("=")
 			p.advance()
-			sb.WriteString(p.parseAlterDatabaseOptionValue())
+			key += "=" + p.parseAlterDatabaseOptionValue()
 		} else if p.cur.Type == kwON || (p.isIdentLike() && matchesKeywordCI(p.cur.Str, "ON")) {
-			sb.WriteString("=ON")
+			key += "=ON"
 			p.advance()
 		} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "OFF") {
-			sb.WriteString("=OFF")
+			key += "=OFF"
 			p.advance()
 		}
-		if sb.Len() > 0 {
-			parts = append(parts, sb.String())
+		if key != "" {
+			parts = append(parts, key)
 		}
 		if p.cur.Type == ',' {
 			p.advance()
@@ -495,23 +491,111 @@ func (p *Parser) parseAlterDatabaseTermination() string {
 			// ROLLBACK AFTER number [SECONDS]
 			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AFTER") {
 				p.advance() // consume AFTER
-				var sb strings.Builder
-				sb.WriteString("ROLLBACK AFTER ")
+				result := "ROLLBACK AFTER"
 				if p.cur.Type == tokICONST {
-					sb.WriteString(p.cur.Str)
+					result += " " + p.cur.Str
 					p.advance()
 				}
 				if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SECONDS") {
-					sb.WriteString(" SECONDS")
+					result += " SECONDS"
 					p.advance()
 				}
-				return sb.String()
+				return result
 			}
 			return "ROLLBACK"
 		case "NO_WAIT":
 			p.advance()
 			return "NO_WAIT"
 		}
+	}
+	return ""
+}
+
+// parseAlterDatabaseUnknownOption parses a single token or key=value pair from an unknown ALTER DATABASE action.
+// Returns the parsed option as a string, or empty string if nothing can be parsed.
+func (p *Parser) parseAlterDatabaseUnknownOption() string {
+	if p.cur.Type == tokEOF || p.cur.Type == ';' || p.isStatementStart() {
+		return ""
+	}
+
+	// Parenthesized list of key=value pairs
+	if p.cur.Type == '(' {
+		p.advance() // consume (
+		var parts []string
+		for p.cur.Type != ')' && p.cur.Type != tokEOF {
+			if p.cur.Type == ',' {
+				p.advance()
+				continue
+			}
+			key := p.parseAlterDatabaseUnknownOptionValue()
+			if key == "" {
+				break
+			}
+			// Check for = value
+			if p.cur.Type == '=' {
+				p.advance()
+				val := p.parseAlterDatabaseUnknownOptionValue()
+				parts = append(parts, key+"="+val)
+			} else {
+				parts = append(parts, key)
+			}
+		}
+		p.match(')') // consume )
+		return "(" + strings.Join(parts, ", ") + ")"
+	}
+
+	// Keyword or identifier
+	if p.isIdentLike() || p.cur.Type == kwON || p.cur.Type == kwOFF || p.cur.Type == kwSET || p.cur.Type == kwALL {
+		key := strings.ToUpper(p.cur.Str)
+		p.advance()
+		// Check for = value
+		if p.cur.Type == '=' {
+			p.advance()
+			val := p.parseAlterDatabaseUnknownOptionValue()
+			return key + "=" + val
+		}
+		return key
+	}
+
+	// Numeric or string constant
+	if p.cur.Type == tokICONST || p.cur.Type == tokFCONST {
+		val := p.cur.Str
+		p.advance()
+		return val
+	}
+	if p.cur.Type == tokSCONST {
+		val := "'" + p.cur.Str + "'"
+		p.advance()
+		return val
+	}
+
+	return ""
+}
+
+// parseAlterDatabaseUnknownOptionValue parses a single value in an unknown option context.
+func (p *Parser) parseAlterDatabaseUnknownOptionValue() string {
+	if p.cur.Type == kwON {
+		p.advance()
+		return "ON"
+	}
+	if p.cur.Type == kwOFF {
+		p.advance()
+		return "OFF"
+	}
+	if p.cur.Type == tokICONST || p.cur.Type == tokFCONST {
+		val := p.cur.Str
+		p.advance()
+		return val
+	}
+	if p.cur.Type == tokSCONST {
+		val := "'" + p.cur.Str + "'"
+		p.advance()
+		return val
+	}
+	if p.isIdentLike() {
+		val := strings.ToUpper(p.cur.Str)
+		p.advance()
+		return val
 	}
 	return ""
 }

@@ -2889,7 +2889,7 @@
       "id": 132,
       "name": "alter_database_unknown_depth",
       "file": "alter_objects.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 117 gap: replace parseNestedParens() call at line 140 and mixed skip-loop at lines 137-146 in parseAlterDatabaseStmt() unknown action handler with structured parsing or explicit error for unsupported actions. Replace string concatenation in parseAlterDatabaseSubOptions() at lines 448-476 and parseAlterDatabaseTermination() at lines 498-508 with structured AST nodes.",
       "rules": [
         "parseAlterDatabaseUnknownActionStructured",

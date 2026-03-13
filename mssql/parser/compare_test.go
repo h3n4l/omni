@@ -15000,3 +15000,99 @@ func TestParseUtilityCetasDbscopedDepth(t *testing.T) {
 		})
 	})
 }
+
+// TestParseAlterDatabaseUnknownDepth tests batch 132: structured ALTER DATABASE unknown action,
+// sub-options, and termination parsing.
+func TestParseAlterDatabaseUnknownDepth(t *testing.T) {
+	t.Run("alter_database_unknown_structured", func(t *testing.T) {
+		tests := []struct {
+			name   string
+			sql    string
+			action string
+		}{
+			// Standalone unknown action
+			{"failover", "ALTER DATABASE mydb FAILOVER", "FAILOVER"},
+			// Unknown action with extra keyword
+			{"unknown with keyword", "ALTER DATABASE mydb SUSPEND LEDGER", "SUSPEND"},
+			// Unknown action with parenthesized options
+			{"unknown with parens", "ALTER DATABASE mydb RESUME LEDGER (OPTION1 = 100, OPTION2 = OFF)", "RESUME"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): expected 1 statement, got %d", tt.sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.AlterDatabaseStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected AlterDatabaseStmt", tt.sql)
+				}
+				if stmt.Action != tt.action {
+					t.Errorf("Parse(%q): expected action %q, got %q", tt.sql, tt.action, stmt.Action)
+				}
+			})
+		}
+	})
+
+	t.Run("alter_database_sub_options_structured", func(t *testing.T) {
+		tests := []struct {
+			name string
+			sql  string
+		}{
+			// CHANGE_TRACKING with sub-options
+			{"change_tracking sub-opts", "ALTER DATABASE mydb SET CHANGE_TRACKING = ON (AUTO_CLEANUP = ON, CHANGE_RETENTION = 7 DAYS)"},
+			// QUERY_STORE with sub-options
+			{"query_store sub-opts", "ALTER DATABASE mydb SET QUERY_STORE = ON (MAX_STORAGE_SIZE_MB = 100, INTERVAL_LENGTH_MINUTES = 60)"},
+			// QUERY_STORE OFF with FORCED
+			{"query_store off forced", "ALTER DATABASE mydb SET QUERY_STORE = OFF (FORCED)"},
+			// ACCELERATED_DATABASE_RECOVERY with sub-options
+			{"adr sub-opts", "ALTER DATABASE mydb SET ACCELERATED_DATABASE_RECOVERY = ON (PERSISTENT_VERSION_STORE_FILEGROUP = fg1)"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): expected 1 statement, got %d", tt.sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.AlterDatabaseStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected AlterDatabaseStmt", tt.sql)
+				}
+				if stmt.Action != "SET" {
+					t.Errorf("Parse(%q): expected action SET, got %q", tt.sql, stmt.Action)
+				}
+				if stmt.Options == nil || stmt.Options.Len() == 0 {
+					t.Errorf("Parse(%q): expected non-empty options", tt.sql)
+				}
+			})
+		}
+	})
+
+	t.Run("alter_database_termination_structured", func(t *testing.T) {
+		tests := []struct {
+			name        string
+			sql         string
+			termination string
+		}{
+			{"rollback immediate", "ALTER DATABASE mydb SET SINGLE_USER WITH ROLLBACK IMMEDIATE", "ROLLBACK IMMEDIATE"},
+			{"rollback after seconds", "ALTER DATABASE mydb SET SINGLE_USER WITH ROLLBACK AFTER 60 SECONDS", "ROLLBACK AFTER 60 SECONDS"},
+			{"rollback after no unit", "ALTER DATABASE mydb SET SINGLE_USER WITH ROLLBACK AFTER 30", "ROLLBACK AFTER 30"},
+			{"no_wait", "ALTER DATABASE mydb SET SINGLE_USER WITH NO_WAIT", "NO_WAIT"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				if result.Len() != 1 {
+					t.Fatalf("Parse(%q): expected 1 statement, got %d", tt.sql, result.Len())
+				}
+				stmt, ok := result.Items[0].(*ast.AlterDatabaseStmt)
+				if !ok {
+					t.Fatalf("Parse(%q): expected AlterDatabaseStmt", tt.sql)
+				}
+				if stmt.Termination != tt.termination {
+					t.Errorf("Parse(%q): expected termination %q, got %q", tt.sql, tt.termination, stmt.Termination)
+				}
+			})
+		}
+	})
+}
