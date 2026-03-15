@@ -5205,6 +5205,11 @@ func TestParseDeallocate(t *testing.T) {
 	}
 }
 
+func TestParseDropPrepare(t *testing.T) {
+	// DROP PREPARE is an alias for DEALLOCATE PREPARE
+	ParseAndCheck(t, "DROP PREPARE stmt1")
+}
+
 // ============================================================================
 // Batch 20: ANALYZE, OPTIMIZE, KILL, DO
 // ============================================================================

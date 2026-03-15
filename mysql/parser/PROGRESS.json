@@ -2823,7 +2823,7 @@
       "id": 115,
       "name": "review_prepare_drop",
       "file": "prepare.go",
-      "status": "pending",
+      "status": "done",
       "description": "BNF review: PREPARE, EXECUTE, DEALLOCATE PREPARE, all DROP statements against ~50 lines of BNF.",
       "effort": "review",
       "bnf_files": [

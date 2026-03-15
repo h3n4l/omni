@@ -680,6 +680,18 @@ func (p *Parser) parseDropDispatch() (nodes.Node, error) {
 		p.advance() // consume RESOURCE
 		return p.parseDropResourceGroupStmt(start)
 
+	case kwPREPARE:
+		// DROP PREPARE stmt_name (alias for DEALLOCATE PREPARE)
+		p.advance() // consume PREPARE
+		name, _, err := p.parseIdentifier()
+		if err != nil {
+			return nil, err
+		}
+		return &nodes.DeallocateStmt{
+			Loc:  nodes.Loc{Start: start, End: p.pos()},
+			Name: name,
+		}, nil
+
 	default:
 		return nil, &ParseError{
 			Message:  "unexpected token after DROP",
