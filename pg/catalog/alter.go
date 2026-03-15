@@ -972,6 +972,45 @@ func (c *Catalog) atDropColumn(schema *Schema, rel *Relation, colName string, ca
 		c.dropDependents('r', rel.OID)
 	}
 
+	// Drop indexes that reference this column.
+	// pg: src/backend/commands/tablecmds.c — ATExecDropColumn (dependency cascade)
+	attNum := col.AttNum
+	var indexesToDrop []*Index
+	for _, ix := range c.indexesByRel[rel.OID] {
+		for _, a := range ix.Columns {
+			if a == attNum {
+				indexesToDrop = append(indexesToDrop, ix)
+				break
+			}
+		}
+	}
+	for _, ix := range indexesToDrop {
+		// If the index backs a constraint, drop the constraint too.
+		if ix.ConstraintOID != 0 {
+			if con := c.constraints[ix.ConstraintOID]; con != nil {
+				c.removeConstraint(schema, con)
+			}
+		}
+		c.removeIndex(schema, ix.Name, ix)
+	}
+
+	// Drop constraints that reference this column (non-index-backed, e.g. CHECK).
+	var consToDrop []*Constraint
+	for _, con := range c.consByRel[rel.OID] {
+		if con.IndexOID != 0 {
+			continue // already handled above
+		}
+		for _, a := range con.Columns {
+			if a == attNum {
+				consToDrop = append(consToDrop, con)
+				break
+			}
+		}
+	}
+	for _, con := range consToDrop {
+		c.removeConstraint(schema, con)
+	}
+
 	// Remove the column.
 	rel.Columns = append(rel.Columns[:idx], rel.Columns[idx+1:]...)
 	c.renumberColumns(rel)
