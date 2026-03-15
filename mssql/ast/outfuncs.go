@@ -380,6 +380,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		fmt.Fprintf(sb, "{SHUTDOWN :withNoWait %v :loc %d %d}", n.WithNoWait, n.Loc.Start, n.Loc.End)
 	case *KillStmt:
 		writeKillStmt(sb, n)
+	case *KillStatsJobStmt:
+		writeKillStatsJobStmt(sb, n)
 	case *KillQueryNotificationStmt:
 		writeKillQueryNotificationStmt(sb, n)
 	case *ReadtextStmt:
@@ -3643,6 +3645,15 @@ func writeKillStmt(sb *strings.Builder, n *KillStmt) {
 	fmt.Fprintf(sb, " :statusOnly %v", n.StatusOnly)
 	if n.WithAction != "" {
 		fmt.Fprintf(sb, " :withAction %s", n.WithAction)
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeKillStatsJobStmt(sb *strings.Builder, n *KillStatsJobStmt) {
+	sb.WriteString("{KILL_STATS_JOB")
+	if n.JobID != nil {
+		sb.WriteString(" :jobId ")
+		writeNode(sb, n.JobID)
 	}
 	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
 }

@@ -2,7 +2,7 @@
   "version": 1,
   "target": "Complete T-SQL recursive descent parser",
   "status": "in_progress",
-  "audit_round": 20,
+  "audit_round": 21,
   "batches": [
     {"id": 0, "name": "infrastructure", "status": "done", "file": "parser.go"},
     {"id": 1, "name": "names", "status": "done", "file": "name.go"},
@@ -704,12 +704,35 @@
       "depends_on": [0],
       "tests": ["insert_bulk_lineno"],
       "bnf_files": ["insert-bulk-transact-sql.bnf", "lineno-transact-sql.bnf"]
+    },
+    {
+      "id": 176,
+      "name": "kill_stats_job_depth",
+      "file": "utility.go",
+      "status": "done",
+      "description": "Fix batch 173 gap: KILL STATS JOB not explicitly dispatched in parseKillStmt(); falls through to generic parseExpr() which cannot correctly parse 'STATS JOB job_id' sequence",
+      "rules": ["parseKillStmt"],
+      "depends_on": [173],
+      "tests": ["kill_stats_job"],
+      "bnf_files": ["kill-stats-job-transact-sql.bnf"]
+    },
+    {
+      "id": 177,
+      "name": "set_offsets_depth",
+      "file": "declare_set.go",
+      "status": "pending",
+      "description": "Fix batch 166 gap: SET OFFSETS keyword_list ON|OFF parsed shallowly by generic SET handler; comma-separated keyword list (SELECT, FROM, ORDER, TABLE, PROCEDURE, STATEMENT, PARAM, EXECUTE) not correctly captured before ON/OFF",
+      "rules": ["parseSetOptionStmt"],
+      "depends_on": [166],
+      "tests": ["set_offsets"],
+      "bnf_files": ["set-offsets-transact-sql.bnf"]
     }
   ],
+  "audit_round": 21,
   "stats": {
-    "total": 176,
-    "done": 154,
-    "pending": 22,
+    "total": 178,
+    "done": 176,
+    "pending": 2,
     "failed": 0,
     "in_progress": 0
   }

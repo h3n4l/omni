@@ -16971,6 +16971,43 @@ func TestParseKillQueryNotification(t *testing.T) {
 	}
 }
 
+// TestParseKillStatsJob tests KILL STATS JOB (batch 176).
+func TestParseKillStatsJob(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		{
+			name: "kill_stats_job_basic",
+			sql:  "KILL STATS JOB 42",
+		},
+		{
+			name: "kill_stats_job_variable",
+			sql:  "KILL STATS JOB @job_id",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() == 0 {
+				t.Fatalf("Parse(%q): no statements returned", tt.sql)
+			}
+			s1 := ast.NodeToString(result.Items[0])
+			s2 := ast.NodeToString(result.Items[0])
+			if s1 != s2 {
+				t.Errorf("Parse(%q): serialization not deterministic", tt.sql)
+			}
+			n, ok := result.Items[0].(*ast.KillStatsJobStmt)
+			if !ok {
+				t.Errorf("expected *ast.KillStatsJobStmt, got %T", result.Items[0])
+			} else if n.JobID == nil {
+				t.Errorf("expected JobID to be set")
+			}
+		})
+	}
+}
+
 // TestParseServiceBrokerOptionsStringsDepth tests batch 148: typed ServiceBrokerOption nodes.
 func TestParseServiceBrokerOptionsStringsDepth(t *testing.T) {
 	// Helper to get first option from ServiceBrokerStmt

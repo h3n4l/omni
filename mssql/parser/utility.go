@@ -252,11 +252,19 @@ func (p *Parser) parseKillStmt() nodes.StmtNode {
 		}
 	}
 
+	// Check for KILL STATS JOB job_id
+	if p.isIdentLike() && strings.EqualFold(p.cur.Str, "STATS") {
+		next := p.peekNext()
+		if next.Str != "" && strings.EqualFold(next.Str, "JOB") {
+			return p.parseKillStatsJobStmt(loc)
+		}
+	}
+
 	stmt := &nodes.KillStmt{
 		Loc: nodes.Loc{Start: loc},
 	}
 
-	// session_id or STATS JOB n or UOW
+	// session_id or UOW
 	stmt.SessionID = p.parseExpr()
 
 	// WITH { STATUSONLY | COMMIT | ROLLBACK }
@@ -273,6 +281,25 @@ func (p *Parser) parseKillStmt() nodes.StmtNode {
 			stmt.WithAction = "ROLLBACK"
 		}
 	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseKillStatsJobStmt parses a KILL STATS JOB statement.
+//
+// BNF: mssql/parser/bnf/kill-stats-job-transact-sql.bnf
+//
+//	KILL STATS JOB job_id
+func (p *Parser) parseKillStatsJobStmt(loc int) *nodes.KillStatsJobStmt {
+	p.advance() // consume STATS
+	p.advance() // consume JOB
+
+	stmt := &nodes.KillStatsJobStmt{
+		Loc: nodes.Loc{Start: loc},
+	}
+
+	stmt.JobID = p.parseExpr()
 
 	stmt.Loc.End = p.pos()
 	return stmt

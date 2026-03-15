@@ -2736,6 +2736,17 @@ type KillStmt struct {
 func (n *KillStmt) nodeTag()  {}
 func (n *KillStmt) stmtNode() {}
 
+// KillStatsJobStmt represents KILL STATS JOB job_id.
+//
+// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/kill-stats-job-transact-sql
+type KillStatsJobStmt struct {
+	JobID ExprNode // job_id (integer)
+	Loc   Loc
+}
+
+func (n *KillStatsJobStmt) nodeTag()  {}
+func (n *KillStatsJobStmt) stmtNode() {}
+
 // KillQueryNotificationStmt represents KILL QUERY NOTIFICATION SUBSCRIPTION { ALL | subscription_id }.
 //
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/kill-query-notification-subscription-transact-sql
