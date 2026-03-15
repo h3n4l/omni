@@ -463,40 +463,67 @@ func (p *Parser) parseCreateDispatch() (nodes.Node, error) {
 
 	case kwDEFINER:
 		// CREATE DEFINER=... {VIEW|FUNCTION|PROCEDURE|TRIGGER|EVENT}
-		// Skip DEFINER = user[@host] to find the object keyword, then delegate.
-		// Sub-parsers won't see DEFINER since we consume it here.
-		p.advance() // consume DEFINER
-		p.match('=')
-		// user[@host] or CURRENT_USER[()]
-		if p.isIdentToken() || p.cur.Type == tokSCONST {
-			p.advance()
-		}
-		if p.cur.Type == tokIDENT && p.cur.Str == "@" {
-			p.advance()
-			if p.isIdentToken() || p.cur.Type == tokSCONST {
-				p.advance()
-			}
-		}
+		// Parse DEFINER = user[@host] and propagate to sub-parsers.
+		definer := p.parseDefinerValue()
 		// Optional SQL SECURITY {DEFINER|INVOKER}
+		var sqlSecurity string
 		if p.cur.Type == kwSQL {
 			p.advance()
 			p.match(kwSECURITY)
 			if p.isIdentToken() {
-				p.advance()
+				sqlSecurity, _, _ = p.parseIdentifier()
 			}
 		}
 		// Now dispatch on the object keyword
 		switch p.cur.Type {
 		case kwVIEW:
-			return p.parseCreateViewStmt(orReplace)
+			stmt, err := p.parseCreateViewStmt(orReplace)
+			if err != nil {
+				return nil, err
+			}
+			if stmt.Definer == "" {
+				stmt.Definer = definer
+			}
+			if stmt.SqlSecurity == "" {
+				stmt.SqlSecurity = sqlSecurity
+			}
+			return stmt, nil
 		case kwFUNCTION:
-			return p.parseCreateFunctionStmt(false)
+			stmt, err := p.parseCreateFunctionStmt(false)
+			if err != nil {
+				return nil, err
+			}
+			if stmt.Definer == "" {
+				stmt.Definer = definer
+			}
+			return stmt, nil
 		case kwPROCEDURE:
-			return p.parseCreateFunctionStmt(true)
+			stmt, err := p.parseCreateFunctionStmt(true)
+			if err != nil {
+				return nil, err
+			}
+			if stmt.Definer == "" {
+				stmt.Definer = definer
+			}
+			return stmt, nil
 		case kwTRIGGER:
-			return p.parseCreateTriggerStmt()
+			stmt, err := p.parseCreateTriggerStmt()
+			if err != nil {
+				return nil, err
+			}
+			if stmt.Definer == "" {
+				stmt.Definer = definer
+			}
+			return stmt, nil
 		case kwEVENT:
-			return p.parseCreateEventStmt()
+			stmt, err := p.parseCreateEventStmt()
+			if err != nil {
+				return nil, err
+			}
+			if stmt.Definer == "" {
+				stmt.Definer = definer
+			}
+			return stmt, nil
 		default:
 			return nil, &ParseError{Message: "unexpected token after DEFINER clause", Position: p.cur.Loc}
 		}
@@ -555,32 +582,40 @@ func (p *Parser) parseAlterDispatch() (nodes.Node, error) {
 		return p.parseAlterViewStmt()
 
 	case kwDEFINER:
-		// ALTER DEFINER = user {VIEW|EVENT|FUNCTION|PROCEDURE}
-		// Skip DEFINER = user[@host] to find the object keyword, then delegate.
-		p.advance() // consume DEFINER
-		p.match('=')
-		if p.isIdentToken() || p.cur.Type == tokSCONST {
-			p.advance()
-		}
-		if p.cur.Type == tokIDENT && p.cur.Str == "@" {
-			p.advance()
-			if p.isIdentToken() || p.cur.Type == tokSCONST {
-				p.advance()
-			}
-		}
+		// ALTER DEFINER = user {VIEW|EVENT}
+		// Parse DEFINER = user[@host] and propagate to sub-parsers.
+		definer := p.parseDefinerValue()
 		// Optional SQL SECURITY {DEFINER|INVOKER}
+		var sqlSecurity string
 		if p.cur.Type == kwSQL {
 			p.advance()
 			p.match(kwSECURITY)
 			if p.isIdentToken() {
-				p.advance()
+				sqlSecurity, _, _ = p.parseIdentifier()
 			}
 		}
 		switch p.cur.Type {
 		case kwVIEW:
-			return p.parseAlterViewStmt()
+			stmt, err := p.parseAlterViewStmt()
+			if err != nil {
+				return nil, err
+			}
+			if stmt.Definer == "" {
+				stmt.Definer = definer
+			}
+			if stmt.SqlSecurity == "" {
+				stmt.SqlSecurity = sqlSecurity
+			}
+			return stmt, nil
 		case kwEVENT:
-			return p.parseAlterEventStmt()
+			stmt, err := p.parseAlterEventStmt()
+			if err != nil {
+				return nil, err
+			}
+			if stmt.Definer == "" {
+				stmt.Definer = definer
+			}
+			return stmt, nil
 		default:
 			return nil, &ParseError{Message: "unexpected token after DEFINER clause in ALTER", Position: p.cur.Loc}
 		}
@@ -698,4 +733,55 @@ func (p *Parser) parseDropDispatch() (nodes.Node, error) {
 			Position: p.cur.Loc,
 		}
 	}
+}
+
+// parseDefinerValue parses the DEFINER = user[@host] clause and returns the
+// definer string. Handles: 'user'@'host', user@host, CURRENT_USER, CURRENT_USER().
+// The current token must be DEFINER; on return, the current token is the one
+// after the definer clause.
+func (p *Parser) parseDefinerValue() string {
+	p.advance() // consume DEFINER
+	p.match('=')
+
+	// Parse user part: identifier, string literal, or CURRENT_USER
+	var user string
+	if p.cur.Type == tokSCONST {
+		user = "'" + p.cur.Str + "'"
+		p.advance()
+	} else if p.isIdentToken() {
+		user, _, _ = p.parseIdentifier()
+	} else {
+		return ""
+	}
+
+	// Handle CURRENT_USER()
+	if eqFold(user, "current_user") && p.cur.Type == '(' {
+		p.advance() // consume (
+		p.match(')')
+		return "CURRENT_USER()"
+	}
+
+	// Handle @host: the lexer scans @host as a single tokIDENT with Str="@host",
+	// or for quoted form 'user'@'host' the @ is also part of a variable token.
+	// Check for tokIDENT starting with "@".
+	if p.cur.Type == tokIDENT && len(p.cur.Str) > 0 && p.cur.Str[0] == '@' {
+		atHost := p.cur.Str // e.g. "@localhost" or "@"
+		p.advance()
+		if atHost == "@" {
+			// Standalone @ followed by host identifier or string
+			var host string
+			if p.cur.Type == tokSCONST {
+				host = "'" + p.cur.Str + "'"
+				p.advance()
+			} else if p.isIdentToken() {
+				host, _, _ = p.parseIdentifier()
+			}
+			return user + "@" + host
+		}
+		// @host as single token: strip @ prefix
+		host := atHost[1:]
+		return user + "@" + host
+	}
+
+	return user
 }

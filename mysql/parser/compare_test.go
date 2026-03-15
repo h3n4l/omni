@@ -11050,3 +11050,111 @@ func TestReviewBatch116_BinaryPrefix(t *testing.T) {
 		})
 	}
 }
+
+// ---- Batch 117: DEFINER propagation ----
+
+func TestDefinerPropagation(t *testing.T) {
+	tests := []string{
+		// CREATE VIEW with DEFINER at dispatch layer
+		"CREATE DEFINER = 'admin'@'localhost' VIEW v1 AS SELECT 1",
+		"CREATE DEFINER = admin@localhost VIEW v1 AS SELECT 1",
+		"CREATE DEFINER = CURRENT_USER VIEW v1 AS SELECT 1",
+		"CREATE DEFINER = CURRENT_USER() VIEW v1 AS SELECT 1",
+		// CREATE VIEW with DEFINER + SQL SECURITY at dispatch layer
+		"CREATE DEFINER = 'admin'@'localhost' SQL SECURITY INVOKER VIEW v1 AS SELECT 1",
+		"CREATE DEFINER = root@localhost SQL SECURITY DEFINER VIEW v1 AS SELECT 1",
+		// CREATE FUNCTION with DEFINER at dispatch layer
+		"CREATE DEFINER = 'admin'@'localhost' FUNCTION f1() RETURNS INT DETERMINISTIC RETURN 1",
+		"CREATE DEFINER = CURRENT_USER FUNCTION f1() RETURNS INT DETERMINISTIC RETURN 1",
+		// CREATE PROCEDURE with DEFINER at dispatch layer
+		"CREATE DEFINER = 'admin'@'localhost' PROCEDURE p1() SELECT 1",
+		"CREATE DEFINER = CURRENT_USER() PROCEDURE p1() SELECT 1",
+		// CREATE TRIGGER with DEFINER at dispatch layer
+		"CREATE DEFINER = 'admin'@'localhost' TRIGGER tr1 BEFORE INSERT ON t1 FOR EACH ROW SET @x = 1",
+		"CREATE DEFINER = CURRENT_USER TRIGGER tr1 AFTER UPDATE ON t1 FOR EACH ROW SET @x = 1",
+		// CREATE EVENT with DEFINER at dispatch layer
+		"CREATE DEFINER = 'admin'@'localhost' EVENT ev1 ON SCHEDULE EVERY 1 HOUR DO SELECT 1",
+		"CREATE DEFINER = CURRENT_USER EVENT ev1 ON SCHEDULE AT '2026-01-01 00:00:00' DO SELECT 1",
+		// ALTER VIEW with DEFINER at dispatch layer
+		"ALTER DEFINER = 'admin'@'localhost' VIEW v1 AS SELECT 2",
+		"ALTER DEFINER = CURRENT_USER() SQL SECURITY INVOKER VIEW v1 AS SELECT 2",
+		// ALTER EVENT with DEFINER at dispatch layer
+		"ALTER DEFINER = 'admin'@'localhost' EVENT ev1 ENABLE",
+		"ALTER DEFINER = CURRENT_USER EVENT ev1 ENABLE",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestDefinerPropagation_Values(t *testing.T) {
+	// Verify DEFINER value is actually captured in AST
+	result, err := Parse("CREATE DEFINER = 'admin'@'localhost' VIEW v1 AS SELECT 1")
+	if err != nil {
+		t.Fatalf("Parse error: %v", err)
+	}
+	stmt, ok := result.Items[0].(*ast.CreateViewStmt)
+	if !ok {
+		t.Fatalf("expected CreateViewStmt, got %T", result.Items[0])
+	}
+	if stmt.Definer != "'admin'@'localhost'" {
+		t.Errorf("expected Definer='admin'@'localhost', got %q", stmt.Definer)
+	}
+
+	// Verify SQL SECURITY is captured
+	result2, err := Parse("CREATE DEFINER = root@localhost SQL SECURITY INVOKER VIEW v2 AS SELECT 2")
+	if err != nil {
+		t.Fatalf("Parse error: %v", err)
+	}
+	stmt2, ok := result2.Items[0].(*ast.CreateViewStmt)
+	if !ok {
+		t.Fatalf("expected CreateViewStmt, got %T", result2.Items[0])
+	}
+	if stmt2.Definer != "root@localhost" {
+		t.Errorf("expected Definer=root@localhost, got %q", stmt2.Definer)
+	}
+	if stmt2.SqlSecurity != "INVOKER" && stmt2.SqlSecurity != "invoker" {
+		t.Errorf("expected SqlSecurity=INVOKER, got %q", stmt2.SqlSecurity)
+	}
+
+	// Verify DEFINER on CREATE TRIGGER
+	result3, err := Parse("CREATE DEFINER = 'admin'@'%' TRIGGER tr1 BEFORE INSERT ON t1 FOR EACH ROW SET @x = 1")
+	if err != nil {
+		t.Fatalf("Parse error: %v", err)
+	}
+	stmt3, ok := result3.Items[0].(*ast.CreateTriggerStmt)
+	if !ok {
+		t.Fatalf("expected CreateTriggerStmt, got %T", result3.Items[0])
+	}
+	if stmt3.Definer != "'admin'@'%'" {
+		t.Errorf("expected Definer='admin'@'%%', got %q", stmt3.Definer)
+	}
+
+	// Verify DEFINER on ALTER EVENT
+	result4, err := Parse("ALTER DEFINER = 'root'@'localhost' EVENT ev1 ENABLE")
+	if err != nil {
+		t.Fatalf("Parse error: %v", err)
+	}
+	stmt4, ok := result4.Items[0].(*ast.AlterEventStmt)
+	if !ok {
+		t.Fatalf("expected AlterEventStmt, got %T", result4.Items[0])
+	}
+	if stmt4.Definer != "'root'@'localhost'" {
+		t.Errorf("expected Definer='root'@'localhost', got %q", stmt4.Definer)
+	}
+
+	// Verify CURRENT_USER()
+	result5, err := Parse("CREATE DEFINER = CURRENT_USER() FUNCTION f1() RETURNS INT DETERMINISTIC RETURN 1")
+	if err != nil {
+		t.Fatalf("Parse error: %v", err)
+	}
+	stmt5, ok := result5.Items[0].(*ast.CreateFunctionStmt)
+	if !ok {
+		t.Fatalf("expected CreateFunctionStmt, got %T", result5.Items[0])
+	}
+	if stmt5.Definer != "CURRENT_USER()" {
+		t.Errorf("expected Definer=CURRENT_USER(), got %q", stmt5.Definer)
+	}
+}

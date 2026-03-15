@@ -2862,14 +2862,34 @@
         97
       ],
       "tests": []
+    },
+    {
+      "id": 117,
+      "name": "depth_fix_definer_propagation",
+      "file": "stmt.go",
+      "status": "done",
+      "description": "Fix batch 16/17/10/39 gap: DEFINER clause consumed at dispatch layer (stmt.go parseCreateDispatch/parseAlterDispatch) but never propagated to sub-parsers. Affects CREATE FUNCTION, CREATE PROCEDURE, CREATE TRIGGER, CREATE EVENT, CREATE VIEW (via DEFINER path), ALTER VIEW, ALTER EVENT. AST nodes have Definer field but it is never populated when DEFINER appears before the object keyword.",
+      "rules": ["parseCreateDispatch", "parseAlterDispatch"],
+      "depends_on": [10, 16, 17, 39],
+      "tests": ["TestDefinerPropagation"]
+    },
+    {
+      "id": 118,
+      "name": "depth_fix_alter_user_registration_factor",
+      "file": "grant.go",
+      "status": "pending",
+      "description": "Fix batch 61 gap: ALTER USER missing BNF branches from alter-user.bnf lines 11-18 and 40-64. Missing: (1) USER() user_func_auth_option syntax, (2) registration_option (factor INITIATE/FINISH REGISTRATION, factor UNREGISTER), (3) ADD/MODIFY/DROP factor factor_auth_option operations, (4) factor_auth_option as distinct from standard auth_option.",
+      "rules": ["parseAlterUserStmt", "parseUserSpec", "parseUserAuthOption"],
+      "depends_on": [61],
+      "tests": ["TestAlterUserRegistration", "TestAlterUserFactorAuth"]
     }
   ],
   "stats": {
-    "total": 117,
+    "total": 119,
     "done": 97,
-    "pending": 20,
+    "pending": 22,
     "failed": 0,
     "in_progress": 0
   },
-  "audit_round": 18
+  "audit_round": 19
 }
