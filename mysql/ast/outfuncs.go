@@ -1727,6 +1727,9 @@ func writeDeallocateStmt(sb *strings.Builder, n *DeallocateStmt) {
 func writeAnalyzeTableStmt(sb *strings.Builder, n *AnalyzeTableStmt) {
 	sb.WriteString("{ANALYZE_TABLE")
 	fmt.Fprintf(sb, " :loc %d", n.Loc.Start)
+	if n.NoWriteToBinlog {
+		sb.WriteString(" :no_write_to_binlog true")
+	}
 	if len(n.Tables) > 0 {
 		sb.WriteString(" :tables ")
 		for i, t := range n.Tables {
@@ -1745,12 +1748,18 @@ func writeAnalyzeTableStmt(sb *strings.Builder, n *AnalyzeTableStmt) {
 	if n.Buckets > 0 {
 		fmt.Fprintf(sb, " :buckets %d", n.Buckets)
 	}
+	if n.UsingData != "" {
+		fmt.Fprintf(sb, " :using_data \"%s\"", n.UsingData)
+	}
 	sb.WriteString("}")
 }
 
 func writeOptimizeTableStmt(sb *strings.Builder, n *OptimizeTableStmt) {
 	sb.WriteString("{OPTIMIZE_TABLE")
 	fmt.Fprintf(sb, " :loc %d", n.Loc.Start)
+	if n.NoWriteToBinlog {
+		sb.WriteString(" :no_write_to_binlog true")
+	}
 	if len(n.Tables) > 0 {
 		sb.WriteString(" :tables ")
 		for i, t := range n.Tables {
@@ -1784,6 +1793,9 @@ func writeCheckTableStmt(sb *strings.Builder, n *CheckTableStmt) {
 func writeRepairTableStmt(sb *strings.Builder, n *RepairTableStmt) {
 	sb.WriteString("{REPAIR_TABLE")
 	fmt.Fprintf(sb, " :loc %d", n.Loc.Start)
+	if n.NoWriteToBinlog {
+		sb.WriteString(" :no_write_to_binlog true")
+	}
 	if len(n.Tables) > 0 {
 		sb.WriteString(" :tables ")
 		for i, t := range n.Tables {
@@ -1808,6 +1820,9 @@ func writeRepairTableStmt(sb *strings.Builder, n *RepairTableStmt) {
 func writeFlushStmt(sb *strings.Builder, n *FlushStmt) {
 	sb.WriteString("{FLUSH")
 	fmt.Fprintf(sb, " :loc %d", n.Loc.Start)
+	if n.NoWriteToBinlog {
+		sb.WriteString(" :no_write_to_binlog true")
+	}
 	if len(n.Options) > 0 {
 		fmt.Fprintf(sb, " :options %s", strings.Join(n.Options, ", "))
 	}
@@ -1825,6 +1840,9 @@ func writeFlushStmt(sb *strings.Builder, n *FlushStmt) {
 	}
 	if n.ForExport {
 		sb.WriteString(" :for_export true")
+	}
+	if n.RelayChannel != "" {
+		fmt.Fprintf(sb, " :relay_channel \"%s\"", n.RelayChannel)
 	}
 	sb.WriteString("}")
 }

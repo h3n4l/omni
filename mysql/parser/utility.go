@@ -11,21 +11,33 @@ import (
 // Ref: https://dev.mysql.com/doc/refman/8.0/en/analyze-table.html
 //
 //	ANALYZE [NO_WRITE_TO_BINLOG | LOCAL] TABLE tbl_name [, tbl_name] ...
+//
+//	ANALYZE [NO_WRITE_TO_BINLOG | LOCAL] TABLE tbl_name
+//	    UPDATE HISTOGRAM ON col_name [, col_name] ...
+//	        [WITH N BUCKETS]
+//
+//	ANALYZE [NO_WRITE_TO_BINLOG | LOCAL] TABLE tbl_name
+//	    UPDATE HISTOGRAM ON col_name [USING DATA 'json_data']
+//
+//	ANALYZE [NO_WRITE_TO_BINLOG | LOCAL] TABLE tbl_name
+//	    DROP HISTOGRAM ON col_name [, col_name] ...
 func (p *Parser) parseAnalyzeTableStmt() (*nodes.AnalyzeTableStmt, error) {
 	start := p.pos()
 	p.advance() // consume ANALYZE
 
+	stmt := &nodes.AnalyzeTableStmt{Loc: nodes.Loc{Start: start}}
+
 	// Optional NO_WRITE_TO_BINLOG | LOCAL
 	if p.cur.Type == kwLOCAL {
+		stmt.NoWriteToBinlog = true
 		p.advance()
 	} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "no_write_to_binlog") {
+		stmt.NoWriteToBinlog = true
 		p.advance()
 	}
 
 	// TABLE
 	p.match(kwTABLE)
-
-	stmt := &nodes.AnalyzeTableStmt{Loc: nodes.Loc{Start: start}}
 
 	// Table list
 	for {
@@ -40,7 +52,7 @@ func (p *Parser) parseAnalyzeTableStmt() (*nodes.AnalyzeTableStmt, error) {
 		p.advance()
 	}
 
-	// UPDATE HISTOGRAM ON col [, col] WITH N BUCKETS
+	// UPDATE HISTOGRAM ON col [, col] [WITH N BUCKETS] | [USING DATA 'json_data']
 	if p.cur.Type == kwUPDATE {
 		p.advance()
 		if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "histogram") {
@@ -70,6 +82,17 @@ func (p *Parser) parseAnalyzeTableStmt() (*nodes.AnalyzeTableStmt, error) {
 			}
 			// BUCKETS keyword
 			if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "buckets") {
+				p.advance()
+			}
+		}
+		// USING DATA 'json_data'
+		if p.cur.Type == kwUSING {
+			p.advance() // consume USING
+			if p.cur.Type == kwDATA {
+				p.advance() // consume DATA
+			}
+			if p.cur.Type == tokSCONST {
+				stmt.UsingData = p.cur.Str
 				p.advance()
 			}
 		}
@@ -111,15 +134,17 @@ func (p *Parser) parseOptimizeTableStmt() (*nodes.OptimizeTableStmt, error) {
 	start := p.pos()
 	p.advance() // consume OPTIMIZE
 
+	stmt := &nodes.OptimizeTableStmt{Loc: nodes.Loc{Start: start}}
+
 	if p.cur.Type == kwLOCAL {
+		stmt.NoWriteToBinlog = true
 		p.advance()
 	} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "no_write_to_binlog") {
+		stmt.NoWriteToBinlog = true
 		p.advance()
 	}
 
 	p.match(kwTABLE)
-
-	stmt := &nodes.OptimizeTableStmt{Loc: nodes.Loc{Start: start}}
 
 	for {
 		ref, err := p.parseTableRef()
@@ -178,7 +203,7 @@ func (p *Parser) parseCheckTableStmt() (*nodes.CheckTableStmt, error) {
 			p.advance()
 		} else if p.cur.Type == tokIDENT &&
 			(eqFold(p.cur.Str, "fast") || eqFold(p.cur.Str, "medium") || eqFold(p.cur.Str, "changed")) {
-			stmt.Options = append(stmt.Options, p.cur.Str)
+			stmt.Options = append(stmt.Options, strings.ToUpper(p.cur.Str))
 			p.advance()
 		} else {
 			break
@@ -198,15 +223,17 @@ func (p *Parser) parseRepairTableStmt() (*nodes.RepairTableStmt, error) {
 	start := p.pos()
 	p.advance() // consume REPAIR
 
+	stmt := &nodes.RepairTableStmt{Loc: nodes.Loc{Start: start}}
+
 	if p.cur.Type == kwLOCAL {
+		stmt.NoWriteToBinlog = true
 		p.advance()
 	} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "no_write_to_binlog") {
+		stmt.NoWriteToBinlog = true
 		p.advance()
 	}
 
 	p.match(kwTABLE)
-
-	stmt := &nodes.RepairTableStmt{Loc: nodes.Loc{Start: start}}
 
 	for {
 		ref, err := p.parseTableRef()
@@ -244,18 +271,48 @@ func (p *Parser) parseRepairTableStmt() (*nodes.RepairTableStmt, error) {
 //
 // Ref: https://dev.mysql.com/doc/refman/8.0/en/flush.html
 //
-//	FLUSH [NO_WRITE_TO_BINLOG | LOCAL] flush_option [, flush_option] ...
+//	FLUSH [NO_WRITE_TO_BINLOG | LOCAL] {
+//	    flush_option [, flush_option] ...
+//	  | tables_option
+//	}
+//
+//	flush_option: {
+//	    BINARY LOGS
+//	  | ENGINE LOGS
+//	  | ERROR LOGS
+//	  | GENERAL LOGS
+//	  | HOSTS
+//	  | LOGS
+//	  | PRIVILEGES
+//	  | OPTIMIZER_COSTS
+//	  | RELAY LOGS [FOR CHANNEL channel]
+//	  | SLOW LOGS
+//	  | STATUS
+//	  | USER_RESOURCES
+//	}
+//
+//	tables_option: {
+//	    table_synonym
+//	  | table_synonym tbl_name [, tbl_name] ...
+//	  | table_synonym WITH READ LOCK
+//	  | table_synonym tbl_name [, tbl_name] ... WITH READ LOCK
+//	  | table_synonym tbl_name [, tbl_name] ... FOR EXPORT
+//	}
+//
+//	table_synonym: { TABLE | TABLES }
 func (p *Parser) parseFlushStmt() (*nodes.FlushStmt, error) {
 	start := p.pos()
 	p.advance() // consume FLUSH
 
+	stmt := &nodes.FlushStmt{Loc: nodes.Loc{Start: start}}
+
 	if p.cur.Type == kwLOCAL {
+		stmt.NoWriteToBinlog = true
 		p.advance()
 	} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "no_write_to_binlog") {
+		stmt.NoWriteToBinlog = true
 		p.advance()
 	}
-
-	stmt := &nodes.FlushStmt{Loc: nodes.Loc{Start: start}}
 
 	// FLUSH TABLES [tbl_name, ...] [WITH READ LOCK | FOR EXPORT]
 	if p.cur.Type == kwTABLES || p.cur.Type == kwTABLE {
@@ -298,34 +355,16 @@ func (p *Parser) parseFlushStmt() (*nodes.FlushStmt, error) {
 		return stmt, nil
 	}
 
-	// Handle FLUSH BINARY LOGS as a multi-word option
-	if p.cur.Type == kwBINARY {
-		p.advance()
-		if p.isIdentToken() {
-			name, _, _ := p.parseIdentifier()
-			stmt.Options = append(stmt.Options, "BINARY "+strings.ToUpper(name))
-		} else {
-			stmt.Options = append(stmt.Options, "BINARY")
-		}
-		stmt.Loc.End = p.pos()
-		return stmt, nil
-	}
-
-	// Flush options (STATUS, PRIVILEGES, HOSTS, etc.)
-	// Accept both identifiers and keywords as option names.
+	// Flush options list
 	for {
 		if p.cur.Type == tokEOF || p.cur.Type == ';' {
 			break
 		}
-		if p.isIdentToken() {
-			name, _, _ := p.parseIdentifier()
-			stmt.Options = append(stmt.Options, name)
-		} else if p.cur.Type == kwBINARY || p.cur.Type == kwSTATUS || p.cur.Type == kwPRIVILEGES {
-			tok := p.advance()
-			stmt.Options = append(stmt.Options, strings.ToUpper(tok.Str))
-		} else {
+		opt := p.parseFlushOption(stmt)
+		if opt == "" {
 			break
 		}
+		stmt.Options = append(stmt.Options, opt)
 		if p.cur.Type != ',' {
 			break
 		}
@@ -334,6 +373,68 @@ func (p *Parser) parseFlushStmt() (*nodes.FlushStmt, error) {
 
 	stmt.Loc.End = p.pos()
 	return stmt, nil
+}
+
+// parseFlushOption parses a single flush_option and returns the normalized name.
+// Multi-word options (ENGINE LOGS, ERROR LOGS, etc.) are combined into one string.
+func (p *Parser) parseFlushOption(stmt *nodes.FlushStmt) string {
+	// Handle keyword tokens that are also flush options
+	switch p.cur.Type {
+	case kwBINARY:
+		p.advance()
+		if p.isIdentToken() && eqFold(p.cur.Str, "logs") {
+			p.advance()
+			return "BINARY LOGS"
+		}
+		return "BINARY"
+	case kwSTATUS:
+		p.advance()
+		return "STATUS"
+	case kwPRIVILEGES:
+		p.advance()
+		return "PRIVILEGES"
+	}
+
+	if !p.isIdentToken() {
+		return ""
+	}
+
+	name := strings.ToUpper(p.cur.Str)
+	p.advance()
+
+	// Check for multi-word options: ENGINE LOGS, ERROR LOGS, GENERAL LOGS, RELAY LOGS, SLOW LOGS
+	switch name {
+	case "ENGINE", "ERROR", "GENERAL", "SLOW":
+		if p.isIdentToken() && eqFold(p.cur.Str, "logs") {
+			p.advance()
+			return name + " LOGS"
+		}
+		return name
+	case "RELAY":
+		if p.isIdentToken() && eqFold(p.cur.Str, "logs") {
+			p.advance()
+			opt := "RELAY LOGS"
+			// Optional FOR CHANNEL channel
+			if p.cur.Type == kwFOR {
+				p.advance() // consume FOR
+				if p.isIdentToken() && eqFold(p.cur.Str, "channel") {
+					p.advance() // consume CHANNEL
+					if p.isIdentToken() || p.cur.Type == tokSCONST {
+						if p.cur.Type == tokSCONST {
+							stmt.RelayChannel = p.cur.Str
+						} else {
+							stmt.RelayChannel = p.cur.Str
+						}
+						p.advance()
+					}
+				}
+			}
+			return opt
+		}
+		return name
+	}
+
+	return name
 }
 
 // parseResetStmt parses a RESET statement.

@@ -10817,3 +10817,200 @@ func TestReviewBatch110_ValuesBasic(t *testing.T) {
 func TestReviewBatch110_ValuesOrderByLimit(t *testing.T) {
 	ParseAndCheck(t, "VALUES ROW(1, 2), ROW(3, 4) ORDER BY column_0 LIMIT 1")
 }
+
+// --- Batch 111: review_maintenance_utility ---
+
+func TestReviewBatch111_AnalyzeTableNoWriteToBinlog(t *testing.T) {
+	result := ParseAndCheck(t, "ANALYZE NO_WRITE_TO_BINLOG TABLE t1")
+	s := ast.NodeToString(result.Items[0])
+	if !strings.Contains(s, ":no_write_to_binlog true") {
+		t.Errorf("expected :no_write_to_binlog true, got %s", s)
+	}
+}
+
+func TestReviewBatch111_AnalyzeTableLocal(t *testing.T) {
+	result := ParseAndCheck(t, "ANALYZE LOCAL TABLE t1")
+	s := ast.NodeToString(result.Items[0])
+	if !strings.Contains(s, ":no_write_to_binlog true") {
+		t.Errorf("expected :no_write_to_binlog true, got %s", s)
+	}
+}
+
+func TestReviewBatch111_AnalyzeTableUsingData(t *testing.T) {
+	result := ParseAndCheck(t, "ANALYZE TABLE t1 UPDATE HISTOGRAM ON col1 USING DATA '{\"key\": \"value\"}'")
+	s := ast.NodeToString(result.Items[0])
+	if !strings.Contains(s, ":using_data") {
+		t.Errorf("expected :using_data, got %s", s)
+	}
+}
+
+func TestReviewBatch111_AnalyzeTableHistogramBuckets(t *testing.T) {
+	result := ParseAndCheck(t, "ANALYZE TABLE t1 UPDATE HISTOGRAM ON col1, col2 WITH 100 BUCKETS")
+	s := ast.NodeToString(result.Items[0])
+	if !strings.Contains(s, ":buckets 100") {
+		t.Errorf("expected :buckets 100, got %s", s)
+	}
+}
+
+func TestReviewBatch111_OptimizeTableNoWriteToBinlog(t *testing.T) {
+	result := ParseAndCheck(t, "OPTIMIZE NO_WRITE_TO_BINLOG TABLE t1")
+	s := ast.NodeToString(result.Items[0])
+	if !strings.Contains(s, ":no_write_to_binlog true") {
+		t.Errorf("expected :no_write_to_binlog true, got %s", s)
+	}
+}
+
+func TestReviewBatch111_OptimizeTableLocal(t *testing.T) {
+	result := ParseAndCheck(t, "OPTIMIZE LOCAL TABLE t1, t2")
+	s := ast.NodeToString(result.Items[0])
+	if !strings.Contains(s, ":no_write_to_binlog true") {
+		t.Errorf("expected :no_write_to_binlog true, got %s", s)
+	}
+}
+
+func TestReviewBatch111_RepairTableNoWriteToBinlog(t *testing.T) {
+	result := ParseAndCheck(t, "REPAIR NO_WRITE_TO_BINLOG TABLE t1")
+	s := ast.NodeToString(result.Items[0])
+	if !strings.Contains(s, ":no_write_to_binlog true") {
+		t.Errorf("expected :no_write_to_binlog true, got %s", s)
+	}
+}
+
+func TestReviewBatch111_RepairTableLocal(t *testing.T) {
+	result := ParseAndCheck(t, "REPAIR LOCAL TABLE t1 QUICK EXTENDED USE_FRM")
+	s := ast.NodeToString(result.Items[0])
+	if !strings.Contains(s, ":no_write_to_binlog true") {
+		t.Errorf("expected :no_write_to_binlog true, got %s", s)
+	}
+}
+
+func TestReviewBatch111_CheckTableFastUpperCase(t *testing.T) {
+	result := ParseAndCheck(t, "CHECK TABLE t1 FAST")
+	s := ast.NodeToString(result.Items[0])
+	if !strings.Contains(s, "FAST") {
+		t.Errorf("expected FAST (uppercase), got %s", s)
+	}
+}
+
+func TestReviewBatch111_CheckTableMultipleOptions(t *testing.T) {
+	ParseAndCheck(t, "CHECK TABLE t1 QUICK FAST MEDIUM EXTENDED CHANGED")
+}
+
+func TestReviewBatch111_FlushEngineLogs(t *testing.T) {
+	result := ParseAndCheck(t, "FLUSH ENGINE LOGS")
+	s := ast.NodeToString(result.Items[0])
+	if !strings.Contains(s, "ENGINE LOGS") {
+		t.Errorf("expected ENGINE LOGS, got %s", s)
+	}
+}
+
+func TestReviewBatch111_FlushErrorLogs(t *testing.T) {
+	result := ParseAndCheck(t, "FLUSH ERROR LOGS")
+	s := ast.NodeToString(result.Items[0])
+	if !strings.Contains(s, "ERROR LOGS") {
+		t.Errorf("expected ERROR LOGS, got %s", s)
+	}
+}
+
+func TestReviewBatch111_FlushGeneralLogs(t *testing.T) {
+	result := ParseAndCheck(t, "FLUSH GENERAL LOGS")
+	s := ast.NodeToString(result.Items[0])
+	if !strings.Contains(s, "GENERAL LOGS") {
+		t.Errorf("expected GENERAL LOGS, got %s", s)
+	}
+}
+
+func TestReviewBatch111_FlushSlowLogs(t *testing.T) {
+	result := ParseAndCheck(t, "FLUSH SLOW LOGS")
+	s := ast.NodeToString(result.Items[0])
+	if !strings.Contains(s, "SLOW LOGS") {
+		t.Errorf("expected SLOW LOGS, got %s", s)
+	}
+}
+
+func TestReviewBatch111_FlushRelayLogs(t *testing.T) {
+	result := ParseAndCheck(t, "FLUSH RELAY LOGS")
+	s := ast.NodeToString(result.Items[0])
+	if !strings.Contains(s, "RELAY LOGS") {
+		t.Errorf("expected RELAY LOGS, got %s", s)
+	}
+}
+
+func TestReviewBatch111_FlushRelayLogsForChannel(t *testing.T) {
+	result := ParseAndCheck(t, "FLUSH RELAY LOGS FOR CHANNEL 'channel_1'")
+	s := ast.NodeToString(result.Items[0])
+	if !strings.Contains(s, "RELAY LOGS") {
+		t.Errorf("expected RELAY LOGS, got %s", s)
+	}
+	if !strings.Contains(s, ":relay_channel") {
+		t.Errorf("expected :relay_channel, got %s", s)
+	}
+}
+
+func TestReviewBatch111_FlushMultipleOptions(t *testing.T) {
+	result := ParseAndCheck(t, "FLUSH HOSTS, STATUS")
+	s := ast.NodeToString(result.Items[0])
+	if !strings.Contains(s, "HOSTS") || !strings.Contains(s, "STATUS") {
+		t.Errorf("expected HOSTS and STATUS, got %s", s)
+	}
+}
+
+func TestReviewBatch111_FlushNoWriteToBinlog(t *testing.T) {
+	result := ParseAndCheck(t, "FLUSH NO_WRITE_TO_BINLOG TABLES")
+	s := ast.NodeToString(result.Items[0])
+	if !strings.Contains(s, ":no_write_to_binlog true") {
+		t.Errorf("expected :no_write_to_binlog true, got %s", s)
+	}
+}
+
+func TestReviewBatch111_FlushLocalTables(t *testing.T) {
+	result := ParseAndCheck(t, "FLUSH LOCAL TABLES")
+	s := ast.NodeToString(result.Items[0])
+	if !strings.Contains(s, ":no_write_to_binlog true") {
+		t.Errorf("expected :no_write_to_binlog true, got %s", s)
+	}
+}
+
+func TestReviewBatch111_FlushLogs(t *testing.T) {
+	ParseAndCheck(t, "FLUSH LOGS")
+}
+
+func TestReviewBatch111_FlushOptimizerCosts(t *testing.T) {
+	ParseAndCheck(t, "FLUSH OPTIMIZER_COSTS")
+}
+
+func TestReviewBatch111_FlushUserResources(t *testing.T) {
+	ParseAndCheck(t, "FLUSH USER_RESOURCES")
+}
+
+func TestReviewBatch111_BinlogStr(t *testing.T) {
+	ParseAndCheck(t, "BINLOG 'base64str'")
+}
+
+func TestReviewBatch111_CacheIndexBasic(t *testing.T) {
+	ParseAndCheck(t, "CACHE INDEX t1 IN hot_cache")
+}
+
+func TestReviewBatch111_KillConnection(t *testing.T) {
+	ParseAndCheck(t, "KILL CONNECTION 42")
+}
+
+func TestReviewBatch111_KillQuery(t *testing.T) {
+	ParseAndCheck(t, "KILL QUERY 42")
+}
+
+func TestReviewBatch111_DoMultiExpr(t *testing.T) {
+	ParseAndCheck(t, "DO 1 + 2, SLEEP(1)")
+}
+
+func TestReviewBatch111_ChecksumTableQuick(t *testing.T) {
+	ParseAndCheck(t, "CHECKSUM TABLE t1, t2 QUICK")
+}
+
+func TestReviewBatch111_ChecksumTableExtended(t *testing.T) {
+	ParseAndCheck(t, "CHECKSUM TABLE t1 EXTENDED")
+}
+
+func TestReviewBatch111_Shutdown(t *testing.T) {
+	ParseAndCheck(t, "SHUTDOWN")
+}

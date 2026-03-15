@@ -2721,7 +2721,7 @@
       "id": 111,
       "name": "review_maintenance_utility",
       "file": "utility.go",
-      "status": "pending",
+      "status": "done",
       "description": "BNF review: ANALYZE TABLE, CHECK TABLE, CHECKSUM TABLE, OPTIMIZE TABLE, REPAIR TABLE, FLUSH, CACHE INDEX, KILL, SHUTDOWN, BINLOG, DO against 109 lines of BNF.",
       "effort": "review",
       "bnf_files": [

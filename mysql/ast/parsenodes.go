@@ -1547,10 +1547,12 @@ func (s *DeallocateStmt) stmtNode() {}
 // AnalyzeTableStmt represents an ANALYZE TABLE statement.
 type AnalyzeTableStmt struct {
 	Loc              Loc
+	NoWriteToBinlog  bool
 	Tables           []*TableRef
 	HistogramOp      string   // "UPDATE" or "DROP"
 	HistogramColumns []string // column names
 	Buckets          int      // WITH N BUCKETS
+	UsingData        string   // USING DATA 'json_data'
 }
 
 func (s *AnalyzeTableStmt) nodeTag()  {}
@@ -1558,8 +1560,9 @@ func (s *AnalyzeTableStmt) stmtNode() {}
 
 // OptimizeTableStmt represents an OPTIMIZE TABLE statement.
 type OptimizeTableStmt struct {
-	Loc    Loc
-	Tables []*TableRef
+	Loc             Loc
+	NoWriteToBinlog bool
+	Tables          []*TableRef
 }
 
 func (s *OptimizeTableStmt) nodeTag()  {}
@@ -1577,11 +1580,12 @@ func (s *CheckTableStmt) stmtNode() {}
 
 // RepairTableStmt represents a REPAIR TABLE statement.
 type RepairTableStmt struct {
-	Loc      Loc
-	Tables   []*TableRef
-	Quick    bool
-	Extended bool
-	UseFrm   bool
+	Loc             Loc
+	NoWriteToBinlog bool
+	Tables          []*TableRef
+	Quick           bool
+	Extended        bool
+	UseFrm          bool
 }
 
 func (s *RepairTableStmt) nodeTag()  {}
@@ -1589,11 +1593,13 @@ func (s *RepairTableStmt) stmtNode() {}
 
 // FlushStmt represents a FLUSH statement.
 type FlushStmt struct {
-	Loc          Loc
-	Options      []string
-	Tables       []*TableRef // FLUSH TABLES tbl_list
-	WithReadLock bool        // WITH READ LOCK
-	ForExport    bool        // FOR EXPORT
+	Loc             Loc
+	NoWriteToBinlog bool
+	Options         []string
+	Tables          []*TableRef // FLUSH TABLES tbl_list
+	WithReadLock    bool        // WITH READ LOCK
+	ForExport       bool        // FOR EXPORT
+	RelayChannel    string      // RELAY LOGS FOR CHANNEL channel
 }
 
 func (s *FlushStmt) nodeTag()  {}
