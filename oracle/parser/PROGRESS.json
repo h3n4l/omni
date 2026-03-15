@@ -1256,7 +1256,7 @@
       "id": 106,
       "name": "review_bundle_txn_utility_dcl_drop",
       "file": "transaction.go",
-      "status": "pending",
+      "status": "done",
       "description": "Review-only batch for all well-implemented statements. Transaction (COMMIT/ROLLBACK/SAVEPOINT/SET TRANSACTION/SET ROLE/SET CONSTRAINTS), Utility (LOCK TABLE/CALL/RENAME/TRUNCATE/ANALYZE/EXPLAIN PLAN/FLASHBACK TABLE/PURGE/COMMENT), DCL (GRANT/REVOKE), Sequence/Synonym/DBLink (CREATE/ALTER), all DROP statements, ADMINISTER KEY MANAGEMENT, ASSOCIATE/DISASSOCIATE STATISTICS.",
       "bnf_files": [
         "COMMIT.bnf",

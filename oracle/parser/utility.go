@@ -6,11 +6,28 @@ import (
 
 // parseLockTableStmt parses a LOCK TABLE statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/LOCK-TABLE.html
+// BNF: oracle/parser/bnf/LOCK-TABLE.bnf
 //
-//	LOCK TABLE [schema.]table IN lock_mode MODE [NOWAIT | WAIT integer]
-//	lock_mode ::= ROW SHARE | ROW EXCLUSIVE | SHARE | SHARE UPDATE |
-//	              SHARE ROW EXCLUSIVE | EXCLUSIVE
+//	LOCK TABLE [ schema. ] { table | view } [ @dblink ]
+//	    [ partition_extension_clause ]
+//	    [, [ schema. ] { table | view } [ @dblink ]
+//	       [ partition_extension_clause ] ]...
+//	    IN lockmode MODE
+//	    [ NOWAIT | WAIT integer ] ;
+//
+//	partition_extension_clause::=
+//	    PARTITION ( partition )
+//	  | PARTITION FOR ( partition_key_value )
+//	  | SUBPARTITION ( subpartition )
+//	  | SUBPARTITION FOR ( subpartition_key_value )
+//
+//	lockmode::=
+//	    ROW SHARE
+//	  | ROW EXCLUSIVE
+//	  | SHARE UPDATE
+//	  | SHARE
+//	  | SHARE ROW EXCLUSIVE
+//	  | EXCLUSIVE
 func (p *Parser) parseLockTableStmt() nodes.StmtNode {
 	start := p.pos()
 	p.advance() // consume LOCK
@@ -69,9 +86,18 @@ func (p *Parser) parseLockTableStmt() nodes.StmtNode {
 
 // parseCallStmt parses a CALL statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/CALL.html
+// BNF: oracle/parser/bnf/CALL.bnf
 //
-//	CALL [schema.]routine_name ( [args] ) [INTO :bind_variable]
+//	CALL
+//	    { routine_clause | object_access_expression }
+//	    [ INTO :host_variable [ [ INDICATOR ] :indicator_variable ] ] ;
+//
+//	routine_clause:
+//	    [ schema. ] [ { type_name | package_name } . ] routine_name [ @dblink_name ]
+//	    ( [ argument [, argument ]... ] )
+//
+//	object_access_expression:
+//	    ( expr ) . method_name ( [ argument [, argument ]... ] )
 func (p *Parser) parseCallStmt() nodes.StmtNode {
 	start := p.pos()
 	p.advance() // consume CALL
@@ -113,9 +139,9 @@ func (p *Parser) parseCallStmt() nodes.StmtNode {
 
 // parseRenameStmt parses a RENAME statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/RENAME.html
+// BNF: oracle/parser/bnf/RENAME.bnf
 //
-//	RENAME old_name TO new_name
+//	RENAME old_name TO new_name ;
 func (p *Parser) parseRenameStmt() nodes.StmtNode {
 	start := p.pos()
 	p.advance() // consume RENAME
@@ -138,12 +164,12 @@ func (p *Parser) parseRenameStmt() nodes.StmtNode {
 
 // parseTruncateStmt parses a TRUNCATE TABLE statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/TRUNCATE-TABLE.html
+// BNF: oracle/parser/bnf/TRUNCATE-TABLE.bnf
 //
-//	TRUNCATE TABLE [schema.]table
-//	    [{ PRESERVE | PURGE } MATERIALIZED VIEW LOG]
-//	    [{ DROP | REUSE } STORAGE]
-//	    [CASCADE]
+//	TRUNCATE TABLE [ schema. ] table_name
+//	    [ { PRESERVE | PURGE } MATERIALIZED VIEW LOG ]
+//	    [ { DROP STORAGE | DROP ALL STORAGE | REUSE STORAGE } ]
+//	    [ CASCADE ] ;
 func (p *Parser) parseTruncateStmt() nodes.StmtNode {
 	start := p.pos()
 	p.advance() // consume TRUNCATE
@@ -210,10 +236,30 @@ func (p *Parser) parseTruncateStmt() nodes.StmtNode {
 
 // parseAnalyzeStmt parses an ANALYZE statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/ANALYZE.html
+// BNF: oracle/parser/bnf/ANALYZE.bnf
 //
-//	ANALYZE { TABLE | INDEX } [schema.]name
-//	    { COMPUTE STATISTICS | ESTIMATE STATISTICS | DELETE STATISTICS | VALIDATE STRUCTURE }
+//	ANALYZE
+//	    { TABLE [ schema. ] table [ partition_extension_clause ]
+//	    | INDEX [ schema. ] index [ partition_extension_clause ]
+//	    | CLUSTER [ schema. ] cluster
+//	    }
+//	    { validation_clauses
+//	    | DELETE [ SYSTEM ] STATISTICS
+//	    } ;
+//
+//	partition_extension_clause:
+//	    { PARTITION ( partition_name )
+//	    | SUBPARTITION ( subpartition_name )
+//	    }
+//
+//	validation_clauses:
+//	    { VALIDATE REF UPDATE [ SET DANGLING TO NULL ]
+//	    | VALIDATE STRUCTURE [ CASCADE [ FAST ] ] [ ONLINE | OFFLINE ] [ into_clause ]
+//	    | LIST CHAINED ROWS [ into_clause ]
+//	    }
+//
+//	into_clause:
+//	    INTO [ schema. ] table
 func (p *Parser) parseAnalyzeStmt() nodes.StmtNode {
 	start := p.pos()
 	p.advance() // consume ANALYZE
@@ -271,12 +317,12 @@ func (p *Parser) parseAnalyzeStmt() nodes.StmtNode {
 
 // parseExplainPlanStmt parses an EXPLAIN PLAN statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/EXPLAIN-PLAN.html
+// BNF: oracle/parser/bnf/EXPLAIN-PLAN.bnf
 //
 //	EXPLAIN PLAN
-//	    [SET STATEMENT_ID = 'id']
-//	    [INTO [schema.]table[@dblink]]
-//	    FOR statement
+//	    [ SET STATEMENT_ID = string ]
+//	    [ INTO [ schema. ] table [ @dblink ] ]
+//	    FOR statement ;
 func (p *Parser) parseExplainPlanStmt() nodes.StmtNode {
 	start := p.pos()
 	p.advance() // consume EXPLAIN
@@ -324,10 +370,15 @@ func (p *Parser) parseExplainPlanStmt() nodes.StmtNode {
 
 // parseFlashbackTableStmt parses a FLASHBACK TABLE statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/FLASHBACK-TABLE.html
+// BNF: oracle/parser/bnf/FLASHBACK-TABLE.bnf
 //
-//	FLASHBACK TABLE [schema.]table TO
-//	    { SCN expr | TIMESTAMP expr | BEFORE DROP [RENAME TO name] }
+//	FLASHBACK TABLE [ schema. ] table [, [ schema. ] table ]...
+//	    { TO SCN expr
+//	    | TO TIMESTAMP expr
+//	    | TO RESTORE POINT restore_point_name
+//	    | TO BEFORE DROP [ RENAME TO table ]
+//	    }
+//	    [ { ENABLE | DISABLE } TRIGGERS ] ;
 func (p *Parser) parseFlashbackTableStmt() nodes.StmtNode {
 	start := p.pos()
 	p.advance() // consume FLASHBACK
@@ -456,9 +507,15 @@ func (p *Parser) parseFlashbackDatabaseStmt() nodes.StmtNode {
 
 // parsePurgeStmt parses a PURGE statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/PURGE.html
+// BNF: oracle/parser/bnf/PURGE.bnf
 //
-//	PURGE { TABLE name | INDEX name | RECYCLEBIN | DBA_RECYCLEBIN | TABLESPACE name }
+//	PURGE { TABLE [ schema. ] table
+//	      | INDEX [ schema. ] index
+//	      | TABLESPACE tablespace [ USER user ]
+//	      | TABLESPACE SET tablespace_set [ USER user ]
+//	      | RECYCLEBIN
+//	      | DBA_RECYCLEBIN
+//	      } ;
 func (p *Parser) parsePurgeStmt() nodes.StmtNode {
 	start := p.pos()
 	p.advance() // consume PURGE
@@ -964,10 +1021,39 @@ func (p *Parser) parseIdentListForAudit() []string {
 
 // parseAssociateStatisticsStmt parses an ASSOCIATE STATISTICS statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/ASSOCIATE-STATISTICS.html
+// BNF: oracle/parser/bnf/ASSOCIATE-STATISTICS.bnf
 //
-//	ASSOCIATE STATISTICS WITH { COLUMNS | FUNCTIONS | PACKAGES | TYPES | INDEXES }
-//	    object [,...] USING [schema.]statistics_type
+//	ASSOCIATE STATISTICS
+//	    WITH { column_association | function_association }
+//	    using_statistics_type
+//	    [ default_cost_clause ]
+//	    [ default_selectivity_clause ]
+//	    [ storage_table_clause ] ;
+//
+//	column_association:
+//	    COLUMNS [ schema. ] table . column [, [ schema. ] table . column ]...
+//
+//	function_association:
+//	    { FUNCTIONS [ schema. ] function [, [ schema. ] function ]...
+//	    | PACKAGES [ schema. ] package [, [ schema. ] package ]...
+//	    | TYPES [ schema. ] type [, [ schema. ] type ]...
+//	    | DOMAIN INDEXES [ schema. ] index [, [ schema. ] index ]...
+//	    | INDEXTYPES [ schema. ] indextype [, [ schema. ] indextype ]...
+//	    }
+//
+//	using_statistics_type:
+//	    USING { [ schema. ] statistics_type | NULL }
+//
+//	default_cost_clause:
+//	    DEFAULT COST ( cpu_cost , io_cost , network_cost )
+//
+//	default_selectivity_clause:
+//	    DEFAULT SELECTIVITY default_selectivity
+//
+//	storage_table_clause:
+//	    WITH { SYSTEM MANAGED STORAGE TABLES
+//	         | USER MANAGED STORAGE TABLES
+//	         }
 func (p *Parser) parseAssociateStatisticsStmt() nodes.StmtNode {
 	start := p.pos()
 	p.advance() // consume ASSOCIATE
@@ -1018,10 +1104,12 @@ func (p *Parser) parseAssociateStatisticsStmt() nodes.StmtNode {
 
 // parseDisassociateStatisticsStmt parses a DISASSOCIATE STATISTICS statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/DISASSOCIATE-STATISTICS.html
+// BNF: oracle/parser/bnf/DISASSOCIATE-STATISTICS.bnf
 //
-//	DISASSOCIATE STATISTICS FROM { COLUMNS | FUNCTIONS | PACKAGES | TYPES | INDEXES }
-//	    object [,...] [FORCE]
+//	DISASSOCIATE STATISTICS
+//	    FROM { COLUMNS | FUNCTIONS | PACKAGES | TYPES | INDEXES | INDEXTYPES }
+//	    [ schema. ] object_name [, [ schema. ] object_name ]...
+//	    [ FORCE ] ;
 func (p *Parser) parseDisassociateStatisticsStmt() nodes.StmtNode {
 	start := p.pos()
 	p.advance() // consume DISASSOCIATE

@@ -6,12 +6,20 @@ import (
 
 // parseCommentStmt parses a COMMENT ON statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/COMMENT.html
+// BNF: oracle/parser/bnf/COMMENT.bnf
 //
-//	COMMENT ON { TABLE schema.table | COLUMN schema.table.column |
-//	             INDEX schema.index | MATERIALIZED VIEW schema.mv |
-//	             ... }
-//	IS 'comment_text'
+//	COMMENT ON
+//	    { AUDIT POLICY policy_name
+//	    | COLUMN [ schema. ] { table | view | materialized_view } . column
+//	    | EDITION edition_name
+//	    | INDEXTYPE [ schema. ] indextype
+//	    | MATERIALIZED VIEW [ schema. ] materialized_view
+//	    | MINING MODEL [ schema. ] mining_model
+//	    | OPERATOR [ schema. ] operator
+//	    | PROPERTY GRAPH [ schema. ] property_graph
+//	    | TABLE [ schema. ] { table | view }
+//	    }
+//	    IS string ;
 func (p *Parser) parseCommentStmt() nodes.StmtNode {
 	start := p.pos()
 	p.advance() // consume COMMENT

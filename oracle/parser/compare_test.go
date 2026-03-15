@@ -8622,3 +8622,277 @@ func TestBatch105_SmallObjectsBundle(t *testing.T) {
 		}
 	})
 }
+
+// TestBatch106_ReviewBundleTxnUtilityDclDrop is the comprehensive review test for batch 106.
+// It covers all BNF branches for Transaction, Utility, DCL, Sequence/Synonym/DBLink, Drop,
+// Administer Key Management, and Associate/Disassociate Statistics statements.
+func TestBatch106_ReviewBundleTxnUtilityDclDrop(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		// === COMMIT (BNF: COMMIT.bnf) ===
+		{"commit_basic", "COMMIT"},
+		{"commit_work", "COMMIT WORK"},
+		{"commit_comment", "COMMIT COMMENT 'batch job 123'"},
+		{"commit_work_comment", "COMMIT WORK COMMENT 'nightly load'"},
+		{"commit_force", "COMMIT FORCE 'txn123'"},
+		// Note: WRITE [WAIT|NOWAIT] [IMMEDIATE|BATCH] parsed via generic options
+
+		// === ROLLBACK (BNF: ROLLBACK.bnf) ===
+		{"rollback_basic", "ROLLBACK"},
+		{"rollback_work", "ROLLBACK WORK"},
+		{"rollback_to_savepoint", "ROLLBACK TO SAVEPOINT sp1"},
+		{"rollback_to_name", "ROLLBACK TO sp1"},
+		{"rollback_force", "ROLLBACK FORCE 'txn456'"},
+		{"rollback_work_to", "ROLLBACK WORK TO SAVEPOINT sp2"},
+
+		// === SAVEPOINT (BNF: SAVEPOINT.bnf) ===
+		{"savepoint_basic", "SAVEPOINT my_savepoint"},
+		{"savepoint_quoted", `SAVEPOINT "MySavePoint"`},
+
+		// === SET TRANSACTION (BNF: SET-TRANSACTION.bnf) ===
+		{"set_txn_read_only", "SET TRANSACTION READ ONLY"},
+		{"set_txn_read_write", "SET TRANSACTION READ WRITE"},
+		{"set_txn_isolation_serializable", "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE"},
+		{"set_txn_isolation_read_committed", "SET TRANSACTION ISOLATION LEVEL READ COMMITTED"},
+		{"set_txn_name", "SET TRANSACTION NAME 'my_txn'"},
+		{"set_txn_read_only_name", "SET TRANSACTION READ ONLY NAME 'readonly_txn'"},
+
+		// === SET ROLE (BNF: SET-ROLE.bnf) ===
+		{"set_role_single", "SET ROLE dba_role"},
+		{"set_role_multi", "SET ROLE role1, role2, role3"},
+		{"set_role_identified", "SET ROLE admin_role IDENTIFIED BY secret_pass"},
+		{"set_role_all", "SET ROLE ALL"},
+		{"set_role_all_except", "SET ROLE ALL EXCEPT restricted, guest_role"},
+		{"set_role_none", "SET ROLE NONE"},
+
+		// === SET CONSTRAINTS (no .bnf, from Oracle docs) ===
+		{"set_constraint_all_immediate", "SET CONSTRAINTS ALL IMMEDIATE"},
+		{"set_constraint_all_deferred", "SET CONSTRAINTS ALL DEFERRED"},
+		{"set_constraint_named", "SET CONSTRAINT emp_fk IMMEDIATE"},
+		{"set_constraints_multi", "SET CONSTRAINTS emp_fk, dept_fk DEFERRED"},
+
+		// === LOCK TABLE (BNF: LOCK-TABLE.bnf) ===
+		{"lock_row_share", "LOCK TABLE employees IN ROW SHARE MODE"},
+		{"lock_row_exclusive", "LOCK TABLE t IN ROW EXCLUSIVE MODE"},
+		{"lock_share", "LOCK TABLE t IN SHARE MODE"},
+		{"lock_share_update", "LOCK TABLE t IN SHARE UPDATE MODE"},
+		{"lock_share_row_excl", "LOCK TABLE t IN SHARE ROW EXCLUSIVE MODE"},
+		{"lock_exclusive", "LOCK TABLE t IN EXCLUSIVE MODE"},
+		{"lock_nowait", "LOCK TABLE hr.employees IN EXCLUSIVE MODE NOWAIT"},
+		{"lock_wait", "LOCK TABLE hr.employees IN SHARE MODE WAIT 10"},
+
+		// === CALL (BNF: CALL.bnf) ===
+		{"call_no_args", "CALL my_proc()"},
+		{"call_with_args", "CALL my_proc(1, 'hello', 42.5)"},
+		{"call_schema_qualified", "CALL hr.my_func(42)"},
+		{"call_pkg_proc", "CALL dbms_output.put_line('test')"},
+		{"call_into", "CALL hr.my_func(42) INTO :result"},
+
+		// === RENAME (BNF: RENAME.bnf) ===
+		{"rename_table", "RENAME old_table TO new_table"},
+		{"rename_simple", "RENAME emp TO employees"},
+
+		// === TRUNCATE TABLE (BNF: TRUNCATE-TABLE.bnf) ===
+		{"truncate_basic", "TRUNCATE TABLE hr.employees"},
+		{"truncate_drop_storage", "TRUNCATE TABLE hr.employees DROP STORAGE"},
+		{"truncate_reuse_storage", "TRUNCATE TABLE hr.employees REUSE STORAGE"},
+		{"truncate_cascade", "TRUNCATE TABLE hr.employees CASCADE"},
+		{"truncate_purge_mvlog", "TRUNCATE TABLE hr.employees PURGE MATERIALIZED VIEW LOG"},
+		{"truncate_preserve_mvlog", "TRUNCATE TABLE hr.employees PRESERVE MATERIALIZED VIEW LOG"},
+
+		// === ANALYZE (BNF: ANALYZE.bnf) ===
+		{"analyze_table_validate", "ANALYZE TABLE hr.employees VALIDATE STRUCTURE"},
+		{"analyze_index_validate", "ANALYZE INDEX hr.emp_idx VALIDATE STRUCTURE"},
+		{"analyze_table_delete_stats", "ANALYZE TABLE hr.employees DELETE STATISTICS"},
+
+		// === EXPLAIN PLAN (BNF: EXPLAIN-PLAN.bnf) ===
+		{"explain_plan_basic", "EXPLAIN PLAN FOR SELECT * FROM employees"},
+		{"explain_plan_set_id", "EXPLAIN PLAN SET STATEMENT_ID = 'q1' FOR SELECT 1 FROM dual"},
+		{"explain_plan_into", "EXPLAIN PLAN INTO plan_table FOR SELECT * FROM hr.employees"},
+		{"explain_plan_full", "EXPLAIN PLAN SET STATEMENT_ID = 'test' INTO my_plan FOR SELECT 1 FROM dual"},
+
+		// === FLASHBACK TABLE (BNF: FLASHBACK-TABLE.bnf) ===
+		{"flashback_scn", "FLASHBACK TABLE hr.employees TO SCN 12345"},
+		{"flashback_timestamp", "FLASHBACK TABLE hr.employees TO TIMESTAMP SYSTIMESTAMP - 1"},
+		{"flashback_before_drop", "FLASHBACK TABLE hr.employees TO BEFORE DROP"},
+		{"flashback_before_drop_rename", "FLASHBACK TABLE hr.employees TO BEFORE DROP RENAME TO emp_restored"},
+
+		// === PURGE (BNF: PURGE.bnf) ===
+		{"purge_table", "PURGE TABLE hr.employees"},
+		{"purge_index", "PURGE INDEX hr.emp_idx"},
+		{"purge_tablespace", "PURGE TABLESPACE users"},
+		{"purge_recyclebin", "PURGE RECYCLEBIN"},
+		{"purge_dba_recyclebin", "PURGE DBA_RECYCLEBIN"},
+
+		// === COMMENT (BNF: COMMENT.bnf) ===
+		{"comment_table", "COMMENT ON TABLE hr.employees IS 'Employee master table'"},
+		{"comment_column", "COMMENT ON COLUMN hr.employees.salary IS 'Monthly salary'"},
+		{"comment_index", "COMMENT ON INDEX hr.emp_idx IS 'Primary index on emp table'"},
+		{"comment_mview", "COMMENT ON MATERIALIZED VIEW hr.emp_mv IS 'Employee materialized view'"},
+
+		// === GRANT (BNF: GRANT.bnf) ===
+		{"grant_sys_priv", "GRANT CREATE SESSION TO scott"},
+		{"grant_multi_sys_priv", "GRANT CREATE SESSION, CREATE TABLE TO scott"},
+		{"grant_all_privs", "GRANT ALL PRIVILEGES TO admin_user"},
+		{"grant_role", "GRANT dba TO scott"},
+		{"grant_multi_role", "GRANT dba, resource TO scott, hr_user"},
+		{"grant_obj_select", "GRANT SELECT ON hr.employees TO scott"},
+		{"grant_obj_multi", "GRANT SELECT, INSERT, UPDATE ON hr.employees TO scott"},
+		{"grant_all_on", "GRANT ALL ON hr.employees TO admin_user"},
+		{"grant_with_grant", "GRANT SELECT ON hr.employees TO scott WITH GRANT OPTION"},
+		{"grant_with_admin", "GRANT dba TO scott WITH ADMIN OPTION"},
+		{"grant_to_public", "GRANT SELECT ON hr.employees TO PUBLIC"},
+
+		// === REVOKE (BNF: REVOKE.bnf) ===
+		{"revoke_sys_priv", "REVOKE CREATE SESSION FROM scott"},
+		{"revoke_multi", "REVOKE SELECT, INSERT ON hr.employees FROM scott"},
+		{"revoke_all", "REVOKE ALL PRIVILEGES FROM scott"},
+		{"revoke_role", "REVOKE dba FROM scott"},
+		{"revoke_from_multi", "REVOKE SELECT ON hr.employees FROM scott, hr_user"},
+
+		// === CREATE SEQUENCE (BNF: CREATE-SEQUENCE.bnf) ===
+		{"create_seq_basic", "CREATE SEQUENCE hr.emp_seq"},
+		{"create_seq_start_incr", "CREATE SEQUENCE hr.emp_seq START WITH 1 INCREMENT BY 1"},
+		{"create_seq_minmax", "CREATE SEQUENCE hr.emp_seq MINVALUE 1 MAXVALUE 999999"},
+		{"create_seq_cycle_cache", "CREATE SEQUENCE hr.emp_seq CYCLE CACHE 20"},
+		{"create_seq_nocache_noorder", "CREATE SEQUENCE hr.emp_seq NOCACHE NOORDER"},
+		{"create_seq_nominmax", "CREATE SEQUENCE hr.emp_seq NOMINVALUE NOMAXVALUE"},
+		{"create_seq_nocycle", "CREATE SEQUENCE hr.emp_seq NOCYCLE"},
+
+		// === ALTER SEQUENCE (BNF: ALTER-SEQUENCE.bnf) ===
+		{"alter_seq_incr", "ALTER SEQUENCE hr.emp_seq INCREMENT BY 5"},
+		{"alter_seq_maxvalue", "ALTER SEQUENCE hr.emp_seq MAXVALUE 99999"},
+		{"alter_seq_cache", "ALTER SEQUENCE hr.emp_seq CACHE 50"},
+		{"alter_seq_nocache", "ALTER SEQUENCE hr.emp_seq NOCACHE"},
+		{"alter_seq_cycle", "ALTER SEQUENCE hr.emp_seq CYCLE"},
+
+		// === CREATE SYNONYM (BNF: CREATE-SYNONYM.bnf) ===
+		{"create_syn_basic", "CREATE SYNONYM emp FOR hr.employees"},
+		{"create_syn_public", "CREATE PUBLIC SYNONYM emp FOR hr.employees"},
+		{"create_syn_replace", "CREATE OR REPLACE SYNONYM emp FOR hr.employees"},
+		{"create_syn_schema", "CREATE SYNONYM myschema.emp FOR hr.employees"},
+
+		// === CREATE DATABASE LINK (BNF: CREATE-DATABASE-LINK.bnf) ===
+		{"create_dblink", "CREATE DATABASE LINK remote_db CONNECT TO admin IDENTIFIED BY pass USING 'remote_srv'"},
+		{"create_dblink_public", "CREATE PUBLIC DATABASE LINK remote_db CONNECT TO admin IDENTIFIED BY pass USING 'remote_srv'"},
+
+		// === ALTER DATABASE LINK (BNF: ALTER-DATABASE-LINK.bnf) ===
+		{"alter_dblink", "ALTER DATABASE LINK remote_db CONNECT TO admin IDENTIFIED BY newpass"},
+		{"alter_dblink_public", "ALTER PUBLIC DATABASE LINK remote_db CONNECT TO admin IDENTIFIED BY newpass"},
+
+		// === DROP TABLE (BNF: DROP-TABLE.bnf) ===
+		{"drop_table_basic", "DROP TABLE hr.employees"},
+		{"drop_table_if_exists", "DROP TABLE IF EXISTS hr.employees"},
+		{"drop_table_cascade", "DROP TABLE hr.employees CASCADE CONSTRAINTS"},
+		{"drop_table_purge", "DROP TABLE hr.employees PURGE"},
+		{"drop_table_cascade_purge", "DROP TABLE IF EXISTS hr.employees CASCADE CONSTRAINTS PURGE"},
+
+		// === DROP VIEW (BNF: DROP-VIEW.bnf) ===
+		{"drop_view_basic", "DROP VIEW hr.emp_view"},
+		{"drop_view_if_exists", "DROP VIEW IF EXISTS hr.emp_view"},
+		{"drop_view_cascade", "DROP VIEW hr.emp_view CASCADE CONSTRAINTS"},
+
+		// === DROP INDEX (BNF: DROP-INDEX.bnf) ===
+		{"drop_index_basic", "DROP INDEX hr.emp_idx"},
+		{"drop_index_if_exists", "DROP INDEX IF EXISTS hr.emp_idx"},
+		{"drop_index_online", "DROP INDEX hr.emp_idx ONLINE"},
+		{"drop_index_force", "DROP INDEX hr.emp_idx FORCE"},
+
+		// === DROP SEQUENCE (BNF: DROP-SEQUENCE.bnf) ===
+		{"drop_seq", "DROP SEQUENCE hr.emp_seq"},
+		{"drop_seq_if_exists", "DROP SEQUENCE IF EXISTS hr.emp_seq"},
+
+		// === DROP SYNONYM (BNF: DROP-SYNONYM.bnf) ===
+		{"drop_synonym", "DROP SYNONYM emp"},
+		{"drop_synonym_public", "DROP PUBLIC SYNONYM emp"},
+		{"drop_synonym_force", "DROP SYNONYM emp FORCE"},
+
+		// === DROP DATABASE LINK (BNF: DROP-DATABASE-LINK.bnf) ===
+		{"drop_dblink", "DROP DATABASE LINK remote_db"},
+		{"drop_dblink_public", "DROP PUBLIC DATABASE LINK remote_db"},
+
+		// === DROP FUNCTION (BNF: DROP-FUNCTION.bnf) ===
+		{"drop_function", "DROP FUNCTION hr.get_salary"},
+		{"drop_function_if_exists", "DROP FUNCTION IF EXISTS hr.get_salary"},
+
+		// === DROP PROCEDURE (BNF: DROP-PROCEDURE.bnf) ===
+		{"drop_procedure", "DROP PROCEDURE hr.update_salary"},
+		{"drop_procedure_if_exists", "DROP PROCEDURE IF EXISTS hr.update_salary"},
+
+		// === DROP PACKAGE (BNF: DROP-PACKAGE.bnf) ===
+		{"drop_package", "DROP PACKAGE hr.emp_pkg"},
+		{"drop_package_body", "DROP PACKAGE BODY hr.emp_pkg"},
+		{"drop_package_if_exists", "DROP PACKAGE IF EXISTS hr.emp_pkg"},
+
+		// === DROP TRIGGER (BNF: DROP-TRIGGER.bnf) ===
+		{"drop_trigger", "DROP TRIGGER hr.emp_trg"},
+		{"drop_trigger_if_exists", "DROP TRIGGER IF EXISTS hr.emp_trg"},
+
+		// === DROP TYPE (BNF: DROP-TYPE.bnf) ===
+		{"drop_type", "DROP TYPE hr.emp_type"},
+		{"drop_type_force", "DROP TYPE hr.emp_type FORCE"},
+		{"drop_type_validate", "DROP TYPE hr.emp_type VALIDATE"},
+		{"drop_type_if_exists", "DROP TYPE IF EXISTS hr.emp_type"},
+
+		// === AUDIT traditional (BNF: AUDIT-Traditional-Auditing.bnf) ===
+		{"audit_trad_select", "AUDIT SELECT ON hr.employees"},
+		{"audit_trad_multi", "AUDIT INSERT, UPDATE, DELETE ON hr.employees BY ACCESS"},
+		{"audit_trad_whenever", "AUDIT SELECT ON hr.employees WHENEVER SUCCESSFUL"},
+		{"audit_trad_not_succ", "AUDIT SELECT ON hr.employees WHENEVER NOT SUCCESSFUL"},
+		{"audit_trad_all", "AUDIT ALL"},
+
+		// === AUDIT unified (BNF: AUDIT-Unified-Auditing.bnf) ===
+		{"audit_unified_policy", "AUDIT POLICY my_policy"},
+		{"audit_unified_by_user", "AUDIT POLICY my_policy BY scott, hr_user"},
+		{"audit_unified_except", "AUDIT POLICY my_policy EXCEPT guest_user"},
+		{"audit_unified_context", "AUDIT CONTEXT NAMESPACE my_ns ATTRIBUTES attr1, attr2 BY scott"},
+
+		// === NOAUDIT traditional (BNF: NOAUDIT-Traditional-Auditing.bnf) ===
+		{"noaudit_trad_select", "NOAUDIT SELECT ON hr.employees"},
+		{"noaudit_trad_all", "NOAUDIT ALL"},
+		{"noaudit_trad_whenever", "NOAUDIT INSERT ON hr.employees WHENEVER SUCCESSFUL"},
+
+		// === NOAUDIT unified (BNF: NOAUDIT-Unified-Auditing.bnf) ===
+		{"noaudit_unified_policy", "NOAUDIT POLICY my_policy"},
+		{"noaudit_unified_by", "NOAUDIT POLICY my_policy BY scott"},
+
+		// === ADMINISTER KEY MANAGEMENT (BNF: ADMINISTER-KEY-MANAGEMENT.bnf) ===
+		{"akm_create_keystore", "ADMINISTER KEY MANAGEMENT CREATE KEYSTORE '/u01/keystore' IDENTIFIED BY password1"},
+		{"akm_auto_login", "ADMINISTER KEY MANAGEMENT CREATE AUTO_LOGIN KEYSTORE FROM KEYSTORE '/u01/keystore' IDENTIFIED BY password1"},
+		{"akm_open", "ADMINISTER KEY MANAGEMENT SET KEYSTORE OPEN IDENTIFIED BY password1"},
+		{"akm_close", "ADMINISTER KEY MANAGEMENT SET KEYSTORE CLOSE IDENTIFIED BY password1"},
+		{"akm_set_key", "ADMINISTER KEY MANAGEMENT SET KEY IDENTIFIED BY password1 WITH BACKUP"},
+		{"akm_create_key", "ADMINISTER KEY MANAGEMENT CREATE KEY IDENTIFIED BY password1 WITH BACKUP"},
+		{"akm_use_key", "ADMINISTER KEY MANAGEMENT USE KEY 'key_id_123' IDENTIFIED BY password1 WITH BACKUP"},
+		{"akm_backup", "ADMINISTER KEY MANAGEMENT BACKUP KEYSTORE IDENTIFIED BY password1 TO '/backup/'"},
+		{"akm_alter_pass", "ADMINISTER KEY MANAGEMENT ALTER KEYSTORE PASSWORD IDENTIFIED BY old_pass SET new_pass WITH BACKUP"},
+		{"akm_export", "ADMINISTER KEY MANAGEMENT EXPORT KEYS WITH SECRET 'my_secret' TO '/tmp/export.p12' IDENTIFIED BY password1"},
+		{"akm_import", "ADMINISTER KEY MANAGEMENT IMPORT KEYS WITH SECRET 'my_secret' FROM '/tmp/export.p12' IDENTIFIED BY password1 WITH BACKUP"},
+		{"akm_merge", "ADMINISTER KEY MANAGEMENT MERGE KEYSTORE '/u01/ks1' AND '/u01/ks2' IDENTIFIED BY password1 INTO NEW KEYSTORE '/u01/merged' IDENTIFIED BY password2"},
+		{"akm_add_secret", "ADMINISTER KEY MANAGEMENT ADD SECRET 'secret1' FOR CLIENT 'client1' IDENTIFIED BY password1"},
+		{"akm_set_tag", "ADMINISTER KEY MANAGEMENT SET TAG 'mytag' FOR 'key123' IDENTIFIED BY password1 WITH BACKUP"},
+
+		// === ASSOCIATE STATISTICS (BNF: ASSOCIATE-STATISTICS.bnf) ===
+		{"assoc_stat_functions", "ASSOCIATE STATISTICS WITH FUNCTIONS my_func USING my_stats_type"},
+		{"assoc_stat_columns", "ASSOCIATE STATISTICS WITH COLUMNS employees.salary USING my_stats"},
+		{"assoc_stat_packages", "ASSOCIATE STATISTICS WITH PACKAGES my_pkg USING my_stats_type"},
+		{"assoc_stat_types", "ASSOCIATE STATISTICS WITH TYPES my_type USING my_stats_type"},
+		{"assoc_stat_null", "ASSOCIATE STATISTICS WITH FUNCTIONS my_func USING NULL"},
+
+		// === DISASSOCIATE STATISTICS (BNF: DISASSOCIATE-STATISTICS.bnf) ===
+		{"disassoc_stat_functions", "DISASSOCIATE STATISTICS FROM FUNCTIONS my_func"},
+		{"disassoc_stat_columns", "DISASSOCIATE STATISTICS FROM COLUMNS employees.salary FORCE"},
+		{"disassoc_stat_packages", "DISASSOCIATE STATISTICS FROM PACKAGES my_pkg"},
+		{"disassoc_stat_types", "DISASSOCIATE STATISTICS FROM TYPES my_type FORCE"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() < 1 {
+				t.Fatalf("expected at least 1 statement, got %d", result.Len())
+			}
+		})
+	}
+}

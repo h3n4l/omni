@@ -6,13 +6,23 @@ import (
 
 // parseDropStmt parses a DROP statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/DROP-TABLE.html
+// BNF: oracle/parser/bnf/DROP-TABLE.bnf, DROP-VIEW.bnf, DROP-INDEX.bnf,
+//      DROP-SEQUENCE.bnf, DROP-SYNONYM.bnf, DROP-DATABASE-LINK.bnf,
+//      DROP-FUNCTION.bnf, DROP-PROCEDURE.bnf, DROP-PACKAGE.bnf,
+//      DROP-TRIGGER.bnf, DROP-TYPE.bnf
 //
-//	DROP { TABLE | INDEX | VIEW | SEQUENCE | SYNONYM | PACKAGE [BODY] |
-//	       PROCEDURE | FUNCTION | TRIGGER | TYPE [BODY] |
-//	       MATERIALIZED VIEW | DATABASE LINK }
-//	     [IF EXISTS] name
-//	     [CASCADE CONSTRAINTS | PURGE]
+//	DROP TABLE [ IF EXISTS ] [ schema. ] table [ CASCADE CONSTRAINTS ] [ PURGE ] ;
+//	DROP VIEW [ IF EXISTS ] [ schema. ] view [ CASCADE CONSTRAINTS ] ;
+//	DROP INDEX [ IF EXISTS ] [ schema. ] index_name [ ONLINE ] [ FORCE ]
+//	    [ { DEFERRED | IMMEDIATE } INVALIDATION ] ;
+//	DROP SEQUENCE [ IF EXISTS ] [ schema. ] sequence_name ;
+//	DROP [ PUBLIC ] SYNONYM [ IF EXISTS ] [ schema. ] synonym [ FORCE ] ;
+//	DROP [ PUBLIC ] DATABASE LINK [ IF EXISTS ] dblink ;
+//	DROP FUNCTION [ IF EXISTS ] [ schema. ] function_name ;
+//	DROP PROCEDURE [ IF EXISTS ] [ schema. ] procedure ;
+//	DROP PACKAGE [ BODY ] [ IF EXISTS ] [ schema. ] package ;
+//	DROP TRIGGER [ IF EXISTS ] [ schema. ] trigger ;
+//	DROP TYPE [ IF EXISTS ] [ schema. ] type_name [ FORCE | VALIDATE ] ;
 func (p *Parser) parseDropStmt() nodes.StmtNode {
 	start := p.pos()
 	p.advance() // consume DROP

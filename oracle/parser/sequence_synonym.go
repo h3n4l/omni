@@ -7,16 +7,22 @@ import (
 // parseCreateSequenceStmt parses a CREATE SEQUENCE statement.
 // The CREATE keyword has already been consumed. The current token is SEQUENCE.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/CREATE-SEQUENCE.html
+// BNF: oracle/parser/bnf/CREATE-SEQUENCE.bnf
 //
-//	CREATE SEQUENCE [ schema. ] sequence_name
-//	    [ INCREMENT BY n ]
-//	    [ START WITH n ]
-//	    [ MAXVALUE n | NOMAXVALUE ]
-//	    [ MINVALUE n | NOMINVALUE ]
-//	    [ CYCLE | NOCYCLE ]
-//	    [ CACHE n | NOCACHE ]
-//	    [ ORDER | NOORDER ]
+//	CREATE SEQUENCE [ schema. ] sequence
+//	    [ IF NOT EXISTS ]
+//	    [ SHARING = { METADATA | DATA | NONE } ]
+//	    [ INCREMENT BY integer ]
+//	    [ START WITH integer ]
+//	    [ { MAXVALUE integer | NOMAXVALUE } ]
+//	    [ { MINVALUE integer | NOMINVALUE } ]
+//	    [ { CYCLE | NOCYCLE } ]
+//	    [ { CACHE integer | NOCACHE } ]
+//	    [ { ORDER | NOORDER } ]
+//	    [ { KEEP | NOKEEP } ]
+//	    [ { SCALE { EXTEND | NOEXTEND } | NOSCALE } ]
+//	    [ { SESSION | GLOBAL } ]
+//	    [ SHARD ] ;
 func (p *Parser) parseCreateSequenceStmt(start int) *nodes.CreateSequenceStmt {
 	stmt := &nodes.CreateSequenceStmt{
 		Loc: nodes.Loc{Start: start},
@@ -93,10 +99,13 @@ func (p *Parser) parseSequenceOptions(stmt *nodes.CreateSequenceStmt) {
 // The CREATE keyword has already been consumed. The caller has already parsed
 // OR REPLACE and PUBLIC if present and passes them in.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/CREATE-SYNONYM.html
+// BNF: oracle/parser/bnf/CREATE-SYNONYM.bnf
 //
-//	CREATE [ OR REPLACE ] [ PUBLIC ] SYNONYM [ schema. ] synonym_name
-//	    FOR [ schema. ] object_name [ @dblink ]
+//	CREATE [ OR REPLACE | IF NOT EXISTS ]
+//	    [ EDITIONABLE | NONEDITIONABLE ]
+//	    [ PUBLIC ] SYNONYM [ schema. ] synonym
+//	    [ SHARING = { METADATA | NONE } ]
+//	    FOR [ schema. ] object [ @ dblink ] ;
 func (p *Parser) parseCreateSynonymStmt(start int, orReplace, public bool) *nodes.CreateSynonymStmt {
 	stmt := &nodes.CreateSynonymStmt{
 		OrReplace: orReplace,
@@ -126,11 +135,20 @@ func (p *Parser) parseCreateSynonymStmt(start int, orReplace, public bool) *node
 // The CREATE keyword has already been consumed. The caller has already parsed
 // PUBLIC if present and passes it in.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/CREATE-DATABASE-LINK.html
+// BNF: oracle/parser/bnf/CREATE-DATABASE-LINK.bnf
 //
-//	CREATE [ PUBLIC ] DATABASE LINK dblink_name
-//	    CONNECT TO user IDENTIFIED BY password
-//	    USING connect_string
+//	CREATE [ SHARED ] [ PUBLIC ] DATABASE LINK [ IF NOT EXISTS ] dblink
+//	    [ CONNECT TO
+//	        { CURRENT_USER
+//	        | user IDENTIFIED BY password [ dblink_authentication ]
+//	        }
+//	    | CONNECT WITH credential
+//	    ]
+//	    [ dblink_authentication ]
+//	    USING 'connect_string' ;
+//
+//	dblink_authentication:
+//	    AUTHENTICATED BY user IDENTIFIED BY password
 func (p *Parser) parseCreateDatabaseLinkStmt(start int, public bool) *nodes.CreateDatabaseLinkStmt {
 	stmt := &nodes.CreateDatabaseLinkStmt{
 		Public: public,

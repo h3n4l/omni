@@ -6,15 +6,60 @@ import (
 
 // parseGrantStmt parses a GRANT statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/GRANT.html
+// BNF: oracle/parser/bnf/GRANT.bnf
 //
-//	GRANT { priv [, priv ...] | ALL [PRIVILEGES] }
-//	  ON [object_type] object
-//	  TO grantee [, grantee ...]
-//	  [WITH GRANT OPTION]
-//	  [WITH ADMIN OPTION]
+//	grant::=
+//	    grant_system_privileges
+//	  | grant_schema_privileges
+//	  | grant_object_privileges
+//	  | grant_roles_to_programs
 //
-//	GRANT role [, role ...] TO user [, user ...]  (role grants — no ON clause)
+//	grant_system_privileges::=
+//	    GRANT { system_privilege [, system_privilege ]...
+//	          | ALL PRIVILEGES
+//	          | role [, role ]...
+//	          }
+//	        TO { grantee_clause [, grantee_clause ]... }
+//	        [ IDENTIFIED BY password [, password ]... ]
+//	        [ WITH { ADMIN | DELEGATE } OPTION ]
+//	        [ CONTAINER = { CURRENT | ALL } ]
+//
+//	grant_schema_privileges::=
+//	    GRANT { schema_privilege [, schema_privilege ]...
+//	          | ALL [ PRIVILEGES ]
+//	          }
+//	        ON SCHEMA schema
+//	        TO { grantee_clause [, grantee_clause ]... }
+//	        [ WITH ADMIN OPTION ]
+//	        [ CONTAINER = { CURRENT | ALL } ]
+//
+//	grant_object_privileges::=
+//	    GRANT { object_privilege [ ( column [, column ]... ) ]
+//	              [, object_privilege [ ( column [, column ]... ) ] ]...
+//	          | ALL [ PRIVILEGES ]
+//	          }
+//	        on_object_clause
+//	        TO { grantee_clause [, grantee_clause ]... }
+//	        [ WITH { GRANT | HIERARCHY } OPTION ]
+//	        [ CONTAINER = { CURRENT | ALL } ]
+//
+//	on_object_clause::=
+//	    ON [ schema. ] object
+//	  | ON USER user [, user ]...
+//	  | ON DIRECTORY directory_name
+//	  | ON EDITION edition_name
+//	  | ON MINING MODEL [ schema. ] mining_model_name
+//	  | ON JAVA { SOURCE | RESOURCE } [ schema. ] object
+//	  | ON SQL TRANSLATION PROFILE [ schema. ] profile
+//
+//	grant_roles_to_programs::=
+//	    GRANT role [, role ]...
+//	        TO program_unit [, program_unit ]...
+//	        [ WITH { ADMIN | DELEGATE } OPTION ]
+//	        [ CONTAINER = { CURRENT | ALL } ]
+//
+//	grantee_clause::=
+//	    { user | role | PUBLIC }
 func (p *Parser) parseGrantStmt() nodes.StmtNode {
 	start := p.pos()
 	p.advance() // consume GRANT
@@ -69,13 +114,48 @@ func (p *Parser) parseGrantStmt() nodes.StmtNode {
 
 // parseRevokeStmt parses a REVOKE statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/REVOKE.html
+// BNF: oracle/parser/bnf/REVOKE.bnf
 //
-//	REVOKE { priv [, priv ...] | ALL [PRIVILEGES] }
-//	  ON [object_type] object
-//	  FROM grantee [, grantee ...]
+//	REVOKE
+//	  { revoke_system_privileges
+//	  | revoke_schema_privileges
+//	  | revoke_object_privileges
+//	  | revoke_roles_from_programs
+//	  }
+//	  [ CONTAINER = { CURRENT | ALL } ] ;
 //
-//	REVOKE role [, role ...] FROM user [, user ...]
+//	revoke_system_privileges:
+//	    REVOKE { system_privilege [, system_privilege ]...
+//	           | role [, role ]...
+//	           | ALL PRIVILEGES }
+//	    FROM revokee_clause
+//
+//	revoke_schema_privileges:
+//	    REVOKE { schema_privilege [, schema_privilege ]...
+//	           | ALL [ PRIVILEGES ] }
+//	    ON SCHEMA schema_name
+//	    FROM revokee_clause
+//
+//	revoke_object_privileges:
+//	    REVOKE { object_privilege [, object_privilege ]...
+//	           | ALL [ PRIVILEGES ] }
+//	    on_object_clause
+//	    FROM revokee_clause
+//	    [ CASCADE CONSTRAINTS ]
+//	    [ FORCE ]
+//
+//	on_object_clause:
+//	    ON { [ schema. ] object
+//	       | USER user [, user ]...
+//	       | DIRECTORY directory_name
+//	       | EDITION edition_name
+//	       | MINING MODEL [ schema. ] mining_model_name
+//	       | JAVA { SOURCE | RESOURCE } [ schema. ] object
+//	       | SQL TRANSLATION PROFILE [ schema. ] profile_name
+//	       }
+//
+//	revokee_clause:
+//	    { user | role | PUBLIC } [, { user | role | PUBLIC } ]...
 func (p *Parser) parseRevokeStmt() nodes.StmtNode {
 	start := p.pos()
 	p.advance() // consume REVOKE

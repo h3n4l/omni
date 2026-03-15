@@ -6,9 +6,14 @@ import (
 
 // parseSetRoleStmt parses a SET ROLE statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/SET-ROLE.html
+// BNF: oracle/parser/bnf/SET-ROLE.bnf
 //
-//	SET ROLE { role [IDENTIFIED BY password] [,...] | ALL [EXCEPT role [,...]] | NONE }
+//	SET ROLE
+//	    { role [ IDENTIFIED BY password ]
+//	      [, role [ IDENTIFIED BY password ] ]...
+//	    | ALL [ EXCEPT role [, role ]... ]
+//	    | NONE
+//	    } ;
 func (p *Parser) parseSetRoleStmt() nodes.StmtNode {
 	start := p.pos()
 	p.advance() // consume SET
@@ -74,9 +79,11 @@ func (p *Parser) parseSetRoleStmt() nodes.StmtNode {
 
 // parseSetConstraintsStmt parses a SET CONSTRAINT(S) statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/SET-CONSTRAINT.html
+// Note: SET-CONSTRAINT.bnf not present; syntax derived from Oracle documentation.
 //
-//	SET { CONSTRAINT | CONSTRAINTS } { ALL | constraint [,...] } { IMMEDIATE | DEFERRED }
+//	SET { CONSTRAINT | CONSTRAINTS }
+//	    { ALL | constraint [, constraint ]... }
+//	    { IMMEDIATE | DEFERRED } ;
 func (p *Parser) parseSetConstraintsStmt() nodes.StmtNode {
 	start := p.pos()
 	p.advance() // consume SET

@@ -6,9 +6,12 @@ import (
 
 // parseCommitStmt parses a COMMIT statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/COMMIT.html
+// BNF: oracle/parser/bnf/COMMIT.bnf
 //
-//	COMMIT [WORK] [COMMENT 'text'] [FORCE 'text']
+//	COMMIT [ WORK ]
+//	    [ COMMENT 'text' ]
+//	    [ WRITE [ WAIT | NOWAIT ] [ IMMEDIATE | BATCH ] ]
+//	    [ FORCE 'string' [, integer ] ] ;
 func (p *Parser) parseCommitStmt() nodes.StmtNode {
 	start := p.pos()
 	p.advance() // consume COMMIT
@@ -47,9 +50,12 @@ func (p *Parser) parseCommitStmt() nodes.StmtNode {
 
 // parseRollbackStmt parses a ROLLBACK statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/ROLLBACK.html
+// BNF: oracle/parser/bnf/ROLLBACK.bnf
 //
-//	ROLLBACK [WORK] [TO [SAVEPOINT] savepoint_name] [FORCE 'text']
+//	ROLLBACK [ WORK ]
+//	    [ TO [ SAVEPOINT ] savepoint_name
+//	    | FORCE 'string'
+//	    ] ;
 func (p *Parser) parseRollbackStmt() nodes.StmtNode {
 	start := p.pos()
 	p.advance() // consume ROLLBACK
@@ -88,9 +94,9 @@ func (p *Parser) parseRollbackStmt() nodes.StmtNode {
 
 // parseSavepointStmt parses a SAVEPOINT statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/SAVEPOINT.html
+// BNF: oracle/parser/bnf/SAVEPOINT.bnf
 //
-//	SAVEPOINT name
+//	SAVEPOINT savepoint_name ;
 func (p *Parser) parseSavepointStmt() nodes.StmtNode {
 	start := p.pos()
 	p.advance() // consume SAVEPOINT
@@ -106,13 +112,14 @@ func (p *Parser) parseSavepointStmt() nodes.StmtNode {
 
 // parseSetTransactionStmt parses a SET TRANSACTION statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/SET-TRANSACTION.html
+// BNF: oracle/parser/bnf/SET-TRANSACTION.bnf
 //
 //	SET TRANSACTION
-//	    { READ ONLY | READ WRITE |
-//	      ISOLATION LEVEL { SERIALIZABLE | READ COMMITTED } |
-//	      USE ROLLBACK SEGMENT ... }
-//	    [NAME 'text']
+//	    { { READ ONLY | READ WRITE }
+//	    | ISOLATION LEVEL { SERIALIZABLE | READ COMMITTED }
+//	    | USE ROLLBACK SEGMENT rollback_segment
+//	    | NAME 'string'
+//	    }... ;
 func (p *Parser) parseSetTransactionStmt() nodes.StmtNode {
 	start := p.pos()
 	// SET and TRANSACTION already consumed by the dispatcher
