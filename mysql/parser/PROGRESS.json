@@ -2892,14 +2892,24 @@
       "rules": ["parseValuesRows"],
       "depends_on": [5],
       "tests": ["TestParseInsertValuesRow", "TestParseInsertValuesRowMultiple"]
+    },
+    {
+      "id": 120,
+      "name": "depth_fix_outfuncs_expr_loc",
+      "file": "../ast/outfuncs.go",
+      "status": "done",
+      "description": "Fix batch 3 gap: BinaryExpr, UnaryExpr, and IsExpr write functions in outfuncs.go do not serialize the :loc field, unlike every other expression type (BetweenExpr, InExpr, LikeExpr, CaseExpr, CastExpr, ParenExpr, etc.). Add fmt.Fprintf(sb, \" :loc %d\", n.Loc.Start) to writeBinaryExpr, writeUnaryExpr, and writeIsExpr for consistency.",
+      "rules": ["writeBinaryExpr", "writeUnaryExpr", "writeIsExpr"],
+      "depends_on": [3],
+      "tests": ["TestDeparseBinaryExprLoc", "TestDeparseUnaryExprLoc", "TestDeparseIsExprLoc"]
     }
   ],
   "stats": {
-    "total": 120,
-    "done": 120,
+    "total": 121,
+    "done": 121,
     "pending": 0,
     "failed": 0,
     "in_progress": 0
   },
-  "audit_round": 20
+  "audit_round": 21
 }

@@ -2112,7 +2112,7 @@ func isTestStr(t IsTestType) string {
 
 func writeBinaryExpr(sb *strings.Builder, n *BinaryExpr) {
 	sb.WriteString("{BINEXPR")
-	fmt.Fprintf(sb, " :op %s :left ", binaryOpStr(n.Op))
+	fmt.Fprintf(sb, " :op %s :loc %d :left ", binaryOpStr(n.Op), n.Loc.Start)
 	writeNode(sb, n.Left)
 	sb.WriteString(" :right ")
 	writeNode(sb, n.Right)
@@ -2121,7 +2121,7 @@ func writeBinaryExpr(sb *strings.Builder, n *BinaryExpr) {
 
 func writeUnaryExpr(sb *strings.Builder, n *UnaryExpr) {
 	sb.WriteString("{UNARY")
-	fmt.Fprintf(sb, " :op %s :operand ", unaryOpStr(n.Op))
+	fmt.Fprintf(sb, " :op %s :loc %d :operand ", unaryOpStr(n.Op), n.Loc.Start)
 	writeNode(sb, n.Operand)
 	sb.WriteString("}")
 }
@@ -2257,6 +2257,7 @@ func writeLikeExpr(sb *strings.Builder, n *LikeExpr) {
 
 func writeIsExpr(sb *strings.Builder, n *IsExpr) {
 	sb.WriteString("{IS")
+	fmt.Fprintf(sb, " :loc %d", n.Loc.Start)
 	if n.Not {
 		sb.WriteString(" :not true")
 	}

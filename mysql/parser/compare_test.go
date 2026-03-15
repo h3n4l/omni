@@ -609,15 +609,15 @@ func TestParseArithmetic(t *testing.T) {
 		input string
 		want  string
 	}{
-		{"1 + 2", "{BINEXPR :op + :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 4}}"},
-		{"1 - 2", "{BINEXPR :op - :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 4}}"},
-		{"1 * 2", "{BINEXPR :op * :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 4}}"},
-		{"1 / 2", "{BINEXPR :op / :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 4}}"},
-		{"10 DIV 3", "{BINEXPR :op DIV :left {INT_LIT :val 10 :loc 0} :right {INT_LIT :val 3 :loc 7}}"},
-		{"10 % 3", "{BINEXPR :op %% :left {INT_LIT :val 10 :loc 0} :right {INT_LIT :val 3 :loc 5}}"},
-		{"10 MOD 3", "{BINEXPR :op %% :left {INT_LIT :val 10 :loc 0} :right {INT_LIT :val 3 :loc 7}}"},
-		{"-1", "{UNARY :op - :operand {INT_LIT :val 1 :loc 1}}"},
-		{"~5", "{UNARY :op ~ :operand {INT_LIT :val 5 :loc 1}}"},
+		{"1 + 2", "{BINEXPR :op + :loc 2 :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 4}}"},
+		{"1 - 2", "{BINEXPR :op - :loc 2 :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 4}}"},
+		{"1 * 2", "{BINEXPR :op * :loc 2 :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 4}}"},
+		{"1 / 2", "{BINEXPR :op / :loc 2 :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 4}}"},
+		{"10 DIV 3", "{BINEXPR :op DIV :loc 3 :left {INT_LIT :val 10 :loc 0} :right {INT_LIT :val 3 :loc 7}}"},
+		{"10 % 3", "{BINEXPR :op %% :loc 3 :left {INT_LIT :val 10 :loc 0} :right {INT_LIT :val 3 :loc 5}}"},
+		{"10 MOD 3", "{BINEXPR :op %% :loc 3 :left {INT_LIT :val 10 :loc 0} :right {INT_LIT :val 3 :loc 7}}"},
+		{"-1", "{UNARY :op - :loc 0 :operand {INT_LIT :val 1 :loc 1}}"},
+		{"~5", "{UNARY :op ~ :loc 0 :operand {INT_LIT :val 5 :loc 1}}"},
 	}
 
 	for _, tt := range tests {
@@ -637,14 +637,14 @@ func TestParseComparison(t *testing.T) {
 		input string
 		want  string
 	}{
-		{"1 = 2", "{BINEXPR :op = :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 4}}"},
-		{"1 <> 2", "{BINEXPR :op <> :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 5}}"},
-		{"1 != 2", "{BINEXPR :op <> :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 5}}"},
-		{"1 < 2", "{BINEXPR :op < :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 4}}"},
-		{"1 > 2", "{BINEXPR :op > :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 4}}"},
-		{"1 <= 2", "{BINEXPR :op <= :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 5}}"},
-		{"1 >= 2", "{BINEXPR :op >= :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 5}}"},
-		{"1 <=> 2", "{BINEXPR :op <=> :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 6}}"},
+		{"1 = 2", "{BINEXPR :op = :loc 2 :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 4}}"},
+		{"1 <> 2", "{BINEXPR :op <> :loc 2 :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 5}}"},
+		{"1 != 2", "{BINEXPR :op <> :loc 2 :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 5}}"},
+		{"1 < 2", "{BINEXPR :op < :loc 2 :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 4}}"},
+		{"1 > 2", "{BINEXPR :op > :loc 2 :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 4}}"},
+		{"1 <= 2", "{BINEXPR :op <= :loc 2 :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 5}}"},
+		{"1 >= 2", "{BINEXPR :op >= :loc 2 :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 5}}"},
+		{"1 <=> 2", "{BINEXPR :op <=> :loc 2 :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 6}}"},
 	}
 
 	for _, tt := range tests {
@@ -664,9 +664,9 @@ func TestParseLogical(t *testing.T) {
 		input string
 		want  string
 	}{
-		{"1 AND 2", "{BINEXPR :op AND :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 6}}"},
-		{"1 OR 2", "{BINEXPR :op OR :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 5}}"},
-		{"NOT 1", "{UNARY :op NOT :operand {INT_LIT :val 1 :loc 4}}"},
+		{"1 AND 2", "{BINEXPR :op AND :loc 2 :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 6}}"},
+		{"1 OR 2", "{BINEXPR :op OR :loc 2 :left {INT_LIT :val 1 :loc 0} :right {INT_LIT :val 2 :loc 5}}"},
+		{"NOT 1", "{UNARY :op NOT :loc 0 :operand {INT_LIT :val 1 :loc 4}}"},
 	}
 
 	for _, tt := range tests {
@@ -6623,19 +6623,19 @@ func TestParseIfElse(t *testing.T) {
 	}{
 		{
 			sql:  "IF x > 0 THEN SELECT 1; END IF",
-			want: "{IF_STMT :loc 0 :cond {BINEXPR :op > :left {COLREF :loc 3 :col x} :right {INT_LIT :val 0 :loc 7}} :then ({SELECT :loc 14 :targets ({INT_LIT :val 1 :loc 21})})}",
+			want: "{IF_STMT :loc 0 :cond {BINEXPR :op > :loc 5 :left {COLREF :loc 3 :col x} :right {INT_LIT :val 0 :loc 7}} :then ({SELECT :loc 14 :targets ({INT_LIT :val 1 :loc 21})})}",
 		},
 		{
 			sql:  "IF x > 0 THEN SELECT 1; ELSE SELECT 2; END IF",
-			want: "{IF_STMT :loc 0 :cond {BINEXPR :op > :left {COLREF :loc 3 :col x} :right {INT_LIT :val 0 :loc 7}} :then ({SELECT :loc 14 :targets ({INT_LIT :val 1 :loc 21})}) :else ({SELECT :loc 29 :targets ({INT_LIT :val 2 :loc 36})})}",
+			want: "{IF_STMT :loc 0 :cond {BINEXPR :op > :loc 5 :left {COLREF :loc 3 :col x} :right {INT_LIT :val 0 :loc 7}} :then ({SELECT :loc 14 :targets ({INT_LIT :val 1 :loc 21})}) :else ({SELECT :loc 29 :targets ({INT_LIT :val 2 :loc 36})})}",
 		},
 		{
 			sql:  "IF x > 0 THEN SELECT 1; ELSEIF x > 1 THEN SELECT 2; END IF",
-			want: "{IF_STMT :loc 0 :cond {BINEXPR :op > :left {COLREF :loc 3 :col x} :right {INT_LIT :val 0 :loc 7}} :then ({SELECT :loc 14 :targets ({INT_LIT :val 1 :loc 21})}) :elseifs ({ELSEIF :loc 24 :cond {BINEXPR :op > :left {COLREF :loc 31 :col x} :right {INT_LIT :val 1 :loc 35}} :then ({SELECT :loc 42 :targets ({INT_LIT :val 2 :loc 49})})})}",
+			want: "{IF_STMT :loc 0 :cond {BINEXPR :op > :loc 5 :left {COLREF :loc 3 :col x} :right {INT_LIT :val 0 :loc 7}} :then ({SELECT :loc 14 :targets ({INT_LIT :val 1 :loc 21})}) :elseifs ({ELSEIF :loc 24 :cond {BINEXPR :op > :loc 33 :left {COLREF :loc 31 :col x} :right {INT_LIT :val 1 :loc 35}} :then ({SELECT :loc 42 :targets ({INT_LIT :val 2 :loc 49})})})}",
 		},
 		{
 			sql:  "IF x > 0 THEN SELECT 1; ELSEIF x > 1 THEN SELECT 2; ELSE SELECT 3; END IF",
-			want: "{IF_STMT :loc 0 :cond {BINEXPR :op > :left {COLREF :loc 3 :col x} :right {INT_LIT :val 0 :loc 7}} :then ({SELECT :loc 14 :targets ({INT_LIT :val 1 :loc 21})}) :elseifs ({ELSEIF :loc 24 :cond {BINEXPR :op > :left {COLREF :loc 31 :col x} :right {INT_LIT :val 1 :loc 35}} :then ({SELECT :loc 42 :targets ({INT_LIT :val 2 :loc 49})})}) :else ({SELECT :loc 57 :targets ({INT_LIT :val 3 :loc 64})})}",
+			want: "{IF_STMT :loc 0 :cond {BINEXPR :op > :loc 5 :left {COLREF :loc 3 :col x} :right {INT_LIT :val 0 :loc 7}} :then ({SELECT :loc 14 :targets ({INT_LIT :val 1 :loc 21})}) :elseifs ({ELSEIF :loc 24 :cond {BINEXPR :op > :loc 33 :left {COLREF :loc 31 :col x} :right {INT_LIT :val 1 :loc 35}} :then ({SELECT :loc 42 :targets ({INT_LIT :val 2 :loc 49})})}) :else ({SELECT :loc 57 :targets ({INT_LIT :val 3 :loc 64})})}",
 		},
 	}
 	for _, tt := range tests {
@@ -6665,11 +6665,11 @@ func TestParseCaseStmt(t *testing.T) {
 		},
 		{
 			sql:  "CASE WHEN x > 0 THEN SELECT 1; WHEN x > 1 THEN SELECT 2; END CASE",
-			want: "{CASE_STMT :loc 0 :whens ({WHEN :loc 5 :cond {BINEXPR :op > :left {COLREF :loc 10 :col x} :right {INT_LIT :val 0 :loc 14}} :then ({SELECT :loc 21 :targets ({INT_LIT :val 1 :loc 28})})} {WHEN :loc 31 :cond {BINEXPR :op > :left {COLREF :loc 36 :col x} :right {INT_LIT :val 1 :loc 40}} :then ({SELECT :loc 47 :targets ({INT_LIT :val 2 :loc 54})})})}",
+			want: "{CASE_STMT :loc 0 :whens ({WHEN :loc 5 :cond {BINEXPR :op > :loc 12 :left {COLREF :loc 10 :col x} :right {INT_LIT :val 0 :loc 14}} :then ({SELECT :loc 21 :targets ({INT_LIT :val 1 :loc 28})})} {WHEN :loc 31 :cond {BINEXPR :op > :loc 38 :left {COLREF :loc 36 :col x} :right {INT_LIT :val 1 :loc 40}} :then ({SELECT :loc 47 :targets ({INT_LIT :val 2 :loc 54})})})}",
 		},
 		{
 			sql:  "CASE WHEN x > 0 THEN SELECT 1; ELSE SELECT 2; END CASE",
-			want: "{CASE_STMT :loc 0 :whens ({WHEN :loc 5 :cond {BINEXPR :op > :left {COLREF :loc 10 :col x} :right {INT_LIT :val 0 :loc 14}} :then ({SELECT :loc 21 :targets ({INT_LIT :val 1 :loc 28})})}) :else ({SELECT :loc 36 :targets ({INT_LIT :val 2 :loc 43})})}",
+			want: "{CASE_STMT :loc 0 :whens ({WHEN :loc 5 :cond {BINEXPR :op > :loc 12 :left {COLREF :loc 10 :col x} :right {INT_LIT :val 0 :loc 14}} :then ({SELECT :loc 21 :targets ({INT_LIT :val 1 :loc 28})})}) :else ({SELECT :loc 36 :targets ({INT_LIT :val 2 :loc 43})})}",
 		},
 	}
 	for _, tt := range tests {
@@ -6695,11 +6695,11 @@ func TestParseWhile(t *testing.T) {
 	}{
 		{
 			sql:  "WHILE x > 0 DO SELECT 1; END WHILE",
-			want: "{WHILE :loc 0 :cond {BINEXPR :op > :left {COLREF :loc 6 :col x} :right {INT_LIT :val 0 :loc 10}} :stmts ({SELECT :loc 15 :targets ({INT_LIT :val 1 :loc 22})})}",
+			want: "{WHILE :loc 0 :cond {BINEXPR :op > :loc 8 :left {COLREF :loc 6 :col x} :right {INT_LIT :val 0 :loc 10}} :stmts ({SELECT :loc 15 :targets ({INT_LIT :val 1 :loc 22})})}",
 		},
 		{
 			sql:  "lbl: WHILE x > 0 DO SELECT 1; END WHILE lbl",
-			want: "{WHILE :loc 0 :label lbl :end_label lbl :cond {BINEXPR :op > :left {COLREF :loc 11 :col x} :right {INT_LIT :val 0 :loc 15}} :stmts ({SELECT :loc 20 :targets ({INT_LIT :val 1 :loc 27})})}",
+			want: "{WHILE :loc 0 :label lbl :end_label lbl :cond {BINEXPR :op > :loc 13 :left {COLREF :loc 11 :col x} :right {INT_LIT :val 0 :loc 15}} :stmts ({SELECT :loc 20 :targets ({INT_LIT :val 1 :loc 27})})}",
 		},
 	}
 	for _, tt := range tests {
@@ -6725,11 +6725,11 @@ func TestParseRepeat(t *testing.T) {
 	}{
 		{
 			sql:  "REPEAT SELECT 1; UNTIL x > 0 END REPEAT",
-			want: "{REPEAT :loc 0 :stmts ({SELECT :loc 7 :targets ({INT_LIT :val 1 :loc 14})}) :until {BINEXPR :op > :left {COLREF :loc 23 :col x} :right {INT_LIT :val 0 :loc 27}}}",
+			want: "{REPEAT :loc 0 :stmts ({SELECT :loc 7 :targets ({INT_LIT :val 1 :loc 14})}) :until {BINEXPR :op > :loc 25 :left {COLREF :loc 23 :col x} :right {INT_LIT :val 0 :loc 27}}}",
 		},
 		{
 			sql:  "lbl: REPEAT SELECT 1; UNTIL x > 0 END REPEAT lbl",
-			want: "{REPEAT :loc 0 :label lbl :end_label lbl :stmts ({SELECT :loc 12 :targets ({INT_LIT :val 1 :loc 19})}) :until {BINEXPR :op > :left {COLREF :loc 28 :col x} :right {INT_LIT :val 0 :loc 32}}}",
+			want: "{REPEAT :loc 0 :label lbl :end_label lbl :stmts ({SELECT :loc 12 :targets ({INT_LIT :val 1 :loc 19})}) :until {BINEXPR :op > :loc 30 :left {COLREF :loc 28 :col x} :right {INT_LIT :val 0 :loc 32}}}",
 		},
 	}
 	for _, tt := range tests {
@@ -6841,7 +6841,7 @@ func TestParseReturn(t *testing.T) {
 		},
 		{
 			sql:  "RETURN x + 1",
-			want: "{RETURN :loc 0 :expr {BINEXPR :op + :left {COLREF :loc 7 :col x} :right {INT_LIT :val 1 :loc 11}}}",
+			want: "{RETURN :loc 0 :expr {BINEXPR :op + :loc 9 :left {COLREF :loc 7 :col x} :right {INT_LIT :val 1 :loc 11}}}",
 		},
 	}
 	for _, tt := range tests {
@@ -11274,5 +11274,33 @@ func TestAlterUserFactorAuth_Values(t *testing.T) {
 	fop := stmt3.FactorOps[0]
 	if fop.Action != "ADD" || fop.Factor != 3 || fop.AuthPlugin != "caching_sha2_password" || fop.Password != "pass" {
 		t.Errorf("unexpected FactorOp: %+v", fop)
+	}
+}
+
+// ============================================================================
+// Batch 120: depth_fix_outfuncs_expr_loc
+// ============================================================================
+
+func TestDeparseBinaryExprLoc(t *testing.T) {
+	result := ParseAndCheck(t, "SELECT 1 + 2")
+	got := ast.NodeToString(result.Items[0])
+	if !strings.Contains(got, "BINEXPR :op + :loc") {
+		t.Errorf("BinaryExpr missing :loc in deparse output: %s", got)
+	}
+}
+
+func TestDeparseUnaryExprLoc(t *testing.T) {
+	result := ParseAndCheck(t, "SELECT -1")
+	got := ast.NodeToString(result.Items[0])
+	if !strings.Contains(got, "UNARY :op - :loc") {
+		t.Errorf("UnaryExpr missing :loc in deparse output: %s", got)
+	}
+}
+
+func TestDeparseIsExprLoc(t *testing.T) {
+	result := ParseAndCheck(t, "SELECT 1 IS NULL")
+	got := ast.NodeToString(result.Items[0])
+	if !strings.Contains(got, "IS :loc") {
+		t.Errorf("IsExpr missing :loc in deparse output: %s", got)
 	}
 }
