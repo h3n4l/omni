@@ -31,6 +31,8 @@ const (
 	JOIN_NATURAL_LEFT
 	JOIN_NATURAL_RIGHT
 	JOIN_NATURAL_FULL
+	JOIN_CROSS_APPLY
+	JOIN_OUTER_APPLY
 )
 
 // SortByDir represents sort ordering direction.
@@ -678,11 +680,13 @@ func (n *JoinClause) tableExpr() {}
 
 // TableRef represents a table reference in a FROM clause.
 type TableRef struct {
-	Name      *ObjectName      // table name
-	Alias     *Alias           // optional alias
-	Sample    *SampleClause    // SAMPLE clause
-	Flashback *FlashbackClause // AS OF / VERSIONS BETWEEN
-	Loc       Loc              // start location
+	Name         *ObjectName      // table name
+	Alias        *Alias           // optional alias
+	Sample       *SampleClause    // SAMPLE clause
+	Flashback    *FlashbackClause // AS OF / VERSIONS BETWEEN
+	PartitionExt *PartitionExtClause // PARTITION/SUBPARTITION clause
+	Dblink       string           // @dblink name
+	Loc          Loc              // start location
 }
 
 func (n *TableRef) nodeTag()   {}
@@ -779,6 +783,7 @@ func (n *SampleClause) nodeTag() {}
 
 // PivotClause represents a PIVOT clause.
 type PivotClause struct {
+	XML      bool     // PIVOT XML
 	AggFuncs *List    // aggregate functions
 	ForCol   ExprNode // FOR column (single column)
 	ForCols  *List    // FOR (col1, col2, ...) multi-column
@@ -821,6 +826,8 @@ type CTE struct {
 	Name    string   // CTE name
 	Columns *List    // optional column list (list of *String)
 	Query   StmtNode // the CTE query
+	Search  *CTESearchClause // SEARCH clause
+	Cycle   *CTECycleClause  // CYCLE clause
 	Loc     Loc
 }
 
@@ -844,13 +851,16 @@ type SelectStmt struct {
 	Hierarchical *HierarchicalClause // CONNECT BY / START WITH
 	GroupClause  *List               // GROUP BY
 	HavingClause ExprNode            // HAVING condition
-	ModelClause  *ModelClause        // MODEL clause
-	OrderBy      *List               // ORDER BY (list of *SortBy)
-	ForUpdate    *ForUpdateClause    // FOR UPDATE
-	FetchFirst   *FetchFirstClause   // FETCH FIRST / OFFSET
-	Pivot        *PivotClause        // PIVOT clause
-	Unpivot      *UnpivotClause      // UNPIVOT clause
-	Hints        *List               // optimizer hints (list of *Hint)
+	ModelClause   *ModelClause        // MODEL clause
+	WindowDefs    []*WindowDef        // WINDOW clause (named window definitions)
+	QualifyClause ExprNode            // QUALIFY condition
+	OrderBy       *List               // ORDER BY (list of *SortBy)
+	SiblingsOrder bool                // ORDER SIBLINGS BY
+	ForUpdate     *ForUpdateClause    // FOR UPDATE
+	FetchFirst    *FetchFirstClause   // FETCH FIRST / OFFSET
+	Pivot         *PivotClause        // PIVOT clause
+	Unpivot       *UnpivotClause      // UNPIVOT clause
+	Hints         *List               // optimizer hints (list of *Hint)
 
 	// Set operations
 	Op     SetOperation // UNION, INTERSECT, MINUS
@@ -1040,15 +1050,148 @@ func (n *ModelForLoop) exprNode() {}
 //	    | AS OF { SCN | TIMESTAMP } expr
 //	    }
 type FlashbackClause struct {
-	Type        string   // "SCN" or "TIMESTAMP"
-	Expr        ExprNode // AS OF expression
-	IsVersions  bool     // VERSIONS BETWEEN (vs AS OF)
-	VersionsLow ExprNode // VERSIONS BETWEEN low expr
+	Type         string   // "SCN" or "TIMESTAMP"
+	Expr         ExprNode // AS OF expression
+	IsVersions   bool     // VERSIONS BETWEEN (vs AS OF)
+	IsPeriodFor  bool     // VERSIONS PERIOD FOR / AS OF PERIOD FOR
+	PeriodColumn string   // valid_time_column for PERIOD FOR
+	VersionsLow  ExprNode // VERSIONS BETWEEN low expr
 	VersionsHigh ExprNode // VERSIONS BETWEEN high expr (AND expr)
-	Loc         Loc
+	Loc          Loc
 }
 
 func (n *FlashbackClause) nodeTag() {}
+
+// ---------------------------------------------------------------------------
+// Window clause
+// ---------------------------------------------------------------------------
+
+// WindowDef represents a named window definition in the WINDOW clause.
+//
+//	WINDOW window_name AS ( window_specification )
+type WindowDef struct {
+	Name string      // window name
+	Spec *WindowSpec // window specification
+	Loc  Loc
+}
+
+func (n *WindowDef) nodeTag() {}
+
+// ---------------------------------------------------------------------------
+// CTE SEARCH / CYCLE clauses
+// ---------------------------------------------------------------------------
+
+// CTESearchClause represents a SEARCH clause on a CTE.
+//
+//	SEARCH { BREADTH FIRST | DEPTH FIRST } BY col [ASC|DESC] [NULLS FIRST|LAST] [, ...] SET ordering_column
+type CTESearchClause struct {
+	BreadthFirst bool   // true = BREADTH FIRST, false = DEPTH FIRST
+	Columns      *List  // list of *SortBy
+	SetColumn    string // SET ordering_column
+	Loc          Loc
+}
+
+func (n *CTESearchClause) nodeTag() {}
+
+// CTECycleClause represents a CYCLE clause on a CTE.
+//
+//	CYCLE col [, ...] SET cycle_mark_c_alias TO cycle_value DEFAULT no_cycle_value
+type CTECycleClause struct {
+	Columns        *List    // list of *String (column names)
+	SetColumn      string   // SET cycle_mark_c_alias
+	CycleValue     ExprNode // TO cycle_value
+	NoCycleValue   ExprNode // DEFAULT no_cycle_value
+	Loc            Loc
+}
+
+func (n *CTECycleClause) nodeTag() {}
+
+// ---------------------------------------------------------------------------
+// Partition extension clause
+// ---------------------------------------------------------------------------
+
+// PartitionExtClause represents a partition extension clause on a table ref.
+//
+//	PARTITION (name) | PARTITION FOR (key, ...) | SUBPARTITION (name) | SUBPARTITION FOR (key, ...)
+type PartitionExtClause struct {
+	IsSubpartition bool     // SUBPARTITION vs PARTITION
+	IsFor          bool     // FOR (key values) vs (name)
+	Name           string   // partition/subpartition name (when IsFor is false)
+	Keys           *List    // key values (when IsFor is true)
+	Loc            Loc
+}
+
+func (n *PartitionExtClause) nodeTag() {}
+
+// ---------------------------------------------------------------------------
+// Table collection expression
+// ---------------------------------------------------------------------------
+
+// TableCollectionExpr represents TABLE(collection_expression) [(+)] in FROM.
+type TableCollectionExpr struct {
+	Expr      ExprNode // collection expression
+	OuterJoin bool     // (+) specified
+	Alias     *Alias   // optional alias
+	Loc       Loc
+}
+
+func (n *TableCollectionExpr) nodeTag()   {}
+func (n *TableCollectionExpr) tableExpr() {}
+
+// ---------------------------------------------------------------------------
+// MATCH_RECOGNIZE clause
+// ---------------------------------------------------------------------------
+
+// MatchRecognizeClause represents a MATCH_RECOGNIZE clause on a table reference.
+type MatchRecognizeClause struct {
+	PartitionBy *List    // PARTITION BY columns
+	OrderBy     *List    // ORDER BY columns (list of *SortBy)
+	Measures    *List    // MEASURES (list of *ResTarget)
+	RowsPerMatch string  // "ONE ROW PER MATCH" or "ALL ROWS PER MATCH" (+ SHOW/OMIT EMPTY MATCHES)
+	AfterMatch  string   // AFTER MATCH SKIP action
+	Pattern     string   // PATTERN as raw text
+	Subsets     *List    // SUBSET items (list of *ResTarget)
+	Definitions *List    // DEFINE items (list of *ResTarget)
+	Alias       *Alias   // optional alias
+	Loc         Loc
+}
+
+func (n *MatchRecognizeClause) nodeTag()   {}
+func (n *MatchRecognizeClause) tableExpr() {}
+
+// ---------------------------------------------------------------------------
+// Containers / Shards clause
+// ---------------------------------------------------------------------------
+
+// ContainersExpr represents CONTAINERS(schema.table) or SHARDS(schema.table) in FROM.
+type ContainersExpr struct {
+	IsShards bool        // true = SHARDS, false = CONTAINERS
+	Name     *ObjectName // table/view name
+	Alias    *Alias      // optional alias
+	Loc      Loc
+}
+
+func (n *ContainersExpr) nodeTag()   {}
+func (n *ContainersExpr) tableExpr() {}
+
+// ---------------------------------------------------------------------------
+// Inline external table
+// ---------------------------------------------------------------------------
+
+// InlineExternalTable represents an inline external table in FROM.
+type InlineExternalTable struct {
+	Columns    *List    // column definitions (list of *ColumnDef)
+	Type       string   // external table type
+	Directory  string   // DEFAULT DIRECTORY
+	AccessParams string // ACCESS PARAMETERS text
+	Location   string   // LOCATION
+	RejectLimit ExprNode // REJECT LIMIT
+	Alias      *Alias   // optional alias
+	Loc        Loc
+}
+
+func (n *InlineExternalTable) nodeTag()   {}
+func (n *InlineExternalTable) tableExpr() {}
 
 // GroupingSetsClause represents a GROUPING SETS clause in GROUP BY.
 //

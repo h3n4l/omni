@@ -164,6 +164,14 @@ func writeNode(sb *strings.Builder, node Node) {
 		writePivotClause(sb, n)
 	case *UnpivotClause:
 		writeUnpivotClause(sb, n)
+	case *TableCollectionExpr:
+		writeTableCollectionExpr(sb, n)
+	case *MatchRecognizeClause:
+		writeMatchRecognizeClause(sb, n)
+	case *ContainersExpr:
+		writeContainersExpr(sb, n)
+	case *InlineExternalTable:
+		writeInlineExternalTable(sb, n)
 
 	// Clause nodes
 	case *HierarchicalClause:
@@ -172,6 +180,10 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeWithClause(sb, n)
 	case *CTE:
 		writeCTE(sb, n)
+	case *CTESearchClause:
+		writeCTESearchClause(sb, n)
+	case *CTECycleClause:
+		writeCTECycleClause(sb, n)
 	case *ForUpdateClause:
 		writeForUpdateClause(sb, n)
 	case *FetchFirstClause:
@@ -194,6 +206,10 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeModelForLoop(sb, n)
 	case *FlashbackClause:
 		writeFlashbackClause(sb, n)
+	case *WindowDef:
+		writeWindowDef(sb, n)
+	case *PartitionExtClause:
+		writePartitionExtClause(sb, n)
 	case *SortBy:
 		writeSortBy(sb, n)
 	case *ResTarget:
@@ -956,6 +972,13 @@ func writeTableRef(sb *strings.Builder, n *TableRef) {
 		sb.WriteString(" :flashback ")
 		writeNode(sb, n.Flashback)
 	}
+	if n.PartitionExt != nil {
+		sb.WriteString(" :partitionExt ")
+		writeNode(sb, n.PartitionExt)
+	}
+	if n.Dblink != "" {
+		sb.WriteString(fmt.Sprintf(" :dblink %q", n.Dblink))
+	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
 }
@@ -1098,6 +1121,9 @@ func writeSampleClause(sb *strings.Builder, n *SampleClause) {
 
 func writePivotClause(sb *strings.Builder, n *PivotClause) {
 	sb.WriteString("{PIVOT")
+	if n.XML {
+		sb.WriteString(" :xml true")
+	}
 	if n.AggFuncs != nil {
 		sb.WriteString(" :aggFuncs ")
 		writeNode(sb, n.AggFuncs)
@@ -1191,6 +1217,14 @@ func writeCTE(sb *strings.Builder, n *CTE) {
 	if n.Query != nil {
 		sb.WriteString(" :query ")
 		writeNode(sb, n.Query)
+	}
+	if n.Search != nil {
+		sb.WriteString(" :search ")
+		writeNode(sb, n.Search)
+	}
+	if n.Cycle != nil {
+		sb.WriteString(" :cycle ")
+		writeNode(sb, n.Cycle)
 	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
@@ -1417,6 +1451,12 @@ func writeFlashbackClause(sb *strings.Builder, n *FlashbackClause) {
 	if n.IsVersions {
 		sb.WriteString(" :isVersions true")
 	}
+	if n.IsPeriodFor {
+		sb.WriteString(" :isPeriodFor true")
+	}
+	if n.PeriodColumn != "" {
+		sb.WriteString(fmt.Sprintf(" :periodColumn %q", n.PeriodColumn))
+	}
 	if n.Expr != nil {
 		sb.WriteString(" :expr ")
 		writeNode(sb, n.Expr)
@@ -1441,6 +1481,169 @@ func writeSortBy(sb *strings.Builder, n *SortBy) {
 	}
 	sb.WriteString(fmt.Sprintf(" :dir %d", n.Dir))
 	sb.WriteString(fmt.Sprintf(" :nulls %d", n.NullOrder))
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeWindowDef(sb *strings.Builder, n *WindowDef) {
+	sb.WriteString("{WINDOWDEF")
+	sb.WriteString(fmt.Sprintf(" :name %q", n.Name))
+	if n.Spec != nil {
+		sb.WriteString(" :spec ")
+		writeNode(sb, n.Spec)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeCTESearchClause(sb *strings.Builder, n *CTESearchClause) {
+	sb.WriteString("{CTESEARCH")
+	if n.BreadthFirst {
+		sb.WriteString(" :breadthFirst true")
+	}
+	if n.Columns != nil {
+		sb.WriteString(" :columns ")
+		writeNode(sb, n.Columns)
+	}
+	if n.SetColumn != "" {
+		sb.WriteString(fmt.Sprintf(" :setColumn %q", n.SetColumn))
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeCTECycleClause(sb *strings.Builder, n *CTECycleClause) {
+	sb.WriteString("{CTECYCLE")
+	if n.Columns != nil {
+		sb.WriteString(" :columns ")
+		writeNode(sb, n.Columns)
+	}
+	if n.SetColumn != "" {
+		sb.WriteString(fmt.Sprintf(" :setColumn %q", n.SetColumn))
+	}
+	if n.CycleValue != nil {
+		sb.WriteString(" :cycleValue ")
+		writeNode(sb, n.CycleValue)
+	}
+	if n.NoCycleValue != nil {
+		sb.WriteString(" :noCycleValue ")
+		writeNode(sb, n.NoCycleValue)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writePartitionExtClause(sb *strings.Builder, n *PartitionExtClause) {
+	sb.WriteString("{PARTITIONEXT")
+	if n.IsSubpartition {
+		sb.WriteString(" :isSubpartition true")
+	}
+	if n.IsFor {
+		sb.WriteString(" :isFor true")
+	}
+	if n.Name != "" {
+		sb.WriteString(fmt.Sprintf(" :name %q", n.Name))
+	}
+	if n.Keys != nil {
+		sb.WriteString(" :keys ")
+		writeNode(sb, n.Keys)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeTableCollectionExpr(sb *strings.Builder, n *TableCollectionExpr) {
+	sb.WriteString("{TABLECOLLECTION")
+	if n.Expr != nil {
+		sb.WriteString(" :expr ")
+		writeNode(sb, n.Expr)
+	}
+	if n.OuterJoin {
+		sb.WriteString(" :outerJoin true")
+	}
+	if n.Alias != nil {
+		sb.WriteString(" :alias ")
+		writeNode(sb, n.Alias)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeMatchRecognizeClause(sb *strings.Builder, n *MatchRecognizeClause) {
+	sb.WriteString("{MATCHRECOGNIZE")
+	if n.PartitionBy != nil {
+		sb.WriteString(" :partitionBy ")
+		writeNode(sb, n.PartitionBy)
+	}
+	if n.OrderBy != nil {
+		sb.WriteString(" :orderBy ")
+		writeNode(sb, n.OrderBy)
+	}
+	if n.Measures != nil {
+		sb.WriteString(" :measures ")
+		writeNode(sb, n.Measures)
+	}
+	if n.RowsPerMatch != "" {
+		sb.WriteString(fmt.Sprintf(" :rowsPerMatch %q", n.RowsPerMatch))
+	}
+	if n.AfterMatch != "" {
+		sb.WriteString(fmt.Sprintf(" :afterMatch %q", n.AfterMatch))
+	}
+	if n.Pattern != "" {
+		sb.WriteString(fmt.Sprintf(" :pattern %q", n.Pattern))
+	}
+	if n.Subsets != nil {
+		sb.WriteString(" :subsets ")
+		writeNode(sb, n.Subsets)
+	}
+	if n.Definitions != nil {
+		sb.WriteString(" :definitions ")
+		writeNode(sb, n.Definitions)
+	}
+	if n.Alias != nil {
+		sb.WriteString(" :alias ")
+		writeNode(sb, n.Alias)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeContainersExpr(sb *strings.Builder, n *ContainersExpr) {
+	sb.WriteString("{CONTAINERS")
+	if n.IsShards {
+		sb.WriteString(" :isShards true")
+	}
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.Alias != nil {
+		sb.WriteString(" :alias ")
+		writeNode(sb, n.Alias)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeInlineExternalTable(sb *strings.Builder, n *InlineExternalTable) {
+	sb.WriteString("{INLINEEXTERNALTABLE")
+	if n.Columns != nil {
+		sb.WriteString(" :columns ")
+		writeNode(sb, n.Columns)
+	}
+	if n.Type != "" {
+		sb.WriteString(fmt.Sprintf(" :type %q", n.Type))
+	}
+	if n.Directory != "" {
+		sb.WriteString(fmt.Sprintf(" :directory %q", n.Directory))
+	}
+	if n.Location != "" {
+		sb.WriteString(fmt.Sprintf(" :location %q", n.Location))
+	}
+	if n.Alias != nil {
+		sb.WriteString(" :alias ")
+		writeNode(sb, n.Alias)
+	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
 }
@@ -1834,6 +2037,23 @@ func writeSelectStmt(sb *strings.Builder, n *SelectStmt) {
 	if n.ModelClause != nil {
 		sb.WriteString(" :modelClause ")
 		writeNode(sb, n.ModelClause)
+	}
+	if len(n.WindowDefs) > 0 {
+		sb.WriteString(" :windowDefs (")
+		for i, wd := range n.WindowDefs {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, wd)
+		}
+		sb.WriteString(")")
+	}
+	if n.QualifyClause != nil {
+		sb.WriteString(" :qualifyClause ")
+		writeNode(sb, n.QualifyClause)
+	}
+	if n.SiblingsOrder {
+		sb.WriteString(" :siblingsOrder true")
 	}
 	if n.OrderBy != nil {
 		sb.WriteString(" :orderBy ")

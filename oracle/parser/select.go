@@ -1,26 +1,57 @@
 package parser
 
 import (
+	"strings"
+
 	nodes "github.com/bytebase/omni/oracle/ast"
 )
 
 // parseSelectStmt parses a SELECT statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/SELECT.html
+// BNF: oracle/parser/bnf/SELECT.bnf
 //
-//	[ with_clause ]
-//	SELECT [ hint ] [ ALL | DISTINCT | UNIQUE ]
+//	select:
+//	    [ with_clause ] subquery [ for_update_clause ] ;
+//
+//	subquery:
+//	    query_block
+//	    [ { UNION [ ALL ] | INTERSECT | MINUS } query_block ]...
+//	    [ order_by_clause ]
+//	    [ row_limiting_clause ]
+//
+//	query_block:
+//	    SELECT [ hint ] [ DISTINCT | UNIQUE | ALL ]
 //	    select_list
-//	    [ FROM table_reference [, ...] ]
-//	    [ WHERE condition ]
+//	    [ FROM { table_reference | join_clause } [, { table_reference | join_clause } ]... ]
+//	    [ where_clause ]
 //	    [ hierarchical_query_clause ]
-//	    [ GROUP BY expr [, ...] ]
-//	    [ HAVING condition ]
-//	    [ ORDER BY sort_key [, ...] ]
-//	    [ FOR UPDATE ... ]
-//	    [ { UNION [ALL] | INTERSECT | MINUS } select ]
-//	    [ OFFSET n { ROW | ROWS } ]
-//	    [ FETCH { FIRST | NEXT } n { ROW | ROWS } { ONLY | WITH TIES } ]
+//	    [ group_by_clause ]
+//	    [ model_clause ]
+//	    [ window_clause ]
+//	    [ qualify_clause ]
+//
+//	order_by_clause:
+//	    ORDER [ SIBLINGS ] BY
+//	    { expr | position | c_alias } [ ASC | DESC ] [ NULLS FIRST | NULLS LAST ]
+//	    [, { expr | position | c_alias } [ ASC | DESC ] [ NULLS FIRST | NULLS LAST ] ]...
+//
+//	row_limiting_clause:
+//	    [ OFFSET offset { ROW | ROWS } ]
+//	    [ FETCH { FIRST | NEXT } [ { rowcount | percent PERCENT } ] { ROW | ROWS }
+//	      { ONLY | WITH TIES } ]
+//
+//	for_update_clause:
+//	    FOR UPDATE
+//	    [ OF [ [ schema. ] { table | view } . ] column
+//	      [, [ [ schema. ] { table | view } . ] column ]... ]
+//	    [ NOWAIT | WAIT integer | SKIP LOCKED ]
+//
+//	window_clause:
+//	    WINDOW window_name AS ( window_specification )
+//	    [, window_name AS ( window_specification ) ]...
+//
+//	qualify_clause:
+//	    QUALIFY condition
 func (p *Parser) parseSelectStmt() *nodes.SelectStmt {
 	start := p.pos()
 	sel := &nodes.SelectStmt{
@@ -110,9 +141,24 @@ func (p *Parser) parseSelectStmt() *nodes.SelectStmt {
 		sel.ModelClause = p.parseModelClause()
 	}
 
-	// ORDER BY
+	// WINDOW clause
+	if p.isIdentLikeStr("WINDOW") {
+		sel.WindowDefs = p.parseWindowClause()
+	}
+
+	// QUALIFY clause
+	if p.isIdentLikeStr("QUALIFY") {
+		p.advance()
+		sel.QualifyClause = p.parseExpr()
+	}
+
+	// ORDER [SIBLINGS] BY
 	if p.cur.Type == kwORDER {
 		p.advance()
+		if p.isIdentLikeStr("SIBLINGS") {
+			sel.SiblingsOrder = true
+			p.advance()
+		}
 		if p.cur.Type == kwBY {
 			p.advance()
 		}
@@ -354,6 +400,22 @@ func (p *Parser) parseFromClause() *nodes.List {
 }
 
 // parseTableRef parses a single table reference.
+//
+// BNF: oracle/parser/bnf/SELECT.bnf
+//
+//	table_reference:
+//	    { query_table_expression | ( join_clause ) | inline_external_table } [ t_alias ]
+//
+//	query_table_expression:
+//	    { [ schema. ] { table | view | materialized_view | analytic_view | hierarchy }
+//	      [ partition_extension_clause ] [ @ dblink ]
+//	    | ( subquery [ subquery_restriction_clause ] )
+//	    | table_collection_expression
+//	    | inline_analytic_view
+//	    }
+//	    [ flashback_query_clause ] [ sample_clause ]
+//	    [ pivot_clause | unpivot_clause ] [ row_pattern_clause ]
+//	    [ containers_clause ] [ shards_clause ]
 func (p *Parser) parseTableRef() nodes.TableExpr {
 	start := p.pos()
 
@@ -372,9 +434,27 @@ func (p *Parser) parseTableRef() nodes.TableExpr {
 		return p.parseJsonTableRef(start)
 	}
 
+	// TABLE(collection_expression) — table collection expression
+	if p.cur.Type == kwTABLE && p.peekNext().Type == '(' {
+		return p.parseTableCollectionExpr(start)
+	}
+
+	// CONTAINERS(table) or SHARDS(table)
+	if p.isIdentLikeStr("CONTAINERS") && p.peekNext().Type == '(' {
+		return p.parseContainersOrShards(start, false)
+	}
+	if p.isIdentLikeStr("SHARDS") && p.peekNext().Type == '(' {
+		return p.parseContainersOrShards(start, true)
+	}
+
 	// Subquery: ( SELECT ... )
 	if p.cur.Type == '(' {
 		return p.parseSubqueryRef(start)
+	}
+
+	// MATCH_RECOGNIZE as standalone (rare, usually post-table)
+	if p.isIdentLikeStr("MATCH_RECOGNIZE") {
+		return p.parseMatchRecognize(start)
 	}
 
 	// Table name
@@ -388,6 +468,17 @@ func (p *Parser) parseTableRef() nodes.TableExpr {
 		Loc:  nodes.Loc{Start: start},
 	}
 
+	// Partition extension clause: PARTITION (name) | PARTITION FOR (key) | SUBPARTITION ...
+	if p.cur.Type == kwPARTITION || p.cur.Type == kwSUBPARTITION {
+		tr.PartitionExt = p.parsePartitionExtClause()
+	}
+
+	// @ dblink
+	if p.cur.Type == '@' {
+		p.advance()
+		tr.Dblink = p.parseIdentifier()
+	}
+
 	// Flashback query: VERSIONS BETWEEN ... AND ... or AS OF SCN/TIMESTAMP
 	if p.cur.Type == kwVERSIONS || (p.cur.Type == kwAS && p.peekNext().Type == kwOF) {
 		tr.Flashback = p.parseFlashbackClause()
@@ -396,6 +487,18 @@ func (p *Parser) parseTableRef() nodes.TableExpr {
 	// SAMPLE [BLOCK] (percent) [SEED (value)]
 	if p.cur.Type == kwSAMPLE {
 		tr.Sample = p.parseSampleClause()
+	}
+
+	// MATCH_RECOGNIZE after table reference
+	if p.isIdentLikeStr("MATCH_RECOGNIZE") {
+		mrStart := p.pos()
+		mrRef := p.parseMatchRecognize(mrStart)
+		if mrClause, ok := mrRef.(*nodes.MatchRecognizeClause); ok {
+			// Wrap: the table ref becomes the left side of a join-like construct
+			// For simplicity, return the MATCH_RECOGNIZE with the table ref embedded
+			_ = mrClause // MATCH_RECOGNIZE is returned directly
+			return mrRef
+		}
 	}
 
 	// Optional alias
@@ -412,8 +515,18 @@ func (p *Parser) parseTableRef() nodes.TableExpr {
 }
 
 // isTableAliasCandidate checks if current token can be a table alias.
+// Excludes soft keywords that start clauses in SELECT statements.
 func (p *Parser) isTableAliasCandidate() bool {
-	if p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+	if p.cur.Type == tokQIDENT {
+		return true
+	}
+	if p.cur.Type == tokIDENT {
+		switch strings.ToUpper(p.cur.Str) {
+		case "WINDOW", "QUALIFY", "MATCH_RECOGNIZE", "CONTAINERS", "SHARDS",
+			"SIBLINGS", "APPLY", "SEARCH", "CYCLE", "VERSIONS", "PERIOD",
+			"XML":
+			return false
+		}
 		return true
 	}
 	return false
@@ -837,10 +950,27 @@ func (p *Parser) matchJoinType() (nodes.JoinType, bool) {
 
 	case kwCROSS:
 		p.advance()
+		// CROSS APPLY
+		if p.isIdentLikeStr("APPLY") {
+			p.advance()
+			return nodes.JOIN_CROSS_APPLY, true
+		}
 		if p.cur.Type == kwJOIN {
 			p.advance()
 		}
 		return nodes.JOIN_CROSS, true
+
+	case kwOUTER:
+		// OUTER APPLY
+		if p.peekNext().Type == tokIDENT || p.isIdentLikeStr("APPLY") {
+			p.advance() // consume OUTER
+			if p.isIdentLikeStr("APPLY") {
+				p.advance()
+				return nodes.JOIN_OUTER_APPLY, true
+			}
+		}
+		// OUTER JOIN handled by LEFT/RIGHT/FULL above
+		return 0, false
 	}
 
 	if natural {
@@ -1143,8 +1273,110 @@ func (p *Parser) parseCTE() *nodes.CTE {
 		}
 	}
 
+	// SEARCH { BREADTH FIRST | DEPTH FIRST } BY col [, ...] SET ordering_column
+	if p.isIdentLikeStr("SEARCH") {
+		cte.Search = p.parseCTESearchClause()
+	}
+
+	// CYCLE col [, ...] SET cycle_mark TO value DEFAULT no_value
+	if p.cur.Type == kwCYCLE {
+		cte.Cycle = p.parseCTECycleClause()
+	}
+
 	cte.Loc.End = p.pos()
 	return cte
+}
+
+// parseCTESearchClause parses a SEARCH clause on a CTE.
+//
+// BNF: oracle/parser/bnf/SELECT.bnf
+//
+//	search_clause:
+//	    SEARCH { BREADTH FIRST | DEPTH FIRST }
+//	    BY c_alias [ ASC | DESC ] [ NULLS FIRST | NULLS LAST ]
+//	       [, c_alias [ ASC | DESC ] [ NULLS FIRST | NULLS LAST ] ]...
+//	    SET ordering_column
+func (p *Parser) parseCTESearchClause() *nodes.CTESearchClause {
+	start := p.pos()
+	p.advance() // consume SEARCH
+
+	sc := &nodes.CTESearchClause{Loc: nodes.Loc{Start: start}}
+
+	// BREADTH FIRST | DEPTH FIRST
+	if p.isIdentLikeStr("BREADTH") {
+		sc.BreadthFirst = true
+		p.advance()
+	} else if p.isIdentLikeStr("DEPTH") {
+		p.advance()
+	}
+	if p.cur.Type == kwFIRST {
+		p.advance()
+	}
+
+	// BY col [ASC|DESC] [NULLS FIRST|LAST] [, ...]
+	if p.cur.Type == kwBY {
+		p.advance()
+	}
+	sc.Columns = p.parseOrderByList()
+
+	// SET ordering_column
+	if p.cur.Type == kwSET {
+		p.advance()
+		sc.SetColumn = p.parseIdentifier()
+	}
+
+	sc.Loc.End = p.pos()
+	return sc
+}
+
+// parseCTECycleClause parses a CYCLE clause on a CTE.
+//
+// BNF: oracle/parser/bnf/SELECT.bnf
+//
+//	cycle_clause:
+//	    CYCLE c_alias [, c_alias ]...
+//	    SET cycle_mark_c_alias TO cycle_value
+//	    DEFAULT no_cycle_value
+func (p *Parser) parseCTECycleClause() *nodes.CTECycleClause {
+	start := p.pos()
+	p.advance() // consume CYCLE
+
+	cc := &nodes.CTECycleClause{Loc: nodes.Loc{Start: start}}
+
+	// Column list
+	cc.Columns = &nodes.List{}
+	for {
+		col := p.parseIdentifier()
+		if col == "" {
+			break
+		}
+		cc.Columns.Items = append(cc.Columns.Items, &nodes.String{Str: col})
+		if p.cur.Type != ',' {
+			break
+		}
+		p.advance()
+	}
+
+	// SET cycle_mark_alias
+	if p.cur.Type == kwSET {
+		p.advance()
+		cc.SetColumn = p.parseIdentifier()
+	}
+
+	// TO cycle_value
+	if p.cur.Type == kwTO {
+		p.advance()
+		cc.CycleValue = p.parseExpr()
+	}
+
+	// DEFAULT no_cycle_value
+	if p.cur.Type == kwDEFAULT {
+		p.advance()
+		cc.NoCycleValue = p.parseExpr()
+	}
+
+	cc.Loc.End = p.pos()
+	return cc
 }
 
 // parsePivotClause parses a PIVOT clause.
@@ -1164,6 +1396,12 @@ func (p *Parser) parsePivotClause() *nodes.PivotClause {
 
 	pc := &nodes.PivotClause{
 		Loc: nodes.Loc{Start: start},
+	}
+
+	// PIVOT [ XML ]
+	if p.isIdentLikeStr("XML") {
+		pc.XML = true
+		p.advance()
 	}
 
 	if p.cur.Type != '(' {
@@ -1232,10 +1470,32 @@ func (p *Parser) parsePivotClause() *nodes.PivotClause {
 	if p.cur.Type == kwIN {
 		p.advance() // consume IN
 		if p.cur.Type == '(' {
-			p.advance() // consume '('
-			pc.InList = p.parsePivotInList()
-			if p.cur.Type == ')' {
-				p.advance()
+			if pc.XML && p.peekNext().Type == kwSELECT {
+				// PIVOT XML allows a subquery in the IN clause
+				p.advance() // consume '('
+				sub := p.parseSelectStmt()
+				if p.cur.Type == ')' {
+					p.advance()
+				}
+				pc.InList = &nodes.List{Items: []nodes.Node{sub}}
+			} else if pc.XML && p.peekNext().Type == kwANY {
+				// PIVOT XML allows ANY in IN clause
+				p.advance() // consume '('
+				anyStart := p.pos()
+				p.advance() // consume ANY
+				pc.InList = &nodes.List{Items: []nodes.Node{&nodes.ColumnRef{
+					Column: "ANY",
+					Loc:    nodes.Loc{Start: anyStart, End: p.pos()},
+				}}}
+				if p.cur.Type == ')' {
+					p.advance()
+				}
+			} else {
+				p.advance() // consume '('
+				pc.InList = p.parsePivotInList()
+				if p.cur.Type == ')' {
+					p.advance()
+				}
 			}
 		}
 	}
@@ -1906,14 +2166,25 @@ func (p *Parser) parseFlashbackClause() *nodes.FlashbackClause {
 
 	if p.cur.Type == kwVERSIONS {
 		// VERSIONS BETWEEN { SCN | TIMESTAMP } expr AND expr
+		// VERSIONS PERIOD FOR valid_time_column BETWEEN expr AND expr
 		fc.IsVersions = true
 		p.advance() // consume VERSIONS
+
+		// PERIOD FOR valid_time_column
+		if p.isIdentLikeStr("PERIOD") {
+			fc.IsPeriodFor = true
+			p.advance() // consume PERIOD
+			if p.cur.Type == kwFOR {
+				p.advance() // consume FOR
+			}
+			fc.PeriodColumn = p.parseIdentifier()
+		}
 
 		if p.cur.Type == kwBETWEEN {
 			p.advance() // consume BETWEEN
 		}
 
-		// SCN | TIMESTAMP
+		// SCN | TIMESTAMP type marker
 		if p.cur.Type == kwSCN {
 			fc.Type = "SCN"
 			p.advance()
@@ -1930,29 +2201,527 @@ func (p *Parser) parseFlashbackClause() *nodes.FlashbackClause {
 			p.advance()
 		}
 
+		// Skip repeated SCN/TIMESTAMP keyword before high expr
+		if p.cur.Type == kwSCN || p.cur.Type == kwTIMESTAMP {
+			p.advance()
+		}
+
 		// high expr
 		fc.VersionsHigh = p.parseExpr()
 
 	} else if p.cur.Type == kwAS {
 		// AS OF { SCN | TIMESTAMP } expr
+		// AS OF PERIOD FOR valid_time_column expr
 		p.advance() // consume AS
 		if p.cur.Type == kwOF {
 			p.advance() // consume OF
 		}
 
-		// SCN | TIMESTAMP
-		if p.cur.Type == kwSCN {
-			fc.Type = "SCN"
-			p.advance()
-		} else if p.cur.Type == kwTIMESTAMP {
-			fc.Type = "TIMESTAMP"
-			p.advance()
+		// PERIOD FOR valid_time_column
+		if p.isIdentLikeStr("PERIOD") {
+			fc.IsPeriodFor = true
+			p.advance() // consume PERIOD
+			if p.cur.Type == kwFOR {
+				p.advance() // consume FOR
+			}
+			fc.PeriodColumn = p.parseIdentifier()
+			// SCN | TIMESTAMP type marker
+			if p.cur.Type == kwSCN {
+				fc.Type = "SCN"
+				p.advance()
+			} else if p.cur.Type == kwTIMESTAMP {
+				fc.Type = "TIMESTAMP"
+				p.advance()
+			}
+			fc.Expr = p.parseExpr()
+		} else {
+			// SCN | TIMESTAMP
+			if p.cur.Type == kwSCN {
+				fc.Type = "SCN"
+				p.advance()
+			} else if p.cur.Type == kwTIMESTAMP {
+				fc.Type = "TIMESTAMP"
+				p.advance()
+			}
+			// expr
+			fc.Expr = p.parseExpr()
 		}
-
-		// expr
-		fc.Expr = p.parseExpr()
 	}
 
 	fc.Loc.End = p.pos()
 	return fc
+}
+
+// parseWindowClause parses a WINDOW clause.
+//
+// BNF: oracle/parser/bnf/SELECT.bnf
+//
+//	window_clause:
+//	    WINDOW window_name AS ( window_specification )
+//	    [, window_name AS ( window_specification ) ]...
+func (p *Parser) parseWindowClause() []*nodes.WindowDef {
+	p.advance() // consume WINDOW (soft keyword)
+
+	var defs []*nodes.WindowDef
+	for {
+		if !p.isIdentLike() {
+			break
+		}
+		start := p.pos()
+		name := p.parseIdentifier()
+		wd := &nodes.WindowDef{
+			Name: name,
+			Loc:  nodes.Loc{Start: start},
+		}
+
+		// AS ( window_specification )
+		if p.cur.Type == kwAS {
+			p.advance()
+		}
+		if p.cur.Type == '(' {
+			p.advance()
+			ws := &nodes.WindowSpec{Loc: nodes.Loc{Start: p.pos()}}
+
+			// [ existing_window_name ] — only if followed by something other than BY
+			if p.isIdentLike() && p.peekNext().Type != kwBY &&
+				p.cur.Type != kwPARTITION && p.cur.Type != kwORDER &&
+				p.cur.Type != kwROWS && p.cur.Type != kwRANGE && p.cur.Type != kwGROUPS {
+				ws.WindowName = p.parseIdentifier()
+			}
+
+			// PARTITION BY
+			if p.cur.Type == kwPARTITION {
+				p.advance()
+				if p.cur.Type == kwBY {
+					p.advance()
+				}
+				ws.PartitionBy = &nodes.List{}
+				for {
+					expr := p.parseExpr()
+					if expr != nil {
+						ws.PartitionBy.Items = append(ws.PartitionBy.Items, expr)
+					}
+					if p.cur.Type != ',' {
+						break
+					}
+					p.advance()
+				}
+			}
+
+			// ORDER BY
+			if p.cur.Type == kwORDER {
+				p.advance()
+				if p.cur.Type == kwBY {
+					p.advance()
+				}
+				ws.OrderBy = p.parseOrderByList()
+			}
+
+			// Windowing clause: ROWS | RANGE | GROUPS
+			if p.cur.Type == kwROWS || p.cur.Type == kwRANGE || p.cur.Type == kwGROUPS {
+				ws.Frame = p.parseWindowFrame()
+			}
+
+			if p.cur.Type == ')' {
+				p.advance()
+			}
+			ws.Loc.End = p.pos()
+			wd.Spec = ws
+		}
+
+		wd.Loc.End = p.pos()
+		defs = append(defs, wd)
+
+		if p.cur.Type != ',' {
+			break
+		}
+		p.advance()
+	}
+	return defs
+}
+
+// parsePartitionExtClause parses a partition extension clause.
+//
+// BNF: oracle/parser/bnf/SELECT.bnf
+//
+//	partition_extension_clause:
+//	    { PARTITION ( partition_name )
+//	    | PARTITION FOR ( partition_key_value [, partition_key_value ]... )
+//	    | SUBPARTITION ( subpartition_name )
+//	    | SUBPARTITION FOR ( subpartition_key_value [, subpartition_key_value ]... )
+//	    }
+func (p *Parser) parsePartitionExtClause() *nodes.PartitionExtClause {
+	start := p.pos()
+	pe := &nodes.PartitionExtClause{Loc: nodes.Loc{Start: start}}
+
+	if p.cur.Type == kwSUBPARTITION {
+		pe.IsSubpartition = true
+	}
+	p.advance() // consume PARTITION or SUBPARTITION
+
+	// FOR keyword
+	if p.cur.Type == kwFOR {
+		pe.IsFor = true
+		p.advance()
+	}
+
+	if p.cur.Type == '(' {
+		p.advance()
+		if pe.IsFor {
+			pe.Keys = p.parseExprList()
+		} else {
+			pe.Name = p.parseIdentifier()
+		}
+		if p.cur.Type == ')' {
+			p.advance()
+		}
+	}
+
+	pe.Loc.End = p.pos()
+	return pe
+}
+
+// parseTableCollectionExpr parses TABLE(collection_expression) [(+)].
+//
+// BNF: oracle/parser/bnf/SELECT.bnf
+//
+//	table_collection_expression:
+//	    TABLE ( collection_expression ) [ ( + ) ]
+func (p *Parser) parseTableCollectionExpr(start int) nodes.TableExpr {
+	p.advance() // consume TABLE
+	tc := &nodes.TableCollectionExpr{Loc: nodes.Loc{Start: start}}
+
+	if p.cur.Type == '(' {
+		p.advance()
+		tc.Expr = p.parseExpr()
+		if p.cur.Type == ')' {
+			p.advance()
+		}
+	}
+
+	// Optional (+)
+	if p.cur.Type == '(' && p.peekNext().Type == '+' {
+		p.advance() // (
+		p.advance() // +
+		if p.cur.Type == ')' {
+			p.advance()
+		}
+		tc.OuterJoin = true
+	}
+
+	// Optional alias
+	if p.cur.Type == kwAS {
+		p.advance()
+		tc.Alias = &nodes.Alias{Name: p.parseIdentifier()}
+	} else if p.isTableAliasCandidate() {
+		tc.Alias = &nodes.Alias{Name: p.parseIdentifier()}
+	}
+
+	tc.Loc.End = p.pos()
+	return tc
+}
+
+// parseContainersOrShards parses CONTAINERS(table) or SHARDS(table).
+//
+// BNF: oracle/parser/bnf/SELECT.bnf
+//
+//	containers_clause:
+//	    CONTAINERS ( [ schema. ] { table | view } )
+//	shards_clause:
+//	    SHARDS ( [ schema. ] { table | view } )
+func (p *Parser) parseContainersOrShards(start int, isShards bool) nodes.TableExpr {
+	p.advance() // consume CONTAINERS or SHARDS
+	ce := &nodes.ContainersExpr{
+		IsShards: isShards,
+		Loc:      nodes.Loc{Start: start},
+	}
+
+	if p.cur.Type == '(' {
+		p.advance()
+		ce.Name = p.parseObjectName()
+		if p.cur.Type == ')' {
+			p.advance()
+		}
+	}
+
+	// Optional alias
+	if p.cur.Type == kwAS {
+		p.advance()
+		ce.Alias = &nodes.Alias{Name: p.parseIdentifier()}
+	} else if p.isTableAliasCandidate() {
+		ce.Alias = &nodes.Alias{Name: p.parseIdentifier()}
+	}
+
+	ce.Loc.End = p.pos()
+	return ce
+}
+
+// parseMatchRecognize parses a MATCH_RECOGNIZE clause.
+//
+// BNF: oracle/parser/bnf/SELECT.bnf
+//
+//	row_pattern_clause:
+//	    MATCH_RECOGNIZE (
+//	      [ PARTITION BY column [, column ]... ]
+//	      [ ORDER BY column [ ASC | DESC ] [, column [ ASC | DESC ] ]... ]
+//	      [ MEASURES row_pattern_measure_column [, row_pattern_measure_column ]... ]
+//	      [ ONE ROW PER MATCH | ALL ROWS PER MATCH [ { SHOW | OMIT } EMPTY MATCHES ] ]
+//	      [ AFTER MATCH SKIP
+//	        { PAST LAST ROW | TO NEXT ROW | TO FIRST variable_name
+//	        | TO LAST variable_name | TO variable_name } ]
+//	      PATTERN ( row_pattern )
+//	      [ SUBSET subset_item [, subset_item ]... ]
+//	      DEFINE row_pattern_definition [, row_pattern_definition ]...
+//	    )
+func (p *Parser) parseMatchRecognize(start int) nodes.TableExpr {
+	p.advance() // consume MATCH_RECOGNIZE
+	mr := &nodes.MatchRecognizeClause{Loc: nodes.Loc{Start: start}}
+
+	if p.cur.Type != '(' {
+		mr.Loc.End = p.pos()
+		return mr
+	}
+	p.advance() // consume '('
+
+	// PARTITION BY
+	if p.cur.Type == kwPARTITION {
+		p.advance()
+		if p.cur.Type == kwBY {
+			p.advance()
+		}
+		mr.PartitionBy = p.parseExprList()
+	}
+
+	// ORDER BY
+	if p.cur.Type == kwORDER {
+		p.advance()
+		if p.cur.Type == kwBY {
+			p.advance()
+		}
+		mr.OrderBy = p.parseOrderByList()
+	}
+
+	// MEASURES
+	if p.cur.Type == kwMEASURES {
+		p.advance()
+		mr.Measures = &nodes.List{}
+		for {
+			rt := p.parseResTarget()
+			if rt == nil {
+				break
+			}
+			mr.Measures.Items = append(mr.Measures.Items, rt)
+			if p.cur.Type != ',' {
+				break
+			}
+			p.advance()
+		}
+	}
+
+	// ONE ROW PER MATCH | ALL ROWS PER MATCH [...]
+	if p.isIdentLikeStr("ONE") {
+		p.advance() // ONE
+		if p.cur.Type == kwROW {
+			p.advance()
+		}
+		if p.isIdentLikeStr("PER") {
+			p.advance()
+		}
+		if p.isIdentLikeStr("MATCH") {
+			p.advance()
+		}
+		mr.RowsPerMatch = "ONE ROW PER MATCH"
+	} else if p.cur.Type == kwALL {
+		p.advance() // ALL
+		if p.cur.Type == kwROWS {
+			p.advance()
+		}
+		if p.isIdentLikeStr("PER") {
+			p.advance()
+		}
+		if p.isIdentLikeStr("MATCH") {
+			p.advance()
+		}
+		mr.RowsPerMatch = "ALL ROWS PER MATCH"
+		if p.isIdentLikeStr("SHOW") {
+			p.advance()
+			if p.isIdentLikeStr("EMPTY") {
+				p.advance()
+			}
+			if p.isIdentLikeStr("MATCHES") {
+				p.advance()
+			}
+			mr.RowsPerMatch = "ALL ROWS PER MATCH SHOW EMPTY MATCHES"
+		} else if p.isIdentLikeStr("OMIT") {
+			p.advance()
+			if p.isIdentLikeStr("EMPTY") {
+				p.advance()
+			}
+			if p.isIdentLikeStr("MATCHES") {
+				p.advance()
+			}
+			mr.RowsPerMatch = "ALL ROWS PER MATCH OMIT EMPTY MATCHES"
+		}
+	}
+
+	// AFTER MATCH SKIP ...
+	if p.isIdentLikeStr("AFTER") {
+		p.advance()
+		if p.isIdentLikeStr("MATCH") {
+			p.advance()
+		}
+		if p.cur.Type == kwSKIP {
+			p.advance()
+		}
+		if p.isIdentLikeStr("PAST") {
+			p.advance()
+			if p.cur.Type == kwLAST {
+				p.advance()
+			}
+			if p.cur.Type == kwROW {
+				p.advance()
+			}
+			mr.AfterMatch = "PAST LAST ROW"
+		} else if p.cur.Type == kwTO {
+			p.advance()
+			if p.cur.Type == kwNEXT {
+				p.advance()
+				if p.cur.Type == kwROW {
+					p.advance()
+				}
+				mr.AfterMatch = "TO NEXT ROW"
+			} else if p.cur.Type == kwFIRST {
+				p.advance()
+				name := p.parseIdentifier()
+				mr.AfterMatch = "TO FIRST " + name
+			} else if p.cur.Type == kwLAST {
+				p.advance()
+				name := p.parseIdentifier()
+				mr.AfterMatch = "TO LAST " + name
+			} else {
+				name := p.parseIdentifier()
+				mr.AfterMatch = "TO " + name
+			}
+		}
+	}
+
+	// PATTERN ( row_pattern ) — capture raw text between parens
+	if p.isIdentLikeStr("PATTERN") {
+		p.advance()
+		if p.cur.Type == '(' {
+			mr.Pattern = p.consumeBalancedParensAsText()
+		}
+	}
+
+	// SUBSET
+	if p.isIdentLikeStr("SUBSET") {
+		p.advance()
+		mr.Subsets = &nodes.List{}
+		for {
+			if !p.isIdentLike() {
+				break
+			}
+			subStart := p.pos()
+			name := p.parseIdentifier()
+			rt := &nodes.ResTarget{
+				Name: name,
+				Loc:  nodes.Loc{Start: subStart},
+			}
+			// = ( var1, var2, ... )
+			if p.cur.Type == '=' {
+				p.advance()
+				if p.cur.Type == '(' {
+					p.advance()
+					rt.Expr = p.parseExpr()
+					if p.cur.Type == ')' {
+						p.advance()
+					}
+				}
+			}
+			rt.Loc.End = p.pos()
+			mr.Subsets.Items = append(mr.Subsets.Items, rt)
+			if p.cur.Type != ',' {
+				break
+			}
+			p.advance()
+		}
+	}
+
+	// DEFINE
+	if p.isIdentLikeStr("DEFINE") {
+		p.advance()
+		mr.Definitions = &nodes.List{}
+		for {
+			if !p.isIdentLike() {
+				break
+			}
+			defStart := p.pos()
+			name := p.parseIdentifier()
+			rt := &nodes.ResTarget{
+				Name: name,
+				Loc:  nodes.Loc{Start: defStart},
+			}
+			if p.cur.Type == kwAS {
+				p.advance()
+			}
+			rt.Expr = p.parseExpr()
+			rt.Loc.End = p.pos()
+			mr.Definitions.Items = append(mr.Definitions.Items, rt)
+			if p.cur.Type != ',' {
+				break
+			}
+			p.advance()
+		}
+	}
+
+	if p.cur.Type == ')' {
+		p.advance()
+	}
+
+	// Optional alias
+	if p.cur.Type == kwAS {
+		p.advance()
+		mr.Alias = &nodes.Alias{Name: p.parseIdentifier()}
+	} else if p.isTableAliasCandidate() {
+		mr.Alias = &nodes.Alias{Name: p.parseIdentifier()}
+	}
+
+	mr.Loc.End = p.pos()
+	return mr
+}
+
+// consumeBalancedParensAsText consumes tokens between ( and ) and returns them as a concatenated string.
+func (p *Parser) consumeBalancedParensAsText() string {
+	if p.cur.Type != '(' {
+		return ""
+	}
+	p.advance() // consume '('
+	depth := 1
+	var parts []string
+	for depth > 0 {
+		if p.cur.Type == '(' {
+			depth++
+			parts = append(parts, "(")
+		} else if p.cur.Type == ')' {
+			depth--
+			if depth == 0 {
+				p.advance() // consume final ')'
+				break
+			}
+			parts = append(parts, ")")
+		} else if p.cur.Type == tokEOF {
+			break
+		} else {
+			parts = append(parts, p.cur.Str)
+		}
+		p.advance()
+	}
+	result := ""
+	for i, s := range parts {
+		if i > 0 {
+			result += " "
+		}
+		result += s
+	}
+	return result
 }

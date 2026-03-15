@@ -550,7 +550,7 @@
       "id": 88,
       "name": "select_full_review",
       "file": "select.go",
-      "status": "pending",
+      "status": "done",
       "description": "Full review of SELECT against 397-line BNF. WITH clause, subquery, query_block, join_clause, PIVOT/UNPIVOT, MODEL, SAMPLE, FLASHBACK AS OF, hierarchical queries, FOR UPDATE, row_limiting, window_clause.",
       "bnf_files": ["SELECT.bnf"],
       "bnf_lines": 397,

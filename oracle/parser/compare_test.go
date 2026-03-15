@@ -549,6 +549,113 @@ func TestParseGroupingExtensions(t *testing.T) {
 	}
 }
 
+// TestParseSelectFullReview tests all BNF branches from batch 88 SELECT review.
+func TestParseSelectFullReview(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		// WINDOW clause
+		{"window_basic", `SELECT emp_id, salary, SUM(salary) OVER w FROM employees WINDOW w AS (PARTITION BY dept_id ORDER BY salary)`},
+		{"window_multiple", `SELECT emp_id, SUM(salary) OVER w1, AVG(salary) OVER w2 FROM employees WINDOW w1 AS (PARTITION BY dept_id), w2 AS (ORDER BY hire_date)`},
+		{"window_with_frame", `SELECT emp_id, SUM(salary) OVER w FROM employees WINDOW w AS (ORDER BY hire_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)`},
+		{"window_ref_existing", `SELECT emp_id, SUM(salary) OVER w2 FROM employees WINDOW w1 AS (PARTITION BY dept_id), w2 AS (w1 ORDER BY salary)`},
+
+		// QUALIFY clause
+		{"qualify_basic", `SELECT emp_id, salary, ROW_NUMBER() OVER (ORDER BY salary DESC) AS rn FROM employees QUALIFY rn <= 10`},
+		{"qualify_with_func", `SELECT * FROM employees QUALIFY ROW_NUMBER() OVER (PARTITION BY dept_id ORDER BY salary DESC) = 1`},
+
+		// ORDER SIBLINGS BY
+		{"order_siblings_by", `SELECT emp_id, mgr_id, last_name FROM employees START WITH mgr_id IS NULL CONNECT BY PRIOR emp_id = mgr_id ORDER SIBLINGS BY last_name`},
+		{"order_siblings_by_multi", `SELECT emp_id, last_name FROM employees CONNECT BY PRIOR emp_id = mgr_id START WITH mgr_id IS NULL ORDER SIBLINGS BY last_name ASC, emp_id DESC`},
+
+		// WITH clause SEARCH
+		{"with_search_breadth", `WITH RECURSIVE emp_tree (emp_id, mgr_id, lvl) AS (SELECT emp_id, mgr_id, 1 FROM employees WHERE mgr_id IS NULL UNION ALL SELECT e.emp_id, e.mgr_id, t.lvl + 1 FROM employees e JOIN emp_tree t ON e.mgr_id = t.emp_id) SEARCH BREADTH FIRST BY emp_id SET order_col SELECT * FROM emp_tree ORDER BY order_col`},
+		{"with_search_depth", `WITH RECURSIVE emp_tree (emp_id, mgr_id) AS (SELECT emp_id, mgr_id FROM employees WHERE mgr_id IS NULL UNION ALL SELECT e.emp_id, e.mgr_id FROM employees e JOIN emp_tree t ON e.mgr_id = t.emp_id) SEARCH DEPTH FIRST BY emp_id SET order_col SELECT * FROM emp_tree`},
+
+		// WITH clause CYCLE
+		{"with_cycle", `WITH RECURSIVE emp_tree (emp_id, mgr_id) AS (SELECT emp_id, mgr_id FROM employees WHERE mgr_id IS NULL UNION ALL SELECT e.emp_id, e.mgr_id FROM employees e JOIN emp_tree t ON e.mgr_id = t.emp_id) CYCLE emp_id SET is_cycle TO 'Y' DEFAULT 'N' SELECT * FROM emp_tree`},
+
+		// Partition extension clause
+		{"partition_ext_name", `SELECT * FROM sales PARTITION (sales_q1_2024)`},
+		{"partition_ext_for", `SELECT * FROM sales PARTITION FOR (TO_DATE('2024-01-15', 'YYYY-MM-DD'))`},
+		{"subpartition_ext", `SELECT * FROM sales SUBPARTITION (sales_q1_east)`},
+		{"subpartition_ext_for", `SELECT * FROM sales SUBPARTITION FOR ('EAST', TO_DATE('2024-01-15', 'YYYY-MM-DD'))`},
+
+		// Dblink
+		{"dblink_basic", `SELECT * FROM employees@remote_db`},
+		{"dblink_with_schema", `SELECT * FROM hr.employees@remote_db WHERE dept_id = 10`},
+
+		// TABLE() collection expression
+		{"table_collection", `SELECT * FROM TABLE(my_function(1, 2))`},
+		{"table_collection_alias", `SELECT * FROM TABLE(get_employees(10)) t`},
+
+		// PIVOT XML
+		{"pivot_xml", `SELECT * FROM sales PIVOT XML (SUM(amount) FOR quarter IN (SELECT DISTINCT quarter FROM all_quarters))`},
+
+		// CROSS APPLY / OUTER APPLY
+		{"cross_apply", `SELECT e.emp_id, d.dept_name FROM employees e CROSS APPLY (SELECT dept_name FROM departments WHERE dept_id = e.dept_id) d`},
+		{"outer_apply", `SELECT e.emp_id, d.dept_name FROM employees e OUTER APPLY (SELECT dept_name FROM departments WHERE dept_id = e.dept_id) d`},
+
+		// VERSIONS PERIOD FOR / AS OF PERIOD FOR
+		{"versions_period_for", `SELECT * FROM employees VERSIONS PERIOD FOR valid_time BETWEEN TIMESTAMP '2024-01-01 00:00:00' AND TIMESTAMP '2024-06-30 23:59:59'`},
+		{"as_of_period_for", `SELECT * FROM employees AS OF PERIOD FOR valid_time TIMESTAMP '2024-01-01 00:00:00'`},
+
+		// CONTAINERS / SHARDS
+		{"containers", `SELECT * FROM CONTAINERS(hr.employees)`},
+		{"shards", `SELECT * FROM SHARDS(hr.orders)`},
+
+		// Basic set operations
+		{"union", `SELECT a FROM t1 UNION SELECT b FROM t2`},
+		{"union_all", `SELECT a FROM t1 UNION ALL SELECT b FROM t2`},
+		{"intersect", `SELECT a FROM t1 INTERSECT SELECT b FROM t2`},
+		{"minus", `SELECT a FROM t1 MINUS SELECT b FROM t2`},
+
+		// FETCH FIRST
+		{"offset_fetch", `SELECT * FROM employees ORDER BY salary DESC OFFSET 10 ROWS FETCH FIRST 5 ROWS ONLY`},
+		{"fetch_percent", `SELECT * FROM employees ORDER BY salary DESC FETCH FIRST 10 PERCENT ROWS WITH TIES`},
+		{"fetch_next", `SELECT * FROM employees FETCH NEXT 20 ROWS ONLY`},
+
+		// FOR UPDATE variants
+		{"for_update_basic", `SELECT * FROM employees FOR UPDATE`},
+		{"for_update_of", `SELECT * FROM employees FOR UPDATE OF salary, commission`},
+		{"for_update_nowait", `SELECT * FROM employees FOR UPDATE NOWAIT`},
+		{"for_update_wait", `SELECT * FROM employees FOR UPDATE WAIT 5`},
+		{"for_update_skip_locked", `SELECT * FROM employees FOR UPDATE SKIP LOCKED`},
+
+		// WITH clause basic
+		{"with_basic", `WITH dept_avg AS (SELECT dept_id, AVG(salary) avg_sal FROM employees GROUP BY dept_id) SELECT e.emp_id FROM employees e JOIN dept_avg d ON e.dept_id = d.dept_id`},
+		{"with_columns", `WITH dept_info(did, avg_sal) AS (SELECT dept_id, AVG(salary) FROM employees GROUP BY dept_id) SELECT * FROM dept_info`},
+
+		// Hierarchical query
+		{"connect_by_basic", `SELECT emp_id, mgr_id, LEVEL FROM employees CONNECT BY PRIOR emp_id = mgr_id START WITH mgr_id IS NULL`},
+		{"start_with_first", `SELECT emp_id FROM employees START WITH emp_id = 100 CONNECT BY PRIOR emp_id = mgr_id`},
+		{"connect_by_nocycle", `SELECT emp_id FROM employees CONNECT BY NOCYCLE PRIOR emp_id = mgr_id`},
+
+		// JOIN variants
+		{"inner_join", `SELECT * FROM t1 INNER JOIN t2 ON t1.id = t2.id`},
+		{"left_outer_join", `SELECT * FROM t1 LEFT OUTER JOIN t2 ON t1.id = t2.id`},
+		{"right_join", `SELECT * FROM t1 RIGHT JOIN t2 ON t1.id = t2.id`},
+		{"full_outer_join", `SELECT * FROM t1 FULL OUTER JOIN t2 ON t1.id = t2.id`},
+		{"cross_join", `SELECT * FROM t1 CROSS JOIN t2`},
+		{"natural_join", `SELECT * FROM t1 NATURAL JOIN t2`},
+		{"natural_left_join", `SELECT * FROM t1 NATURAL LEFT JOIN t2`},
+		{"join_using", `SELECT * FROM t1 JOIN t2 USING (id)`},
+
+		// Subquery in FROM
+		{"subquery_from", `SELECT * FROM (SELECT emp_id, salary FROM employees WHERE dept_id = 10) sub WHERE sub.salary > 5000`},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tc.sql)
+			if result.Len() < 1 {
+				t.Fatalf("expected at least 1 statement, got %d", result.Len())
+			}
+		})
+	}
+}
+
 func TestParseLateralView(t *testing.T) {
 	tests := []string{
 		"SELECT * FROM employees e, LATERAL (SELECT * FROM departments d WHERE d.dept_id = e.dept_id) ld",
