@@ -1112,7 +1112,7 @@
       "id": 103,
       "name": "cluster_dimension_zonemap_inmemory",
       "file": "create_admin.go",
-      "status": "pending",
+      "status": "done",
       "description": "CREATE/ALTER CLUSTER (review \u2014 implemented), CREATE/ALTER DIMENSION (review \u2014 implemented). CREATE/ALTER MATERIALIZED ZONEMAP + INMEMORY JOIN GROUP (stubbed).",
       "bnf_files": [
         "CREATE-CLUSTER.bnf",

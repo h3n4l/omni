@@ -12,7 +12,7 @@ func (p *Parser) parseCreateMaterializedOrView(start int, orReplace bool) nodes.
 	// Check for MATERIALIZED ZONEMAP
 	if p.isIdentLike() && p.cur.Str == "ZONEMAP" {
 		p.advance() // consume ZONEMAP
-		return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_MATERIALIZED_ZONEMAP, start)
+		return p.parseCreateMaterializedZonemapStmt(start)
 	}
 	if p.cur.Type == kwVIEW {
 		next := p.peekNext()
@@ -225,7 +225,7 @@ func (p *Parser) parseCreateAdminObject(start int) nodes.StmtNode {
 			if p.cur.Type == kwGROUP || (p.isIdentLike() && p.cur.Str == "GROUP") {
 				p.advance() // consume GROUP
 			}
-			return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_INMEMORY_JOIN_GROUP, start)
+			return p.parseCreateInmemoryJoinGroupStmt(start)
 		case "ROLLBACK":
 			p.advance() // consume ROLLBACK
 			if p.isIdentLike() && p.cur.Str == "SEGMENT" {
@@ -348,7 +348,7 @@ func (p *Parser) parseDropAdminObject(start int) nodes.StmtNode {
 		return p.parseAdminDDLStmt("DROP", nodes.OBJECT_CONTEXT, start)
 	case kwCLUSTER:
 		p.advance()
-		return p.parseAdminDDLStmt("DROP", nodes.OBJECT_CLUSTER, start)
+		return p.parseDropClusterStmt(start)
 	case kwJAVA:
 		p.advance()
 		return p.parseAdminDDLStmt("DROP", nodes.OBJECT_JAVA, start)
@@ -360,7 +360,7 @@ func (p *Parser) parseDropAdminObject(start int) nodes.StmtNode {
 			switch p.cur.Str {
 			case "DIMENSION":
 				p.advance()
-				return p.parseAdminDDLStmt("DROP", nodes.OBJECT_DIMENSION, start)
+				return p.parseDropSimpleStmt(nodes.OBJECT_DIMENSION, start)
 			case "FLASHBACK":
 				p.advance()
 				if p.isIdentLike() && p.cur.Str == "ARCHIVE" {
@@ -417,7 +417,7 @@ func (p *Parser) parseDropAdminObject(start int) nodes.StmtNode {
 				if p.cur.Type == kwGROUP || (p.isIdentLike() && p.cur.Str == "GROUP") {
 					p.advance() // consume GROUP
 				}
-				return p.parseAdminDDLStmt("DROP", nodes.OBJECT_INMEMORY_JOIN_GROUP, start)
+				return p.parseDropSimpleStmt(nodes.OBJECT_INMEMORY_JOIN_GROUP, start)
 			case "ROLLBACK":
 				p.advance() // consume ROLLBACK
 				if p.isIdentLike() && p.cur.Str == "SEGMENT" {
@@ -1682,9 +1682,59 @@ func (p *Parser) skipParens() {
 //	    [ NOROWDEPENDENCIES | ROWDEPENDENCIES ]
 //	    [ CACHE | NOCACHE ]
 //	    [ cluster_range_partitions ]
+// parseCreateClusterStmt parses a CREATE CLUSTER statement.
+//
+// BNF: oracle/parser/bnf/CREATE-CLUSTER.bnf
+//
+//	CREATE CLUSTER [ IF NOT EXISTS ] [ schema. ] cluster
+//	    [ SHARING = { METADATA | NONE } ]
+//	    ( column datatype [ COLLATE column_collation_name ] [ SORT ]
+//	      [, column datatype [ COLLATE column_collation_name ] [ SORT ] ]... )
+//	    [ physical_attributes_clause ]
+//	    [ SIZE size_clause ]
+//	    [ TABLESPACE tablespace ]
+//	    [ { INDEX
+//	      | HASHKEYS integer [ HASH IS expr ] }
+//	    ]
+//	    [ SINGLE TABLE ]
+//	    [ parallel_clause ]
+//	    [ { NOROWDEPENDENCIES | ROWDEPENDENCIES } ]
+//	    [ { CACHE | NOCACHE } ]
+//	    [ cluster_range_partitions ] ;
+//
+//	physical_attributes_clause:
+//	    [ PCTFREE integer ]
+//	    [ PCTUSED integer ]
+//	    [ INITRANS integer ]
+//	    [ storage_clause ]
+//
+//	parallel_clause:
+//	    { NOPARALLEL | PARALLEL [ integer ] }
+//
+//	cluster_range_partitions:
+//	    PARTITION BY RANGE ( column [, column ]... )
+//	    ( PARTITION [ partition ]
+//	        VALUES LESS THAN ( { value | MAXVALUE } [, { value | MAXVALUE } ]... )
+//	        [ table_partition_description ]
+//	      [, PARTITION [ partition ]
+//	          VALUES LESS THAN ( { value | MAXVALUE } [, { value | MAXVALUE } ]... )
+//	          [ table_partition_description ] ]...
+//	    )
 func (p *Parser) parseCreateClusterStmt(start int) *nodes.CreateClusterStmt {
 	stmt := &nodes.CreateClusterStmt{
 		Loc: nodes.Loc{Start: start},
+	}
+
+	// Optional IF NOT EXISTS
+	if p.cur.Type == kwIF {
+		next := p.peekNext()
+		if next.Type == kwNOT {
+			p.advance() // IF
+			p.advance() // NOT
+			if p.cur.Type == kwEXISTS {
+				p.advance() // EXISTS
+			}
+		}
 	}
 
 	stmt.Name = p.parseObjectName()
@@ -1852,17 +1902,39 @@ func (p *Parser) parseIntValue() int {
 
 // parseCreateDimensionStmt parses a CREATE DIMENSION statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/CREATE-DIMENSION.html
+// BNF: oracle/parser/bnf/CREATE-DIMENSION.bnf
 //
 //	CREATE DIMENSION [ schema. ] dimension
-//	    { LEVEL level IS ( level_table.level_column [, ...] ) [ SKIP WHEN NULL ] } ...
-//	    { HIERARCHY hierarchy (
-//	        child_level CHILD OF parent_level [ CHILD OF ... ]
-//	        [ JOIN KEY ( child_key_column [, ...] ) REFERENCES parent_level ] ...
-//	      )
-//	    | ATTRIBUTE level DETERMINES ( dependent_column [, ...] )
-//	    | ATTRIBUTE attr_name LEVEL level DETERMINES ( dependent_column [, ...] )
-//	    } ...
+//	    level_clause [ level_clause ]...
+//	    { hierarchy_clause
+//	    | dimension_join_clause
+//	    | attribute_clause
+//	    | extended_attribute_clause
+//	    }... ;
+//
+//	level_clause:
+//	    LEVEL level IS ( [ schema. ] table. column [, [ schema. ] table. column ]... )
+//	    [ SKIP WHEN NULL ]
+//
+//	hierarchy_clause:
+//	    HIERARCHY hierarchy (
+//	        child_level CHILD OF parent_level
+//	        [ CHILD OF parent_level ]...
+//	        [ dimension_join_clause ]...
+//	    )
+//
+//	dimension_join_clause:
+//	    JOIN KEY ( [ [ schema. ] table. ] child_key_column
+//	        [, [ [ schema. ] table. ] child_key_column ]... )
+//	    REFERENCES parent_level
+//
+//	attribute_clause:
+//	    ATTRIBUTE level DETERMINES ( [ schema. ] table. column
+//	        [, [ schema. ] table. column ]... )
+//
+//	extended_attribute_clause:
+//	    ATTRIBUTE attribute LEVEL level DETERMINES ( [ schema. ] table. column
+//	        [, [ schema. ] table. column ]... )
 func (p *Parser) parseCreateDimensionStmt(start int) *nodes.CreateDimensionStmt {
 	stmt := &nodes.CreateDimensionStmt{
 		Loc: nodes.Loc{Start: start},
@@ -2076,6 +2148,764 @@ func (p *Parser) parseDimensionAttribute() *nodes.DimensionAttribute {
 	return attr
 }
 
+// ---------------------------------------------------------------------------
+// ALTER CLUSTER
+// ---------------------------------------------------------------------------
+
+// parseAlterClusterStmt parses an ALTER CLUSTER statement.
+//
+// BNF: oracle/parser/bnf/ALTER-CLUSTER.bnf
+//
+//	ALTER CLUSTER [ IF EXISTS ] [ schema . ] cluster
+//	    { physical_attributes_clause
+//	    | SIZE integer
+//	    | MODIFY PARTITION partition allocate_extent_clause
+//	    | allocate_extent_clause
+//	    | deallocate_unused_clause
+//	    | parallel_clause
+//	    }
+//
+//	physical_attributes_clause:
+//	    [ PCTUSED integer ]
+//	    [ PCTFREE integer ]
+//	    [ INITRANS integer ]
+//	    [ STORAGE storage_clause ]
+//
+//	allocate_extent_clause:
+//	    ALLOCATE EXTENT
+//	    [ ( { SIZE size_clause
+//	        | DATAFILE 'filename'
+//	        | INSTANCE integer
+//	        }...
+//	      )
+//	    ]
+//
+//	deallocate_unused_clause:
+//	    DEALLOCATE UNUSED [ KEEP size_clause ]
+//
+//	parallel_clause:
+//	    { PARALLEL [ integer ] | NOPARALLEL }
+func (p *Parser) parseAlterClusterStmt(start int) *nodes.AlterClusterStmt {
+	stmt := &nodes.AlterClusterStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// Optional IF EXISTS
+	if p.cur.Type == kwIF {
+		next := p.peekNext()
+		if next.Type == kwEXISTS {
+			p.advance() // IF
+			p.advance() // EXISTS
+			stmt.IfExists = true
+		}
+	}
+
+	stmt.Name = p.parseObjectName()
+
+	// Parse the action
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		switch {
+		case p.cur.Type == kwSIZE:
+			p.advance()
+			stmt.Action = "SIZE"
+			stmt.Size = p.parseSizeValue()
+
+		case p.isIdentLike() && p.cur.Str == "PCTUSED":
+			p.advance()
+			if p.cur.Type == tokICONST {
+				v := p.parseIntValue()
+				stmt.PctUsed = &v
+			}
+			if stmt.Action == "" {
+				stmt.Action = "PHYSICAL_ATTRS"
+			}
+
+		case p.cur.Type == kwPCTFREE:
+			p.advance()
+			if p.cur.Type == tokICONST {
+				v := p.parseIntValue()
+				stmt.PctFree = &v
+			}
+			if stmt.Action == "" {
+				stmt.Action = "PHYSICAL_ATTRS"
+			}
+
+		case p.isIdentLike() && p.cur.Str == "INITRANS":
+			p.advance()
+			if p.cur.Type == tokICONST {
+				v := p.parseIntValue()
+				stmt.InitTrans = &v
+			}
+			if stmt.Action == "" {
+				stmt.Action = "PHYSICAL_ATTRS"
+			}
+
+		case p.cur.Type == kwSTORAGE:
+			p.advance()
+			if p.cur.Type == '(' {
+				p.skipParens()
+			}
+			if stmt.Action == "" {
+				stmt.Action = "PHYSICAL_ATTRS"
+			}
+
+		case p.isIdentLike() && p.cur.Str == "MODIFY":
+			p.advance() // MODIFY
+			stmt.Action = "MODIFY_PARTITION"
+			if p.cur.Type == kwPARTITION || (p.isIdentLike() && p.cur.Str == "PARTITION") {
+				p.advance() // PARTITION
+			}
+			stmt.ModifyPartition = p.parseIdentifier()
+			// allocate_extent_clause follows
+			if p.isIdentLike() && p.cur.Str == "ALLOCATE" {
+				p.advance() // ALLOCATE
+				if p.isIdentLike() && p.cur.Str == "EXTENT" {
+					p.advance() // EXTENT
+				}
+				if p.cur.Type == '(' {
+					p.skipParens()
+				}
+			}
+
+		case p.isIdentLike() && p.cur.Str == "ALLOCATE":
+			p.advance() // ALLOCATE
+			stmt.Action = "ALLOCATE_EXTENT"
+			if p.isIdentLike() && p.cur.Str == "EXTENT" {
+				p.advance() // EXTENT
+			}
+			if p.cur.Type == '(' {
+				p.skipParens()
+			}
+
+		case p.isIdentLike() && p.cur.Str == "DEALLOCATE":
+			p.advance() // DEALLOCATE
+			stmt.Action = "DEALLOCATE_UNUSED"
+			if p.isIdentLike() && p.cur.Str == "UNUSED" {
+				p.advance() // UNUSED
+			}
+			if p.isIdentLike() && p.cur.Str == "KEEP" {
+				p.advance() // KEEP
+				p.parseSizeValue()
+			}
+
+		case p.isIdentLike() && p.cur.Str == "PARALLEL":
+			p.advance()
+			stmt.Action = "PARALLEL"
+			if p.cur.Type == tokICONST {
+				stmt.Parallel = p.cur.Str
+				p.advance()
+			} else {
+				stmt.Parallel = "PARALLEL"
+			}
+
+		case p.isIdentLike() && p.cur.Str == "NOPARALLEL":
+			p.advance()
+			stmt.Action = "PARALLEL"
+			stmt.Parallel = "NOPARALLEL"
+
+		default:
+			p.advance()
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// ---------------------------------------------------------------------------
+// ALTER DIMENSION
+// ---------------------------------------------------------------------------
+
+// parseAlterDimensionStmt parses an ALTER DIMENSION statement.
+//
+// BNF: oracle/parser/bnf/ALTER-DIMENSION.bnf
+//
+//	ALTER DIMENSION [ schema . ] dimension
+//	    { ADD level_clause
+//	    | ADD hierarchy_clause
+//	    | ADD attribute_clause
+//	    | ADD extended_attribute_clause
+//	    | DROP level_clause
+//	    | DROP hierarchy_clause
+//	    | DROP attribute_clause
+//	    | DROP extended_attribute_clause
+//	    | COMPILE
+//	    }
+//
+//	level_clause:
+//	    LEVEL level IS ( table . column [, table . column ]... )
+//	    [ SKIP WHEN expression ]
+//
+//	hierarchy_clause:
+//	    HIERARCHY hierarchy_name ( child_level CHILD OF parent_level
+//	      [ JOIN KEY child_key_column REFERENCES parent_level ]
+//	      [, child_level CHILD OF parent_level
+//	        [ JOIN KEY child_key_column REFERENCES parent_level ] ]...
+//	    )
+//
+//	attribute_clause:
+//	    ATTRIBUTE level DETERMINES ( dependent_column [, dependent_column ]... )
+//
+//	extended_attribute_clause:
+//	    ATTRIBUTE attribute_name OF level_name
+//	      DETERMINES ( dependent_column [, dependent_column ]... )
+func (p *Parser) parseAlterDimensionStmt(start int) *nodes.AlterDimensionStmt {
+	stmt := &nodes.AlterDimensionStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	stmt.Name = p.parseObjectName()
+
+	// Parse actions
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		switch {
+		case p.isIdentLike() && p.cur.Str == "COMPILE":
+			p.advance()
+			stmt.Compile = true
+
+		case p.cur.Type == kwADD:
+			p.advance() // ADD
+			switch {
+			case p.cur.Type == kwLEVEL:
+				stmt.AddLevels = append(stmt.AddLevels, p.parseDimensionLevel())
+			case p.isIdentLike() && p.cur.Str == "HIERARCHY":
+				stmt.AddHierarchies = append(stmt.AddHierarchies, p.parseDimensionHierarchy())
+			case p.isIdentLike() && p.cur.Str == "ATTRIBUTE":
+				stmt.AddAttributes = append(stmt.AddAttributes, p.parseDimensionAttribute())
+			default:
+				p.advance()
+			}
+
+		case p.cur.Type == kwDROP:
+			p.advance() // DROP
+			switch {
+			case p.cur.Type == kwLEVEL:
+				p.advance() // LEVEL
+				stmt.DropLevels = append(stmt.DropLevels, p.parseIdentifier())
+			case p.isIdentLike() && p.cur.Str == "HIERARCHY":
+				p.advance() // HIERARCHY
+				stmt.DropHierarchies = append(stmt.DropHierarchies, p.parseIdentifier())
+			case p.isIdentLike() && p.cur.Str == "ATTRIBUTE":
+				p.advance() // ATTRIBUTE
+				stmt.DropAttributes = append(stmt.DropAttributes, p.parseIdentifier())
+			default:
+				p.advance()
+			}
+
+		default:
+			p.advance()
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// ---------------------------------------------------------------------------
+// CREATE MATERIALIZED ZONEMAP
+// ---------------------------------------------------------------------------
+
+// parseCreateMaterializedZonemapStmt parses a CREATE MATERIALIZED ZONEMAP statement.
+//
+// BNF: oracle/parser/bnf/CREATE-MATERIALIZED-ZONEMAP.bnf
+//
+//	CREATE MATERIALIZED ZONEMAP [ IF NOT EXISTS ]
+//	    [ schema. ] zonemap_name
+//	    [ zonemap_attributes ]
+//	    [ zonemap_refresh_clause ]
+//	    [ { ENABLE | DISABLE } PRUNING ]
+//	    { create_zonemap_on_table | create_zonemap_as_subquery }
+//
+//	create_zonemap_on_table:
+//	    ON [ schema. ] table ( column [, column ]... )
+//
+//	create_zonemap_as_subquery:
+//	    [ ( column_alias [, column_alias ]... ) ]
+//	    AS query_block
+//
+//	zonemap_attributes:
+//	    [ TABLESPACE tablespace_name ]
+//	    [ SCALE integer ]
+//	    [ PCTFREE integer ]
+//	    [ PCTUSED integer ]
+//	    [ { CACHE | NOCACHE } ]
+//
+//	zonemap_refresh_clause:
+//	    REFRESH
+//	    [ { FAST | COMPLETE | FORCE } ]
+//	    [ { ON DEMAND
+//	      | ON COMMIT
+//	      | ON LOAD
+//	      | ON DATA MOVEMENT
+//	      | ON LOAD DATA MOVEMENT
+//	      }
+//	    ]
+func (p *Parser) parseCreateMaterializedZonemapStmt(start int) *nodes.CreateMaterializedZonemapStmt {
+	stmt := &nodes.CreateMaterializedZonemapStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// Optional IF NOT EXISTS
+	if p.cur.Type == kwIF {
+		next := p.peekNext()
+		if next.Type == kwNOT {
+			p.advance() // IF
+			p.advance() // NOT
+			if p.cur.Type == kwEXISTS {
+				p.advance() // EXISTS
+			}
+			stmt.IfNotExists = true
+		}
+	}
+
+	stmt.Name = p.parseObjectName()
+
+	// Parse options until ON, AS, (, or ; / EOF
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		switch {
+		// zonemap_attributes
+		case p.cur.Type == kwTABLESPACE:
+			p.advance()
+			stmt.Tablespace = p.parseIdentifier()
+
+		case p.isIdentLike() && p.cur.Str == "SCALE":
+			p.advance()
+			if p.cur.Type == tokICONST {
+				v := p.parseIntValue()
+				stmt.Scale = &v
+			}
+
+		case p.cur.Type == kwPCTFREE:
+			p.advance()
+			if p.cur.Type == tokICONST {
+				v := p.parseIntValue()
+				stmt.PctFree = &v
+			}
+
+		case p.isIdentLike() && p.cur.Str == "PCTUSED":
+			p.advance()
+			if p.cur.Type == tokICONST {
+				v := p.parseIntValue()
+				stmt.PctUsed = &v
+			}
+
+		case p.cur.Type == kwCACHE:
+			p.advance()
+			stmt.Cache = true
+
+		case p.cur.Type == kwNOCACHE:
+			p.advance()
+			stmt.NoCache = true
+
+		// zonemap_refresh_clause
+		case p.isIdentLike() && p.cur.Str == "REFRESH":
+			p.advance() // REFRESH
+			p.parseZonemapRefresh(stmt, nil)
+
+		// ENABLE/DISABLE PRUNING
+		case p.cur.Type == kwENABLE:
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "PRUNING" {
+				p.advance()
+				stmt.EnablePruning = true
+			}
+
+		case p.cur.Type == kwDISABLE:
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "PRUNING" {
+				p.advance()
+				stmt.DisablePruning = true
+			}
+
+		// create_zonemap_on_table
+		case p.cur.Type == kwON:
+			p.advance() // ON
+			stmt.OnTable = p.parseObjectName()
+			if p.cur.Type == '(' {
+				p.advance()
+				for p.cur.Type != ')' && p.cur.Type != tokEOF {
+					stmt.OnColumns = append(stmt.OnColumns, p.parseIdentifier())
+					if p.cur.Type == ',' {
+						p.advance()
+					}
+				}
+				if p.cur.Type == ')' {
+					p.advance()
+				}
+			}
+
+		// create_zonemap_as_subquery: ( column_alias, ... ) AS query_block
+		case p.cur.Type == '(' && stmt.OnTable == nil && stmt.AsQuery == nil:
+			// column aliases before AS
+			p.advance()
+			for p.cur.Type != ')' && p.cur.Type != tokEOF {
+				stmt.ColumnAliases = append(stmt.ColumnAliases, p.parseIdentifier())
+				if p.cur.Type == ',' {
+					p.advance()
+				}
+			}
+			if p.cur.Type == ')' {
+				p.advance()
+			}
+
+		case p.cur.Type == kwAS:
+			p.advance() // AS
+			stmt.AsQuery = p.parseSelectStmt()
+
+		default:
+			p.advance()
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseZonemapRefresh parses the refresh clause for a zonemap.
+// It sets refresh fields on either a CreateMaterializedZonemapStmt or AlterMaterializedZonemapStmt.
+func (p *Parser) parseZonemapRefresh(create *nodes.CreateMaterializedZonemapStmt, alter *nodes.AlterMaterializedZonemapStmt) {
+	// Optional method: FAST | COMPLETE | FORCE
+	method := ""
+	if p.isIdentLike() {
+		switch p.cur.Str {
+		case "FAST", "COMPLETE", "FORCE":
+			method = p.cur.Str
+			p.advance()
+		}
+	}
+
+	// Optional ON ...
+	refreshOn := ""
+	if p.cur.Type == kwON {
+		p.advance() // ON
+		if p.isIdentLike() {
+			switch p.cur.Str {
+			case "DEMAND":
+				refreshOn = "ON DEMAND"
+				p.advance()
+			case "COMMIT":
+				refreshOn = "ON COMMIT"
+				p.advance()
+			case "LOAD":
+				p.advance()
+				if p.isIdentLike() && p.cur.Str == "DATA" {
+					p.advance() // DATA
+					if p.isIdentLike() && p.cur.Str == "MOVEMENT" {
+						p.advance() // MOVEMENT
+					}
+					refreshOn = "ON LOAD DATA MOVEMENT"
+				} else {
+					refreshOn = "ON LOAD"
+				}
+			case "DATA":
+				p.advance() // DATA
+				if p.isIdentLike() && p.cur.Str == "MOVEMENT" {
+					p.advance() // MOVEMENT
+				}
+				refreshOn = "ON DATA MOVEMENT"
+			case "STATEMENT":
+				refreshOn = "ON STATEMENT"
+				p.advance()
+			}
+		}
+	}
+
+	if create != nil {
+		create.RefreshMethod = method
+		create.RefreshOn = refreshOn
+	}
+	if alter != nil {
+		alter.RefreshMethod = method
+		alter.RefreshOn = refreshOn
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ALTER MATERIALIZED ZONEMAP
+// ---------------------------------------------------------------------------
+
+// parseAlterMaterializedZonemapStmt parses an ALTER MATERIALIZED ZONEMAP statement.
+//
+// BNF: oracle/parser/bnf/ALTER-MATERIALIZED-ZONEMAP.bnf
+//
+//	ALTER MATERIALIZED ZONEMAP [ IF EXISTS ] [ schema. ] zonemap_name
+//	    { alter_zonemap_attributes
+//	    | zonemap_refresh_clause
+//	    | { ENABLE | DISABLE } PRUNING
+//	    | COMPILE
+//	    | REBUILD
+//	    | UNUSABLE
+//	    } ;
+//
+//	alter_zonemap_attributes:
+//	    [ PCTFREE integer ]
+//	    [ PCTUSED integer ]
+//	    [ { CACHE | NOCACHE } ]
+//
+//	zonemap_refresh_clause:
+//	    REFRESH
+//	    [ { FAST | COMPLETE | FORCE } ]
+//	    [ { ON COMMIT | ON DEMAND | ON LOAD | ON DATA MOVEMENT | ON STATEMENT } ]
+func (p *Parser) parseAlterMaterializedZonemapStmt(start int) *nodes.AlterMaterializedZonemapStmt {
+	stmt := &nodes.AlterMaterializedZonemapStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// Optional IF EXISTS
+	if p.cur.Type == kwIF {
+		next := p.peekNext()
+		if next.Type == kwEXISTS {
+			p.advance() // IF
+			p.advance() // EXISTS
+			stmt.IfExists = true
+		}
+	}
+
+	stmt.Name = p.parseObjectName()
+
+	// Parse action
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		switch {
+		case p.cur.Type == kwPCTFREE:
+			p.advance()
+			if p.cur.Type == tokICONST {
+				v := p.parseIntValue()
+				stmt.PctFree = &v
+			}
+			if stmt.Action == "" {
+				stmt.Action = "ATTRS"
+			}
+
+		case p.isIdentLike() && p.cur.Str == "PCTUSED":
+			p.advance()
+			if p.cur.Type == tokICONST {
+				v := p.parseIntValue()
+				stmt.PctUsed = &v
+			}
+			if stmt.Action == "" {
+				stmt.Action = "ATTRS"
+			}
+
+		case p.cur.Type == kwCACHE:
+			p.advance()
+			stmt.Cache = true
+			if stmt.Action == "" {
+				stmt.Action = "ATTRS"
+			}
+
+		case p.cur.Type == kwNOCACHE:
+			p.advance()
+			stmt.NoCache = true
+			if stmt.Action == "" {
+				stmt.Action = "ATTRS"
+			}
+
+		case p.isIdentLike() && p.cur.Str == "REFRESH":
+			p.advance()
+			stmt.Action = "REFRESH"
+			p.parseZonemapRefresh(nil, stmt)
+
+		case p.cur.Type == kwENABLE:
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "PRUNING" {
+				p.advance()
+			}
+			stmt.Action = "ENABLE_PRUNING"
+
+		case p.cur.Type == kwDISABLE:
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "PRUNING" {
+				p.advance()
+			}
+			stmt.Action = "DISABLE_PRUNING"
+
+		case p.isIdentLike() && p.cur.Str == "COMPILE":
+			p.advance()
+			stmt.Action = "COMPILE"
+
+		case p.isIdentLike() && p.cur.Str == "REBUILD":
+			p.advance()
+			stmt.Action = "REBUILD"
+
+		case p.isIdentLike() && p.cur.Str == "UNUSABLE":
+			p.advance()
+			stmt.Action = "UNUSABLE"
+
+		default:
+			p.advance()
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// ---------------------------------------------------------------------------
+// CREATE INMEMORY JOIN GROUP
+// ---------------------------------------------------------------------------
+
+// parseCreateInmemoryJoinGroupStmt parses a CREATE INMEMORY JOIN GROUP statement.
+//
+// BNF: oracle/parser/bnf/CREATE-INMEMORY-JOIN-GROUP.bnf
+//
+//	CREATE INMEMORY JOIN GROUP [ IF NOT EXISTS ] [ schema. ] join_group
+//	    ( [ schema. ] table ( column )
+//	      [, [ schema. ] table ( column ) ]... ) ;
+func (p *Parser) parseCreateInmemoryJoinGroupStmt(start int) *nodes.CreateInmemoryJoinGroupStmt {
+	stmt := &nodes.CreateInmemoryJoinGroupStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// Optional IF NOT EXISTS
+	if p.cur.Type == kwIF {
+		next := p.peekNext()
+		if next.Type == kwNOT {
+			p.advance() // IF
+			p.advance() // NOT
+			if p.cur.Type == kwEXISTS {
+				p.advance() // EXISTS
+			}
+			stmt.IfNotExists = true
+		}
+	}
+
+	stmt.Name = p.parseObjectName()
+
+	// Parse member list: ( table(col) [, table(col) ]... )
+	if p.cur.Type == '(' {
+		p.advance()
+		for p.cur.Type != ')' && p.cur.Type != tokEOF {
+			member := p.parseJoinGroupMember()
+			stmt.Members = append(stmt.Members, member)
+			if p.cur.Type == ',' {
+				p.advance()
+			}
+		}
+		if p.cur.Type == ')' {
+			p.advance()
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseJoinGroupMember parses a table(column) member of a join group.
+func (p *Parser) parseJoinGroupMember() *nodes.JoinGroupMember {
+	m := &nodes.JoinGroupMember{
+		Loc: nodes.Loc{Start: p.pos()},
+	}
+	m.Table = p.parseObjectName()
+	if p.cur.Type == '(' {
+		p.advance()
+		m.Column = p.parseIdentifier()
+		if p.cur.Type == ')' {
+			p.advance()
+		}
+	}
+	m.Loc.End = p.pos()
+	return m
+}
+
+// ---------------------------------------------------------------------------
+// ALTER INMEMORY JOIN GROUP
+// ---------------------------------------------------------------------------
+
+// parseAlterInmemoryJoinGroupStmt parses an ALTER INMEMORY JOIN GROUP statement.
+//
+// BNF: oracle/parser/bnf/ALTER-INMEMORY-JOIN-GROUP.bnf
+//
+//	ALTER INMEMORY JOIN GROUP [ IF EXISTS ] [ schema. ] join_group
+//	    { ADD | REMOVE } ( [ schema. ] table ( column ) ) ;
+func (p *Parser) parseAlterInmemoryJoinGroupStmt(start int) *nodes.AlterInmemoryJoinGroupStmt {
+	stmt := &nodes.AlterInmemoryJoinGroupStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// Optional IF EXISTS
+	if p.cur.Type == kwIF {
+		next := p.peekNext()
+		if next.Type == kwEXISTS {
+			p.advance() // IF
+			p.advance() // EXISTS
+			stmt.IfExists = true
+		}
+	}
+
+	stmt.Name = p.parseObjectName()
+
+	// ADD or REMOVE
+	if p.cur.Type == kwADD {
+		p.advance()
+		stmt.Action = "ADD"
+	} else if p.isIdentLike() && p.cur.Str == "REMOVE" {
+		p.advance()
+		stmt.Action = "REMOVE"
+	}
+
+	// ( table(column) )
+	if p.cur.Type == '(' {
+		p.advance()
+		stmt.Member = p.parseJoinGroupMember()
+		if p.cur.Type == ')' {
+			p.advance()
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// ---------------------------------------------------------------------------
+// DROP CLUSTER (with INCLUDING TABLES / CASCADE CONSTRAINTS)
+// ---------------------------------------------------------------------------
+
+// parseDropClusterStmt parses a DROP CLUSTER statement.
+//
+// BNF: oracle/parser/bnf/DROP-CLUSTER.bnf
+//
+//	DROP CLUSTER [ IF EXISTS ] [ schema. ] cluster
+//	    [ INCLUDING TABLES [ CASCADE CONSTRAINTS ] ]
+func (p *Parser) parseDropClusterStmt(start int) *nodes.DropStmt {
+	stmt := &nodes.DropStmt{
+		ObjectType: nodes.OBJECT_CLUSTER,
+		Names:      &nodes.List{},
+		Loc:        nodes.Loc{Start: start},
+	}
+
+	// Optional IF EXISTS
+	if p.cur.Type == kwIF {
+		next := p.peekNext()
+		if next.Type == kwEXISTS {
+			p.advance() // IF
+			p.advance() // EXISTS
+			stmt.IfExists = true
+		}
+	}
+
+	name := p.parseObjectName()
+	stmt.Names.Items = append(stmt.Names.Items, name)
+
+	// Optional INCLUDING TABLES
+	if p.isIdentLike() && p.cur.Str == "INCLUDING" {
+		p.advance() // INCLUDING
+		if p.cur.Type == kwTABLE || (p.isIdentLike() && p.cur.Str == "TABLES") {
+			p.advance() // TABLES
+		}
+		// Optional CASCADE CONSTRAINTS
+		if p.cur.Type == kwCASCADE {
+			p.advance() // CASCADE
+			if p.isIdentLike() && p.cur.Str == "CONSTRAINTS" {
+				p.advance() // CONSTRAINTS
+			}
+			stmt.Cascade = true
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
 // parseAlterAdminObject handles ALTER dispatches for admin DDL objects.
 func (p *Parser) parseAlterAdminObject(start int) nodes.StmtNode {
 	switch p.cur.Type {
@@ -2097,7 +2927,7 @@ func (p *Parser) parseAlterAdminObject(start int) nodes.StmtNode {
 		return p.parseAlterTablespaceStmt(start, false)
 	case kwCLUSTER:
 		p.advance()
-		return p.parseAdminDDLStmt("ALTER", nodes.OBJECT_CLUSTER, start)
+		return p.parseAlterClusterStmt(start)
 	case kwJAVA:
 		p.advance()
 		return p.parseAdminDDLStmt("ALTER", nodes.OBJECT_JAVA, start)
@@ -2109,7 +2939,7 @@ func (p *Parser) parseAlterAdminObject(start int) nodes.StmtNode {
 			switch p.cur.Str {
 			case "DIMENSION":
 				p.advance()
-				return p.parseAdminDDLStmt("ALTER", nodes.OBJECT_DIMENSION, start)
+				return p.parseAlterDimensionStmt(start)
 			case "DISKGROUP":
 				p.advance()
 				return p.parseAlterDiskgroupStmt(start)
@@ -2160,7 +2990,7 @@ func (p *Parser) parseAlterAdminObject(start int) nodes.StmtNode {
 				if p.cur.Type == kwGROUP || (p.isIdentLike() && p.cur.Str == "GROUP") {
 					p.advance() // consume GROUP
 				}
-				return p.parseAdminDDLStmt("ALTER", nodes.OBJECT_INMEMORY_JOIN_GROUP, start)
+				return p.parseAlterInmemoryJoinGroupStmt(start)
 			case "FLASHBACK":
 				p.advance() // consume FLASHBACK
 				if p.isIdentLike() && p.cur.Str == "ARCHIVE" {
@@ -2183,7 +3013,7 @@ func (p *Parser) parseAlterAdminObject(start int) nodes.StmtNode {
 				p.advance() // consume MATERIALIZED (already a keyword, handled above for MVIEW)
 				if p.isIdentLike() && p.cur.Str == "ZONEMAP" {
 					p.advance() // consume ZONEMAP
-					return p.parseAdminDDLStmt("ALTER", nodes.OBJECT_MATERIALIZED_ZONEMAP, start)
+					return p.parseAlterMaterializedZonemapStmt(start)
 				}
 				return nil
 			}

@@ -3564,25 +3564,62 @@ func TestBatch69_LockdownProfileOutline(t *testing.T) {
 }
 
 // TestBatch70_MaterializedZonemapInmemoryJoinGroup tests CREATE/ALTER/DROP MATERIALIZED ZONEMAP and INMEMORY JOIN GROUP.
+// Updated in batch 103 to use dedicated AST types.
 func TestBatch70_MaterializedZonemapInmemoryJoinGroup(t *testing.T) {
-	tests := []struct {
-		name   string
-		sql    string
-		action string
-		obj    ast.ObjectType
-	}{
-		{"create_materialized_zonemap", "CREATE MATERIALIZED ZONEMAP sales_zmap ON sales (region_id, product_id)", "CREATE", ast.OBJECT_MATERIALIZED_ZONEMAP},
-		{"alter_materialized_zonemap", "ALTER MATERIALIZED ZONEMAP sales_zmap ENABLE PRUNING", "ALTER", ast.OBJECT_MATERIALIZED_ZONEMAP},
-		{"drop_materialized_zonemap", "DROP MATERIALIZED ZONEMAP sales_zmap", "DROP", ast.OBJECT_MATERIALIZED_ZONEMAP},
-		{"create_inmemory_join_group", "CREATE INMEMORY JOIN GROUP my_jg (t1(id), t2(t1_id))", "CREATE", ast.OBJECT_INMEMORY_JOIN_GROUP},
-		{"alter_inmemory_join_group", "ALTER INMEMORY JOIN GROUP my_jg ADD (t3(t1_id))", "ALTER", ast.OBJECT_INMEMORY_JOIN_GROUP},
-		{"drop_inmemory_join_group", "DROP INMEMORY JOIN GROUP my_jg", "DROP", ast.OBJECT_INMEMORY_JOIN_GROUP},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			adminDDLTest(t, tt.sql, tt.action, tt.obj)
-		})
-	}
+	t.Run("create_materialized_zonemap", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE MATERIALIZED ZONEMAP sales_zmap ON sales (region_id, product_id)")
+		raw := result.Items[0].(*ast.RawStmt)
+		_, ok := raw.Stmt.(*ast.CreateMaterializedZonemapStmt)
+		if !ok {
+			t.Fatalf("expected *CreateMaterializedZonemapStmt, got %T", raw.Stmt)
+		}
+	})
+	t.Run("alter_materialized_zonemap", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER MATERIALIZED ZONEMAP sales_zmap ENABLE PRUNING")
+		raw := result.Items[0].(*ast.RawStmt)
+		_, ok := raw.Stmt.(*ast.AlterMaterializedZonemapStmt)
+		if !ok {
+			t.Fatalf("expected *AlterMaterializedZonemapStmt, got %T", raw.Stmt)
+		}
+	})
+	t.Run("drop_materialized_zonemap", func(t *testing.T) {
+		result := ParseAndCheck(t, "DROP MATERIALIZED ZONEMAP sales_zmap")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.DropStmt)
+		if !ok {
+			t.Fatalf("expected *DropStmt, got %T", raw.Stmt)
+		}
+		if stmt.ObjectType != ast.OBJECT_MATERIALIZED_ZONEMAP {
+			t.Fatalf("expected OBJECT_MATERIALIZED_ZONEMAP")
+		}
+	})
+	t.Run("create_inmemory_join_group", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE INMEMORY JOIN GROUP my_jg (t1(id), t2(t1_id))")
+		raw := result.Items[0].(*ast.RawStmt)
+		_, ok := raw.Stmt.(*ast.CreateInmemoryJoinGroupStmt)
+		if !ok {
+			t.Fatalf("expected *CreateInmemoryJoinGroupStmt, got %T", raw.Stmt)
+		}
+	})
+	t.Run("alter_inmemory_join_group", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INMEMORY JOIN GROUP my_jg ADD (t3(t1_id))")
+		raw := result.Items[0].(*ast.RawStmt)
+		_, ok := raw.Stmt.(*ast.AlterInmemoryJoinGroupStmt)
+		if !ok {
+			t.Fatalf("expected *AlterInmemoryJoinGroupStmt, got %T", raw.Stmt)
+		}
+	})
+	t.Run("drop_inmemory_join_group", func(t *testing.T) {
+		result := ParseAndCheck(t, "DROP INMEMORY JOIN GROUP my_jg")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.DropStmt)
+		if !ok {
+			t.Fatalf("expected *DropStmt, got %T", raw.Stmt)
+		}
+		if stmt.ObjectType != ast.OBJECT_INMEMORY_JOIN_GROUP {
+			t.Fatalf("expected OBJECT_INMEMORY_JOIN_GROUP")
+		}
+	})
 }
 
 // TestBatch71_JsonDualityView tests CREATE/ALTER/DROP JSON RELATIONAL DUALITY VIEW.
@@ -7396,4 +7433,432 @@ func TestParseBatch102_AttrDimensionHierarchyDomain(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestBatch103_ClusterDimensionZonemapInmemory tests batch 103 statements.
+func TestBatch103_ClusterDimensionZonemapInmemory(t *testing.T) {
+	// ---------------------------------------------------------------
+	// ALTER CLUSTER
+	// ---------------------------------------------------------------
+	t.Run("alter_cluster_size", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER CLUSTER hr.personnel SIZE 1024")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterClusterStmt)
+		if !ok {
+			t.Fatalf("expected *AlterClusterStmt, got %T", raw.Stmt)
+		}
+		if stmt.Size != "1024" {
+			t.Fatalf("expected size 1024, got %q", stmt.Size)
+		}
+	})
+
+	t.Run("alter_cluster_physical_attrs", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER CLUSTER hr.personnel PCTFREE 20 PCTUSED 60 INITRANS 4")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterClusterStmt)
+		if !ok {
+			t.Fatalf("expected *AlterClusterStmt, got %T", raw.Stmt)
+		}
+		if stmt.PctFree == nil || *stmt.PctFree != 20 {
+			t.Fatalf("expected pctfree 20")
+		}
+	})
+
+	t.Run("alter_cluster_allocate_extent", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER CLUSTER hr.personnel ALLOCATE EXTENT (SIZE 100K DATAFILE 'disk1/file1.dat' INSTANCE 3)")
+		raw := result.Items[0].(*ast.RawStmt)
+		_, ok := raw.Stmt.(*ast.AlterClusterStmt)
+		if !ok {
+			t.Fatalf("expected *AlterClusterStmt, got %T", raw.Stmt)
+		}
+	})
+
+	t.Run("alter_cluster_deallocate_unused", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER CLUSTER hr.personnel DEALLOCATE UNUSED KEEP 100M")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterClusterStmt)
+		if !ok {
+			t.Fatalf("expected *AlterClusterStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "DEALLOCATE_UNUSED" {
+			t.Fatalf("expected action DEALLOCATE_UNUSED, got %q", stmt.Action)
+		}
+	})
+
+	t.Run("alter_cluster_parallel", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER CLUSTER hr.personnel PARALLEL 4")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterClusterStmt)
+		if !ok {
+			t.Fatalf("expected *AlterClusterStmt, got %T", raw.Stmt)
+		}
+		if stmt.Parallel != "4" {
+			t.Fatalf("expected parallel 4, got %q", stmt.Parallel)
+		}
+	})
+
+	t.Run("alter_cluster_if_exists", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER CLUSTER IF EXISTS my_cluster SIZE 512")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterClusterStmt)
+		if !ok {
+			t.Fatalf("expected *AlterClusterStmt, got %T", raw.Stmt)
+		}
+		if !stmt.IfExists {
+			t.Fatalf("expected IfExists=true")
+		}
+	})
+
+	// ---------------------------------------------------------------
+	// ALTER DIMENSION
+	// ---------------------------------------------------------------
+	t.Run("alter_dimension_compile", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER DIMENSION time_dim COMPILE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterDimensionStmt)
+		if !ok {
+			t.Fatalf("expected *AlterDimensionStmt, got %T", raw.Stmt)
+		}
+		if !stmt.Compile {
+			t.Fatalf("expected Compile=true")
+		}
+	})
+
+	t.Run("alter_dimension_add_level", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER DIMENSION time_dim ADD LEVEL quarter IS (t.quarter_id)")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterDimensionStmt)
+		if !ok {
+			t.Fatalf("expected *AlterDimensionStmt, got %T", raw.Stmt)
+		}
+		if len(stmt.AddLevels) != 1 {
+			t.Fatalf("expected 1 added level, got %d", len(stmt.AddLevels))
+		}
+	})
+
+	t.Run("alter_dimension_drop_level", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER DIMENSION time_dim DROP LEVEL quarter")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterDimensionStmt)
+		if !ok {
+			t.Fatalf("expected *AlterDimensionStmt, got %T", raw.Stmt)
+		}
+		if len(stmt.DropLevels) != 1 {
+			t.Fatalf("expected 1 dropped level, got %d", len(stmt.DropLevels))
+		}
+	})
+
+	t.Run("alter_dimension_add_hierarchy", func(t *testing.T) {
+		result := ParseAndCheck(t, `ALTER DIMENSION time_dim ADD HIERARCHY time_rollup (
+			day CHILD OF month CHILD OF year
+		)`)
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterDimensionStmt)
+		if !ok {
+			t.Fatalf("expected *AlterDimensionStmt, got %T", raw.Stmt)
+		}
+		if len(stmt.AddHierarchies) != 1 {
+			t.Fatalf("expected 1 added hierarchy, got %d", len(stmt.AddHierarchies))
+		}
+	})
+
+	t.Run("alter_dimension_add_attribute", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER DIMENSION time_dim ADD ATTRIBUTE day DETERMINES (t.day_name)")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterDimensionStmt)
+		if !ok {
+			t.Fatalf("expected *AlterDimensionStmt, got %T", raw.Stmt)
+		}
+		if len(stmt.AddAttributes) != 1 {
+			t.Fatalf("expected 1 added attribute, got %d", len(stmt.AddAttributes))
+		}
+	})
+
+	// ---------------------------------------------------------------
+	// CREATE MATERIALIZED ZONEMAP
+	// ---------------------------------------------------------------
+	t.Run("create_zonemap_on_table", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE MATERIALIZED ZONEMAP sales_zmap ON sales (region_id, product_id)")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.CreateMaterializedZonemapStmt)
+		if !ok {
+			t.Fatalf("expected *CreateMaterializedZonemapStmt, got %T", raw.Stmt)
+		}
+		if stmt.OnTable == nil {
+			t.Fatalf("expected OnTable set")
+		}
+		if len(stmt.OnColumns) != 2 {
+			t.Fatalf("expected 2 columns, got %d", len(stmt.OnColumns))
+		}
+	})
+
+	t.Run("create_zonemap_with_attrs", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE MATERIALIZED ZONEMAP sales_zmap TABLESPACE zmaps SCALE 4 PCTFREE 5 CACHE ON sales (region_id)")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.CreateMaterializedZonemapStmt)
+		if !ok {
+			t.Fatalf("expected *CreateMaterializedZonemapStmt, got %T", raw.Stmt)
+		}
+		if stmt.Tablespace != "ZMAPS" && stmt.Tablespace != "zmaps" {
+			t.Fatalf("expected tablespace zmaps/ZMAPS, got %q", stmt.Tablespace)
+		}
+		if !stmt.Cache {
+			t.Fatalf("expected Cache=true")
+		}
+	})
+
+	t.Run("create_zonemap_with_refresh", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE MATERIALIZED ZONEMAP sales_zmap REFRESH FAST ON COMMIT ON sales (region_id)")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.CreateMaterializedZonemapStmt)
+		if !ok {
+			t.Fatalf("expected *CreateMaterializedZonemapStmt, got %T", raw.Stmt)
+		}
+		if stmt.RefreshMethod != "FAST" {
+			t.Fatalf("expected refresh method FAST, got %q", stmt.RefreshMethod)
+		}
+		if stmt.RefreshOn != "ON COMMIT" {
+			t.Fatalf("expected refresh on ON COMMIT, got %q", stmt.RefreshOn)
+		}
+	})
+
+	t.Run("create_zonemap_enable_pruning", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE MATERIALIZED ZONEMAP zmap1 ENABLE PRUNING ON sales (region_id)")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.CreateMaterializedZonemapStmt)
+		if !ok {
+			t.Fatalf("expected *CreateMaterializedZonemapStmt, got %T", raw.Stmt)
+		}
+		if !stmt.EnablePruning {
+			t.Fatalf("expected EnablePruning=true")
+		}
+	})
+
+	t.Run("create_zonemap_as_subquery", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE MATERIALIZED ZONEMAP sales_zmap AS SELECT region_id, product_id FROM sales, products WHERE sales.prod_id = products.prod_id")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.CreateMaterializedZonemapStmt)
+		if !ok {
+			t.Fatalf("expected *CreateMaterializedZonemapStmt, got %T", raw.Stmt)
+		}
+		if stmt.AsQuery == nil {
+			t.Fatalf("expected AsQuery set")
+		}
+	})
+
+	// ---------------------------------------------------------------
+	// ALTER MATERIALIZED ZONEMAP
+	// ---------------------------------------------------------------
+	t.Run("alter_zonemap_enable_pruning", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER MATERIALIZED ZONEMAP sales_zmap ENABLE PRUNING")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterMaterializedZonemapStmt)
+		if !ok {
+			t.Fatalf("expected *AlterMaterializedZonemapStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "ENABLE_PRUNING" {
+			t.Fatalf("expected action ENABLE_PRUNING, got %q", stmt.Action)
+		}
+	})
+
+	t.Run("alter_zonemap_rebuild", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER MATERIALIZED ZONEMAP sales_zmap REBUILD")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterMaterializedZonemapStmt)
+		if !ok {
+			t.Fatalf("expected *AlterMaterializedZonemapStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "REBUILD" {
+			t.Fatalf("expected action REBUILD, got %q", stmt.Action)
+		}
+	})
+
+	t.Run("alter_zonemap_compile", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER MATERIALIZED ZONEMAP sales_zmap COMPILE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterMaterializedZonemapStmt)
+		if !ok {
+			t.Fatalf("expected *AlterMaterializedZonemapStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "COMPILE" {
+			t.Fatalf("expected action COMPILE, got %q", stmt.Action)
+		}
+	})
+
+	t.Run("alter_zonemap_refresh", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER MATERIALIZED ZONEMAP sales_zmap REFRESH COMPLETE ON DEMAND")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterMaterializedZonemapStmt)
+		if !ok {
+			t.Fatalf("expected *AlterMaterializedZonemapStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "REFRESH" {
+			t.Fatalf("expected action REFRESH, got %q", stmt.Action)
+		}
+		if stmt.RefreshMethod != "COMPLETE" {
+			t.Fatalf("expected refresh method COMPLETE, got %q", stmt.RefreshMethod)
+		}
+	})
+
+	t.Run("alter_zonemap_unusable", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER MATERIALIZED ZONEMAP sales_zmap UNUSABLE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterMaterializedZonemapStmt)
+		if !ok {
+			t.Fatalf("expected *AlterMaterializedZonemapStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "UNUSABLE" {
+			t.Fatalf("expected action UNUSABLE, got %q", stmt.Action)
+		}
+	})
+
+	// ---------------------------------------------------------------
+	// CREATE INMEMORY JOIN GROUP
+	// ---------------------------------------------------------------
+	t.Run("create_inmemory_join_group", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE INMEMORY JOIN GROUP my_jg (sales(prod_id), products(prod_id))")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.CreateInmemoryJoinGroupStmt)
+		if !ok {
+			t.Fatalf("expected *CreateInmemoryJoinGroupStmt, got %T", raw.Stmt)
+		}
+		if len(stmt.Members) != 2 {
+			t.Fatalf("expected 2 members, got %d", len(stmt.Members))
+		}
+	})
+
+	t.Run("create_inmemory_join_group_schema", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE INMEMORY JOIN GROUP hr.my_jg (hr.employees(dept_id), hr.departments(dept_id))")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.CreateInmemoryJoinGroupStmt)
+		if !ok {
+			t.Fatalf("expected *CreateInmemoryJoinGroupStmt, got %T", raw.Stmt)
+		}
+		if stmt.Name == nil {
+			t.Fatalf("expected Name set")
+		}
+	})
+
+	// ---------------------------------------------------------------
+	// ALTER INMEMORY JOIN GROUP
+	// ---------------------------------------------------------------
+	t.Run("alter_inmemory_join_group_add", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INMEMORY JOIN GROUP my_jg ADD (orders(prod_id))")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterInmemoryJoinGroupStmt)
+		if !ok {
+			t.Fatalf("expected *AlterInmemoryJoinGroupStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "ADD" {
+			t.Fatalf("expected action ADD, got %q", stmt.Action)
+		}
+	})
+
+	t.Run("alter_inmemory_join_group_remove", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER INMEMORY JOIN GROUP my_jg REMOVE (orders(prod_id))")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterInmemoryJoinGroupStmt)
+		if !ok {
+			t.Fatalf("expected *AlterInmemoryJoinGroupStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "REMOVE" {
+			t.Fatalf("expected action REMOVE, got %q", stmt.Action)
+		}
+	})
+
+	// ---------------------------------------------------------------
+	// DROP CLUSTER (with INCLUDING TABLES / CASCADE CONSTRAINTS)
+	// ---------------------------------------------------------------
+	t.Run("drop_cluster_simple", func(t *testing.T) {
+		result := ParseAndCheck(t, "DROP CLUSTER hr.personnel")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.DropStmt)
+		if !ok {
+			t.Fatalf("expected *DropStmt, got %T", raw.Stmt)
+		}
+		if stmt.ObjectType != ast.OBJECT_CLUSTER {
+			t.Fatalf("expected OBJECT_CLUSTER, got %d", stmt.ObjectType)
+		}
+	})
+
+	t.Run("drop_cluster_including_tables", func(t *testing.T) {
+		result := ParseAndCheck(t, "DROP CLUSTER hr.personnel INCLUDING TABLES CASCADE CONSTRAINTS")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.DropStmt)
+		if !ok {
+			t.Fatalf("expected *DropStmt, got %T", raw.Stmt)
+		}
+		if !stmt.Cascade {
+			t.Fatalf("expected Cascade=true")
+		}
+	})
+
+	t.Run("drop_cluster_if_exists", func(t *testing.T) {
+		result := ParseAndCheck(t, "DROP CLUSTER IF EXISTS my_cluster")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.DropStmt)
+		if !ok {
+			t.Fatalf("expected *DropStmt, got %T", raw.Stmt)
+		}
+		if !stmt.IfExists {
+			t.Fatalf("expected IfExists=true")
+		}
+	})
+
+	// ---------------------------------------------------------------
+	// DROP DIMENSION, DROP MATERIALIZED ZONEMAP, DROP INMEMORY JOIN GROUP
+	// ---------------------------------------------------------------
+	t.Run("drop_dimension", func(t *testing.T) {
+		result := ParseAndCheck(t, "DROP DIMENSION time_dim")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.DropStmt)
+		if !ok {
+			t.Fatalf("expected *DropStmt, got %T", raw.Stmt)
+		}
+		if stmt.ObjectType != ast.OBJECT_DIMENSION {
+			t.Fatalf("expected OBJECT_DIMENSION")
+		}
+	})
+
+	t.Run("drop_materialized_zonemap", func(t *testing.T) {
+		result := ParseAndCheck(t, "DROP MATERIALIZED ZONEMAP IF EXISTS sales_zmap")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.DropStmt)
+		if !ok {
+			t.Fatalf("expected *DropStmt, got %T", raw.Stmt)
+		}
+		if stmt.ObjectType != ast.OBJECT_MATERIALIZED_ZONEMAP {
+			t.Fatalf("expected OBJECT_MATERIALIZED_ZONEMAP")
+		}
+		if !stmt.IfExists {
+			t.Fatalf("expected IfExists=true")
+		}
+	})
+
+	t.Run("drop_inmemory_join_group", func(t *testing.T) {
+		result := ParseAndCheck(t, "DROP INMEMORY JOIN GROUP IF EXISTS my_jg")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.DropStmt)
+		if !ok {
+			t.Fatalf("expected *DropStmt, got %T", raw.Stmt)
+		}
+		if stmt.ObjectType != ast.OBJECT_INMEMORY_JOIN_GROUP {
+			t.Fatalf("expected OBJECT_INMEMORY_JOIN_GROUP")
+		}
+		if !stmt.IfExists {
+			t.Fatalf("expected IfExists=true")
+		}
+	})
+
+	// ---------------------------------------------------------------
+	// CREATE CLUSTER with IF NOT EXISTS (batch 103 addition)
+	// ---------------------------------------------------------------
+	t.Run("create_cluster_if_not_exists", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE CLUSTER IF NOT EXISTS my_cluster (id NUMBER)")
+		raw := result.Items[0].(*ast.RawStmt)
+		_, ok := raw.Stmt.(*ast.CreateClusterStmt)
+		if !ok {
+			t.Fatalf("expected *CreateClusterStmt, got %T", raw.Stmt)
+		}
+	})
 }

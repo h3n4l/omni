@@ -422,6 +422,20 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeDimensionJoinKey(sb, n)
 	case *DimensionAttribute:
 		writeDimensionAttribute(sb, n)
+	case *AlterClusterStmt:
+		writeAlterClusterStmt(sb, n)
+	case *AlterDimensionStmt:
+		writeAlterDimensionStmt(sb, n)
+	case *CreateMaterializedZonemapStmt:
+		writeCreateMaterializedZonemapStmt(sb, n)
+	case *AlterMaterializedZonemapStmt:
+		writeAlterMaterializedZonemapStmt(sb, n)
+	case *CreateInmemoryJoinGroupStmt:
+		writeCreateInmemoryJoinGroupStmt(sb, n)
+	case *AlterInmemoryJoinGroupStmt:
+		writeAlterInmemoryJoinGroupStmt(sb, n)
+	case *JoinGroupMember:
+		writeJoinGroupMember(sb, n)
 	case *CreateIndextypeStmt:
 		writeCreateIndextypeStmt(sb, n)
 	case *AlterIndextypeStmt:
@@ -5443,6 +5457,274 @@ func writeDimensionAttribute(sb *strings.Builder, n *DimensionAttribute) {
 			writeNode(sb, c)
 		}
 		sb.WriteString(")")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeAlterClusterStmt(sb *strings.Builder, n *AlterClusterStmt) {
+	sb.WriteString("{ALTER_CLUSTER")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.IfExists {
+		sb.WriteString(" :ifExists true")
+	}
+	if n.Action != "" {
+		sb.WriteString(fmt.Sprintf(" :action %q", n.Action))
+	}
+	if n.PctFree != nil {
+		sb.WriteString(fmt.Sprintf(" :pctfree %d", *n.PctFree))
+	}
+	if n.PctUsed != nil {
+		sb.WriteString(fmt.Sprintf(" :pctused %d", *n.PctUsed))
+	}
+	if n.InitTrans != nil {
+		sb.WriteString(fmt.Sprintf(" :initrans %d", *n.InitTrans))
+	}
+	if n.Size != "" {
+		sb.WriteString(fmt.Sprintf(" :size %q", n.Size))
+	}
+	if n.ModifyPartition != "" {
+		sb.WriteString(fmt.Sprintf(" :modifyPartition %q", n.ModifyPartition))
+	}
+	if n.Parallel != "" {
+		sb.WriteString(fmt.Sprintf(" :parallel %q", n.Parallel))
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeAlterDimensionStmt(sb *strings.Builder, n *AlterDimensionStmt) {
+	sb.WriteString("{ALTER_DIMENSION")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.Compile {
+		sb.WriteString(" :compile true")
+	}
+	if len(n.AddLevels) > 0 {
+		sb.WriteString(" :addLevels (")
+		for i, l := range n.AddLevels {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, l)
+		}
+		sb.WriteString(")")
+	}
+	if len(n.AddHierarchies) > 0 {
+		sb.WriteString(" :addHierarchies (")
+		for i, h := range n.AddHierarchies {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, h)
+		}
+		sb.WriteString(")")
+	}
+	if len(n.AddAttributes) > 0 {
+		sb.WriteString(" :addAttributes (")
+		for i, a := range n.AddAttributes {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, a)
+		}
+		sb.WriteString(")")
+	}
+	if len(n.DropLevels) > 0 {
+		sb.WriteString(" :dropLevels (")
+		for i, l := range n.DropLevels {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			sb.WriteString(fmt.Sprintf("%q", l))
+		}
+		sb.WriteString(")")
+	}
+	if len(n.DropHierarchies) > 0 {
+		sb.WriteString(" :dropHierarchies (")
+		for i, h := range n.DropHierarchies {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			sb.WriteString(fmt.Sprintf("%q", h))
+		}
+		sb.WriteString(")")
+	}
+	if len(n.DropAttributes) > 0 {
+		sb.WriteString(" :dropAttributes (")
+		for i, a := range n.DropAttributes {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			sb.WriteString(fmt.Sprintf("%q", a))
+		}
+		sb.WriteString(")")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeCreateMaterializedZonemapStmt(sb *strings.Builder, n *CreateMaterializedZonemapStmt) {
+	sb.WriteString("{CREATE_MATERIALIZED_ZONEMAP")
+	if n.IfNotExists {
+		sb.WriteString(" :ifNotExists true")
+	}
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.Tablespace != "" {
+		sb.WriteString(fmt.Sprintf(" :tablespace %q", n.Tablespace))
+	}
+	if n.Scale != nil {
+		sb.WriteString(fmt.Sprintf(" :scale %d", *n.Scale))
+	}
+	if n.PctFree != nil {
+		sb.WriteString(fmt.Sprintf(" :pctfree %d", *n.PctFree))
+	}
+	if n.PctUsed != nil {
+		sb.WriteString(fmt.Sprintf(" :pctused %d", *n.PctUsed))
+	}
+	if n.Cache {
+		sb.WriteString(" :cache true")
+	}
+	if n.NoCache {
+		sb.WriteString(" :nocache true")
+	}
+	if n.RefreshMethod != "" {
+		sb.WriteString(fmt.Sprintf(" :refreshMethod %q", n.RefreshMethod))
+	}
+	if n.RefreshOn != "" {
+		sb.WriteString(fmt.Sprintf(" :refreshOn %q", n.RefreshOn))
+	}
+	if n.EnablePruning {
+		sb.WriteString(" :enablePruning true")
+	}
+	if n.DisablePruning {
+		sb.WriteString(" :disablePruning true")
+	}
+	if n.OnTable != nil {
+		sb.WriteString(" :onTable ")
+		writeNode(sb, n.OnTable)
+	}
+	if len(n.OnColumns) > 0 {
+		sb.WriteString(" :onColumns (")
+		for i, c := range n.OnColumns {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			sb.WriteString(fmt.Sprintf("%q", c))
+		}
+		sb.WriteString(")")
+	}
+	if len(n.ColumnAliases) > 0 {
+		sb.WriteString(" :columnAliases (")
+		for i, a := range n.ColumnAliases {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			sb.WriteString(fmt.Sprintf("%q", a))
+		}
+		sb.WriteString(")")
+	}
+	if n.AsQuery != nil {
+		sb.WriteString(" :asQuery ")
+		writeNode(sb, n.AsQuery)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeAlterMaterializedZonemapStmt(sb *strings.Builder, n *AlterMaterializedZonemapStmt) {
+	sb.WriteString("{ALTER_MATERIALIZED_ZONEMAP")
+	if n.IfExists {
+		sb.WriteString(" :ifExists true")
+	}
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.Action != "" {
+		sb.WriteString(fmt.Sprintf(" :action %q", n.Action))
+	}
+	if n.PctFree != nil {
+		sb.WriteString(fmt.Sprintf(" :pctfree %d", *n.PctFree))
+	}
+	if n.PctUsed != nil {
+		sb.WriteString(fmt.Sprintf(" :pctused %d", *n.PctUsed))
+	}
+	if n.Cache {
+		sb.WriteString(" :cache true")
+	}
+	if n.NoCache {
+		sb.WriteString(" :nocache true")
+	}
+	if n.RefreshMethod != "" {
+		sb.WriteString(fmt.Sprintf(" :refreshMethod %q", n.RefreshMethod))
+	}
+	if n.RefreshOn != "" {
+		sb.WriteString(fmt.Sprintf(" :refreshOn %q", n.RefreshOn))
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeCreateInmemoryJoinGroupStmt(sb *strings.Builder, n *CreateInmemoryJoinGroupStmt) {
+	sb.WriteString("{CREATE_INMEMORY_JOIN_GROUP")
+	if n.IfNotExists {
+		sb.WriteString(" :ifNotExists true")
+	}
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if len(n.Members) > 0 {
+		sb.WriteString(" :members (")
+		for i, m := range n.Members {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, m)
+		}
+		sb.WriteString(")")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeAlterInmemoryJoinGroupStmt(sb *strings.Builder, n *AlterInmemoryJoinGroupStmt) {
+	sb.WriteString("{ALTER_INMEMORY_JOIN_GROUP")
+	if n.IfExists {
+		sb.WriteString(" :ifExists true")
+	}
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.Action != "" {
+		sb.WriteString(fmt.Sprintf(" :action %q", n.Action))
+	}
+	if n.Member != nil {
+		sb.WriteString(" :member ")
+		writeNode(sb, n.Member)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeJoinGroupMember(sb *strings.Builder, n *JoinGroupMember) {
+	sb.WriteString("{JOIN_GROUP_MEMBER")
+	if n.Table != nil {
+		sb.WriteString(" :table ")
+		writeNode(sb, n.Table)
+	}
+	if n.Column != "" {
+		sb.WriteString(fmt.Sprintf(" :column %q", n.Column))
 	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

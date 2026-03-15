@@ -3357,6 +3357,204 @@ type DimensionAttribute struct {
 func (n *DimensionAttribute) nodeTag() {}
 
 // ---------------------------------------------------------------------------
+// ALTER CLUSTER
+// ---------------------------------------------------------------------------
+
+// AlterClusterStmt represents an ALTER CLUSTER statement.
+//
+// BNF: oracle/parser/bnf/ALTER-CLUSTER.bnf
+//
+//	ALTER CLUSTER [ IF EXISTS ] [ schema . ] cluster
+//	    { physical_attributes_clause
+//	    | SIZE integer
+//	    | MODIFY PARTITION partition allocate_extent_clause
+//	    | allocate_extent_clause
+//	    | deallocate_unused_clause
+//	    | parallel_clause
+//	    }
+type AlterClusterStmt struct {
+	Name     *ObjectName // cluster name
+	IfExists bool        // IF EXISTS
+	Action   string      // "SIZE", "ALLOCATE_EXTENT", "DEALLOCATE_UNUSED", "MODIFY_PARTITION", "PHYSICAL_ATTRS", "PARALLEL"
+	// Physical attributes
+	PctFree   *int
+	PctUsed   *int
+	InitTrans *int
+	// SIZE
+	Size string
+	// MODIFY PARTITION
+	ModifyPartition string
+	// Parallel
+	Parallel string
+	Loc      Loc
+}
+
+func (n *AlterClusterStmt) nodeTag()  {}
+func (n *AlterClusterStmt) stmtNode() {}
+
+// ---------------------------------------------------------------------------
+// ALTER DIMENSION
+// ---------------------------------------------------------------------------
+
+// AlterDimensionStmt represents an ALTER DIMENSION statement.
+//
+// BNF: oracle/parser/bnf/ALTER-DIMENSION.bnf
+//
+//	ALTER DIMENSION [ schema . ] dimension
+//	    { ADD level_clause
+//	    | ADD hierarchy_clause
+//	    | ADD attribute_clause
+//	    | ADD extended_attribute_clause
+//	    | DROP level_clause
+//	    | DROP hierarchy_clause
+//	    | DROP attribute_clause
+//	    | DROP extended_attribute_clause
+//	    | COMPILE
+//	    }
+type AlterDimensionStmt struct {
+	Name    *ObjectName // dimension name
+	Compile bool        // COMPILE
+	// ADD / DROP items
+	AddLevels      []*DimensionLevel
+	AddHierarchies []*DimensionHierarchy
+	AddAttributes  []*DimensionAttribute
+	DropLevels     []string // level names to drop
+	DropHierarchies []string // hierarchy names to drop
+	DropAttributes  []string // attribute names to drop
+	Loc            Loc
+}
+
+func (n *AlterDimensionStmt) nodeTag()  {}
+func (n *AlterDimensionStmt) stmtNode() {}
+
+// ---------------------------------------------------------------------------
+// CREATE MATERIALIZED ZONEMAP
+// ---------------------------------------------------------------------------
+
+// CreateMaterializedZonemapStmt represents a CREATE MATERIALIZED ZONEMAP statement.
+//
+// BNF: oracle/parser/bnf/CREATE-MATERIALIZED-ZONEMAP.bnf
+//
+//	CREATE MATERIALIZED ZONEMAP [ IF NOT EXISTS ]
+//	    [ schema. ] zonemap_name
+//	    [ zonemap_attributes ]
+//	    [ zonemap_refresh_clause ]
+//	    [ { ENABLE | DISABLE } PRUNING ]
+//	    { create_zonemap_on_table | create_zonemap_as_subquery }
+type CreateMaterializedZonemapStmt struct {
+	IfNotExists bool        // IF NOT EXISTS
+	Name        *ObjectName // zonemap name
+	// zonemap_attributes
+	Tablespace string
+	Scale      *int
+	PctFree    *int
+	PctUsed    *int
+	Cache      bool
+	NoCache    bool
+	// zonemap_refresh_clause
+	RefreshMethod string // FAST, COMPLETE, FORCE
+	RefreshOn     string // "ON DEMAND", "ON COMMIT", "ON LOAD", "ON DATA MOVEMENT", "ON LOAD DATA MOVEMENT"
+	// ENABLE/DISABLE PRUNING
+	EnablePruning  bool
+	DisablePruning bool
+	// ON table ( columns... )
+	OnTable   *ObjectName
+	OnColumns []string
+	// AS subquery
+	ColumnAliases []string
+	AsQuery       *SelectStmt
+	Loc           Loc
+}
+
+func (n *CreateMaterializedZonemapStmt) nodeTag()  {}
+func (n *CreateMaterializedZonemapStmt) stmtNode() {}
+
+// ---------------------------------------------------------------------------
+// ALTER MATERIALIZED ZONEMAP
+// ---------------------------------------------------------------------------
+
+// AlterMaterializedZonemapStmt represents an ALTER MATERIALIZED ZONEMAP statement.
+//
+// BNF: oracle/parser/bnf/ALTER-MATERIALIZED-ZONEMAP.bnf
+//
+//	ALTER MATERIALIZED ZONEMAP [ IF EXISTS ] [ schema. ] zonemap_name
+//	    { alter_zonemap_attributes
+//	    | zonemap_refresh_clause
+//	    | { ENABLE | DISABLE } PRUNING
+//	    | COMPILE
+//	    | REBUILD
+//	    | UNUSABLE
+//	    } ;
+type AlterMaterializedZonemapStmt struct {
+	IfExists bool        // IF EXISTS
+	Name     *ObjectName // zonemap name
+	Action   string      // "ATTRS", "REFRESH", "ENABLE_PRUNING", "DISABLE_PRUNING", "COMPILE", "REBUILD", "UNUSABLE"
+	// alter_zonemap_attributes
+	PctFree *int
+	PctUsed *int
+	Cache   bool
+	NoCache bool
+	// refresh
+	RefreshMethod string
+	RefreshOn     string
+	Loc           Loc
+}
+
+func (n *AlterMaterializedZonemapStmt) nodeTag()  {}
+func (n *AlterMaterializedZonemapStmt) stmtNode() {}
+
+// ---------------------------------------------------------------------------
+// CREATE INMEMORY JOIN GROUP
+// ---------------------------------------------------------------------------
+
+// CreateInmemoryJoinGroupStmt represents a CREATE INMEMORY JOIN GROUP statement.
+//
+// BNF: oracle/parser/bnf/CREATE-INMEMORY-JOIN-GROUP.bnf
+//
+//	CREATE INMEMORY JOIN GROUP [ IF NOT EXISTS ] [ schema. ] join_group
+//	    ( [ schema. ] table ( column )
+//	      [, [ schema. ] table ( column ) ]... ) ;
+type CreateInmemoryJoinGroupStmt struct {
+	IfNotExists bool        // IF NOT EXISTS
+	Name        *ObjectName // join group name
+	Members     []*JoinGroupMember
+	Loc         Loc
+}
+
+func (n *CreateInmemoryJoinGroupStmt) nodeTag()  {}
+func (n *CreateInmemoryJoinGroupStmt) stmtNode() {}
+
+// JoinGroupMember represents a table(column) in an INMEMORY JOIN GROUP.
+type JoinGroupMember struct {
+	Table  *ObjectName
+	Column string
+	Loc    Loc
+}
+
+func (n *JoinGroupMember) nodeTag() {}
+
+// ---------------------------------------------------------------------------
+// ALTER INMEMORY JOIN GROUP
+// ---------------------------------------------------------------------------
+
+// AlterInmemoryJoinGroupStmt represents an ALTER INMEMORY JOIN GROUP statement.
+//
+// BNF: oracle/parser/bnf/ALTER-INMEMORY-JOIN-GROUP.bnf
+//
+//	ALTER INMEMORY JOIN GROUP [ IF EXISTS ] [ schema. ] join_group
+//	    { ADD | REMOVE } ( [ schema. ] table ( column ) ) ;
+type AlterInmemoryJoinGroupStmt struct {
+	IfExists bool        // IF EXISTS
+	Name     *ObjectName // join group name
+	Action   string      // "ADD" or "REMOVE"
+	Member   *JoinGroupMember
+	Loc      Loc
+}
+
+func (n *AlterInmemoryJoinGroupStmt) nodeTag()  {}
+func (n *AlterInmemoryJoinGroupStmt) stmtNode() {}
+
+// ---------------------------------------------------------------------------
 // ALTER INDEX statement
 // ---------------------------------------------------------------------------
 

@@ -38,7 +38,7 @@ func (p *Parser) parseDropStmt() nodes.StmtNode {
 		// Check for MATERIALIZED ZONEMAP
 		if p.isIdentLike() && p.cur.Str == "ZONEMAP" {
 			p.advance() // consume ZONEMAP
-			return p.parseAdminDDLStmt("DROP", nodes.OBJECT_MATERIALIZED_ZONEMAP, start)
+			return p.parseDropSimpleStmt(nodes.OBJECT_MATERIALIZED_ZONEMAP, start)
 		}
 		if p.cur.Type == kwVIEW {
 			p.advance() // consume VIEW

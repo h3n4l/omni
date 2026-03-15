@@ -46,7 +46,7 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 		p.advance() // consume MATERIALIZED
 		if p.isIdentLike() && p.cur.Str == "ZONEMAP" {
 			p.advance() // consume ZONEMAP
-			return p.parseAdminDDLStmt("ALTER", nodes.OBJECT_MATERIALIZED_ZONEMAP, start)
+			return p.parseAlterMaterializedZonemapStmt(start)
 		}
 		// MATERIALIZED VIEW - consume VIEW and check if LOG follows
 		if p.cur.Type == kwVIEW {
