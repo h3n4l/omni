@@ -10,9 +10,9 @@ import (
 
 // parseAlterTableStmt parses an ALTER TABLE statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-table-transact-sql
+// BNF: mssql/parser/bnf/alter-table-transact-sql.bnf
 //
-//	ALTER TABLE [ database_name . [ schema_name ] . | schema_name . ] table_name
+//	ALTER TABLE { database_name.schema_name.table_name | schema_name.table_name | table_name }
 //	{
 //	    ALTER COLUMN column_name
 //	    {
@@ -31,18 +31,15 @@ import (
 //	        <column_definition>
 //	      | <computed_column_definition>
 //	      | <table_constraint>
+//	      | <column_set_definition>
 //	    } [ ,...n ]
 //
 //	    | DROP
 //	     [ {
 //	         [ CONSTRAINT ] [ IF EXISTS ]
-//	         {
-//	              constraint_name
-//	         } [ ,...n ]
-//	         | COLUMN [ IF EXISTS ]
-//	         {
-//	              column_name
-//	         } [ ,...n ]
+//	         { constraint_name [ WITH ( <drop_clustered_constraint_option> [ ,...n ] ) ] } [ ,...n ]
+//	       | COLUMN [ IF EXISTS ] { column_name } [ ,...n ]
+//	       | PERIOD FOR SYSTEM_TIME
 //	     } [ ,...n ] ]
 //
 //	    | [ WITH { CHECK | NOCHECK } ] { CHECK | NOCHECK } CONSTRAINT
@@ -62,19 +59,35 @@ import (
 //	    | SET
 //	        (
 //	            [ FILESTREAM_ON = { partition_scheme_name | filegroup | "default" | "NULL" } ]
-//	            | SYSTEM_VERSIONING =
-//	                  { OFF | ON [ ( HISTORY_TABLE = schema_name.history_table_name
-//	                      [, DATA_CONSISTENCY_CHECK = { ON | OFF } ] ) ] }
-//	            | LOCK_ESCALATION = { AUTO | TABLE | DISABLE }
+//	          | SYSTEM_VERSIONING = { OFF | ON [ ( HISTORY_TABLE = schema_name.history_table_name
+//	              [, DATA_CONSISTENCY_CHECK = { ON | OFF } ] ) ] }
+//	          | DATA_DELETION = { OFF | ON [ ( [ FILTER_COLUMN = column_name ]
+//	              [, RETENTION_PERIOD = { INFINITE | number { DAY | DAYS | WEEK | WEEKS
+//	                  | MONTH | MONTHS | YEAR | YEARS } } ] ) ] }
+//	          | LOCK_ESCALATION = { AUTO | TABLE | DISABLE }
 //	        )
 //
 //	    | REBUILD
-//	      [ [ PARTITION = ALL ]
-//	        [ WITH ( <rebuild_option> [ ,...n ] ) ]
-//	      | [ PARTITION = partition_number
-//	           [ WITH ( <single_partition_rebuild_option> [ ,...n ] ) ] ]
+//	      [ [ PARTITION = ALL ] [ WITH ( <rebuild_option> [ ,...n ] ) ]
+//	      | [ PARTITION = partition_number [ WITH ( <single_partition_rebuild_option> [ ,...n ] ) ] ]
 //	      ]
+//
+//	    | { SPLIT | MERGE } RANGE ( boundary_value )
+//
+//	    | <table_option>
+//	    | <filetable_option>
 //	}
+//
+//	<drop_clustered_constraint_option> ::=
+//	    MAXDOP = max_degree_of_parallelism
+//	  | ONLINE = { ON | OFF }
+//	  | MOVE TO { partition_scheme_name ( column_name ) | filegroup | "default" }
+//
+//	<table_option> ::= SET ( LOCK_ESCALATION = { AUTO | TABLE | DISABLE } )
+//
+//	<low_priority_lock_wait> ::=
+//	    WAIT_AT_LOW_PRIORITY ( MAX_DURATION = <time> [ MINUTES ],
+//	        ABORT_AFTER_WAIT = { NONE | SELF | BLOCKERS } )
 func (p *Parser) parseAlterTableStmt() *nodes.AlterTableStmt {
 	loc := p.pos()
 
@@ -136,6 +149,12 @@ func (p *Parser) parseAlterTableStmt() *nodes.AlterTableStmt {
 		actions = append(actions, action)
 	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "REBUILD"):
 		action := p.parseAlterTableRebuild()
+		actions = append(actions, action)
+	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "SPLIT"):
+		action := p.parseAlterTableSplitMergeRange(true)
+		actions = append(actions, action)
+	case p.cur.Type == kwMERGE:
+		action := p.parseAlterTableSplitMergeRange(false)
 		actions = append(actions, action)
 	default:
 		// Unrecognized ALTER TABLE action - skip
@@ -232,9 +251,12 @@ func (p *Parser) parseAlterTableAddPeriod() []nodes.Node {
 // parseAlterTableDrop parses DROP with comma-separated columns/constraints,
 // or DROP PERIOD FOR SYSTEM_TIME.
 //
-//	DROP { [ CONSTRAINT ] [ IF EXISTS ] constraint_name [ ,...n ]
-//	     | COLUMN [ IF EXISTS ] column_name [ ,...n ]
-//	     | PERIOD FOR SYSTEM_TIME }
+//	DROP [ {
+//	    [ CONSTRAINT ] [ IF EXISTS ]
+//	    { constraint_name [ WITH ( <drop_clustered_constraint_option> [ ,...n ] ) ] } [ ,...n ]
+//	  | COLUMN [ IF EXISTS ] { column_name } [ ,...n ]
+//	  | PERIOD FOR SYSTEM_TIME
+//	} [ ,...n ] ]
 func (p *Parser) parseAlterTableDrop() []nodes.Node {
 	p.advance() // consume DROP
 	var actions []nodes.Node
@@ -260,19 +282,22 @@ func (p *Parser) parseAlterTableDrop() []nodes.Node {
 	if p.cur.Type == kwCOLUMN {
 		p.advance() // consume COLUMN
 		// IF EXISTS
+		ifExists := false
 		if p.cur.Type == kwIF {
 			next := p.peekNext()
 			if next.Type == kwEXISTS {
 				p.advance() // IF
 				p.advance() // EXISTS
+				ifExists = true
 			}
 		}
 		// Parse comma-separated column names
 		for {
 			loc := p.pos()
 			action := &nodes.AlterTableAction{
-				Type: nodes.ATDropColumn,
-				Loc:  nodes.Loc{Start: loc},
+				Type:     nodes.ATDropColumn,
+				IfExists: ifExists,
+				Loc:      nodes.Loc{Start: loc},
 			}
 			name, _ := p.parseIdentifier()
 			action.ColName = name
@@ -285,19 +310,22 @@ func (p *Parser) parseAlterTableDrop() []nodes.Node {
 	} else if p.cur.Type == kwCONSTRAINT {
 		p.advance() // consume CONSTRAINT
 		// IF EXISTS
+		ifExists := false
 		if p.cur.Type == kwIF {
 			next := p.peekNext()
 			if next.Type == kwEXISTS {
 				p.advance() // IF
 				p.advance() // EXISTS
+				ifExists = true
 			}
 		}
-		// Parse comma-separated constraint names
+		// Parse comma-separated constraint names with optional WITH (drop_clustered_constraint_option)
 		for {
 			loc := p.pos()
 			action := &nodes.AlterTableAction{
-				Type: nodes.ATDropConstraint,
-				Loc:  nodes.Loc{Start: loc},
+				Type:     nodes.ATDropConstraint,
+				IfExists: ifExists,
+				Loc:      nodes.Loc{Start: loc},
 			}
 			action.Constraint = &nodes.ConstraintDef{
 				Loc: nodes.Loc{Start: p.pos()},
@@ -305,6 +333,13 @@ func (p *Parser) parseAlterTableDrop() []nodes.Node {
 			name, _ := p.parseIdentifier()
 			action.Constraint.Name = name
 			action.Constraint.Loc.End = p.pos()
+			// Optional WITH ( <drop_clustered_constraint_option> [,...n] )
+			if p.cur.Type == kwWITH {
+				p.advance() // consume WITH
+				if p.cur.Type == '(' {
+					action.Options = p.parseKeyValueOptionList()
+				}
+			}
 			action.Loc.End = p.pos()
 			actions = append(actions, action)
 			if _, ok := p.match(','); !ok {
@@ -312,14 +347,36 @@ func (p *Parser) parseAlterTableDrop() []nodes.Node {
 			}
 		}
 	} else {
-		// No COLUMN or CONSTRAINT keyword - treat as DROP column (legacy)
+		// No COLUMN or CONSTRAINT keyword - implicit DROP CONSTRAINT (legacy)
+		// IF EXISTS
+		ifExists := false
+		if p.cur.Type == kwIF {
+			next := p.peekNext()
+			if next.Type == kwEXISTS {
+				p.advance() // IF
+				p.advance() // EXISTS
+				ifExists = true
+			}
+		}
 		loc := p.pos()
 		action := &nodes.AlterTableAction{
-			Type: nodes.ATDropColumn,
-			Loc:  nodes.Loc{Start: loc},
+			Type:     nodes.ATDropConstraint,
+			IfExists: ifExists,
+			Loc:      nodes.Loc{Start: loc},
+		}
+		action.Constraint = &nodes.ConstraintDef{
+			Loc: nodes.Loc{Start: p.pos()},
 		}
 		name, _ := p.parseIdentifier()
-		action.ColName = name
+		action.Constraint.Name = name
+		action.Constraint.Loc.End = p.pos()
+		// Optional WITH ( <drop_clustered_constraint_option> [,...n] )
+		if p.cur.Type == kwWITH {
+			p.advance() // consume WITH
+			if p.cur.Type == '(' {
+				action.Options = p.parseKeyValueOptionList()
+			}
+		}
 		action.Loc.End = p.pos()
 		actions = append(actions, action)
 	}
@@ -331,12 +388,14 @@ func (p *Parser) parseAlterTableDrop() []nodes.Node {
 //
 //	ALTER COLUMN column_name
 //	{
-//	    [ type_schema_name. ] type_name [ ( precision [ , scale ] | max ) ]
+//	    [ type_schema_name. ] type_name
+//	        [ ( { precision [ , scale ] | max | xml_schema_collection } ) ]
 //	    [ COLLATE collation_name ]
 //	    [ NULL | NOT NULL ] [ SPARSE ]
 //	  | { ADD | DROP } { ROWGUIDCOL | PERSISTED | NOT FOR REPLICATION | SPARSE | HIDDEN }
 //	  | { ADD | DROP } MASKED [ WITH ( FUNCTION = 'mask_function' ) ]
 //	}
+//	[ WITH ( ONLINE = ON | OFF ) ]
 func (p *Parser) parseAlterTableAlterColumn() *nodes.AlterTableAction {
 	loc := p.pos()
 	p.advance() // consume ALTER
@@ -382,6 +441,14 @@ func (p *Parser) parseAlterTableAlterColumn() *nodes.AlterTableAction {
 	// SPARSE (optional after NULL/NOT NULL)
 	if p.isIdentLike() && strings.EqualFold(p.cur.Str, "SPARSE") {
 		p.advance()
+	}
+
+	// [ WITH ( ONLINE = ON | OFF ) ]
+	if p.cur.Type == kwWITH {
+		p.advance() // consume WITH
+		if p.cur.Type == '(' {
+			action.Options = p.parseKeyValueOptionList()
+		}
 	}
 
 	action.Loc.End = p.pos()
@@ -629,7 +696,7 @@ func (p *Parser) parseAlterTableSwitch() *nodes.AlterTableAction {
 	if p.cur.Type == kwWITH {
 		p.advance() // consume WITH
 		if p.cur.Type == '(' {
-			action.Options = p.parseOptionList()
+			action.Options = p.parseKeyValueOptionList()
 		}
 	}
 
@@ -672,11 +739,43 @@ func (p *Parser) parseAlterTableRebuild() *nodes.AlterTableAction {
 	return action
 }
 
+// parseAlterTableSplitMergeRange parses { SPLIT | MERGE } RANGE ( boundary_value ).
+//
+//	{ SPLIT | MERGE } RANGE ( boundary_value )
+func (p *Parser) parseAlterTableSplitMergeRange(isSplit bool) *nodes.AlterTableAction {
+	loc := p.pos()
+	action := &nodes.AlterTableAction{
+		Loc: nodes.Loc{Start: loc},
+	}
+	if isSplit {
+		action.Type = nodes.ATSplitRange
+	} else {
+		action.Type = nodes.ATMergeRange
+	}
+	p.advance() // consume SPLIT/MERGE
+
+	// RANGE keyword
+	if p.isIdentLike() && strings.EqualFold(p.cur.Str, "RANGE") {
+		p.advance()
+	}
+
+	// ( boundary_value )
+	if p.cur.Type == '(' {
+		p.advance() // consume (
+		action.Partition = p.parseExpr()
+		p.expect(')')
+	}
+
+	action.Loc.End = p.pos()
+	return action
+}
+
 // parseAlterTableSet parses SET ( option = value [,...] ).
 //
 //	SET ( LOCK_ESCALATION = { AUTO | TABLE | DISABLE }
 //	    | FILESTREAM_ON = { partition_scheme_name | filegroup | "default" | "NULL" }
 //	    | SYSTEM_VERSIONING = { OFF | ON [ ( HISTORY_TABLE = schema_name.table_name [...] ) ] }
+//	    | DATA_DELETION = { OFF | ON [ ( ... ) ] }
 //	    )
 func (p *Parser) parseAlterTableSet() *nodes.AlterTableAction {
 	loc := p.pos()

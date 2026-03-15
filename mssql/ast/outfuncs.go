@@ -2819,6 +2819,9 @@ func writeAlterTableAction(sb *strings.Builder, n *AlterTableAction) {
 	if n.WithCheck != "" {
 		sb.WriteString(fmt.Sprintf(" :withCheck \"%s\"", escapeString(n.WithCheck)))
 	}
+	if n.IfExists {
+		sb.WriteString(" :ifExists true")
+	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
 }

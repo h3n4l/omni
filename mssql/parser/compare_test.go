@@ -1592,6 +1592,215 @@ func TestParseAlterTable(t *testing.T) {
 	})
 }
 
+// TestParseAlterTableBnfReview tests ALTER TABLE BNF review gaps (batch 158).
+func TestParseAlterTableBnfReview(t *testing.T) {
+	t.Run("alter column with online", func(t *testing.T) {
+		sql := "ALTER TABLE dbo.t ALTER COLUMN col1 nvarchar(100) NOT NULL WITH (ONLINE = ON)"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("alter column add rowguidcol", func(t *testing.T) {
+		sql := "ALTER TABLE t ALTER COLUMN col1 ADD ROWGUIDCOL"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("alter column drop persisted", func(t *testing.T) {
+		sql := "ALTER TABLE t ALTER COLUMN col1 DROP PERSISTED"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("alter column add masked", func(t *testing.T) {
+		sql := "ALTER TABLE t ALTER COLUMN col1 ADD MASKED WITH (FUNCTION = 'default()')"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("alter column add not for replication", func(t *testing.T) {
+		sql := "ALTER TABLE t ALTER COLUMN col1 ADD NOT FOR REPLICATION"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("alter column sparse", func(t *testing.T) {
+		sql := "ALTER TABLE t ALTER COLUMN col1 int NULL SPARSE"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("drop column if exists", func(t *testing.T) {
+		sql := "ALTER TABLE t DROP COLUMN IF EXISTS col1, col2"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.AlterTableStmt)
+		actions := stmt.Actions.Items
+		if len(actions) != 2 {
+			t.Fatalf("expected 2 actions, got %d", len(actions))
+		}
+		action0 := actions[0].(*ast.AlterTableAction)
+		if !action0.IfExists {
+			t.Error("expected IfExists=true on first drop column action")
+		}
+	})
+
+	t.Run("drop constraint if exists", func(t *testing.T) {
+		sql := "ALTER TABLE t DROP CONSTRAINT IF EXISTS PK_t"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.AlterTableStmt)
+		action := stmt.Actions.Items[0].(*ast.AlterTableAction)
+		if !action.IfExists {
+			t.Error("expected IfExists=true")
+		}
+	})
+
+	t.Run("drop constraint with options", func(t *testing.T) {
+		sql := "ALTER TABLE t DROP CONSTRAINT PK_t WITH (MAXDOP = 1, ONLINE = ON)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.AlterTableStmt)
+		action := stmt.Actions.Items[0].(*ast.AlterTableAction)
+		if action.Options == nil {
+			t.Error("expected drop constraint options")
+		}
+	})
+
+	t.Run("drop constraint implicit", func(t *testing.T) {
+		sql := "ALTER TABLE t DROP PK_t"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("check constraint with prefix", func(t *testing.T) {
+		sql := "ALTER TABLE t WITH NOCHECK CHECK CONSTRAINT ALL"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.AlterTableStmt)
+		action := stmt.Actions.Items[0].(*ast.AlterTableAction)
+		if action.WithCheck != "NOCHECK" {
+			t.Errorf("expected WithCheck=NOCHECK, got %s", action.WithCheck)
+		}
+	})
+
+	t.Run("nocheck constraint names", func(t *testing.T) {
+		sql := "ALTER TABLE t NOCHECK CONSTRAINT ck1, ck2"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.AlterTableStmt)
+		action := stmt.Actions.Items[0].(*ast.AlterTableAction)
+		if action.Type != ast.ATNocheckConstraint {
+			t.Errorf("expected ATNocheckConstraint, got %d", action.Type)
+		}
+		if len(action.Names.Items) != 2 {
+			t.Errorf("expected 2 constraint names, got %d", len(action.Names.Items))
+		}
+	})
+
+	t.Run("enable trigger all", func(t *testing.T) {
+		sql := "ALTER TABLE t ENABLE TRIGGER ALL"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("disable trigger list", func(t *testing.T) {
+		sql := "ALTER TABLE t DISABLE TRIGGER tr1, tr2"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("enable change tracking", func(t *testing.T) {
+		sql := "ALTER TABLE t ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = ON)"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("switch partition", func(t *testing.T) {
+		sql := "ALTER TABLE t SWITCH PARTITION 1 TO t2 PARTITION 1"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("switch with low priority lock wait", func(t *testing.T) {
+		sql := "ALTER TABLE t SWITCH TO t2 WITH (WAIT_AT_LOW_PRIORITY (MAX_DURATION = 10, ABORT_AFTER_WAIT = SELF))"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("set lock escalation", func(t *testing.T) {
+		sql := "ALTER TABLE t SET (LOCK_ESCALATION = TABLE)"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("set system versioning on", func(t *testing.T) {
+		sql := "ALTER TABLE t SET (SYSTEM_VERSIONING = ON (HISTORY_TABLE = dbo.tHistory))"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("set system versioning off", func(t *testing.T) {
+		sql := "ALTER TABLE t SET (SYSTEM_VERSIONING = OFF)"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("set filestream on", func(t *testing.T) {
+		sql := "ALTER TABLE t SET (FILESTREAM_ON = fg1)"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("rebuild all with options", func(t *testing.T) {
+		sql := "ALTER TABLE t REBUILD PARTITION = ALL WITH (DATA_COMPRESSION = PAGE)"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("rebuild specific partition", func(t *testing.T) {
+		sql := "ALTER TABLE t REBUILD PARTITION = 1 WITH (DATA_COMPRESSION = ROW)"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("split range", func(t *testing.T) {
+		sql := "ALTER TABLE t SPLIT RANGE (100)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.AlterTableStmt)
+		action := stmt.Actions.Items[0].(*ast.AlterTableAction)
+		if action.Type != ast.ATSplitRange {
+			t.Errorf("expected ATSplitRange, got %d", action.Type)
+		}
+	})
+
+	t.Run("merge range", func(t *testing.T) {
+		sql := "ALTER TABLE t MERGE RANGE (100)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.AlterTableStmt)
+		action := stmt.Actions.Items[0].(*ast.AlterTableAction)
+		if action.Type != ast.ATMergeRange {
+			t.Errorf("expected ATMergeRange, got %d", action.Type)
+		}
+	})
+
+	t.Run("add period for system time", func(t *testing.T) {
+		sql := "ALTER TABLE t ADD PERIOD FOR SYSTEM_TIME (SysStartTime, SysEndTime)"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("drop period for system time", func(t *testing.T) {
+		sql := "ALTER TABLE t DROP PERIOD FOR SYSTEM_TIME"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("enable filetable namespace", func(t *testing.T) {
+		sql := "ALTER TABLE t ENABLE FILETABLE_NAMESPACE"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("disable filetable namespace", func(t *testing.T) {
+		sql := "ALTER TABLE t DISABLE FILETABLE_NAMESPACE"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("with check add constraint", func(t *testing.T) {
+		sql := "ALTER TABLE t WITH CHECK ADD CONSTRAINT FK_t FOREIGN KEY (id) REFERENCES t2 (id)"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("add multiple columns", func(t *testing.T) {
+		sql := "ALTER TABLE t ADD col1 int, col2 varchar(50)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.AlterTableStmt)
+		if len(stmt.Actions.Items) != 2 {
+			t.Errorf("expected 2 add actions, got %d", len(stmt.Actions.Items))
+		}
+	})
+
+	t.Run("set data deletion", func(t *testing.T) {
+		sql := "ALTER TABLE t SET (DATA_DELETION = ON (FILTER_COLUMN = col1))"
+		ParseAndCheck(t, sql)
+	})
+}
+
 // TestParseCreateIndex tests CREATE INDEX statement parsing (batch 10).
 func TestParseCreateIndex(t *testing.T) {
 	t.Run("basic index", func(t *testing.T) {

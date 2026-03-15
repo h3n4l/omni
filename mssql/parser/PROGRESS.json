@@ -256,7 +256,7 @@
       "id": 158,
       "name": "bnf_review_alter_table",
       "file": "alter_table.go",
-      "status": "pending",
+      "status": "done",
       "description": "Full BNF review of ALTER TABLE. ALTER COLUMN, ADD/DROP column, ADD/DROP CONSTRAINT, CHECK/NOCHECK CONSTRAINT, ENABLE/DISABLE TRIGGER, SWITCH PARTITION, SET, REBUILD, table options.",
       "rules": [
         "alter_table_stmt",
