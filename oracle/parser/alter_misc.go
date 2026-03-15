@@ -131,6 +131,9 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 				if p.cur.Type == kwDATABASE {
 					return p.parseAlterDatabaseLinkStmt(start, true, isPublic)
 				}
+				if p.cur.Type == kwSYNONYM {
+					return p.parseAlterSynonymStmt(start, isPublic)
+				}
 				// Unknown ALTER SHARED target
 				p.skipToSemicolon()
 				return nil

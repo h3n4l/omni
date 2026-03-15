@@ -1637,7 +1637,7 @@
       "id": 116,
       "name": "alter_shared_synonym_dispatch",
       "file": "alter_misc.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 98 gap: parseAlterStmt ALTER SHARED PUBLIC branch does not dispatch ALTER SHARED PUBLIC SYNONYM. Falls through to skipToSemicolon.",
       "bnf_files": [
         "ALTER-SYNONYM.bnf"

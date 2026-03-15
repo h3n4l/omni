@@ -9348,3 +9348,37 @@ func TestFlashbackTable(t *testing.T) {
 		})
 	}
 }
+
+// TestAlterSynonym tests parsing of ALTER SHARED [PUBLIC] SYNONYM statements (batch 116).
+func TestAlterSynonym(t *testing.T) {
+	tests := []string{
+		"ALTER SHARED PUBLIC SYNONYM syn1 COMPILE",
+		"ALTER SHARED PUBLIC SYNONYM syn1 EDITIONABLE",
+		"ALTER SHARED PUBLIC SYNONYM syn1 NONEDITIONABLE",
+		"ALTER SHARED SYNONYM syn1 COMPILE",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+
+	t.Run("alter_shared_public_synonym_ast_check", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER SHARED PUBLIC SYNONYM syn1 COMPILE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt := raw.Stmt.(*ast.AlterSynonymStmt)
+		if stmt.Name == nil {
+			t.Fatal("expected non-nil Name")
+		}
+		if !stmt.Public {
+			t.Fatal("expected Public=true")
+		}
+		if stmt.Action != "COMPILE" {
+			t.Fatalf("expected Action=COMPILE, got %s", stmt.Action)
+		}
+		s := ast.NodeToString(result.Items[0])
+		if s == "" {
+			t.Fatal("expected non-empty serialization")
+		}
+	})
+}
