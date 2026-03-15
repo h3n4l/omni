@@ -22548,3 +22548,192 @@ func TestParseHAServerBNFReview(t *testing.T) {
 		}
 	})
 }
+
+// TestParseServiceBrokerBnfReview tests batch 170: BNF review of Service Broker statements.
+func TestParseServiceBrokerBnfReview(t *testing.T) {
+	t.Run("alter_queue_rebuild", func(t *testing.T) {
+		tests := []string{
+			"ALTER QUEUE dbo.ExpenseQueue REBUILD",
+			"ALTER QUEUE dbo.ExpenseQueue REBUILD WITH (MAXDOP = 4)",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("alter_queue_reorganize", func(t *testing.T) {
+		tests := []string{
+			"ALTER QUEUE dbo.ExpenseQueue REORGANIZE",
+			"ALTER QUEUE dbo.ExpenseQueue REORGANIZE WITH (LOB_COMPACTION = ON)",
+			"ALTER QUEUE dbo.ExpenseQueue REORGANIZE WITH (LOB_COMPACTION = OFF)",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("alter_queue_move_to", func(t *testing.T) {
+		tests := []string{
+			"ALTER QUEUE dbo.ExpenseQueue MOVE TO MyFileGroup",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("send_multiple_handles", func(t *testing.T) {
+		tests := []string{
+			"SEND ON CONVERSATION @dialog_handle MESSAGE TYPE MyType (@msg)",
+			"SEND ON CONVERSATION (@handle1, @handle2) MESSAGE TYPE MyType (@body)",
+			"SEND ON CONVERSATION (@h1, @h2, @h3) (@body)",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("alter_service_add_drop_contract", func(t *testing.T) {
+		tests := []string{
+			"ALTER SERVICE MyService (ADD CONTRACT MyContract)",
+			"ALTER SERVICE MyService (DROP CONTRACT OldContract)",
+			"ALTER SERVICE MyService (ADD CONTRACT NewContract, DROP CONTRACT OldContract)",
+			"ALTER SERVICE MyService ON QUEUE dbo.MyQueue (ADD CONTRACT MyContract)",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("create_message_type_all_validations", func(t *testing.T) {
+		tests := []string{
+			"CREATE MESSAGE TYPE MyMsgType VALIDATION = NONE",
+			"CREATE MESSAGE TYPE MyMsgType VALIDATION = EMPTY",
+			"CREATE MESSAGE TYPE MyMsgType VALIDATION = WELL_FORMED_XML",
+			"CREATE MESSAGE TYPE MyMsgType AUTHORIZATION dbo VALIDATION = VALID_XML WITH SCHEMA COLLECTION dbo.MySchema",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("alter_message_type_validations", func(t *testing.T) {
+		tests := []string{
+			"ALTER MESSAGE TYPE MyMsgType VALIDATION = NONE",
+			"ALTER MESSAGE TYPE MyMsgType VALIDATION = VALID_XML WITH SCHEMA COLLECTION dbo.MyXmlSchema",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("create_contract", func(t *testing.T) {
+		tests := []string{
+			"CREATE CONTRACT MyContract (MyMessageType SENT BY INITIATOR)",
+			"CREATE CONTRACT MyContract AUTHORIZATION dbo (MyMsgType SENT BY ANY, ReplyType SENT BY TARGET)",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("create_broker_priority", func(t *testing.T) {
+		tests := []string{
+			"CREATE BROKER PRIORITY MyPriority FOR CONVERSATION SET (CONTRACT_NAME = MyContract, LOCAL_SERVICE_NAME = MyService, REMOTE_SERVICE_NAME = 'RemoteSvc', PRIORITY_LEVEL = 5)",
+			"CREATE BROKER PRIORITY P1 FOR CONVERSATION SET (PRIORITY_LEVEL = DEFAULT)",
+			"CREATE BROKER PRIORITY P2 FOR CONVERSATION SET (CONTRACT_NAME = ANY, LOCAL_SERVICE_NAME = ANY, REMOTE_SERVICE_NAME = ANY)",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("begin_dialog", func(t *testing.T) {
+		tests := []string{
+			"BEGIN DIALOG CONVERSATION @dialog FROM SERVICE MySvc TO SERVICE 'TargetSvc' ON CONTRACT MyContract",
+			"BEGIN DIALOG @dlg FROM SERVICE MySvc TO SERVICE 'TargetSvc', 'broker-guid' WITH LIFETIME = 3600, ENCRYPTION = ON",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("end_conversation", func(t *testing.T) {
+		tests := []string{
+			"END CONVERSATION @dialog",
+			"END CONVERSATION @dialog WITH CLEANUP",
+			"END CONVERSATION @dialog WITH ERROR = 1 DESCRIPTION = 'failure'",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("move_conversation", func(t *testing.T) {
+		tests := []string{
+			"MOVE CONVERSATION @handle TO @group",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("begin_conversation_timer", func(t *testing.T) {
+		tests := []string{
+			"BEGIN CONVERSATION TIMER (@handle) TIMEOUT = 60",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("get_conversation_group", func(t *testing.T) {
+		tests := []string{
+			"GET CONVERSATION GROUP @group FROM dbo.MyQueue",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("drop_service_broker", func(t *testing.T) {
+		tests := []string{
+			"DROP MESSAGE TYPE MyMsgType",
+			"DROP CONTRACT MyContract",
+			"DROP SERVICE MyService",
+			"DROP BROKER PRIORITY MyPriority",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+}

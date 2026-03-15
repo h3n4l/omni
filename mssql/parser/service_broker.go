@@ -9,11 +9,15 @@ import (
 
 // parseCreateMessageTypeStmt parses CREATE MESSAGE TYPE.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-message-type-transact-sql
+// BNF: mssql/parser/bnf/create-message-type-transact-sql.bnf
 //
 //	CREATE MESSAGE TYPE message_type_name
 //	    [ AUTHORIZATION owner_name ]
-//	    [ VALIDATION = { NONE | EMPTY | WELL_FORMED_XML | VALID_XML WITH SCHEMA COLLECTION schema_collection_name } ]
+//	    [ VALIDATION = {  NONE
+//	                    | EMPTY
+//	                    | WELL_FORMED_XML
+//	                    | VALID_XML WITH SCHEMA COLLECTION schema_collection_name
+//	                   } ]
 func (p *Parser) parseCreateMessageTypeStmt() *nodes.ServiceBrokerStmt {
 	loc := p.pos()
 	// TYPE keyword already consumed by caller
@@ -39,24 +43,37 @@ func (p *Parser) parseCreateMessageTypeStmt() *nodes.ServiceBrokerStmt {
 
 	// Optional: VALIDATION = { NONE | EMPTY | WELL_FORMED_XML | VALID_XML WITH SCHEMA COLLECTION ... }
 	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "VALIDATION") {
+		valLoc := p.pos()
 		p.advance()
 		if p.cur.Type == '=' {
 			p.advance()
 		}
 		var opts []nodes.Node
-		// consume the validation value
-		for p.isIdentLike() || p.cur.Type == kwWITH {
-			optLoc := p.pos()
-			opt := strings.ToUpper(p.cur.Str)
+		if p.isIdentLike() {
+			valType := strings.ToUpper(p.cur.Str)
 			p.advance()
-			if opt == "WITH" {
-				// SCHEMA COLLECTION name
-				for p.isIdentLike() {
+			if valType == "VALID_XML" && p.cur.Type == kwWITH {
+				p.advance() // consume WITH
+				if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SCHEMA") {
 					p.advance()
 				}
-				break
+				if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "COLLECTION") {
+					p.advance()
+				}
+				// schema collection name (possibly dot-qualified)
+				ref := p.parseTableRef()
+				schemaName := ""
+				if ref != nil {
+					if ref.Schema != "" {
+						schemaName = ref.Schema + "." + ref.Object
+					} else {
+						schemaName = ref.Object
+					}
+				}
+				opts = append(opts, &nodes.ServiceBrokerOption{Name: "VALIDATION", Value: "VALID_XML WITH SCHEMA COLLECTION " + schemaName, Loc: nodes.Loc{Start: valLoc, End: p.pos()}})
+			} else {
+				opts = append(opts, &nodes.ServiceBrokerOption{Name: "VALIDATION", Value: valType, Loc: nodes.Loc{Start: valLoc, End: p.pos()}})
 			}
-			opts = append(opts, &nodes.ServiceBrokerOption{Name: opt, Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
 		}
 		if len(opts) > 0 {
 			stmt.Options = &nodes.List{Items: opts}
@@ -69,13 +86,13 @@ func (p *Parser) parseCreateMessageTypeStmt() *nodes.ServiceBrokerStmt {
 
 // parseCreateContractStmt parses CREATE CONTRACT.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-contract-transact-sql
+// BNF: mssql/parser/bnf/create-contract-transact-sql.bnf
 //
 //	CREATE CONTRACT contract_name
-//	    [ AUTHORIZATION owner_name ]
-//	    ( {  { message_type_name | [ DEFAULT ] }
-//	            SENT BY { INITIATOR | TARGET | ANY }
-//	        } [ ,...n ] )
+//	   [ AUTHORIZATION owner_name ]
+//	      (  {   { message_type_name | [ DEFAULT ] }
+//	          SENT BY { INITIATOR | TARGET | ANY }
+//	       } [ ,...n] )
 func (p *Parser) parseCreateContractStmt() *nodes.ServiceBrokerStmt {
 	loc := p.pos()
 	// CONTRACT keyword already consumed by caller
@@ -145,21 +162,28 @@ func (p *Parser) parseCreateContractStmt() *nodes.ServiceBrokerStmt {
 
 // parseCreateQueueStmt parses CREATE QUEUE.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-queue-transact-sql
+// BNF: mssql/parser/bnf/create-queue-transact-sql.bnf
 //
 //	CREATE QUEUE <object>
-//	    [ WITH
-//	       [ STATUS = { ON | OFF } [ , ] ]
-//	       [ RETENTION = { ON | OFF } [ , ] ]
-//	       [ ACTIVATION (
-//	           [ STATUS = { ON | OFF } , ]
+//	   [ WITH
+//	     [ STATUS = { ON | OFF } [ , ] ]
+//	     [ RETENTION = { ON | OFF } [ , ] ]
+//	     [ ACTIVATION (
+//	         [ STATUS = { ON | OFF } , ]
 //	           PROCEDURE_NAME = <procedure> ,
 //	           MAX_QUEUE_READERS = max_readers ,
 //	           EXECUTE AS { SELF | 'user_name' | OWNER }
-//	           ) [ , ] ]
-//	       [ POISON_MESSAGE_HANDLING ( STATUS = { ON | OFF } ) ]
+//	            ) [ , ] ]
+//	     [ POISON_MESSAGE_HANDLING (
+//	         [ STATUS = { ON | OFF } ] ) ]
 //	    ]
-//	    [ ON { filegroup | [DEFAULT] } ]
+//	     [ ON { filegroup | [ DEFAULT ] } ]
+//
+//	<object> ::=
+//	{ database_name.schema_name.queue_name | schema_name.queue_name | queue_name }
+//
+//	<procedure> ::=
+//	{ database_name.schema_name.stored_procedure_name | schema_name.stored_procedure_name | stored_procedure_name }
 func (p *Parser) parseCreateQueueStmt() *nodes.ServiceBrokerStmt {
 	loc := p.pos()
 	// QUEUE keyword already consumed by caller
@@ -333,12 +357,12 @@ func (p *Parser) parseQueueActivationClause(opts []nodes.Node) []nodes.Node {
 
 // parseCreateServiceStmt parses CREATE SERVICE.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-service-transact-sql
+// BNF: mssql/parser/bnf/create-service-transact-sql.bnf
 //
 //	CREATE SERVICE service_name
-//	    [ AUTHORIZATION owner_name ]
-//	    ON QUEUE [ schema . ] queue_name
-//	    [ ( contract_name | [DEFAULT] [ ,...n ] ) ]
+//	   [ AUTHORIZATION owner_name ]
+//	   ON QUEUE [ schema_name. ]queue_name
+//	   [ ( contract_name | [DEFAULT][ ,...n ] ) ]
 func (p *Parser) parseCreateServiceStmt() *nodes.ServiceBrokerStmt {
 	loc := p.pos()
 	// SERVICE keyword already consumed by caller
@@ -361,11 +385,12 @@ func (p *Parser) parseCreateServiceStmt() *nodes.ServiceBrokerStmt {
 
 // parseSendStmt parses SEND ON CONVERSATION.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/send-transact-sql
+// BNF: mssql/parser/bnf/send-transact-sql.bnf
 //
-//	SEND ON CONVERSATION conversation_handle
-//	    [ MESSAGE TYPE message_type_name ]
-//	    [ ( message_body_expression ) ]
+//	SEND
+//	   ON CONVERSATION [(]conversation_handle [,.. @conversation_handle_n][)]
+//	   [ MESSAGE TYPE message_type_name ]
+//	   [ ( message_body_expression ) ]
 func (p *Parser) parseSendStmt() *nodes.ServiceBrokerStmt {
 	loc := p.pos()
 	p.advance() // consume SEND
@@ -376,31 +401,48 @@ func (p *Parser) parseSendStmt() *nodes.ServiceBrokerStmt {
 		Loc:        nodes.Loc{Start: loc},
 	}
 
-	// ON CONVERSATION handle
+	// ON CONVERSATION [(]handle [,...n][)]
 	if p.cur.Type == kwON {
 		p.advance()
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CONVERSATION") {
 			p.advance()
 		}
-		// conversation handle (variable or expression)
-		if p.cur.Type == tokVARIABLE || p.isIdentLike() {
+		// Multiple handles may be wrapped in parentheses
+		if p.cur.Type == '(' {
+			p.advance()
+			// First handle
+			if p.cur.Type == tokVARIABLE || p.isIdentLike() {
+				stmt.Name = p.cur.Str
+				p.advance()
+			}
+			// Additional handles
+			for {
+				if _, ok := p.match(','); !ok {
+					break
+				}
+				if p.cur.Type == tokVARIABLE || p.isIdentLike() {
+					p.advance()
+				}
+			}
+			p.match(')')
+		} else if p.cur.Type == tokVARIABLE || p.isIdentLike() {
 			stmt.Name = p.cur.Str
 			p.advance()
 		}
 	}
 
-	// MESSAGE TYPE
+	// MESSAGE TYPE message_type_name
 	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "MESSAGE") {
 		p.advance()
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "TYPE") {
 			p.advance()
 		}
-		if p.isIdentLike() {
+		if p.isIdentLike() || p.cur.Type == tokVARIABLE {
 			p.advance()
 		}
 	}
 
-	// ( message_body )
+	// ( message_body_expression )
 	if p.cur.Type == '(' {
 		p.advance()
 		p.parseExpr()
@@ -413,7 +455,7 @@ func (p *Parser) parseSendStmt() *nodes.ServiceBrokerStmt {
 
 // parseReceiveStmt parses RECEIVE.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/receive-transact-sql
+// BNF: mssql/parser/bnf/receive-transact-sql.bnf
 //
 //	[ WAITFOR ( ]
 //	RECEIVE [ TOP ( n ) ]
@@ -519,7 +561,7 @@ func (p *Parser) parseReceiveStmt() *nodes.ReceiveStmt {
 
 // parseBeginConversationStmt parses BEGIN DIALOG CONVERSATION.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/begin-dialog-conversation-transact-sql
+// BNF: mssql/parser/bnf/begin-dialog-conversation-transact-sql.bnf
 //
 //	BEGIN DIALOG [ CONVERSATION ] @dialog_handle
 //	    FROM SERVICE initiator_service_name
@@ -661,7 +703,7 @@ func (p *Parser) parseBeginConversationStmt() *nodes.ServiceBrokerStmt {
 
 // parseEndConversationStmt parses END CONVERSATION.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/end-conversation-transact-sql
+// BNF: mssql/parser/bnf/end-conversation-transact-sql.bnf
 //
 //	END CONVERSATION conversation_handle
 //	    [   [ WITH ERROR = failure_code DESCRIPTION = 'failure_text' ]
@@ -902,7 +944,7 @@ func (p *Parser) parseCreateRemoteServiceBindingStmt() *nodes.ServiceBrokerStmt 
 
 // parseGetConversationGroupStmt parses GET CONVERSATION GROUP.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/get-conversation-group-transact-sql
+// BNF: mssql/parser/bnf/get-conversation-group-transact-sql.bnf
 //
 //	[ WAITFOR ( ]
 //	    GET CONVERSATION GROUP @conversation_group_id
@@ -1066,23 +1108,39 @@ func (p *Parser) parseServiceBrokerOptions() *nodes.List {
 
 // parseAlterQueueStmt parses ALTER QUEUE.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-queue-transact-sql
+// BNF: mssql/parser/bnf/alter-queue-transact-sql.bnf
 //
-//	ALTER QUEUE [ database_name . [ schema_name ] . | schema_name . ] queue_name
-//	    [ WITH
-//	       [ STATUS = { ON | OFF } [ , ] ]
-//	       [ RETENTION = { ON | OFF } [ , ] ]
-//	       [ ACTIVATION (
-//	           [ STATUS = { ON | OFF } , ]
-//	           PROCEDURE_NAME = <procedure> ,
-//	           MAX_QUEUE_READERS = max_readers ,
-//	           EXECUTE AS { SELF | 'user_name' | OWNER }
-//	           ) [ , ] ]
-//	       [ POISON_MESSAGE_HANDLING ( STATUS = { ON | OFF } ) ]
-//	    ]
-//	    [ REBUILD [ WITH ( <queue_rebuild_options> ) ] ]
-//	    [ REORGANIZE [ WITH ( LOB_COMPACTION = { ON | OFF } ) ] ]
-//	    [ MOVE TO { file_group | [DEFAULT] } ]
+//	ALTER QUEUE <object>
+//	    queue_settings
+//	    | queue_action
+//
+//	<object> ::=
+//	{ database_name.schema_name.queue_name | schema_name.queue_name | queue_name }
+//
+//	<queue_settings> ::=
+//	WITH
+//	   [ STATUS = { ON | OFF } [ , ] ]
+//	   [ RETENTION = { ON | OFF } [ , ] ]
+//	   [ ACTIVATION (
+//	       { [ STATUS = { ON | OFF } [ , ] ]
+//	         [ PROCEDURE_NAME = <procedure> [ , ] ]
+//	         [ MAX_QUEUE_READERS = max_readers [ , ] ]
+//	         [ EXECUTE AS { SELF | 'user_name'  | OWNER } ]
+//	       |  DROP }
+//	          ) [ , ]]
+//	         [ POISON_MESSAGE_HANDLING (
+//	          STATUS = { ON | OFF } )
+//	         ]
+//
+//	<queue_action> ::=
+//	   REBUILD [ WITH <query_rebuild_options> ]
+//	   | REORGANIZE [ WITH (LOB_COMPACTION = { ON | OFF } ) ]
+//	   | MOVE TO { file_group | "default" }
+//
+//	<queue_rebuild_options> ::=
+//	{
+//	   ( MAXDOP = max_degree_of_parallelism )
+//	}
 func (p *Parser) parseAlterQueueStmt() *nodes.ServiceBrokerStmt {
 	loc := p.pos()
 	// QUEUE keyword already consumed by caller
@@ -1104,7 +1162,71 @@ func (p *Parser) parseAlterQueueStmt() *nodes.ServiceBrokerStmt {
 	}
 
 	var opts []nodes.Node
-	opts = p.parseQueueWithClause(opts)
+
+	// queue_action: REBUILD | REORGANIZE | MOVE TO
+	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "REBUILD") {
+		optLoc := p.pos()
+		p.advance()
+		val := ""
+		// [ WITH ( MAXDOP = n ) ]
+		if p.cur.Type == kwWITH {
+			p.advance()
+			if p.cur.Type == '(' {
+				p.advance()
+				if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "MAXDOP") {
+					p.advance()
+					if p.cur.Type == '=' {
+						p.advance()
+					}
+					if p.cur.Type == tokICONST {
+						val = "MAXDOP=" + p.cur.Str
+						p.advance()
+					}
+				}
+				p.match(')')
+			}
+		}
+		opts = append(opts, &nodes.ServiceBrokerOption{Name: "REBUILD", Value: val, Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
+	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "REORGANIZE") {
+		optLoc := p.pos()
+		p.advance()
+		val := ""
+		// [ WITH ( LOB_COMPACTION = { ON | OFF } ) ]
+		if p.cur.Type == kwWITH {
+			p.advance()
+			if p.cur.Type == '(' {
+				p.advance()
+				if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LOB_COMPACTION") {
+					p.advance()
+					if p.cur.Type == '=' {
+						p.advance()
+					}
+					if p.cur.Type == kwON || p.cur.Type == kwOFF {
+						val = "LOB_COMPACTION=" + strings.ToUpper(p.cur.Str)
+						p.advance()
+					}
+				}
+				p.match(')')
+			}
+		}
+		opts = append(opts, &nodes.ServiceBrokerOption{Name: "REORGANIZE", Value: val, Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
+	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "MOVE") {
+		optLoc := p.pos()
+		p.advance()
+		// TO { file_group | "default" }
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "TO") {
+			p.advance()
+		}
+		val := ""
+		if p.isIdentLike() || p.cur.Type == kwDEFAULT || p.cur.Type == tokSCONST {
+			val = p.cur.Str
+			p.advance()
+		}
+		opts = append(opts, &nodes.ServiceBrokerOption{Name: "MOVE TO", Value: val, Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
+	} else {
+		// queue_settings: WITH clause
+		opts = p.parseQueueWithClause(opts)
+	}
 
 	if len(opts) > 0 {
 		stmt.Options = &nodes.List{Items: opts}
@@ -1116,11 +1238,14 @@ func (p *Parser) parseAlterQueueStmt() *nodes.ServiceBrokerStmt {
 
 // parseAlterServiceStmt parses ALTER SERVICE.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-service-transact-sql
+// BNF: mssql/parser/bnf/alter-service-transact-sql.bnf
 //
 //	ALTER SERVICE service_name
-//	    [ ON QUEUE [ schema_name . ] queue_name ]
-//	    [ ( { ADD CONTRACT contract_name } | { DROP CONTRACT contract_name } [ ,...n ] ) ]
+//	   [ ON QUEUE [ schema_name . ]queue_name ]
+//	   [ ( < opt_arg > [ , ...n ] ) ]
+//
+//	<opt_arg> ::=
+//	   ADD CONTRACT contract_name | DROP CONTRACT contract_name
 func (p *Parser) parseAlterServiceStmt() *nodes.ServiceBrokerStmt {
 	loc := p.pos()
 	// SERVICE keyword already consumed by caller
@@ -1136,7 +1261,57 @@ func (p *Parser) parseAlterServiceStmt() *nodes.ServiceBrokerStmt {
 		p.advance()
 	}
 
-	stmt.Options = p.parseServiceBrokerOptions()
+	var opts []nodes.Node
+
+	// [ ON QUEUE [ schema_name . ] queue_name ]
+	if p.cur.Type == kwON {
+		p.advance()
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "QUEUE") {
+			qLoc := p.pos()
+			p.advance()
+			ref := p.parseTableRef()
+			if ref != nil {
+				opts = append(opts, &nodes.ServiceBrokerOption{Name: "QUEUE", Value: ref.Object, Loc: nodes.Loc{Start: qLoc, End: p.pos()}})
+			}
+		}
+	}
+
+	// [ ( ADD CONTRACT name | DROP CONTRACT name [,...n] ) ]
+	if p.cur.Type == '(' {
+		p.advance()
+		for p.cur.Type != ')' && p.cur.Type != tokEOF {
+			optLoc := p.pos()
+			if p.cur.Type == kwADD {
+				p.advance()
+				if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CONTRACT") {
+					p.advance()
+				}
+				if p.isIdentLike() || p.cur.Type == tokSCONST {
+					opts = append(opts, &nodes.ServiceBrokerOption{Name: "ADD CONTRACT", Value: p.cur.Str, Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
+					p.advance()
+				}
+			} else if p.cur.Type == kwDROP {
+				p.advance()
+				if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CONTRACT") {
+					p.advance()
+				}
+				if p.isIdentLike() || p.cur.Type == tokSCONST {
+					opts = append(opts, &nodes.ServiceBrokerOption{Name: "DROP CONTRACT", Value: p.cur.Str, Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
+					p.advance()
+				}
+			} else {
+				break
+			}
+			if _, ok := p.match(','); !ok {
+				break
+			}
+		}
+		p.match(')')
+	}
+
+	if len(opts) > 0 {
+		stmt.Options = &nodes.List{Items: opts}
+	}
 	stmt.Loc.End = p.pos()
 	return stmt
 }
@@ -1270,7 +1445,7 @@ func (p *Parser) parseAlterRemoteServiceBindingStmt() *nodes.ServiceBrokerStmt {
 
 // parseAlterMessageTypeStmt parses ALTER MESSAGE TYPE.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-message-type-transact-sql
+// BNF: mssql/parser/bnf/alter-message-type-transact-sql.bnf
 //
 //	ALTER MESSAGE TYPE message_type_name
 //	    VALIDATION =
@@ -1314,11 +1489,17 @@ func (p *Parser) parseAlterMessageTypeStmt() *nodes.ServiceBrokerStmt {
 				if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "COLLECTION") {
 					p.advance() // consume COLLECTION
 				}
-				if p.isIdentLike() || p.cur.Type == tokSCONST {
-					schemaName := p.cur.Str
-					p.advance()
-					opts = append(opts, &nodes.ServiceBrokerOption{Name: "VALIDATION", Value: "VALID_XML WITH SCHEMA COLLECTION " + schemaName, Loc: nodes.Loc{Start: valLoc, End: p.pos()}})
+				// schema collection name (possibly dot-qualified)
+				ref := p.parseTableRef()
+				schemaName := ""
+				if ref != nil {
+					if ref.Schema != "" {
+						schemaName = ref.Schema + "." + ref.Object
+					} else {
+						schemaName = ref.Object
+					}
 				}
+				opts = append(opts, &nodes.ServiceBrokerOption{Name: "VALIDATION", Value: "VALID_XML WITH SCHEMA COLLECTION " + schemaName, Loc: nodes.Loc{Start: valLoc, End: p.pos()}})
 			} else {
 				opts = append(opts, &nodes.ServiceBrokerOption{Name: "VALIDATION", Value: valType, Loc: nodes.Loc{Start: valLoc, End: p.pos()}})
 			}
@@ -1453,7 +1634,7 @@ func (p *Parser) parseDropServiceBrokerStmt(objectType string) *nodes.ServiceBro
 
 // parseCreateBrokerPriorityStmt parses CREATE BROKER PRIORITY.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-broker-priority-transact-sql
+// BNF: mssql/parser/bnf/create-broker-priority-transact-sql.bnf
 //
 //	CREATE BROKER PRIORITY ConversationPriorityName
 //	    FOR CONVERSATION
@@ -1494,7 +1675,7 @@ func (p *Parser) parseCreateBrokerPriorityStmt() *nodes.ServiceBrokerStmt {
 
 // parseAlterBrokerPriorityStmt parses ALTER BROKER PRIORITY.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-broker-priority-transact-sql
+// BNF: mssql/parser/bnf/alter-broker-priority-transact-sql.bnf
 //
 //	ALTER BROKER PRIORITY ConversationPriorityName
 //	    FOR CONVERSATION
@@ -1578,7 +1759,7 @@ func (p *Parser) parseBrokerPrioritySetOptions() *nodes.List {
 
 // parseMoveConversationStmt parses MOVE CONVERSATION.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/move-conversation-transact-sql
+// BNF: mssql/parser/bnf/move-conversation-transact-sql.bnf
 //
 //	MOVE CONVERSATION conversation_handle
 //	    TO conversation_group_id
@@ -1621,7 +1802,7 @@ func (p *Parser) parseMoveConversationStmt() *nodes.ServiceBrokerStmt {
 
 // parseBeginConversationTimerStmt parses a BEGIN CONVERSATION TIMER statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/begin-conversation-timer-transact-sql
+// BNF: mssql/parser/bnf/begin-conversation-timer-transact-sql.bnf
 //
 //	BEGIN CONVERSATION TIMER ( conversation_handle )
 //	   TIMEOUT = timeout

@@ -563,7 +563,7 @@
       "id": 170,
       "name": "bnf_review_service_broker",
       "file": "service_broker.go",
-      "status": "pending",
+      "status": "done",
       "description": "BNF review of CREATE/ALTER/DROP MESSAGE TYPE, CONTRACT, QUEUE, SERVICE, BROKER PRIORITY, BEGIN/END DIALOG CONVERSATION, SEND, RECEIVE, GET CONVERSATION GROUP, BEGIN CONVERSATION TIMER, MOVE CONVERSATION.",
       "rules": [
         "create_message_type_stmt",
