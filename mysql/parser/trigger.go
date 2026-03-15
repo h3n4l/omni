@@ -8,7 +8,7 @@ import (
 //
 // Ref: https://dev.mysql.com/doc/refman/8.0/en/create-trigger.html
 //
-//	CREATE [DEFINER = user] TRIGGER trigger_name
+//	CREATE [DEFINER = user] TRIGGER [IF NOT EXISTS] trigger_name
 //	    trigger_time trigger_event
 //	    ON tbl_name FOR EACH ROW
 //	    [trigger_order]
@@ -18,6 +18,14 @@ func (p *Parser) parseCreateTriggerStmt() (*nodes.CreateTriggerStmt, error) {
 	p.advance() // consume TRIGGER
 
 	stmt := &nodes.CreateTriggerStmt{Loc: nodes.Loc{Start: start}}
+
+	// IF NOT EXISTS
+	if p.cur.Type == kwIF {
+		p.advance()
+		p.match(kwNOT)
+		p.match(kwEXISTS_KW)
+		stmt.IfNotExists = true
+	}
 
 	// Trigger name
 	name, _, err := p.parseIdentifier()

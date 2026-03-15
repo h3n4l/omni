@@ -457,6 +457,10 @@ func (p *Parser) parseCreateDispatch() (nodes.Node, error) {
 		// Only CREATE VIEW uses ALGORITHM
 		return p.parseCreateViewStmt(orReplace)
 
+	case kwSQL:
+		// CREATE SQL SECURITY {DEFINER|INVOKER} VIEW — delegate to CREATE VIEW
+		return p.parseCreateViewStmt(orReplace)
+
 	case kwDEFINER:
 		// CREATE DEFINER=... {VIEW|FUNCTION|PROCEDURE|TRIGGER|EVENT}
 		// Skip DEFINER = user[@host] to find the object keyword, then delegate.
@@ -544,6 +548,10 @@ func (p *Parser) parseAlterDispatch() (nodes.Node, error) {
 
 	case kwALGORITHM:
 		// ALTER ALGORITHM = ... VIEW — delegate to ALTER VIEW parser
+		return p.parseAlterViewStmt()
+
+	case kwSQL:
+		// ALTER SQL SECURITY {DEFINER|INVOKER} VIEW — delegate to ALTER VIEW
 		return p.parseAlterViewStmt()
 
 	case kwDEFINER:

@@ -10192,3 +10192,109 @@ func TestParseAlterTableSecondaryUnload(t *testing.T) {
 		})
 	}
 }
+
+// Batch 102: BNF review — CREATE/DROP INDEX, CREATE/ALTER/DROP VIEW, CREATE/DROP TRIGGER
+
+func TestBatch102_CreateTriggerIfNotExists(t *testing.T) {
+	tests := []string{
+		"CREATE TRIGGER IF NOT EXISTS trg BEFORE INSERT ON t FOR EACH ROW SET @a = 1",
+		"CREATE TRIGGER IF NOT EXISTS trg2 AFTER DELETE ON t FOR EACH ROW SET @b = 2",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestBatch102_CreateIndexFull(t *testing.T) {
+	tests := []string{
+		"CREATE UNIQUE INDEX idx1 ON t (col1)",
+		"CREATE FULLTEXT INDEX ft_idx ON t (col1) WITH PARSER ngram",
+		"CREATE SPATIAL INDEX sp_idx ON t (geo_col)",
+		"CREATE INDEX idx1 USING BTREE ON t (col1, col2 DESC)",
+		"CREATE INDEX idx1 ON t (col1) KEY_BLOCK_SIZE = 1024 COMMENT 'test' VISIBLE",
+		"CREATE INDEX idx1 ON t (col1) ALGORITHM = INPLACE LOCK = NONE",
+		"CREATE INDEX idx1 ON t ((col1 + col2))",
+		"CREATE INDEX idx1 ON t (col1) ENGINE_ATTRIBUTE = '{}'",
+		"CREATE INDEX idx1 ON t (col1) SECONDARY_ENGINE_ATTRIBUTE = '{}'",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestBatch102_DropIndexFull(t *testing.T) {
+	tests := []string{
+		"DROP INDEX idx1 ON t",
+		"DROP INDEX idx1 ON t ALGORITHM = INPLACE",
+		"DROP INDEX idx1 ON t LOCK = SHARED",
+		"DROP INDEX idx1 ON t ALGORITHM = COPY LOCK = EXCLUSIVE",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestBatch102_CreateViewFull(t *testing.T) {
+	tests := []string{
+		"CREATE VIEW v AS SELECT 1",
+		"CREATE OR REPLACE VIEW v AS SELECT 1",
+		"CREATE ALGORITHM = MERGE VIEW v AS SELECT 1",
+		"CREATE SQL SECURITY INVOKER VIEW v (a, b) AS SELECT 1, 2",
+		"CREATE VIEW v AS SELECT 1 WITH CASCADED CHECK OPTION",
+		"CREATE VIEW v AS SELECT 1 WITH LOCAL CHECK OPTION",
+		"CREATE VIEW v AS SELECT 1 WITH CHECK OPTION",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestBatch102_AlterViewFull(t *testing.T) {
+	tests := []string{
+		"ALTER VIEW v AS SELECT 1",
+		"ALTER ALGORITHM = TEMPTABLE VIEW v AS SELECT 1",
+		"ALTER SQL SECURITY DEFINER VIEW v (a, b) AS SELECT 1, 2",
+		"ALTER VIEW v AS SELECT 1 WITH LOCAL CHECK OPTION",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestBatch102_DropViewFull(t *testing.T) {
+	tests := []string{
+		"DROP VIEW v1",
+		"DROP VIEW IF EXISTS v1",
+		"DROP VIEW v1, v2, v3",
+		"DROP VIEW IF EXISTS v1 RESTRICT",
+		"DROP VIEW IF EXISTS v1 CASCADE",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestBatch102_DropTriggerFull(t *testing.T) {
+	tests := []string{
+		"DROP TRIGGER trg1",
+		"DROP TRIGGER IF EXISTS trg1",
+		"DROP TRIGGER IF EXISTS mydb.trg1",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}

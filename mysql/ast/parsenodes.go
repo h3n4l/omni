@@ -1422,9 +1422,10 @@ func (c *RoutineCharacteristic) nodeTag() {}
 
 // CreateTriggerStmt represents a CREATE TRIGGER statement.
 type CreateTriggerStmt struct {
-	Loc     Loc
-	Definer string
-	Name    string
+	Loc         Loc
+	Definer     string
+	IfNotExists bool
+	Name        string
 	Timing  string // BEFORE, AFTER
 	Event   string // INSERT, UPDATE, DELETE
 	Table   *TableRef

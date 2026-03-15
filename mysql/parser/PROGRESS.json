@@ -2392,7 +2392,7 @@
       "id": 102,
       "name": "review_index_view_trigger",
       "file": "create_index.go",
-      "status": "pending",
+      "status": "done",
       "description": "BNF review: CREATE/DROP INDEX, CREATE/ALTER/DROP VIEW, CREATE/DROP TRIGGER against 87 lines of BNF.",
       "effort": "review",
       "bnf_files": ["create-index.bnf", "drop-index.bnf", "create-view.bnf", "alter-view.bnf", "drop-view.bnf", "create-trigger.bnf", "drop-trigger.bnf"],

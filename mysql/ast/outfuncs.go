@@ -1532,6 +1532,9 @@ func writeCreateTriggerStmt(sb *strings.Builder, n *CreateTriggerStmt) {
 	if n.Definer != "" {
 		fmt.Fprintf(sb, " :definer %s", n.Definer)
 	}
+	if n.IfNotExists {
+		sb.WriteString(" :if_not_exists true")
+	}
 	if n.Name != "" {
 		fmt.Fprintf(sb, " :name %s", n.Name)
 	}
