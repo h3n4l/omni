@@ -1447,7 +1447,7 @@
       "id": 109,
       "name": "test_analytic_objects",
       "file": "analytic_objects_test.go",
-      "status": "pending",
+      "status": "done",
       "description": "New: Add test coverage for analytic_objects.go. Covers CREATE/ALTER ANALYTIC VIEW, CREATE/ALTER ATTRIBUTE DIMENSION, CREATE/ALTER HIERARCHY. No analytic_objects_test.go exists.",
       "bnf_files": [
         "CREATE-ANALYTIC-VIEW.bnf",
