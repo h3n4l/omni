@@ -656,7 +656,7 @@
       "id": 173,
       "name": "bnf_review_utility_admin_drop",
       "file": "utility.go",
-      "status": "pending",
+      "status": "done",
       "description": "BNF review of DBCC, CHECKPOINT, RECONFIGURE, SHUTDOWN, KILL, BULK INSERT, DROP (all), TRUNCATE TABLE, UPDATE STATISTICS, all remaining statements. Rowset functions (OPENROWSET, OPENQUERY, OPENJSON, OPENXML, OPENDATASOURCE), PIVOT/UNPIVOT.",
       "rules": [
         "dbcc_stmt",

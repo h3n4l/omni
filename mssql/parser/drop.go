@@ -9,9 +9,10 @@ import (
 
 // parseDropStmt parses a DROP statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-table-transact-sql
+// BNF (DROP TABLE): mssql/parser/bnf/drop-table-transact-sql.bnf
 //
-//	DROP TABLE|VIEW|INDEX|PROCEDURE|FUNCTION|DATABASE [IF EXISTS] name [, ...]
+//	DROP TABLE [ IF EXISTS ] { database_name.schema_name.table_name
+//	    | schema_name.table_name | table_name } [ ,...n ]
 //
 // BNF (DROP VIEW): mssql/parser/bnf/drop-view-transact-sql.bnf
 //
@@ -43,6 +44,19 @@ import (
 //
 //	<drop_backward_compatible_index> ::=
 //	    [ owner_name. ] table_or_view_name.index_name
+//
+//	<drop_clustered_index_option> ::=
+//	{
+//	    MAXDOP = max_degree_of_parallelism
+//	  | ONLINE = { ON | OFF }
+//	  | MOVE TO { partition_scheme_name ( column_name )
+//	            | filegroup_name
+//	            | "default"
+//	            }
+//	  [ FILESTREAM_ON { partition_scheme_name
+//	            | filestream_filegroup_name
+//	            | "default" } ]
+//	}
 func (p *Parser) parseDropStmt() *nodes.DropStmt {
 	loc := p.pos()
 	p.advance() // consume DROP

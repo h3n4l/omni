@@ -23229,3 +23229,276 @@ func TestParseSchemaObjectsBnfReview(t *testing.T) {
 		}
 	})
 }
+
+// TestParseUtilityAdminDropBnfReview tests batch 173: BNF review of utility, admin, drop statements.
+func TestParseUtilityAdminDropBnfReview(t *testing.T) {
+	// TRUNCATE TABLE with partitions
+	t.Run("truncate_table_with_partitions", func(t *testing.T) {
+		sql := "TRUNCATE TABLE dbo.Orders WITH (PARTITIONS (1, 3, 5))"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.TruncateStmt)
+		if stmt.Table == nil {
+			t.Fatalf("expected Table to be non-nil")
+		}
+		if stmt.Partitions == nil {
+			t.Fatalf("expected Partitions to be non-nil")
+		}
+		if len(stmt.Partitions.Items) != 3 {
+			t.Errorf("expected 3 partitions, got %d", len(stmt.Partitions.Items))
+		}
+	})
+
+	t.Run("truncate_table_with_partition_range", func(t *testing.T) {
+		sql := "TRUNCATE TABLE dbo.Orders WITH (PARTITIONS (1 TO 5, 8))"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.TruncateStmt)
+		if stmt.Partitions == nil {
+			t.Fatalf("expected Partitions to be non-nil")
+		}
+		if len(stmt.Partitions.Items) != 2 {
+			t.Errorf("expected 2 partition entries, got %d", len(stmt.Partitions.Items))
+		}
+	})
+
+	t.Run("truncate_table_simple", func(t *testing.T) {
+		sql := "TRUNCATE TABLE mydb.dbo.Logs"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.TruncateStmt)
+		if stmt.Table == nil {
+			t.Fatalf("expected Table to be non-nil")
+		}
+		if stmt.Partitions != nil {
+			t.Errorf("expected Partitions to be nil for simple TRUNCATE")
+		}
+	})
+
+	// KILL with COMMIT/ROLLBACK
+	t.Run("kill_with_statusonly", func(t *testing.T) {
+		sql := "KILL 53 WITH STATUSONLY"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.KillStmt)
+		if !stmt.StatusOnly {
+			t.Errorf("expected StatusOnly=true")
+		}
+	})
+
+	t.Run("kill_uow_with_commit", func(t *testing.T) {
+		sql := "KILL 'D5499C66-E398-45CA-BF7E-DC9C194B48CF' WITH COMMIT"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.KillStmt)
+		if stmt.WithAction != "COMMIT" {
+			t.Errorf("expected WithAction=COMMIT, got %q", stmt.WithAction)
+		}
+	})
+
+	t.Run("kill_uow_with_rollback", func(t *testing.T) {
+		sql := "KILL 'D5499C66-E398-45CA-BF7E-DC9C194B48CF' WITH ROLLBACK"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.KillStmt)
+		if stmt.WithAction != "ROLLBACK" {
+			t.Errorf("expected WithAction=ROLLBACK, got %q", stmt.WithAction)
+		}
+	})
+
+	// BULK INSERT with ORDER option
+	t.Run("bulk_insert_with_order", func(t *testing.T) {
+		sql := "BULK INSERT dbo.Orders FROM 'data.csv' WITH (TABLOCK, ORDER(OrderID ASC, OrderDate DESC))"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.BulkInsertStmt)
+		if stmt.Options == nil {
+			t.Fatalf("expected Options to be non-nil")
+		}
+		if len(stmt.Options.Items) != 2 {
+			t.Errorf("expected 2 options, got %d", len(stmt.Options.Items))
+		}
+		// Check that ORDER option is captured
+		optStr := ast.NodeToString(stmt.Options.Items[1])
+		if !strings.Contains(optStr, "ORDER") {
+			t.Errorf("expected ORDER option, got %q", optStr)
+		}
+	})
+
+	// DBCC basic
+	t.Run("dbcc_checkdb", func(t *testing.T) {
+		sql := "DBCC CHECKDB ('mydb') WITH NO_INFOMSGS, ALL_ERRORMSGS"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DbccStmt)
+		if stmt.Command != "CHECKDB" {
+			t.Errorf("expected Command=CHECKDB, got %q", stmt.Command)
+		}
+		if stmt.Args == nil {
+			t.Errorf("expected Args to be non-nil")
+		}
+		if stmt.Options == nil {
+			t.Fatalf("expected Options to be non-nil")
+		}
+		if len(stmt.Options.Items) != 2 {
+			t.Errorf("expected 2 options, got %d", len(stmt.Options.Items))
+		}
+	})
+
+	// CHECKPOINT
+	t.Run("checkpoint_with_duration", func(t *testing.T) {
+		sql := "CHECKPOINT 30"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CheckpointStmt)
+		if stmt.Duration == nil {
+			t.Errorf("expected Duration to be non-nil")
+		}
+	})
+
+	t.Run("checkpoint_no_duration", func(t *testing.T) {
+		sql := "CHECKPOINT"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CheckpointStmt)
+		if stmt.Duration != nil {
+			t.Errorf("expected Duration to be nil")
+		}
+	})
+
+	// RECONFIGURE
+	t.Run("reconfigure_with_override", func(t *testing.T) {
+		sql := "RECONFIGURE WITH OVERRIDE"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.ReconfigureStmt)
+		if !stmt.WithOverride {
+			t.Errorf("expected WithOverride=true")
+		}
+	})
+
+	// SHUTDOWN
+	t.Run("shutdown_with_nowait", func(t *testing.T) {
+		sql := "SHUTDOWN WITH NOWAIT"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.ShutdownStmt)
+		if !stmt.WithNoWait {
+			t.Errorf("expected WithNoWait=true")
+		}
+	})
+
+	// DROP TABLE
+	t.Run("drop_table_if_exists", func(t *testing.T) {
+		sql := "DROP TABLE IF EXISTS dbo.Orders, dbo.Customers"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DropStmt)
+		if stmt.ObjectType != ast.DropTable {
+			t.Errorf("expected DropTable")
+		}
+		if !stmt.IfExists {
+			t.Errorf("expected IfExists=true")
+		}
+		if len(stmt.Names.Items) != 2 {
+			t.Errorf("expected 2 names, got %d", len(stmt.Names.Items))
+		}
+	})
+
+	// DROP VIEW
+	t.Run("drop_view_if_exists", func(t *testing.T) {
+		sql := "DROP VIEW IF EXISTS dbo.vOrders, dbo.vCustomers"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DropStmt)
+		if stmt.ObjectType != ast.DropView {
+			t.Errorf("expected DropView")
+		}
+		if !stmt.IfExists {
+			t.Errorf("expected IfExists=true")
+		}
+	})
+
+	// DROP INDEX with ON and WITH options
+	t.Run("drop_index_with_options", func(t *testing.T) {
+		sql := "DROP INDEX IF EXISTS IX_Orders ON dbo.Orders WITH (ONLINE = ON, MAXDOP = 4)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DropStmt)
+		if stmt.ObjectType != ast.DropIndex {
+			t.Errorf("expected DropIndex")
+		}
+		if !stmt.IfExists {
+			t.Errorf("expected IfExists=true")
+		}
+		if stmt.Options == nil {
+			t.Errorf("expected Options to be non-nil")
+		}
+	})
+
+	// UPDATE STATISTICS
+	t.Run("update_statistics_with_options", func(t *testing.T) {
+		sql := "UPDATE STATISTICS dbo.Orders WITH FULLSCAN, NORECOMPUTE"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.UpdateStatisticsStmt)
+		if stmt.Table == nil {
+			t.Fatalf("expected Table to be non-nil")
+		}
+		if stmt.Options == nil {
+			t.Fatalf("expected Options to be non-nil")
+		}
+		if len(stmt.Options.Items) != 2 {
+			t.Errorf("expected 2 options, got %d", len(stmt.Options.Items))
+		}
+	})
+
+	t.Run("update_statistics_sample_percent", func(t *testing.T) {
+		sql := "UPDATE STATISTICS dbo.Orders WITH SAMPLE 50 PERCENT"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.UpdateStatisticsStmt)
+		if stmt.Options == nil {
+			t.Fatalf("expected Options to be non-nil")
+		}
+	})
+
+	// PIVOT/UNPIVOT
+	t.Run("pivot_basic", func(t *testing.T) {
+		sql := "SELECT * FROM Sales PIVOT (SUM(Amount) FOR Quarter IN ([Q1], [Q2], [Q3], [Q4])) AS pvt"
+		result := ParseAndCheck(t, sql)
+		_ = result.Items[0].(*ast.SelectStmt)
+	})
+
+	t.Run("unpivot_basic", func(t *testing.T) {
+		sql := "SELECT * FROM Sales UNPIVOT (Amount FOR Quarter IN ([Q1], [Q2], [Q3], [Q4])) AS unpvt"
+		result := ParseAndCheck(t, sql)
+		_ = result.Items[0].(*ast.SelectStmt)
+	})
+
+	// Rowset functions
+	t.Run("openquery", func(t *testing.T) {
+		sql := "SELECT * FROM OPENQUERY(LinkedServer, 'SELECT * FROM t')"
+		result := ParseAndCheck(t, sql)
+		_ = result.Items[0].(*ast.SelectStmt)
+	})
+
+	t.Run("opendatasource", func(t *testing.T) {
+		sql := "SELECT * FROM OPENDATASOURCE('SQLNCLI', 'Data Source=server;Integrated Security=SSPI')"
+		_ = ParseAndCheck(t, sql)
+	})
+
+	t.Run("openjson_with_clause", func(t *testing.T) {
+		sql := "SELECT * FROM OPENJSON(@json) WITH (id INT '$.id', name NVARCHAR(100) '$.name')"
+		_ = ParseAndCheck(t, sql)
+	})
+
+	// DROP TRIGGER on DATABASE
+	t.Run("drop_trigger_on_database", func(t *testing.T) {
+		sql := "DROP TRIGGER IF EXISTS tr_DDL ON DATABASE"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DropStmt)
+		if stmt.ObjectType != ast.DropTrigger {
+			t.Errorf("expected DropTrigger")
+		}
+		if !stmt.OnDatabase {
+			t.Errorf("expected OnDatabase=true")
+		}
+	})
+
+	// DROP TRIGGER on ALL SERVER
+	t.Run("drop_trigger_on_all_server", func(t *testing.T) {
+		sql := "DROP TRIGGER IF EXISTS tr_Logon ON ALL SERVER"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DropStmt)
+		if !stmt.OnAllServer {
+			t.Errorf("expected OnAllServer=true")
+		}
+	})
+
+	// Suppress unused import warning
+	_ = fmt.Sprintf
+}

@@ -1197,6 +1197,10 @@ func writeTruncateStmt(sb *strings.Builder, n *TruncateStmt) {
 		sb.WriteString(" :table ")
 		writeNode(sb, n.Table)
 	}
+	if n.Partitions != nil {
+		sb.WriteString(" :partitions ")
+		writeNode(sb, n.Partitions)
+	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
 }
@@ -3622,7 +3626,11 @@ func writeKillStmt(sb *strings.Builder, n *KillStmt) {
 		sb.WriteString(" :sessionId ")
 		writeNode(sb, n.SessionID)
 	}
-	fmt.Fprintf(sb, " :statusOnly %v :loc %d %d}", n.StatusOnly, n.Loc.Start, n.Loc.End)
+	fmt.Fprintf(sb, " :statusOnly %v", n.StatusOnly)
+	if n.WithAction != "" {
+		fmt.Fprintf(sb, " :withAction %s", n.WithAction)
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
 }
 
 func writeKillQueryNotificationStmt(sb *strings.Builder, n *KillQueryNotificationStmt) {

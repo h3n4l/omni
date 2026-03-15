@@ -235,9 +235,9 @@ func (p *Parser) parseShutdownStmt() *nodes.ShutdownStmt {
 
 // parseKillStmt parses a KILL statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/kill-transact-sql
+// BNF: mssql/parser/bnf/kill-transact-sql.bnf
 //
-//	KILL { session_id | UOW } [ WITH STATUSONLY ]
+//	KILL { session_id [ WITH STATUSONLY ] | UOW [ WITH STATUSONLY | COMMIT | ROLLBACK ] }
 //	KILL STATS JOB job_id
 //	KILL QUERY NOTIFICATION SUBSCRIPTION { ALL | subscription_id }
 func (p *Parser) parseKillStmt() nodes.StmtNode {
@@ -259,12 +259,18 @@ func (p *Parser) parseKillStmt() nodes.StmtNode {
 	// session_id or STATS JOB n or UOW
 	stmt.SessionID = p.parseExpr()
 
-	// WITH STATUSONLY
+	// WITH { STATUSONLY | COMMIT | ROLLBACK }
 	if p.cur.Type == kwWITH {
 		p.advance()
 		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "STATUSONLY") {
 			p.advance()
 			stmt.StatusOnly = true
+		} else if p.cur.Type == kwCOMMIT {
+			p.advance()
+			stmt.WithAction = "COMMIT"
+		} else if p.cur.Type == kwROLLBACK {
+			p.advance()
+			stmt.WithAction = "ROLLBACK"
 		}
 	}
 
@@ -483,9 +489,15 @@ func (p *Parser) parseUpdatetextStmt() *nodes.UpdatetextStmt {
 
 // parseTruncateStmt parses a TRUNCATE TABLE statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/truncate-table-transact-sql
+// BNF: mssql/parser/bnf/truncate-table-transact-sql.bnf
 //
-//	TRUNCATE TABLE name
+//	TRUNCATE TABLE
+//	    { database_name.schema_name.table_name | schema_name.table_name | table_name }
+//	    [ WITH ( PARTITIONS ( { <partition_number_expression> | <range> }
+//	    [ , ...n ] ) ) ]
+//
+//	<range> ::=
+//	<partition_number_expression> TO <partition_number_expression>
 func (p *Parser) parseTruncateStmt() *nodes.TruncateStmt {
 	loc := p.pos()
 	p.advance() // consume TRUNCATE
@@ -498,6 +510,37 @@ func (p *Parser) parseTruncateStmt() *nodes.TruncateStmt {
 	}
 
 	stmt.Table = p.parseTableRef()
+
+	// WITH ( PARTITIONS ( range [,...n] ) )
+	if p.cur.Type == kwWITH {
+		p.advance() // consume WITH
+		if p.cur.Type == '(' {
+			p.advance() // consume outer '('
+			if p.matchIdentCI("PARTITIONS") {
+				if p.cur.Type == '(' {
+					p.advance() // consume inner '('
+					var parts []nodes.Node
+					for p.cur.Type != ')' && p.cur.Type != tokEOF {
+						expr := p.parseExpr()
+						// Check for TO (range)
+						if p.cur.Type == kwTO {
+							p.advance() // consume TO
+							p.parseExpr() // end of range (consumed but range stored as start expr)
+						}
+						parts = append(parts, expr)
+						if _, ok := p.match(','); !ok {
+							break
+						}
+					}
+					p.match(')') // consume inner ')'
+					if len(parts) > 0 {
+						stmt.Partitions = &nodes.List{Items: parts}
+					}
+				}
+			}
+			p.match(')') // consume outer ')'
+		}
+	}
 
 	stmt.Loc.End = p.pos()
 	return stmt

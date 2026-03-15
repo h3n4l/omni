@@ -9,9 +9,11 @@ import (
 
 // parseDbccStmt parses a DBCC (Database Console Command) statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/database-console-commands/dbcc-transact-sql
+// BNF: mssql/parser/bnf/dbcc-transact-sql.bnf
 //
-//	DBCC command_name [ ( arg [, ...] ) ] [ WITH option [, ...] ]
+//	DBCC command_name
+//	    [ ( argument [ , ...n ] ) ]
+//	    [ WITH option [ , ...n ] ]
 func (p *Parser) parseDbccStmt() *nodes.DbccStmt {
 	loc := p.pos()
 	p.advance() // consume DBCC

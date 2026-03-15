@@ -985,8 +985,9 @@ func (n *AlterIndexStmt) stmtNode() {}
 // TruncateStmt represents a TRUNCATE TABLE statement.
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/truncate-table-transact-sql
 type TruncateStmt struct {
-	Table *TableRef
-	Loc   Loc
+	Table      *TableRef
+	Partitions *List // WITH (PARTITIONS (range [,...n]))
+	Loc        Loc
 }
 
 func (n *TruncateStmt) nodeTag()  {}
@@ -2722,12 +2723,13 @@ type ShutdownStmt struct {
 func (n *ShutdownStmt) nodeTag()  {}
 func (n *ShutdownStmt) stmtNode() {}
 
-// KillStmt represents KILL { session_id | UOW } [WITH STATUSONLY].
+// KillStmt represents KILL { session_id | UOW } [WITH STATUSONLY | COMMIT | ROLLBACK].
 //
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/kill-transact-sql
 type KillStmt struct {
 	SessionID  ExprNode // session ID or UOW
 	StatusOnly bool
+	WithAction string // "COMMIT" or "ROLLBACK" (for UOW)
 	Loc        Loc
 }
 

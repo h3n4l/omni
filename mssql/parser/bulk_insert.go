@@ -9,11 +9,37 @@ import (
 
 // parseBulkInsertStmt parses a BULK INSERT statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/bulk-insert-transact-sql
+// BNF: mssql/parser/bnf/bulk-insert-transact-sql.bnf
 //
-//	BULK INSERT [ database_name . [ schema_name ] . | schema_name . ] table_name
-//	    FROM 'data_file'
-//	    [ WITH ( option [,...n] ) ]
+//	BULK INSERT
+//	   { database_name.schema_name.table_or_view_name | schema_name.table_or_view_name | table_or_view_name }
+//	      FROM 'data_file'
+//	     [ WITH
+//	    (
+//	   [ [ , ] DATA_SOURCE = 'data_source_name' ]
+//	   [ [ , ] CODEPAGE = { 'RAW' | 'code_page' | 'ACP' | 'OEM' } ]
+//	   [ [ , ] DATAFILETYPE = { 'char' | 'widechar' | 'native' | 'widenative' } ]
+//	   [ [ , ] ROWTERMINATOR = 'row_terminator' ]
+//	   [ [ , ] FIELDTERMINATOR = 'field_terminator' ]
+//	   [ [ , ] FORMAT = 'CSV' ]
+//	   [ [ , ] FIELDQUOTE = 'quote_characters' ]
+//	   [ [ , ] FIRSTROW = first_row ]
+//	   [ [ , ] LASTROW = last_row ]
+//	   [ [ , ] FORMATFILE = 'format_file_path' ]
+//	   [ [ , ] FORMATFILE_DATA_SOURCE = 'data_source_name' ]
+//	   [ [ , ] MAXERRORS = max_errors ]
+//	   [ [ , ] ERRORFILE = 'file_name' ]
+//	   [ [ , ] ERRORFILE_DATA_SOURCE = 'errorfile_data_source_name' ]
+//	   [ [ , ] KEEPIDENTITY ]
+//	   [ [ , ] KEEPNULLS ]
+//	   [ [ , ] FIRE_TRIGGERS ]
+//	   [ [ , ] CHECK_CONSTRAINTS ]
+//	   [ [ , ] TABLOCK ]
+//	   [ [ , ] ORDER ( { column [ ASC | DESC ] } [ , ...n ] ) ]
+//	   [ [ , ] ROWS_PER_BATCH = rows_per_batch ]
+//	   [ [ , ] KILOBYTES_PER_BATCH = kilobytes_per_batch ]
+//	   [ [ , ] BATCHSIZE = batch_size ]
+//	    ) ]
 func (p *Parser) parseBulkInsertStmt() *nodes.BulkInsertStmt {
 	loc := p.pos()
 	p.advance() // consume BULK
@@ -68,6 +94,7 @@ func (p *Parser) parseBulkInsertStmt() *nodes.BulkInsertStmt {
 //   - FLAG (e.g. TABLOCK, CHECK_CONSTRAINTS, FIRE_TRIGGERS, KEEPNULLS, KEEPIDENTITY)
 //   - KEY = value (e.g. BATCHSIZE = 1000, FIELDTERMINATOR = ',', ROWTERMINATOR = '\n')
 //   - KEY = 'string_value'
+//   - ORDER ( column [ ASC | DESC ] [ ,...n ] )
 func (p *Parser) parseBulkInsertOption() nodes.Node {
 	if !p.isIdentLike() && p.cur.Type != kwFILE {
 		return nil
@@ -75,6 +102,34 @@ func (p *Parser) parseBulkInsertOption() nodes.Node {
 
 	name := strings.ToUpper(p.cur.Str)
 	p.advance()
+
+	// ORDER ( column [ASC|DESC] [,...n] )
+	if name == "ORDER" && p.cur.Type == '(' {
+		p.advance() // consume '('
+		var parts []string
+		for p.cur.Type != ')' && p.cur.Type != tokEOF {
+			if p.isIdentLike() {
+				col := p.cur.Str
+				p.advance()
+				// Optional ASC/DESC
+				if p.cur.Type == kwASC {
+					col += " ASC"
+					p.advance()
+				} else if p.cur.Type == kwDESC {
+					col += " DESC"
+					p.advance()
+				}
+				parts = append(parts, col)
+			} else {
+				break
+			}
+			if _, ok := p.match(','); !ok {
+				break
+			}
+		}
+		p.match(')') // consume ')'
+		return &nodes.String{Str: "ORDER(" + strings.Join(parts, ", ") + ")"}
+	}
 
 	// Check for = sign indicating a key=value option
 	if p.cur.Type == '=' {
