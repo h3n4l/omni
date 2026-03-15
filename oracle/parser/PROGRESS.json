@@ -602,7 +602,7 @@
       "id": 90,
       "name": "create_table_full",
       "file": "create_table.go",
-      "status": "pending",
+      "status": "done",
       "description": "Review CREATE TABLE against 774-line BNF. Column definitions, constraints, partitioning (RANGE/LIST/HASH/COMPOSITE/INTERVAL/REFERENCE), LOB storage, virtual columns, identity columns, invisible columns, blockchain/immutable table clauses, JSON collection table, XMLType table, external table.",
       "bnf_files": ["CREATE-TABLE.bnf"],
       "bnf_lines": 774,
@@ -625,7 +625,7 @@
       ],
       "depends_on": [87],
       "files": ["create_table.go"],
-      "tests": []
+      "tests": ["TestParseCreateTableFull"]
     },
     {
       "id": 91,

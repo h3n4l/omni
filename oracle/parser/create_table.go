@@ -46,6 +46,17 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 		}
 	}
 
+	// SHARDED / DUPLICATED
+	sharded := false
+	duplicated := false
+	if p.isIdentLikeStr("SHARDED") {
+		p.advance() // consume SHARDED
+		sharded = true
+	} else if p.isIdentLikeStr("DUPLICATED") {
+		p.advance() // consume DUPLICATED
+		duplicated = true
+	}
+
 	// PUBLIC (for CREATE PUBLIC SYNONYM / DATABASE LINK)
 	public := false
 	if p.cur.Type == kwPUBLIC {
@@ -55,7 +66,7 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 
 	switch p.cur.Type {
 	case kwTABLE:
-		return p.parseCreateTableStmt(start, orReplace, global, private)
+		return p.parseCreateTableStmt(start, orReplace, global, private, sharded, duplicated)
 	case kwUNIQUE, kwBITMAP, kwINDEX:
 		return p.parseCreateIndexStmt(start)
 	case kwMATERIALIZED:
@@ -157,26 +168,31 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 }
 
 // parseCreateTableStmt parses a CREATE TABLE statement after the TABLE keyword.
-// The caller has already consumed CREATE [OR REPLACE] [GLOBAL TEMPORARY] [PRIVATE TEMPORARY].
+// The caller has already consumed CREATE [OR REPLACE] [GLOBAL TEMPORARY | PRIVATE TEMPORARY | SHARDED | DUPLICATED].
 //
 // Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/CREATE-TABLE.html
 //
-//	TABLE [ IF NOT EXISTS ] [ schema . ] table_name
-//	    ( column_def | table_constraint [, ...] )
-//	    [ ON COMMIT { PRESERVE | DELETE } ROWS ]
-//	    [ TABLESPACE tablespace_name ]
-//	    [ ... ]
-//	  | TABLE [ schema . ] table_name AS subquery
-func (p *Parser) parseCreateTableStmt(start int, orReplace, global, private bool) *nodes.CreateTableStmt {
+// BNF (CREATE-TABLE.bnf lines 1-14):
+//
+//	CREATE [ { GLOBAL TEMPORARY | PRIVATE TEMPORARY | SHARDED | DUPLICATED } ]
+//	    TABLE [ IF NOT EXISTS ] [ schema. ] table
+//	    [ SHARING = { METADATA | DATA | EXTENDED DATA | NONE } ]
+//	    { relational_table | object_table | XMLType_table | JSON_collection_table }
+//	    [ MEMOPTIMIZE FOR READ ]
+//	    [ MEMOPTIMIZE FOR WRITE ]
+//	    [ PARENT [ schema. ] table ] ;
+func (p *Parser) parseCreateTableStmt(start int, orReplace, global, private, sharded, duplicated bool) *nodes.CreateTableStmt {
 	p.advance() // consume TABLE
 
 	stmt := &nodes.CreateTableStmt{
-		OrReplace:   orReplace,
-		Global:      global,
-		Private:     private,
-		Columns:     &nodes.List{},
+		OrReplace:  orReplace,
+		Global:     global,
+		Private:    private,
+		Sharded:    sharded,
+		Duplicated: duplicated,
+		Columns:    &nodes.List{},
 		Constraints: &nodes.List{},
-		Loc:         nodes.Loc{Start: start},
+		Loc:        nodes.Loc{Start: start},
 	}
 
 	// IF NOT EXISTS (Oracle 23c)
@@ -193,6 +209,31 @@ func (p *Parser) parseCreateTableStmt(start int, orReplace, global, private bool
 
 	// Table name
 	stmt.Name = p.parseObjectName()
+
+	// SHARING = { METADATA | DATA | EXTENDED DATA | NONE }
+	if p.isIdentLikeStr("SHARING") {
+		p.advance() // consume SHARING
+		if p.cur.Type == '=' {
+			p.advance() // consume '='
+		}
+		switch {
+		case p.isIdentLikeStr("METADATA"):
+			stmt.Sharing = "METADATA"
+			p.advance()
+		case p.isIdentLikeStr("DATA"):
+			stmt.Sharing = "DATA"
+			p.advance()
+		case p.isIdentLikeStr("EXTENDED"):
+			p.advance() // consume EXTENDED
+			if p.isIdentLikeStr("DATA") {
+				p.advance() // consume DATA
+			}
+			stmt.Sharing = "EXTENDED DATA"
+		case p.isIdentLikeStr("NONE"):
+			stmt.Sharing = "NONE"
+			p.advance()
+		}
+	}
 
 	// Check for CTAS: AS subquery
 	if p.cur.Type == kwAS {
@@ -211,8 +252,61 @@ func (p *Parser) parseCreateTableStmt(start int, orReplace, global, private bool
 		}
 	}
 
-	// Table options
+	// Immutable table clauses (before table options)
+	// BNF (lines 733-741): immutable_table_clauses
+	p.parseImmutableTableClauses(stmt)
+
+	// Blockchain table clauses
+	// BNF (lines 743-756): blockchain_table_clauses
+	p.parseBlockchainTableClauses(stmt)
+
+	// DEFAULT COLLATION collation_name
+	if p.cur.Type == kwDEFAULT {
+		next := p.peekNext()
+		if (next.Type == tokIDENT || next.Type >= 2000) && next.Str == "COLLATION" {
+			p.advance() // consume DEFAULT
+			p.advance() // consume COLLATION
+			stmt.Collation = p.parseIdentifier()
+		}
+	}
+
+	// Table options (physical_properties + table_properties)
 	p.parseTableOptions(stmt)
+
+	// MEMOPTIMIZE FOR READ
+	if p.isIdentLikeStr("MEMOPTIMIZE") {
+		p.advance() // consume MEMOPTIMIZE
+		if p.cur.Type == kwFOR {
+			p.advance() // consume FOR
+			if p.cur.Type == kwREAD {
+				p.advance() // consume READ
+				stmt.MemoptimizeRead = true
+			} else if p.cur.Type == kwWRITE {
+				p.advance() // consume WRITE
+				stmt.MemoptimizeWrite = true
+			}
+		}
+	}
+	// MEMOPTIMIZE FOR WRITE (can appear after READ)
+	if p.isIdentLikeStr("MEMOPTIMIZE") {
+		p.advance() // consume MEMOPTIMIZE
+		if p.cur.Type == kwFOR {
+			p.advance() // consume FOR
+			if p.cur.Type == kwWRITE {
+				p.advance() // consume WRITE
+				stmt.MemoptimizeWrite = true
+			} else if p.cur.Type == kwREAD {
+				p.advance() // consume READ
+				stmt.MemoptimizeRead = true
+			}
+		}
+	}
+
+	// PARENT [ schema. ] table
+	if p.isIdentLikeStr("PARENT") {
+		p.advance() // consume PARENT
+		stmt.Parent = p.parseObjectName()
+	}
 
 	stmt.Loc.End = p.pos()
 	return stmt
@@ -266,7 +360,16 @@ func (p *Parser) isTableConstraintStart() bool {
 
 // parseColumnDef parses a single column definition.
 //
-//	column_name datatype [ DEFAULT expr ] [ column_constraint ... ]
+// BNF (CREATE-TABLE.bnf lines 69-80):
+//
+//	column [ datatype | DOMAIN [ schema. ] domain_name ]
+//	[ SORT ]
+//	[ VISIBLE | INVISIBLE ]
+//	[ DEFAULT [ ON NULL [ FOR INSERT ONLY ] ] expr | identity_clause ]
+//	[ ENCRYPT encryption_spec ]
+//	[ COLLATE column_collation_name ]
+//	[ inline_constraint ... ]
+//	[ inline_ref_constraint ]
 func (p *Parser) parseColumnDef() *nodes.ColumnDef {
 	start := p.pos()
 	col := &nodes.ColumnDef{
@@ -279,12 +382,16 @@ func (p *Parser) parseColumnDef() *nodes.ColumnDef {
 		return nil
 	}
 
-	// Data type (optional for some Oracle column types, but typical)
-	if p.isTypeName() {
+	// DOMAIN [ schema. ] domain_name  (instead of datatype)
+	if p.isIdentLikeStr("DOMAIN") {
+		p.advance() // consume DOMAIN
+		col.Domain = p.parseObjectName()
+	} else if p.isTypeName() {
+		// Data type (optional for some Oracle column types, but typical)
 		col.TypeName = p.parseTypeName()
 	}
 
-	// Column properties: DEFAULT, NOT NULL, NULL, constraints, etc.
+	// Column properties: SORT, VISIBLE, DEFAULT, NOT NULL, NULL, constraints, etc.
 	p.parseColumnProperties(col)
 
 	col.Loc.End = p.pos()
@@ -309,13 +416,101 @@ func (p *Parser) isTypeName() bool {
 }
 
 // parseColumnProperties parses the properties after the column type:
-// DEFAULT, NOT NULL, NULL, INVISIBLE, constraints, etc.
+// SORT, VISIBLE, INVISIBLE, DEFAULT, NOT NULL, NULL, GENERATED (identity/virtual),
+// ENCRYPT, COLLATE, constraints, etc.
+//
+// BNF (CREATE-TABLE.bnf lines 69-80, 100-109):
+//
+//	[ SORT ]
+//	[ VISIBLE | INVISIBLE ]
+//	[ DEFAULT [ ON NULL [ FOR INSERT ONLY ] ] expr | identity_clause ]
+//	[ ENCRYPT encryption_spec ]
+//	[ COLLATE column_collation_name ]
+//	[ inline_constraint ... ]
 func (p *Parser) parseColumnProperties(col *nodes.ColumnDef) {
 	for {
 		switch p.cur.Type {
 		case kwDEFAULT:
 			p.advance() // consume DEFAULT
+			// DEFAULT ON NULL [ FOR INSERT ONLY ] expr
+			if p.cur.Type == kwON {
+				next := p.peekNext()
+				if next.Type == kwNULL {
+					p.advance() // consume ON
+					p.advance() // consume NULL
+					col.DefaultOnNull = true
+					// FOR INSERT ONLY
+					if p.cur.Type == kwFOR {
+						p.advance() // consume FOR
+						if p.cur.Type == kwINSERT {
+							p.advance() // consume INSERT
+							if p.isIdentLikeStr("ONLY") {
+								p.advance() // consume ONLY
+							}
+							col.DefaultOnNullInsertOnly = true
+						}
+					}
+				}
+			}
 			col.Default = p.parseExpr()
+
+		case kwGENERATED:
+			// identity_clause: GENERATED { ALWAYS | BY DEFAULT [ ON NULL ] } AS IDENTITY [ ( options ) ]
+			// virtual_column:  GENERATED ALWAYS AS ( expr ) [ VIRTUAL ]
+			p.advance() // consume GENERATED
+			always := false
+			byDefault := false
+			if p.isIdentLikeStr("ALWAYS") {
+				p.advance() // consume ALWAYS
+				always = true
+			} else if p.cur.Type == kwBY {
+				p.advance() // consume BY
+				if p.cur.Type == kwDEFAULT {
+					p.advance() // consume DEFAULT
+					byDefault = true
+					// ON NULL
+					if p.cur.Type == kwON {
+						next := p.peekNext()
+						if next.Type == kwNULL {
+							p.advance() // consume ON
+							p.advance() // consume NULL
+						}
+					}
+				}
+			}
+			if p.cur.Type == kwAS {
+				p.advance() // consume AS
+				if p.cur.Type == kwIDENTITY {
+					// identity_clause
+					p.advance() // consume IDENTITY
+					identity := &nodes.IdentityClause{
+						Always:  always,
+						Options: &nodes.List{},
+						Loc:     nodes.Loc{Start: col.Loc.Start},
+					}
+					// ( identity_options )
+					if p.cur.Type == '(' {
+						p.advance()
+						p.parseIdentityOptions(identity)
+						if p.cur.Type == ')' {
+							p.advance()
+						}
+					}
+					identity.Loc.End = p.pos()
+					col.Identity = identity
+				} else if p.cur.Type == '(' {
+					// virtual column: AS (expr) [VIRTUAL]
+					p.advance() // consume '('
+					col.Virtual = p.parseExpr()
+					if p.cur.Type == ')' {
+						p.advance()
+					}
+					if p.cur.Type == kwVIRTUAL {
+						p.advance() // consume VIRTUAL
+					}
+				}
+			}
+			_ = byDefault // stored implicitly: !always means BY DEFAULT
 
 		case kwNOT:
 			next := p.peekNext()
@@ -365,6 +560,130 @@ func (p *Parser) parseColumnProperties(col *nodes.ColumnDef) {
 				col.Constraints.Items = append(col.Constraints.Items, cc)
 			}
 
+		default:
+			// Handle SORT, VISIBLE, ENCRYPT, COLLATE as identifier-like keywords
+			if p.isIdentLike() {
+				switch p.cur.Str {
+				case "SORT":
+					p.advance()
+					col.Sort = true
+				case "VISIBLE":
+					p.advance()
+					col.Visible = true
+				case "ENCRYPT":
+					p.advance() // consume ENCRYPT
+					col.Encrypt = "ENCRYPT"
+					// encryption_spec: USING 'algo' IDENTIFIED BY pw SALT|NO SALT
+					p.parseEncryptionSpec(col)
+				case "COLLATE":
+					p.advance() // consume COLLATE
+					col.Collation = p.parseIdentifier()
+				default:
+					return
+				}
+			} else {
+				return
+			}
+		}
+	}
+}
+
+// parseEncryptionSpec parses the encryption_spec after ENCRYPT keyword.
+//
+// BNF (CREATE-TABLE.bnf lines 95-98):
+//
+//	[ USING 'encrypt_algorithm' ]
+//	[ IDENTIFIED BY password ]
+//	[ SALT | NO SALT ]
+func (p *Parser) parseEncryptionSpec(col *nodes.ColumnDef) {
+	for {
+		if p.cur.Type == kwUSING {
+			p.advance() // consume USING
+			if p.cur.Type == tokSCONST {
+				col.Encrypt = "ENCRYPT USING " + p.cur.Str
+				p.advance()
+			}
+		} else if p.isIdentLikeStr("IDENTIFIED") {
+			p.advance() // consume IDENTIFIED
+			if p.cur.Type == kwBY {
+				p.advance() // consume BY
+				p.parseIdentifier() // consume password
+			}
+		} else if p.isIdentLikeStr("SALT") {
+			p.advance() // consume SALT
+		} else if p.isIdentLikeStr("NO") {
+			next := p.peekNext()
+			if (next.Type == tokIDENT || next.Type >= 2000) && next.Str == "SALT" {
+				p.advance() // consume NO
+				p.advance() // consume SALT
+			} else {
+				return
+			}
+		} else {
+			return
+		}
+	}
+}
+
+// parseIdentityOptions parses identity column options inside parentheses.
+//
+// BNF (CREATE-TABLE.bnf lines 86-93):
+//
+//	[ START WITH { integer | LIMIT VALUE } ]
+//	[ INCREMENT BY integer ]
+//	[ { MAXVALUE integer | NOMAXVALUE } ]
+//	[ { MINVALUE integer | NOMINVALUE } ]
+//	[ { CYCLE | NOCYCLE } ]
+//	[ { CACHE integer | NOCACHE } ]
+//	[ { ORDER | NOORDER } ]
+func (p *Parser) parseIdentityOptions(identity *nodes.IdentityClause) {
+	for p.cur.Type != ')' && p.cur.Type != tokEOF {
+		if !p.isIdentLike() {
+			return
+		}
+		switch p.cur.Str {
+		case "START":
+			p.advance() // consume START
+			if p.cur.Type == kwWITH {
+				p.advance() // consume WITH
+			}
+			if p.isIdentLikeStr("LIMIT") {
+				p.advance() // consume LIMIT
+				if p.isIdentLike() {
+					p.advance() // consume VALUE
+				}
+			} else {
+				p.parseExpr() // consume integer
+			}
+		case "INCREMENT":
+			p.advance() // consume INCREMENT
+			if p.cur.Type == kwBY {
+				p.advance() // consume BY
+			}
+			p.parseExpr() // consume integer
+		case "MAXVALUE":
+			p.advance()
+			p.parseExpr()
+		case "NOMAXVALUE":
+			p.advance()
+		case "MINVALUE":
+			p.advance()
+			p.parseExpr()
+		case "NOMINVALUE":
+			p.advance()
+		case "CYCLE":
+			p.advance()
+		case "NOCYCLE":
+			p.advance()
+		case "CACHE":
+			p.advance() // consume CACHE
+			p.parseExpr() // consume integer
+		case "NOCACHE":
+			p.advance()
+		case "ORDER":
+			p.advance()
+		case "NOORDER":
+			p.advance()
 		default:
 			return
 		}
@@ -644,7 +963,16 @@ func (p *Parser) parseDeleteAction() string {
 }
 
 // parseTableOptions parses table-level options after the column definitions.
-// These include TABLESPACE, ON COMMIT, PARALLEL, COMPRESS, etc.
+// These include physical_properties and table_properties from the BNF.
+//
+// BNF (CREATE-TABLE.bnf lines 200-351):
+//
+//	physical_properties: deferred_segment_creation | segment_attributes_clause |
+//	    table_compression | heap_org_table_clause | index_org_table_clause | external_table_clause
+//	table_properties: column_properties | read_only_clause | indexing_clause |
+//	    table_partitioning_clauses | CACHE/NOCACHE | RESULT_CACHE |
+//	    parallel_clause | ROWDEPENDENCIES | enable_disable_clause |
+//	    row_movement_clause | flashback_archive_clause | AS subquery
 func (p *Parser) parseTableOptions(stmt *nodes.CreateTableStmt) {
 	for {
 		switch p.cur.Type {
@@ -666,6 +994,10 @@ func (p *Parser) parseTableOptions(stmt *nodes.CreateTableStmt) {
 		case kwPARALLEL:
 			p.advance()
 			stmt.Parallel = "PARALLEL"
+			// optional integer degree
+			if p.cur.Type == tokICONST {
+				p.advance()
+			}
 
 		case kwNOPARALLEL:
 			p.advance()
@@ -682,12 +1014,358 @@ func (p *Parser) parseTableOptions(stmt *nodes.CreateTableStmt) {
 		case kwPARTITION:
 			stmt.Partition = p.parsePartitionClause()
 
+		case kwLOGGING:
+			p.advance()
+			stmt.Logging = "LOGGING"
+
+		case kwNOLOGGING:
+			p.advance()
+			stmt.Logging = "NOLOGGING"
+
+		case kwCACHE:
+			p.advance()
+			stmt.Cache = "CACHE"
+
+		case kwRESULT_CACHE:
+			// RESULT_CACHE ( MODE { DEFAULT | FORCE } )
+			p.advance() // consume RESULT_CACHE
+			if p.cur.Type == '(' {
+				p.advance() // consume '('
+				if p.isIdentLikeStr("MODE") {
+					p.advance() // consume MODE
+				}
+				if p.cur.Type == kwDEFAULT {
+					stmt.ResultCache = "DEFAULT"
+					p.advance()
+				} else if p.isIdentLikeStr("FORCE") {
+					stmt.ResultCache = "FORCE"
+					p.advance()
+				}
+				if p.cur.Type == ')' {
+					p.advance() // consume ')'
+				}
+			}
+
+		case kwFLASHBACK:
+			// FLASHBACK ARCHIVE [ flashback_archive ]
+			p.advance() // consume FLASHBACK
+			if p.isIdentLikeStr("ARCHIVE") {
+				p.advance() // consume ARCHIVE
+				if p.isIdentLike() && !p.isStatementEnd() {
+					stmt.FlashbackArchive = p.parseIdentifier()
+				} else {
+					stmt.FlashbackArchive = "FLASHBACK ARCHIVE"
+				}
+			}
+
+		case kwROW:
+			// ROW STORE COMPRESS [ BASIC | ADVANCED ]
+			next := p.peekNext()
+			if (next.Type == tokIDENT || next.Type >= 2000) && next.Str == "STORE" {
+				p.advance() // consume ROW
+				p.advance() // consume STORE
+				if p.cur.Type == kwCOMPRESS {
+					p.advance() // consume COMPRESS
+					stmt.Compress = "ROW STORE COMPRESS"
+					if p.isIdentLikeStr("BASIC") || p.isIdentLikeStr("ADVANCED") {
+						stmt.Compress += " " + p.cur.Str
+						p.advance()
+					}
+				}
+			} else {
+				return
+			}
+
+		case kwREAD:
+			// READ ONLY | READ WRITE
+			next := p.peekNext()
+			if (next.Type == tokIDENT || next.Type >= 2000) && next.Str == "ONLY" {
+				p.advance() // consume READ
+				p.advance() // consume ONLY
+				stmt.ReadOnly = "READ ONLY"
+			} else if next.Type == kwWRITE {
+				p.advance() // consume READ
+				p.advance() // consume WRITE
+				stmt.ReadOnly = "READ WRITE"
+			} else {
+				return
+			}
+
+		case kwENABLE:
+			// ENABLE ROW MOVEMENT or ENABLE VALIDATE/NOVALIDATE constraint
+			next := p.peekNext()
+			if next.Type == kwROW {
+				p.advance() // consume ENABLE
+				p.advance() // consume ROW
+				if p.isIdentLikeStr("MOVEMENT") {
+					p.advance() // consume MOVEMENT
+				}
+				stmt.RowMovement = "ENABLE"
+			} else {
+				// ENABLE [VALIDATE|NOVALIDATE] constraint_clause - skip it
+				p.parseEnableDisableClause()
+			}
+
+		case kwDISABLE:
+			next := p.peekNext()
+			if next.Type == kwROW {
+				p.advance() // consume DISABLE
+				p.advance() // consume ROW
+				if p.isIdentLikeStr("MOVEMENT") {
+					p.advance() // consume MOVEMENT
+				}
+				stmt.RowMovement = "DISABLE"
+			} else {
+				p.parseEnableDisableClause()
+			}
+
+		case kwAS:
+			// AS subquery (for CTAS after options)
+			p.advance() // consume AS
+			stmt.AsQuery = p.parseSelectStmt()
+			return
+
 		default:
-			// Handle LOGGING, NOLOGGING, CACHE, NOCACHE, etc. as identifiers
 			if p.isIdentLike() {
 				switch p.cur.Str {
-				case "LOGGING", "NOLOGGING", "CACHE", "NOCACHE", "MONITORING", "NOMONITORING":
+				case "NOCACHE":
 					p.advance()
+					stmt.Cache = "NOCACHE"
+				case "MONITORING", "NOMONITORING":
+					p.advance()
+				case "SEGMENT":
+					// SEGMENT CREATION { IMMEDIATE | DEFERRED }
+					p.advance() // consume SEGMENT
+					if p.isIdentLikeStr("CREATION") {
+						p.advance() // consume CREATION
+						if p.cur.Type == kwIMMEDIATE {
+							stmt.SegmentCreation = "IMMEDIATE"
+							p.advance()
+						} else if p.cur.Type == kwDEFERRED {
+							stmt.SegmentCreation = "DEFERRED"
+							p.advance()
+						}
+					}
+				case "ORGANIZATION":
+					// ORGANIZATION { HEAP | INDEX | EXTERNAL }
+					p.advance() // consume ORGANIZATION
+					if p.isIdentLikeStr("HEAP") {
+						stmt.Organization = "HEAP"
+						p.advance()
+					} else if p.cur.Type == kwINDEX {
+						stmt.Organization = "INDEX"
+						p.advance()
+					} else if p.isIdentLikeStr("EXTERNAL") {
+						stmt.Organization = "EXTERNAL"
+						p.advance()
+						// skip external table clause details
+						if p.cur.Type == '(' {
+							p.skipParenthesized()
+						}
+					}
+				case "INDEXING":
+					// INDEXING { ON | OFF }
+					p.advance() // consume INDEXING
+					if p.cur.Type == kwON {
+						stmt.Indexing = "ON"
+						p.advance()
+					} else if p.isIdentLikeStr("OFF") {
+						stmt.Indexing = "OFF"
+						p.advance()
+					}
+				case "ROWDEPENDENCIES":
+					p.advance()
+					stmt.RowDependencies = "ROWDEPENDENCIES"
+				case "NOROWDEPENDENCIES":
+					p.advance()
+					stmt.RowDependencies = "NOROWDEPENDENCIES"
+				case "PCTFREE":
+					p.advance() // consume PCTFREE
+					if p.cur.Type == tokICONST {
+						p.advance()
+					}
+				case "PCTUSED":
+					p.advance() // consume PCTUSED
+					if p.cur.Type == tokICONST {
+						p.advance()
+					}
+				case "INITRANS":
+					p.advance() // consume INITRANS
+					if p.cur.Type == tokICONST {
+						p.advance()
+					}
+				case "COLUMN":
+					// COLUMN STORE COMPRESS FOR { QUERY | ARCHIVE } [ LOW | HIGH ]
+					next := p.peekNext()
+					if (next.Type == tokIDENT || next.Type >= 2000) && next.Str == "STORE" {
+						p.advance() // consume COLUMN
+						p.advance() // consume STORE
+						if p.cur.Type == kwCOMPRESS {
+							p.advance() // consume COMPRESS
+							stmt.Compress = "COLUMN STORE COMPRESS"
+							if p.cur.Type == kwFOR {
+								p.advance() // consume FOR
+								if p.isIdentLikeStr("QUERY") || p.isIdentLikeStr("ARCHIVE") {
+									stmt.Compress += " FOR " + p.cur.Str
+									p.advance()
+									if p.isIdentLikeStr("LOW") || p.isIdentLikeStr("HIGH") {
+										stmt.Compress += " " + p.cur.Str
+										p.advance()
+									}
+								}
+							}
+						}
+					} else {
+						return
+					}
+				case "INMEMORY":
+					// INMEMORY [attributes] - skip details
+					p.advance()
+				case "LOB":
+					// LOB storage clause - skip parenthesized content
+					p.advance() // consume LOB
+					if p.cur.Type == '(' {
+						p.skipParenthesized()
+					}
+					// STORE AS ...
+					if p.isIdentLikeStr("STORE") {
+						p.advance()
+						if p.cur.Type == kwAS {
+							p.advance()
+						}
+						// skip rest of LOB storage
+						if p.cur.Type == '(' {
+							p.skipParenthesized()
+						} else if p.isIdentLike() {
+							p.advance() // LOB segment name
+							if p.cur.Type == '(' {
+								p.skipParenthesized()
+							}
+						}
+					}
+				case "VARRAY":
+					// VARRAY col STORE AS ...
+					p.advance() // consume VARRAY
+					p.parseIdentifier() // consume varray item
+					if p.isIdentLikeStr("STORE") {
+						p.advance()
+						if p.cur.Type == kwAS {
+							p.advance()
+						}
+						// skip rest
+						for p.isIdentLike() && p.cur.Type != tokEOF {
+							p.advance()
+						}
+						if p.cur.Type == '(' {
+							p.skipParenthesized()
+						}
+					}
+				case "NESTED":
+					// NESTED TABLE ... STORE AS ...
+					p.advance() // consume NESTED
+					if p.cur.Type == kwTABLE {
+						p.advance() // consume TABLE
+					}
+					p.parseIdentifier() // nested item
+					// skip to STORE AS
+					for p.cur.Type != ';' && p.cur.Type != tokEOF {
+						if p.isIdentLikeStr("STORE") {
+							p.advance()
+							if p.cur.Type == kwAS {
+								p.advance()
+							}
+							p.parseIdentifier() // storage table name
+							if p.cur.Type == '(' {
+								p.skipParenthesized()
+							}
+							break
+						}
+						p.advance()
+					}
+				case "NO":
+					// NO FLASHBACK ARCHIVE / NO INMEMORY
+					next := p.peekNext()
+					if next.Type == kwFLASHBACK {
+						p.advance() // consume NO
+						p.advance() // consume FLASHBACK
+						if p.isIdentLikeStr("ARCHIVE") {
+							p.advance() // consume ARCHIVE
+						}
+						stmt.FlashbackArchive = "NO FLASHBACK ARCHIVE"
+					} else if (next.Type == tokIDENT || next.Type >= 2000) && next.Str == "INMEMORY" {
+						p.advance() // consume NO
+						p.advance() // consume INMEMORY
+					} else {
+						return
+					}
+				case "STORAGE":
+					// STORAGE ( ... ) - skip
+					p.advance()
+					if p.cur.Type == '(' {
+						p.skipParenthesized()
+					}
+				case "FILESYSTEM_LIKE_LOGGING":
+					p.advance()
+					stmt.Logging = "FILESYSTEM_LIKE_LOGGING"
+				case "MAPPING":
+					// MAPPING TABLE
+					p.advance()
+					if p.cur.Type == kwTABLE {
+						p.advance()
+					}
+				case "NOMAPPING":
+					p.advance()
+				case "INCLUDING":
+					// INCLUDING column_name OVERFLOW
+					p.advance()
+					p.parseIdentifier()
+				case "OVERFLOW":
+					p.advance()
+				case "REJECT":
+					// REJECT LIMIT { integer | UNLIMITED }
+					p.advance() // consume REJECT
+					if p.isIdentLikeStr("LIMIT") {
+						p.advance() // consume LIMIT
+						if p.cur.Type == tokICONST {
+							p.advance()
+						} else if p.isIdentLikeStr("UNLIMITED") {
+							p.advance()
+						}
+					}
+				case "ILM":
+					// ILM clause - skip details
+					p.advance()
+					for p.cur.Type != ';' && p.cur.Type != tokEOF && p.cur.Type != kwPARTITION && p.cur.Type != kwENABLE && p.cur.Type != kwDISABLE {
+						p.advance()
+					}
+				case "CLUSTERING":
+					// attribute clustering - skip
+					p.advance()
+					for p.isIdentLike() && p.cur.Type != ';' && p.cur.Type != tokEOF {
+						if p.cur.Type == '(' {
+							p.skipParenthesized()
+						} else {
+							p.advance()
+						}
+						// stop at known table option keywords
+						if p.cur.Type == kwCACHE || p.cur.Type == kwPARALLEL || p.cur.Type == kwNOPARALLEL || p.cur.Type == kwENABLE || p.cur.Type == kwDISABLE {
+							break
+						}
+					}
+				case "SUPPLEMENTAL":
+					// SUPPLEMENTAL LOG ... - skip
+					p.advance() // consume SUPPLEMENTAL
+					if p.isIdentLikeStr("LOG") {
+						p.advance() // consume LOG
+					}
+					// skip until a known boundary
+					for p.cur.Type != ',' && p.cur.Type != ')' && p.cur.Type != ';' && p.cur.Type != tokEOF {
+						if p.cur.Type == '(' {
+							p.skipParenthesized()
+						} else {
+							p.advance()
+						}
+					}
 				default:
 					return
 				}
@@ -696,6 +1374,178 @@ func (p *Parser) parseTableOptions(stmt *nodes.CreateTableStmt) {
 			}
 		}
 	}
+}
+
+// parseImmutableTableClauses parses immutable table clauses.
+//
+// BNF (CREATE-TABLE.bnf lines 733-741):
+//
+//	immutable_table_no_drop_clause: NO DROP [ UNTIL integer DAYS IDLE ]
+//	immutable_table_no_delete_clause: NO DELETE [ LOCKED | UNTIL integer DAYS AFTER INSERT ]
+func (p *Parser) parseImmutableTableClauses(stmt *nodes.CreateTableStmt) {
+	if !p.isIdentLikeStr("NO") {
+		return
+	}
+	next := p.peekNext()
+	// NO DROP
+	if next.Type == kwDROP {
+		p.advance() // consume NO
+		p.advance() // consume DROP
+		noDrop := "NO DROP"
+		if p.isIdentLikeStr("UNTIL") {
+			p.advance() // consume UNTIL
+			days := ""
+			if p.cur.Type == tokICONST {
+				days = p.cur.Str
+				p.advance()
+			}
+			if p.isIdentLikeStr("DAYS") {
+				p.advance() // consume DAYS
+			}
+			if p.isIdentLikeStr("IDLE") {
+				p.advance() // consume IDLE
+			}
+			noDrop = "NO DROP UNTIL " + days + " DAYS IDLE"
+		}
+		stmt.ImmutableNoDrop = noDrop
+	}
+
+	// NO DELETE
+	if p.isIdentLikeStr("NO") {
+		next2 := p.peekNext()
+		if next2.Type == kwDELETE {
+			p.advance() // consume NO
+			p.advance() // consume DELETE
+			noDel := "NO DELETE"
+			if p.isIdentLikeStr("LOCKED") {
+				p.advance()
+				noDel = "NO DELETE LOCKED"
+			} else if p.isIdentLikeStr("UNTIL") {
+				p.advance() // consume UNTIL
+				days := ""
+				if p.cur.Type == tokICONST {
+					days = p.cur.Str
+					p.advance()
+				}
+				if p.isIdentLikeStr("DAYS") {
+					p.advance() // consume DAYS
+				}
+				if p.cur.Type == kwAFTER {
+					p.advance() // consume AFTER
+				}
+				if p.cur.Type == kwINSERT {
+					p.advance() // consume INSERT
+				}
+				noDel = "NO DELETE UNTIL " + days + " DAYS AFTER INSERT"
+			}
+			stmt.ImmutableNoDel = noDel
+		}
+	}
+}
+
+// parseBlockchainTableClauses parses blockchain table clauses.
+//
+// BNF (CREATE-TABLE.bnf lines 743-756):
+//
+//	blockchain_drop_table_clause: NO DROP [ UNTIL integer DAYS IDLE ]
+//	blockchain_row_retention_clause: NO DELETE { LOCKED | UNTIL integer DAYS AFTER INSERT }
+//	blockchain_hash_and_data_format_clause: HASHING USING 'hash_algorithm' VERSION 'version_string'
+func (p *Parser) parseBlockchainTableClauses(stmt *nodes.CreateTableStmt) {
+	// HASHING USING 'hash_algorithm'
+	if p.isIdentLikeStr("HASHING") {
+		p.advance() // consume HASHING
+		if p.cur.Type == kwUSING {
+			p.advance() // consume USING
+		}
+		if p.cur.Type == tokSCONST {
+			stmt.BlockchainHash = p.cur.Str
+			p.advance()
+		}
+	}
+	// VERSION 'version_string'
+	if p.isIdentLikeStr("VERSION") {
+		p.advance() // consume VERSION
+		if p.cur.Type == tokSCONST {
+			stmt.BlockchainVer = p.cur.Str
+			p.advance()
+		}
+	}
+}
+
+// parseEnableDisableClause parses ENABLE/DISABLE [VALIDATE|NOVALIDATE] constraint clause.
+//
+// BNF (CREATE-TABLE.bnf lines 463-472):
+//
+//	{ ENABLE | DISABLE } [ VALIDATE | NOVALIDATE ]
+//	{ UNIQUE ( column [,...] ) | PRIMARY KEY | CONSTRAINT constraint_name }
+//	[ using_index_clause ] [ exceptions_clause ] [ CASCADE ] [ { KEEP | DROP } INDEX ]
+func (p *Parser) parseEnableDisableClause() {
+	p.advance() // consume ENABLE or DISABLE
+
+	// [ VALIDATE | NOVALIDATE ]
+	if p.isIdentLikeStr("VALIDATE") || p.isIdentLikeStr("NOVALIDATE") {
+		p.advance()
+	}
+
+	// { UNIQUE (cols) | PRIMARY KEY | CONSTRAINT name }
+	switch p.cur.Type {
+	case kwUNIQUE:
+		p.advance()
+		if p.cur.Type == '(' {
+			p.skipParenthesized()
+		}
+	case kwPRIMARY:
+		p.advance()
+		if p.cur.Type == kwKEY {
+			p.advance()
+		}
+	case kwCONSTRAINT:
+		p.advance()
+		p.parseIdentifier()
+	default:
+		return
+	}
+
+	// [ USING INDEX ... ]
+	if p.cur.Type == kwUSING {
+		p.advance()
+		if p.cur.Type == kwINDEX {
+			p.advance()
+		}
+		// skip index properties
+		if p.cur.Type == '(' {
+			p.skipParenthesized()
+		} else if p.isIdentLike() {
+			p.parseIdentifier()
+		}
+	}
+
+	// [ EXCEPTIONS INTO table ]
+	if p.isIdentLikeStr("EXCEPTIONS") {
+		p.advance()
+		if p.cur.Type == kwINTO {
+			p.advance()
+			p.parseObjectName()
+		}
+	}
+
+	// [ CASCADE ]
+	if p.cur.Type == kwCASCADE {
+		p.advance()
+	}
+
+	// [ { KEEP | DROP } INDEX ]
+	if p.isIdentLikeStr("KEEP") || p.cur.Type == kwDROP {
+		p.advance()
+		if p.cur.Type == kwINDEX {
+			p.advance()
+		}
+	}
+}
+
+// isStatementEnd returns true if the current token is at a statement boundary.
+func (p *Parser) isStatementEnd() bool {
+	return p.cur.Type == ';' || p.cur.Type == tokEOF
 }
 
 // parsePartitionClause parses a PARTITION BY clause.

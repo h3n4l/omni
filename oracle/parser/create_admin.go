@@ -94,7 +94,7 @@ func (p *Parser) parseCreateSchemaStmt(start int) *nodes.CreateSchemaStmt {
 			p.advance() // consume CREATE
 			switch p.cur.Type {
 			case kwTABLE:
-				stmt.Stmts.Items = append(stmt.Stmts.Items, p.parseCreateTableStmt(nestedStart, false, false, false))
+				stmt.Stmts.Items = append(stmt.Stmts.Items, p.parseCreateTableStmt(nestedStart, false, false, false, false, false))
 			case kwVIEW:
 				stmt.Stmts.Items = append(stmt.Stmts.Items, p.parseCreateViewStmt(nestedStart, false))
 			case kwFORCE:

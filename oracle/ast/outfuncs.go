@@ -1774,9 +1774,25 @@ func writeColumnDef(sb *strings.Builder, n *ColumnDef) {
 		sb.WriteString(" :typeName ")
 		writeNode(sb, n.TypeName)
 	}
+	if n.Domain != nil {
+		sb.WriteString(" :domain ")
+		writeNode(sb, n.Domain)
+	}
+	if n.Sort {
+		sb.WriteString(" :sort true")
+	}
+	if n.Visible {
+		sb.WriteString(" :visible true")
+	}
 	if n.Default != nil {
 		sb.WriteString(" :default ")
 		writeNode(sb, n.Default)
+	}
+	if n.DefaultOnNull {
+		sb.WriteString(" :defaultOnNull true")
+	}
+	if n.DefaultOnNullInsertOnly {
+		sb.WriteString(" :defaultOnNullInsertOnly true")
 	}
 	if n.Identity != nil {
 		sb.WriteString(" :identity ")
@@ -1794,6 +1810,9 @@ func writeColumnDef(sb *strings.Builder, n *ColumnDef) {
 	}
 	if n.Null {
 		sb.WriteString(" :null true")
+	}
+	if n.Encrypt != "" {
+		sb.WriteString(fmt.Sprintf(" :encrypt %q", n.Encrypt))
 	}
 	if n.Constraints != nil {
 		sb.WriteString(" :constraints ")
@@ -2300,9 +2319,18 @@ func writeCreateTableStmt(sb *strings.Builder, n *CreateTableStmt) {
 	if n.Private {
 		sb.WriteString(" :private true")
 	}
+	if n.Sharded {
+		sb.WriteString(" :sharded true")
+	}
+	if n.Duplicated {
+		sb.WriteString(" :duplicated true")
+	}
 	if n.Name != nil {
 		sb.WriteString(" :name ")
 		writeNode(sb, n.Name)
+	}
+	if n.Sharing != "" {
+		sb.WriteString(fmt.Sprintf(" :sharing %q", n.Sharing))
 	}
 	if n.Columns != nil {
 		sb.WriteString(" :columns ")
@@ -2342,6 +2370,61 @@ func writeCreateTableStmt(sb *strings.Builder, n *CreateTableStmt) {
 	if n.Hints != nil {
 		sb.WriteString(" :hints ")
 		writeNode(sb, n.Hints)
+	}
+	if n.Collation != "" {
+		sb.WriteString(fmt.Sprintf(" :collation %q", n.Collation))
+	}
+	if n.Organization != "" {
+		sb.WriteString(fmt.Sprintf(" :organization %q", n.Organization))
+	}
+	if n.SegmentCreation != "" {
+		sb.WriteString(fmt.Sprintf(" :segmentCreation %q", n.SegmentCreation))
+	}
+	if n.Logging != "" {
+		sb.WriteString(fmt.Sprintf(" :logging %q", n.Logging))
+	}
+	if n.Cache != "" {
+		sb.WriteString(fmt.Sprintf(" :cache %q", n.Cache))
+	}
+	if n.RowMovement != "" {
+		sb.WriteString(fmt.Sprintf(" :rowMovement %q", n.RowMovement))
+	}
+	if n.ReadOnly != "" {
+		sb.WriteString(fmt.Sprintf(" :readOnly %q", n.ReadOnly))
+	}
+	if n.Indexing != "" {
+		sb.WriteString(fmt.Sprintf(" :indexing %q", n.Indexing))
+	}
+	if n.ResultCache != "" {
+		sb.WriteString(fmt.Sprintf(" :resultCache %q", n.ResultCache))
+	}
+	if n.RowDependencies != "" {
+		sb.WriteString(fmt.Sprintf(" :rowDependencies %q", n.RowDependencies))
+	}
+	if n.FlashbackArchive != "" {
+		sb.WriteString(fmt.Sprintf(" :flashbackArchive %q", n.FlashbackArchive))
+	}
+	if n.ImmutableNoDrop != "" {
+		sb.WriteString(fmt.Sprintf(" :immutableNoDrop %q", n.ImmutableNoDrop))
+	}
+	if n.ImmutableNoDel != "" {
+		sb.WriteString(fmt.Sprintf(" :immutableNoDel %q", n.ImmutableNoDel))
+	}
+	if n.BlockchainHash != "" {
+		sb.WriteString(fmt.Sprintf(" :blockchainHash %q", n.BlockchainHash))
+	}
+	if n.BlockchainVer != "" {
+		sb.WriteString(fmt.Sprintf(" :blockchainVer %q", n.BlockchainVer))
+	}
+	if n.MemoptimizeRead {
+		sb.WriteString(" :memoptimizeRead true")
+	}
+	if n.MemoptimizeWrite {
+		sb.WriteString(" :memoptimizeWrite true")
+	}
+	if n.Parent != nil {
+		sb.WriteString(" :parent ")
+		writeNode(sb, n.Parent)
 	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

@@ -1374,22 +1374,43 @@ func (n *MergeClause) nodeTag() {}
 // CreateTableStmt represents a CREATE TABLE statement.
 // Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/CREATE-TABLE.html
 type CreateTableStmt struct {
-	OrReplace   bool             // OR REPLACE (23c)
-	Global      bool             // GLOBAL TEMPORARY
-	Private     bool             // PRIVATE TEMPORARY
-	Name        *ObjectName      // table name
-	Columns     *List            // column definitions (list of *ColumnDef)
-	Constraints *List            // table-level constraints (list of *TableConstraint)
-	AsQuery     StmtNode         // AS subquery (CTAS)
-	Tablespace  string           // TABLESPACE name
-	Storage     *StorageClause   // storage parameters
-	Partition   *PartitionClause // partitioning
-	OnCommit    string           // ON COMMIT (PRESERVE/DELETE ROWS)
-	Parallel    string           // PARALLEL/NOPARALLEL
-	Compress    string           // COMPRESS/NOCOMPRESS
-	IfNotExists bool             // IF NOT EXISTS (23c)
-	Hints       *List            // optimizer hints
-	Loc         Loc              // start location
+	OrReplace        bool             // OR REPLACE (23c)
+	Global           bool             // GLOBAL TEMPORARY
+	Private          bool             // PRIVATE TEMPORARY
+	Sharded          bool             // SHARDED
+	Duplicated       bool             // DUPLICATED
+	Name             *ObjectName      // table name
+	Sharing          string           // SHARING = { METADATA | DATA | EXTENDED DATA | NONE }
+	Columns          *List            // column definitions (list of *ColumnDef)
+	Constraints      *List            // table-level constraints (list of *TableConstraint)
+	AsQuery          StmtNode         // AS subquery (CTAS)
+	Tablespace       string           // TABLESPACE name
+	Storage          *StorageClause   // storage parameters
+	Partition        *PartitionClause // partitioning
+	OnCommit         string           // ON COMMIT (PRESERVE/DELETE ROWS)
+	Parallel         string           // PARALLEL/NOPARALLEL
+	Compress         string           // COMPRESS/NOCOMPRESS
+	IfNotExists      bool             // IF NOT EXISTS (23c)
+	Hints            *List            // optimizer hints
+	Collation        string           // DEFAULT COLLATION collation_name
+	Organization     string           // ORGANIZATION HEAP/INDEX/EXTERNAL
+	SegmentCreation  string           // SEGMENT CREATION IMMEDIATE/DEFERRED
+	Logging          string           // LOGGING/NOLOGGING
+	Cache            string           // CACHE/NOCACHE
+	RowMovement      string           // ENABLE/DISABLE ROW MOVEMENT
+	ReadOnly         string           // READ ONLY/READ WRITE
+	Indexing         string           // INDEXING ON/OFF
+	ResultCache      string           // RESULT_CACHE MODE DEFAULT/FORCE
+	RowDependencies  string           // ROWDEPENDENCIES/NOROWDEPENDENCIES
+	FlashbackArchive string           // FLASHBACK ARCHIVE name / NO FLASHBACK ARCHIVE
+	ImmutableNoDrop  string           // NO DROP [UNTIL N DAYS IDLE]
+	ImmutableNoDel   string           // NO DELETE [LOCKED | UNTIL N DAYS AFTER INSERT]
+	BlockchainHash   string           // HASHING USING 'hash_algorithm'
+	BlockchainVer    string           // VERSION 'version_string'
+	MemoptimizeRead  bool             // MEMOPTIMIZE FOR READ
+	MemoptimizeWrite bool             // MEMOPTIMIZE FOR WRITE
+	Parent           *ObjectName      // PARENT table
+	Loc              Loc              // start location
 }
 
 func (n *CreateTableStmt) nodeTag()  {}
@@ -1397,17 +1418,23 @@ func (n *CreateTableStmt) stmtNode() {}
 
 // ColumnDef represents a column definition.
 type ColumnDef struct {
-	Name        string          // column name
-	TypeName    *TypeName       // data type
-	Default     ExprNode        // DEFAULT expression
-	Identity    *IdentityClause // GENERATED ... AS IDENTITY
-	Virtual     ExprNode        // GENERATED ALWAYS AS (expr) VIRTUAL
-	Invisible   bool            // INVISIBLE
-	NotNull     bool            // NOT NULL
-	Null        bool            // NULL (explicit)
-	Constraints *List           // column constraints (list of *ColumnConstraint)
-	Collation   string          // COLLATE
-	Loc         Loc             // start location
+	Name                   string          // column name
+	TypeName               *TypeName       // data type
+	Domain                 *ObjectName     // DOMAIN domain_name (instead of type)
+	Sort                   bool            // SORT
+	Visible                bool            // VISIBLE (explicit)
+	Default                ExprNode        // DEFAULT expression
+	DefaultOnNull          bool            // DEFAULT ON NULL
+	DefaultOnNullInsertOnly bool           // DEFAULT ON NULL FOR INSERT ONLY
+	Identity               *IdentityClause // GENERATED ... AS IDENTITY
+	Virtual                ExprNode        // GENERATED ALWAYS AS (expr) VIRTUAL
+	Invisible              bool            // INVISIBLE
+	NotNull                bool            // NOT NULL
+	Null                   bool            // NULL (explicit)
+	Encrypt                string          // ENCRYPT encryption_spec
+	Constraints            *List           // column constraints (list of *ColumnConstraint)
+	Collation              string          // COLLATE
+	Loc                    Loc             // start location
 }
 
 func (n *ColumnDef) nodeTag() {}
