@@ -6,32 +6,32 @@ package ast
 
 // SelectStmt represents a SELECT statement.
 type SelectStmt struct {
-	Loc           Loc
-	CTEs          []*CommonTableExpr // WITH clause (CTEs)
-	DistinctKind  DistinctKind       // DISTINCT, ALL, or none
-	CalcFoundRows bool               // SQL_CALC_FOUND_ROWS
-	HighPriority  bool               // HIGH_PRIORITY
-	StraightJoin  bool               // STRAIGHT_JOIN hint
-	SmallResult   bool               // SQL_SMALL_RESULT
-	BigResult     bool               // SQL_BIG_RESULT
-	BufferResult  bool               // SQL_BUFFER_RESULT
-	NoCache       bool               // SQL_NO_CACHE
-	TargetList    []ExprNode         // select expressions (ResTarget)
-	From          []TableExpr        // FROM clause (TableRef / JoinClause)
-	Where         ExprNode           // WHERE condition
-	GroupBy       []ExprNode         // GROUP BY expressions
-	WithRollup    bool               // GROUP BY ... WITH ROLLUP
-	Having        ExprNode           // HAVING condition
-	OrderBy           []*OrderByItem // ORDER BY clause
-	OrderByWithRollup bool           // ORDER BY ... WITH ROLLUP
-	Limit             *Limit         // LIMIT / OFFSET
-	ForUpdate     *ForUpdate         // FOR UPDATE / SHARE
-	WindowClause  []*WindowDef       // WINDOW clause
-	Into          *IntoClause        // INTO clause
-	SetOp         SetOperation       // UNION / INTERSECT / EXCEPT
-	SetAll        bool               // ALL modifier for set operations
-	Left          *SelectStmt        // left side of set operation
-	Right         *SelectStmt        // right side of set operation
+	Loc               Loc
+	CTEs              []*CommonTableExpr // WITH clause (CTEs)
+	DistinctKind      DistinctKind       // DISTINCT, ALL, or none
+	CalcFoundRows     bool               // SQL_CALC_FOUND_ROWS
+	HighPriority      bool               // HIGH_PRIORITY
+	StraightJoin      bool               // STRAIGHT_JOIN hint
+	SmallResult       bool               // SQL_SMALL_RESULT
+	BigResult         bool               // SQL_BIG_RESULT
+	BufferResult      bool               // SQL_BUFFER_RESULT
+	NoCache           bool               // SQL_NO_CACHE
+	TargetList        []ExprNode         // select expressions (ResTarget)
+	From              []TableExpr        // FROM clause (TableRef / JoinClause)
+	Where             ExprNode           // WHERE condition
+	GroupBy           []ExprNode         // GROUP BY expressions
+	WithRollup        bool               // GROUP BY ... WITH ROLLUP
+	Having            ExprNode           // HAVING condition
+	OrderBy           []*OrderByItem     // ORDER BY clause
+	OrderByWithRollup bool               // ORDER BY ... WITH ROLLUP
+	Limit             *Limit             // LIMIT / OFFSET
+	ForUpdate         *ForUpdate         // FOR UPDATE / SHARE
+	WindowClause      []*WindowDef       // WINDOW clause
+	Into              *IntoClause        // INTO clause
+	SetOp             SetOperation       // UNION / INTERSECT / EXCEPT
+	SetAll            bool               // ALL modifier for set operations
+	Left              *SelectStmt        // left side of set operation
+	Right             *SelectStmt        // right side of set operation
 }
 
 // CommonTableExpr represents a single CTE in a WITH clause.
@@ -224,15 +224,15 @@ type AlterTableCmd struct {
 	Option         *TableOption // for table options
 	DefaultExpr    ExprNode     // for ALTER COLUMN SET DEFAULT expr
 	IfExists       bool
-	First          bool   // FIRST positioning
-	After          string // AFTER column positioning
-	PartitionNames []string         // for partition operations (DROP/TRUNCATE/ANALYZE/CHECK/OPTIMIZE/REBUILD/REPAIR/REORGANIZE/DISCARD/IMPORT)
-	AllPartitions  bool             // for partition operations using ALL
-	PartitionDefs  []*PartitionDef  // for ADD PARTITION / REORGANIZE PARTITION ... INTO
-	Number         int              // for COALESCE PARTITION number
-	ExchangeTable  *TableRef        // for EXCHANGE PARTITION ... WITH TABLE
-	WithValidation *bool            // for EXCHANGE PARTITION: true=WITH VALIDATION, false=WITHOUT VALIDATION, nil=not specified
-	OrderByItems   []*OrderByItem   // for ORDER BY operation
+	First          bool            // FIRST positioning
+	After          string          // AFTER column positioning
+	PartitionNames []string        // for partition operations (DROP/TRUNCATE/ANALYZE/CHECK/OPTIMIZE/REBUILD/REPAIR/REORGANIZE/DISCARD/IMPORT)
+	AllPartitions  bool            // for partition operations using ALL
+	PartitionDefs  []*PartitionDef // for ADD PARTITION / REORGANIZE PARTITION ... INTO
+	Number         int             // for COALESCE PARTITION number
+	ExchangeTable  *TableRef       // for EXCHANGE PARTITION ... WITH TABLE
+	WithValidation *bool           // for EXCHANGE PARTITION: true=WITH VALIDATION, false=WITHOUT VALIDATION, nil=not specified
+	OrderByItems   []*OrderByItem  // for ORDER BY operation
 }
 
 func (c *AlterTableCmd) nodeTag() {}
@@ -357,16 +357,16 @@ func (p *RenameTablePair) nodeTag() {}
 
 // ColumnDef represents a column definition in CREATE TABLE.
 type ColumnDef struct {
-	Loc           Loc
-	Name          string
-	TypeName      *DataType
-	Constraints   []*ColumnConstraint
-	DefaultValue  ExprNode
-	Comment       string
-	AutoIncrement bool
-	OnUpdate      ExprNode // ON UPDATE CURRENT_TIMESTAMP
-	Generated     *GeneratedColumn
-	ColumnFormat              string // COLUMN_FORMAT {FIXED | DYNAMIC | DEFAULT}
+	Loc                      Loc
+	Name                     string
+	TypeName                 *DataType
+	Constraints              []*ColumnConstraint
+	DefaultValue             ExprNode
+	Comment                  string
+	AutoIncrement            bool
+	OnUpdate                 ExprNode // ON UPDATE CURRENT_TIMESTAMP
+	Generated                *GeneratedColumn
+	ColumnFormat             string // COLUMN_FORMAT {FIXED | DYNAMIC | DEFAULT}
 	Storage                  string // STORAGE {DISK | MEMORY}
 	EngineAttribute          string // ENGINE_ATTRIBUTE [=] 'string'
 	SecondaryEngineAttribute string // SECONDARY_ENGINE_ATTRIBUTE [=] 'string'
@@ -571,9 +571,9 @@ const (
 	BinOpLikeEscape
 	BinOpNullSafeEq  // <=>
 	BinOpAssign      // :=
-	BinOpJsonExtract  // ->
-	BinOpJsonUnquote  // ->>
-	BinOpSoundsLike   // SOUNDS LIKE
+	BinOpJsonExtract // ->
+	BinOpJsonUnquote // ->>
+	BinOpSoundsLike  // SOUNDS LIKE
 )
 
 // BinaryExpr represents a binary expression (a op b).
@@ -989,19 +989,19 @@ const (
 
 // IntoClause represents a SELECT ... INTO clause.
 type IntoClause struct {
-	Loc                  Loc
-	Outfile              string
-	Dumpfile             string
-	Vars                 []*VariableRef
-	Charset              string // CHARACTER SET charset_name
-	FieldsTerminatedBy   string // FIELDS TERMINATED BY 'string'
-	FieldsEnclosedBy     string // [OPTIONALLY] ENCLOSED BY 'char'
-	FieldsOptionalEncl   bool   // OPTIONALLY keyword before ENCLOSED BY
-	FieldsEscapedBy      string // ESCAPED BY 'char'
-	LinesStartingBy      string // LINES STARTING BY 'string'
-	LinesTerminatedBy    string // LINES TERMINATED BY 'string'
-	HasFieldsClause      bool   // true if FIELDS/COLUMNS clause present
-	HasLinesClause       bool   // true if LINES clause present
+	Loc                Loc
+	Outfile            string
+	Dumpfile           string
+	Vars               []*VariableRef
+	Charset            string // CHARACTER SET charset_name
+	FieldsTerminatedBy string // FIELDS TERMINATED BY 'string'
+	FieldsEnclosedBy   string // [OPTIONALLY] ENCLOSED BY 'char'
+	FieldsOptionalEncl bool   // OPTIONALLY keyword before ENCLOSED BY
+	FieldsEscapedBy    string // ESCAPED BY 'char'
+	LinesStartingBy    string // LINES STARTING BY 'string'
+	LinesTerminatedBy  string // LINES TERMINATED BY 'string'
+	HasFieldsClause    bool   // true if FIELDS/COLUMNS clause present
+	HasLinesClause     bool   // true if LINES clause present
 }
 
 func (c *IntoClause) nodeTag() {}
@@ -1049,12 +1049,12 @@ func (s *SetStmt) stmtNode() {}
 //
 //	SET PASSWORD [FOR user] = 'auth_string'
 type SetPasswordStmt struct {
-	Loc                  Loc
-	User                 *UserSpec // optional FOR user@host
-	Password             string    // the password string
-	ToRandom             bool      // SET PASSWORD ... TO RANDOM
-	Replace              string    // [REPLACE 'current_auth_string']
-	RetainCurrentPassword bool     // [RETAIN CURRENT PASSWORD]
+	Loc                   Loc
+	User                  *UserSpec // optional FOR user@host
+	Password              string    // the password string
+	ToRandom              bool      // SET PASSWORD ... TO RANDOM
+	Replace               string    // [REPLACE 'current_auth_string']
+	RetainCurrentPassword bool      // [RETAIN CURRENT PASSWORD]
 }
 
 func (s *SetPasswordStmt) nodeTag()  {}
@@ -1185,15 +1185,15 @@ func (r *RequireClause) nodeTag() {}
 
 // ResourceOption represents a WITH resource limit option.
 type ResourceOption struct {
-	Loc                  Loc
-	MaxQueriesPerHour    int
-	MaxUpdatesPerHour    int
+	Loc                   Loc
+	MaxQueriesPerHour     int
+	MaxUpdatesPerHour     int
 	MaxConnectionsPerHour int
-	MaxUserConnections   int
-	HasMaxQueries        bool
-	HasMaxUpdates        bool
-	HasMaxConnections    bool
-	HasMaxUserConn       bool
+	MaxUserConnections    int
+	HasMaxQueries         bool
+	HasMaxUpdates         bool
+	HasMaxConnections     bool
+	HasMaxUserConn        bool
 }
 
 func (r *ResourceOption) nodeTag() {}
@@ -1203,13 +1203,13 @@ type GrantStmt struct {
 	Loc          Loc
 	Privileges   []string
 	AllPriv      bool
-	ProxyUser    string   // GRANT PROXY ON user
+	ProxyUser    string // GRANT PROXY ON user
 	On           *GrantTarget
 	To           []string
 	WithGrant    bool
-	AsUser       string   // AS user (MySQL 8.0+ role context)
-	WithRoleType string   // DEFAULT, NONE, ALL, ALL EXCEPT, or "" (roles list)
-	WithRoles    []string // role names for WITH ROLE role, role, ...
+	AsUser       string          // AS user (MySQL 8.0+ role context)
+	WithRoleType string          // DEFAULT, NONE, ALL, ALL EXCEPT, or "" (roles list)
+	WithRoles    []string        // role names for WITH ROLE role, role, ...
 	Require      *RequireClause  // REQUIRE tls_option
 	Resource     *ResourceOption // WITH resource_option
 }
@@ -1314,15 +1314,15 @@ type UserSpec struct {
 	Host                  string
 	AuthPlugin            string
 	Password              string
-	AuthHash              string // IDENTIFIED WITH plugin AS 'hash_string'
-	PasswordRandom        bool   // IDENTIFIED BY RANDOM PASSWORD
-	RetainCurrentPassword bool   // RETAIN CURRENT PASSWORD
-	DiscardOldPassword    bool   // DISCARD OLD PASSWORD
-	Replace               string // [REPLACE 'current_auth_string'] (ALTER USER)
+	AuthHash              string      // IDENTIFIED WITH plugin AS 'hash_string'
+	PasswordRandom        bool        // IDENTIFIED BY RANDOM PASSWORD
+	RetainCurrentPassword bool        // RETAIN CURRENT PASSWORD
+	DiscardOldPassword    bool        // DISCARD OLD PASSWORD
+	Replace               string      // [REPLACE 'current_auth_string'] (ALTER USER)
 	AuthFactors           []*UserSpec // AND 2fa/3fa auth chaining
-	InitialAuthPlugin     string // INITIAL AUTHENTICATION IDENTIFIED WITH plugin
-	InitialAuthString     string // INITIAL AUTHENTICATION ... AS/BY 'auth_string'
-	InitialAuthRandom     bool   // INITIAL AUTHENTICATION IDENTIFIED BY RANDOM PASSWORD
+	InitialAuthPlugin     string      // INITIAL AUTHENTICATION IDENTIFIED WITH plugin
+	InitialAuthString     string      // INITIAL AUTHENTICATION ... AS/BY 'auth_string'
+	InitialAuthRandom     bool        // INITIAL AUTHENTICATION IDENTIFIED BY RANDOM PASSWORD
 }
 
 func (u *UserSpec) nodeTag() {}
@@ -1401,12 +1401,12 @@ type CreateFunctionStmt struct {
 	OrReplace       bool
 	IfNotExists     bool
 	IsProcedure     bool
-	IsAggregate     bool     // CREATE AGGREGATE FUNCTION (loadable UDF)
+	IsAggregate     bool // CREATE AGGREGATE FUNCTION (loadable UDF)
 	Definer         string
 	Name            *TableRef
 	Params          []*FuncParam
 	Returns         *DataType
-	Soname          string   // SONAME 'shared_library' (loadable UDF)
+	Soname          string // SONAME 'shared_library' (loadable UDF)
 	Body            string
 	Characteristics []*RoutineCharacteristic
 }
@@ -1439,11 +1439,11 @@ type CreateTriggerStmt struct {
 	Definer     string
 	IfNotExists bool
 	Name        string
-	Timing  string // BEFORE, AFTER
-	Event   string // INSERT, UPDATE, DELETE
-	Table   *TableRef
-	Order   *TriggerOrder
-	Body    string
+	Timing      string // BEFORE, AFTER
+	Event       string // INSERT, UPDATE, DELETE
+	Table       *TableRef
+	Order       *TriggerOrder
+	Body        string
 }
 
 func (s *CreateTriggerStmt) nodeTag()  {}
@@ -2189,13 +2189,22 @@ func (s *UninstallComponentStmt) stmtNode() {}
 
 // CreateTablespaceStmt represents a CREATE TABLESPACE statement.
 type CreateTablespaceStmt struct {
-	Loc           Loc
-	Undo          bool   // UNDO tablespace
-	Name          string // tablespace name
-	DataFile      string // ADD DATAFILE 'file_name'
-	FileBlockSize string // FILE_BLOCK_SIZE value
-	Encryption    string // ENCRYPTION value ('Y' or 'N')
-	Engine        string // ENGINE name
+	Loc             Loc
+	Undo            bool   // UNDO tablespace
+	Name            string // tablespace name
+	DataFile        string // ADD DATAFILE 'file_name'
+	AutoextendSize  string // AUTOEXTEND_SIZE value
+	FileBlockSize   string // FILE_BLOCK_SIZE value
+	Encryption      string // ENCRYPTION value ('Y' or 'N')
+	UseLogfileGroup string // USE LOGFILE GROUP name
+	ExtentSize      string // EXTENT_SIZE value
+	InitialSize     string // INITIAL_SIZE value
+	MaxSize         string // MAX_SIZE value
+	NodeGroup       string // NODEGROUP value
+	Wait            bool   // WAIT
+	Comment         string // COMMENT value
+	Engine          string // ENGINE name
+	EngineAttribute string // ENGINE_ATTRIBUTE value
 }
 
 func (s *CreateTablespaceStmt) nodeTag()  {}
@@ -2203,15 +2212,20 @@ func (s *CreateTablespaceStmt) stmtNode() {}
 
 // AlterTablespaceStmt represents an ALTER TABLESPACE statement.
 type AlterTablespaceStmt struct {
-	Loc          Loc
-	Undo         bool   // UNDO tablespace
-	Name         string // tablespace name
-	AddDataFile  string // ADD DATAFILE 'file_name'
-	DropDataFile string // DROP DATAFILE 'file_name'
-	InitialSize  string // INITIAL_SIZE value
-	Engine       string // ENGINE name
-	SetActive    bool   // SET ACTIVE
-	SetInactive  bool   // SET INACTIVE
+	Loc             Loc
+	Undo            bool   // UNDO tablespace
+	Name            string // tablespace name
+	AddDataFile     string // ADD DATAFILE 'file_name'
+	DropDataFile    string // DROP DATAFILE 'file_name'
+	InitialSize     string // INITIAL_SIZE value
+	Wait            bool   // WAIT
+	RenameTo        string // RENAME TO tablespace_name
+	AutoextendSize  string // AUTOEXTEND_SIZE value
+	Encryption      string // ENCRYPTION value
+	Engine          string // ENGINE name
+	EngineAttribute string // ENGINE_ATTRIBUTE value
+	SetActive       bool   // SET ACTIVE
+	SetInactive     bool   // SET INACTIVE
 }
 
 func (s *AlterTablespaceStmt) nodeTag()  {}
@@ -2589,9 +2603,9 @@ func (s *StopGroupReplicationStmt) stmtNode() {}
 
 // AlterInstanceStmt represents an ALTER INSTANCE statement.
 type AlterInstanceStmt struct {
-	Loc     Loc
-	Action  string // ROTATE INNODB MASTER KEY, ROTATE BINLOG MASTER KEY, ENABLE INNODB REDO_LOG, etc.
-	Channel string // FOR CHANNEL value (RELOAD TLS)
+	Loc               Loc
+	Action            string // ROTATE INNODB MASTER KEY, ROTATE BINLOG MASTER KEY, ENABLE INNODB REDO_LOG, etc.
+	Channel           string // FOR CHANNEL value (RELOAD TLS)
 	NoRollbackOnError bool
 }
 

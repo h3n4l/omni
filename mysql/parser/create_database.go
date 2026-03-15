@@ -113,8 +113,29 @@ func (p *Parser) parseDropDatabaseStmt() (*nodes.DropDatabaseStmt, error) {
 }
 
 // parseDatabaseOption parses a single database option.
+//
+//	create_option / alter_option:
+//	    [DEFAULT] CHARACTER SET [=] charset_name
+//	  | [DEFAULT] COLLATE [=] collation_name
+//	  | [DEFAULT] ENCRYPTION [=] {'Y' | 'N'}
+//	  | READ ONLY [=] {DEFAULT | 0 | 1}        (ALTER DATABASE only)
 func (p *Parser) parseDatabaseOption() (*nodes.DatabaseOption, bool) {
 	start := p.pos()
+
+	// READ ONLY [=] {DEFAULT | 0 | 1}  (no DEFAULT prefix)
+	if p.cur.Type == kwREAD {
+		p.advance()
+		if _, ok := p.match(kwONLY); ok {
+			p.match('=') // optional =
+			val := p.cur.Str
+			p.advance()
+			return &nodes.DatabaseOption{
+				Loc:   nodes.Loc{Start: start, End: p.pos()},
+				Name:  "READ ONLY",
+				Value: val,
+			}, true
+		}
+	}
 
 	// Skip optional DEFAULT
 	p.match(kwDEFAULT)
@@ -152,6 +173,18 @@ func (p *Parser) parseDatabaseOption() (*nodes.DatabaseOption, bool) {
 			return &nodes.DatabaseOption{
 				Loc:   nodes.Loc{Start: start, End: p.pos()},
 				Name:  "COLLATE",
+				Value: val,
+			}, true
+		}
+	case p.cur.Type == kwENCRYPTION:
+		p.advance()
+		p.match('=') // optional =
+		if p.cur.Type == tokSCONST {
+			val := p.cur.Str
+			p.advance()
+			return &nodes.DatabaseOption{
+				Loc:   nodes.Loc{Start: start, End: p.pos()},
+				Name:  "ENCRYPTION",
 				Value: val,
 			}, true
 		}

@@ -3942,14 +3942,41 @@ func writeCreateTablespaceStmt(sb *strings.Builder, n *CreateTablespaceStmt) {
 	if n.DataFile != "" {
 		fmt.Fprintf(sb, " :datafile %q", n.DataFile)
 	}
+	if n.AutoextendSize != "" {
+		fmt.Fprintf(sb, " :autoextend_size %s", n.AutoextendSize)
+	}
 	if n.FileBlockSize != "" {
 		fmt.Fprintf(sb, " :file_block_size %s", n.FileBlockSize)
 	}
 	if n.Encryption != "" {
 		fmt.Fprintf(sb, " :encryption %q", n.Encryption)
 	}
+	if n.UseLogfileGroup != "" {
+		fmt.Fprintf(sb, " :use_logfile_group %s", n.UseLogfileGroup)
+	}
+	if n.ExtentSize != "" {
+		fmt.Fprintf(sb, " :extent_size %s", n.ExtentSize)
+	}
+	if n.InitialSize != "" {
+		fmt.Fprintf(sb, " :initial_size %s", n.InitialSize)
+	}
+	if n.MaxSize != "" {
+		fmt.Fprintf(sb, " :max_size %s", n.MaxSize)
+	}
+	if n.NodeGroup != "" {
+		fmt.Fprintf(sb, " :nodegroup %s", n.NodeGroup)
+	}
+	if n.Wait {
+		sb.WriteString(" :wait true")
+	}
+	if n.Comment != "" {
+		fmt.Fprintf(sb, " :comment %q", n.Comment)
+	}
 	if n.Engine != "" {
 		fmt.Fprintf(sb, " :engine %s", n.Engine)
+	}
+	if n.EngineAttribute != "" {
+		fmt.Fprintf(sb, " :engine_attribute %q", n.EngineAttribute)
 	}
 	sb.WriteString("}")
 }
@@ -3970,8 +3997,23 @@ func writeAlterTablespaceStmt(sb *strings.Builder, n *AlterTablespaceStmt) {
 	if n.InitialSize != "" {
 		fmt.Fprintf(sb, " :initial_size %s", n.InitialSize)
 	}
+	if n.Wait {
+		sb.WriteString(" :wait true")
+	}
+	if n.RenameTo != "" {
+		fmt.Fprintf(sb, " :rename_to %s", n.RenameTo)
+	}
+	if n.AutoextendSize != "" {
+		fmt.Fprintf(sb, " :autoextend_size %s", n.AutoextendSize)
+	}
+	if n.Encryption != "" {
+		fmt.Fprintf(sb, " :encryption %q", n.Encryption)
+	}
 	if n.Engine != "" {
 		fmt.Fprintf(sb, " :engine %s", n.Engine)
+	}
+	if n.EngineAttribute != "" {
+		fmt.Fprintf(sb, " :engine_attribute %q", n.EngineAttribute)
 	}
 	if n.SetActive {
 		sb.WriteString(" :set_active true")

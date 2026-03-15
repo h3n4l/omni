@@ -989,10 +989,19 @@ func (p *Parser) parseUninstallComponentStmt(start int) (*nodes.UninstallCompone
 // Ref: https://dev.mysql.com/doc/refman/8.0/en/create-tablespace.html
 //
 //	CREATE [UNDO] TABLESPACE tablespace_name
-//	  [ADD DATAFILE 'file_name']
-//	  [FILE_BLOCK_SIZE [=] value]
-//	  [ENCRYPTION [=] {'Y' | 'N'}]
-//	  [ENGINE [=] engine_name]
+//	    [ADD DATAFILE 'file_name']
+//	    [AUTOEXTEND_SIZE [=] value]
+//	    [FILE_BLOCK_SIZE = value]
+//	    [ENCRYPTION [=] {'Y' | 'N'}]
+//	    [USE LOGFILE GROUP logfile_group]
+//	    [EXTENT_SIZE [=] extent_size]
+//	    [INITIAL_SIZE [=] initial_size]
+//	    [MAX_SIZE [=] max_size]
+//	    [NODEGROUP [=] nodegroup_id]
+//	    [WAIT]
+//	    [COMMENT [=] 'string']
+//	    [ENGINE [=] engine_name]
+//	    [ENGINE_ATTRIBUTE [=] 'string']
 func (p *Parser) parseCreateTablespaceStmt(start int, undo bool) (*nodes.CreateTablespaceStmt, error) {
 	p.advance() // consume TABLESPACE
 
@@ -1021,34 +1030,74 @@ func (p *Parser) parseCreateTablespaceStmt(start int, undo bool) (*nodes.CreateT
 			}
 			stmt.DataFile = p.cur.Str
 			p.advance()
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "autoextend_size"):
+			p.advance()
+			p.match('=')
+			stmt.AutoextendSize = p.parseSizeValue()
 		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "file_block_size"):
 			p.advance()
-			if p.cur.Type == '=' {
-				p.advance()
-			}
+			p.match('=')
 			stmt.FileBlockSize = p.cur.Str
 			p.advance()
 		case p.cur.Type == kwENCRYPTION:
 			p.advance()
-			if p.cur.Type == '=' {
-				p.advance()
-			}
+			p.match('=')
 			if p.cur.Type == tokSCONST {
 				stmt.Encryption = p.cur.Str
 				p.advance()
 			}
-		case p.cur.Type == kwENGINE:
+		case p.cur.Type == kwUSE:
+			p.advance() // consume USE
+			p.match(kwLOGFILE)
+			p.match(kwGROUP)
+			lg, _, err := p.parseIdentifier()
+			if err != nil {
+				return nil, err
+			}
+			stmt.UseLogfileGroup = lg
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "extent_size"):
 			p.advance()
-			if p.cur.Type == '=' {
+			p.match('=')
+			stmt.ExtentSize = p.parseSizeValue()
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "initial_size"):
+			p.advance()
+			p.match('=')
+			stmt.InitialSize = p.parseSizeValue()
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "max_size"):
+			p.advance()
+			p.match('=')
+			stmt.MaxSize = p.parseSizeValue()
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "nodegroup"):
+			p.advance()
+			p.match('=')
+			stmt.NodeGroup = p.cur.Str
+			p.advance()
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "wait"):
+			p.advance()
+			stmt.Wait = true
+		case p.cur.Type == kwCOMMENT:
+			p.advance()
+			p.match('=')
+			if p.cur.Type == tokSCONST {
+				stmt.Comment = p.cur.Str
 				p.advance()
 			}
+		case p.cur.Type == kwENGINE:
+			p.advance()
+			p.match('=')
 			ename, _, err := p.parseIdentifier()
 			if err != nil {
 				return nil, err
 			}
 			stmt.Engine = ename
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "engine_attribute"):
+			p.advance()
+			p.match('=')
+			if p.cur.Type == tokSCONST {
+				stmt.EngineAttribute = p.cur.Str
+				p.advance()
+			}
 		default:
-			// Unknown option, stop parsing
 			goto done
 		}
 	}
@@ -1062,9 +1111,16 @@ done:
 // Ref: https://dev.mysql.com/doc/refman/8.0/en/alter-tablespace.html
 //
 //	ALTER [UNDO] TABLESPACE tablespace_name
-//	  {ADD | DROP} DATAFILE 'file_name'
-//	  [INITIAL_SIZE [=] size]
-//	  [ENGINE [=] engine_name]
+//	    [ADD DATAFILE 'file_name']
+//	    [DROP DATAFILE 'file_name']
+//	    [INITIAL_SIZE [=] size]
+//	    [WAIT]
+//	    [RENAME TO tablespace_name]
+//	    [AUTOEXTEND_SIZE [=] 'value']
+//	    [SET {ACTIVE | INACTIVE}]
+//	    [ENCRYPTION [=] {'Y' | 'N'}]
+//	    [ENGINE [=] engine_name]
+//	    [ENGINE_ATTRIBUTE [=] 'string']
 func (p *Parser) parseAlterTablespaceStmt(start int, undo bool) (*nodes.AlterTablespaceStmt, error) {
 	p.advance() // consume TABLESPACE
 
@@ -1106,21 +1162,23 @@ func (p *Parser) parseAlterTablespaceStmt(start int, undo bool) (*nodes.AlterTab
 			p.advance()
 		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "initial_size"):
 			p.advance()
-			if p.cur.Type == '=' {
-				p.advance()
-			}
-			stmt.InitialSize = p.cur.Str
+			p.match('=')
+			stmt.InitialSize = p.parseSizeValue()
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "wait"):
 			p.advance()
-		case p.cur.Type == kwENGINE:
-			p.advance()
-			if p.cur.Type == '=' {
-				p.advance()
-			}
-			ename, _, err := p.parseIdentifier()
+			stmt.Wait = true
+		case p.cur.Type == kwRENAME:
+			p.advance() // consume RENAME
+			p.match(kwTO)
+			rn, _, err := p.parseIdentifier()
 			if err != nil {
 				return nil, err
 			}
-			stmt.Engine = ename
+			stmt.RenameTo = rn
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "autoextend_size"):
+			p.advance()
+			p.match('=')
+			stmt.AutoextendSize = p.parseSizeValue()
 		case p.cur.Type == kwSET:
 			p.advance() // consume SET
 			if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "active") {
@@ -1128,6 +1186,28 @@ func (p *Parser) parseAlterTablespaceStmt(start int, undo bool) (*nodes.AlterTab
 				p.advance()
 			} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "inactive") {
 				stmt.SetInactive = true
+				p.advance()
+			}
+		case p.cur.Type == kwENCRYPTION:
+			p.advance()
+			p.match('=')
+			if p.cur.Type == tokSCONST {
+				stmt.Encryption = p.cur.Str
+				p.advance()
+			}
+		case p.cur.Type == kwENGINE:
+			p.advance()
+			p.match('=')
+			ename, _, err := p.parseIdentifier()
+			if err != nil {
+				return nil, err
+			}
+			stmt.Engine = ename
+		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "engine_attribute"):
+			p.advance()
+			p.match('=')
+			if p.cur.Type == tokSCONST {
+				stmt.EngineAttribute = p.cur.Str
 				p.advance()
 			}
 		default:

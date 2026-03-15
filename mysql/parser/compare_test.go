@@ -1917,6 +1917,55 @@ func TestParseAlterDatabase(t *testing.T) {
 			t.Errorf("option name = %s, want COLLATE", stmt.Options[0].Name)
 		}
 	})
+
+	t.Run("read only", func(t *testing.T) {
+		stmt := parseAlterDatabase(t, "ALTER DATABASE mydb READ ONLY = 1")
+		if len(stmt.Options) != 1 {
+			t.Fatalf("Options count = %d, want 1", len(stmt.Options))
+		}
+		if stmt.Options[0].Name != "READ ONLY" {
+			t.Errorf("option name = %s, want READ ONLY", stmt.Options[0].Name)
+		}
+		if stmt.Options[0].Value != "1" {
+			t.Errorf("option value = %s, want 1", stmt.Options[0].Value)
+		}
+	})
+
+	t.Run("read only default", func(t *testing.T) {
+		stmt := parseAlterDatabase(t, "ALTER DATABASE mydb READ ONLY DEFAULT")
+		if len(stmt.Options) != 1 {
+			t.Fatalf("Options count = %d, want 1", len(stmt.Options))
+		}
+		if stmt.Options[0].Name != "READ ONLY" {
+			t.Errorf("option name = %s, want READ ONLY", stmt.Options[0].Name)
+		}
+	})
+
+	t.Run("encryption", func(t *testing.T) {
+		stmt := parseAlterDatabase(t, "ALTER DATABASE mydb ENCRYPTION = 'Y'")
+		if len(stmt.Options) != 1 {
+			t.Fatalf("Options count = %d, want 1", len(stmt.Options))
+		}
+		if stmt.Options[0].Name != "ENCRYPTION" {
+			t.Errorf("option name = %s, want ENCRYPTION", stmt.Options[0].Name)
+		}
+		if stmt.Options[0].Value != "Y" {
+			t.Errorf("option value = %s, want Y", stmt.Options[0].Value)
+		}
+	})
+}
+
+func TestParseCreateDatabaseEncryption(t *testing.T) {
+	stmt := parseCreateDatabase(t, "CREATE DATABASE mydb DEFAULT ENCRYPTION = 'N'")
+	if len(stmt.Options) != 1 {
+		t.Fatalf("Options count = %d, want 1", len(stmt.Options))
+	}
+	if stmt.Options[0].Name != "ENCRYPTION" {
+		t.Errorf("option name = %s, want ENCRYPTION", stmt.Options[0].Name)
+	}
+	if stmt.Options[0].Value != "N" {
+		t.Errorf("option value = %s, want N", stmt.Options[0].Value)
+	}
 }
 
 func parseDropDatabase(t *testing.T, input string) *ast.DropDatabaseStmt {
@@ -7005,6 +7054,26 @@ func TestParseCreateTablespace(t *testing.T) {
 			sql:  "CREATE TABLESPACE ts1 ADD DATAFILE 'ts1.ibd' FILE_BLOCK_SIZE = 16384 ENCRYPTION = 'Y' ENGINE InnoDB",
 			want: `{CREATE_TABLESPACE :loc 0 :name ts1 :datafile "ts1.ibd" :file_block_size 16384 :encryption "Y" :engine InnoDB}`,
 		},
+		{
+			sql:  "CREATE TABLESPACE ts1 ADD DATAFILE 'ts1.ibd' AUTOEXTEND_SIZE = 4M",
+			want: `{CREATE_TABLESPACE :loc 0 :name ts1 :datafile "ts1.ibd" :autoextend_size 4M}`,
+		},
+		{
+			sql:  "CREATE TABLESPACE ts1 USE LOGFILE GROUP lg1",
+			want: `{CREATE_TABLESPACE :loc 0 :name ts1 :use_logfile_group lg1}`,
+		},
+		{
+			sql:  "CREATE TABLESPACE ts1 EXTENT_SIZE = 1M INITIAL_SIZE = 256M MAX_SIZE = 512M",
+			want: `{CREATE_TABLESPACE :loc 0 :name ts1 :extent_size 1M :initial_size 256M :max_size 512M}`,
+		},
+		{
+			sql:  "CREATE TABLESPACE ts1 NODEGROUP = 1 WAIT COMMENT = 'test ts' ENGINE NDB",
+			want: `{CREATE_TABLESPACE :loc 0 :name ts1 :nodegroup 1 :wait true :comment "test ts" :engine NDB}`,
+		},
+		{
+			sql:  "CREATE TABLESPACE ts1 ENGINE_ATTRIBUTE = '{\"key\": \"val\"}'",
+			want: `{CREATE_TABLESPACE :loc 0 :name ts1 :engine_attribute "{\"key\": \"val\"}"}`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.sql, func(t *testing.T) {
@@ -7033,6 +7102,26 @@ func TestParseAlterTablespace(t *testing.T) {
 		{
 			sql:  "ALTER UNDO TABLESPACE ts1 ADD DATAFILE 'undo.ibu'",
 			want: `{ALTER_TABLESPACE :loc 0 :undo true :name ts1 :add_datafile "undo.ibu"}`,
+		},
+		{
+			sql:  "ALTER TABLESPACE ts1 RENAME TO ts2",
+			want: `{ALTER_TABLESPACE :loc 0 :name ts1 :rename_to ts2}`,
+		},
+		{
+			sql:  "ALTER TABLESPACE ts1 AUTOEXTEND_SIZE = 4M",
+			want: `{ALTER_TABLESPACE :loc 0 :name ts1 :autoextend_size 4M}`,
+		},
+		{
+			sql:  "ALTER TABLESPACE ts1 ENCRYPTION = 'Y'",
+			want: `{ALTER_TABLESPACE :loc 0 :name ts1 :encryption "Y"}`,
+		},
+		{
+			sql:  "ALTER TABLESPACE ts1 ENGINE_ATTRIBUTE = '{\"key\": \"val\"}'",
+			want: `{ALTER_TABLESPACE :loc 0 :name ts1 :engine_attribute "{\"key\": \"val\"}"}`,
+		},
+		{
+			sql:  "ALTER TABLESPACE ts1 ADD DATAFILE 'f.ibd' WAIT ENGINE NDB",
+			want: `{ALTER_TABLESPACE :loc 0 :name ts1 :add_datafile "f.ibd" :wait true :engine NDB}`,
 		},
 	}
 	for _, tt := range tests {
