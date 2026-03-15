@@ -9,7 +9,7 @@ import (
 
 // parseCreateTriggerStmt parses a CREATE [OR ALTER] TRIGGER statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-trigger-transact-sql
+// BNF: mssql/parser/bnf/create-trigger-transact-sql.bnf
 //
 // DML trigger:
 //
@@ -20,7 +20,28 @@ import (
 //	{ [ INSERT ] [ , ] [ UPDATE ] [ , ] [ DELETE ] }
 //	[ WITH APPEND ]
 //	[ NOT FOR REPLICATION ]
+//	AS { sql_statement [ ; ] [ , ...n ] | EXTERNAL NAME <method_specifier> [ ; ] }
+//
+//	<dml_trigger_option> ::=
+//	    [ ENCRYPTION ]
+//	    [ EXECUTE AS Clause ]
+//
+//	<method_specifier> ::=
+//	    assembly_name.class_name.method_name
+//
+// DML trigger on memory-optimized tables:
+//
+//	CREATE [ OR ALTER ] TRIGGER [ schema_name . ] trigger_name
+//	ON { table }
+//	[ WITH <dml_trigger_option> [ , ...n ] ]
+//	{ FOR | AFTER }
+//	{ [ INSERT ] [ , ] [ UPDATE ] [ , ] [ DELETE ] }
 //	AS { sql_statement [ ; ] [ , ...n ] }
+//
+//	<dml_trigger_option> ::=
+//	    [ NATIVE_COMPILATION ]
+//	    [ SCHEMABINDING ]
+//	    [ EXECUTE AS Clause ]
 //
 // DDL trigger:
 //
@@ -28,7 +49,11 @@ import (
 //	ON { ALL SERVER | DATABASE }
 //	[ WITH <ddl_trigger_option> [ , ...n ] ]
 //	{ FOR | AFTER } { event_type | event_group } [ , ...n ]
-//	AS { sql_statement [ ; ] [ , ...n ] }
+//	AS { sql_statement [ ; ] [ , ...n ] | EXTERNAL NAME <method_specifier> [ ; ] }
+//
+//	<ddl_trigger_option> ::=
+//	    [ ENCRYPTION ]
+//	    [ EXECUTE AS Clause ]
 //
 // Logon trigger:
 //
@@ -36,7 +61,11 @@ import (
 //	ON ALL SERVER
 //	[ WITH <logon_trigger_option> [ , ...n ] ]
 //	{ FOR | AFTER } LOGON
-//	AS { sql_statement [ ; ] [ , ...n ] }
+//	AS { sql_statement [ ; ] [ , ...n ] | EXTERNAL NAME <method_specifier> [ ; ] }
+//
+//	<logon_trigger_option> ::=
+//	    [ ENCRYPTION ]
+//	    [ EXECUTE AS Clause ]
 func (p *Parser) parseCreateTriggerStmt(orAlter bool) *nodes.CreateTriggerStmt {
 	loc := p.pos()
 
@@ -154,8 +183,30 @@ func (p *Parser) parseCreateTriggerStmt(orAlter bool) *nodes.CreateTriggerStmt {
 	// AS
 	p.match(kwAS)
 
-	// Body: parse statement(s)
-	stmt.Body = p.parseStmt()
+	// EXTERNAL NAME assembly_name.class_name.method_name (CLR trigger)
+	if p.cur.Type == kwEXTERNAL {
+		p.advance() // consume EXTERNAL
+		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "NAME") {
+			p.advance() // consume NAME
+		}
+		var parts []string
+		for {
+			if p.isIdentLike() || p.cur.Type == tokSCONST {
+				parts = append(parts, p.cur.Str)
+				p.advance()
+			} else {
+				break
+			}
+			if p.cur.Type != '.' {
+				break
+			}
+			p.advance() // consume '.'
+		}
+		stmt.ExternalName = joinDots(parts)
+	} else {
+		// Body: parse statement(s)
+		stmt.Body = p.parseStmt()
+	}
 
 	stmt.Loc.End = p.pos()
 	return stmt

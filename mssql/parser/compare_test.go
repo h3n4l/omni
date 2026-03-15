@@ -19268,3 +19268,394 @@ func TestParseIndexBnfReview(t *testing.T) {
 		}
 	})
 }
+
+// ---------- Batch 160: BNF Review View + Trigger ----------
+
+// TestParseViewTriggerBnfReview tests batch 160: BNF review of VIEW and TRIGGER statements.
+func TestParseViewTriggerBnfReview(t *testing.T) {
+	// --- CREATE VIEW ---
+	t.Run("create view basic", func(t *testing.T) {
+		sql := "CREATE VIEW dbo.v1 AS SELECT col1 FROM t1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateViewStmt)
+		if stmt.OrAlter {
+			t.Error("expected OrAlter=false")
+		}
+	})
+
+	t.Run("create or alter view", func(t *testing.T) {
+		sql := "CREATE OR ALTER VIEW dbo.v1 AS SELECT 1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateViewStmt)
+		if !stmt.OrAlter {
+			t.Error("expected OrAlter=true")
+		}
+	})
+
+	t.Run("create view with columns", func(t *testing.T) {
+		sql := "CREATE VIEW v1 (a, b, c) AS SELECT 1, 2, 3"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateViewStmt)
+		if stmt.Columns == nil || stmt.Columns.Len() != 3 {
+			t.Errorf("expected 3 columns, got %v", stmt.Columns)
+		}
+	})
+
+	t.Run("create view with encryption", func(t *testing.T) {
+		sql := "CREATE VIEW v1 WITH ENCRYPTION AS SELECT 1"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("create view with schemabinding", func(t *testing.T) {
+		sql := "CREATE VIEW dbo.v1 WITH SCHEMABINDING AS SELECT col1 FROM dbo.t1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateViewStmt)
+		if !stmt.SchemaBinding {
+			t.Error("expected SchemaBinding=true")
+		}
+	})
+
+	t.Run("create view with view_metadata", func(t *testing.T) {
+		sql := "CREATE VIEW v1 WITH VIEW_METADATA AS SELECT 1"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("create view with multiple attributes", func(t *testing.T) {
+		sql := "CREATE VIEW v1 WITH ENCRYPTION, SCHEMABINDING, VIEW_METADATA AS SELECT 1"
+		ParseAndCheck(t, sql)
+	})
+
+	t.Run("create view with check option", func(t *testing.T) {
+		sql := "CREATE VIEW v1 AS SELECT col1 FROM t1 WHERE col1 > 0 WITH CHECK OPTION"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateViewStmt)
+		if !stmt.WithCheck {
+			t.Error("expected WithCheck=true")
+		}
+	})
+
+	// --- ALTER VIEW (reuses CREATE VIEW body with OrAlter=true) ---
+	t.Run("alter view", func(t *testing.T) {
+		sql := "ALTER VIEW dbo.v1 AS SELECT col1, col2 FROM t1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateViewStmt)
+		if !stmt.OrAlter {
+			t.Error("expected OrAlter=true for ALTER VIEW")
+		}
+	})
+
+	t.Run("alter view with schemabinding", func(t *testing.T) {
+		sql := "ALTER VIEW dbo.v1 WITH SCHEMABINDING AS SELECT col1 FROM dbo.t1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateViewStmt)
+		if !stmt.SchemaBinding {
+			t.Error("expected SchemaBinding=true")
+		}
+	})
+
+	// --- DROP VIEW ---
+	t.Run("drop view basic", func(t *testing.T) {
+		sql := "DROP VIEW v1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DropStmt)
+		if stmt.ObjectType != ast.DropView {
+			t.Errorf("expected DropView, got %d", stmt.ObjectType)
+		}
+	})
+
+	t.Run("drop view if exists", func(t *testing.T) {
+		sql := "DROP VIEW IF EXISTS dbo.v1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DropStmt)
+		if !stmt.IfExists {
+			t.Error("expected IfExists=true")
+		}
+	})
+
+	t.Run("drop view multiple", func(t *testing.T) {
+		sql := "DROP VIEW v1, dbo.v2, v3"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DropStmt)
+		if stmt.Names == nil || stmt.Names.Len() != 3 {
+			t.Errorf("expected 3 names, got %v", stmt.Names)
+		}
+	})
+
+	// --- CREATE TRIGGER (DML) ---
+	t.Run("create trigger dml after insert", func(t *testing.T) {
+		sql := "CREATE TRIGGER dbo.tr1 ON dbo.t1 AFTER INSERT AS BEGIN SELECT 1 END"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTriggerStmt)
+		if stmt.TriggerType != "AFTER" {
+			t.Errorf("expected AFTER, got %s", stmt.TriggerType)
+		}
+	})
+
+	t.Run("create trigger dml for insert update delete", func(t *testing.T) {
+		sql := "CREATE TRIGGER tr1 ON t1 FOR INSERT, UPDATE, DELETE AS SELECT 1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTriggerStmt)
+		if stmt.TriggerType != "FOR" {
+			t.Errorf("expected FOR, got %s", stmt.TriggerType)
+		}
+		if stmt.Events == nil || stmt.Events.Len() != 3 {
+			t.Errorf("expected 3 events, got %v", stmt.Events)
+		}
+	})
+
+	t.Run("create trigger instead of", func(t *testing.T) {
+		sql := "CREATE TRIGGER tr1 ON v1 INSTEAD OF INSERT AS SELECT 1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTriggerStmt)
+		if stmt.TriggerType != "INSTEAD OF" {
+			t.Errorf("expected INSTEAD OF, got %s", stmt.TriggerType)
+		}
+	})
+
+	t.Run("create trigger with encryption", func(t *testing.T) {
+		sql := "CREATE TRIGGER tr1 ON t1 WITH ENCRYPTION AFTER INSERT AS SELECT 1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTriggerStmt)
+		if stmt.TriggerOptions == nil || stmt.TriggerOptions.Len() != 1 {
+			t.Errorf("expected 1 trigger option, got %v", stmt.TriggerOptions)
+		}
+	})
+
+	t.Run("create trigger with execute as", func(t *testing.T) {
+		sql := "CREATE TRIGGER tr1 ON t1 WITH EXECUTE AS OWNER AFTER INSERT AS SELECT 1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTriggerStmt)
+		if stmt.TriggerOptions == nil || stmt.TriggerOptions.Len() != 1 {
+			t.Errorf("expected 1 trigger option, got %v", stmt.TriggerOptions)
+		}
+	})
+
+	t.Run("create trigger with append", func(t *testing.T) {
+		sql := "CREATE TRIGGER tr1 ON t1 AFTER INSERT WITH APPEND AS SELECT 1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTriggerStmt)
+		if !stmt.WithAppend {
+			t.Error("expected WithAppend=true")
+		}
+	})
+
+	t.Run("create trigger not for replication", func(t *testing.T) {
+		sql := "CREATE TRIGGER tr1 ON t1 AFTER INSERT NOT FOR REPLICATION AS SELECT 1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTriggerStmt)
+		if !stmt.NotForReplication {
+			t.Error("expected NotForReplication=true")
+		}
+	})
+
+	// --- CREATE TRIGGER (DDL) ---
+	t.Run("create trigger ddl on database", func(t *testing.T) {
+		sql := "CREATE TRIGGER tr_ddl ON DATABASE AFTER CREATE_TABLE, ALTER_TABLE AS SELECT 1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTriggerStmt)
+		if !stmt.OnDatabase {
+			t.Error("expected OnDatabase=true")
+		}
+	})
+
+	t.Run("create trigger ddl on all server", func(t *testing.T) {
+		sql := "CREATE TRIGGER tr_ddl ON ALL SERVER AFTER CREATE_DATABASE AS SELECT 1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTriggerStmt)
+		if !stmt.OnAllServer {
+			t.Error("expected OnAllServer=true")
+		}
+	})
+
+	// --- CREATE TRIGGER (LOGON) ---
+	t.Run("create trigger logon", func(t *testing.T) {
+		sql := "CREATE TRIGGER tr_logon ON ALL SERVER AFTER LOGON AS SELECT 1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTriggerStmt)
+		if !stmt.OnAllServer {
+			t.Error("expected OnAllServer=true")
+		}
+	})
+
+	// --- CREATE TRIGGER with EXTERNAL NAME (CLR trigger) ---
+	t.Run("create trigger external name", func(t *testing.T) {
+		sql := "CREATE TRIGGER tr_clr ON t1 AFTER INSERT AS EXTERNAL NAME MyAssembly.MyClass.MyMethod"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTriggerStmt)
+		if stmt.ExternalName != "MyAssembly.MyClass.MyMethod" {
+			t.Errorf("expected ExternalName=MyAssembly.MyClass.MyMethod, got %s", stmt.ExternalName)
+		}
+		if stmt.Body != nil {
+			t.Error("expected Body=nil for CLR trigger")
+		}
+	})
+
+	t.Run("create trigger ddl external name", func(t *testing.T) {
+		sql := "CREATE TRIGGER tr_ddl_clr ON DATABASE AFTER CREATE_TABLE AS EXTERNAL NAME Asm.Cls.Mtd"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTriggerStmt)
+		if stmt.ExternalName != "Asm.Cls.Mtd" {
+			t.Errorf("expected ExternalName=Asm.Cls.Mtd, got %s", stmt.ExternalName)
+		}
+	})
+
+	t.Run("create or alter trigger", func(t *testing.T) {
+		sql := "CREATE OR ALTER TRIGGER tr1 ON t1 AFTER INSERT AS SELECT 1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTriggerStmt)
+		if !stmt.OrAlter {
+			t.Error("expected OrAlter=true")
+		}
+	})
+
+	// --- ALTER TRIGGER ---
+	t.Run("alter trigger dml", func(t *testing.T) {
+		sql := "ALTER TRIGGER dbo.tr1 ON dbo.t1 AFTER INSERT AS SELECT 1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTriggerStmt)
+		if !stmt.OrAlter {
+			t.Error("expected OrAlter=true for ALTER TRIGGER")
+		}
+	})
+
+	t.Run("alter trigger ddl", func(t *testing.T) {
+		sql := "ALTER TRIGGER tr1 ON DATABASE AFTER CREATE_TABLE AS SELECT 1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTriggerStmt)
+		if !stmt.OnDatabase {
+			t.Error("expected OnDatabase=true")
+		}
+	})
+
+	t.Run("alter trigger logon", func(t *testing.T) {
+		sql := "ALTER TRIGGER tr1 ON ALL SERVER AFTER LOGON AS SELECT 1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTriggerStmt)
+		if !stmt.OnAllServer {
+			t.Error("expected OnAllServer=true")
+		}
+	})
+
+	// --- DROP TRIGGER ---
+	t.Run("drop trigger basic", func(t *testing.T) {
+		sql := "DROP TRIGGER tr1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DropStmt)
+		if stmt.ObjectType != ast.DropTrigger {
+			t.Errorf("expected DropTrigger, got %d", stmt.ObjectType)
+		}
+	})
+
+	t.Run("drop trigger if exists", func(t *testing.T) {
+		sql := "DROP TRIGGER IF EXISTS dbo.tr1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DropStmt)
+		if !stmt.IfExists {
+			t.Error("expected IfExists=true")
+		}
+	})
+
+	t.Run("drop trigger multiple", func(t *testing.T) {
+		sql := "DROP TRIGGER tr1, dbo.tr2"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DropStmt)
+		if stmt.Names == nil || stmt.Names.Len() != 2 {
+			t.Errorf("expected 2 names, got %v", stmt.Names)
+		}
+	})
+
+	t.Run("drop trigger on database", func(t *testing.T) {
+		sql := "DROP TRIGGER tr_ddl ON DATABASE"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DropStmt)
+		if !stmt.OnDatabase {
+			t.Error("expected OnDatabase=true")
+		}
+	})
+
+	t.Run("drop trigger on all server", func(t *testing.T) {
+		sql := "DROP TRIGGER tr_srv ON ALL SERVER"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DropStmt)
+		if !stmt.OnAllServer {
+			t.Error("expected OnAllServer=true")
+		}
+	})
+
+	t.Run("drop trigger if exists on database", func(t *testing.T) {
+		sql := "DROP TRIGGER IF EXISTS tr_ddl ON DATABASE"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DropStmt)
+		if !stmt.IfExists {
+			t.Error("expected IfExists=true")
+		}
+		if !stmt.OnDatabase {
+			t.Error("expected OnDatabase=true")
+		}
+	})
+
+	t.Run("drop trigger if exists on all server", func(t *testing.T) {
+		sql := "DROP TRIGGER IF EXISTS tr_logon ON ALL SERVER"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DropStmt)
+		if !stmt.IfExists {
+			t.Error("expected IfExists=true")
+		}
+		if !stmt.OnAllServer {
+			t.Error("expected OnAllServer=true")
+		}
+	})
+
+	// --- ENABLE/DISABLE TRIGGER ---
+	t.Run("enable trigger on table", func(t *testing.T) {
+		sql := "ENABLE TRIGGER tr1 ON dbo.t1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.EnableDisableTriggerStmt)
+		if !stmt.Enable {
+			t.Error("expected Enable=true")
+		}
+	})
+
+	t.Run("disable trigger all on database", func(t *testing.T) {
+		sql := "DISABLE TRIGGER ALL ON DATABASE"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.EnableDisableTriggerStmt)
+		if stmt.Enable {
+			t.Error("expected Enable=false")
+		}
+		if !stmt.TriggerAll {
+			t.Error("expected TriggerAll=true")
+		}
+		if !stmt.OnDatabase {
+			t.Error("expected OnDatabase=true")
+		}
+	})
+
+	t.Run("enable trigger on all server", func(t *testing.T) {
+		sql := "ENABLE TRIGGER tr1 ON ALL SERVER"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.EnableDisableTriggerStmt)
+		if !stmt.OnAllServer {
+			t.Error("expected OnAllServer=true")
+		}
+	})
+
+	t.Run("disable trigger multiple on table", func(t *testing.T) {
+		sql := "DISABLE TRIGGER tr1, tr2, tr3 ON dbo.t1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.EnableDisableTriggerStmt)
+		if stmt.Triggers == nil || stmt.Triggers.Len() != 3 {
+			t.Errorf("expected 3 triggers, got %v", stmt.Triggers)
+		}
+	})
+
+	// --- CREATE TRIGGER with native compilation options ---
+	t.Run("create trigger native compilation", func(t *testing.T) {
+		sql := "CREATE TRIGGER tr1 ON t1 WITH NATIVE_COMPILATION, SCHEMABINDING, EXECUTE AS OWNER AFTER INSERT AS BEGIN SELECT 1 END"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTriggerStmt)
+		if stmt.TriggerOptions == nil || stmt.TriggerOptions.Len() != 3 {
+			t.Errorf("expected 3 trigger options, got %v", stmt.TriggerOptions)
+		}
+	})
+}

@@ -13,6 +13,23 @@ import (
 //
 //	DROP TABLE|VIEW|INDEX|PROCEDURE|FUNCTION|DATABASE [IF EXISTS] name [, ...]
 //
+// BNF (DROP VIEW): mssql/parser/bnf/drop-view-transact-sql.bnf
+//
+//	DROP VIEW [ IF EXISTS ] [ schema_name . ] view_name [ ,...n ] [ ; ]
+//
+// BNF (DROP TRIGGER): mssql/parser/bnf/drop-trigger-transact-sql.bnf
+//
+//	-- DML Trigger:
+//	DROP TRIGGER [ IF EXISTS ] [schema_name.]trigger_name [ ,...n ] [ ; ]
+//
+//	-- DDL Trigger:
+//	DROP TRIGGER [ IF EXISTS ] trigger_name [ ,...n ]
+//	ON { DATABASE | ALL SERVER } [ ; ]
+//
+//	-- Logon Trigger:
+//	DROP TRIGGER [ IF EXISTS ] trigger_name [ ,...n ]
+//	ON ALL SERVER
+//
 // BNF (DROP INDEX): mssql/parser/bnf/drop-index-transact-sql.bnf
 //
 //	DROP INDEX [ IF EXISTS ]
@@ -179,6 +196,21 @@ func (p *Parser) parseDropStmt() *nodes.DropStmt {
 		}
 	}
 	stmt.Names = &nodes.List{Items: names}
+
+	// DROP TRIGGER ... ON { DATABASE | ALL SERVER } (for DDL/logon triggers)
+	if stmt.ObjectType == nodes.DropTrigger {
+		if _, ok := p.match(kwON); ok {
+			if p.cur.Type == kwDATABASE {
+				stmt.OnDatabase = true
+				p.advance()
+			} else if p.cur.Type == kwALL {
+				p.advance()
+				if p.matchIdentCI("SERVER") {
+					stmt.OnAllServer = true
+				}
+			}
+		}
+	}
 
 	// Some DROP types also support CASCADE / RESTRICT
 	if p.cur.Type == kwCASCADE {

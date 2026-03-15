@@ -307,7 +307,7 @@
       "id": 160,
       "name": "bnf_review_view_trigger",
       "file": "create_view.go",
-      "status": "pending",
+      "status": "done",
       "description": "BNF review of CREATE/ALTER/DROP VIEW, CREATE/ALTER/DROP TRIGGER (DML + DDL + LOGON triggers), ENABLE/DISABLE TRIGGER.",
       "rules": [
         "create_view_stmt",

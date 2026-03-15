@@ -826,6 +826,12 @@ func writeDropStmt(sb *strings.Builder, n *DropStmt) {
 		sb.WriteString(" :options ")
 		writeNode(sb, n.Options)
 	}
+	if n.OnDatabase {
+		sb.WriteString(" :onDatabase true")
+	}
+	if n.OnAllServer {
+		sb.WriteString(" :onAllServer true")
+	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
 }
@@ -938,6 +944,9 @@ func writeCreateTriggerStmt(sb *strings.Builder, n *CreateTriggerStmt) {
 	}
 	if n.NotForReplication {
 		sb.WriteString(" :notForReplication true")
+	}
+	if n.ExternalName != "" {
+		fmt.Fprintf(sb, " :externalName \"%s\"", escapeString(n.ExternalName))
 	}
 	if n.Body != nil {
 		sb.WriteString(" :body ")

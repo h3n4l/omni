@@ -570,11 +570,13 @@ func (n *AlterColumnOption) nodeTag() {}
 // DropStmt represents a DROP statement.
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-table-transact-sql
 type DropStmt struct {
-	ObjectType DropObjectType
-	Names      *List // list of TableRef
-	IfExists   bool
-	Options    *List // WITH options (e.g., DROP INDEX ... WITH (MAXDOP=1, ONLINE=ON))
-	Loc        Loc
+	ObjectType  DropObjectType
+	Names       *List // list of TableRef
+	IfExists    bool
+	Options     *List // WITH options (e.g., DROP INDEX ... WITH (MAXDOP=1, ONLINE=ON))
+	OnDatabase  bool  // ON DATABASE (DROP TRIGGER for DDL triggers)
+	OnAllServer bool  // ON ALL SERVER (DROP TRIGGER for DDL/logon triggers)
+	Loc         Loc
 }
 
 func (n *DropStmt) nodeTag()  {}
@@ -704,6 +706,7 @@ type CreateTriggerStmt struct {
 	Events            *List     // list of String: INSERT/UPDATE/DELETE (DML) or event types (DDL)
 	WithAppend        bool      // WITH APPEND
 	NotForReplication bool      // NOT FOR REPLICATION
+	ExternalName      string    // EXTERNAL NAME assembly_name.class_name.method_name (CLR trigger)
 	Body              Node      // statement body (BeginEndStmt or single stmt)
 	Loc               Loc
 }
