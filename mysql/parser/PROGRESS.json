@@ -2877,7 +2877,7 @@
       "id": 118,
       "name": "depth_fix_alter_user_registration_factor",
       "file": "grant.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 61 gap: ALTER USER missing BNF branches from alter-user.bnf lines 11-18 and 40-64. Missing: (1) USER() user_func_auth_option syntax, (2) registration_option (factor INITIATE/FINISH REGISTRATION, factor UNREGISTER), (3) ADD/MODIFY/DROP factor factor_auth_option operations, (4) factor_auth_option as distinct from standard auth_option.",
       "rules": ["parseAlterUserStmt", "parseUserSpec", "parseUserAuthOption"],
       "depends_on": [61],

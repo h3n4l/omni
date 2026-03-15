@@ -591,7 +591,7 @@ func (e *BinaryExpr) exprNode() {}
 type UnaryOp int
 
 const (
-	UnaryMinus  UnaryOp = iota
+	UnaryMinus UnaryOp = iota
 	UnaryPlus
 	UnaryNot
 	UnaryBitNot
@@ -1285,6 +1285,7 @@ func (s *DropUserStmt) stmtNode() {}
 type AlterUserStmt struct {
 	Loc             Loc
 	IfExists        bool
+	IsUserFunc      bool // ALTER USER USER() ...
 	Users           []*UserSpec
 	DefaultRoleUser string // ALTER USER user DEFAULT ROLE ...
 	DefaultRoleType string // NONE, ALL, or "" (specific roles)
@@ -1305,7 +1306,42 @@ type AlterUserStmt struct {
 	// Comment / Attribute
 	Comment   string
 	Attribute string
+	// Factor operations (ADD/MODIFY/DROP factor)
+	FactorOps []*FactorOp
+	// Registration operation
+	RegistrationOp *RegistrationOp
 }
+
+// FactorOp represents an ADD/MODIFY/DROP factor operation in ALTER USER.
+//
+//	ADD factor factor_auth_option
+//	MODIFY factor factor_auth_option
+//	DROP factor
+type FactorOp struct {
+	Loc            Loc
+	Action         string // "ADD", "MODIFY", "DROP"
+	Factor         int    // 2 or 3
+	AuthPlugin     string // IDENTIFIED WITH auth_plugin
+	Password       string // IDENTIFIED BY 'auth_string'
+	AuthHash       string // IDENTIFIED WITH plugin AS 'auth_string'
+	PasswordRandom bool   // IDENTIFIED BY RANDOM PASSWORD
+}
+
+func (f *FactorOp) nodeTag() {}
+
+// RegistrationOp represents a registration_option in ALTER USER.
+//
+//	factor INITIATE REGISTRATION
+//	factor FINISH REGISTRATION SET CHALLENGE_RESPONSE AS 'auth_string'
+//	factor UNREGISTER
+type RegistrationOp struct {
+	Loc               Loc
+	Factor            int    // 2 or 3
+	Action            string // "INITIATE", "FINISH", "UNREGISTER"
+	ChallengeResponse string // for FINISH REGISTRATION
+}
+
+func (r *RegistrationOp) nodeTag() {}
 
 func (s *AlterUserStmt) nodeTag()  {}
 func (s *AlterUserStmt) stmtNode() {}
@@ -1491,9 +1527,9 @@ func (s *EventSchedule) nodeTag() {}
 // LoadDataStmt represents a LOAD DATA statement.
 type LoadDataStmt struct {
 	Loc                Loc
-	IsXML              bool   // true for LOAD XML, false for LOAD DATA
-	LowPriority        bool   // LOW_PRIORITY modifier
-	Concurrent         bool   // CONCURRENT modifier
+	IsXML              bool // true for LOAD XML, false for LOAD DATA
+	LowPriority        bool // LOW_PRIORITY modifier
+	Concurrent         bool // CONCURRENT modifier
 	Local              bool
 	Infile             string
 	Replace            bool

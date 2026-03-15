@@ -571,7 +571,7 @@ func (p *Parser) parseGrantTarget() (*nodes.GrantTarget, error) {
 			p.advance() // consume '.'
 			// *.*
 			ref := &nodes.TableRef{
-				Loc:  nodes.Loc{Start: start, End: p.pos()},
+				Loc:    nodes.Loc{Start: start, End: p.pos()},
 				Schema: "*",
 				Name:   "*",
 			}
@@ -838,6 +838,57 @@ func (p *Parser) parseAlterUserStmt() (*nodes.AlterUserStmt, error) {
 		stmt.IfExists = true
 	}
 
+	// Check for ALTER USER USER() ... (user_func_auth_option or registration_option)
+	if p.cur.Type == kwUSER && p.peekNext().Type == '(' {
+		stmt.IsUserFunc = true
+		p.advance() // consume USER
+		p.advance() // consume (
+		p.match(')')
+
+		// Check for registration_option: {2|3} FACTOR ...
+		if p.cur.Type == tokICONST && (p.cur.Str == "2" || p.cur.Str == "3") {
+			op, err := p.parseRegistrationOption()
+			if err != nil {
+				return nil, err
+			}
+			stmt.RegistrationOp = op
+			stmt.Loc.End = p.pos()
+			return stmt, nil
+		}
+
+		// user_func_auth_option: IDENTIFIED BY 'auth_string' [REPLACE ...] [RETAIN ...] | DISCARD OLD PASSWORD
+		userSpec := &nodes.UserSpec{Loc: nodes.Loc{Start: start}, Name: "USER()"}
+		if p.cur.Type == kwIDENTIFIED {
+			p.parseUserAuthOption(userSpec)
+		}
+		// [REPLACE 'current_auth_string']
+		if p.cur.Type == kwREPLACE {
+			p.advance()
+			if p.cur.Type == tokSCONST {
+				userSpec.Replace = p.cur.Str
+				p.advance()
+			}
+		}
+		// RETAIN CURRENT PASSWORD
+		if p.cur.Type == kwRETAIN {
+			p.advance()
+			p.advance()
+			p.advance()
+			userSpec.RetainCurrentPassword = true
+		}
+		// DISCARD OLD PASSWORD
+		if p.cur.Type == kwDISCARD {
+			p.advance()
+			p.advance()
+			p.advance()
+			userSpec.DiscardOldPassword = true
+		}
+		userSpec.Loc.End = p.pos()
+		stmt.Users = append(stmt.Users, userSpec)
+		stmt.Loc.End = p.pos()
+		return stmt, nil
+	}
+
 	// Check for ALTER USER user DEFAULT ROLE ...
 	// We parse the first user, then check if DEFAULT follows.
 	spec, err := p.parseUserSpec()
@@ -845,6 +896,34 @@ func (p *Parser) parseAlterUserStmt() (*nodes.AlterUserStmt, error) {
 		return nil, err
 	}
 	stmt.Users = append(stmt.Users, spec)
+
+	// Check for registration_option after user: {2|3} FACTOR ...
+	if p.cur.Type == tokICONST && (p.cur.Str == "2" || p.cur.Str == "3") {
+		next := p.peekNext()
+		if next.Type == tokIDENT && eqFold(next.Str, "factor") {
+			op, err := p.parseRegistrationOption()
+			if err != nil {
+				return nil, err
+			}
+			stmt.RegistrationOp = op
+			stmt.Loc.End = p.pos()
+			return stmt, nil
+		}
+	}
+
+	// Check for ADD/MODIFY/DROP factor operations in auth_option
+	if p.cur.Type == kwADD || p.cur.Type == kwMODIFY || p.cur.Type == kwDROP {
+		next := p.peekNext()
+		if next.Type == tokICONST && (next.Str == "2" || next.Str == "3") {
+			ops, err := p.parseFactorOps()
+			if err != nil {
+				return nil, err
+			}
+			stmt.FactorOps = ops
+			stmt.Loc.End = p.pos()
+			return stmt, nil
+		}
+	}
 
 	if p.cur.Type == kwDEFAULT {
 		next := p.peekNext()
@@ -912,6 +991,162 @@ func (p *Parser) parseAlterUserStmt() (*nodes.AlterUserStmt, error) {
 
 	stmt.Loc.End = p.pos()
 	return stmt, nil
+}
+
+// parseRegistrationOption parses a registration_option:
+//
+//	factor INITIATE REGISTRATION
+//	factor FINISH REGISTRATION SET CHALLENGE_RESPONSE AS 'auth_string'
+//	factor UNREGISTER
+//
+//	factor: {2 | 3} FACTOR
+func (p *Parser) parseRegistrationOption() (*nodes.RegistrationOp, error) {
+	start := p.pos()
+	op := &nodes.RegistrationOp{Loc: nodes.Loc{Start: start}}
+
+	// {2|3}
+	if p.cur.Type == tokICONST {
+		if p.cur.Str == "2" {
+			op.Factor = 2
+		} else {
+			op.Factor = 3
+		}
+		p.advance()
+	}
+	// FACTOR
+	if p.isIdentToken() && eqFold(p.cur.Str, "factor") {
+		p.advance()
+	}
+
+	// INITIATE REGISTRATION | FINISH REGISTRATION ... | UNREGISTER
+	if p.isIdentToken() && eqFold(p.cur.Str, "initiate") {
+		op.Action = "INITIATE"
+		p.advance()
+		// REGISTRATION
+		if p.isIdentToken() && eqFold(p.cur.Str, "registration") {
+			p.advance()
+		}
+	} else if p.isIdentToken() && eqFold(p.cur.Str, "finish") {
+		op.Action = "FINISH"
+		p.advance()
+		// REGISTRATION
+		if p.isIdentToken() && eqFold(p.cur.Str, "registration") {
+			p.advance()
+		}
+		// SET CHALLENGE_RESPONSE AS 'auth_string'
+		if p.cur.Type == kwSET {
+			p.advance()
+			if p.isIdentToken() && eqFold(p.cur.Str, "challenge_response") {
+				p.advance()
+			}
+			p.match(kwAS)
+			if p.cur.Type == tokSCONST {
+				op.ChallengeResponse = p.cur.Str
+				p.advance()
+			}
+		}
+	} else if p.isIdentToken() && eqFold(p.cur.Str, "unregister") {
+		op.Action = "UNREGISTER"
+		p.advance()
+	}
+
+	op.Loc.End = p.pos()
+	return op, nil
+}
+
+// parseFactorOps parses ADD/MODIFY/DROP factor operations:
+//
+//	ADD factor factor_auth_option [ADD factor factor_auth_option]
+//	MODIFY factor factor_auth_option [MODIFY factor factor_auth_option]
+//	DROP factor [DROP factor]
+func (p *Parser) parseFactorOps() ([]*nodes.FactorOp, error) {
+	var ops []*nodes.FactorOp
+	for p.cur.Type == kwADD || p.cur.Type == kwMODIFY || p.cur.Type == kwDROP {
+		start := p.pos()
+		op := &nodes.FactorOp{Loc: nodes.Loc{Start: start}}
+
+		switch p.cur.Type {
+		case kwADD:
+			op.Action = "ADD"
+		case kwMODIFY:
+			op.Action = "MODIFY"
+		case kwDROP:
+			op.Action = "DROP"
+		}
+		p.advance() // consume ADD/MODIFY/DROP
+
+		// {2|3}
+		if p.cur.Type == tokICONST && (p.cur.Str == "2" || p.cur.Str == "3") {
+			if p.cur.Str == "2" {
+				op.Factor = 2
+			} else {
+				op.Factor = 3
+			}
+			p.advance()
+		}
+		// FACTOR
+		if p.isIdentToken() && eqFold(p.cur.Str, "factor") {
+			p.advance()
+		}
+
+		// For ADD and MODIFY: parse factor_auth_option
+		if op.Action != "DROP" {
+			p.parseFactorAuthOption(op)
+		}
+
+		op.Loc.End = p.pos()
+		ops = append(ops, op)
+	}
+	return ops, nil
+}
+
+// parseFactorAuthOption parses factor_auth_option:
+//
+//	IDENTIFIED BY 'auth_string'
+//	IDENTIFIED BY RANDOM PASSWORD
+//	IDENTIFIED WITH auth_plugin BY 'auth_string'
+//	IDENTIFIED WITH auth_plugin BY RANDOM PASSWORD
+//	IDENTIFIED WITH auth_plugin AS 'auth_string'
+func (p *Parser) parseFactorAuthOption(op *nodes.FactorOp) {
+	if p.cur.Type != kwIDENTIFIED {
+		return
+	}
+	p.advance() // consume IDENTIFIED
+
+	if p.cur.Type == kwBY {
+		p.advance()
+		if p.cur.Type == kwRANDOM {
+			p.advance() // consume RANDOM
+			p.advance() // consume PASSWORD
+			op.PasswordRandom = true
+		} else if p.cur.Type == tokSCONST {
+			op.Password = p.cur.Str
+			p.advance()
+		}
+	} else if p.cur.Type == kwWITH {
+		p.advance()
+		if p.isIdentToken() {
+			plugin, _, _ := p.parseIdentifier()
+			op.AuthPlugin = plugin
+		}
+		if p.cur.Type == kwBY {
+			p.advance()
+			if p.cur.Type == kwRANDOM {
+				p.advance() // consume RANDOM
+				p.advance() // consume PASSWORD
+				op.PasswordRandom = true
+			} else if p.cur.Type == tokSCONST {
+				op.Password = p.cur.Str
+				p.advance()
+			}
+		} else if p.cur.Type == kwAS {
+			p.advance()
+			if p.cur.Type == tokSCONST {
+				op.AuthHash = p.cur.Str
+				p.advance()
+			}
+		}
+	}
 }
 
 // parseUserSpec parses a user specification.

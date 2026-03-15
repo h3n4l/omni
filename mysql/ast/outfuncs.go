@@ -1407,6 +1407,40 @@ func writeAlterUserStmt(sb *strings.Builder, n *AlterUserStmt) {
 	if n.Attribute != "" {
 		fmt.Fprintf(sb, " :attribute %q", n.Attribute)
 	}
+	if n.IsUserFunc {
+		sb.WriteString(" :is_user_func true")
+	}
+	if len(n.FactorOps) > 0 {
+		sb.WriteString(" :factor_ops (")
+		for i, op := range n.FactorOps {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			fmt.Fprintf(sb, "{%s %dFACTOR", op.Action, op.Factor)
+			if op.AuthPlugin != "" {
+				fmt.Fprintf(sb, " :plugin %s", op.AuthPlugin)
+			}
+			if op.Password != "" {
+				sb.WriteString(" :password ***")
+			}
+			if op.AuthHash != "" {
+				sb.WriteString(" :hash ***")
+			}
+			if op.PasswordRandom {
+				sb.WriteString(" :random true")
+			}
+			sb.WriteString("}")
+		}
+		sb.WriteString(")")
+	}
+	if n.RegistrationOp != nil {
+		op := n.RegistrationOp
+		fmt.Fprintf(sb, " :registration {%dFACTOR %s", op.Factor, op.Action)
+		if op.ChallengeResponse != "" {
+			sb.WriteString(" :challenge ***")
+		}
+		sb.WriteString("}")
+	}
 	sb.WriteString("}")
 }
 

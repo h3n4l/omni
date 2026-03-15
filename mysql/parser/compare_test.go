@@ -11158,3 +11158,111 @@ func TestDefinerPropagation_Values(t *testing.T) {
 		t.Errorf("expected Definer=CURRENT_USER(), got %q", stmt5.Definer)
 	}
 }
+
+// ---- Batch 118: ALTER USER registration and factor auth ----
+
+func TestAlterUserRegistration(t *testing.T) {
+	tests := []string{
+		// registration_option with user
+		"ALTER USER 'admin'@'localhost' 2 FACTOR INITIATE REGISTRATION",
+		"ALTER USER 'admin'@'localhost' 3 FACTOR INITIATE REGISTRATION",
+		"ALTER USER 'admin'@'localhost' 2 FACTOR FINISH REGISTRATION SET CHALLENGE_RESPONSE AS 'response_data'",
+		"ALTER USER 'admin'@'localhost' 3 FACTOR UNREGISTER",
+		// registration_option with USER()
+		"ALTER USER USER() 2 FACTOR INITIATE REGISTRATION",
+		"ALTER USER USER() 3 FACTOR FINISH REGISTRATION SET CHALLENGE_RESPONSE AS 'response'",
+		"ALTER USER USER() 2 FACTOR UNREGISTER",
+		// IF EXISTS
+		"ALTER USER IF EXISTS 'admin'@'localhost' 2 FACTOR INITIATE REGISTRATION",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestAlterUserFactorAuth(t *testing.T) {
+	tests := []string{
+		// ADD factor
+		"ALTER USER 'admin'@'localhost' ADD 2 FACTOR IDENTIFIED BY 'password'",
+		"ALTER USER 'admin'@'localhost' ADD 2 FACTOR IDENTIFIED BY RANDOM PASSWORD",
+		"ALTER USER 'admin'@'localhost' ADD 3 FACTOR IDENTIFIED WITH caching_sha2_password BY 'pass'",
+		"ALTER USER 'admin'@'localhost' ADD 2 FACTOR IDENTIFIED WITH auth_plugin AS 'hash'",
+		// MODIFY factor
+		"ALTER USER 'admin'@'localhost' MODIFY 2 FACTOR IDENTIFIED BY 'newpass'",
+		"ALTER USER 'admin'@'localhost' MODIFY 3 FACTOR IDENTIFIED WITH caching_sha2_password BY RANDOM PASSWORD",
+		// DROP factor
+		"ALTER USER 'admin'@'localhost' DROP 2 FACTOR",
+		"ALTER USER 'admin'@'localhost' DROP 3 FACTOR",
+		// Multiple factor ops
+		"ALTER USER 'admin'@'localhost' ADD 2 FACTOR IDENTIFIED BY 'pass2' ADD 3 FACTOR IDENTIFIED BY 'pass3'",
+		"ALTER USER 'admin'@'localhost' DROP 2 FACTOR DROP 3 FACTOR",
+		// USER() with user_func_auth_option
+		"ALTER USER USER() IDENTIFIED BY 'newpass'",
+		"ALTER USER USER() IDENTIFIED BY 'newpass' REPLACE 'oldpass'",
+		"ALTER USER USER() IDENTIFIED BY 'newpass' REPLACE 'oldpass' RETAIN CURRENT PASSWORD",
+		"ALTER USER USER() DISCARD OLD PASSWORD",
+		// IF EXISTS
+		"ALTER USER IF EXISTS 'admin'@'localhost' ADD 2 FACTOR IDENTIFIED BY 'pass'",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestAlterUserFactorAuth_Values(t *testing.T) {
+	// Verify USER() is captured
+	result, err := Parse("ALTER USER USER() IDENTIFIED BY 'newpass'")
+	if err != nil {
+		t.Fatalf("Parse error: %v", err)
+	}
+	stmt, ok := result.Items[0].(*ast.AlterUserStmt)
+	if !ok {
+		t.Fatalf("expected AlterUserStmt, got %T", result.Items[0])
+	}
+	if !stmt.IsUserFunc {
+		t.Error("expected IsUserFunc=true")
+	}
+	if len(stmt.Users) != 1 || stmt.Users[0].Name != "USER()" {
+		t.Errorf("expected user name USER(), got %v", stmt.Users)
+	}
+
+	// Verify registration op
+	result2, err := Parse("ALTER USER 'admin'@'localhost' 2 FACTOR INITIATE REGISTRATION")
+	if err != nil {
+		t.Fatalf("Parse error: %v", err)
+	}
+	stmt2, ok := result2.Items[0].(*ast.AlterUserStmt)
+	if !ok {
+		t.Fatalf("expected AlterUserStmt, got %T", result2.Items[0])
+	}
+	if stmt2.RegistrationOp == nil {
+		t.Fatal("expected RegistrationOp to be set")
+	}
+	if stmt2.RegistrationOp.Factor != 2 {
+		t.Errorf("expected Factor=2, got %d", stmt2.RegistrationOp.Factor)
+	}
+	if stmt2.RegistrationOp.Action != "INITIATE" {
+		t.Errorf("expected Action=INITIATE, got %s", stmt2.RegistrationOp.Action)
+	}
+
+	// Verify factor op
+	result3, err := Parse("ALTER USER 'admin'@'localhost' ADD 3 FACTOR IDENTIFIED WITH caching_sha2_password BY 'pass'")
+	if err != nil {
+		t.Fatalf("Parse error: %v", err)
+	}
+	stmt3, ok := result3.Items[0].(*ast.AlterUserStmt)
+	if !ok {
+		t.Fatalf("expected AlterUserStmt, got %T", result3.Items[0])
+	}
+	if len(stmt3.FactorOps) != 1 {
+		t.Fatalf("expected 1 FactorOp, got %d", len(stmt3.FactorOps))
+	}
+	fop := stmt3.FactorOps[0]
+	if fop.Action != "ADD" || fop.Factor != 3 || fop.AuthPlugin != "caching_sha2_password" || fop.Password != "pass" {
+		t.Errorf("unexpected FactorOp: %+v", fop)
+	}
+}
