@@ -543,7 +543,12 @@
         "audit_parseAdminDDLStmt"
       ],
       "depends_on": [],
-      "files": ["parser.go", "lexer.go", "expr.go", "type.go"],
+      "files": [
+        "parser.go",
+        "lexer.go",
+        "expr.go",
+        "type.go"
+      ],
       "tests": []
     },
     {
@@ -552,7 +557,9 @@
       "file": "select.go",
       "status": "done",
       "description": "Full review of SELECT against 397-line BNF. WITH clause, subquery, query_block, join_clause, PIVOT/UNPIVOT, MODEL, SAMPLE, FLASHBACK AS OF, hierarchical queries, FOR UPDATE, row_limiting, window_clause.",
-      "bnf_files": ["SELECT.bnf"],
+      "bnf_files": [
+        "SELECT.bnf"
+      ],
       "bnf_lines": 397,
       "effort": "review",
       "rules": [
@@ -570,8 +577,12 @@
         "row_limiting_clause",
         "window_clause"
       ],
-      "depends_on": [87],
-      "files": ["select.go"],
+      "depends_on": [
+        87
+      ],
+      "files": [
+        "select.go"
+      ],
       "tests": []
     },
     {
@@ -580,7 +591,12 @@
       "file": "insert.go",
       "status": "done",
       "description": "Review all DML against BNF. Multi-table INSERT (INSERT ALL/FIRST), conditional insert, error_logging_clause, RETURNING, returning INTO, DML subquery.",
-      "bnf_files": ["INSERT.bnf", "UPDATE.bnf", "DELETE.bnf", "MERGE.bnf"],
+      "bnf_files": [
+        "INSERT.bnf",
+        "UPDATE.bnf",
+        "DELETE.bnf",
+        "MERGE.bnf"
+      ],
       "bnf_lines": 232,
       "effort": "review",
       "rules": [
@@ -594,8 +610,14 @@
         "merge_stmt",
         "dml_subquery"
       ],
-      "depends_on": [87],
-      "files": ["insert.go", "update_delete.go", "merge.go"],
+      "depends_on": [
+        87
+      ],
+      "files": [
+        "insert.go",
+        "update_delete.go",
+        "merge.go"
+      ],
       "tests": []
     },
     {
@@ -604,7 +626,9 @@
       "file": "create_table.go",
       "status": "done",
       "description": "Review CREATE TABLE against 774-line BNF. Column definitions, constraints, partitioning (RANGE/LIST/HASH/COMPOSITE/INTERVAL/REFERENCE), LOB storage, virtual columns, identity columns, invisible columns, blockchain/immutable table clauses, JSON collection table, XMLType table, external table.",
-      "bnf_files": ["CREATE-TABLE.bnf"],
+      "bnf_files": [
+        "CREATE-TABLE.bnf"
+      ],
       "bnf_lines": 774,
       "effort": "review+fix",
       "rules": [
@@ -623,9 +647,15 @@
         "xmltype_table",
         "external_table"
       ],
-      "depends_on": [87],
-      "files": ["create_table.go"],
-      "tests": ["TestParseCreateTableFull"]
+      "depends_on": [
+        87
+      ],
+      "files": [
+        "create_table.go"
+      ],
+      "tests": [
+        "TestParseCreateTableFull"
+      ]
     },
     {
       "id": 91,
@@ -633,7 +663,11 @@
       "file": "alter_table.go",
       "status": "done",
       "description": "Review ALTER TABLE against 877-line BNF. ADD/MODIFY/DROP column, constraints, MOVE, SPLIT/MERGE/EXCHANGE/COALESCE PARTITION, ENABLE/DISABLE, SHRINK SPACE, flashback archive, supplemental log, inmemory, ILM policy, read only/read write. Also ALTER TABLESPACE and ALTER TABLESPACE SET.",
-      "bnf_files": ["ALTER-TABLE.bnf", "ALTER-TABLESPACE.bnf", "ALTER-TABLESPACE-SET.bnf"],
+      "bnf_files": [
+        "ALTER-TABLE.bnf",
+        "ALTER-TABLESPACE.bnf",
+        "ALTER-TABLESPACE-SET.bnf"
+      ],
       "bnf_lines": 1010,
       "effort": "review+fix",
       "rules": [
@@ -654,8 +688,12 @@
         "alter_table_ilm_policy",
         "alter_table_read_only"
       ],
-      "depends_on": [90],
-      "files": ["alter_table.go"],
+      "depends_on": [
+        90
+      ],
+      "files": [
+        "alter_table.go"
+      ],
       "tests": []
     },
     {
@@ -664,7 +702,17 @@
       "file": "create_index.go",
       "status": "done",
       "description": "CREATE INDEX (full review), ALTER INDEX (fix skipToSemicolon fallback), CREATE/ALTER INDEXTYPE, CREATE/ALTER OPERATOR. All DROP variants.",
-      "bnf_files": ["CREATE-INDEX.bnf", "ALTER-INDEX.bnf", "ALTER-INDEXTYPE.bnf", "CREATE-INDEXTYPE.bnf", "CREATE-OPERATOR.bnf", "ALTER-OPERATOR.bnf", "DROP-INDEX.bnf", "DROP-INDEXTYPE.bnf", "DROP-OPERATOR.bnf"],
+      "bnf_files": [
+        "CREATE-INDEX.bnf",
+        "ALTER-INDEX.bnf",
+        "ALTER-INDEXTYPE.bnf",
+        "CREATE-INDEXTYPE.bnf",
+        "CREATE-OPERATOR.bnf",
+        "ALTER-OPERATOR.bnf",
+        "DROP-INDEX.bnf",
+        "DROP-INDEXTYPE.bnf",
+        "DROP-OPERATOR.bnf"
+      ],
       "bnf_lines": 459,
       "effort": "fix+implement",
       "rules": [
@@ -678,8 +726,13 @@
         "drop_indextype_stmt",
         "drop_operator_stmt"
       ],
-      "depends_on": [87],
-      "files": ["create_index.go", "alter_misc.go"],
+      "depends_on": [
+        87
+      ],
+      "files": [
+        "create_index.go",
+        "alter_misc.go"
+      ],
       "tests": []
     },
     {
@@ -688,7 +741,22 @@
       "file": "create_view.go",
       "status": "done",
       "description": "CREATE/ALTER VIEW, CREATE/ALTER MATERIALIZED VIEW + LOG, CREATE/ALTER ANALYTIC VIEW, CREATE/ALTER JSON RELATIONAL DUALITY VIEW. Fix ALTER VIEW/MVIEW skipToSemicolon gaps. Implement analytic view and JSON duality view fully.",
-      "bnf_files": ["CREATE-VIEW.bnf", "ALTER-VIEW.bnf", "CREATE-MATERIALIZED-VIEW.bnf", "ALTER-MATERIALIZED-VIEW.bnf", "CREATE-MATERIALIZED-VIEW-LOG.bnf", "ALTER-MATERIALIZED-VIEW-LOG.bnf", "CREATE-ANALYTIC-VIEW.bnf", "ALTER-ANALYTIC-VIEW.bnf", "create-json-relational-duality-view.bnf", "alter-json-relational-duality-view.bnf", "DROP-VIEW.bnf", "DROP-MATERIALIZED-VIEW.bnf", "DROP-MATERIALIZED-VIEW-LOG.bnf", "DROP-ANALYTIC-VIEW.bnf"],
+      "bnf_files": [
+        "CREATE-VIEW.bnf",
+        "ALTER-VIEW.bnf",
+        "CREATE-MATERIALIZED-VIEW.bnf",
+        "ALTER-MATERIALIZED-VIEW.bnf",
+        "CREATE-MATERIALIZED-VIEW-LOG.bnf",
+        "ALTER-MATERIALIZED-VIEW-LOG.bnf",
+        "CREATE-ANALYTIC-VIEW.bnf",
+        "ALTER-ANALYTIC-VIEW.bnf",
+        "create-json-relational-duality-view.bnf",
+        "alter-json-relational-duality-view.bnf",
+        "DROP-VIEW.bnf",
+        "DROP-MATERIALIZED-VIEW.bnf",
+        "DROP-MATERIALIZED-VIEW-LOG.bnf",
+        "DROP-ANALYTIC-VIEW.bnf"
+      ],
       "bnf_lines": 645,
       "effort": "fix+implement",
       "rules": [
@@ -707,8 +775,14 @@
         "drop_mview_log_stmt",
         "drop_analytic_view_stmt"
       ],
-      "depends_on": [87],
-      "files": ["create_view.go", "alter_misc.go", "create_admin.go"],
+      "depends_on": [
+        87
+      ],
+      "files": [
+        "create_view.go",
+        "alter_misc.go",
+        "create_admin.go"
+      ],
       "tests": []
     },
     {
@@ -717,7 +791,14 @@
       "file": "database.go",
       "status": "done",
       "description": "CREATE DATABASE (review), ALTER DATABASE (review+fix against 320-line BNF), CREATE CONTROLFILE (review), ALTER DATABASE DICTIONARY (review), FLASHBACK DATABASE.",
-      "bnf_files": ["CREATE-DATABASE.bnf", "ALTER-DATABASE.bnf", "CREATE-CONTROLFILE.bnf", "ALTER-DATABASE-DICTIONARY.bnf", "FLASHBACK-DATABASE.bnf", "DROP-DATABASE.bnf"],
+      "bnf_files": [
+        "CREATE-DATABASE.bnf",
+        "ALTER-DATABASE.bnf",
+        "CREATE-CONTROLFILE.bnf",
+        "ALTER-DATABASE-DICTIONARY.bnf",
+        "FLASHBACK-DATABASE.bnf",
+        "DROP-DATABASE.bnf"
+      ],
       "bnf_lines": 445,
       "effort": "review+fix",
       "rules": [
@@ -728,8 +809,12 @@
         "flashback_database_stmt",
         "drop_database_stmt"
       ],
-      "depends_on": [87],
-      "files": ["database.go"],
+      "depends_on": [
+        87
+      ],
+      "files": [
+        "database.go"
+      ],
       "tests": []
     },
     {
@@ -737,8 +822,12 @@
       "name": "pluggable_database_full",
       "file": "database.go",
       "status": "done",
-      "description": "CREATE/ALTER/DROP PLUGGABLE DATABASE — currently stubbed via parseAdminDDLStmt. Full implementation: FROM/AS CLONE, FILE_NAME_CONVERT, STORAGE, PATH_PREFIX, open/close/unplug/relocate clauses.",
-      "bnf_files": ["CREATE-PLUGGABLE-DATABASE.bnf", "ALTER-PLUGGABLE-DATABASE.bnf", "DROP-PLUGGABLE-DATABASE.bnf"],
+      "description": "CREATE/ALTER/DROP PLUGGABLE DATABASE \u2014 currently stubbed via parseAdminDDLStmt. Full implementation: FROM/AS CLONE, FILE_NAME_CONVERT, STORAGE, PATH_PREFIX, open/close/unplug/relocate clauses.",
+      "bnf_files": [
+        "CREATE-PLUGGABLE-DATABASE.bnf",
+        "ALTER-PLUGGABLE-DATABASE.bnf",
+        "DROP-PLUGGABLE-DATABASE.bnf"
+      ],
       "bnf_lines": 372,
       "effort": "implement",
       "rules": [
@@ -746,8 +835,12 @@
         "alter_pluggable_database_stmt",
         "drop_pluggable_database_stmt"
       ],
-      "depends_on": [94],
-      "files": ["database.go"],
+      "depends_on": [
+        94
+      ],
+      "files": [
+        "database.go"
+      ],
       "tests": []
     },
     {
@@ -755,8 +848,12 @@
       "name": "diskgroup_full",
       "file": "database.go",
       "status": "done",
-      "description": "CREATE/ALTER/DROP DISKGROUP — ALTER DISKGROUP (212 BNF lines) is currently stubbed. ADD/DROP/RESIZE DISK, REBALANCE, CHECK, MOUNT/DISMOUNT, etc.",
-      "bnf_files": ["CREATE-DISKGROUP.bnf", "ALTER-DISKGROUP.bnf", "DROP-DISKGROUP.bnf"],
+      "description": "CREATE/ALTER/DROP DISKGROUP \u2014 ALTER DISKGROUP (212 BNF lines) is currently stubbed. ADD/DROP/RESIZE DISK, REBALANCE, CHECK, MOUNT/DISMOUNT, etc.",
+      "bnf_files": [
+        "CREATE-DISKGROUP.bnf",
+        "ALTER-DISKGROUP.bnf",
+        "DROP-DISKGROUP.bnf"
+      ],
       "bnf_lines": 235,
       "effort": "implement",
       "rules": [
@@ -764,8 +861,12 @@
         "alter_diskgroup_stmt",
         "drop_diskgroup_stmt"
       ],
-      "depends_on": [87],
-      "files": ["database.go"],
+      "depends_on": [
+        87
+      ],
+      "files": [
+        "database.go"
+      ],
       "tests": []
     },
     {
@@ -774,7 +875,14 @@
       "file": "create_admin.go",
       "status": "done",
       "description": "CREATE/ALTER TABLESPACE, CREATE/ALTER TABLESPACE SET. Review CREATE TABLESPACE (already implemented), fix/implement ALTER variants.",
-      "bnf_files": ["CREATE-TABLESPACE.bnf", "ALTER-TABLESPACE.bnf", "CREATE-TABLESPACE-SET.bnf", "ALTER-TABLESPACE-SET.bnf", "DROP-TABLESPACE.bnf", "DROP-TABLESPACE-SET.bnf"],
+      "bnf_files": [
+        "CREATE-TABLESPACE.bnf",
+        "ALTER-TABLESPACE.bnf",
+        "CREATE-TABLESPACE-SET.bnf",
+        "ALTER-TABLESPACE-SET.bnf",
+        "DROP-TABLESPACE.bnf",
+        "DROP-TABLESPACE-SET.bnf"
+      ],
       "bnf_lines": 293,
       "effort": "review+fix",
       "rules": [
@@ -785,17 +893,26 @@
         "drop_tablespace_stmt",
         "drop_tablespace_set_stmt"
       ],
-      "depends_on": [87],
-      "files": ["create_admin.go"],
-      "tests": ["TestParseTablespaceAll"]
+      "depends_on": [
+        87
+      ],
+      "files": [
+        "create_admin.go"
+      ],
+      "tests": [
+        "TestParseTablespaceAll"
+      ]
     },
     {
       "id": 98,
       "name": "alter_session_system",
       "file": "alter_misc.go",
       "status": "done",
-      "description": "ALTER SESSION — only SET parsed, need ADVISE, CLOSE DATABASE LINK, ENABLE/DISABLE clauses. ALTER SYSTEM — only SET/KILL parsed, need FLUSH, CHECKPOINT, SWITCH LOGFILE, ARCHIVE LOG, DISCONNECT SESSION, CANCEL SQL, etc.",
-      "bnf_files": ["ALTER-SESSION.bnf", "ALTER-SYSTEM.bnf"],
+      "description": "ALTER SESSION \u2014 only SET parsed, need ADVISE, CLOSE DATABASE LINK, ENABLE/DISABLE clauses. ALTER SYSTEM \u2014 only SET/KILL parsed, need FLUSH, CHECKPOINT, SWITCH LOGFILE, ARCHIVE LOG, DISCONNECT SESSION, CANCEL SQL, etc.",
+      "bnf_files": [
+        "ALTER-SESSION.bnf",
+        "ALTER-SYSTEM.bnf"
+      ],
       "bnf_lines": 135,
       "effort": "implement",
       "rules": [
@@ -810,17 +927,32 @@
         "alter_system_disconnect_session",
         "alter_system_restricted_session"
       ],
-      "depends_on": [87],
-      "files": ["alter_misc.go"],
+      "depends_on": [
+        87
+      ],
+      "files": [
+        "alter_misc.go"
+      ],
       "tests": []
     },
     {
       "id": 99,
       "name": "user_role_profile",
       "file": "security.go",
-      "status": "pending",
+      "status": "done",
       "description": "CREATE/ALTER USER, CREATE/ALTER ROLE, CREATE/ALTER PROFILE, ALTER RESOURCE COST. CREATE USER/ROLE/PROFILE implemented. ALTER ROLE/Profile stubbed. BNF review all.",
-      "bnf_files": ["CREATE-USER.bnf", "ALTER-USER.bnf", "CREATE-ROLE.bnf", "ALTER-ROLE.bnf", "CREATE-PROFILE.bnf", "ALTER-PROFILE.bnf", "ALTER-RESOURCE-COST.bnf", "DROP-USER.bnf", "DROP-ROLE.bnf", "DROP-PROFILE.bnf"],
+      "bnf_files": [
+        "CREATE-USER.bnf",
+        "ALTER-USER.bnf",
+        "CREATE-ROLE.bnf",
+        "ALTER-ROLE.bnf",
+        "CREATE-PROFILE.bnf",
+        "ALTER-PROFILE.bnf",
+        "ALTER-RESOURCE-COST.bnf",
+        "DROP-USER.bnf",
+        "DROP-ROLE.bnf",
+        "DROP-PROFILE.bnf"
+      ],
       "bnf_lines": 207,
       "effort": "fix+review",
       "rules": [
@@ -835,8 +967,13 @@
         "drop_role_stmt",
         "drop_profile_stmt"
       ],
-      "depends_on": [87],
-      "files": ["security.go", "create_admin.go"],
+      "depends_on": [
+        87
+      ],
+      "files": [
+        "security.go",
+        "create_admin.go"
+      ],
       "tests": []
     },
     {
@@ -845,7 +982,15 @@
       "file": "security.go",
       "status": "pending",
       "description": "CREATE/ALTER/DROP AUDIT POLICY (stubbed). AUDIT/NOAUDIT traditional + unified (basic impl exists, review against BNF).",
-      "bnf_files": ["CREATE-AUDIT-POLICY-Unified-Auditing.bnf", "ALTER-AUDIT-POLICY-Unified-Auditing.bnf", "AUDIT-Traditional-Auditing.bnf", "AUDIT-Unified-Auditing.bnf", "NOAUDIT-Traditional-Auditing.bnf", "NOAUDIT-Unified-Auditing.bnf", "DROP-AUDIT-POLICY-Unified-Auditing.bnf"],
+      "bnf_files": [
+        "CREATE-AUDIT-POLICY-Unified-Auditing.bnf",
+        "ALTER-AUDIT-POLICY-Unified-Auditing.bnf",
+        "AUDIT-Traditional-Auditing.bnf",
+        "AUDIT-Unified-Auditing.bnf",
+        "NOAUDIT-Traditional-Auditing.bnf",
+        "NOAUDIT-Unified-Auditing.bnf",
+        "DROP-AUDIT-POLICY-Unified-Auditing.bnf"
+      ],
       "bnf_lines": 180,
       "effort": "implement+review",
       "rules": [
@@ -857,8 +1002,13 @@
         "noaudit_unified_stmt",
         "drop_audit_policy_stmt"
       ],
-      "depends_on": [87],
-      "files": ["security.go", "utility.go"],
+      "depends_on": [
+        87
+      ],
+      "files": [
+        "security.go",
+        "utility.go"
+      ],
       "tests": []
     },
     {
@@ -866,8 +1016,27 @@
       "name": "plsql_objects_all",
       "file": "create_proc.go",
       "status": "pending",
-      "description": "CREATE PROCEDURE/FUNCTION/PACKAGE/PACKAGE BODY/TRIGGER/TYPE/TYPE BODY (review). ALTER PROCEDURE/FUNCTION/PACKAGE/TRIGGER (fix — only COMPILE handled). ALTER TYPE (fix — skipToSemicolon fallbacks).",
-      "bnf_files": ["CREATE-FUNCTION.bnf", "CREATE-PROCEDURE.bnf", "CREATE-PACKAGE.bnf", "CREATE-PACKAGE-BODY.bnf", "CREATE-TRIGGER.bnf", "CREATE-TYPE.bnf", "CREATE-TYPE-BODY.bnf", "ALTER-FUNCTION.bnf", "ALTER-PROCEDURE.bnf", "ALTER-PACKAGE.bnf", "ALTER-TRIGGER.bnf", "ALTER-TYPE.bnf", "DROP-FUNCTION.bnf", "DROP-PROCEDURE.bnf", "DROP-PACKAGE.bnf", "DROP-TRIGGER.bnf", "DROP-TYPE.bnf", "DROP-TYPE-BODY.bnf"],
+      "description": "CREATE PROCEDURE/FUNCTION/PACKAGE/PACKAGE BODY/TRIGGER/TYPE/TYPE BODY (review). ALTER PROCEDURE/FUNCTION/PACKAGE/TRIGGER (fix \u2014 only COMPILE handled). ALTER TYPE (fix \u2014 skipToSemicolon fallbacks).",
+      "bnf_files": [
+        "CREATE-FUNCTION.bnf",
+        "CREATE-PROCEDURE.bnf",
+        "CREATE-PACKAGE.bnf",
+        "CREATE-PACKAGE-BODY.bnf",
+        "CREATE-TRIGGER.bnf",
+        "CREATE-TYPE.bnf",
+        "CREATE-TYPE-BODY.bnf",
+        "ALTER-FUNCTION.bnf",
+        "ALTER-PROCEDURE.bnf",
+        "ALTER-PACKAGE.bnf",
+        "ALTER-TRIGGER.bnf",
+        "ALTER-TYPE.bnf",
+        "DROP-FUNCTION.bnf",
+        "DROP-PROCEDURE.bnf",
+        "DROP-PACKAGE.bnf",
+        "DROP-TRIGGER.bnf",
+        "DROP-TYPE.bnf",
+        "DROP-TYPE-BODY.bnf"
+      ],
       "bnf_lines": 202,
       "effort": "review+fix",
       "rules": [
@@ -890,8 +1059,15 @@
         "drop_type_stmt",
         "drop_type_body_stmt"
       ],
-      "depends_on": [87],
-      "files": ["create_proc.go", "create_trigger.go", "create_type.go", "alter_misc.go"],
+      "depends_on": [
+        87
+      ],
+      "files": [
+        "create_proc.go",
+        "create_trigger.go",
+        "create_type.go",
+        "alter_misc.go"
+      ],
       "tests": []
     },
     {
@@ -900,7 +1076,17 @@
       "file": "create_admin.go",
       "status": "pending",
       "description": "All stubbed via parseAdminDDLStmt. CREATE/ALTER ATTRIBUTE DIMENSION, CREATE/ALTER HIERARCHY, CREATE/ALTER DOMAIN.",
-      "bnf_files": ["CREATE-ATTRIBUTE-DIMENSION.bnf", "ALTER-ATTRIBUTE-DIMENSION.bnf", "CREATE-HIERARCHY.bnf", "ALTER-HIERARCHY.bnf", "create-domain.bnf", "alter-domain.bnf", "DROP-ATTRIBUTE-DIMENSION.bnf", "DROP-HIERARCHY.bnf", "DROP-DOMAIN.bnf"],
+      "bnf_files": [
+        "CREATE-ATTRIBUTE-DIMENSION.bnf",
+        "ALTER-ATTRIBUTE-DIMENSION.bnf",
+        "CREATE-HIERARCHY.bnf",
+        "ALTER-HIERARCHY.bnf",
+        "create-domain.bnf",
+        "alter-domain.bnf",
+        "DROP-ATTRIBUTE-DIMENSION.bnf",
+        "DROP-HIERARCHY.bnf",
+        "DROP-DOMAIN.bnf"
+      ],
       "bnf_lines": 217,
       "effort": "implement",
       "rules": [
@@ -914,8 +1100,12 @@
         "drop_hierarchy_stmt",
         "drop_domain_stmt"
       ],
-      "depends_on": [87],
-      "files": ["create_admin.go"],
+      "depends_on": [
+        87
+      ],
+      "files": [
+        "create_admin.go"
+      ],
       "tests": []
     },
     {
@@ -923,8 +1113,22 @@
       "name": "cluster_dimension_zonemap_inmemory",
       "file": "create_admin.go",
       "status": "pending",
-      "description": "CREATE/ALTER CLUSTER (review — implemented), CREATE/ALTER DIMENSION (review — implemented). CREATE/ALTER MATERIALIZED ZONEMAP + INMEMORY JOIN GROUP (stubbed).",
-      "bnf_files": ["CREATE-CLUSTER.bnf", "ALTER-CLUSTER.bnf", "CREATE-DIMENSION.bnf", "ALTER-DIMENSION.bnf", "CREATE-MATERIALIZED-ZONEMAP.bnf", "ALTER-MATERIALIZED-ZONEMAP.bnf", "CREATE-INMEMORY-JOIN-GROUP.bnf", "ALTER-INMEMORY-JOIN-GROUP.bnf", "TRUNCATE-CLUSTER.bnf", "DROP-CLUSTER.bnf", "DROP-DIMENSION.bnf", "DROP-MATERIALIZED-ZONEMAP.bnf", "DROP-INMEMORY-JOIN-GROUP.bnf"],
+      "description": "CREATE/ALTER CLUSTER (review \u2014 implemented), CREATE/ALTER DIMENSION (review \u2014 implemented). CREATE/ALTER MATERIALIZED ZONEMAP + INMEMORY JOIN GROUP (stubbed).",
+      "bnf_files": [
+        "CREATE-CLUSTER.bnf",
+        "ALTER-CLUSTER.bnf",
+        "CREATE-DIMENSION.bnf",
+        "ALTER-DIMENSION.bnf",
+        "CREATE-MATERIALIZED-ZONEMAP.bnf",
+        "ALTER-MATERIALIZED-ZONEMAP.bnf",
+        "CREATE-INMEMORY-JOIN-GROUP.bnf",
+        "ALTER-INMEMORY-JOIN-GROUP.bnf",
+        "TRUNCATE-CLUSTER.bnf",
+        "DROP-CLUSTER.bnf",
+        "DROP-DIMENSION.bnf",
+        "DROP-MATERIALIZED-ZONEMAP.bnf",
+        "DROP-INMEMORY-JOIN-GROUP.bnf"
+      ],
       "bnf_lines": 228,
       "effort": "review+implement",
       "rules": [
@@ -939,8 +1143,12 @@
         "truncate_cluster_stmt",
         "drop_cluster_stmt"
       ],
-      "depends_on": [87],
-      "files": ["create_admin.go"],
+      "depends_on": [
+        87
+      ],
+      "files": [
+        "create_admin.go"
+      ],
       "tests": []
     },
     {
@@ -949,7 +1157,16 @@
       "file": "create_admin.go",
       "status": "pending",
       "description": "All stubbed. Modern features (property graph, vector index) + admin features (lockdown profile, outline).",
-      "bnf_files": ["create-property-graph.bnf", "create-vector-index.bnf", "CREATE-LOCKDOWN-PROFILE.bnf", "ALTER-LOCKDOWN-PROFILE.bnf", "CREATE-OUTLINE.bnf", "ALTER-OUTLINE.bnf", "DROP-LOCKDOWN-PROFILE.bnf", "DROP-OUTLINE.bnf"],
+      "bnf_files": [
+        "create-property-graph.bnf",
+        "create-vector-index.bnf",
+        "CREATE-LOCKDOWN-PROFILE.bnf",
+        "ALTER-LOCKDOWN-PROFILE.bnf",
+        "CREATE-OUTLINE.bnf",
+        "ALTER-OUTLINE.bnf",
+        "DROP-LOCKDOWN-PROFILE.bnf",
+        "DROP-OUTLINE.bnf"
+      ],
       "bnf_lines": 188,
       "effort": "implement",
       "rules": [
@@ -962,8 +1179,13 @@
         "drop_lockdown_profile_stmt",
         "drop_outline_stmt"
       ],
-      "depends_on": [87],
-      "files": ["create_admin.go", "security.go"],
+      "depends_on": [
+        87
+      ],
+      "files": [
+        "create_admin.go",
+        "security.go"
+      ],
       "tests": []
     },
     {
@@ -972,7 +1194,33 @@
       "file": "create_admin.go",
       "status": "pending",
       "description": "All small objects currently stubbed. Java (21+10), Library (13+12), Directory (6), Context (8), MLE Env/Module (17+14), PFILE/SPFILE (5+7), Flashback Archive (14+17), Rollback Segment (6+9), Edition (5), Restore Point (8), Schema (11, review), Logical Partition Tracking (9), PMEM Filestore (9).",
-      "bnf_files": ["CREATE-JAVA.bnf", "ALTER-JAVA.bnf", "CREATE-LIBRARY.bnf", "ALTER-LIBRARY.bnf", "CREATE-DIRECTORY.bnf", "CREATE-CONTEXT.bnf", "CREATE-MLE-ENV.bnf", "CREATE-MLE-MODULE.bnf", "CREATE-PFILE.bnf", "CREATE-SPFILE.bnf", "CREATE-FLASHBACK-ARCHIVE.bnf", "ALTER-FLASHBACK-ARCHIVE.bnf", "CREATE-ROLLBACK-SEGMENT.bnf", "ALTER-ROLLBACK-SEGMENT.bnf", "CREATE-EDITION.bnf", "CREATE-RESTORE-POINT.bnf", "CREATE-SCHEMA.bnf", "CREATE-LOGICAL-PARTITION-TRACKING.bnf", "CREATE-PMEM-FILESTORE.bnf", "DROP-JAVA.bnf", "DROP-LIBRARY.bnf", "DROP-DIRECTORY.bnf", "DROP-CONTEXT.bnf", "DROP-FLASHBACK-ARCHIVE.bnf", "DROP-EDITION.bnf"],
+      "bnf_files": [
+        "CREATE-JAVA.bnf",
+        "ALTER-JAVA.bnf",
+        "CREATE-LIBRARY.bnf",
+        "ALTER-LIBRARY.bnf",
+        "CREATE-DIRECTORY.bnf",
+        "CREATE-CONTEXT.bnf",
+        "CREATE-MLE-ENV.bnf",
+        "CREATE-MLE-MODULE.bnf",
+        "CREATE-PFILE.bnf",
+        "CREATE-SPFILE.bnf",
+        "CREATE-FLASHBACK-ARCHIVE.bnf",
+        "ALTER-FLASHBACK-ARCHIVE.bnf",
+        "CREATE-ROLLBACK-SEGMENT.bnf",
+        "ALTER-ROLLBACK-SEGMENT.bnf",
+        "CREATE-EDITION.bnf",
+        "CREATE-RESTORE-POINT.bnf",
+        "CREATE-SCHEMA.bnf",
+        "CREATE-LOGICAL-PARTITION-TRACKING.bnf",
+        "CREATE-PMEM-FILESTORE.bnf",
+        "DROP-JAVA.bnf",
+        "DROP-LIBRARY.bnf",
+        "DROP-DIRECTORY.bnf",
+        "DROP-CONTEXT.bnf",
+        "DROP-FLASHBACK-ARCHIVE.bnf",
+        "DROP-EDITION.bnf"
+      ],
       "bnf_lines": 239,
       "effort": "implement+review",
       "rules": [
@@ -996,8 +1244,12 @@
         "create_logical_partition_tracking_stmt",
         "create_pmem_filestore_stmt"
       ],
-      "depends_on": [87],
-      "files": ["create_admin.go"],
+      "depends_on": [
+        87
+      ],
+      "files": [
+        "create_admin.go"
+      ],
       "tests": []
     },
     {
@@ -1006,7 +1258,44 @@
       "file": "transaction.go",
       "status": "pending",
       "description": "Review-only batch for all well-implemented statements. Transaction (COMMIT/ROLLBACK/SAVEPOINT/SET TRANSACTION/SET ROLE/SET CONSTRAINTS), Utility (LOCK TABLE/CALL/RENAME/TRUNCATE/ANALYZE/EXPLAIN PLAN/FLASHBACK TABLE/PURGE/COMMENT), DCL (GRANT/REVOKE), Sequence/Synonym/DBLink (CREATE/ALTER), all DROP statements, ADMINISTER KEY MANAGEMENT, ASSOCIATE/DISASSOCIATE STATISTICS.",
-      "bnf_files": ["COMMIT.bnf", "ROLLBACK.bnf", "SAVEPOINT.bnf", "SET-TRANSACTION.bnf", "SET-ROLE.bnf", "SET-CONSTRAINT.bnf", "LOCK-TABLE.bnf", "CALL.bnf", "RENAME.bnf", "TRUNCATE-TABLE.bnf", "ANALYZE.bnf", "EXPLAIN-PLAN.bnf", "FLASHBACK-TABLE.bnf", "PURGE.bnf", "COMMENT.bnf", "GRANT.bnf", "REVOKE.bnf", "CREATE-SEQUENCE.bnf", "ALTER-SEQUENCE.bnf", "CREATE-SYNONYM.bnf", "CREATE-DATABASE-LINK.bnf", "ALTER-DATABASE-LINK.bnf", "DROP-TABLE.bnf", "DROP-VIEW.bnf", "DROP-INDEX.bnf", "DROP-SEQUENCE.bnf", "DROP-SYNONYM.bnf", "DROP-DATABASE-LINK.bnf", "DROP-FUNCTION.bnf", "DROP-PROCEDURE.bnf", "DROP-PACKAGE.bnf", "DROP-TRIGGER.bnf", "DROP-TYPE.bnf", "ADMINISTER-KEY-MANAGEMENT.bnf", "ASSOCIATE-STATISTICS.bnf", "DISASSOCIATE-STATISTICS.bnf"],
+      "bnf_files": [
+        "COMMIT.bnf",
+        "ROLLBACK.bnf",
+        "SAVEPOINT.bnf",
+        "SET-TRANSACTION.bnf",
+        "SET-ROLE.bnf",
+        "SET-CONSTRAINT.bnf",
+        "LOCK-TABLE.bnf",
+        "CALL.bnf",
+        "RENAME.bnf",
+        "TRUNCATE-TABLE.bnf",
+        "ANALYZE.bnf",
+        "EXPLAIN-PLAN.bnf",
+        "FLASHBACK-TABLE.bnf",
+        "PURGE.bnf",
+        "COMMENT.bnf",
+        "GRANT.bnf",
+        "REVOKE.bnf",
+        "CREATE-SEQUENCE.bnf",
+        "ALTER-SEQUENCE.bnf",
+        "CREATE-SYNONYM.bnf",
+        "CREATE-DATABASE-LINK.bnf",
+        "ALTER-DATABASE-LINK.bnf",
+        "DROP-TABLE.bnf",
+        "DROP-VIEW.bnf",
+        "DROP-INDEX.bnf",
+        "DROP-SEQUENCE.bnf",
+        "DROP-SYNONYM.bnf",
+        "DROP-DATABASE-LINK.bnf",
+        "DROP-FUNCTION.bnf",
+        "DROP-PROCEDURE.bnf",
+        "DROP-PACKAGE.bnf",
+        "DROP-TRIGGER.bnf",
+        "DROP-TYPE.bnf",
+        "ADMINISTER-KEY-MANAGEMENT.bnf",
+        "ASSOCIATE-STATISTICS.bnf",
+        "DISASSOCIATE-STATISTICS.bnf"
+      ],
       "bnf_lines": 880,
       "effort": "review",
       "rules": [
@@ -1037,8 +1326,19 @@
         "associate_statistics_stmt",
         "disassociate_statistics_stmt"
       ],
-      "depends_on": [87],
-      "files": ["transaction.go", "utility.go", "grant.go", "sequence_synonym.go", "drop.go", "security.go", "session.go", "comment.go"],
+      "depends_on": [
+        87
+      ],
+      "files": [
+        "transaction.go",
+        "utility.go",
+        "grant.go",
+        "sequence_synonym.go",
+        "drop.go",
+        "security.go",
+        "session.go",
+        "comment.go"
+      ],
       "tests": []
     }
   ],

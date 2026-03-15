@@ -340,8 +340,14 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeAlterUserStmt(sb, n)
 	case *CreateRoleStmt:
 		writeCreateRoleStmt(sb, n)
+	case *AlterRoleStmt:
+		writeAlterRoleStmt(sb, n)
 	case *CreateProfileStmt:
 		writeCreateProfileStmt(sb, n)
+	case *AlterProfileStmt:
+		writeAlterProfileStmt(sb, n)
+	case *AlterResourceCostStmt:
+		writeAlterResourceCostStmt(sb, n)
 	case *AdminDDLStmt:
 		writeAdminDDLStmt(sb, n)
 	case *DDLOption:
@@ -3649,14 +3655,64 @@ func writeAlterUserStmt(sb *strings.Builder, n *AlterUserStmt) {
 	sb.WriteString("}")
 }
 
+func writeRoleIdentified(sb *strings.Builder, idType RoleIdentifiedType, identifyBy, identifySchema string, hasIdentified bool) {
+	if !hasIdentified && idType == ROLE_NOT_IDENTIFIED && identifyBy == "" {
+		return
+	}
+	switch idType {
+	case ROLE_NOT_IDENTIFIED:
+		if hasIdentified {
+			sb.WriteString(" :identified NOT_IDENTIFIED")
+		}
+	case ROLE_IDENTIFIED_BY:
+		sb.WriteString(fmt.Sprintf(" :identified BY :password %q", identifyBy))
+	case ROLE_IDENTIFIED_USING:
+		if identifySchema != "" {
+			sb.WriteString(fmt.Sprintf(" :identified USING :schema %q :package %q", identifySchema, identifyBy))
+		} else {
+			sb.WriteString(fmt.Sprintf(" :identified USING :package %q", identifyBy))
+		}
+	case ROLE_IDENTIFIED_EXTERNALLY:
+		sb.WriteString(" :identified EXTERNALLY")
+	case ROLE_IDENTIFIED_GLOBALLY:
+		sb.WriteString(" :identified GLOBALLY")
+		if identifyBy != "" {
+			sb.WriteString(fmt.Sprintf(" :as %q", identifyBy))
+		}
+	}
+}
+
 func writeCreateRoleStmt(sb *strings.Builder, n *CreateRoleStmt) {
 	sb.WriteString("{CREATE_ROLE")
 	if n.Name != nil {
 		sb.WriteString(" :name ")
 		writeNode(sb, n.Name)
 	}
-	if n.IdentifyBy != "" {
-		sb.WriteString(fmt.Sprintf(" :identifiedBy %q", n.IdentifyBy))
+	writeRoleIdentified(sb, n.IdentifiedType, n.IdentifyBy, n.IdentifySchema, n.HasIdentified)
+	if n.ContainerAll != nil {
+		if *n.ContainerAll {
+			sb.WriteString(" :container ALL")
+		} else {
+			sb.WriteString(" :container CURRENT")
+		}
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeAlterRoleStmt(sb *strings.Builder, n *AlterRoleStmt) {
+	sb.WriteString("{ALTER_ROLE")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	writeRoleIdentified(sb, n.IdentifiedType, n.IdentifyBy, n.IdentifySchema, true)
+	if n.ContainerAll != nil {
+		if *n.ContainerAll {
+			sb.WriteString(" :container ALL")
+		} else {
+			sb.WriteString(" :container CURRENT")
+		}
 	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
@@ -3681,6 +3737,36 @@ func writeCreateProfileStmt(sb *strings.Builder, n *CreateProfileStmt) {
 		} else {
 			sb.WriteString(" :container CURRENT")
 		}
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeAlterProfileStmt(sb *strings.Builder, n *AlterProfileStmt) {
+	sb.WriteString("{ALTER_PROFILE")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	for _, lim := range n.Limits {
+		sb.WriteString(" :limit ")
+		writeProfileLimit(sb, lim)
+	}
+	if n.ContainerAll != nil {
+		if *n.ContainerAll {
+			sb.WriteString(" :container ALL")
+		} else {
+			sb.WriteString(" :container CURRENT")
+		}
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeAlterResourceCostStmt(sb *strings.Builder, n *AlterResourceCostStmt) {
+	sb.WriteString("{ALTER_RESOURCE_COST")
+	for _, c := range n.Costs {
+		sb.WriteString(fmt.Sprintf(" :cost %q %q", c.Name, c.Value))
 	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

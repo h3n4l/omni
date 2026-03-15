@@ -1818,6 +1818,78 @@ func TestParseCreateProfileFull(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// Batch 99: user_role_profile
+// ---------------------------------------------------------------------------
+
+// TestBatch99_UserRoleProfile tests CREATE/ALTER USER, CREATE/ALTER ROLE,
+// CREATE/ALTER PROFILE, ALTER RESOURCE COST, DROP USER/ROLE/PROFILE.
+func TestBatch99_UserRoleProfile(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		// CREATE ROLE - all IDENTIFIED variants
+		{"create_role_using_package", "CREATE ROLE dba_role IDENTIFIED USING hr.auth_pkg"},
+		{"create_role_externally", "CREATE ROLE ext_role IDENTIFIED EXTERNALLY"},
+		{"create_role_globally", "CREATE ROLE global_role IDENTIFIED GLOBALLY"},
+		{"create_role_globally_as", "CREATE ROLE global_role IDENTIFIED GLOBALLY AS 'CN=role1,O=myco'"},
+		{"create_role_container", "CREATE ROLE c##role CONTAINER = ALL"},
+		{"create_role_identified_by_container", "CREATE ROLE app_role IDENTIFIED BY secret CONTAINER = CURRENT"},
+
+		// ALTER ROLE - all variants
+		{"alter_role_not_identified", "ALTER ROLE dba_role NOT IDENTIFIED"},
+		{"alter_role_by_password", "ALTER ROLE dba_role IDENTIFIED BY newsecret"},
+		{"alter_role_externally", "ALTER ROLE dba_role IDENTIFIED EXTERNALLY"},
+		{"alter_role_globally", "ALTER ROLE dba_role IDENTIFIED GLOBALLY AS 'CN=role1,O=myco'"},
+		{"alter_role_using", "ALTER ROLE dba_role IDENTIFIED USING hr.auth_pkg"},
+		{"alter_role_container", "ALTER ROLE dba_role IDENTIFIED BY secret CONTAINER = ALL"},
+
+		// ALTER PROFILE
+		{"alter_profile_resource", "ALTER PROFILE app_profile LIMIT SESSIONS_PER_USER 10"},
+		{"alter_profile_password", "ALTER PROFILE app_profile LIMIT FAILED_LOGIN_ATTEMPTS 3"},
+		{"alter_profile_multiple", "ALTER PROFILE app_profile LIMIT CPU_PER_SESSION UNLIMITED IDLE_TIME 30 PASSWORD_LIFE_TIME 90"},
+		{"alter_profile_verify_func", "ALTER PROFILE app_profile LIMIT PASSWORD_VERIFY_FUNCTION verify_func"},
+		{"alter_profile_verify_null", "ALTER PROFILE app_profile LIMIT PASSWORD_VERIFY_FUNCTION NULL"},
+		{"alter_profile_verify_default", "ALTER PROFILE app_profile LIMIT PASSWORD_VERIFY_FUNCTION DEFAULT"},
+		{"alter_profile_container", "ALTER PROFILE app_profile LIMIT SESSIONS_PER_USER 5 CONTAINER = ALL"},
+		{"alter_profile_private_sga", "ALTER PROFILE app_profile LIMIT PRIVATE_SGA 100M"},
+		{"alter_profile_rollover", "ALTER PROFILE app_profile LIMIT PASSWORD_ROLLOVER_TIME 1"},
+
+		// ALTER RESOURCE COST
+		{"alter_resource_cost_single", "ALTER RESOURCE COST CPU_PER_SESSION 100"},
+		{"alter_resource_cost_multi", "ALTER RESOURCE COST CPU_PER_SESSION 100 CONNECT_TIME 1"},
+		{"alter_resource_cost_all", "ALTER RESOURCE COST CPU_PER_SESSION 100 CONNECT_TIME 50 LOGICAL_READS_PER_SESSION 1000 PRIVATE_SGA 500"},
+
+		// DROP USER
+		{"drop_user_if_exists", "DROP USER IF EXISTS scott"},
+		{"drop_user_if_exists_cascade", "DROP USER IF EXISTS scott CASCADE"},
+
+		// DROP PROFILE
+		{"drop_profile_cascade", "DROP PROFILE app_profile CASCADE"},
+
+		// CREATE USER additional coverage
+		{"create_user_read_only", "CREATE USER scott IDENTIFIED BY tiger READ ONLY"},
+		{"create_user_read_write", "CREATE USER scott IDENTIFIED BY tiger READ WRITE"},
+		{"create_user_http_digest_enable", "CREATE USER scott IDENTIFIED BY tiger HTTP DIGEST ENABLE"},
+		{"create_user_digest_disable", "CREATE USER scott IDENTIFIED BY tiger DIGEST DISABLE"},
+
+		// ALTER USER - proxy clause
+		{"alter_user_grant_connect_through", "ALTER USER scott GRANT CONNECT THROUGH proxy_user"},
+		{"alter_user_revoke_connect_through", "ALTER USER scott REVOKE CONNECT THROUGH proxy_user"},
+		{"alter_user_grant_connect_enterprise", "ALTER USER scott GRANT CONNECT THROUGH ENTERPRISE USERS"},
+		{"alter_user_expire_rollover", "ALTER USER scott EXPIRE PASSWORD ROLLOVER PERIOD"},
+		{"alter_user_dictionary_protection_enable", "ALTER USER scott ENABLE DICTIONARY PROTECTION"},
+		{"alter_user_dictionary_protection_disable", "ALTER USER scott DISABLE DICTIONARY PROTECTION"},
+		{"alter_user_container_data_set", "ALTER USER scott SET CONTAINER_DATA = (pdb1, pdb2) FOR schema1.obj1"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ParseAndCheck(t, tc.sql)
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Batch 60: admin_ddl_option_parsing
 // ---------------------------------------------------------------------------
 
@@ -3243,7 +3315,8 @@ func TestBatch71_JsonDualityView(t *testing.T) {
 
 // TestBatch72_AlterMiscRound3 tests ALTER FLASHBACK ARCHIVE, ALTER RESOURCE COST, ALTER ROLLBACK SEGMENT.
 func TestBatch72_AlterMiscRound3(t *testing.T) {
-	tests := []struct {
+	// Admin DDL tests (flashback archive, rollback segment)
+	adminTests := []struct {
 		name   string
 		sql    string
 		action string
@@ -3251,15 +3324,23 @@ func TestBatch72_AlterMiscRound3(t *testing.T) {
 	}{
 		{"alter_flashback_archive", "ALTER FLASHBACK ARCHIVE fla1 SET DEFAULT", "ALTER", ast.OBJECT_FLASHBACK_ARCHIVE},
 		{"alter_flashback_archive_purge", "ALTER FLASHBACK ARCHIVE fla1 PURGE BEFORE TIMESTAMP SYSTIMESTAMP - 30", "ALTER", ast.OBJECT_FLASHBACK_ARCHIVE},
-		{"alter_resource_cost", "ALTER RESOURCE COST CPU_PER_SESSION 100", "ALTER", ast.OBJECT_RESOURCE_COST},
 		{"alter_rollback_segment", "ALTER ROLLBACK SEGMENT rbs1 ONLINE", "ALTER", ast.OBJECT_ROLLBACK_SEGMENT},
 		{"alter_rollback_segment_offline", "ALTER ROLLBACK SEGMENT rbs1 OFFLINE", "ALTER", ast.OBJECT_ROLLBACK_SEGMENT},
 	}
-	for _, tt := range tests {
+	for _, tt := range adminTests {
 		t.Run(tt.name, func(t *testing.T) {
 			adminDDLTest(t, tt.sql, tt.action, tt.obj)
 		})
 	}
+	// ALTER RESOURCE COST now uses dedicated AlterResourceCostStmt
+	t.Run("alter_resource_cost", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER RESOURCE COST CPU_PER_SESSION 100")
+		raw := result.Items[0].(*ast.RawStmt)
+		_, ok := raw.Stmt.(*ast.AlterResourceCostStmt)
+		if !ok {
+			t.Fatalf("expected *AlterResourceCostStmt, got %T", raw.Stmt)
+		}
+	})
 }
 
 // TestBatch73_RollbackSegmentEdition tests CREATE/DROP ROLLBACK SEGMENT and EDITION.

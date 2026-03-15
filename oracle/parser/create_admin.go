@@ -302,6 +302,14 @@ func (p *Parser) parseDropAdminObject(start int) nodes.StmtNode {
 			ObjectType: nodes.OBJECT_USER,
 			Loc:        nodes.Loc{Start: start},
 		}
+		// IF EXISTS
+		if p.cur.Type == kwIF {
+			next := p.peekNext()
+			if next.Type == kwEXISTS {
+				p.advance() // consume IF
+				p.advance() // consume EXISTS
+			}
+		}
 		stmt.Name = p.parseObjectName()
 		// CASCADE
 		if p.cur.Type == kwCASCADE {
@@ -2076,10 +2084,10 @@ func (p *Parser) parseAlterAdminObject(start int) nodes.StmtNode {
 		return p.parseAlterUserStmt(start)
 	case kwROLE:
 		p.advance()
-		return p.parseAdminDDLStmt("ALTER", nodes.OBJECT_ROLE, start)
+		return p.parseAlterRoleStmt(start)
 	case kwPROFILE:
 		p.advance()
-		return p.parseAdminDDLStmt("ALTER", nodes.OBJECT_PROFILE, start)
+		return p.parseAlterProfileStmt(start)
 	case kwTABLESPACE:
 		p.advance()
 		if p.cur.Type == kwSET {
@@ -2164,7 +2172,7 @@ func (p *Parser) parseAlterAdminObject(start int) nodes.StmtNode {
 				if p.isIdentLike() && p.cur.Str == "COST" {
 					p.advance() // consume COST
 				}
-				return p.parseAdminDDLStmt("ALTER", nodes.OBJECT_RESOURCE_COST, start)
+				return p.parseAlterResourceCostStmt(start)
 			case "ROLLBACK":
 				p.advance() // consume ROLLBACK
 				if p.isIdentLike() && p.cur.Str == "SEGMENT" {

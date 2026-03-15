@@ -2588,15 +2588,62 @@ type AlterUserStmt struct {
 func (n *AlterUserStmt) nodeTag()  {}
 func (n *AlterUserStmt) stmtNode() {}
 
+// RoleIdentifiedType represents the type of role identification.
+type RoleIdentifiedType int
+
+const (
+	ROLE_NOT_IDENTIFIED  RoleIdentifiedType = iota // NOT IDENTIFIED
+	ROLE_IDENTIFIED_BY                             // IDENTIFIED BY password
+	ROLE_IDENTIFIED_USING                          // IDENTIFIED USING [schema.]package
+	ROLE_IDENTIFIED_EXTERNALLY                     // IDENTIFIED EXTERNALLY
+	ROLE_IDENTIFIED_GLOBALLY                       // IDENTIFIED GLOBALLY [AS 'directory_name']
+)
+
 // CreateRoleStmt represents a CREATE ROLE statement.
+//
+//	CREATE ROLE role
+//	    [ NOT IDENTIFIED
+//	    | IDENTIFIED { BY password
+//	                 | USING [ schema. ] package
+//	                 | EXTERNALLY
+//	                 | GLOBALLY [ AS 'directory_name' ]
+//	                 }
+//	    ]
+//	    [ CONTAINER = { ALL | CURRENT } ]
 type CreateRoleStmt struct {
-	Name       *ObjectName // role name
-	IdentifyBy string      // optional IDENTIFIED BY/USING/EXTERNALLY
-	Loc        Loc
+	Name          *ObjectName        // role name
+	IdentifiedType RoleIdentifiedType // identification type
+	IdentifyBy    string             // password, package name, or global AS value
+	IdentifySchema string            // schema for USING clause
+	HasIdentified bool               // true if any IDENTIFIED/NOT IDENTIFIED clause present
+	ContainerAll  *bool              // CONTAINER = ALL (true) / CURRENT (false) / nil (not specified)
+	Loc           Loc
 }
 
 func (n *CreateRoleStmt) nodeTag()  {}
 func (n *CreateRoleStmt) stmtNode() {}
+
+// AlterRoleStmt represents an ALTER ROLE statement.
+//
+//	ALTER ROLE role
+//	    { NOT IDENTIFIED
+//	    | IDENTIFIED BY password
+//	    | IDENTIFIED EXTERNALLY
+//	    | IDENTIFIED GLOBALLY AS 'domain_name'
+//	    | IDENTIFIED USING [ schema. ] package_name
+//	    }
+//	    [ CONTAINER = { ALL | CURRENT } ]
+type AlterRoleStmt struct {
+	Name           *ObjectName        // role name
+	IdentifiedType RoleIdentifiedType // identification type
+	IdentifyBy     string             // password, package name, or global AS value
+	IdentifySchema string             // schema for USING clause
+	ContainerAll   *bool              // CONTAINER = ALL (true) / CURRENT (false) / nil (not specified)
+	Loc            Loc
+}
+
+func (n *AlterRoleStmt) nodeTag()  {}
+func (n *AlterRoleStmt) stmtNode() {}
 
 // ProfileLimitType represents the type of profile limit.
 type ProfileLimitType int
@@ -2630,6 +2677,46 @@ type CreateProfileStmt struct {
 
 func (n *CreateProfileStmt) nodeTag()  {}
 func (n *CreateProfileStmt) stmtNode() {}
+
+// AlterProfileStmt represents an ALTER PROFILE statement.
+//
+//	ALTER PROFILE profile_name
+//	    LIMIT { resource_parameters | password_parameters }
+//	    [ CONTAINER = { ALL | CURRENT } ]
+type AlterProfileStmt struct {
+	Name         *ObjectName     // profile name
+	Limits       []*ProfileLimit // parsed limit entries
+	ContainerAll *bool           // CONTAINER = ALL (true) / CURRENT (false) / nil (not specified)
+	Loc          Loc
+}
+
+func (n *AlterProfileStmt) nodeTag()  {}
+func (n *AlterProfileStmt) stmtNode() {}
+
+// ResourceCostEntry represents a single resource cost entry in ALTER RESOURCE COST.
+type ResourceCostEntry struct {
+	Name  string // CPU_PER_SESSION, CONNECT_TIME, LOGICAL_READS_PER_SESSION, PRIVATE_SGA
+	Value string // integer value
+	Loc   Loc
+}
+
+func (n *ResourceCostEntry) nodeTag() {}
+
+// AlterResourceCostStmt represents an ALTER RESOURCE COST statement.
+//
+//	ALTER RESOURCE COST
+//	    { CPU_PER_SESSION integer
+//	    | CONNECT_TIME integer
+//	    | LOGICAL_READS_PER_SESSION integer
+//	    | PRIVATE_SGA integer
+//	    } ...
+type AlterResourceCostStmt struct {
+	Costs []*ResourceCostEntry
+	Loc   Loc
+}
+
+func (n *AlterResourceCostStmt) nodeTag()  {}
+func (n *AlterResourceCostStmt) stmtNode() {}
 
 // AdminDDLStmt is a generic statement node for administrative DDL statements
 // (CREATE/ALTER/DROP TABLESPACE, DIRECTORY, CONTEXT, CLUSTER, DIMENSION,

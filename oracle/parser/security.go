@@ -227,11 +227,38 @@ func (p *Parser) parseUserOptions(
 			}
 
 		case p.cur.Type == kwENABLE:
-			// ENABLE EDITIONS
+			// ENABLE EDITIONS | ENABLE DICTIONARY PROTECTION
 			p.advance()
 			if p.isIdentLikeStr("EDITIONS") {
 				p.advance()
 				setEnableEditions()
+				// [ FOR object_type [, object_type]... ] [ FORCE ]
+				if p.cur.Type == kwFOR {
+					p.advance()
+					for p.isIdentLike() || p.cur.Type == ',' {
+						p.advance()
+					}
+				}
+				if p.cur.Type == kwFORCE {
+					p.advance()
+				}
+			} else if p.isIdentLikeStr("DICTIONARY") {
+				p.advance() // consume DICTIONARY
+				if p.isIdentLikeStr("PROTECTION") {
+					p.advance() // consume PROTECTION
+				}
+			} else {
+				return
+			}
+
+		case p.cur.Type == kwDISABLE:
+			// DISABLE DICTIONARY PROTECTION
+			p.advance()
+			if p.isIdentLikeStr("DICTIONARY") {
+				p.advance() // consume DICTIONARY
+				if p.isIdentLikeStr("PROTECTION") {
+					p.advance() // consume PROTECTION
+				}
 			} else {
 				return
 			}
@@ -241,6 +268,72 @@ func (p *Parser) parseUserOptions(
 			p.advance()
 			setContainer(p.parseContainerClause())
 
+		case p.cur.Type == kwREAD:
+			// READ ONLY | READ WRITE
+			p.advance()
+			if p.isIdentLikeStr("ONLY") || p.cur.Type == kwWRITE {
+				p.advance()
+			}
+
+		case p.isIdentLikeStr("HTTP"):
+			// [HTTP] DIGEST { ENABLE | DISABLE }
+			p.advance() // consume HTTP
+			if p.isIdentLikeStr("DIGEST") {
+				p.advance() // consume DIGEST
+				if p.cur.Type == kwENABLE || p.cur.Type == kwDISABLE {
+					p.advance()
+				}
+			}
+
+		case p.isIdentLikeStr("DIGEST"):
+			// DIGEST { ENABLE | DISABLE }
+			p.advance() // consume DIGEST
+			if p.cur.Type == kwENABLE || p.cur.Type == kwDISABLE {
+				p.advance()
+			}
+
+		case p.isIdentLikeStr("EXPIRE"):
+			// EXPIRE PASSWORD ROLLOVER PERIOD (ALTER USER)
+			p.advance() // consume EXPIRE
+			if p.isIdentLikeStr("PASSWORD") {
+				p.advance() // consume PASSWORD
+				if p.isIdentLikeStr("ROLLOVER") {
+					p.advance() // consume ROLLOVER
+					if p.isIdentLikeStr("PERIOD") {
+						p.advance() // consume PERIOD
+					}
+				}
+			}
+
+		case p.cur.Type == kwSET || p.isIdentLikeStr("ADD") || p.isIdentLikeStr("REMOVE"):
+			// container_data_clause: { SET | ADD | REMOVE } CONTAINER_DATA ...
+			p.advance() // consume SET/ADD/REMOVE
+			if p.isIdentLikeStr("CONTAINER_DATA") {
+				p.advance() // consume CONTAINER_DATA
+				// = or ( ... )
+				if p.cur.Type == '=' {
+					p.advance()
+				}
+				if p.cur.Type == '(' {
+					p.advance()
+					for p.cur.Type != ')' && p.cur.Type != tokEOF {
+						p.advance()
+					}
+					if p.cur.Type == ')' {
+						p.advance()
+					}
+				} else if p.cur.Type == kwALL || p.cur.Type == kwDEFAULT {
+					p.advance()
+				}
+				// FOR [schema.]object_name
+				if p.cur.Type == kwFOR {
+					p.advance()
+					p.parseObjectName()
+				}
+			} else {
+				return
+			}
+
 		default:
 			return
 		}
@@ -249,24 +342,29 @@ func (p *Parser) parseUserOptions(
 
 // parseCreateUserStmt parses a CREATE USER statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/CREATE-USER.html
+// BNF: oracle/parser/bnf/CREATE-USER.bnf
 //
 //	CREATE USER [ IF NOT EXISTS ] user
-//	    IDENTIFIED
-//	        { BY password
-//	        | EXTERNALLY [ AS 'certificate_DN' | AS 'kerberos_principal_name' ]
-//	        | GLOBALLY [ AS directory_DN | AS 'AZURE_USER=...' | AS 'AZURE_ROLE=...' ]
-//	        | NO AUTHENTICATION
-//	        }
+//	    IDENTIFIED { BY password
+//	               | EXTERNALLY [ AS 'certificate_DN' ]
+//	               | GLOBALLY [ AS 'directory_DN' ]
+//	               | NO AUTHENTICATION
+//	               }
+//	    [ AND FACTOR 'auth_method' AS 'external_name' ]
+//	    [ [ HTTP ] DIGEST { ENABLE | DISABLE } ]
 //	    [ DEFAULT COLLATION collation_name ]
 //	    [ DEFAULT TABLESPACE tablespace ]
 //	    [ [ LOCAL ] TEMPORARY TABLESPACE { tablespace | tablespace_group_name } ]
-//	    [ QUOTA { size_clause | UNLIMITED } ON tablespace ] ...
+//	    [ { QUOTA { size_clause | UNLIMITED } ON tablespace } ]...
 //	    [ PROFILE profile_name ]
 //	    [ PASSWORD EXPIRE ]
 //	    [ ACCOUNT { LOCK | UNLOCK } ]
 //	    [ ENABLE EDITIONS ]
 //	    [ CONTAINER = { ALL | CURRENT } ]
+//	    [ READ ONLY | READ WRITE ] ;
+//
+//	size_clause:
+//	    integer { K | M | G | T }
 func (p *Parser) parseCreateUserStmt(start int) nodes.StmtNode {
 	stmt := &nodes.CreateUserStmt{
 		Loc: nodes.Loc{Start: start},
@@ -320,27 +418,56 @@ func (p *Parser) parseCreateUserStmt(start int) nodes.StmtNode {
 
 // parseAlterUserStmt parses an ALTER USER statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/ALTER-USER.html
+// BNF: oracle/parser/bnf/ALTER-USER.bnf
 //
-//	ALTER USER [ IF EXISTS ] user
-//	    [ IDENTIFIED { BY password [ REPLACE old_password ]
-//	                 | GLOBALLY AS 'distinguished_name'
-//	                 | EXTERNALLY
-//	                 | NO AUTHENTICATION
-//	                 } ]
-//	    [ DEFAULT COLLATION collation_name ]
+//	ALTER USER user
+//	    [ IF EXISTS ]
+//	    { alter_identified_clause
+//	    | proxy_clause
+//	    | alter_user_clauses
+//	    } ;
+//
+//	alter_identified_clause:
+//	    IDENTIFIED
+//	    { BY password [ REPLACE old_password ]
+//	    | EXTERNALLY [ AS 'certificate_DN' | AS 'kerberos_principal_name' ]
+//	    | GLOBALLY [ AS '[ directory_DN ]' ]
+//	    }
+//	  | NO AUTHENTICATION
+//
+//	alter_user_clauses:
 //	    [ DEFAULT TABLESPACE tablespace ]
-//	    [ [ LOCAL ] TEMPORARY TABLESPACE { tablespace | tablespace_group_name } ]
-//	    [ QUOTA { size_clause | UNLIMITED } ON tablespace ] ...
-//	    [ PROFILE profile_name ]
-//	    [ DEFAULT ROLE { role [, role ]...
-//	                   | ALL [ EXCEPT role [, role ]... ]
-//	                   | NONE
-//	                   } ]
+//	    [ TEMPORARY TABLESPACE { tablespace | tablespace_group_name } ]
+//	    [ LOCAL TEMPORARY TABLESPACE { tablespace | tablespace_group_name } ]
+//	    [ quota_clause [, quota_clause ]... ]
+//	    [ PROFILE profile ]
+//	    [ DEFAULT ROLE { role [, role ]... | ALL [ EXCEPT role [, role ]... ] | NONE } ]
 //	    [ PASSWORD EXPIRE ]
+//	    [ EXPIRE PASSWORD ROLLOVER PERIOD ]
 //	    [ ACCOUNT { LOCK | UNLOCK } ]
-//	    [ ENABLE EDITIONS ]
+//	    [ ENABLE EDITIONS [ FOR object_type [, object_type ]... ] [ FORCE ] ]
+//	    [ [ HTTP ] DIGEST { ENABLE | DISABLE } ]
 //	    [ CONTAINER = { ALL | CURRENT } ]
+//	    [ { ENABLE | DISABLE } DICTIONARY PROTECTION ]
+//	    [ DEFAULT COLLATION collation_name ]
+//	    [ container_data_clause ]
+//
+//	quota_clause:
+//	    QUOTA { size_clause | UNLIMITED } ON tablespace
+//
+//	proxy_clause:
+//	    { GRANT CONNECT THROUGH { ENTERPRISE USERS | db_user_proxy [ proxy_clause_options ] }
+//	    | REVOKE CONNECT THROUGH { ENTERPRISE USERS | db_user_proxy }
+//	    }
+//
+//	proxy_clause_options:
+//	    [ WITH { ROLE { role [, role ]... | ALL EXCEPT role [, role ]... } | NO ROLES } ]
+//	    [ AUTHENTICATION REQUIRED ]
+//
+//	container_data_clause:
+//	    { SET | ADD | REMOVE } CONTAINER_DATA
+//	    { ( container_name [, container_name ]... ) | ALL | DEFAULT }
+//	    [ FOR [ schema. ] object_name ]
 func (p *Parser) parseAlterUserStmt(start int) nodes.StmtNode {
 	stmt := &nodes.AlterUserStmt{
 		Loc: nodes.Loc{Start: start},
@@ -452,9 +579,17 @@ func (p *Parser) parseDefaultRoleClause() *nodes.DefaultRoleClause {
 
 // parseCreateRoleStmt parses a CREATE ROLE statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/CREATE-ROLE.html
+// BNF: oracle/parser/bnf/CREATE-ROLE.bnf
 //
-//	CREATE ROLE role [NOT IDENTIFIED | IDENTIFIED BY password | IDENTIFIED USING package | IDENTIFIED EXTERNALLY | IDENTIFIED GLOBALLY]
+//	CREATE ROLE role
+//	    [ NOT IDENTIFIED
+//	    | IDENTIFIED { BY password
+//	                 | USING [ schema. ] package
+//	                 | EXTERNALLY
+//	                 | GLOBALLY [ AS 'directory_name' ]
+//	                 }
+//	    ]
+//	    [ CONTAINER = { ALL | CURRENT } ] ;
 func (p *Parser) parseCreateRoleStmt(start int) nodes.StmtNode {
 	stmt := &nodes.CreateRoleStmt{
 		Loc: nodes.Loc{Start: start},
@@ -465,23 +600,231 @@ func (p *Parser) parseCreateRoleStmt(start int) nodes.StmtNode {
 	// Optional IDENTIFIED clause
 	if p.cur.Type == kwIDENTIFIED {
 		p.advance()
-		if p.cur.Type == kwBY {
-			p.advance()
-			if p.isIdentLike() || p.cur.Type == tokSCONST {
-				stmt.IdentifyBy = p.cur.Str
-				p.advance()
-			}
-		} else if p.isIdentLike() {
-			stmt.IdentifyBy = p.cur.Str
-			p.advance()
-		}
+		stmt.HasIdentified = true
+		p.parseRoleIdentifiedClause(
+			func(t nodes.RoleIdentifiedType) { stmt.IdentifiedType = t },
+			func(v string) { stmt.IdentifyBy = v },
+			func(v string) { stmt.IdentifySchema = v },
+		)
 	} else if p.cur.Type == kwNOT {
 		p.advance()
 		if p.cur.Type == kwIDENTIFIED {
 			p.advance()
 		}
-		stmt.IdentifyBy = "NOT IDENTIFIED"
+		stmt.HasIdentified = true
+		stmt.IdentifiedType = nodes.ROLE_NOT_IDENTIFIED
 	}
+
+	// CONTAINER = { ALL | CURRENT }
+	if p.isIdentLikeStr("CONTAINER") {
+		p.advance()
+		stmt.ContainerAll = p.parseContainerClause()
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseRoleIdentifiedClause parses the IDENTIFIED clause for roles.
+// Called after IDENTIFIED keyword has been consumed.
+//
+//	IDENTIFIED { BY password
+//	           | USING [ schema. ] package
+//	           | EXTERNALLY
+//	           | GLOBALLY [ AS 'directory_name' ]
+//	           }
+func (p *Parser) parseRoleIdentifiedClause(
+	setType func(nodes.RoleIdentifiedType),
+	setValue func(string),
+	setSchema func(string),
+) {
+	switch {
+	case p.cur.Type == kwBY:
+		// IDENTIFIED BY password
+		p.advance()
+		setType(nodes.ROLE_IDENTIFIED_BY)
+		if p.isIdentLike() || p.cur.Type == tokSCONST {
+			setValue(p.cur.Str)
+			p.advance()
+		}
+	case p.cur.Type == kwUSING:
+		// IDENTIFIED USING [schema.]package
+		p.advance()
+		setType(nodes.ROLE_IDENTIFIED_USING)
+		name := p.parseObjectName()
+		if name != nil {
+			if name.Schema != "" {
+				setSchema(name.Schema)
+			}
+			setValue(name.Name)
+		}
+	case p.isIdentLikeStr("EXTERNALLY"):
+		// IDENTIFIED EXTERNALLY
+		p.advance()
+		setType(nodes.ROLE_IDENTIFIED_EXTERNALLY)
+	case p.isIdentLikeStr("GLOBALLY"):
+		// IDENTIFIED GLOBALLY [AS 'directory_name']
+		p.advance()
+		setType(nodes.ROLE_IDENTIFIED_GLOBALLY)
+		if p.cur.Type == kwAS {
+			p.advance()
+			if p.cur.Type == tokSCONST {
+				setValue(p.cur.Str)
+				p.advance()
+			}
+		}
+	}
+}
+
+// parseAlterRoleStmt parses an ALTER ROLE statement.
+//
+// BNF: oracle/parser/bnf/ALTER-ROLE.bnf
+//
+//	ALTER ROLE role
+//	    { NOT IDENTIFIED
+//	    | IDENTIFIED BY password
+//	    | IDENTIFIED EXTERNALLY
+//	    | IDENTIFIED GLOBALLY AS 'domain_name'
+//	    | IDENTIFIED USING [ schema. ] package_name
+//	    }
+//	    [ CONTAINER = { ALL | CURRENT } ]
+func (p *Parser) parseAlterRoleStmt(start int) nodes.StmtNode {
+	stmt := &nodes.AlterRoleStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	stmt.Name = p.parseObjectName()
+
+	// Required IDENTIFIED clause or NOT IDENTIFIED
+	if p.cur.Type == kwIDENTIFIED {
+		p.advance()
+		p.parseRoleIdentifiedClause(
+			func(t nodes.RoleIdentifiedType) { stmt.IdentifiedType = t },
+			func(v string) { stmt.IdentifyBy = v },
+			func(v string) { stmt.IdentifySchema = v },
+		)
+	} else if p.cur.Type == kwNOT {
+		p.advance()
+		if p.cur.Type == kwIDENTIFIED {
+			p.advance()
+		}
+		stmt.IdentifiedType = nodes.ROLE_NOT_IDENTIFIED
+	}
+
+	// CONTAINER = { ALL | CURRENT }
+	if p.isIdentLikeStr("CONTAINER") {
+		p.advance()
+		stmt.ContainerAll = p.parseContainerClause()
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseAlterProfileStmt parses an ALTER PROFILE statement.
+//
+// BNF: oracle/parser/bnf/ALTER-PROFILE.bnf
+//
+//	ALTER PROFILE profile_name
+//	    LIMIT { resource_parameters | password_parameters }
+//	    [ CONTAINER = { ALL | CURRENT } ] ;
+//
+//	resource_parameters:
+//	    { SESSIONS_PER_USER { integer | UNLIMITED | DEFAULT }
+//	    | CPU_PER_SESSION { integer | UNLIMITED | DEFAULT }
+//	    | CPU_PER_CALL { integer | UNLIMITED | DEFAULT }
+//	    | CONNECT_TIME { integer | UNLIMITED | DEFAULT }
+//	    | IDLE_TIME { integer | UNLIMITED | DEFAULT }
+//	    | LOGICAL_READS_PER_SESSION { integer | UNLIMITED | DEFAULT }
+//	    | LOGICAL_READS_PER_CALL { integer | UNLIMITED | DEFAULT }
+//	    | PRIVATE_SGA { size_clause | UNLIMITED | DEFAULT }
+//	    | COMPOSITE_LIMIT { integer | UNLIMITED | DEFAULT }
+//	    }
+//
+//	password_parameters:
+//	    { PASSWORD_LIFE_TIME { integer | UNLIMITED | DEFAULT }
+//	    | PASSWORD_GRACE_TIME { integer | UNLIMITED | DEFAULT }
+//	    | PASSWORD_REUSE_TIME { integer | UNLIMITED | DEFAULT }
+//	    | PASSWORD_REUSE_MAX { integer | UNLIMITED | DEFAULT }
+//	    | PASSWORD_LOCK_TIME { integer | UNLIMITED | DEFAULT }
+//	    | FAILED_LOGIN_ATTEMPTS { integer | UNLIMITED | DEFAULT }
+//	    | INACTIVE_ACCOUNT_TIME { integer | UNLIMITED | DEFAULT }
+//	    | PASSWORD_ROLLOVER_TIME { integer | UNLIMITED | DEFAULT }
+//	    | PASSWORD_VERIFY_FUNCTION { function_name | NULL | DEFAULT }
+//	    }
+func (p *Parser) parseAlterProfileStmt(start int) nodes.StmtNode {
+	stmt := &nodes.AlterProfileStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	stmt.Name = p.parseObjectName()
+
+	// Parse LIMIT clauses (same logic as CREATE PROFILE)
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		if p.cur.Type == kwLIMIT {
+			p.advance()
+			for p.isProfileParam() {
+				lim := p.parseProfileLimit()
+				stmt.Limits = append(stmt.Limits, lim)
+			}
+		} else if p.isProfileParam() {
+			lim := p.parseProfileLimit()
+			stmt.Limits = append(stmt.Limits, lim)
+		} else if p.isIdentLikeStr("CONTAINER") {
+			p.advance()
+			stmt.ContainerAll = p.parseContainerClause()
+		} else {
+			break
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseAlterResourceCostStmt parses an ALTER RESOURCE COST statement.
+//
+// BNF: oracle/parser/bnf/ALTER-RESOURCE-COST.bnf
+//
+//	ALTER RESOURCE COST
+//	    { CPU_PER_SESSION integer
+//	    | CONNECT_TIME integer
+//	    | LOGICAL_READS_PER_SESSION integer
+//	    | PRIVATE_SGA integer
+//	    } [ { CPU_PER_SESSION integer
+//	        | CONNECT_TIME integer
+//	        | LOGICAL_READS_PER_SESSION integer
+//	        | PRIVATE_SGA integer
+//	        } ]...
+func (p *Parser) parseAlterResourceCostStmt(start int) nodes.StmtNode {
+	stmt := &nodes.AlterResourceCostStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		if !p.isIdentLike() {
+			break
+		}
+		name := p.cur.Str
+		switch name {
+		case "CPU_PER_SESSION", "CONNECT_TIME", "LOGICAL_READS_PER_SESSION", "PRIVATE_SGA":
+			entryStart := p.pos()
+			p.advance()
+			entry := &nodes.ResourceCostEntry{
+				Name: name,
+				Loc:  nodes.Loc{Start: entryStart},
+			}
+			if p.cur.Type == tokICONST {
+				entry.Value = p.cur.Str
+				p.advance()
+			}
+			entry.Loc.End = p.pos()
+			stmt.Costs = append(stmt.Costs, entry)
+		default:
+			goto done
+		}
+	}
+done:
 
 	stmt.Loc.End = p.pos()
 	return stmt
@@ -509,35 +852,39 @@ func (p *Parser) isProfileParam() bool {
 
 // parseCreateProfileStmt parses a CREATE PROFILE statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/CREATE-PROFILE.html
+// BNF: oracle/parser/bnf/CREATE-PROFILE.bnf
 //
-//	CREATE [ MANDATORY ] PROFILE profile_name
-//	    LIMIT { resource_parameters | password_parameters } ...
-//	    [ CONTAINER = { ALL | CURRENT } ]
+//	CREATE [ MANDATORY ] PROFILE profile
+//	    LIMIT { resource_parameters | password_parameters }
+//	          [ { resource_parameters | password_parameters } ]...
+//	    [ CONTAINER = { ALL | CURRENT } ] ;
 //
-//	resource_parameters ::=
-//	    SESSIONS_PER_USER { integer | UNLIMITED | DEFAULT }
-//	    CPU_PER_SESSION { integer | UNLIMITED | DEFAULT }
-//	    CPU_PER_CALL { integer | UNLIMITED | DEFAULT }
-//	    CONNECT_TIME { integer | UNLIMITED | DEFAULT }
-//	    IDLE_TIME { integer | UNLIMITED | DEFAULT }
-//	    LOGICAL_READS_PER_SESSION { integer | UNLIMITED | DEFAULT }
-//	    LOGICAL_READS_PER_CALL { integer | UNLIMITED | DEFAULT }
-//	    PRIVATE_SGA { size_clause | UNLIMITED | DEFAULT }
-//	    COMPOSITE_LIMIT { integer | UNLIMITED | DEFAULT }
+//	resource_parameters:
+//	    { SESSIONS_PER_USER { integer | UNLIMITED | DEFAULT }
+//	    | CPU_PER_SESSION { integer | UNLIMITED | DEFAULT }
+//	    | CPU_PER_CALL { integer | UNLIMITED | DEFAULT }
+//	    | CONNECT_TIME { integer | UNLIMITED | DEFAULT }
+//	    | IDLE_TIME { integer | UNLIMITED | DEFAULT }
+//	    | LOGICAL_READS_PER_SESSION { integer | UNLIMITED | DEFAULT }
+//	    | LOGICAL_READS_PER_CALL { integer | UNLIMITED | DEFAULT }
+//	    | PRIVATE_SGA { size_clause | UNLIMITED | DEFAULT }
+//	    | COMPOSITE_LIMIT { integer | UNLIMITED | DEFAULT }
+//	    }
 //
-//	password_parameters ::=
-//	    FAILED_LOGIN_ATTEMPTS { integer | UNLIMITED | DEFAULT }
-//	    PASSWORD_LIFE_TIME { expr | UNLIMITED | DEFAULT }
-//	    PASSWORD_REUSE_TIME { expr | UNLIMITED | DEFAULT }
-//	    PASSWORD_REUSE_MAX { integer | UNLIMITED | DEFAULT }
-//	    PASSWORD_LOCK_TIME { expr | UNLIMITED | DEFAULT }
-//	    PASSWORD_GRACE_TIME { expr | UNLIMITED | DEFAULT }
-//	    INACTIVE_ACCOUNT_TIME { expr | UNLIMITED | DEFAULT }
-//	    PASSWORD_VERIFY_FUNCTION { function_name | NULL }
-//	    PASSWORD_ROLLOVER_TIME { expr | UNLIMITED | DEFAULT }
+//	password_parameters:
+//	    { FAILED_LOGIN_ATTEMPTS { integer | UNLIMITED | DEFAULT }
+//	    | PASSWORD_LIFE_TIME { expr | UNLIMITED | DEFAULT }
+//	    | PASSWORD_REUSE_TIME { expr | UNLIMITED | DEFAULT }
+//	    | PASSWORD_REUSE_MAX { integer | UNLIMITED | DEFAULT }
+//	    | PASSWORD_LOCK_TIME { expr | UNLIMITED | DEFAULT }
+//	    | PASSWORD_GRACE_TIME { expr | UNLIMITED | DEFAULT }
+//	    | INACTIVE_ACCOUNT_TIME { integer | UNLIMITED | DEFAULT }
+//	    | PASSWORD_VERIFY_FUNCTION { function_name | NULL | DEFAULT }
+//	    | PASSWORD_ROLLOVER_TIME { expr | UNLIMITED | DEFAULT }
+//	    }
 //
-//	size_clause ::= integer [ K | M | G ]
+//	size_clause:
+//	    integer [ K | M | G | T | P | E ]
 func (p *Parser) parseCreateProfileStmt(start int, mandatory bool) nodes.StmtNode {
 	stmt := &nodes.CreateProfileStmt{
 		Loc:       nodes.Loc{Start: start},
