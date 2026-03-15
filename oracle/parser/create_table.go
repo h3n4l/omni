@@ -241,6 +241,21 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 					p.advance() // consume DOMAIN
 					return p.parseCreateDomainStmt(start, orReplace, true)
 				}
+			case "OUTLINE":
+				p.advance() // consume OUTLINE
+				return p.parseCreateOutlineStmt(start, orReplace, public)
+			case "PROPERTY":
+				p.advance() // consume PROPERTY
+				if p.isIdentLike() && p.cur.Str == "GRAPH" {
+					p.advance() // consume GRAPH
+				}
+				return p.parseCreatePropertyGraphStmt(start, orReplace, ifNotExists)
+			case "VECTOR":
+				p.advance() // consume VECTOR
+				if p.cur.Type == kwINDEX {
+					p.advance() // consume INDEX
+				}
+				return p.parseCreateVectorIndexStmt(start, ifNotExists)
 			}
 		}
 		// Check for DIMENSION, FLASHBACK ARCHIVE

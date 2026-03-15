@@ -213,10 +213,10 @@ func (p *Parser) parseCreateAdminObject(start int) nodes.StmtNode {
 			if p.cur.Type == kwPROFILE {
 				p.advance() // consume PROFILE
 			}
-			return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_LOCKDOWN_PROFILE, start)
+			return p.parseCreateLockdownProfileStmt(start)
 		case "OUTLINE":
 			p.advance()
-			return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_OUTLINE, start)
+			return p.parseCreateOutlineStmt(start, false, false)
 		case "INMEMORY":
 			p.advance() // consume INMEMORY
 			if p.cur.Type == kwJOIN {
@@ -257,13 +257,13 @@ func (p *Parser) parseCreateAdminObject(start int) nodes.StmtNode {
 			if p.isIdentLike() && p.cur.Str == "GRAPH" {
 				p.advance() // consume GRAPH
 			}
-			return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_PROPERTY_GRAPH, start)
+			return p.parseCreatePropertyGraphStmt(start, false, false)
 		case "VECTOR":
 			p.advance() // consume VECTOR
 			if p.cur.Type == kwINDEX {
 				p.advance() // consume INDEX
 			}
-			return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_VECTOR_INDEX, start)
+			return p.parseCreateVectorIndexStmt(start, false)
 		case "RESTORE":
 			p.advance() // consume RESTORE
 			if p.isIdentLike() && p.cur.Str == "POINT" {
@@ -405,10 +405,10 @@ func (p *Parser) parseDropAdminObject(start int) nodes.StmtNode {
 				if p.cur.Type == kwPROFILE {
 					p.advance() // consume PROFILE
 				}
-				return p.parseAdminDDLStmt("DROP", nodes.OBJECT_LOCKDOWN_PROFILE, start)
+				return p.parseDropSimpleStmt(nodes.OBJECT_LOCKDOWN_PROFILE, start)
 			case "OUTLINE":
 				p.advance()
-				return p.parseAdminDDLStmt("DROP", nodes.OBJECT_OUTLINE, start)
+				return p.parseDropSimpleStmt(nodes.OBJECT_OUTLINE, start)
 			case "INMEMORY":
 				p.advance() // consume INMEMORY
 				if p.cur.Type == kwJOIN {
@@ -2978,10 +2978,10 @@ func (p *Parser) parseAlterAdminObject(start int) nodes.StmtNode {
 				if p.cur.Type == kwPROFILE {
 					p.advance() // consume PROFILE
 				}
-				return p.parseAdminDDLStmt("ALTER", nodes.OBJECT_LOCKDOWN_PROFILE, start)
+				return p.parseAlterLockdownProfileStmt(start)
 			case "OUTLINE":
 				p.advance()
-				return p.parseAdminDDLStmt("ALTER", nodes.OBJECT_OUTLINE, start)
+				return p.parseAlterOutlineStmt(start)
 			case "INMEMORY":
 				p.advance() // consume INMEMORY
 				if p.cur.Type == kwJOIN {
@@ -4172,6 +4172,917 @@ func (p *Parser) parseAlterDomainStmt(start int, usecase bool) *nodes.AlterDomai
 	case p.isIdentLikeStr("ANNOTATIONS"):
 		stmt.Action = "ANNOTATIONS"
 		stmt.Annotations = p.parseDomainAnnotations()
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// ---------------------------------------------------------------------------
+// CREATE PROPERTY GRAPH
+// ---------------------------------------------------------------------------
+
+// parseCreatePropertyGraphStmt parses a CREATE PROPERTY GRAPH statement.
+// Called after CREATE [OR REPLACE] [IF NOT EXISTS] PROPERTY GRAPH has been consumed.
+//
+// BNF:
+//
+//	CREATE [ OR REPLACE ] PROPERTY GRAPH [ IF NOT EXISTS ]
+//	    [ schema. ] graph_name
+//	    vertex_tables_clause
+//	    [ edge_tables_clause ]
+//	    [ graph_options ] ;
+func (p *Parser) parseCreatePropertyGraphStmt(start int, orReplace, ifNotExists bool) *nodes.CreatePropertyGraphStmt {
+	stmt := &nodes.CreatePropertyGraphStmt{
+		OrReplace:   orReplace,
+		IfNotExists: ifNotExists,
+		Loc:         nodes.Loc{Start: start},
+	}
+
+	// IF NOT EXISTS (may also be parsed here if not consumed by caller)
+	if !ifNotExists && p.cur.Type == kwIF {
+		next := p.peekNext()
+		if next.Type == kwNOT {
+			p.advance() // consume IF
+			p.advance() // consume NOT
+			if p.cur.Type == kwEXISTS {
+				p.advance() // consume EXISTS
+				stmt.IfNotExists = true
+			}
+		}
+	}
+
+	// Graph name
+	stmt.Name = p.parseObjectName()
+
+	// VERTEX TABLES ( ... )
+	if p.isIdentLikeStr("VERTEX") {
+		p.advance() // consume VERTEX
+		if p.isIdentLikeStr("TABLES") {
+			p.advance() // consume TABLES
+		}
+		if p.cur.Type == '(' {
+			p.advance() // consume (
+			for p.cur.Type != ')' && p.cur.Type != tokEOF {
+				vtd := p.parseGraphTableDef()
+				stmt.VertexTables = append(stmt.VertexTables, vtd)
+				if p.cur.Type == ',' {
+					p.advance()
+				}
+			}
+			if p.cur.Type == ')' {
+				p.advance()
+			}
+		}
+	}
+
+	// EDGE TABLES ( ... )
+	if p.isIdentLikeStr("EDGE") {
+		p.advance() // consume EDGE
+		if p.isIdentLikeStr("TABLES") {
+			p.advance() // consume TABLES
+		}
+		if p.cur.Type == '(' {
+			p.advance() // consume (
+			for p.cur.Type != ')' && p.cur.Type != tokEOF {
+				etd := p.parseGraphEdgeDef()
+				stmt.EdgeTables = append(stmt.EdgeTables, etd)
+				if p.cur.Type == ',' {
+					p.advance()
+				}
+			}
+			if p.cur.Type == ')' {
+				p.advance()
+			}
+		}
+	}
+
+	// OPTIONS ( ... )
+	if p.isIdentLikeStr("OPTIONS") {
+		p.advance() // consume OPTIONS
+		if p.cur.Type == '(' {
+			p.advance() // consume (
+			opts := &nodes.GraphOptions{}
+			for p.cur.Type != ')' && p.cur.Type != tokEOF {
+				if p.isIdentLikeStr("ENFORCED") {
+					opts.Mode = "ENFORCED"
+					p.advance()
+					if p.isIdentLikeStr("MODE") {
+						p.advance()
+					}
+				} else if p.isIdentLikeStr("TRUSTED") {
+					opts.Mode = "TRUSTED"
+					p.advance()
+					if p.isIdentLikeStr("MODE") {
+						p.advance()
+					}
+				} else if p.isIdentLikeStr("ALLOW") {
+					p.advance()
+					opts.MixedPropTypes = "ALLOW"
+					// skip MIXED PROPERTY TYPES
+					for p.isIdentLike() && p.cur.Type != ')' {
+						p.advance()
+					}
+				} else if p.isIdentLikeStr("DISALLOW") {
+					p.advance()
+					opts.MixedPropTypes = "DISALLOW"
+					// skip MIXED PROPERTY TYPES
+					for p.isIdentLike() && p.cur.Type != ')' {
+						p.advance()
+					}
+				} else {
+					p.advance()
+				}
+				if p.cur.Type == ',' {
+					p.advance()
+				}
+			}
+			if p.cur.Type == ')' {
+				p.advance()
+			}
+			stmt.Options = opts
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseGraphTableDef parses a vertex table definition.
+func (p *Parser) parseGraphTableDef() *nodes.GraphTableDef {
+	def := &nodes.GraphTableDef{
+		Loc: nodes.Loc{Start: p.pos()},
+	}
+
+	// [schema.]table_name
+	def.Name = p.parseObjectName()
+
+	// AS graph_element_name
+	if p.cur.Type == kwAS {
+		p.advance()
+		if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+			def.Alias = p.cur.Str
+			p.advance()
+		}
+	}
+
+	// KEY ( col, ... )
+	if p.cur.Type == kwKEY {
+		p.advance()
+		def.KeyColumns = p.parseParenIdentList()
+	}
+
+	// Label and properties
+	p.parseGraphLabelAndProperties(def)
+
+	def.Loc.End = p.pos()
+	return def
+}
+
+// parseGraphEdgeDef parses an edge table definition.
+func (p *Parser) parseGraphEdgeDef() *nodes.GraphEdgeDef {
+	def := &nodes.GraphEdgeDef{
+		Loc: nodes.Loc{Start: p.pos()},
+	}
+
+	// [schema.]table_name
+	def.Name = p.parseObjectName()
+
+	// AS graph_element_name
+	if p.cur.Type == kwAS {
+		p.advance()
+		if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+			def.Alias = p.cur.Str
+			p.advance()
+		}
+	}
+
+	// KEY ( col, ... )
+	if p.cur.Type == kwKEY {
+		p.advance()
+		def.KeyColumns = p.parseParenIdentList()
+	}
+
+	// SOURCE [ KEY ( col, ... ) REFERENCES ] vertex_table_ref
+	if p.isIdentLikeStr("SOURCE") {
+		p.advance()
+		if p.cur.Type == kwKEY {
+			p.advance()
+			def.SourceKeyColumns = p.parseParenIdentList()
+			if p.cur.Type == kwREFERENCES {
+				p.advance()
+			}
+		}
+		// vertex_table_reference: name ( col, ... )
+		if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+			def.SourceRef = p.cur.Str
+			p.advance()
+			if p.cur.Type == '(' {
+				def.SourceRefColumns = p.parseParenIdentList()
+			}
+		}
+	}
+
+	// DESTINATION [ KEY ( col, ... ) REFERENCES ] vertex_table_ref
+	if p.isIdentLikeStr("DESTINATION") {
+		p.advance()
+		if p.cur.Type == kwKEY {
+			p.advance()
+			def.DestKeyColumns = p.parseParenIdentList()
+			if p.cur.Type == kwREFERENCES {
+				p.advance()
+			}
+		}
+		// vertex_table_reference: name ( col, ... )
+		if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+			def.DestRef = p.cur.Str
+			p.advance()
+			if p.cur.Type == '(' {
+				def.DestRefColumns = p.parseParenIdentList()
+			}
+		}
+	}
+
+	// Label and properties (reuse vertex table logic for label/properties part)
+	vtd := &nodes.GraphTableDef{}
+	p.parseGraphLabelAndProperties(vtd)
+	def.Labels = vtd.Labels
+	def.Properties = vtd.Properties
+	def.PropColumns = vtd.PropColumns
+	def.PropAliases = vtd.PropAliases
+	def.DefaultLabel = vtd.DefaultLabel
+
+	def.Loc.End = p.pos()
+	return def
+}
+
+// parseGraphLabelAndProperties parses the label and properties clauses for graph tables.
+func (p *Parser) parseGraphLabelAndProperties(def *nodes.GraphTableDef) {
+	// LABEL label_name [ LABEL label_name ]...
+	for p.isIdentLikeStr("LABEL") {
+		p.advance()
+		if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+			def.Labels = append(def.Labels, p.cur.Str)
+			p.advance()
+		}
+	}
+
+	// PROPERTIES clause
+	if p.isIdentLikeStr("PROPERTIES") {
+		p.advance()
+		// ARE ALL COLUMNS [EXCEPT ...]
+		if p.isIdentLikeStr("ARE") {
+			p.advance()
+		}
+		if p.cur.Type == kwALL {
+			p.advance()
+			// ALL COLUMNS EXCEPT (...)
+			if p.isIdentLikeStr("COLUMNS") {
+				p.advance()
+			}
+			if p.cur.Type == kwEXCEPT || p.isIdentLikeStr("EXCEPT") {
+				p.advance()
+				def.Properties = "ALL_EXCEPT"
+				if p.cur.Type == '(' {
+					def.PropColumns = p.parseParenIdentList()
+				}
+			} else {
+				def.Properties = "ALL"
+			}
+		} else if p.cur.Type == '(' {
+			def.Properties = "LIST"
+			p.advance()
+			for p.cur.Type != ')' && p.cur.Type != tokEOF {
+				if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+					def.PropColumns = append(def.PropColumns, p.cur.Str)
+					p.advance()
+				}
+				if p.cur.Type == kwAS {
+					p.advance()
+					if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+						def.PropAliases = append(def.PropAliases, p.cur.Str)
+						p.advance()
+					}
+				}
+				if p.cur.Type == ',' {
+					p.advance()
+				}
+			}
+			if p.cur.Type == ')' {
+				p.advance()
+			}
+		}
+	} else if p.isIdentLikeStr("NO") {
+		p.advance()
+		if p.isIdentLikeStr("PROPERTIES") {
+			p.advance()
+			def.Properties = "NO"
+		}
+	}
+
+	// DEFAULT LABEL
+	if p.cur.Type == kwDEFAULT {
+		p.advance()
+		if p.isIdentLikeStr("LABEL") {
+			p.advance()
+			def.DefaultLabel = true
+		}
+	}
+}
+
+// parseParenIdentList parses ( ident, ident, ... ) and returns the list of identifiers.
+func (p *Parser) parseParenIdentList() []string {
+	var result []string
+	if p.cur.Type != '(' {
+		return result
+	}
+	p.advance() // consume (
+	for p.cur.Type != ')' && p.cur.Type != tokEOF {
+		if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+			result = append(result, p.cur.Str)
+			p.advance()
+		} else {
+			p.advance()
+		}
+		if p.cur.Type == ',' {
+			p.advance()
+		}
+	}
+	if p.cur.Type == ')' {
+		p.advance()
+	}
+	return result
+}
+
+// ---------------------------------------------------------------------------
+// CREATE VECTOR INDEX
+// ---------------------------------------------------------------------------
+
+// parseCreateVectorIndexStmt parses a CREATE VECTOR INDEX statement.
+// Called after CREATE VECTOR INDEX has been consumed.
+//
+// BNF:
+//
+//	CREATE VECTOR INDEX [ IF NOT EXISTS ] [ schema. ] index_name
+//	    ON [ schema. ] table_name ( column_name )
+//	    [ INCLUDE ( column_name [, column_name ]... ) ]
+//	    [ vector_index_organization_clause ]
+//	    [ DISTANCE metric_name ]
+//	    [ WITH TARGET ACCURACY integer [ PARAMETERS ( ... ) ] ]
+//	    [ vector_index_hnsw_replication_clause ]
+//	    [ ONLINE ]
+//	    [ PARALLEL integer ] ;
+func (p *Parser) parseCreateVectorIndexStmt(start int, ifNotExists bool) *nodes.CreateVectorIndexStmt {
+	stmt := &nodes.CreateVectorIndexStmt{
+		IfNotExists: ifNotExists,
+		Loc:         nodes.Loc{Start: start},
+	}
+
+	// IF NOT EXISTS
+	if !ifNotExists && p.cur.Type == kwIF {
+		next := p.peekNext()
+		if next.Type == kwNOT {
+			p.advance() // consume IF
+			p.advance() // consume NOT
+			if p.cur.Type == kwEXISTS {
+				p.advance() // consume EXISTS
+				stmt.IfNotExists = true
+			}
+		}
+	}
+
+	// Index name
+	stmt.Name = p.parseObjectName()
+
+	// ON [schema.]table_name (column_name)
+	if p.cur.Type == kwON {
+		p.advance()
+		stmt.TableName = p.parseObjectName()
+		if p.cur.Type == '(' {
+			p.advance()
+			if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+				stmt.Column = p.cur.Str
+				p.advance()
+			}
+			if p.cur.Type == ')' {
+				p.advance()
+			}
+		}
+	}
+
+	// INCLUDE ( col, ... )
+	if p.cur.Type == kwINCLUDE {
+		p.advance()
+		stmt.IncludeColumns = p.parseParenIdentList()
+	}
+
+	// ORGANIZATION { INMEMORY NEIGHBOR GRAPH | NEIGHBOR PARTITIONS }
+	if p.isIdentLikeStr("ORGANIZATION") {
+		p.advance()
+		if p.isIdentLikeStr("INMEMORY") {
+			p.advance()
+			stmt.Organization = "INMEMORY_NEIGHBOR_GRAPH"
+			// consume NEIGHBOR GRAPH
+			if p.isIdentLikeStr("NEIGHBOR") {
+				p.advance()
+			}
+			if p.isIdentLikeStr("GRAPH") {
+				p.advance()
+			}
+		} else if p.isIdentLikeStr("NEIGHBOR") {
+			p.advance()
+			stmt.Organization = "NEIGHBOR_PARTITIONS"
+			if p.isIdentLikeStr("PARTITIONS") {
+				p.advance()
+			}
+		}
+	}
+
+	// DISTANCE metric_name
+	if p.isIdentLikeStr("DISTANCE") {
+		p.advance()
+		if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+			stmt.Distance = p.cur.Str
+			p.advance()
+		}
+	}
+
+	// WITH TARGET ACCURACY integer [ PARAMETERS (...) ]
+	if p.cur.Type == kwWITH {
+		p.advance()
+		if p.isIdentLikeStr("TARGET") {
+			p.advance()
+		}
+		if p.isIdentLikeStr("ACCURACY") {
+			p.advance()
+		}
+		if p.cur.Type == tokICONST {
+			stmt.TargetAccuracy = p.parseIntValue()
+		}
+		// PARAMETERS ( ... )
+		if p.isIdentLikeStr("PARAMETERS") {
+			p.advance()
+			if p.cur.Type == '(' {
+				p.advance()
+				// TYPE HNSW | IVF
+				if p.cur.Type == kwTYPE || p.isIdentLikeStr("TYPE") {
+					p.advance()
+					if p.isIdentLikeStr("HNSW") {
+						stmt.ParameterType = "HNSW"
+						p.advance()
+					} else if p.isIdentLikeStr("IVF") {
+						stmt.ParameterType = "IVF"
+						p.advance()
+					}
+				}
+				// Parse remaining HNSW/IVF parameters
+				for p.cur.Type != ')' && p.cur.Type != tokEOF {
+					if p.cur.Type == ',' {
+						p.advance()
+					}
+					if p.isIdentLikeStr("NEIGHBORS") || p.isIdentLikeStr("M") {
+						p.advance()
+						if p.cur.Type == tokICONST {
+							stmt.Neighbors = p.parseIntValue()
+						}
+					} else if p.isIdentLikeStr("EFCONSTRUCTION") {
+						p.advance()
+						if p.cur.Type == tokICONST {
+							stmt.EfConstruction = p.parseIntValue()
+						}
+					} else if p.isIdentLikeStr("RESCORE_FACTOR") {
+						p.advance()
+						if p.cur.Type == tokICONST {
+							stmt.RescoreFactor = p.parseIntValue()
+						}
+					} else if p.isIdentLikeStr("QUANTIZATION") {
+						p.advance()
+						if p.isIdentLike() || p.cur.Type == tokIDENT {
+							stmt.Quantization = p.cur.Str
+							p.advance()
+						}
+					} else if p.isIdentLikeStr("NEIGHBOR") {
+						p.advance()
+						if p.isIdentLikeStr("PARTITIONS") {
+							p.advance()
+						}
+						if p.cur.Type == tokICONST {
+							stmt.NeighborParts = p.parseIntValue()
+						}
+					} else if p.isIdentLikeStr("SAMPLES_PER_PARTITION") {
+						p.advance()
+						if p.cur.Type == tokICONST {
+							stmt.SamplesPerPart = p.parseIntValue()
+						}
+					} else if p.isIdentLikeStr("MIN_VECTORS_PER_PARTITION") {
+						p.advance()
+						if p.cur.Type == tokICONST {
+							stmt.MinVecsPerPart = p.parseIntValue()
+						}
+					} else {
+						p.advance()
+					}
+				}
+				if p.cur.Type == ')' {
+					p.advance()
+				}
+			}
+		}
+	}
+
+	// Replication clause: DUPLICATE ALL | DISTRIBUTE [AUTO | BY ...]
+	if p.isIdentLikeStr("DUPLICATE") {
+		p.advance()
+		if p.cur.Type == kwALL {
+			p.advance()
+			stmt.Replication = "DUPLICATE_ALL"
+		}
+	} else if p.isIdentLikeStr("DISTRIBUTE") {
+		p.advance()
+		stmt.Replication = "DISTRIBUTE"
+		if p.isIdentLikeStr("AUTO") {
+			p.advance()
+			stmt.Replication = "DISTRIBUTE_AUTO"
+		} else if p.cur.Type == kwBY {
+			p.advance()
+			if p.isIdentLikeStr("ROWID") {
+				p.advance()
+				if p.isIdentLikeStr("RANGE") {
+					p.advance()
+				}
+				stmt.Replication = "DISTRIBUTE_BY_ROWID_RANGE"
+			} else if p.cur.Type == kwPARTITION {
+				p.advance()
+				stmt.Replication = "DISTRIBUTE_BY_PARTITION"
+			} else if p.isIdentLikeStr("SUBPARTITION") {
+				p.advance()
+				stmt.Replication = "DISTRIBUTE_BY_SUBPARTITION"
+			}
+		}
+	}
+
+	// ONLINE
+	if p.cur.Type == kwONLINE {
+		p.advance()
+		stmt.Online = true
+	}
+
+	// PARALLEL integer
+	if p.cur.Type == kwPARALLEL {
+		p.advance()
+		if p.cur.Type == tokICONST {
+			stmt.Parallel = p.parseIntValue()
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// ---------------------------------------------------------------------------
+// CREATE / ALTER LOCKDOWN PROFILE
+// ---------------------------------------------------------------------------
+
+// parseCreateLockdownProfileStmt parses a CREATE LOCKDOWN PROFILE statement.
+// Called after CREATE LOCKDOWN PROFILE has been consumed.
+//
+// BNF:
+//
+//	CREATE LOCKDOWN PROFILE profile_name
+//	    [ USING base_profile_name | INCLUDING base_profile_name ]
+func (p *Parser) parseCreateLockdownProfileStmt(start int) *nodes.CreateLockdownProfileStmt {
+	stmt := &nodes.CreateLockdownProfileStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// profile_name
+	if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+		stmt.Name = p.cur.Str
+		p.advance()
+	}
+
+	// USING base_profile_name
+	if p.isIdentLikeStr("USING") {
+		p.advance()
+		if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+			stmt.Using = p.cur.Str
+			p.advance()
+		}
+	}
+
+	// INCLUDING base_profile_name
+	if p.isIdentLikeStr("INCLUDING") {
+		p.advance()
+		if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+			stmt.Including = p.cur.Str
+			p.advance()
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseAlterLockdownProfileStmt parses an ALTER LOCKDOWN PROFILE statement.
+// Called after ALTER LOCKDOWN PROFILE has been consumed.
+//
+// BNF:
+//
+//	ALTER LOCKDOWN PROFILE profile_name
+//	    { lockdown_features | lockdown_options | lockdown_statements }
+//	    [ USERS = { ALL | COMMON | LOCAL } ] ;
+func (p *Parser) parseAlterLockdownProfileStmt(start int) *nodes.AlterLockdownProfileStmt {
+	stmt := &nodes.AlterLockdownProfileStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// profile_name
+	if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+		stmt.Name = p.cur.Str
+		p.advance()
+	}
+
+	// { DISABLE | ENABLE }
+	if p.cur.Type == kwDISABLE {
+		stmt.Action = "DISABLE"
+		p.advance()
+	} else if p.cur.Type == kwENABLE {
+		stmt.Action = "ENABLE"
+		p.advance()
+	}
+
+	// { FEATURE = (...) | OPTION = (...) | STATEMENT = (...) }
+	if p.isIdentLikeStr("FEATURE") {
+		stmt.RuleType = "FEATURE"
+		p.advance()
+		if p.cur.Type == '=' {
+			p.advance()
+		}
+		stmt.RuleItems, stmt.AllItems, stmt.ExceptItems = p.parseLockdownItemList()
+	} else if p.cur.Type == kwOPTION || p.isIdentLikeStr("OPTION") {
+		stmt.RuleType = "OPTION"
+		p.advance()
+		if p.cur.Type == '=' {
+			p.advance()
+		}
+		stmt.RuleItems, stmt.AllItems, stmt.ExceptItems = p.parseLockdownItemList()
+	} else if p.isIdentLikeStr("STATEMENT") {
+		stmt.RuleType = "STATEMENT"
+		p.advance()
+		if p.cur.Type == '=' {
+			p.advance()
+		}
+		stmt.RuleItems, stmt.AllItems, stmt.ExceptItems = p.parseLockdownItemList()
+
+		// CLAUSE = (...)
+		if p.isIdentLikeStr("CLAUSE") {
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			stmt.Clauses, stmt.ClauseAll, stmt.ClauseExceptItems = p.parseLockdownItemList()
+
+			// OPTION = (...)
+			if p.cur.Type == kwOPTION || p.isIdentLikeStr("OPTION") {
+				p.advance()
+				if p.cur.Type == '=' {
+					p.advance()
+				}
+				stmt.ClauseOptions, _, _ = p.parseLockdownItemList()
+
+				// VALUE / MINVALUE / MAXVALUE
+				if p.isIdentLikeStr("VALUE") {
+					p.advance()
+					if p.cur.Type == '=' {
+						p.advance()
+					}
+					stmt.ValueItems, _, _ = p.parseLockdownItemList()
+				}
+				if p.cur.Type == kwMINVALUE || p.isIdentLikeStr("MINVALUE") {
+					p.advance()
+					if p.cur.Type == '=' {
+						p.advance()
+					}
+					if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokICONST || p.cur.Type == tokSCONST {
+						stmt.MinValue = p.cur.Str
+						p.advance()
+					}
+				}
+				if p.cur.Type == kwMAXVALUE || p.isIdentLikeStr("MAXVALUE") {
+					p.advance()
+					if p.cur.Type == '=' {
+						p.advance()
+					}
+					if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokICONST || p.cur.Type == tokSCONST {
+						stmt.MaxValue = p.cur.Str
+						p.advance()
+					}
+				}
+			}
+		}
+	}
+
+	// USERS = { ALL | COMMON | LOCAL }
+	if p.isIdentLikeStr("USERS") {
+		p.advance()
+		if p.cur.Type == '=' {
+			p.advance()
+		}
+		if p.cur.Type == kwALL {
+			stmt.Users = "ALL"
+			p.advance()
+		} else if p.isIdentLikeStr("COMMON") {
+			stmt.Users = "COMMON"
+			p.advance()
+		} else if p.isIdentLikeStr("LOCAL") {
+			stmt.Users = "LOCAL"
+			p.advance()
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseLockdownItemList parses ( item, item, ... ) or ( ALL ) or ( ALL EXCEPT = ( ... ) ).
+func (p *Parser) parseLockdownItemList() (items []string, allItems bool, exceptItems []string) {
+	if p.cur.Type != '(' {
+		return
+	}
+	p.advance() // consume (
+	if p.cur.Type == kwALL {
+		p.advance()
+		// ALL EXCEPT = ( ... )
+		if p.cur.Type == kwEXCEPT || p.isIdentLikeStr("EXCEPT") {
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			if p.cur.Type == '(' {
+				p.advance()
+				for p.cur.Type != ')' && p.cur.Type != tokEOF {
+					if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT || p.cur.Type == tokSCONST {
+						exceptItems = append(exceptItems, p.cur.Str)
+						p.advance()
+					} else {
+						p.advance()
+					}
+					if p.cur.Type == ',' {
+						p.advance()
+					}
+				}
+				if p.cur.Type == ')' {
+					p.advance()
+				}
+			}
+		}
+		allItems = true
+	} else {
+		for p.cur.Type != ')' && p.cur.Type != tokEOF {
+			if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT || p.cur.Type == tokSCONST {
+				items = append(items, p.cur.Str)
+				p.advance()
+			} else {
+				p.advance()
+			}
+			if p.cur.Type == ',' {
+				p.advance()
+			}
+		}
+	}
+	if p.cur.Type == ')' {
+		p.advance()
+	}
+	return
+}
+
+// ---------------------------------------------------------------------------
+// CREATE / ALTER OUTLINE
+// ---------------------------------------------------------------------------
+
+// parseCreateOutlineStmt parses a CREATE OUTLINE statement.
+// Called after CREATE [OR REPLACE] [PUBLIC|PRIVATE] OUTLINE has been consumed.
+//
+// BNF:
+//
+//	CREATE [ OR REPLACE ] [ PUBLIC | PRIVATE ] OUTLINE [ outline ]
+//	    [ FOR CATEGORY category ]
+//	    { FROM [ PRIVATE ] source_outline | ON statement } ;
+func (p *Parser) parseCreateOutlineStmt(start int, orReplace, public bool) *nodes.CreateOutlineStmt {
+	stmt := &nodes.CreateOutlineStmt{
+		OrReplace: orReplace,
+		Public:    public,
+		Loc:       nodes.Loc{Start: start},
+	}
+
+	// Optional outline name — the name comes before FOR/FROM/ON.
+	// We need to check if the current token is an identifier that is NOT a keyword
+	// like FOR, FROM, ON which start the next clause.
+	if p.cur.Type != kwFOR && p.cur.Type != kwFROM && p.cur.Type != kwON &&
+		p.cur.Type != ';' && p.cur.Type != tokEOF {
+		if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+			stmt.Name = p.cur.Str
+			p.advance()
+		}
+	}
+
+	// FOR CATEGORY category
+	if p.cur.Type == kwFOR {
+		p.advance()
+		if p.isIdentLikeStr("CATEGORY") {
+			p.advance()
+		}
+		if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+			stmt.Category = p.cur.Str
+			p.advance()
+		}
+	}
+
+	// FROM [ PRIVATE ] source_outline
+	if p.cur.Type == kwFROM {
+		p.advance()
+		if p.cur.Type == kwPRIVATE {
+			stmt.FromPrivate = true
+			p.advance()
+		}
+		if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+			stmt.FromSource = p.cur.Str
+			p.advance()
+		}
+	}
+
+	// ON statement — skip to semicolon
+	if p.cur.Type == kwON {
+		p.advance()
+		for p.cur.Type != ';' && p.cur.Type != tokEOF {
+			p.advance()
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseAlterOutlineStmt parses an ALTER OUTLINE statement.
+// Called after ALTER OUTLINE has been consumed.
+//
+// BNF:
+//
+//	ALTER OUTLINE [ PUBLIC | PRIVATE ] outline
+//	    { REBUILD | RENAME TO new_outline_name | CHANGE CATEGORY TO new_category_name | { ENABLE | DISABLE } } ;
+func (p *Parser) parseAlterOutlineStmt(start int) *nodes.AlterOutlineStmt {
+	stmt := &nodes.AlterOutlineStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	// PUBLIC | PRIVATE
+	if p.cur.Type == kwPUBLIC {
+		stmt.Public = true
+		p.advance()
+	} else if p.cur.Type == kwPRIVATE {
+		stmt.Private = true
+		p.advance()
+	}
+
+	// outline name
+	if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+		stmt.Name = p.cur.Str
+		p.advance()
+	}
+
+	// Action
+	if p.isIdentLikeStr("REBUILD") {
+		stmt.Action = "REBUILD"
+		p.advance()
+	} else if p.cur.Type == kwRENAME {
+		stmt.Action = "RENAME"
+		p.advance()
+		if p.cur.Type == kwTO {
+			p.advance()
+		}
+		if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+			stmt.NewName = p.cur.Str
+			p.advance()
+		}
+	} else if p.isIdentLikeStr("CHANGE") {
+		stmt.Action = "CHANGE_CATEGORY"
+		p.advance()
+		if p.isIdentLikeStr("CATEGORY") {
+			p.advance()
+		}
+		if p.cur.Type == kwTO {
+			p.advance()
+		}
+		if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+			stmt.Category = p.cur.Str
+			p.advance()
+		}
+	} else if p.cur.Type == kwENABLE {
+		stmt.Action = "ENABLE"
+		p.advance()
+	} else if p.cur.Type == kwDISABLE {
+		stmt.Action = "DISABLE"
+		p.advance()
 	}
 
 	stmt.Loc.End = p.pos()

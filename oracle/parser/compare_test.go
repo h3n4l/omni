@@ -3542,25 +3542,74 @@ func TestBatch68_IndextypeOperator(t *testing.T) {
 }
 
 // TestBatch69_LockdownProfileOutline tests CREATE/ALTER/DROP LOCKDOWN PROFILE and OUTLINE.
+// Updated in batch 104 to use dedicated AST types.
 func TestBatch69_LockdownProfileOutline(t *testing.T) {
-	tests := []struct {
-		name   string
-		sql    string
-		action string
-		obj    ast.ObjectType
-	}{
-		{"create_lockdown_profile", "CREATE LOCKDOWN PROFILE my_lockdown_prof", "CREATE", ast.OBJECT_LOCKDOWN_PROFILE},
-		{"alter_lockdown_profile", "ALTER LOCKDOWN PROFILE my_lockdown_prof DISABLE STATEMENT = ('ALTER SYSTEM')", "ALTER", ast.OBJECT_LOCKDOWN_PROFILE},
-		{"drop_lockdown_profile", "DROP LOCKDOWN PROFILE my_lockdown_prof", "DROP", ast.OBJECT_LOCKDOWN_PROFILE},
-		{"create_outline", "CREATE OUTLINE my_outline FOR CATEGORY my_cat ON SELECT * FROM t", "CREATE", ast.OBJECT_OUTLINE},
-		{"alter_outline", "ALTER OUTLINE my_outline RENAME TO my_outline2", "ALTER", ast.OBJECT_OUTLINE},
-		{"drop_outline", "DROP OUTLINE my_outline", "DROP", ast.OBJECT_OUTLINE},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			adminDDLTest(t, tt.sql, tt.action, tt.obj)
-		})
-	}
+	t.Run("create_lockdown_profile", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE LOCKDOWN PROFILE my_lockdown_prof")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.CreateLockdownProfileStmt)
+		if !ok {
+			t.Fatalf("expected *CreateLockdownProfileStmt, got %T", raw.Stmt)
+		}
+		if stmt.Name != "MY_LOCKDOWN_PROF" {
+			t.Fatalf("expected name MY_LOCKDOWN_PROF, got %q", stmt.Name)
+		}
+	})
+	t.Run("alter_lockdown_profile", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER LOCKDOWN PROFILE my_lockdown_prof DISABLE STATEMENT = ('ALTER SYSTEM')")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterLockdownProfileStmt)
+		if !ok {
+			t.Fatalf("expected *AlterLockdownProfileStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "DISABLE" {
+			t.Fatalf("expected action DISABLE, got %q", stmt.Action)
+		}
+	})
+	t.Run("drop_lockdown_profile", func(t *testing.T) {
+		result := ParseAndCheck(t, "DROP LOCKDOWN PROFILE my_lockdown_prof")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.DropStmt)
+		if !ok {
+			t.Fatalf("expected *DropStmt, got %T", raw.Stmt)
+		}
+		if stmt.ObjectType != ast.OBJECT_LOCKDOWN_PROFILE {
+			t.Fatalf("expected OBJECT_LOCKDOWN_PROFILE, got %d", stmt.ObjectType)
+		}
+	})
+	t.Run("create_outline", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE OUTLINE my_outline FOR CATEGORY my_cat ON SELECT * FROM t")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.CreateOutlineStmt)
+		if !ok {
+			t.Fatalf("expected *CreateOutlineStmt, got %T", raw.Stmt)
+		}
+		if stmt.Name != "MY_OUTLINE" {
+			t.Fatalf("expected name MY_OUTLINE, got %q", stmt.Name)
+		}
+	})
+	t.Run("alter_outline", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER OUTLINE my_outline RENAME TO my_outline2")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterOutlineStmt)
+		if !ok {
+			t.Fatalf("expected *AlterOutlineStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "RENAME" {
+			t.Fatalf("expected action RENAME, got %q", stmt.Action)
+		}
+	})
+	t.Run("drop_outline", func(t *testing.T) {
+		result := ParseAndCheck(t, "DROP OUTLINE my_outline")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.DropStmt)
+		if !ok {
+			t.Fatalf("expected *DropStmt, got %T", raw.Stmt)
+		}
+		if stmt.ObjectType != ast.OBJECT_OUTLINE {
+			t.Fatalf("expected OBJECT_OUTLINE, got %d", stmt.ObjectType)
+		}
+	})
 }
 
 // TestBatch70_MaterializedZonemapInmemoryJoinGroup tests CREATE/ALTER/DROP MATERIALIZED ZONEMAP and INMEMORY JOIN GROUP.
@@ -3764,21 +3813,39 @@ func TestBatch76_PfileSpfile(t *testing.T) {
 }
 
 // TestBatch77_PropertyGraphVectorIndex tests CREATE PROPERTY GRAPH and VECTOR INDEX.
+// Updated in batch 104 to use dedicated AST types.
 func TestBatch77_PropertyGraphVectorIndex(t *testing.T) {
-	tests := []struct {
-		name   string
-		sql    string
-		action string
-		obj    ast.ObjectType
-	}{
-		{"create_property_graph", "CREATE PROPERTY GRAPH my_graph VERTEX TABLES (persons) EDGE TABLES (friendships)", "CREATE", ast.OBJECT_PROPERTY_GRAPH},
-		{"create_vector_index", "CREATE VECTOR INDEX vec_idx ON docs (embedding) ORGANIZATION NEIGHBOR PARTITIONS", "CREATE", ast.OBJECT_VECTOR_INDEX},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			adminDDLTest(t, tt.sql, tt.action, tt.obj)
-		})
-	}
+	t.Run("create_property_graph", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE PROPERTY GRAPH my_graph VERTEX TABLES (persons) EDGE TABLES (friendships SOURCE persons DESTINATION persons)")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.CreatePropertyGraphStmt)
+		if !ok {
+			t.Fatalf("expected *CreatePropertyGraphStmt, got %T", raw.Stmt)
+		}
+		if stmt.Name.Name != "MY_GRAPH" {
+			t.Fatalf("expected name MY_GRAPH, got %q", stmt.Name.Name)
+		}
+		if len(stmt.VertexTables) != 1 {
+			t.Fatalf("expected 1 vertex table, got %d", len(stmt.VertexTables))
+		}
+		if len(stmt.EdgeTables) != 1 {
+			t.Fatalf("expected 1 edge table, got %d", len(stmt.EdgeTables))
+		}
+	})
+	t.Run("create_vector_index", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE VECTOR INDEX vec_idx ON docs (embedding) ORGANIZATION NEIGHBOR PARTITIONS")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.CreateVectorIndexStmt)
+		if !ok {
+			t.Fatalf("expected *CreateVectorIndexStmt, got %T", raw.Stmt)
+		}
+		if stmt.Name.Name != "VEC_IDX" {
+			t.Fatalf("expected name VEC_IDX, got %q", stmt.Name.Name)
+		}
+		if stmt.Organization != "NEIGHBOR_PARTITIONS" {
+			t.Fatalf("expected NEIGHBOR_PARTITIONS, got %q", stmt.Organization)
+		}
+	})
 }
 
 // TestBatch78_RestorePointMisc tests CREATE/DROP RESTORE POINT, LOGICAL PARTITION TRACKING, PMEM FILESTORE.
@@ -7859,6 +7926,350 @@ func TestBatch103_ClusterDimensionZonemapInmemory(t *testing.T) {
 		_, ok := raw.Stmt.(*ast.CreateClusterStmt)
 		if !ok {
 			t.Fatalf("expected *CreateClusterStmt, got %T", raw.Stmt)
+		}
+	})
+}
+
+// TestBatch104_GraphVectorLockdownOutline tests batch 104 statements:
+// CREATE PROPERTY GRAPH, CREATE VECTOR INDEX, CREATE/ALTER LOCKDOWN PROFILE,
+// CREATE/ALTER OUTLINE, DROP LOCKDOWN PROFILE, DROP OUTLINE.
+func TestBatch104_GraphVectorLockdownOutline(t *testing.T) {
+	// ---------------------------------------------------------------
+	// CREATE PROPERTY GRAPH
+	// ---------------------------------------------------------------
+	t.Run("create_property_graph_basic", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE PROPERTY GRAPH my_graph VERTEX TABLES (persons KEY (person_id)) EDGE TABLES (knows SOURCE persons DESTINATION persons)")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.CreatePropertyGraphStmt)
+		if !ok {
+			t.Fatalf("expected *CreatePropertyGraphStmt, got %T", raw.Stmt)
+		}
+		if stmt.Name.Name != "MY_GRAPH" {
+			t.Fatalf("expected name MY_GRAPH, got %q", stmt.Name.Name)
+		}
+		if len(stmt.VertexTables) != 1 {
+			t.Fatalf("expected 1 vertex table, got %d", len(stmt.VertexTables))
+		}
+		if len(stmt.VertexTables[0].KeyColumns) != 1 || stmt.VertexTables[0].KeyColumns[0] != "PERSON_ID" {
+			t.Fatalf("expected vertex KEY (PERSON_ID), got %v", stmt.VertexTables[0].KeyColumns)
+		}
+		if len(stmt.EdgeTables) != 1 {
+			t.Fatalf("expected 1 edge table, got %d", len(stmt.EdgeTables))
+		}
+	})
+
+	t.Run("create_property_graph_or_replace", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE OR REPLACE PROPERTY GRAPH hr.social_graph VERTEX TABLES (employees AS emp KEY (employee_id), departments AS dept KEY (department_id)) EDGE TABLES (emp_dept SOURCE emp DESTINATION dept)")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.CreatePropertyGraphStmt)
+		if !ok {
+			t.Fatalf("expected *CreatePropertyGraphStmt, got %T", raw.Stmt)
+		}
+		if !stmt.OrReplace {
+			t.Fatal("expected OrReplace=true")
+		}
+		if len(stmt.VertexTables) != 2 {
+			t.Fatalf("expected 2 vertex tables, got %d", len(stmt.VertexTables))
+		}
+		if stmt.VertexTables[0].Alias != "EMP" {
+			t.Fatalf("expected alias EMP, got %q", stmt.VertexTables[0].Alias)
+		}
+	})
+
+	t.Run("create_property_graph_options", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE PROPERTY GRAPH my_graph VERTEX TABLES (t1) OPTIONS (TRUSTED MODE)")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.CreatePropertyGraphStmt)
+		if !ok {
+			t.Fatalf("expected *CreatePropertyGraphStmt, got %T", raw.Stmt)
+		}
+		if stmt.Options == nil || stmt.Options.Mode != "TRUSTED" {
+			t.Fatal("expected OPTIONS TRUSTED MODE")
+		}
+	})
+
+	// ---------------------------------------------------------------
+	// CREATE VECTOR INDEX
+	// ---------------------------------------------------------------
+	t.Run("create_vector_index_basic", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE VECTOR INDEX vec_idx ON docs (embedding)")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.CreateVectorIndexStmt)
+		if !ok {
+			t.Fatalf("expected *CreateVectorIndexStmt, got %T", raw.Stmt)
+		}
+		if stmt.Name.Name != "VEC_IDX" {
+			t.Fatalf("expected name VEC_IDX, got %q", stmt.Name.Name)
+		}
+		if stmt.Column != "EMBEDDING" {
+			t.Fatalf("expected column EMBEDDING, got %q", stmt.Column)
+		}
+	})
+
+	t.Run("create_vector_index_organization", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE VECTOR INDEX vec_idx ON docs (embedding) ORGANIZATION INMEMORY NEIGHBOR GRAPH DISTANCE COSINE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.CreateVectorIndexStmt)
+		if !ok {
+			t.Fatalf("expected *CreateVectorIndexStmt, got %T", raw.Stmt)
+		}
+		if stmt.Organization != "INMEMORY_NEIGHBOR_GRAPH" {
+			t.Fatalf("expected INMEMORY_NEIGHBOR_GRAPH, got %q", stmt.Organization)
+		}
+		if stmt.Distance != "COSINE" {
+			t.Fatalf("expected COSINE, got %q", stmt.Distance)
+		}
+	})
+
+	t.Run("create_vector_index_with_params", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE VECTOR INDEX vec_idx ON docs (embedding) WITH TARGET ACCURACY 95 PARAMETERS (TYPE HNSW, NEIGHBORS 16, EFCONSTRUCTION 200) PARALLEL 4")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.CreateVectorIndexStmt)
+		if !ok {
+			t.Fatalf("expected *CreateVectorIndexStmt, got %T", raw.Stmt)
+		}
+		if stmt.TargetAccuracy != 95 {
+			t.Fatalf("expected target accuracy 95, got %d", stmt.TargetAccuracy)
+		}
+		if stmt.ParameterType != "HNSW" {
+			t.Fatalf("expected HNSW, got %q", stmt.ParameterType)
+		}
+		if stmt.Neighbors != 16 {
+			t.Fatalf("expected neighbors 16, got %d", stmt.Neighbors)
+		}
+		if stmt.Parallel != 4 {
+			t.Fatalf("expected parallel 4, got %d", stmt.Parallel)
+		}
+	})
+
+	// ---------------------------------------------------------------
+	// CREATE LOCKDOWN PROFILE
+	// ---------------------------------------------------------------
+	t.Run("create_lockdown_profile_basic", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE LOCKDOWN PROFILE my_profile")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.CreateLockdownProfileStmt)
+		if !ok {
+			t.Fatalf("expected *CreateLockdownProfileStmt, got %T", raw.Stmt)
+		}
+		if stmt.Name != "MY_PROFILE" {
+			t.Fatalf("expected name MY_PROFILE, got %q", stmt.Name)
+		}
+	})
+
+	t.Run("create_lockdown_profile_using", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE LOCKDOWN PROFILE my_profile USING base_profile")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.CreateLockdownProfileStmt)
+		if !ok {
+			t.Fatalf("expected *CreateLockdownProfileStmt, got %T", raw.Stmt)
+		}
+		if stmt.Using != "BASE_PROFILE" {
+			t.Fatalf("expected using BASE_PROFILE, got %q", stmt.Using)
+		}
+	})
+
+	t.Run("create_lockdown_profile_including", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE LOCKDOWN PROFILE my_profile INCLUDING base_profile")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.CreateLockdownProfileStmt)
+		if !ok {
+			t.Fatalf("expected *CreateLockdownProfileStmt, got %T", raw.Stmt)
+		}
+		if stmt.Including != "BASE_PROFILE" {
+			t.Fatalf("expected including BASE_PROFILE, got %q", stmt.Including)
+		}
+	})
+
+	// ---------------------------------------------------------------
+	// ALTER LOCKDOWN PROFILE
+	// ---------------------------------------------------------------
+	t.Run("alter_lockdown_profile_disable_feature", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER LOCKDOWN PROFILE my_prof DISABLE FEATURE = (NETWORK_ACCESS)")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterLockdownProfileStmt)
+		if !ok {
+			t.Fatalf("expected *AlterLockdownProfileStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "DISABLE" {
+			t.Fatalf("expected action DISABLE, got %q", stmt.Action)
+		}
+		if stmt.RuleType != "FEATURE" {
+			t.Fatalf("expected rule type FEATURE, got %q", stmt.RuleType)
+		}
+	})
+
+	t.Run("alter_lockdown_profile_enable_statement", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER LOCKDOWN PROFILE my_prof ENABLE STATEMENT = ('ALTER SYSTEM') USERS = COMMON")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterLockdownProfileStmt)
+		if !ok {
+			t.Fatalf("expected *AlterLockdownProfileStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "ENABLE" {
+			t.Fatalf("expected action ENABLE, got %q", stmt.Action)
+		}
+		if stmt.Users != "COMMON" {
+			t.Fatalf("expected users COMMON, got %q", stmt.Users)
+		}
+	})
+
+	// ---------------------------------------------------------------
+	// DROP LOCKDOWN PROFILE
+	// ---------------------------------------------------------------
+	t.Run("drop_lockdown_profile", func(t *testing.T) {
+		result := ParseAndCheck(t, "DROP LOCKDOWN PROFILE my_prof")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.DropStmt)
+		if !ok {
+			t.Fatalf("expected *DropStmt, got %T", raw.Stmt)
+		}
+		if stmt.ObjectType != ast.OBJECT_LOCKDOWN_PROFILE {
+			t.Fatalf("expected OBJECT_LOCKDOWN_PROFILE, got %d", stmt.ObjectType)
+		}
+	})
+
+	t.Run("drop_lockdown_profile_if_exists", func(t *testing.T) {
+		result := ParseAndCheck(t, "DROP LOCKDOWN PROFILE IF EXISTS my_prof")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.DropStmt)
+		if !ok {
+			t.Fatalf("expected *DropStmt, got %T", raw.Stmt)
+		}
+		if !stmt.IfExists {
+			t.Fatal("expected IfExists=true")
+		}
+	})
+
+	// ---------------------------------------------------------------
+	// CREATE OUTLINE
+	// ---------------------------------------------------------------
+	t.Run("create_outline_on_stmt", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE OUTLINE my_outline ON SELECT * FROM employees")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.CreateOutlineStmt)
+		if !ok {
+			t.Fatalf("expected *CreateOutlineStmt, got %T", raw.Stmt)
+		}
+		if stmt.Name != "MY_OUTLINE" {
+			t.Fatalf("expected name MY_OUTLINE, got %q", stmt.Name)
+		}
+	})
+
+	t.Run("create_outline_or_replace_category", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE OR REPLACE OUTLINE my_outline FOR CATEGORY my_cat ON SELECT 1 FROM dual")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.CreateOutlineStmt)
+		if !ok {
+			t.Fatalf("expected *CreateOutlineStmt, got %T", raw.Stmt)
+		}
+		if !stmt.OrReplace {
+			t.Fatal("expected OrReplace=true")
+		}
+		if stmt.Category != "MY_CAT" {
+			t.Fatalf("expected category MY_CAT, got %q", stmt.Category)
+		}
+	})
+
+	t.Run("create_outline_from_source", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE OUTLINE my_outline FROM PRIVATE source_outline")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.CreateOutlineStmt)
+		if !ok {
+			t.Fatalf("expected *CreateOutlineStmt, got %T", raw.Stmt)
+		}
+		if !stmt.FromPrivate {
+			t.Fatal("expected FromPrivate=true")
+		}
+		if stmt.FromSource != "SOURCE_OUTLINE" {
+			t.Fatalf("expected FromSource SOURCE_OUTLINE, got %q", stmt.FromSource)
+		}
+	})
+
+	// ---------------------------------------------------------------
+	// ALTER OUTLINE
+	// ---------------------------------------------------------------
+	t.Run("alter_outline_rebuild", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER OUTLINE my_outline REBUILD")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterOutlineStmt)
+		if !ok {
+			t.Fatalf("expected *AlterOutlineStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "REBUILD" {
+			t.Fatalf("expected action REBUILD, got %q", stmt.Action)
+		}
+	})
+
+	t.Run("alter_outline_rename", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER OUTLINE my_outline RENAME TO new_outline")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterOutlineStmt)
+		if !ok {
+			t.Fatalf("expected *AlterOutlineStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "RENAME" {
+			t.Fatalf("expected action RENAME, got %q", stmt.Action)
+		}
+		if stmt.NewName != "NEW_OUTLINE" {
+			t.Fatalf("expected new name NEW_OUTLINE, got %q", stmt.NewName)
+		}
+	})
+
+	t.Run("alter_outline_change_category", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER OUTLINE my_outline CHANGE CATEGORY TO new_cat")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterOutlineStmt)
+		if !ok {
+			t.Fatalf("expected *AlterOutlineStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "CHANGE_CATEGORY" {
+			t.Fatalf("expected action CHANGE_CATEGORY, got %q", stmt.Action)
+		}
+		if stmt.Category != "NEW_CAT" {
+			t.Fatalf("expected category NEW_CAT, got %q", stmt.Category)
+		}
+	})
+
+	t.Run("alter_outline_enable", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER OUTLINE my_outline ENABLE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterOutlineStmt)
+		if !ok {
+			t.Fatalf("expected *AlterOutlineStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "ENABLE" {
+			t.Fatalf("expected action ENABLE, got %q", stmt.Action)
+		}
+	})
+
+	t.Run("alter_outline_public", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER OUTLINE PUBLIC my_outline DISABLE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AlterOutlineStmt)
+		if !ok {
+			t.Fatalf("expected *AlterOutlineStmt, got %T", raw.Stmt)
+		}
+		if !stmt.Public {
+			t.Fatal("expected Public=true")
+		}
+		if stmt.Action != "DISABLE" {
+			t.Fatalf("expected action DISABLE, got %q", stmt.Action)
+		}
+	})
+
+	// ---------------------------------------------------------------
+	// DROP OUTLINE
+	// ---------------------------------------------------------------
+	t.Run("drop_outline", func(t *testing.T) {
+		result := ParseAndCheck(t, "DROP OUTLINE my_outline")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.DropStmt)
+		if !ok {
+			t.Fatalf("expected *DropStmt, got %T", raw.Stmt)
+		}
+		if stmt.ObjectType != ast.OBJECT_OUTLINE {
+			t.Fatalf("expected OBJECT_OUTLINE, got %d", stmt.ObjectType)
 		}
 	})
 }

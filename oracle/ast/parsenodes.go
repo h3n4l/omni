@@ -4422,6 +4422,170 @@ func (n *AlterDomainStmt) nodeTag()  {}
 func (n *AlterDomainStmt) stmtNode() {}
 
 // ---------------------------------------------------------------------------
+// CREATE PROPERTY GRAPH
+// ---------------------------------------------------------------------------
+
+// CreatePropertyGraphStmt represents a CREATE PROPERTY GRAPH statement.
+type CreatePropertyGraphStmt struct {
+	Name         *ObjectName
+	OrReplace    bool
+	IfNotExists  bool
+	VertexTables []*GraphTableDef  // VERTEX TABLES (...)
+	EdgeTables   []*GraphEdgeDef   // EDGE TABLES (...)
+	Options      *GraphOptions     // OPTIONS (...)
+	Loc          Loc
+}
+
+func (n *CreatePropertyGraphStmt) nodeTag()  {}
+func (n *CreatePropertyGraphStmt) stmtNode() {}
+
+// GraphTableDef represents a vertex table definition in CREATE PROPERTY GRAPH.
+type GraphTableDef struct {
+	Name         *ObjectName // [schema.]table_name
+	Alias        string      // AS graph_element_name
+	KeyColumns   []string    // KEY (col, ...)
+	Labels       []string    // LABEL label_name ...
+	Properties   string      // ALL, ALL_EXCEPT, LIST, NO
+	PropColumns  []string    // column names for PROPERTIES (...)
+	PropAliases  []string    // AS property_name aliases
+	DefaultLabel bool        // DEFAULT LABEL
+	Loc          Loc
+}
+
+func (n *GraphTableDef) nodeTag() {}
+
+// GraphEdgeDef represents an edge table definition in CREATE PROPERTY GRAPH.
+type GraphEdgeDef struct {
+	Name              *ObjectName // [schema.]table_name
+	Alias             string      // AS graph_element_name
+	KeyColumns        []string    // KEY (col, ...)
+	SourceKeyColumns  []string    // SOURCE KEY (col, ...)
+	SourceRef         string      // REFERENCES vertex_table_name
+	SourceRefColumns  []string    // vertex_table_name (col, ...)
+	DestKeyColumns    []string    // DESTINATION KEY (col, ...)
+	DestRef           string      // REFERENCES vertex_table_name
+	DestRefColumns    []string    // vertex_table_name (col, ...)
+	Labels            []string    // LABEL label_name ...
+	Properties        string      // ALL, ALL_EXCEPT, LIST, NO
+	PropColumns       []string    // column names for PROPERTIES (...)
+	PropAliases       []string    // AS property_name aliases
+	DefaultLabel      bool        // DEFAULT LABEL
+	Loc               Loc
+}
+
+func (n *GraphEdgeDef) nodeTag() {}
+
+// GraphOptions represents OPTIONS clause in CREATE PROPERTY GRAPH.
+type GraphOptions struct {
+	Mode           string // ENFORCED, TRUSTED
+	MixedPropTypes string // ALLOW, DISALLOW
+	Loc            Loc
+}
+
+func (n *GraphOptions) nodeTag() {}
+
+// ---------------------------------------------------------------------------
+// CREATE VECTOR INDEX
+// ---------------------------------------------------------------------------
+
+// CreateVectorIndexStmt represents a CREATE VECTOR INDEX statement.
+type CreateVectorIndexStmt struct {
+	Name            *ObjectName // index name
+	IfNotExists     bool
+	TableName       *ObjectName // ON table
+	Column          string      // (column_name)
+	IncludeColumns  []string    // INCLUDE (col, ...)
+	Organization    string      // INMEMORY_NEIGHBOR_GRAPH, NEIGHBOR_PARTITIONS
+	Distance        string      // metric_name
+	TargetAccuracy  int         // WITH TARGET ACCURACY integer
+	ParameterType   string      // HNSW, IVF
+	Neighbors       int         // NEIGHBORS / M value
+	EfConstruction  int         // EFCONSTRUCTION value
+	RescoreFactor   int         // RESCORE_FACTOR value
+	Quantization    string      // quantization algorithm
+	NeighborParts   int         // NEIGHBOR PARTITIONS value (IVF)
+	SamplesPerPart  int         // SAMPLES_PER_PARTITION (IVF)
+	MinVecsPerPart  int         // MIN_VECTORS_PER_PARTITION (IVF)
+	Replication     string      // DUPLICATE_ALL, DISTRIBUTE, DISTRIBUTE_AUTO, etc.
+	Online          bool
+	Parallel        int
+	Loc             Loc
+}
+
+func (n *CreateVectorIndexStmt) nodeTag()  {}
+func (n *CreateVectorIndexStmt) stmtNode() {}
+
+// ---------------------------------------------------------------------------
+// CREATE / ALTER LOCKDOWN PROFILE
+// ---------------------------------------------------------------------------
+
+// CreateLockdownProfileStmt represents a CREATE LOCKDOWN PROFILE statement.
+type CreateLockdownProfileStmt struct {
+	Name        string // profile_name
+	Using       string // USING base_profile_name (static)
+	Including   string // INCLUDING base_profile_name (dynamic)
+	Loc         Loc
+}
+
+func (n *CreateLockdownProfileStmt) nodeTag()  {}
+func (n *CreateLockdownProfileStmt) stmtNode() {}
+
+// AlterLockdownProfileStmt represents an ALTER LOCKDOWN PROFILE statement.
+type AlterLockdownProfileStmt struct {
+	Name       string // profile_name
+	Action     string // ENABLE, DISABLE
+	RuleType   string // FEATURE, OPTION, STATEMENT
+	RuleItems  []string // feature/option/statement names
+	AllItems   bool     // ALL
+	ExceptItems []string // ALL EXCEPT (...)
+	Clauses    []string // CLAUSE = (...)
+	ClauseAll  bool     // CLAUSE = ALL
+	ClauseExceptItems []string // CLAUSE ALL EXCEPT (...)
+	ClauseOptions []string // OPTION = (...)
+	ValueItems []string // VALUE = (...)
+	MinValue   string   // MINVALUE =
+	MaxValue   string   // MAXVALUE =
+	Users      string   // ALL, COMMON, LOCAL
+	Loc        Loc
+}
+
+func (n *AlterLockdownProfileStmt) nodeTag()  {}
+func (n *AlterLockdownProfileStmt) stmtNode() {}
+
+// ---------------------------------------------------------------------------
+// CREATE / ALTER OUTLINE
+// ---------------------------------------------------------------------------
+
+// CreateOutlineStmt represents a CREATE OUTLINE statement.
+type CreateOutlineStmt struct {
+	Name       string // outline name (optional)
+	OrReplace  bool
+	Public     bool   // PUBLIC
+	Private    bool   // PRIVATE
+	Category   string // FOR CATEGORY category
+	FromSource string // FROM [PRIVATE] source_outline
+	FromPrivate bool  // FROM PRIVATE
+	Loc        Loc
+}
+
+func (n *CreateOutlineStmt) nodeTag()  {}
+func (n *CreateOutlineStmt) stmtNode() {}
+
+// AlterOutlineStmt represents an ALTER OUTLINE statement.
+type AlterOutlineStmt struct {
+	Name      string // outline name
+	Public    bool   // PUBLIC
+	Private   bool   // PRIVATE
+	Action    string // REBUILD, RENAME, CHANGE_CATEGORY, ENABLE, DISABLE
+	NewName   string // RENAME TO new_name
+	Category  string // CHANGE CATEGORY TO new_category
+	Loc       Loc
+}
+
+func (n *AlterOutlineStmt) nodeTag()  {}
+func (n *AlterOutlineStmt) stmtNode() {}
+
+// ---------------------------------------------------------------------------
 // Star expression (SELECT *)
 // ---------------------------------------------------------------------------
 

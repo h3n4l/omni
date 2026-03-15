@@ -496,6 +496,24 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeDomainEnumItem(sb, n)
 	case *DomainConstraint:
 		writeDomainConstraint(sb, n)
+	case *CreatePropertyGraphStmt:
+		writeCreatePropertyGraphStmt(sb, n)
+	case *GraphTableDef:
+		writeGraphTableDef(sb, n)
+	case *GraphEdgeDef:
+		writeGraphEdgeDef(sb, n)
+	case *GraphOptions:
+		writeGraphOptions(sb, n)
+	case *CreateVectorIndexStmt:
+		writeCreateVectorIndexStmt(sb, n)
+	case *CreateLockdownProfileStmt:
+		writeCreateLockdownProfileStmt(sb, n)
+	case *AlterLockdownProfileStmt:
+		writeAlterLockdownProfileStmt(sb, n)
+	case *CreateOutlineStmt:
+		writeCreateOutlineStmt(sb, n)
+	case *AlterOutlineStmt:
+		writeAlterOutlineStmt(sb, n)
 
 	// PL/SQL nodes
 	case *PLSQLBlock:
@@ -7029,5 +7047,247 @@ func writeDomainConstraint(sb *strings.Builder, n *DomainConstraint) {
 		sb.WriteString(" :state ")
 		writeNode(sb, n.State)
 	}
+	sb.WriteString("}")
+}
+
+func writeCreatePropertyGraphStmt(sb *strings.Builder, n *CreatePropertyGraphStmt) {
+	sb.WriteString("{CREATE_PROPERTY_GRAPH")
+	if n.OrReplace {
+		sb.WriteString(" :or_replace true")
+	}
+	if n.IfNotExists {
+		sb.WriteString(" :if_not_exists true")
+	}
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if len(n.VertexTables) > 0 {
+		sb.WriteString(" :vertex_tables (")
+		for i, v := range n.VertexTables {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, v)
+		}
+		sb.WriteString(")")
+	}
+	if len(n.EdgeTables) > 0 {
+		sb.WriteString(" :edge_tables (")
+		for i, e := range n.EdgeTables {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, e)
+		}
+		sb.WriteString(")")
+	}
+	if n.Options != nil {
+		sb.WriteString(" :options ")
+		writeNode(sb, n.Options)
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeGraphTableDef(sb *strings.Builder, n *GraphTableDef) {
+	sb.WriteString("{GRAPH_TABLE_DEF")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.Alias != "" {
+		sb.WriteString(fmt.Sprintf(" :alias %q", n.Alias))
+	}
+	if len(n.KeyColumns) > 0 {
+		sb.WriteString(" :key_columns (")
+		for i, c := range n.KeyColumns {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			sb.WriteString(fmt.Sprintf("%q", c))
+		}
+		sb.WriteString(")")
+	}
+	if len(n.Labels) > 0 {
+		sb.WriteString(" :labels (")
+		for i, l := range n.Labels {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			sb.WriteString(fmt.Sprintf("%q", l))
+		}
+		sb.WriteString(")")
+	}
+	if n.Properties != "" {
+		sb.WriteString(fmt.Sprintf(" :properties %q", n.Properties))
+	}
+	if n.DefaultLabel {
+		sb.WriteString(" :default_label true")
+	}
+	sb.WriteString("}")
+}
+
+func writeGraphEdgeDef(sb *strings.Builder, n *GraphEdgeDef) {
+	sb.WriteString("{GRAPH_EDGE_DEF")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.Alias != "" {
+		sb.WriteString(fmt.Sprintf(" :alias %q", n.Alias))
+	}
+	if n.SourceRef != "" {
+		sb.WriteString(fmt.Sprintf(" :source_ref %q", n.SourceRef))
+	}
+	if n.DestRef != "" {
+		sb.WriteString(fmt.Sprintf(" :dest_ref %q", n.DestRef))
+	}
+	sb.WriteString("}")
+}
+
+func writeGraphOptions(sb *strings.Builder, n *GraphOptions) {
+	sb.WriteString("{GRAPH_OPTIONS")
+	if n.Mode != "" {
+		sb.WriteString(fmt.Sprintf(" :mode %q", n.Mode))
+	}
+	if n.MixedPropTypes != "" {
+		sb.WriteString(fmt.Sprintf(" :mixed_prop_types %q", n.MixedPropTypes))
+	}
+	sb.WriteString("}")
+}
+
+func writeCreateVectorIndexStmt(sb *strings.Builder, n *CreateVectorIndexStmt) {
+	sb.WriteString("{CREATE_VECTOR_INDEX")
+	if n.IfNotExists {
+		sb.WriteString(" :if_not_exists true")
+	}
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.TableName != nil {
+		sb.WriteString(" :table_name ")
+		writeNode(sb, n.TableName)
+	}
+	if n.Column != "" {
+		sb.WriteString(fmt.Sprintf(" :column %q", n.Column))
+	}
+	if n.Organization != "" {
+		sb.WriteString(fmt.Sprintf(" :organization %q", n.Organization))
+	}
+	if n.Distance != "" {
+		sb.WriteString(fmt.Sprintf(" :distance %q", n.Distance))
+	}
+	if n.TargetAccuracy > 0 {
+		sb.WriteString(fmt.Sprintf(" :target_accuracy %d", n.TargetAccuracy))
+	}
+	if n.ParameterType != "" {
+		sb.WriteString(fmt.Sprintf(" :parameter_type %q", n.ParameterType))
+	}
+	if n.Online {
+		sb.WriteString(" :online true")
+	}
+	if n.Parallel > 0 {
+		sb.WriteString(fmt.Sprintf(" :parallel %d", n.Parallel))
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeCreateLockdownProfileStmt(sb *strings.Builder, n *CreateLockdownProfileStmt) {
+	sb.WriteString("{CREATE_LOCKDOWN_PROFILE")
+	if n.Name != "" {
+		sb.WriteString(fmt.Sprintf(" :name %q", n.Name))
+	}
+	if n.Using != "" {
+		sb.WriteString(fmt.Sprintf(" :using %q", n.Using))
+	}
+	if n.Including != "" {
+		sb.WriteString(fmt.Sprintf(" :including %q", n.Including))
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeAlterLockdownProfileStmt(sb *strings.Builder, n *AlterLockdownProfileStmt) {
+	sb.WriteString("{ALTER_LOCKDOWN_PROFILE")
+	if n.Name != "" {
+		sb.WriteString(fmt.Sprintf(" :name %q", n.Name))
+	}
+	if n.Action != "" {
+		sb.WriteString(fmt.Sprintf(" :action %q", n.Action))
+	}
+	if n.RuleType != "" {
+		sb.WriteString(fmt.Sprintf(" :rule_type %q", n.RuleType))
+	}
+	if len(n.RuleItems) > 0 {
+		sb.WriteString(" :rule_items (")
+		for i, item := range n.RuleItems {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			sb.WriteString(fmt.Sprintf("%q", item))
+		}
+		sb.WriteString(")")
+	}
+	if n.AllItems {
+		sb.WriteString(" :all_items true")
+	}
+	if n.Users != "" {
+		sb.WriteString(fmt.Sprintf(" :users %q", n.Users))
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeCreateOutlineStmt(sb *strings.Builder, n *CreateOutlineStmt) {
+	sb.WriteString("{CREATE_OUTLINE")
+	if n.OrReplace {
+		sb.WriteString(" :or_replace true")
+	}
+	if n.Public {
+		sb.WriteString(" :public true")
+	}
+	if n.Private {
+		sb.WriteString(" :private true")
+	}
+	if n.Name != "" {
+		sb.WriteString(fmt.Sprintf(" :name %q", n.Name))
+	}
+	if n.Category != "" {
+		sb.WriteString(fmt.Sprintf(" :category %q", n.Category))
+	}
+	if n.FromSource != "" {
+		sb.WriteString(fmt.Sprintf(" :from_source %q", n.FromSource))
+	}
+	if n.FromPrivate {
+		sb.WriteString(" :from_private true")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeAlterOutlineStmt(sb *strings.Builder, n *AlterOutlineStmt) {
+	sb.WriteString("{ALTER_OUTLINE")
+	if n.Public {
+		sb.WriteString(" :public true")
+	}
+	if n.Private {
+		sb.WriteString(" :private true")
+	}
+	if n.Name != "" {
+		sb.WriteString(fmt.Sprintf(" :name %q", n.Name))
+	}
+	if n.Action != "" {
+		sb.WriteString(fmt.Sprintf(" :action %q", n.Action))
+	}
+	if n.NewName != "" {
+		sb.WriteString(fmt.Sprintf(" :new_name %q", n.NewName))
+	}
+	if n.Category != "" {
+		sb.WriteString(fmt.Sprintf(" :category %q", n.Category))
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
 }

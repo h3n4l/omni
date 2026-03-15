@@ -1155,7 +1155,7 @@
       "id": 104,
       "name": "graph_vector_lockdown_outline",
       "file": "create_admin.go",
-      "status": "pending",
+      "status": "done",
       "description": "All stubbed. Modern features (property graph, vector index) + admin features (lockdown profile, outline).",
       "bnf_files": [
         "create-property-graph.bnf",
