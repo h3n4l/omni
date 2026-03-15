@@ -30,7 +30,9 @@ func (p *Parser) parseUseStmt() *nodes.UseStmt {
 
 // parsePrintStmt parses a PRINT statement.
 //
-//	PRINT expr
+// BNF: mssql/parser/bnf/print-transact-sql.bnf
+//
+//	PRINT msg_str | @local_variable | string_expr
 func (p *Parser) parsePrintStmt() *nodes.PrintStmt {
 	loc := p.pos()
 	p.advance() // consume PRINT
@@ -47,9 +49,12 @@ func (p *Parser) parsePrintStmt() *nodes.PrintStmt {
 
 // parseRaiseErrorStmt parses a RAISERROR statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/raiserror-transact-sql
+// BNF: mssql/parser/bnf/raiserror-transact-sql.bnf
 //
-//	RAISERROR (msg, severity, state [, args]) [WITH options]
+//	RAISERROR ( { msg_id | msg_str | @local_variable }
+//	    { , severity , state }
+//	    [ , argument [ , ...n ] ] )
+//	    [ WITH option [ , ...n ] ]
 func (p *Parser) parseRaiseErrorStmt() *nodes.RaiseErrorStmt {
 	loc := p.pos()
 	p.advance() // consume RAISERROR
@@ -115,9 +120,12 @@ func (p *Parser) parseRaiseErrorStmt() *nodes.RaiseErrorStmt {
 
 // parseThrowStmt parses a THROW statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/throw-transact-sql
+// BNF: mssql/parser/bnf/throw-transact-sql.bnf
 //
-//	THROW [number, message, state]
+//	THROW [ { error_number | @local_variable }
+//	    , { message | @local_variable }
+//	    , { state | @local_variable } ]
+//	[ ; ]
 func (p *Parser) parseThrowStmt() *nodes.ThrowStmt {
 	loc := p.pos()
 	p.advance() // consume THROW

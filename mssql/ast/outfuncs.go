@@ -1389,10 +1389,20 @@ func writeReturnStmt(sb *strings.Builder, n *ReturnStmt) {
 
 func writeWaitForStmt(sb *strings.Builder, n *WaitForStmt) {
 	sb.WriteString("{WAITFOR")
-	sb.WriteString(fmt.Sprintf(" :waitType \"%s\"", escapeString(n.WaitType)))
+	if n.WaitType != "" {
+		sb.WriteString(fmt.Sprintf(" :waitType \"%s\"", escapeString(n.WaitType)))
+	}
 	if n.Value != nil {
 		sb.WriteString(" :value ")
 		writeNode(sb, n.Value)
+	}
+	if n.InnerStmt != nil {
+		sb.WriteString(" :innerStmt ")
+		writeNode(sb, n.InnerStmt)
+	}
+	if n.Timeout != nil {
+		sb.WriteString(" :timeout ")
+		writeNode(sb, n.Timeout)
 	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

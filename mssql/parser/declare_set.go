@@ -9,10 +9,14 @@ import (
 
 // parseDeclareStmt parses a DECLARE statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/declare-local-variable-transact-sql
+// BNF: mssql/parser/bnf/declare-local-variable-transact-sql.bnf
 //
-//	DECLARE @var type [= expr], ...
-//	DECLARE @var TABLE (col_def, ...)
+//	DECLARE
+//	{
+//	  { @local_variable [AS] data_type [ = value ] }
+//	  | { @cursor_variable_name CURSOR }
+//	  | { @table_variable_name [AS] TABLE ( { <column_definition> | <table_constraint> | <table_index> } [ , ...n ] ) }
+//	} [ , ...n ]
 func (p *Parser) parseDeclareStmt() *nodes.DeclareStmt {
 	loc := p.pos()
 	p.advance() // consume DECLARE
@@ -40,9 +44,11 @@ func (p *Parser) parseDeclareStmt() *nodes.DeclareStmt {
 
 // parseVariableDecl parses a single variable declaration.
 //
-//	variable_decl = @name type [= expr]
-//	             | @name TABLE (col_def, ...)
-//	             | @name CURSOR
+// BNF: mssql/parser/bnf/declare-local-variable-transact-sql.bnf
+//
+//	@local_variable [AS] data_type [ = value ]
+//	| @cursor_variable_name CURSOR
+//	| @table_variable_name [AS] TABLE ( { <column_definition> | <table_constraint> | <table_index> } [ , ...n ] )
 func (p *Parser) parseVariableDecl() *nodes.VariableDecl {
 	if p.cur.Type != tokVARIABLE {
 		return nil
@@ -54,6 +60,9 @@ func (p *Parser) parseVariableDecl() *nodes.VariableDecl {
 		Loc:  nodes.Loc{Start: loc},
 	}
 	p.advance() // consume @var
+
+	// Optional AS keyword
+	p.match(kwAS)
 
 	// TABLE type
 	if p.cur.Type == kwTABLE {
@@ -101,28 +110,22 @@ func (p *Parser) parseVariableDecl() *nodes.VariableDecl {
 
 // parseSetStmt parses a SET statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/set-local-variable-transact-sql
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/set-statements-transact-sql
+// BNF: mssql/parser/bnf/set-transact-sql.bnf
 //
-//	SET @var { = | += | -= | *= | /= | %= | &= | ^= | |= } expr
-//	SET option_name { ON | OFF }
-//	SET IDENTITY_INSERT table { ON | OFF }
-//	SET TRANSACTION ISOLATION LEVEL level_name
-//	SET LANGUAGE language
-//	SET DATEFORMAT format
-//	SET DATEFIRST number
-//	SET LOCK_TIMEOUT timeout_period
-//	SET ROWCOUNT { number | @number_var }
-//	SET TEXTSIZE { number | @number_var }
-//	SET ARITHABORT { ON | OFF }
-//	SET ANSI_NULLS { ON | OFF }
-//	SET ANSI_PADDING { ON | OFF }
-//	SET ANSI_WARNINGS { ON | OFF }
-//	SET QUOTED_IDENTIFIER { ON | OFF }
-//	SET NOCOUNT { ON | OFF }
-//	SET XACT_ABORT { ON | OFF }
-//	SET CONCAT_NULL_YIELDS_NULL { ON | OFF }
-//	SET NUMERIC_ROUNDABORT { ON | OFF }
+//	SET @local_variable { = | += | -= | *= | /= | %= | &= | ^= | |= } expression
+//	SET @local_variable.property_name = expression
+//	SET @local_variable = CURSOR [ FORWARD_ONLY | SCROLL ] ... FOR select_statement
+//
+// BNF: mssql/parser/bnf/set-transaction-isolation-level-transact-sql.bnf
+//
+//	SET TRANSACTION ISOLATION LEVEL
+//	    { READ UNCOMMITTED | READ COMMITTED | REPEATABLE READ | SNAPSHOT | SERIALIZABLE }
+//
+// SET session options:
+//
+//	SET { option_name } { ON | OFF | value }
+//	SET IDENTITY_INSERT table_name { ON | OFF }
+//	SET STATISTICS { IO | TIME | PROFILE | XML } { ON | OFF }
 func (p *Parser) parseSetStmt() nodes.StmtNode {
 	loc := p.pos()
 	p.advance() // consume SET
@@ -152,7 +155,13 @@ func (p *Parser) parseSetStmt() nodes.StmtNode {
 
 // parseSetOptionStmt parses SET session option statements.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/set-statements-transact-sql
+// BNF: mssql/parser/bnf/set-transact-sql.bnf
+// BNF: mssql/parser/bnf/set-transaction-isolation-level-transact-sql.bnf
+//
+//	SET TRANSACTION ISOLATION LEVEL
+//	    { READ UNCOMMITTED | READ COMMITTED | REPEATABLE READ | SNAPSHOT | SERIALIZABLE }
+//	SET IDENTITY_INSERT table_name { ON | OFF }
+//	SET { option_name } { ON | OFF | value }
 func (p *Parser) parseSetOptionStmt(loc int) *nodes.SetOptionStmt {
 	stmt := &nodes.SetOptionStmt{
 		Loc: nodes.Loc{Start: loc},

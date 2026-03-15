@@ -21195,3 +21195,594 @@ func TestParseAuditEventBnfReview(t *testing.T) {
 		}
 	})
 }
+
+// TestParseVariablesCursorsControlFlowBnfReview tests BNF review batch 166.
+func TestParseVariablesCursorsControlFlowBnfReview(t *testing.T) {
+	// DECLARE with optional AS keyword
+	t.Run("declare_with_as_keyword", func(t *testing.T) {
+		sql := "DECLARE @x AS INT"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DeclareStmt)
+		if stmt.Variables == nil || len(stmt.Variables.Items) != 1 {
+			t.Fatalf("expected 1 variable, got %v", stmt.Variables)
+		}
+		vd := stmt.Variables.Items[0].(*ast.VariableDecl)
+		if vd.Name != "@x" {
+			t.Errorf("expected @x, got %q", vd.Name)
+		}
+		if vd.DataType == nil {
+			t.Fatal("expected DataType to be set")
+		}
+	})
+
+	// DECLARE with AS TABLE
+	t.Run("declare_as_table", func(t *testing.T) {
+		sql := "DECLARE @t AS TABLE (id INT, name VARCHAR(100))"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DeclareStmt)
+		vd := stmt.Variables.Items[0].(*ast.VariableDecl)
+		if !vd.IsTable {
+			t.Error("expected IsTable=true")
+		}
+		if vd.TableDef == nil || len(vd.TableDef.Items) < 2 {
+			t.Errorf("expected at least 2 column defs, got %v", vd.TableDef)
+		}
+	})
+
+	// DECLARE multiple variables with AS
+	t.Run("declare_multiple_with_as", func(t *testing.T) {
+		sql := "DECLARE @a AS INT = 1, @b AS VARCHAR(50) = 'hello'"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DeclareStmt)
+		if stmt.Variables == nil || len(stmt.Variables.Items) != 2 {
+			t.Fatalf("expected 2 variables, got %d", len(stmt.Variables.Items))
+		}
+		vd0 := stmt.Variables.Items[0].(*ast.VariableDecl)
+		if vd0.Default == nil {
+			t.Error("expected @a to have default value")
+		}
+		vd1 := stmt.Variables.Items[1].(*ast.VariableDecl)
+		if vd1.Default == nil {
+			t.Error("expected @b to have default value")
+		}
+	})
+
+	// DECLARE cursor variable
+	t.Run("declare_cursor_variable", func(t *testing.T) {
+		sql := "DECLARE @c CURSOR"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DeclareStmt)
+		vd := stmt.Variables.Items[0].(*ast.VariableDecl)
+		if !vd.IsCursor {
+			t.Error("expected IsCursor=true")
+		}
+	})
+
+	// SET with compound assignment
+	t.Run("set_compound_assignment", func(t *testing.T) {
+		sql := "SET @x += 10"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SetStmt)
+		if stmt.Variable != "@x" {
+			t.Errorf("expected @x, got %q", stmt.Variable)
+		}
+		if stmt.Operator != "+=" {
+			t.Errorf("expected +=, got %q", stmt.Operator)
+		}
+	})
+
+	// SET TRANSACTION ISOLATION LEVEL READ COMMITTED
+	t.Run("set_transaction_isolation_level", func(t *testing.T) {
+		sql := "SET TRANSACTION ISOLATION LEVEL READ COMMITTED"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SetOptionStmt)
+		if stmt.Option != "TRANSACTION ISOLATION LEVEL" {
+			t.Errorf("expected TRANSACTION ISOLATION LEVEL, got %q", stmt.Option)
+		}
+	})
+
+	// SET TRANSACTION ISOLATION LEVEL SNAPSHOT
+	t.Run("set_isolation_snapshot", func(t *testing.T) {
+		sql := "SET TRANSACTION ISOLATION LEVEL SNAPSHOT"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SetOptionStmt)
+		if stmt.Option != "TRANSACTION ISOLATION LEVEL" {
+			t.Errorf("expected TRANSACTION ISOLATION LEVEL, got %q", stmt.Option)
+		}
+	})
+
+	// SET IDENTITY_INSERT
+	t.Run("set_identity_insert", func(t *testing.T) {
+		sql := "SET IDENTITY_INSERT dbo.MyTable ON"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SetOptionStmt)
+		if stmt.Option != "IDENTITY_INSERT" {
+			t.Errorf("expected IDENTITY_INSERT, got %q", stmt.Option)
+		}
+	})
+
+	// SET STATISTICS IO ON
+	t.Run("set_statistics_io", func(t *testing.T) {
+		sql := "SET STATISTICS IO ON"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SetOptionStmt)
+		if stmt.Option != "STATISTICS IO" {
+			t.Errorf("expected STATISTICS IO, got %q", stmt.Option)
+		}
+	})
+
+	// DECLARE CURSOR ISO syntax
+	t.Run("declare_cursor_iso", func(t *testing.T) {
+		sql := "DECLARE emp_cursor INSENSITIVE SCROLL CURSOR FOR SELECT * FROM employees FOR READ_ONLY"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DeclareCursorStmt)
+		if stmt.Name != "emp_cursor" {
+			t.Errorf("expected emp_cursor, got %q", stmt.Name)
+		}
+		if !stmt.Insensitive {
+			t.Error("expected Insensitive=true")
+		}
+		if !stmt.Scroll {
+			t.Error("expected Scroll=true")
+		}
+		if stmt.Concurrency != "READ_ONLY" {
+			t.Errorf("expected READ_ONLY concurrency, got %q", stmt.Concurrency)
+		}
+	})
+
+	// DECLARE CURSOR T-SQL extended syntax
+	t.Run("declare_cursor_tsql_extended", func(t *testing.T) {
+		sql := "DECLARE emp_cursor CURSOR LOCAL SCROLL DYNAMIC OPTIMISTIC TYPE_WARNING FOR SELECT * FROM employees FOR UPDATE OF salary, dept"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DeclareCursorStmt)
+		if stmt.Scope != "LOCAL" {
+			t.Errorf("expected LOCAL, got %q", stmt.Scope)
+		}
+		if !stmt.Scroll {
+			t.Error("expected Scroll=true")
+		}
+		if stmt.CursorType != "DYNAMIC" {
+			t.Errorf("expected DYNAMIC, got %q", stmt.CursorType)
+		}
+		if stmt.Concurrency != "OPTIMISTIC" {
+			t.Errorf("expected OPTIMISTIC, got %q", stmt.Concurrency)
+		}
+		if !stmt.TypeWarning {
+			t.Error("expected TypeWarning=true")
+		}
+		if !stmt.ForUpdate {
+			t.Error("expected ForUpdate=true")
+		}
+		if stmt.UpdateCols == nil || len(stmt.UpdateCols.Items) != 2 {
+			t.Errorf("expected 2 update cols, got %v", stmt.UpdateCols)
+		}
+	})
+
+	// FETCH with orientation
+	t.Run("fetch_absolute", func(t *testing.T) {
+		sql := "FETCH ABSOLUTE 5 FROM emp_cursor INTO @name, @salary"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.FetchCursorStmt)
+		if stmt.Orientation != "ABSOLUTE" {
+			t.Errorf("expected ABSOLUTE, got %q", stmt.Orientation)
+		}
+		if stmt.Name != "emp_cursor" {
+			t.Errorf("expected emp_cursor, got %q", stmt.Name)
+		}
+		if stmt.IntoVars == nil || len(stmt.IntoVars.Items) != 2 {
+			t.Errorf("expected 2 INTO vars, got %v", stmt.IntoVars)
+		}
+	})
+
+	// FETCH GLOBAL cursor
+	t.Run("fetch_global_cursor", func(t *testing.T) {
+		sql := "FETCH NEXT FROM GLOBAL my_cursor"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.FetchCursorStmt)
+		if stmt.Orientation != "NEXT" {
+			t.Errorf("expected NEXT, got %q", stmt.Orientation)
+		}
+		if !stmt.Global {
+			t.Error("expected Global=true")
+		}
+	})
+
+	// OPEN cursor with @variable
+	t.Run("open_cursor_variable", func(t *testing.T) {
+		sql := "OPEN @my_cursor"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.OpenCursorStmt)
+		if stmt.Name != "@my_cursor" {
+			t.Errorf("expected @my_cursor, got %q", stmt.Name)
+		}
+	})
+
+	// OPEN GLOBAL cursor
+	t.Run("open_global_cursor", func(t *testing.T) {
+		sql := "OPEN GLOBAL my_cursor"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.OpenCursorStmt)
+		if !stmt.Global {
+			t.Error("expected Global=true")
+		}
+		if stmt.Name != "my_cursor" {
+			t.Errorf("expected my_cursor, got %q", stmt.Name)
+		}
+	})
+
+	// CLOSE GLOBAL cursor
+	t.Run("close_global_cursor", func(t *testing.T) {
+		sql := "CLOSE GLOBAL my_cursor"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CloseCursorStmt)
+		if !stmt.Global {
+			t.Error("expected Global=true")
+		}
+	})
+
+	// DEALLOCATE @variable
+	t.Run("deallocate_cursor_variable", func(t *testing.T) {
+		sql := "DEALLOCATE @my_cursor"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DeallocateCursorStmt)
+		if stmt.Name != "@my_cursor" {
+			t.Errorf("expected @my_cursor, got %q", stmt.Name)
+		}
+	})
+
+	// IF...ELSE
+	t.Run("if_else", func(t *testing.T) {
+		sql := "IF @x > 0 SELECT 'positive' ELSE SELECT 'non-positive'"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.IfStmt)
+		if stmt.Condition == nil {
+			t.Error("expected condition")
+		}
+		if stmt.Then == nil {
+			t.Error("expected then branch")
+		}
+		if stmt.Else == nil {
+			t.Error("expected else branch")
+		}
+	})
+
+	// WHILE with BEGIN...END
+	t.Run("while_begin_end", func(t *testing.T) {
+		sql := "WHILE @i < 10 BEGIN SET @i += 1 END"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.WhileStmt)
+		if stmt.Condition == nil {
+			t.Error("expected condition")
+		}
+		if stmt.Body == nil {
+			t.Error("expected body")
+		}
+	})
+
+	// TRY...CATCH
+	t.Run("try_catch", func(t *testing.T) {
+		sql := "BEGIN TRY SELECT 1/0 END TRY BEGIN CATCH SELECT ERROR_MESSAGE() END CATCH"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.TryCatchStmt)
+		if stmt.TryBlock == nil || len(stmt.TryBlock.Items) == 0 {
+			t.Error("expected TryBlock to have statements")
+		}
+		if stmt.CatchBlock == nil || len(stmt.CatchBlock.Items) == 0 {
+			t.Error("expected CatchBlock to have statements")
+		}
+	})
+
+	// GOTO and label
+	t.Run("goto_label", func(t *testing.T) {
+		sql := "GOTO my_label"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.GotoStmt)
+		if stmt.Label != "my_label" {
+			t.Errorf("expected my_label, got %q", stmt.Label)
+		}
+	})
+
+	// BREAK
+	t.Run("break", func(t *testing.T) {
+		sql := "BREAK"
+		ParseAndCheck(t, sql)
+	})
+
+	// CONTINUE
+	t.Run("continue", func(t *testing.T) {
+		sql := "CONTINUE"
+		ParseAndCheck(t, sql)
+	})
+
+	// RETURN with expression
+	t.Run("return_with_expr", func(t *testing.T) {
+		sql := "RETURN 42"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.ReturnStmt)
+		if stmt.Value == nil {
+			t.Error("expected return value")
+		}
+	})
+
+	// RETURN without expression
+	t.Run("return_no_expr", func(t *testing.T) {
+		sql := "RETURN"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.ReturnStmt)
+		if stmt.Value != nil {
+			t.Error("expected nil return value")
+		}
+	})
+
+	// THROW with args
+	t.Run("throw_with_args", func(t *testing.T) {
+		sql := "THROW 50001, 'Error occurred', 1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.ThrowStmt)
+		if stmt.ErrorNumber == nil {
+			t.Error("expected ErrorNumber")
+		}
+		if stmt.Message == nil {
+			t.Error("expected Message")
+		}
+		if stmt.State == nil {
+			t.Error("expected State")
+		}
+	})
+
+	// THROW rethrow (no args)
+	t.Run("throw_rethrow", func(t *testing.T) {
+		sql := "THROW;"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.ThrowStmt)
+		if stmt.ErrorNumber != nil {
+			t.Error("expected nil ErrorNumber for rethrow")
+		}
+	})
+
+	// RAISERROR with options
+	t.Run("raiserror_with_options", func(t *testing.T) {
+		sql := "RAISERROR('Error %s', 16, 1, @param1) WITH LOG, NOWAIT"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.RaiseErrorStmt)
+		if stmt.Message == nil {
+			t.Error("expected Message")
+		}
+		if stmt.Severity == nil {
+			t.Error("expected Severity")
+		}
+		if stmt.State == nil {
+			t.Error("expected State")
+		}
+		if stmt.Args == nil || len(stmt.Args.Items) != 1 {
+			t.Errorf("expected 1 arg, got %v", stmt.Args)
+		}
+		if stmt.Options == nil || len(stmt.Options.Items) != 2 {
+			t.Errorf("expected 2 options (LOG, NOWAIT), got %v", stmt.Options)
+		}
+	})
+
+	// RAISERROR with msg_id
+	t.Run("raiserror_msg_id", func(t *testing.T) {
+		sql := "RAISERROR(50001, 16, 1)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.RaiseErrorStmt)
+		if stmt.Message == nil {
+			t.Error("expected Message (msg_id)")
+		}
+	})
+
+	// PRINT
+	t.Run("print_string", func(t *testing.T) {
+		sql := "PRINT 'Hello World'"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.PrintStmt)
+		if stmt.Expr == nil {
+			t.Error("expected Expr")
+		}
+	})
+
+	// PRINT with variable
+	t.Run("print_variable", func(t *testing.T) {
+		sql := "PRINT @msg"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.PrintStmt)
+		if stmt.Expr == nil {
+			t.Error("expected Expr")
+		}
+	})
+
+	// WAITFOR DELAY
+	t.Run("waitfor_delay", func(t *testing.T) {
+		sql := "WAITFOR DELAY '00:00:05'"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.WaitForStmt)
+		if stmt.WaitType != "DELAY" {
+			t.Errorf("expected DELAY, got %q", stmt.WaitType)
+		}
+		if stmt.Value == nil {
+			t.Error("expected Value")
+		}
+	})
+
+	// WAITFOR TIME
+	t.Run("waitfor_time", func(t *testing.T) {
+		sql := "WAITFOR TIME '22:00:00'"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.WaitForStmt)
+		if stmt.WaitType != "TIME" {
+			t.Errorf("expected TIME, got %q", stmt.WaitType)
+		}
+	})
+
+	// WAITFOR parenthesized with RECEIVE and TIMEOUT
+	t.Run("waitfor_receive_timeout", func(t *testing.T) {
+		sql := "WAITFOR (RECEIVE TOP(1) * FROM dbo.TestQueue), TIMEOUT 5000"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.WaitForStmt)
+		if stmt.InnerStmt == nil {
+			t.Error("expected InnerStmt for parenthesized WAITFOR")
+		}
+		if stmt.Timeout == nil {
+			t.Error("expected Timeout")
+		}
+	})
+
+	// WAITFOR parenthesized without TIMEOUT
+	t.Run("waitfor_receive_no_timeout", func(t *testing.T) {
+		sql := "WAITFOR (RECEIVE TOP(1) * FROM dbo.TestQueue)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.WaitForStmt)
+		if stmt.InnerStmt == nil {
+			t.Error("expected InnerStmt for parenthesized WAITFOR")
+		}
+		if stmt.Timeout != nil {
+			t.Error("expected nil Timeout")
+		}
+	})
+
+	// IF with BEGIN...END
+	t.Run("if_begin_end", func(t *testing.T) {
+		sql := "IF @x = 1 BEGIN SELECT 'one'; SELECT 'also one' END"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.IfStmt)
+		_, ok := stmt.Then.(*ast.BeginEndStmt)
+		if !ok {
+			t.Errorf("expected BeginEndStmt for Then, got %T", stmt.Then)
+		}
+	})
+
+	// SET NOCOUNT ON
+	t.Run("set_nocount_on", func(t *testing.T) {
+		sql := "SET NOCOUNT ON"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SetOptionStmt)
+		if stmt.Option != "NOCOUNT" {
+			t.Errorf("expected NOCOUNT, got %q", stmt.Option)
+		}
+	})
+
+	// SET XACT_ABORT ON
+	t.Run("set_xact_abort_on", func(t *testing.T) {
+		sql := "SET XACT_ABORT ON"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SetOptionStmt)
+		if stmt.Option != "XACT_ABORT" {
+			t.Errorf("expected XACT_ABORT, got %q", stmt.Option)
+		}
+	})
+
+	// SET ANSI_NULLS ON
+	t.Run("set_ansi_nulls_on", func(t *testing.T) {
+		sql := "SET ANSI_NULLS ON"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SetOptionStmt)
+		if stmt.Option != "ANSI_NULLS" {
+			t.Errorf("expected ANSI_NULLS, got %q", stmt.Option)
+		}
+	})
+
+	// SET ROWCOUNT
+	t.Run("set_rowcount", func(t *testing.T) {
+		sql := "SET ROWCOUNT 100"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SetOptionStmt)
+		if stmt.Option != "ROWCOUNT" {
+			t.Errorf("expected ROWCOUNT, got %q", stmt.Option)
+		}
+		if stmt.Value == nil {
+			t.Error("expected Value")
+		}
+	})
+
+	// DECLARE with no AS (standard form)
+	t.Run("declare_no_as", func(t *testing.T) {
+		sql := "DECLARE @x INT = 42"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DeclareStmt)
+		vd := stmt.Variables.Items[0].(*ast.VariableDecl)
+		if vd.Name != "@x" {
+			t.Errorf("expected @x, got %q", vd.Name)
+		}
+		if vd.Default == nil {
+			t.Error("expected default value")
+		}
+	})
+
+	// SET TRANSACTION ISOLATION LEVEL REPEATABLE READ
+	t.Run("set_isolation_repeatable_read", func(t *testing.T) {
+		sql := "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ"
+		result := ParseAndCheck(t, sql)
+		_ = result.Items[0].(*ast.SetOptionStmt)
+	})
+
+	// SET TRANSACTION ISOLATION LEVEL SERIALIZABLE
+	t.Run("set_isolation_serializable", func(t *testing.T) {
+		sql := "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE"
+		result := ParseAndCheck(t, sql)
+		_ = result.Items[0].(*ast.SetOptionStmt)
+	})
+
+	// SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
+	t.Run("set_isolation_read_uncommitted", func(t *testing.T) {
+		sql := "SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED"
+		result := ParseAndCheck(t, sql)
+		_ = result.Items[0].(*ast.SetOptionStmt)
+	})
+
+	// FETCH simple (no orientation)
+	t.Run("fetch_simple", func(t *testing.T) {
+		sql := "FETCH my_cursor"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.FetchCursorStmt)
+		if stmt.Name != "my_cursor" {
+			t.Errorf("expected my_cursor, got %q", stmt.Name)
+		}
+	})
+
+	// FETCH FROM
+	t.Run("fetch_from", func(t *testing.T) {
+		sql := "FETCH FROM my_cursor INTO @val"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.FetchCursorStmt)
+		if stmt.Name != "my_cursor" {
+			t.Errorf("expected my_cursor, got %q", stmt.Name)
+		}
+		if stmt.IntoVars == nil {
+			t.Error("expected IntoVars")
+		}
+	})
+
+	// THROW with variables
+	t.Run("throw_with_variables", func(t *testing.T) {
+		sql := "THROW @errnum, @errmsg, @errstate"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.ThrowStmt)
+		if stmt.ErrorNumber == nil || stmt.Message == nil || stmt.State == nil {
+			t.Error("expected all three THROW parameters")
+		}
+	})
+
+	// RAISERROR with SETERROR option
+	t.Run("raiserror_seterror", func(t *testing.T) {
+		sql := "RAISERROR('test', 10, 1) WITH SETERROR"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.RaiseErrorStmt)
+		if stmt.Options == nil || len(stmt.Options.Items) != 1 {
+			t.Errorf("expected 1 option, got %v", stmt.Options)
+		}
+	})
+
+	// Empty TRY...CATCH block (catch can be empty)
+	t.Run("try_catch_empty_catch", func(t *testing.T) {
+		sql := "BEGIN TRY SELECT 1 END TRY BEGIN CATCH END CATCH"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.TryCatchStmt)
+		if stmt.TryBlock == nil || len(stmt.TryBlock.Items) == 0 {
+			t.Error("expected TryBlock to have statements")
+		}
+		if stmt.CatchBlock == nil {
+			t.Error("expected CatchBlock to be non-nil")
+		}
+	})
+}

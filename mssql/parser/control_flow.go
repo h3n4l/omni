@@ -9,9 +9,12 @@ import (
 
 // parseIfStmt parses an IF...ELSE statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/if-else-transact-sql
+// BNF: mssql/parser/bnf/if-else-transact-sql.bnf
 //
-//	IF condition stmt [ELSE stmt]
+//	IF boolean_expression
+//	    { sql_statement | statement_block }
+//	[ ELSE
+//	    { sql_statement | statement_block } ]
 func (p *Parser) parseIfStmt() *nodes.IfStmt {
 	loc := p.pos()
 	p.advance() // consume IF
@@ -34,9 +37,10 @@ func (p *Parser) parseIfStmt() *nodes.IfStmt {
 
 // parseWhileStmt parses a WHILE loop.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/while-transact-sql
+// BNF: mssql/parser/bnf/while-transact-sql.bnf
 //
-//	WHILE condition stmt
+//	WHILE boolean_expression
+//	    { sql_statement | statement_block | BREAK | CONTINUE }
 func (p *Parser) parseWhileStmt() *nodes.WhileStmt {
 	loc := p.pos()
 	p.advance() // consume WHILE
@@ -55,7 +59,11 @@ func (p *Parser) parseWhileStmt() *nodes.WhileStmt {
 // parseBeginStmt parses BEGIN...END, BEGIN TRY...END TRY BEGIN CATCH...END CATCH,
 // or BEGIN TRAN/TRANSACTION.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/begin-end-transact-sql
+// BNF: mssql/parser/bnf/begin-end-transact-sql.bnf
+//
+//	BEGIN [ ; ]
+//	    { sql_statement | statement_block }
+//	END [ ; ]
 func (p *Parser) parseBeginStmt() nodes.StmtNode {
 	loc := p.pos()
 
@@ -130,7 +138,15 @@ parseBlock:
 
 // parseTryCatchStmt parses BEGIN TRY...END TRY BEGIN CATCH...END CATCH.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/try-catch-transact-sql
+// BNF: mssql/parser/bnf/try-catch-transact-sql.bnf
+//
+//	BEGIN TRY
+//	    { sql_statement | statement_block }
+//	END TRY
+//	BEGIN CATCH
+//	    [ { sql_statement | statement_block } ]
+//	END CATCH
+//	[ ; ]
 func (p *Parser) parseTryCatchStmt() *nodes.TryCatchStmt {
 	loc := p.pos()
 	p.advance() // consume BEGIN
@@ -188,7 +204,9 @@ func (p *Parser) parseTryCatchStmt() *nodes.TryCatchStmt {
 
 // parseReturnStmt parses a RETURN statement.
 //
-//	RETURN [expr]
+// BNF: mssql/parser/bnf/return-transact-sql.bnf
+//
+//	RETURN [ integer_expression ]
 func (p *Parser) parseReturnStmt() *nodes.ReturnStmt {
 	loc := p.pos()
 	p.advance() // consume RETURN
@@ -208,6 +226,10 @@ func (p *Parser) parseReturnStmt() *nodes.ReturnStmt {
 }
 
 // parseBreakStmt parses a BREAK statement.
+//
+// BNF: mssql/parser/bnf/break-transact-sql.bnf
+//
+//	BREAK
 func (p *Parser) parseBreakStmt() *nodes.BreakStmt {
 	loc := p.pos()
 	p.advance() // consume BREAK
@@ -217,6 +239,10 @@ func (p *Parser) parseBreakStmt() *nodes.BreakStmt {
 }
 
 // parseContinueStmt parses a CONTINUE statement.
+//
+// BNF: mssql/parser/bnf/continue-transact-sql.bnf
+//
+//	CONTINUE
 func (p *Parser) parseContinueStmt() *nodes.ContinueStmt {
 	loc := p.pos()
 	p.advance() // consume CONTINUE
@@ -226,6 +252,8 @@ func (p *Parser) parseContinueStmt() *nodes.ContinueStmt {
 }
 
 // parseGotoStmt parses a GOTO label statement.
+//
+// BNF: mssql/parser/bnf/goto-transact-sql.bnf
 //
 //	GOTO label
 func (p *Parser) parseGotoStmt() *nodes.GotoStmt {
@@ -246,9 +274,15 @@ func (p *Parser) parseGotoStmt() *nodes.GotoStmt {
 
 // parseWaitForStmt parses a WAITFOR statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/waitfor-transact-sql
+// BNF: mssql/parser/bnf/waitfor-transact-sql.bnf
 //
-//	WAITFOR DELAY|TIME expr
+//	WAITFOR
+//	{
+//	    DELAY 'time_to_pass'
+//	  | TIME 'time_to_execute'
+//	  | [ ( receive_statement ) | ( get_conversation_group_statement ) ]
+//	    [ , TIMEOUT timeout ]
+//	}
 func (p *Parser) parseWaitForStmt() *nodes.WaitForStmt {
 	loc := p.pos()
 	p.advance() // consume WAITFOR
@@ -260,12 +294,24 @@ func (p *Parser) parseWaitForStmt() *nodes.WaitForStmt {
 	if p.cur.Type == kwDELAY {
 		stmt.WaitType = "DELAY"
 		p.advance()
+		stmt.Value = p.parseExpr()
 	} else if p.cur.Type == kwTIME || (p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "time")) {
 		stmt.WaitType = "TIME"
 		p.advance()
+		stmt.Value = p.parseExpr()
+	} else if p.cur.Type == '(' {
+		// Parenthesized form: WAITFOR ( receive_statement | get_conversation_group_statement )
+		p.advance() // consume '('
+		stmt.InnerStmt = p.parseStmt()
+		_, _ = p.expect(')')
+		// Optional: , TIMEOUT timeout
+		if _, ok := p.match(','); ok {
+			if p.isIdentLike() && strings.EqualFold(p.cur.Str, "TIMEOUT") {
+				p.advance()
+				stmt.Timeout = p.parseExpr()
+			}
+		}
 	}
-
-	stmt.Value = p.parseExpr()
 
 	stmt.Loc.End = p.pos()
 	return stmt

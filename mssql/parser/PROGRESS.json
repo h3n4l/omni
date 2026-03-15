@@ -457,7 +457,7 @@
       "id": 166,
       "name": "bnf_review_variables_cursors_control_flow",
       "file": "declare_set.go",
-      "status": "pending",
+      "status": "done",
       "description": "BNF review of DECLARE (variables, cursors, table variables), SET, OPEN/FETCH/CLOSE/DEALLOCATE cursor, IF/ELSE, WHILE, BEGIN...END, TRY...CATCH, GOTO, BREAK, CONTINUE, RETURN, THROW, RAISERROR, PRINT, WAITFOR.",
       "rules": [
         "declare_stmt",

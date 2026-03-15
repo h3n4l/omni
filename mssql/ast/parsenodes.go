@@ -1115,10 +1115,22 @@ func (n *LabelStmt) nodeTag()  {}
 func (n *LabelStmt) stmtNode() {}
 
 // WaitForStmt represents a WAITFOR statement.
+//
+// BNF: mssql/parser/bnf/waitfor-transact-sql.bnf
+//
+//	WAITFOR
+//	{
+//	    DELAY 'time_to_pass'
+//	  | TIME 'time_to_execute'
+//	  | [ ( receive_statement ) | ( get_conversation_group_statement ) ]
+//	    [ , TIMEOUT timeout ]
+//	}
 type WaitForStmt struct {
-	WaitType string // DELAY or TIME
-	Value    ExprNode
-	Loc      Loc
+	WaitType  string   // "DELAY" or "TIME" (empty for parenthesized statement form)
+	Value     ExprNode // time expression for DELAY/TIME
+	InnerStmt StmtNode // for WAITFOR ( receive_statement | get_conversation_group_statement )
+	Timeout   ExprNode // TIMEOUT value
+	Loc       Loc
 }
 
 func (n *WaitForStmt) nodeTag()  {}

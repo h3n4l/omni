@@ -9,7 +9,7 @@ import (
 
 // parseDeclareCursorStmt parses a DECLARE cursor_name CURSOR statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/declare-cursor-transact-sql
+// BNF: mssql/parser/bnf/declare-cursor-transact-sql.bnf
 //
 // ISO syntax:
 //
@@ -161,7 +161,7 @@ func (p *Parser) parseCursorOptions(stmt *nodes.DeclareCursorStmt) {
 
 // parseOpenCursorStmt parses an OPEN cursor statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/open-transact-sql
+// BNF: mssql/parser/bnf/open-transact-sql.bnf
 //
 //	OPEN { { [ GLOBAL ] cursor_name } | cursor_variable_name }
 func (p *Parser) parseOpenCursorStmt() *nodes.OpenCursorStmt {
@@ -194,7 +194,7 @@ func (p *Parser) parseOpenCursorStmt() *nodes.OpenCursorStmt {
 
 // parseFetchCursorStmt parses a FETCH cursor statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/fetch-transact-sql
+// BNF: mssql/parser/bnf/fetch-transact-sql.bnf
 //
 //	FETCH
 //	    [ [ NEXT | PRIOR | FIRST | LAST
@@ -282,7 +282,7 @@ func (p *Parser) parseFetchCursorStmt() *nodes.FetchCursorStmt {
 
 // parseCloseCursorStmt parses a CLOSE cursor statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/close-transact-sql
+// BNF: mssql/parser/bnf/close-transact-sql.bnf
 //
 //	CLOSE { { [ GLOBAL ] cursor_name } | cursor_variable_name }
 func (p *Parser) parseCloseCursorStmt() *nodes.CloseCursorStmt {
@@ -315,7 +315,7 @@ func (p *Parser) parseCloseCursorStmt() *nodes.CloseCursorStmt {
 
 // parseDeallocateCursorStmt parses a DEALLOCATE cursor statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/deallocate-transact-sql
+// BNF: mssql/parser/bnf/deallocate-transact-sql.bnf
 //
 //	DEALLOCATE { { [ GLOBAL ] cursor_name } | @cursor_variable_name }
 func (p *Parser) parseDeallocateCursorStmt() *nodes.DeallocateCursorStmt {
