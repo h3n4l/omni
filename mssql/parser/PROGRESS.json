@@ -536,7 +536,7 @@
       "id": 169,
       "name": "bnf_review_ha_server",
       "file": "availability.go",
-      "status": "pending",
+      "status": "done",
       "description": "BNF review of CREATE/ALTER/DROP AVAILABILITY GROUP, CREATE/ALTER/DROP ENDPOINT, ALTER SERVER CONFIGURATION, CREATE/ALTER/DROP RESOURCE GOVERNOR, RESOURCE POOL, WORKLOAD GROUP.",
       "rules": [
         "create_availability_group_stmt",

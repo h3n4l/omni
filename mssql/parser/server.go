@@ -156,6 +156,7 @@ func (p *Parser) parseDropServerRoleStmt() *nodes.SecurityStmt {
 //	   | MEMORY_OPTIMIZED { ON | OFF | TEMPDB_METADATA = { ON [(RESOURCE_POOL='pool')] | OFF } | HYBRID_BUFFER_POOL = { ON | OFF } }
 //	   | HARDWARE_OFFLOAD { ON | OFF }
 //	   | SUSPEND_FOR_SNAPSHOT_BACKUP = { ON | OFF } [ ( GROUP = ( <database>,...n ) [ , MODE = COPY_ONLY ] ) ]
+//	   | EXTERNAL AUTHENTICATION { ON | OFF } [ ( USE_IDENTITY | CREDENTIAL_NAME = 'name' ) ]
 //	}
 //
 //	<CPU_range_spec> ::=
@@ -248,6 +249,13 @@ func (p *Parser) parseAlterServerConfigurationStmt() *nodes.AlterServerConfigura
 		p.advance() // consume HARDWARE_OFFLOAD
 		stmt.OptionType = "HARDWARE_OFFLOAD"
 		opts = p.parseServerConfigOnOff()
+	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "EXTERNAL") {
+		p.advance() // consume EXTERNAL
+		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AUTHENTICATION") {
+			p.advance() // consume AUTHENTICATION
+		}
+		stmt.OptionType = "EXTERNAL AUTHENTICATION"
+		opts = p.parseServerConfigExternalAuthentication()
 	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SUSPEND_FOR_SNAPSHOT_BACKUP") {
 		p.advance() // consume SUSPEND_FOR_SNAPSHOT_BACKUP
 		stmt.OptionType = "SUSPEND_FOR_SNAPSHOT_BACKUP"
@@ -705,6 +713,60 @@ func (p *Parser) parseServerConfigSuspendForSnapshotBackup() []nodes.Node {
 		}
 		if p.cur.Type == ')' {
 			p.advance() // consume outer )
+		}
+	}
+
+	return opts
+}
+
+// parseServerConfigExternalAuthentication parses EXTERNAL AUTHENTICATION options.
+//
+//	EXTERNAL AUTHENTICATION { ON | OFF } [ ( USE_IDENTITY | CREDENTIAL_NAME = 'name' ) ]
+func (p *Parser) parseServerConfigExternalAuthentication() []nodes.Node {
+	var opts []nodes.Node
+
+	// ON / OFF
+	if p.cur.Type == kwON {
+		optLoc := p.pos()
+		p.advance()
+		opts = append(opts, &nodes.ServerConfigOption{Name: "ON", Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
+	} else if p.cur.Type == kwOFF {
+		optLoc := p.pos()
+		p.advance()
+		opts = append(opts, &nodes.ServerConfigOption{Name: "OFF", Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
+		return opts
+	}
+
+	// Optional ( USE_IDENTITY | CREDENTIAL_NAME = 'name' )
+	if p.cur.Type == '(' {
+		p.advance() // consume (
+		for p.cur.Type != ')' && p.cur.Type != tokEOF {
+			if p.cur.Type == ',' {
+				p.advance()
+				continue
+			}
+			if !p.isIdentLike() {
+				break
+			}
+			subLoc := p.pos()
+			key := p.cur.Str
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance() // consume =
+				if p.cur.Type == tokSCONST {
+					val := "'" + p.cur.Str + "'"
+					p.advance()
+					opts = append(opts, &nodes.ServerConfigOption{Name: key, Value: val, Loc: nodes.Loc{Start: subLoc, End: p.pos()}})
+				} else if p.isIdentLike() {
+					opts = append(opts, &nodes.ServerConfigOption{Name: key, Value: p.cur.Str, Loc: nodes.Loc{Start: subLoc, End: p.pos()}})
+					p.advance()
+				}
+			} else {
+				opts = append(opts, &nodes.ServerConfigOption{Name: key, Loc: nodes.Loc{Start: subLoc, End: p.pos()}})
+			}
+		}
+		if p.cur.Type == ')' {
+			p.advance() // consume )
 		}
 	}
 

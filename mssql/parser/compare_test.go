@@ -22331,3 +22331,220 @@ func TestParseBackupRestoreBnfReview(t *testing.T) {
 		}
 	})
 }
+
+// TestParseHAServerBNFReview tests batch 169: BNF review of HA and server-level statements.
+func TestParseHAServerBNFReview(t *testing.T) {
+	t.Run("create_availability_group", func(t *testing.T) {
+		tests := []string{
+			"CREATE AVAILABILITY GROUP myag WITH (CLUSTER_TYPE = WSFC) FOR DATABASE db1 REPLICA ON 'server1' WITH (ENDPOINT_URL = 'TCP://server1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = AUTOMATIC)",
+			"CREATE AVAILABILITY GROUP myag WITH (AUTOMATED_BACKUP_PREFERENCE = SECONDARY, FAILURE_CONDITION_LEVEL = 3) FOR DATABASE db1, db2 REPLICA ON 'srv1' WITH (ENDPOINT_URL = 'TCP://srv1:5022', AVAILABILITY_MODE = ASYNCHRONOUS_COMMIT, FAILOVER_MODE = MANUAL)",
+			"CREATE AVAILABILITY GROUP myag WITH (DB_FAILOVER = ON, DTC_SUPPORT = PER_DB) FOR DATABASE db1 REPLICA ON 'srv1' WITH (ENDPOINT_URL = 'TCP://srv1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = AUTOMATIC, SEEDING_MODE = AUTOMATIC)",
+			"CREATE AVAILABILITY GROUP myag WITH (HEALTH_CHECK_TIMEOUT = 30000, REQUIRED_SYNCHRONIZED_SECONDARIES_TO_COMMIT = 1) FOR DATABASE db1 REPLICA ON 'srv1' WITH (ENDPOINT_URL = 'TCP://srv1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = AUTOMATIC, BACKUP_PRIORITY = 50, SESSION_TIMEOUT = 10)",
+			"CREATE AVAILABILITY GROUP myag FOR DATABASE db1 REPLICA ON 'srv1' WITH (ENDPOINT_URL = 'TCP://srv1:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = AUTOMATIC) LISTENER 'mylistener' (WITH IP (('10.0.0.1', '255.255.255.0')), PORT = 1433)",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("alter_availability_group", func(t *testing.T) {
+		tests := []string{
+			"ALTER AVAILABILITY GROUP myag SET (AUTOMATED_BACKUP_PREFERENCE = PRIMARY)",
+			"ALTER AVAILABILITY GROUP myag SET (FAILURE_CONDITION_LEVEL = 4)",
+			"ALTER AVAILABILITY GROUP myag SET (DB_FAILOVER = ON)",
+			"ALTER AVAILABILITY GROUP myag SET (REQUIRED_SYNCHRONIZED_SECONDARIES_TO_COMMIT = 2)",
+			"ALTER AVAILABILITY GROUP myag ADD DATABASE db2",
+			"ALTER AVAILABILITY GROUP myag REMOVE DATABASE db2",
+			"ALTER AVAILABILITY GROUP myag ADD REPLICA ON 'srv2' WITH (ENDPOINT_URL = 'TCP://srv2:5022', AVAILABILITY_MODE = SYNCHRONOUS_COMMIT, FAILOVER_MODE = MANUAL)",
+			"ALTER AVAILABILITY GROUP myag MODIFY REPLICA ON 'srv2' WITH (AVAILABILITY_MODE = ASYNCHRONOUS_COMMIT)",
+			"ALTER AVAILABILITY GROUP myag REMOVE REPLICA ON 'srv2'",
+			"ALTER AVAILABILITY GROUP myag JOIN",
+			"ALTER AVAILABILITY GROUP myag FAILOVER",
+			"ALTER AVAILABILITY GROUP myag FORCE_FAILOVER_ALLOW_DATA_LOSS",
+			"ALTER AVAILABILITY GROUP myag OFFLINE",
+			"ALTER AVAILABILITY GROUP myag GRANT CREATE ANY DATABASE",
+			"ALTER AVAILABILITY GROUP myag DENY CREATE ANY DATABASE",
+			"ALTER AVAILABILITY GROUP myag ADD LISTENER 'mylistener' (WITH DHCP)",
+			"ALTER AVAILABILITY GROUP myag MODIFY LISTENER 'mylistener' (PORT = 1433)",
+			"ALTER AVAILABILITY GROUP myag RESTART LISTENER 'mylistener'",
+			"ALTER AVAILABILITY GROUP myag REMOVE LISTENER 'mylistener'",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("drop_availability_group", func(t *testing.T) {
+		tests := []string{
+			"DROP AVAILABILITY GROUP myag",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("create_endpoint", func(t *testing.T) {
+		tests := []string{
+			"CREATE ENDPOINT myendpoint STATE = STARTED AS TCP (LISTENER_PORT = 5022) FOR SERVICE_BROKER (AUTHENTICATION = WINDOWS NEGOTIATE, ENCRYPTION = REQUIRED ALGORITHM AES)",
+			"CREATE ENDPOINT myendpoint AS TCP (LISTENER_PORT = 5022, LISTENER_IP = ALL) FOR DATABASE_MIRRORING (AUTHENTICATION = CERTIFICATE mycert, ENCRYPTION = SUPPORTED ALGORITHM RC4, ROLE = PARTNER)",
+			"CREATE ENDPOINT myendpoint STATE = STOPPED AS TCP (LISTENER_PORT = 5023) FOR TSQL ()",
+			"CREATE ENDPOINT myendpoint AUTHORIZATION mylogin STATE = STARTED AS TCP (LISTENER_PORT = 5022) FOR SERVICE_BROKER (AUTHENTICATION = WINDOWS KERBEROS CERTIFICATE mycert, ENCRYPTION = REQUIRED ALGORITHM AES RC4, MESSAGE_FORWARDING = ENABLED, MESSAGE_FORWARD_SIZE = 10)",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("alter_endpoint", func(t *testing.T) {
+		tests := []string{
+			"ALTER ENDPOINT myendpoint STATE = STARTED",
+			"ALTER ENDPOINT myendpoint AS TCP (LISTENER_PORT = 5022) FOR DATABASE_MIRRORING (ROLE = WITNESS)",
+			"ALTER ENDPOINT myendpoint STATE = DISABLED",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("drop_endpoint", func(t *testing.T) {
+		tests := []string{
+			"DROP ENDPOINT myendpoint",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("alter_server_configuration", func(t *testing.T) {
+		tests := []string{
+			"ALTER SERVER CONFIGURATION SET PROCESS AFFINITY CPU = AUTO",
+			"ALTER SERVER CONFIGURATION SET PROCESS AFFINITY CPU = 0, 1, 2",
+			"ALTER SERVER CONFIGURATION SET PROCESS AFFINITY CPU = 0 TO 3",
+			"ALTER SERVER CONFIGURATION SET PROCESS AFFINITY NUMANODE = 0, 1",
+			"ALTER SERVER CONFIGURATION SET DIAGNOSTICS LOG ON",
+			"ALTER SERVER CONFIGURATION SET DIAGNOSTICS LOG OFF",
+			"ALTER SERVER CONFIGURATION SET DIAGNOSTICS LOG PATH = '/var/log/sql'",
+			"ALTER SERVER CONFIGURATION SET DIAGNOSTICS LOG MAX_SIZE = 100 MB",
+			"ALTER SERVER CONFIGURATION SET DIAGNOSTICS LOG MAX_FILES = 10",
+			"ALTER SERVER CONFIGURATION SET FAILOVER CLUSTER PROPERTY VerboseLogging = 2",
+			"ALTER SERVER CONFIGURATION SET FAILOVER CLUSTER PROPERTY SqlDumperDumpPath = '/tmp'",
+			"ALTER SERVER CONFIGURATION SET FAILOVER CLUSTER PROPERTY HealthCheckTimeout = DEFAULT",
+			"ALTER SERVER CONFIGURATION SET HADR CLUSTER CONTEXT = 'remotecluster'",
+			"ALTER SERVER CONFIGURATION SET HADR CLUSTER CONTEXT = LOCAL",
+			"ALTER SERVER CONFIGURATION SET BUFFER POOL EXTENSION ON (FILENAME = '/tmp/bpe.bpe', SIZE = 5 GB)",
+			"ALTER SERVER CONFIGURATION SET BUFFER POOL EXTENSION OFF",
+			"ALTER SERVER CONFIGURATION SET SOFTNUMA ON",
+			"ALTER SERVER CONFIGURATION SET SOFTNUMA OFF",
+			"ALTER SERVER CONFIGURATION SET MEMORY_OPTIMIZED ON",
+			"ALTER SERVER CONFIGURATION SET MEMORY_OPTIMIZED TEMPDB_METADATA = ON",
+			"ALTER SERVER CONFIGURATION SET MEMORY_OPTIMIZED TEMPDB_METADATA = ON (RESOURCE_POOL = 'mypool')",
+			"ALTER SERVER CONFIGURATION SET MEMORY_OPTIMIZED HYBRID_BUFFER_POOL = OFF",
+			"ALTER SERVER CONFIGURATION SET HARDWARE_OFFLOAD ON",
+			"ALTER SERVER CONFIGURATION SET EXTERNAL AUTHENTICATION ON",
+			"ALTER SERVER CONFIGURATION SET EXTERNAL AUTHENTICATION OFF",
+			"ALTER SERVER CONFIGURATION SET EXTERNAL AUTHENTICATION ON (CREDENTIAL_NAME = 'mycred')",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("create_resource_pool", func(t *testing.T) {
+		tests := []string{
+			"CREATE RESOURCE POOL mypool",
+			"CREATE RESOURCE POOL mypool WITH (MIN_CPU_PERCENT = 10, MAX_CPU_PERCENT = 50)",
+			"CREATE RESOURCE POOL mypool WITH (CAP_CPU_PERCENT = 80, MIN_MEMORY_PERCENT = 20, MAX_MEMORY_PERCENT = 60)",
+			"CREATE RESOURCE POOL mypool WITH (AFFINITY SCHEDULER = AUTO)",
+			"CREATE RESOURCE POOL mypool WITH (AFFINITY SCHEDULER = (0 TO 3))",
+			"CREATE RESOURCE POOL mypool WITH (AFFINITY NUMANODE = (0, 1))",
+			"CREATE RESOURCE POOL mypool WITH (MIN_IOPS_PER_VOLUME = 100, MAX_IOPS_PER_VOLUME = 500)",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("alter_resource_pool", func(t *testing.T) {
+		tests := []string{
+			"ALTER RESOURCE POOL mypool WITH (MAX_CPU_PERCENT = 75)",
+			"ALTER RESOURCE POOL default WITH (MAX_MEMORY_PERCENT = 80)",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("create_workload_group", func(t *testing.T) {
+		tests := []string{
+			"CREATE WORKLOAD GROUP mygroup",
+			"CREATE WORKLOAD GROUP mygroup WITH (IMPORTANCE = HIGH, MAX_DOP = 4, REQUEST_MAX_MEMORY_GRANT_PERCENT = 25)",
+			"CREATE WORKLOAD GROUP mygroup WITH (REQUEST_MAX_CPU_TIME_SEC = 60, GROUP_MAX_REQUESTS = 10)",
+			"CREATE WORKLOAD GROUP mygroup USING mypool",
+			"CREATE WORKLOAD GROUP mygroup USING mypool, EXTERNAL extpool",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("alter_workload_group", func(t *testing.T) {
+		tests := []string{
+			"ALTER WORKLOAD GROUP mygroup WITH (IMPORTANCE = LOW)",
+			"ALTER WORKLOAD GROUP default WITH (MAX_DOP = 8)",
+			"ALTER WORKLOAD GROUP mygroup USING newpool",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("alter_resource_governor", func(t *testing.T) {
+		tests := []string{
+			"ALTER RESOURCE GOVERNOR RECONFIGURE",
+			"ALTER RESOURCE GOVERNOR DISABLE",
+			"ALTER RESOURCE GOVERNOR RESET STATISTICS",
+			"ALTER RESOURCE GOVERNOR WITH (CLASSIFIER_FUNCTION = dbo.classifier_func)",
+			"ALTER RESOURCE GOVERNOR WITH (CLASSIFIER_FUNCTION = NULL)",
+			"ALTER RESOURCE GOVERNOR WITH (MAX_OUTSTANDING_IO_PER_VOLUME = 20)",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+
+	t.Run("create_external_resource_pool", func(t *testing.T) {
+		tests := []string{
+			"CREATE EXTERNAL RESOURCE POOL myextpool",
+			"CREATE EXTERNAL RESOURCE POOL myextpool WITH (MAX_CPU_PERCENT = 50, MAX_MEMORY_PERCENT = 40, MAX_PROCESSES = 10)",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+}
