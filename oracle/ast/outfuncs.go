@@ -386,6 +386,12 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeDisassociateStatisticsStmt(sb, n)
 	case *CreateTablespaceStmt:
 		writeCreateTablespaceStmt(sb, n)
+	case *AlterTablespaceStmt:
+		writeAlterTablespaceStmt(sb, n)
+	case *CreateTablespaceSetStmt:
+		writeCreateTablespaceSetStmt(sb, n)
+	case *DropTablespaceStmt:
+		writeDropTablespaceStmt(sb, n)
 	case *CreateClusterStmt:
 		writeCreateClusterStmt(sb, n)
 	case *CreateDimensionStmt:
@@ -4287,8 +4293,14 @@ func writeCreateTablespaceStmt(sb *strings.Builder, n *CreateTablespaceStmt) {
 	if n.Temporary {
 		sb.WriteString(" :temporary true")
 	}
+	if n.Local {
+		sb.WriteString(" :local true")
+	}
 	if n.Undo {
 		sb.WriteString(" :undo true")
+	}
+	if n.IfNotExists {
+		sb.WriteString(" :if_not_exists true")
 	}
 	if len(n.Datafiles) > 0 {
 		sb.WriteString(" :datafiles (")
@@ -4331,11 +4343,241 @@ func writeCreateTablespaceStmt(sb *strings.Builder, n *CreateTablespaceStmt) {
 	if n.Encryption != "" {
 		sb.WriteString(fmt.Sprintf(" :encryption %q", n.Encryption))
 	}
+	if n.EncryptionAlgorithm != "" {
+		sb.WriteString(fmt.Sprintf(" :encryption_algorithm %q", n.EncryptionAlgorithm))
+	}
 	if n.Compress != "" {
 		sb.WriteString(fmt.Sprintf(" :compress %q", n.Compress))
 	}
 	if n.MaxSize != "" {
 		sb.WriteString(fmt.Sprintf(" :maxsize %q", n.MaxSize))
+	}
+	if n.MinimumExtent != "" {
+		sb.WriteString(fmt.Sprintf(" :minimum_extent %q", n.MinimumExtent))
+	}
+	if n.TablespaceGroup != "" {
+		sb.WriteString(fmt.Sprintf(" :tablespace_group %q", n.TablespaceGroup))
+	}
+	if n.Flashback != "" {
+		sb.WriteString(fmt.Sprintf(" :flashback %q", n.Flashback))
+	}
+	if n.LostWriteProtection != "" {
+		sb.WriteString(fmt.Sprintf(" :lost_write_protection %q", n.LostWriteProtection))
+	}
+	if n.DefaultParams != "" {
+		sb.WriteString(fmt.Sprintf(" :default_params %q", n.DefaultParams))
+	}
+	if n.ForLeaf != "" {
+		sb.WriteString(fmt.Sprintf(" :for_leaf %q", n.ForLeaf))
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeAlterTablespaceStmt(sb *strings.Builder, n *AlterTablespaceStmt) {
+	sb.WriteString("{ALTER_TABLESPACE")
+	if n.IsSet {
+		sb.WriteString(" :is_set true")
+	}
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.IfExists {
+		sb.WriteString(" :if_exists true")
+	}
+	if n.DefaultParams != "" {
+		sb.WriteString(fmt.Sprintf(" :default_params %q", n.DefaultParams))
+	}
+	if n.MinimumExtent != "" {
+		sb.WriteString(fmt.Sprintf(" :minimum_extent %q", n.MinimumExtent))
+	}
+	if n.Resize != "" {
+		sb.WriteString(fmt.Sprintf(" :resize %q", n.Resize))
+	}
+	if n.Coalesce {
+		sb.WriteString(" :coalesce true")
+	}
+	if n.ShrinkSpace {
+		sb.WriteString(" :shrink_space true")
+	}
+	if n.ShrinkKeep != "" {
+		sb.WriteString(fmt.Sprintf(" :shrink_keep %q", n.ShrinkKeep))
+	}
+	if n.ShrinkTempfile != "" {
+		sb.WriteString(fmt.Sprintf(" :shrink_tempfile %q", n.ShrinkTempfile))
+	}
+	if n.ShrinkTempfileKeep != "" {
+		sb.WriteString(fmt.Sprintf(" :shrink_tempfile_keep %q", n.ShrinkTempfileKeep))
+	}
+	if n.RenameTo != "" {
+		sb.WriteString(fmt.Sprintf(" :rename_to %q", n.RenameTo))
+	}
+	if n.BeginBackup {
+		sb.WriteString(" :begin_backup true")
+	}
+	if n.EndBackup {
+		sb.WriteString(" :end_backup true")
+	}
+	if n.AddDatafile || n.AddTempfile {
+		if n.AddDatafile {
+			sb.WriteString(" :add_datafile true")
+		}
+		if n.AddTempfile {
+			sb.WriteString(" :add_tempfile true")
+		}
+		if len(n.Datafiles) > 0 {
+			sb.WriteString(" :datafiles (")
+			for i, d := range n.Datafiles {
+				if i > 0 {
+					sb.WriteString(" ")
+				}
+				writeNode(sb, d)
+			}
+			sb.WriteString(")")
+		}
+	}
+	if n.DropDatafile {
+		sb.WriteString(fmt.Sprintf(" :drop_datafile %q", n.DropFileRef))
+	}
+	if n.DropTempfile {
+		sb.WriteString(fmt.Sprintf(" :drop_tempfile %q", n.DropFileRef))
+	}
+	if n.RenameDatafile {
+		sb.WriteString(" :rename_datafile true")
+	}
+	if n.DatafileOnline {
+		sb.WriteString(" :datafile_online true")
+	}
+	if n.DatafileOffline {
+		sb.WriteString(" :datafile_offline true")
+	}
+	if n.TempfileOnline {
+		sb.WriteString(" :tempfile_online true")
+	}
+	if n.TempfileOffline {
+		sb.WriteString(" :tempfile_offline true")
+	}
+	if n.Logging != "" {
+		sb.WriteString(fmt.Sprintf(" :logging %q", n.Logging))
+	}
+	if n.ForceLogging != "" {
+		sb.WriteString(fmt.Sprintf(" :force_logging %q", n.ForceLogging))
+	}
+	if n.Online {
+		sb.WriteString(" :online true")
+	}
+	if n.Offline {
+		sb.WriteString(" :offline true")
+	}
+	if n.OfflineMode != "" {
+		sb.WriteString(fmt.Sprintf(" :offline_mode %q", n.OfflineMode))
+	}
+	if n.ReadOnly {
+		sb.WriteString(" :read_only true")
+	}
+	if n.ReadWrite {
+		sb.WriteString(" :read_write true")
+	}
+	if n.Permanent {
+		sb.WriteString(" :permanent true")
+	}
+	if n.TempState {
+		sb.WriteString(" :temporary true")
+	}
+	if n.Autoextend != nil {
+		sb.WriteString(" :autoextend ")
+		writeNode(sb, n.Autoextend)
+	}
+	if n.Flashback != "" {
+		sb.WriteString(fmt.Sprintf(" :flashback %q", n.Flashback))
+	}
+	if n.Retention != "" {
+		sb.WriteString(fmt.Sprintf(" :retention %q", n.Retention))
+	}
+	if n.Encryption != "" {
+		sb.WriteString(fmt.Sprintf(" :encryption %q", n.Encryption))
+	}
+	if n.LostWriteProtection != "" {
+		sb.WriteString(fmt.Sprintf(" :lost_write_protection %q", n.LostWriteProtection))
+	}
+	if n.TablespaceGroup != "" {
+		sb.WriteString(fmt.Sprintf(" :tablespace_group %q", n.TablespaceGroup))
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeCreateTablespaceSetStmt(sb *strings.Builder, n *CreateTablespaceSetStmt) {
+	sb.WriteString("{CREATE_TABLESPACE_SET")
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.Shardspace != "" {
+		sb.WriteString(fmt.Sprintf(" :shardspace %q", n.Shardspace))
+	}
+	if len(n.Datafiles) > 0 {
+		sb.WriteString(" :datafiles (")
+		for i, d := range n.Datafiles {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			writeNode(sb, d)
+		}
+		sb.WriteString(")")
+	}
+	if n.Logging != "" {
+		sb.WriteString(fmt.Sprintf(" :logging %q", n.Logging))
+	}
+	if n.Encryption != "" {
+		sb.WriteString(fmt.Sprintf(" :encryption %q", n.Encryption))
+	}
+	if n.DefaultParams != "" {
+		sb.WriteString(fmt.Sprintf(" :default_params %q", n.DefaultParams))
+	}
+	if n.Extent != "" {
+		sb.WriteString(fmt.Sprintf(" :extent %q", n.Extent))
+	}
+	if n.Segment != "" {
+		sb.WriteString(fmt.Sprintf(" :segment %q", n.Segment))
+	}
+	if n.Flashback != "" {
+		sb.WriteString(fmt.Sprintf(" :flashback %q", n.Flashback))
+	}
+	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
+	sb.WriteString("}")
+}
+
+func writeDropTablespaceStmt(sb *strings.Builder, n *DropTablespaceStmt) {
+	sb.WriteString("{DROP_TABLESPACE")
+	if n.IsSet {
+		sb.WriteString(" :is_set true")
+	}
+	if n.Name != nil {
+		sb.WriteString(" :name ")
+		writeNode(sb, n.Name)
+	}
+	if n.IfExists {
+		sb.WriteString(" :if_exists true")
+	}
+	if n.DropQuota {
+		sb.WriteString(" :drop_quota true")
+	}
+	if n.KeepQuota {
+		sb.WriteString(" :keep_quota true")
+	}
+	if n.IncludingContents {
+		sb.WriteString(" :including_contents true")
+	}
+	if n.AndDatafiles {
+		sb.WriteString(" :and_datafiles true")
+	}
+	if n.KeepDatafiles {
+		sb.WriteString(" :keep_datafiles true")
+	}
+	if n.CascadeConstraints {
+		sb.WriteString(" :cascade_constraints true")
 	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

@@ -135,9 +135,9 @@ func (p *Parser) parseCreateAdminObject(start int) nodes.StmtNode {
 		// Check for TABLESPACE SET
 		if p.cur.Type == kwSET {
 			p.advance() // consume SET
-			return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_TABLESPACE_SET, start)
+			return p.parseCreateTablespaceSetStmt(start)
 		}
-		return p.parseCreateTablespaceStmt(start, false, false, false, false)
+		return p.parseCreateTablespaceStmt(start, false, false, false, false, false)
 	case kwDIRECTORY:
 		p.advance()
 		return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_DIRECTORY, start)
@@ -329,9 +329,9 @@ func (p *Parser) parseDropAdminObject(start int) nodes.StmtNode {
 		p.advance()
 		if p.cur.Type == kwSET {
 			p.advance() // consume SET
-			return p.parseAdminDDLStmt("DROP", nodes.OBJECT_TABLESPACE_SET, start)
+			return p.parseDropTablespaceStmt(start, true)
 		}
-		return p.parseAdminDDLStmt("DROP", nodes.OBJECT_TABLESPACE, start)
+		return p.parseDropTablespaceStmt(start, false)
 	case kwDIRECTORY:
 		p.advance()
 		return p.parseAdminDDLStmt("DROP", nodes.OBJECT_DIRECTORY, start)
@@ -471,34 +471,113 @@ func (p *Parser) parseDropAdminObject(start int) nodes.StmtNode {
 
 // parseCreateTablespaceStmt parses a CREATE TABLESPACE statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/CREATE-TABLESPACE.html
+// BNF: oracle/parser/bnf/CREATE-TABLESPACE.bnf
 //
 //	CREATE [ BIGFILE | SMALLFILE ]
-//	  [ { TEMPORARY | UNDO } ] TABLESPACE tablespace_name
-//	  { DATAFILE | TEMPFILE } file_specification [, ...]
-//	  [ SIZE size_clause ]
-//	  [ REUSE ]
-//	  [ AUTOEXTEND { ON [ NEXT size_clause ] [ MAXSIZE { size_clause | UNLIMITED } ] | OFF } ]
-//	  [ BLOCKSIZE integer [ K ] ]
-//	  [ LOGGING | NOLOGGING | FORCE LOGGING ]
-//	  [ ONLINE | OFFLINE ]
-//	  [ EXTENT MANAGEMENT LOCAL [ AUTOALLOCATE | UNIFORM [ SIZE size_clause ] ] ]
-//	  [ SEGMENT SPACE MANAGEMENT { AUTO | MANUAL } ]
-//	  [ RETENTION { GUARANTEE | NOGUARANTEE } ]
-//	  [ DEFAULT { COMPRESS | NOCOMPRESS | table_compression } ]
-//	  [ ENCRYPTION tablespace_encryption_clause ]
-//	  [ MAXSIZE { size_clause | UNLIMITED } ]
-func (p *Parser) parseCreateTablespaceStmt(start int, bigfile, smallfile, temporary, undo bool) *nodes.CreateTablespaceStmt {
+//	    { permanent_tablespace_clause
+//	    | temporary_tablespace_clause
+//	    | undo_tablespace_clause
+//	    } ;
+//
+//	permanent_tablespace_clause:
+//	    TABLESPACE tablespace [ IF NOT EXISTS ]
+//	    [ DATAFILE file_specification [, file_specification ] ... ]
+//	    [ permanent_tablespace_attrs ]
+//
+//	permanent_tablespace_attrs:
+//	    [ MINIMUM EXTENT size_clause ]
+//	    [ BLOCKSIZE integer [ K ] ]
+//	    [ logging_clause ]
+//	    [ FORCE LOGGING ]
+//	    [ tablespace_encryption_clause ]
+//	    [ DEFAULT [ default_tablespace_params ] ]
+//	    [ { ONLINE | OFFLINE } ]
+//	    [ extent_management_clause ]
+//	    [ segment_management_clause ]
+//	    [ flashback_mode_clause ]
+//	    [ lost_write_protection ]
+//
+//	temporary_tablespace_clause:
+//	    [ LOCAL ] TEMPORARY TABLESPACE tablespace [ IF NOT EXISTS ]
+//	    [ TEMPFILE file_specification [, file_specification ] ... ]
+//	    [ tablespace_group_clause ]
+//	    [ extent_management_clause ]
+//	    [ tablespace_encryption_clause ]
+//	    [ FOR { ALL | LEAF } ]
+//
+//	undo_tablespace_clause:
+//	    UNDO TABLESPACE tablespace [ IF NOT EXISTS ]
+//	    [ DATAFILE file_specification [, file_specification ] ... ]
+//	    [ extent_management_clause ]
+//	    [ tablespace_retention_clause ]
+//	    [ tablespace_encryption_clause ]
+//
+//	tablespace_encryption_clause:
+//	    ENCRYPTION [ tablespace_encryption_spec ] { ENCRYPT | DECRYPT }
+//
+//	tablespace_encryption_spec:
+//	    USING 'encrypt_algorithm'
+//
+//	default_tablespace_params:
+//	    { default_table_compression | default_index_compression
+//	    | inmemory_clause | ilm_clause | storage_clause } [ ... ]
+//
+//	logging_clause:
+//	    { LOGGING | NOLOGGING | FILESYSTEM_LIKE_LOGGING }
+//
+//	extent_management_clause:
+//	    EXTENT MANAGEMENT { LOCAL [ { AUTOALLOCATE | UNIFORM [ SIZE size_clause ] } ] | DICTIONARY }
+//
+//	segment_management_clause:
+//	    SEGMENT SPACE MANAGEMENT { AUTO | MANUAL }
+//
+//	flashback_mode_clause:
+//	    FLASHBACK { ON | OFF }
+//
+//	tablespace_retention_clause:
+//	    RETENTION { GUARANTEE | NOGUARANTEE }
+//
+//	tablespace_group_clause:
+//	    TABLESPACE GROUP { tablespace_group_name | '' }
+//
+//	lost_write_protection:
+//	    { ENABLE | DISABLE | SUSPEND | REMOVE } LOST WRITE PROTECTION
+//
+//	file_specification:
+//	    [ 'filename' | 'ASM_filename' ]
+//	    [ SIZE size_clause ]
+//	    [ REUSE ]
+//	    [ autoextend_clause ]
+//
+//	autoextend_clause:
+//	    { AUTOEXTEND OFF | AUTOEXTEND ON [ NEXT size_clause ] [ MAXSIZE { UNLIMITED | size_clause } ] }
+//
+//	size_clause:
+//	    integer [ K | M | G | T | P | E ]
+func (p *Parser) parseCreateTablespaceStmt(start int, bigfile, smallfile, local, temporary, undo bool) *nodes.CreateTablespaceStmt {
 	stmt := &nodes.CreateTablespaceStmt{
 		Loc:       nodes.Loc{Start: start},
 		Bigfile:   bigfile,
 		Smallfile: smallfile,
+		Local:     local,
 		Temporary: temporary,
 		Undo:      undo,
 	}
 
 	// Parse tablespace name
 	stmt.Name = p.parseObjectName()
+
+	// Optional IF NOT EXISTS
+	if p.cur.Type == kwIF {
+		p.advance() // IF
+		if p.cur.Type == kwNOT {
+			p.advance() // NOT
+		}
+		if p.cur.Type == kwEXISTS {
+			p.advance() // EXISTS
+		}
+		stmt.IfNotExists = true
+	}
 
 	// Parse clauses in any order until ; or EOF
 	for p.cur.Type != ';' && p.cur.Type != tokEOF {
@@ -540,6 +619,10 @@ func (p *Parser) parseCreateTablespaceStmt(start int, bigfile, smallfile, tempor
 			p.advance()
 			stmt.Logging = "NOLOGGING"
 
+		case p.isIdentLike() && p.cur.Str == "FILESYSTEM_LIKE_LOGGING":
+			p.advance()
+			stmt.Logging = "FILESYSTEM_LIKE_LOGGING"
+
 		case p.isIdentLike() && p.cur.Str == "FORCE":
 			p.advance()
 			if p.cur.Type == kwLOGGING {
@@ -555,44 +638,18 @@ func (p *Parser) parseCreateTablespaceStmt(start int, bigfile, smallfile, tempor
 			p.advance()
 			stmt.Offline = true
 
+		case p.isIdentLike() && p.cur.Str == "MINIMUM":
+			p.advance() // MINIMUM
+			if p.isIdentLike() && p.cur.Str == "EXTENT" {
+				p.advance() // EXTENT
+			}
+			stmt.MinimumExtent = p.parseSizeValue()
+
 		case p.isIdentLike() && p.cur.Str == "EXTENT":
-			p.advance() // EXTENT
-			if p.isIdentLike() && p.cur.Str == "MANAGEMENT" {
-				p.advance() // MANAGEMENT
-			}
-			if p.isIdentLike() && p.cur.Str == "LOCAL" {
-				p.advance() // LOCAL
-			}
-			if p.isIdentLike() && p.cur.Str == "AUTOALLOCATE" {
-				p.advance()
-				stmt.Extent = "AUTOALLOCATE"
-			} else if p.isIdentLike() && p.cur.Str == "UNIFORM" {
-				p.advance()
-				if p.cur.Type == kwSIZE {
-					p.advance()
-					stmt.Extent = "UNIFORM SIZE " + p.parseSizeValue()
-				} else {
-					stmt.Extent = "UNIFORM"
-				}
-			} else {
-				stmt.Extent = "LOCAL"
-			}
+			stmt.Extent = p.parseExtentManagementClause()
 
 		case p.isIdentLike() && p.cur.Str == "SEGMENT":
-			p.advance() // SEGMENT
-			if p.isIdentLike() && p.cur.Str == "SPACE" {
-				p.advance() // SPACE
-			}
-			if p.isIdentLike() && p.cur.Str == "MANAGEMENT" {
-				p.advance() // MANAGEMENT
-			}
-			if p.isIdentLike() && p.cur.Str == "AUTO" {
-				p.advance()
-				stmt.Segment = "AUTO"
-			} else if p.isIdentLike() && p.cur.Str == "MANUAL" {
-				p.advance()
-				stmt.Segment = "MANUAL"
-			}
+			stmt.Segment = p.parseSegmentManagementClause()
 
 		case p.isIdentLike() && p.cur.Str == "BLOCKSIZE":
 			p.advance()
@@ -609,27 +666,11 @@ func (p *Parser) parseCreateTablespaceStmt(start int, bigfile, smallfile, tempor
 			}
 
 		case p.isIdentLike() && p.cur.Str == "ENCRYPTION":
-			p.advance()
-			stmt.Encryption = "ENCRYPTION"
-			// Skip encryption sub-clause details
-			for p.cur.Type != ';' && p.cur.Type != tokEOF && !p.isTablespaceClauseStart() {
-				p.advance()
-			}
+			stmt.Encryption, stmt.EncryptionAlgorithm = p.parseTablespaceEncryptionClause()
 
 		case p.cur.Type == kwDEFAULT:
 			p.advance()
-			if p.cur.Type == kwCOMPRESS {
-				p.advance()
-				stmt.Compress = "COMPRESS"
-			} else if p.cur.Type == kwNOCOMPRESS {
-				p.advance()
-				stmt.Compress = "NOCOMPRESS"
-			} else {
-				// Skip other DEFAULT sub-clauses
-				for p.cur.Type != ';' && p.cur.Type != tokEOF && !p.isTablespaceClauseStart() {
-					p.advance()
-				}
-			}
+			stmt.DefaultParams = p.parseDefaultTablespaceParams()
 
 		case p.isIdentLike() && p.cur.Str == "MAXSIZE":
 			p.advance()
@@ -641,14 +682,50 @@ func (p *Parser) parseCreateTablespaceStmt(start int, bigfile, smallfile, tempor
 			}
 
 		case p.cur.Type == kwSTORAGE:
-			// Skip STORAGE (...)
 			p.advance()
 			if p.cur.Type == '(' {
 				p.skipParens()
 			}
 
+		case p.isIdentLike() && p.cur.Str == "FLASHBACK":
+			p.advance()
+			if p.cur.Type == kwON || (p.isIdentLike() && p.cur.Str == "ON") {
+				p.advance()
+				stmt.Flashback = "ON"
+			} else if p.isIdentLike() && p.cur.Str == "OFF" {
+				p.advance()
+				stmt.Flashback = "OFF"
+			}
+
+		case p.isIdentLike() && (p.cur.Str == "ENABLE" || p.cur.Str == "DISABLE" || p.cur.Str == "SUSPEND" || p.cur.Str == "REMOVE"):
+			stmt.LostWriteProtection = p.parseLostWriteProtection()
+
+		case p.cur.Type == kwTABLESPACE:
+			// TABLESPACE GROUP clause (in temporary tablespace context)
+			p.advance() // TABLESPACE
+			if p.cur.Type == kwGROUP || (p.isIdentLike() && p.cur.Str == "GROUP") {
+				p.advance() // GROUP
+				if p.cur.Type == tokSCONST {
+					stmt.TablespaceGroup = p.cur.Str
+					p.advance()
+				} else if p.isIdentLike() || p.cur.Type == tokIDENT {
+					stmt.TablespaceGroup = p.cur.Str
+					p.advance()
+				}
+			}
+
+		case p.cur.Type == kwFOR:
+			// FOR { ALL | LEAF } in temporary tablespace
+			p.advance()
+			if p.cur.Type == kwALL || (p.isIdentLike() && p.cur.Str == "ALL") {
+				p.advance()
+				stmt.ForLeaf = "ALL"
+			} else if p.isIdentLike() && p.cur.Str == "LEAF" {
+				p.advance()
+				stmt.ForLeaf = "LEAF"
+			}
+
 		default:
-			// Skip unknown tokens
 			p.advance()
 		}
 	}
@@ -657,20 +734,826 @@ func (p *Parser) parseCreateTablespaceStmt(start int, bigfile, smallfile, tempor
 	return stmt
 }
 
+// parseExtentManagementClause parses EXTENT MANAGEMENT { LOCAL [...] | DICTIONARY }.
+func (p *Parser) parseExtentManagementClause() string {
+	p.advance() // EXTENT
+	if p.isIdentLike() && p.cur.Str == "MANAGEMENT" {
+		p.advance() // MANAGEMENT
+	}
+	if p.isIdentLike() && p.cur.Str == "DICTIONARY" {
+		p.advance()
+		return "DICTIONARY"
+	}
+	if p.isIdentLike() && p.cur.Str == "LOCAL" {
+		p.advance() // LOCAL
+	}
+	if p.isIdentLike() && p.cur.Str == "AUTOALLOCATE" {
+		p.advance()
+		return "AUTOALLOCATE"
+	} else if p.isIdentLike() && p.cur.Str == "UNIFORM" {
+		p.advance()
+		if p.cur.Type == kwSIZE {
+			p.advance()
+			return "UNIFORM SIZE " + p.parseSizeValue()
+		}
+		return "UNIFORM"
+	}
+	return "LOCAL"
+}
+
+// parseSegmentManagementClause parses SEGMENT SPACE MANAGEMENT { AUTO | MANUAL }.
+func (p *Parser) parseSegmentManagementClause() string {
+	p.advance() // SEGMENT
+	if p.isIdentLike() && p.cur.Str == "SPACE" {
+		p.advance() // SPACE
+	}
+	if p.isIdentLike() && p.cur.Str == "MANAGEMENT" {
+		p.advance() // MANAGEMENT
+	}
+	if p.isIdentLike() && p.cur.Str == "AUTO" {
+		p.advance()
+		return "AUTO"
+	} else if p.isIdentLike() && p.cur.Str == "MANUAL" {
+		p.advance()
+		return "MANUAL"
+	}
+	return "AUTO"
+}
+
+// parseTablespaceEncryptionClause parses ENCRYPTION [ USING 'algo' ] { ENCRYPT | DECRYPT }.
+// Returns (encryption_summary, algorithm).
+func (p *Parser) parseTablespaceEncryptionClause() (string, string) {
+	p.advance() // ENCRYPTION
+	algo := ""
+	if p.isIdentLike() && p.cur.Str == "USING" {
+		p.advance()
+		if p.cur.Type == tokSCONST {
+			algo = p.cur.Str
+			p.advance()
+		}
+	}
+	if p.isIdentLike() && p.cur.Str == "ENCRYPT" {
+		p.advance()
+		return "ENCRYPT", algo
+	} else if p.isIdentLike() && p.cur.Str == "DECRYPT" {
+		p.advance()
+		return "DECRYPT", algo
+	}
+	// For ALTER TABLESPACE: ENCRYPTION ONLINE/OFFLINE/FINISH
+	return "ENCRYPTION", algo
+}
+
+// parseDefaultTablespaceParams parses DEFAULT tablespace params.
+// Returns a summary string of the parsed params.
+func (p *Parser) parseDefaultTablespaceParams() string {
+	result := ""
+	for p.cur.Type != ';' && p.cur.Type != tokEOF && !p.isTablespaceClauseStart() {
+		switch {
+		case p.cur.Type == kwTABLE:
+			p.advance() // TABLE
+			if p.cur.Type == kwCOMPRESS {
+				p.advance()
+				result = p.appendParam(result, "TABLE COMPRESS")
+				// FOR OLTP | QUERY | ARCHIVE
+				if p.cur.Type == kwFOR {
+					p.advance()
+					if p.isIdentLike() {
+						result = p.appendParam(result, p.cur.Str)
+						p.advance()
+						// LOW | HIGH
+						if p.isIdentLike() && (p.cur.Str == "LOW" || p.cur.Str == "HIGH") {
+							result = p.appendParam(result, p.cur.Str)
+							p.advance()
+						}
+					}
+				}
+			} else if p.cur.Type == kwNOCOMPRESS {
+				p.advance()
+				result = p.appendParam(result, "TABLE NOCOMPRESS")
+			} else if p.isIdentLike() && p.cur.Str == "ROW" {
+				p.advance() // ROW
+				if p.cur.Type == kwSTORAGE || (p.isIdentLike() && p.cur.Str == "STORE") {
+					p.advance() // STORE
+				}
+				if p.cur.Type == kwCOMPRESS {
+					p.advance()
+					result = p.appendParam(result, "ROW STORE COMPRESS")
+					if p.isIdentLike() && (p.cur.Str == "BASIC" || p.cur.Str == "ADVANCED") {
+						result = p.appendParam(result, p.cur.Str)
+						p.advance()
+					}
+				}
+			} else if p.isIdentLike() && p.cur.Str == "COLUMN" {
+				p.advance() // COLUMN
+				if p.isIdentLike() && p.cur.Str == "STORE" {
+					p.advance() // STORE
+				}
+				if p.cur.Type == kwCOMPRESS {
+					p.advance()
+					result = p.appendParam(result, "COLUMN STORE COMPRESS")
+					if p.cur.Type == kwFOR {
+						p.advance()
+						if p.isIdentLike() {
+							result = p.appendParam(result, p.cur.Str)
+							p.advance()
+							if p.isIdentLike() && (p.cur.Str == "LOW" || p.cur.Str == "HIGH") {
+								result = p.appendParam(result, p.cur.Str)
+								p.advance()
+							}
+						}
+					}
+				}
+			}
+
+		case p.cur.Type == kwINDEX:
+			p.advance() // INDEX
+			if p.cur.Type == kwCOMPRESS {
+				p.advance()
+				result = p.appendParam(result, "INDEX COMPRESS")
+				if p.isIdentLike() && p.cur.Str == "ADVANCED" {
+					p.advance()
+					result = p.appendParam(result, "ADVANCED")
+					if p.isIdentLike() && (p.cur.Str == "LOW" || p.cur.Str == "HIGH") {
+						result = p.appendParam(result, p.cur.Str)
+						p.advance()
+					}
+				}
+			} else if p.cur.Type == kwNOCOMPRESS {
+				p.advance()
+				result = p.appendParam(result, "INDEX NOCOMPRESS")
+			}
+
+		case p.cur.Type == kwCOMPRESS:
+			p.advance()
+			result = p.appendParam(result, "COMPRESS")
+
+		case p.cur.Type == kwNOCOMPRESS:
+			p.advance()
+			result = p.appendParam(result, "NOCOMPRESS")
+
+		case p.isIdentLike() && p.cur.Str == "INMEMORY":
+			p.advance()
+			result = p.appendParam(result, "INMEMORY")
+			// Skip inmemory attributes
+			for p.isIdentLike() && (p.cur.Str == "MEMCOMPRESS" || p.cur.Str == "PRIORITY" || p.cur.Str == "DISTRIBUTE" || p.cur.Str == "DUPLICATE") {
+				result = p.appendParam(result, p.cur.Str)
+				p.advance()
+				for p.isIdentLike() && (p.cur.Str == "FOR" || p.cur.Str == "DML" || p.cur.Str == "QUERY" || p.cur.Str == "CAPACITY" || p.cur.Str == "LOW" || p.cur.Str == "HIGH" || p.cur.Str == "NONE" || p.cur.Str == "MEDIUM" || p.cur.Str == "CRITICAL" || p.cur.Str == "AUTO" || p.cur.Str == "BY" || p.cur.Str == "ROWID" || p.cur.Str == "RANGE" || p.cur.Str == "ALL") {
+					p.advance()
+				}
+				if p.cur.Type == kwPARTITION || (p.isIdentLike() && p.cur.Str == "SUBPARTITION") {
+					p.advance()
+				}
+			}
+
+		case p.isIdentLike() && p.cur.Str == "NO":
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "INMEMORY" {
+				p.advance()
+				result = p.appendParam(result, "NO INMEMORY")
+			} else if p.isIdentLike() && p.cur.Str == "MEMCOMPRESS" {
+				p.advance()
+				result = p.appendParam(result, "NO MEMCOMPRESS")
+			} else if p.isIdentLike() && p.cur.Str == "DUPLICATE" {
+				p.advance()
+				result = p.appendParam(result, "NO DUPLICATE")
+			}
+
+		case p.cur.Type == kwSTORAGE:
+			p.advance()
+			result = p.appendParam(result, "STORAGE")
+			if p.cur.Type == '(' {
+				p.skipParens()
+			}
+
+		default:
+			p.advance()
+		}
+	}
+	if result == "" {
+		result = "DEFAULT"
+	}
+	return result
+}
+
+// appendParam appends a parameter to a space-separated string.
+func (p *Parser) appendParam(base, param string) string {
+	if base == "" {
+		return param
+	}
+	return base + " " + param
+}
+
+// parseLostWriteProtection parses { ENABLE | DISABLE | SUSPEND | REMOVE } LOST WRITE PROTECTION.
+func (p *Parser) parseLostWriteProtection() string {
+	action := p.cur.Str
+	p.advance() // ENABLE/DISABLE/SUSPEND/REMOVE
+	if p.isIdentLike() && p.cur.Str == "LOST" {
+		p.advance() // LOST
+	}
+	if p.isIdentLike() && p.cur.Str == "WRITE" {
+		p.advance() // WRITE
+	}
+	if p.isIdentLike() && p.cur.Str == "PROTECTION" {
+		p.advance() // PROTECTION
+	}
+	return action
+}
+
+// parseAlterTablespaceStmt parses an ALTER TABLESPACE statement.
+//
+// BNF: oracle/parser/bnf/ALTER-TABLESPACE.bnf
+//
+//	ALTER TABLESPACE [ IF EXISTS ] tablespace
+//	    alter_tablespace_attrs
+//
+//	alter_tablespace_attrs:
+//	    { default_tablespace_params
+//	    | MINIMUM EXTENT size_clause
+//	    | RESIZE size_clause
+//	    | COALESCE
+//	    | SHRINK SPACE [ KEEP size_clause ]
+//	    | RENAME TO new_tablespace_name
+//	    | BEGIN BACKUP
+//	    | END BACKUP
+//	    | datafile_tempfile_clauses
+//	    | tablespace_logging_clauses
+//	    | tablespace_group_clause
+//	    | tablespace_state_clauses
+//	    | autoextend_clause
+//	    | flashback_mode_clause
+//	    | tablespace_retention_clause
+//	    | alter_tablespace_encryption
+//	    | lost_write_protection
+//	    }
+//
+//	datafile_tempfile_clauses:
+//	    { ADD { DATAFILE | TEMPFILE } [ file_specification [, file_specification ]... ]
+//	    | DROP { DATAFILE | TEMPFILE } { 'filename' | file_number }
+//	    | SHRINK TEMPFILE { 'filename' | file_number } [ KEEP size_clause ]
+//	    | RENAME DATAFILE 'filename' [, 'filename' ]... TO 'filename' [, 'filename' ]...
+//	    | { DATAFILE | TEMPFILE } { ONLINE | OFFLINE }
+//	    }
+//
+//	tablespace_logging_clauses:
+//	    { logging_clause | [ NO ] FORCE LOGGING }
+//
+//	tablespace_state_clauses:
+//	    { ONLINE | OFFLINE [ NORMAL | TEMPORARY | IMMEDIATE ]
+//	    | READ ONLY | READ WRITE | PERMANENT | TEMPORARY }
+//
+//	alter_tablespace_encryption:
+//	    ENCRYPTION
+//	        { ONLINE [ tablespace_encryption_spec ] [ ts_file_name_convert ]
+//	        | OFFLINE { ENCRYPT [ tablespace_encryption_spec ] | DECRYPT }
+//	        | FINISH [ ENCRYPT | DECRYPT ] [ ts_file_name_convert ]
+//	        }
+//
+//	lost_write_protection:
+//	    { ENABLE | DISABLE | REMOVE | SUSPEND } LOST WRITE PROTECTION
+func (p *Parser) parseAlterTablespaceStmt(start int, isSet bool) *nodes.AlterTablespaceStmt {
+	stmt := &nodes.AlterTablespaceStmt{
+		IsSet: isSet,
+		Loc:   nodes.Loc{Start: start},
+	}
+
+	// Optional IF EXISTS (not for SET)
+	if !isSet && p.cur.Type == kwIF {
+		p.advance() // IF
+		if p.cur.Type == kwEXISTS {
+			p.advance() // EXISTS
+		}
+		stmt.IfExists = true
+	}
+
+	// Parse tablespace name
+	stmt.Name = p.parseObjectName()
+
+	// Parse alter clauses
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		switch {
+		case p.cur.Type == kwDEFAULT:
+			p.advance()
+			stmt.DefaultParams = p.parseDefaultTablespaceParams()
+
+		case p.isIdentLike() && p.cur.Str == "MINIMUM":
+			p.advance() // MINIMUM
+			if p.isIdentLike() && p.cur.Str == "EXTENT" {
+				p.advance() // EXTENT
+			}
+			stmt.MinimumExtent = p.parseSizeValue()
+
+		case p.isIdentLike() && p.cur.Str == "RESIZE":
+			p.advance()
+			stmt.Resize = p.parseSizeValue()
+
+		case p.isIdentLike() && p.cur.Str == "COALESCE":
+			p.advance()
+			stmt.Coalesce = true
+
+		case p.isIdentLike() && p.cur.Str == "SHRINK":
+			p.advance() // SHRINK
+			if p.isIdentLike() && p.cur.Str == "TEMPFILE" {
+				p.advance() // TEMPFILE
+				// { 'filename' | file_number }
+				if p.cur.Type == tokSCONST {
+					stmt.ShrinkTempfile = p.cur.Str
+					p.advance()
+				} else if p.cur.Type == tokICONST {
+					stmt.ShrinkTempfile = p.cur.Str
+					p.advance()
+				}
+				if p.isIdentLike() && p.cur.Str == "KEEP" {
+					p.advance()
+					stmt.ShrinkTempfileKeep = p.parseSizeValue()
+				}
+			} else {
+				// SHRINK SPACE
+				if p.isIdentLike() && p.cur.Str == "SPACE" {
+					p.advance()
+				}
+				stmt.ShrinkSpace = true
+				if p.isIdentLike() && p.cur.Str == "KEEP" {
+					p.advance()
+					stmt.ShrinkKeep = p.parseSizeValue()
+				}
+			}
+
+		case p.isIdentLike() && p.cur.Str == "RENAME":
+			p.advance() // RENAME
+			if p.isIdentLike() && p.cur.Str == "DATAFILE" {
+				p.advance() // DATAFILE
+				stmt.RenameDatafile = true
+				// Parse old filenames
+				for {
+					if p.cur.Type == tokSCONST {
+						stmt.RenameFrom = append(stmt.RenameFrom, p.cur.Str)
+						p.advance()
+					}
+					if p.cur.Type == ',' {
+						p.advance()
+						continue
+					}
+					break
+				}
+				// TO
+				if p.cur.Type == kwTO {
+					p.advance()
+				}
+				// Parse new filenames
+				for {
+					if p.cur.Type == tokSCONST {
+						stmt.RenameTo2 = append(stmt.RenameTo2, p.cur.Str)
+						p.advance()
+					}
+					if p.cur.Type == ',' {
+						p.advance()
+						continue
+					}
+					break
+				}
+			} else {
+				// RENAME TO new_name
+				if p.cur.Type == kwTO {
+					p.advance()
+				}
+				stmt.RenameTo = p.parseIdentifier()
+			}
+
+		case p.isIdentLike() && p.cur.Str == "BEGIN":
+			p.advance() // BEGIN
+			if p.isIdentLike() && p.cur.Str == "BACKUP" {
+				p.advance()
+			}
+			stmt.BeginBackup = true
+
+		case p.isIdentLike() && p.cur.Str == "END":
+			p.advance() // END
+			if p.isIdentLike() && p.cur.Str == "BACKUP" {
+				p.advance()
+			}
+			stmt.EndBackup = true
+
+		case p.cur.Type == kwADD:
+			p.advance() // ADD
+			if p.isIdentLike() && p.cur.Str == "DATAFILE" {
+				p.advance()
+				stmt.AddDatafile = true
+			} else if p.isIdentLike() && p.cur.Str == "TEMPFILE" {
+				p.advance()
+				stmt.AddTempfile = true
+			}
+			// Parse file specifications
+			for {
+				df := p.parseDatafileClause()
+				if df != nil {
+					stmt.Datafiles = append(stmt.Datafiles, df)
+				}
+				if p.cur.Type == ',' {
+					p.advance()
+					continue
+				}
+				break
+			}
+
+		case p.cur.Type == kwDROP:
+			p.advance() // DROP
+			if p.isIdentLike() && p.cur.Str == "DATAFILE" {
+				p.advance()
+				stmt.DropDatafile = true
+			} else if p.isIdentLike() && p.cur.Str == "TEMPFILE" {
+				p.advance()
+				stmt.DropTempfile = true
+			}
+			// { 'filename' | file_number }
+			if p.cur.Type == tokSCONST {
+				stmt.DropFileRef = p.cur.Str
+				p.advance()
+			} else if p.cur.Type == tokICONST {
+				stmt.DropFileRef = p.cur.Str
+				p.advance()
+			}
+
+		case p.isIdentLike() && p.cur.Str == "DATAFILE":
+			p.advance() // DATAFILE
+			if p.cur.Type == kwONLINE {
+				p.advance()
+				stmt.DatafileOnline = true
+			} else if p.cur.Type == kwOFFLINE {
+				p.advance()
+				stmt.DatafileOffline = true
+			}
+
+		case p.isIdentLike() && p.cur.Str == "TEMPFILE":
+			p.advance() // TEMPFILE
+			if p.cur.Type == kwONLINE {
+				p.advance()
+				stmt.TempfileOnline = true
+			} else if p.cur.Type == kwOFFLINE {
+				p.advance()
+				stmt.TempfileOffline = true
+			}
+
+		case p.cur.Type == kwLOGGING:
+			p.advance()
+			stmt.Logging = "LOGGING"
+
+		case p.cur.Type == kwNOLOGGING:
+			p.advance()
+			stmt.Logging = "NOLOGGING"
+
+		case p.isIdentLike() && p.cur.Str == "FILESYSTEM_LIKE_LOGGING":
+			p.advance()
+			stmt.Logging = "FILESYSTEM_LIKE_LOGGING"
+
+		case p.isIdentLike() && p.cur.Str == "FORCE":
+			p.advance() // FORCE
+			if p.cur.Type == kwLOGGING {
+				p.advance()
+			}
+			stmt.ForceLogging = "FORCE LOGGING"
+
+		case p.isIdentLike() && p.cur.Str == "NO":
+			next := p.peekNext()
+			if next.Type == kwFORCE || (next.Str == "FORCE" && (next.Type == tokIDENT || next.Type >= 2000)) {
+				p.advance() // NO
+				p.advance() // FORCE
+				if p.cur.Type == kwLOGGING {
+					p.advance()
+				}
+				stmt.ForceLogging = "NO FORCE LOGGING"
+			} else {
+				p.advance()
+			}
+
+		case p.cur.Type == kwONLINE:
+			p.advance()
+			stmt.Online = true
+
+		case p.cur.Type == kwOFFLINE:
+			p.advance()
+			stmt.Offline = true
+			// Optional NORMAL | TEMPORARY | IMMEDIATE
+			if p.isIdentLike() && p.cur.Str == "NORMAL" {
+				p.advance()
+				stmt.OfflineMode = "NORMAL"
+			} else if p.cur.Type == kwTEMPORARY {
+				p.advance()
+				stmt.OfflineMode = "TEMPORARY"
+			} else if p.isIdentLike() && p.cur.Str == "IMMEDIATE" {
+				p.advance()
+				stmt.OfflineMode = "IMMEDIATE"
+			}
+
+		case p.cur.Type == kwREAD:
+			p.advance() // READ
+			if p.isIdentLike() && p.cur.Str == "ONLY" {
+				p.advance()
+				stmt.ReadOnly = true
+			} else if p.isIdentLike() && p.cur.Str == "WRITE" {
+				p.advance()
+				stmt.ReadWrite = true
+			}
+
+		case p.isIdentLike() && p.cur.Str == "PERMANENT":
+			p.advance()
+			stmt.Permanent = true
+
+		case p.cur.Type == kwTEMPORARY:
+			p.advance()
+			stmt.TempState = true
+
+		case p.isIdentLike() && p.cur.Str == "AUTOEXTEND":
+			stmt.Autoextend = p.parseAutoextendClause()
+
+		case p.isIdentLike() && p.cur.Str == "FLASHBACK":
+			p.advance()
+			if p.cur.Type == kwON || (p.isIdentLike() && p.cur.Str == "ON") {
+				p.advance()
+				stmt.Flashback = "ON"
+			} else if p.isIdentLike() && p.cur.Str == "OFF" {
+				p.advance()
+				stmt.Flashback = "OFF"
+			}
+
+		case p.isIdentLike() && p.cur.Str == "RETENTION":
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "GUARANTEE" {
+				p.advance()
+				stmt.Retention = "GUARANTEE"
+			} else if p.isIdentLike() && p.cur.Str == "NOGUARANTEE" {
+				p.advance()
+				stmt.Retention = "NOGUARANTEE"
+			}
+
+		case p.isIdentLike() && p.cur.Str == "ENCRYPTION":
+			p.advance() // ENCRYPTION
+			// ALTER has ONLINE/OFFLINE/FINISH sub-clauses
+			enc := "ENCRYPTION"
+			if p.isIdentLike() && p.cur.Str == "ONLINE" {
+				p.advance()
+				enc = "ONLINE"
+			} else if p.cur.Type == kwOFFLINE {
+				p.advance()
+				enc = "OFFLINE"
+			} else if p.isIdentLike() && p.cur.Str == "FINISH" {
+				p.advance()
+				enc = "FINISH"
+			}
+			// Skip remaining encryption sub-clause tokens
+			for p.cur.Type != ';' && p.cur.Type != tokEOF && !p.isAlterTablespaceClauseStart() {
+				p.advance()
+			}
+			stmt.Encryption = enc
+
+		case p.isIdentLike() && (p.cur.Str == "ENABLE" || p.cur.Str == "DISABLE" || p.cur.Str == "SUSPEND" || p.cur.Str == "REMOVE"):
+			stmt.LostWriteProtection = p.parseLostWriteProtection()
+
+		case p.cur.Type == kwGROUP || (p.isIdentLike() && p.cur.Str == "GROUP"):
+			p.advance() // GROUP
+			if p.cur.Type == tokSCONST {
+				stmt.TablespaceGroup = p.cur.Str
+				p.advance()
+			} else if p.isIdentLike() || p.cur.Type == tokIDENT {
+				stmt.TablespaceGroup = p.cur.Str
+				p.advance()
+			}
+
+		default:
+			p.advance()
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// isAlterTablespaceClauseStart returns true if the current token starts a known ALTER TABLESPACE clause.
+func (p *Parser) isAlterTablespaceClauseStart() bool {
+	if p.isIdentLike() {
+		switch p.cur.Str {
+		case "DATAFILE", "TEMPFILE", "AUTOEXTEND", "EXTENT", "SEGMENT",
+			"BLOCKSIZE", "RETENTION", "ENCRYPTION", "MAXSIZE", "FORCE",
+			"MINIMUM", "RESIZE", "COALESCE", "SHRINK", "RENAME",
+			"BEGIN", "END", "FLASHBACK", "ENABLE", "DISABLE",
+			"SUSPEND", "REMOVE", "PERMANENT", "NO", "GROUP",
+			"FILESYSTEM_LIKE_LOGGING":
+			return true
+		}
+	}
+	switch p.cur.Type {
+	case kwLOGGING, kwNOLOGGING, kwONLINE, kwOFFLINE, kwDEFAULT, kwREAD, kwADD, kwDROP, kwTEMPORARY, kwGROUP:
+		return true
+	}
+	return false
+}
+
 // isTablespaceClauseStart returns true if the current token starts a known tablespace clause.
 func (p *Parser) isTablespaceClauseStart() bool {
 	if p.isIdentLike() {
 		switch p.cur.Str {
 		case "DATAFILE", "TEMPFILE", "AUTOEXTEND", "REUSE", "EXTENT", "SEGMENT",
-			"BLOCKSIZE", "RETENTION", "ENCRYPTION", "MAXSIZE", "FORCE":
+			"BLOCKSIZE", "RETENTION", "ENCRYPTION", "MAXSIZE", "FORCE",
+			"MINIMUM", "FLASHBACK", "ENABLE", "DISABLE", "SUSPEND", "REMOVE",
+			"FILESYSTEM_LIKE_LOGGING":
 			return true
 		}
 	}
 	switch p.cur.Type {
-	case kwSIZE, kwLOGGING, kwNOLOGGING, kwONLINE, kwOFFLINE, kwDEFAULT, kwSTORAGE:
+	case kwSIZE, kwLOGGING, kwNOLOGGING, kwONLINE, kwOFFLINE, kwDEFAULT, kwSTORAGE, kwTABLESPACE, kwFOR:
 		return true
 	}
 	return false
+}
+
+// parseCreateTablespaceSetStmt parses a CREATE TABLESPACE SET statement.
+//
+// BNF: oracle/parser/bnf/CREATE-TABLESPACE-SET.bnf
+//
+//	CREATE TABLESPACE SET tablespace_set
+//	    [ IN SHARDSPACE shardspace_name ]
+//	    [ USING TEMPLATE
+//	      ( [ DATAFILE [ file_specification ] ]
+//	        [ permanent_tablespace_attrs ]
+//	      )
+//	    ] ;
+//
+//	permanent_tablespace_attrs:
+//	    [ logging_clause ]
+//	    [ tablespace_encryption_clause ]
+//	    [ DEFAULT default_tablespace_params ]
+//	    [ extent_management_clause ]
+//	    [ segment_management_clause ]
+//	    [ flashback_mode_clause ]
+func (p *Parser) parseCreateTablespaceSetStmt(start int) *nodes.CreateTablespaceSetStmt {
+	stmt := &nodes.CreateTablespaceSetStmt{
+		Loc: nodes.Loc{Start: start},
+	}
+
+	stmt.Name = p.parseObjectName()
+
+	// Optional IN SHARDSPACE
+	if p.cur.Type == kwIN {
+		p.advance() // IN
+		if p.isIdentLike() && p.cur.Str == "SHARDSPACE" {
+			p.advance() // SHARDSPACE
+		}
+		stmt.Shardspace = p.parseIdentifier()
+	}
+
+	// Optional USING TEMPLATE ( ... )
+	if p.isIdentLike() && p.cur.Str == "USING" {
+		p.advance() // USING
+		if p.isIdentLike() && p.cur.Str == "TEMPLATE" {
+			p.advance() // TEMPLATE
+		}
+		if p.cur.Type == '(' {
+			p.advance() // consume (
+			for p.cur.Type != ')' && p.cur.Type != tokEOF {
+				switch {
+				case p.isIdentLike() && p.cur.Str == "DATAFILE":
+					p.advance()
+					for {
+						df := p.parseDatafileClause()
+						if df != nil {
+							stmt.Datafiles = append(stmt.Datafiles, df)
+						}
+						if p.cur.Type == ',' {
+							p.advance()
+							continue
+						}
+						break
+					}
+
+				case p.cur.Type == kwLOGGING:
+					p.advance()
+					stmt.Logging = "LOGGING"
+
+				case p.cur.Type == kwNOLOGGING:
+					p.advance()
+					stmt.Logging = "NOLOGGING"
+
+				case p.isIdentLike() && p.cur.Str == "FILESYSTEM_LIKE_LOGGING":
+					p.advance()
+					stmt.Logging = "FILESYSTEM_LIKE_LOGGING"
+
+				case p.isIdentLike() && p.cur.Str == "ENCRYPTION":
+					enc, _ := p.parseTablespaceEncryptionClause()
+					stmt.Encryption = enc
+
+				case p.cur.Type == kwDEFAULT:
+					p.advance()
+					stmt.DefaultParams = p.parseDefaultTablespaceParams()
+
+				case p.isIdentLike() && p.cur.Str == "EXTENT":
+					stmt.Extent = p.parseExtentManagementClause()
+
+				case p.isIdentLike() && p.cur.Str == "SEGMENT":
+					stmt.Segment = p.parseSegmentManagementClause()
+
+				case p.isIdentLike() && p.cur.Str == "FLASHBACK":
+					p.advance()
+					if p.cur.Type == kwON || (p.isIdentLike() && p.cur.Str == "ON") {
+						p.advance()
+						stmt.Flashback = "ON"
+					} else if p.isIdentLike() && p.cur.Str == "OFF" {
+						p.advance()
+						stmt.Flashback = "OFF"
+					}
+
+				default:
+					p.advance()
+				}
+			}
+			if p.cur.Type == ')' {
+				p.advance()
+			}
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseDropTablespaceStmt parses a DROP TABLESPACE or DROP TABLESPACE SET statement.
+//
+// BNF: oracle/parser/bnf/DROP-TABLESPACE.bnf
+//
+//	DROP TABLESPACE [ IF EXISTS ] tablespace
+//	    [ { DROP | KEEP } QUOTA ]
+//	    [ INCLUDING CONTENTS [ { AND DATAFILES | KEEP DATAFILES } ]
+//	      [ CASCADE CONSTRAINTS ] ] ;
+//
+// BNF: oracle/parser/bnf/DROP-TABLESPACE-SET.bnf
+//
+//	DROP TABLESPACE SET tablespace_set
+//	    [ INCLUDING CONTENTS [ { AND DATAFILES | KEEP DATAFILES } ]
+//	      [ CASCADE CONSTRAINTS ] ] ;
+func (p *Parser) parseDropTablespaceStmt(start int, isSet bool) *nodes.DropTablespaceStmt {
+	stmt := &nodes.DropTablespaceStmt{
+		IsSet: isSet,
+		Loc:   nodes.Loc{Start: start},
+	}
+
+	// Optional IF EXISTS (only for non-SET)
+	if !isSet && p.cur.Type == kwIF {
+		p.advance() // IF
+		if p.cur.Type == kwEXISTS {
+			p.advance() // EXISTS
+		}
+		stmt.IfExists = true
+	}
+
+	stmt.Name = p.parseObjectName()
+
+	// Parse optional clauses
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		switch {
+		case p.cur.Type == kwDROP:
+			p.advance() // DROP
+			if p.isIdentLike() && p.cur.Str == "QUOTA" {
+				p.advance()
+				stmt.DropQuota = true
+			}
+
+		case p.isIdentLike() && p.cur.Str == "KEEP":
+			p.advance() // KEEP
+			if p.isIdentLike() && p.cur.Str == "QUOTA" {
+				p.advance()
+				stmt.KeepQuota = true
+			} else if p.isIdentLike() && p.cur.Str == "DATAFILES" {
+				p.advance()
+				stmt.KeepDatafiles = true
+			}
+
+		case p.isIdentLike() && p.cur.Str == "INCLUDING":
+			p.advance() // INCLUDING
+			if p.isIdentLike() && p.cur.Str == "CONTENTS" {
+				p.advance()
+				stmt.IncludingContents = true
+			}
+
+		case p.cur.Type == kwAND:
+			p.advance() // AND
+			if p.isIdentLike() && p.cur.Str == "DATAFILES" {
+				p.advance()
+				stmt.AndDatafiles = true
+			}
+
+		case p.cur.Type == kwCASCADE:
+			p.advance() // CASCADE
+			if p.cur.Type == kwCONSTRAINT || (p.isIdentLike() && p.cur.Str == "CONSTRAINTS") {
+				p.advance()
+				stmt.CascadeConstraints = true
+			}
+
+		default:
+			p.advance()
+		}
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
 }
 
 // parseDatafileClause parses a single file specification (path string and optional SIZE).
@@ -745,10 +1628,10 @@ func (p *Parser) parseSizeValue() string {
 	if p.cur.Type == tokICONST || p.cur.Type == tokFCONST {
 		val := p.cur.Str
 		p.advance()
-		// Check for size suffix (K, M, G, T) as an identifier
+		// Check for size suffix (K, M, G, T, P, E) as an identifier
 		if p.isIdentLike() {
 			switch p.cur.Str {
-			case "K", "M", "G", "T":
+			case "K", "M", "G", "T", "P", "E":
 				val += p.cur.Str
 				p.advance()
 			}
@@ -1201,9 +2084,9 @@ func (p *Parser) parseAlterAdminObject(start int) nodes.StmtNode {
 		p.advance()
 		if p.cur.Type == kwSET {
 			p.advance() // consume SET
-			return p.parseAdminDDLStmt("ALTER", nodes.OBJECT_TABLESPACE_SET, start)
+			return p.parseAlterTablespaceStmt(start, true)
 		}
-		return p.parseAdminDDLStmt("ALTER", nodes.OBJECT_TABLESPACE, start)
+		return p.parseAlterTablespaceStmt(start, false)
 	case kwCLUSTER:
 		p.advance()
 		return p.parseAdminDDLStmt("ALTER", nodes.OBJECT_CLUSTER, start)

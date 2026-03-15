@@ -772,7 +772,7 @@
       "id": 97,
       "name": "tablespace_all",
       "file": "create_admin.go",
-      "status": "pending",
+      "status": "done",
       "description": "CREATE/ALTER TABLESPACE, CREATE/ALTER TABLESPACE SET. Review CREATE TABLESPACE (already implemented), fix/implement ALTER variants.",
       "bnf_files": ["CREATE-TABLESPACE.bnf", "ALTER-TABLESPACE.bnf", "CREATE-TABLESPACE-SET.bnf", "ALTER-TABLESPACE-SET.bnf", "DROP-TABLESPACE.bnf", "DROP-TABLESPACE-SET.bnf"],
       "bnf_lines": 293,
@@ -787,7 +787,7 @@
       ],
       "depends_on": [87],
       "files": ["create_admin.go"],
-      "tests": []
+      "tests": ["TestParseTablespaceAll"]
     },
     {
       "id": 98,

@@ -2830,30 +2830,123 @@ func (n *DisassociateStatisticsStmt) stmtNode() {}
 //	    | temporary_tablespace_clause
 //	    | undo_tablespace_clause }
 type CreateTablespaceStmt struct {
-	Name       *ObjectName          // tablespace name
-	Bigfile    bool                 // BIGFILE
-	Smallfile  bool                 // SMALLFILE
-	Temporary  bool                 // TEMPORARY
-	Undo       bool                 // UNDO
-	Datafiles  []*DatafileClause    // DATAFILE / TEMPFILE clauses
-	Size       string               // SIZE value (e.g. "100M")
-	Autoextend *AutoextendClause    // AUTOEXTEND ON/OFF
-	Logging    string               // LOGGING / NOLOGGING / FORCE LOGGING
-	Online     bool                 // ONLINE (default)
-	Offline    bool                 // OFFLINE
-	Extent     string               // EXTENT MANAGEMENT LOCAL (AUTOALLOCATE/UNIFORM)
-	Segment    string               // SEGMENT SPACE MANAGEMENT AUTO/MANUAL
-	Blocksize  string               // BLOCKSIZE value
-	Retention  string               // RETENTION GUARANTEE / NOGUARANTEE
-	Encryption string               // ENCRYPTION clause text
-	Compress   string               // DEFAULT COMPRESS / NOCOMPRESS
-	MaxSize    string               // MAXSIZE value
-	Options    []string             // remaining unparsed option tokens
-	Loc        Loc
+	Name                *ObjectName       // tablespace name
+	Bigfile             bool              // BIGFILE
+	Smallfile           bool              // SMALLFILE
+	Temporary           bool              // TEMPORARY
+	Local               bool              // LOCAL (for LOCAL TEMPORARY)
+	Undo                bool              // UNDO
+	IfNotExists         bool              // IF NOT EXISTS
+	Datafiles           []*DatafileClause // DATAFILE / TEMPFILE clauses
+	Size                string            // SIZE value (e.g. "100M")
+	Autoextend          *AutoextendClause // AUTOEXTEND ON/OFF
+	Logging             string            // LOGGING / NOLOGGING / FORCE LOGGING / FILESYSTEM_LIKE_LOGGING
+	Online              bool              // ONLINE
+	Offline             bool              // OFFLINE
+	Extent              string            // EXTENT MANAGEMENT LOCAL/DICTIONARY (AUTOALLOCATE/UNIFORM)
+	Segment             string            // SEGMENT SPACE MANAGEMENT AUTO/MANUAL
+	Blocksize           string            // BLOCKSIZE value
+	Retention           string            // RETENTION GUARANTEE / NOGUARANTEE
+	Encryption          string            // ENCRYPTION clause text
+	EncryptionAlgorithm string            // USING 'algorithm'
+	Compress            string            // DEFAULT COMPRESS / NOCOMPRESS
+	MaxSize             string            // MAXSIZE value
+	TablespaceGroup     string            // TABLESPACE GROUP name
+	Flashback           string            // FLASHBACK ON / OFF
+	LostWriteProtection string            // ENABLE/DISABLE/SUSPEND/REMOVE LOST WRITE PROTECTION
+	MinimumExtent       string            // MINIMUM EXTENT size
+	DefaultParams       string            // DEFAULT tablespace params (summary)
+	ForLeaf             string            // FOR ALL / FOR LEAF (temporary tablespace)
+	Options             []string          // remaining unparsed option tokens
+	Loc                 Loc
 }
 
 func (n *CreateTablespaceStmt) nodeTag()  {}
 func (n *CreateTablespaceStmt) stmtNode() {}
+
+// AlterTablespaceStmt represents an ALTER TABLESPACE or ALTER TABLESPACE SET statement.
+type AlterTablespaceStmt struct {
+	Name                *ObjectName       // tablespace name
+	IsSet               bool              // true for ALTER TABLESPACE SET
+	IfExists            bool              // IF EXISTS
+	DefaultParams       string            // DEFAULT params summary
+	MinimumExtent       string            // MINIMUM EXTENT size
+	Resize              string            // RESIZE size
+	Coalesce            bool              // COALESCE
+	ShrinkSpace         bool              // SHRINK SPACE
+	ShrinkKeep          string            // SHRINK SPACE KEEP size
+	ShrinkTempfile      string            // SHRINK TEMPFILE filename/number
+	ShrinkTempfileKeep  string            // SHRINK TEMPFILE KEEP size
+	RenameTo            string            // RENAME TO new_name
+	BeginBackup         bool              // BEGIN BACKUP
+	EndBackup           bool              // END BACKUP
+	AddDatafile         bool              // ADD DATAFILE
+	AddTempfile         bool              // ADD TEMPFILE
+	Datafiles           []*DatafileClause // file specifications for ADD
+	DropDatafile        bool              // DROP DATAFILE
+	DropTempfile        bool              // DROP TEMPFILE
+	DropFileRef         string            // filename or file number for DROP
+	RenameDatafile      bool              // RENAME DATAFILE
+	RenameFrom          []string          // old filenames
+	RenameTo2           []string          // new filenames (for RENAME DATAFILE ... TO ...)
+	DatafileOnline      bool              // DATAFILE ONLINE
+	DatafileOffline     bool              // DATAFILE OFFLINE
+	TempfileOnline      bool              // TEMPFILE ONLINE
+	TempfileOffline     bool              // TEMPFILE OFFLINE
+	Logging             string            // LOGGING / NOLOGGING / FILESYSTEM_LIKE_LOGGING
+	ForceLogging        string            // FORCE LOGGING / NO FORCE LOGGING
+	Online              bool              // ONLINE
+	Offline             bool              // OFFLINE
+	OfflineMode         string            // NORMAL / TEMPORARY / IMMEDIATE
+	ReadOnly            bool              // READ ONLY
+	ReadWrite           bool              // READ WRITE
+	Permanent           bool              // PERMANENT
+	TempState           bool              // TEMPORARY (state)
+	Autoextend          *AutoextendClause // AUTOEXTEND
+	Flashback           string            // FLASHBACK ON / OFF
+	Retention           string            // RETENTION GUARANTEE / NOGUARANTEE
+	Encryption          string            // ENCRYPTION clause summary
+	LostWriteProtection string            // ENABLE/DISABLE/SUSPEND/REMOVE LOST WRITE PROTECTION
+	TablespaceGroup     string            // TABLESPACE GROUP name
+	Loc                 Loc
+}
+
+func (n *AlterTablespaceStmt) nodeTag()  {}
+func (n *AlterTablespaceStmt) stmtNode() {}
+
+// CreateTablespaceSetStmt represents a CREATE TABLESPACE SET statement.
+type CreateTablespaceSetStmt struct {
+	Name        *ObjectName       // tablespace set name
+	Shardspace  string            // IN SHARDSPACE name
+	Datafiles   []*DatafileClause // DATAFILE clauses in USING TEMPLATE
+	Logging     string            // LOGGING / NOLOGGING / FILESYSTEM_LIKE_LOGGING
+	Encryption  string            // ENCRYPTION clause
+	DefaultParams string          // DEFAULT params summary
+	Extent      string            // EXTENT MANAGEMENT
+	Segment     string            // SEGMENT SPACE MANAGEMENT
+	Flashback   string            // FLASHBACK ON / OFF
+	Loc         Loc
+}
+
+func (n *CreateTablespaceSetStmt) nodeTag()  {}
+func (n *CreateTablespaceSetStmt) stmtNode() {}
+
+// DropTablespaceStmt represents a DROP TABLESPACE or DROP TABLESPACE SET statement.
+type DropTablespaceStmt struct {
+	Name              *ObjectName // tablespace name
+	IsSet             bool        // true for DROP TABLESPACE SET
+	IfExists          bool        // IF EXISTS
+	DropQuota         bool        // DROP QUOTA
+	KeepQuota         bool        // KEEP QUOTA
+	IncludingContents bool        // INCLUDING CONTENTS
+	AndDatafiles      bool        // AND DATAFILES
+	KeepDatafiles     bool        // KEEP DATAFILES
+	CascadeConstraints bool       // CASCADE CONSTRAINTS
+	Loc               Loc
+}
+
+func (n *DropTablespaceStmt) nodeTag()  {}
+func (n *DropTablespaceStmt) stmtNode() {}
 
 // DatafileClause represents a DATAFILE or TEMPFILE specification.
 type DatafileClause struct {

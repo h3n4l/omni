@@ -1883,6 +1883,104 @@ func TestParseCreateTablespaceFull(t *testing.T) {
 	}
 }
 
+func TestParseTablespaceAll(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		// CREATE TABLESPACE - permanent with full options
+		{"create_perm_basic", "CREATE TABLESPACE users DATAFILE '/u01/users01.dbf' SIZE 100M"},
+		{"create_perm_if_not_exists", "CREATE TABLESPACE users IF NOT EXISTS DATAFILE '/u01/users01.dbf' SIZE 100M"},
+		{"create_perm_encryption", "CREATE TABLESPACE secure_ts DATAFILE '/u01/secure.dbf' SIZE 500M ENCRYPTION USING 'AES256' ENCRYPT"},
+		{"create_perm_flashback", "CREATE TABLESPACE fb_ts DATAFILE '/u01/fb.dbf' SIZE 100M FLASHBACK ON"},
+		{"create_perm_lost_write", "CREATE TABLESPACE lw_ts DATAFILE '/u01/lw.dbf' SIZE 200M ENABLE LOST WRITE PROTECTION"},
+		{"create_perm_minimum_extent", "CREATE TABLESPACE min_ts DATAFILE '/u01/min.dbf' SIZE 100M MINIMUM EXTENT 64K"},
+		{"create_perm_extent_dictionary", "CREATE TABLESPACE dict_ts DATAFILE '/u01/dict.dbf' SIZE 100M EXTENT MANAGEMENT DICTIONARY"},
+		{"create_perm_filesystem_logging", "CREATE TABLESPACE fs_ts DATAFILE '/u01/fs.dbf' SIZE 100M FILESYSTEM_LIKE_LOGGING"},
+		{"create_perm_default_compress", "CREATE TABLESPACE comp_ts DATAFILE '/u01/comp.dbf' SIZE 100M DEFAULT TABLE COMPRESS FOR OLTP"},
+		{"create_perm_default_row_store", "CREATE TABLESPACE rs_ts DATAFILE '/u01/rs.dbf' SIZE 100M DEFAULT TABLE ROW STORE COMPRESS ADVANCED"},
+		{"create_perm_default_column_store", "CREATE TABLESPACE cs_ts DATAFILE '/u01/cs.dbf' SIZE 100M DEFAULT TABLE COLUMN STORE COMPRESS FOR QUERY HIGH"},
+		{"create_perm_default_index_compress", "CREATE TABLESPACE ix_ts DATAFILE '/u01/ix.dbf' SIZE 100M DEFAULT INDEX COMPRESS ADVANCED LOW"},
+
+		// CREATE TEMPORARY TABLESPACE
+		{"create_temp", "CREATE TEMPORARY TABLESPACE temp_ts TEMPFILE '/u01/temp.dbf' SIZE 500M"},
+		{"create_temp_group", "CREATE TEMPORARY TABLESPACE temp_ts TEMPFILE '/u01/temp.dbf' SIZE 500M TABLESPACE GROUP temp_group"},
+		{"create_temp_for_all", "CREATE TEMPORARY TABLESPACE temp_ts TEMPFILE '/u01/temp.dbf' SIZE 500M FOR ALL"},
+		{"create_local_temp", "CREATE LOCAL TEMPORARY TABLESPACE temp_ts TEMPFILE '/u01/temp.dbf' SIZE 500M"},
+
+		// CREATE UNDO TABLESPACE
+		{"create_undo", "CREATE UNDO TABLESPACE undo_ts DATAFILE '/u01/undo.dbf' SIZE 200M RETENTION GUARANTEE"},
+		{"create_bigfile", "CREATE BIGFILE TABLESPACE big_ts DATAFILE '/u01/big.dbf' SIZE 10G"},
+
+		// ALTER TABLESPACE
+		{"alter_basic_online", "ALTER TABLESPACE users ONLINE"},
+		{"alter_offline_immediate", "ALTER TABLESPACE users OFFLINE IMMEDIATE"},
+		{"alter_read_only", "ALTER TABLESPACE users READ ONLY"},
+		{"alter_read_write", "ALTER TABLESPACE users READ WRITE"},
+		{"alter_if_exists", "ALTER TABLESPACE IF EXISTS old_ts RENAME TO new_ts"},
+		{"alter_resize", "ALTER TABLESPACE users RESIZE 500M"},
+		{"alter_coalesce", "ALTER TABLESPACE users COALESCE"},
+		{"alter_shrink_space", "ALTER TABLESPACE users SHRINK SPACE KEEP 100M"},
+		{"alter_begin_backup", "ALTER TABLESPACE users BEGIN BACKUP"},
+		{"alter_end_backup", "ALTER TABLESPACE users END BACKUP"},
+		{"alter_add_datafile", "ALTER TABLESPACE users ADD DATAFILE '/u01/users02.dbf' SIZE 500M AUTOEXTEND ON NEXT 50M MAXSIZE 2G"},
+		{"alter_drop_datafile", "ALTER TABLESPACE users DROP DATAFILE '/u01/users02.dbf'"},
+		{"alter_drop_tempfile", "ALTER TABLESPACE temp_ts DROP TEMPFILE 3"},
+		{"alter_shrink_tempfile", "ALTER TABLESPACE temp_ts SHRINK TEMPFILE '/u01/temp01.dbf' KEEP 100M"},
+		{"alter_rename_datafile", "ALTER TABLESPACE users RENAME DATAFILE '/u01/old.dbf' TO '/u01/new.dbf'"},
+		{"alter_datafile_online", "ALTER TABLESPACE users DATAFILE ONLINE"},
+		{"alter_tempfile_offline", "ALTER TABLESPACE temp_ts TEMPFILE OFFLINE"},
+		{"alter_logging", "ALTER TABLESPACE users LOGGING"},
+		{"alter_nologging", "ALTER TABLESPACE users NOLOGGING"},
+		{"alter_force_logging", "ALTER TABLESPACE users FORCE LOGGING"},
+		{"alter_no_force_logging", "ALTER TABLESPACE users NO FORCE LOGGING"},
+		{"alter_autoextend", "ALTER TABLESPACE users AUTOEXTEND ON NEXT 100M MAXSIZE UNLIMITED"},
+		{"alter_flashback_off", "ALTER TABLESPACE users FLASHBACK OFF"},
+		{"alter_retention", "ALTER TABLESPACE undo_ts RETENTION GUARANTEE"},
+		{"alter_encryption_online", "ALTER TABLESPACE secure_ts ENCRYPTION ONLINE"},
+		{"alter_lost_write_disable", "ALTER TABLESPACE users DISABLE LOST WRITE PROTECTION"},
+		{"alter_permanent", "ALTER TABLESPACE temp_ts PERMANENT"},
+		{"alter_temporary", "ALTER TABLESPACE perm_ts TEMPORARY"},
+		{"alter_default_compress", "ALTER TABLESPACE users DEFAULT TABLE COMPRESS FOR OLTP"},
+		{"alter_group", "ALTER TABLESPACE temp_ts GROUP temp_grp"},
+
+		// ALTER TABLESPACE SET
+		{"alter_ts_set_online", "ALTER TABLESPACE SET my_ts_set ONLINE"},
+		{"alter_ts_set_resize", "ALTER TABLESPACE SET my_ts_set RESIZE 1G"},
+
+		// CREATE TABLESPACE SET
+		{"create_ts_set_basic", "CREATE TABLESPACE SET my_ts_set"},
+		{"create_ts_set_shardspace", "CREATE TABLESPACE SET my_ts_set IN SHARDSPACE shard1"},
+		{"create_ts_set_template", "CREATE TABLESPACE SET my_ts_set USING TEMPLATE (DATAFILE '/u01/data.dbf' SIZE 100M EXTENT MANAGEMENT LOCAL AUTOALLOCATE)"},
+
+		// DROP TABLESPACE
+		{"drop_ts_basic", "DROP TABLESPACE old_ts"},
+		{"drop_ts_if_exists", "DROP TABLESPACE IF EXISTS old_ts"},
+		{"drop_ts_including_contents", "DROP TABLESPACE old_ts INCLUDING CONTENTS AND DATAFILES CASCADE CONSTRAINTS"},
+		{"drop_ts_keep_quota", "DROP TABLESPACE old_ts KEEP QUOTA"},
+		{"drop_ts_drop_quota", "DROP TABLESPACE old_ts DROP QUOTA INCLUDING CONTENTS KEEP DATAFILES"},
+
+		// DROP TABLESPACE SET
+		{"drop_ts_set", "DROP TABLESPACE SET old_set INCLUDING CONTENTS AND DATAFILES"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tc.sql)
+			if result.Len() != 1 {
+				t.Fatalf("expected 1 statement, got %d", result.Len())
+			}
+			raw := result.Items[0].(*ast.RawStmt)
+			switch raw.Stmt.(type) {
+			case *ast.CreateTablespaceStmt, *ast.AlterTablespaceStmt,
+				*ast.CreateTablespaceSetStmt, *ast.DropTablespaceStmt:
+				// OK
+			default:
+				t.Fatalf("expected tablespace statement, got %T", raw.Stmt)
+			}
+		})
+	}
+}
+
 func TestParseCreateClusterFull(t *testing.T) {
 	tests := []struct {
 		name string
@@ -3187,18 +3285,26 @@ func TestBatch73_RollbackSegmentEdition(t *testing.T) {
 // TestBatch74_TablespaceSet tests CREATE/ALTER/DROP TABLESPACE SET.
 func TestBatch74_TablespaceSet(t *testing.T) {
 	tests := []struct {
-		name   string
-		sql    string
-		action string
-		obj    ast.ObjectType
+		name string
+		sql  string
 	}{
-		{"create_tablespace_set", "CREATE TABLESPACE SET ts_set1 IN SHARDSPACE shardspace1 USING TEMPLATE (DATAFILE SIZE 100M)", "CREATE", ast.OBJECT_TABLESPACE_SET},
-		{"alter_tablespace_set", "ALTER TABLESPACE SET ts_set1 ADD DATAFILE SIZE 200M", "ALTER", ast.OBJECT_TABLESPACE_SET},
-		{"drop_tablespace_set", "DROP TABLESPACE SET ts_set1", "DROP", ast.OBJECT_TABLESPACE_SET},
+		{"create_tablespace_set", "CREATE TABLESPACE SET ts_set1 IN SHARDSPACE shardspace1 USING TEMPLATE (DATAFILE SIZE 100M)"},
+		{"alter_tablespace_set", "ALTER TABLESPACE SET ts_set1 ADD DATAFILE SIZE 200M"},
+		{"drop_tablespace_set", "DROP TABLESPACE SET ts_set1"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			adminDDLTest(t, tt.sql, tt.action, tt.obj)
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() != 1 {
+				t.Fatalf("expected 1 statement, got %d", result.Len())
+			}
+			raw := result.Items[0].(*ast.RawStmt)
+			switch raw.Stmt.(type) {
+			case *ast.CreateTablespaceSetStmt, *ast.AlterTablespaceStmt, *ast.DropTablespaceStmt:
+				// OK
+			default:
+				t.Fatalf("expected tablespace set statement, got %T", raw.Stmt)
+			}
 		})
 	}
 }
