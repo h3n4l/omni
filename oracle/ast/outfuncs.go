@@ -3121,9 +3121,30 @@ func writeCommentStmt(sb *strings.Builder, n *CommentStmt) {
 
 func writeAlterSessionStmt(sb *strings.Builder, n *AlterSessionStmt) {
 	sb.WriteString("{ALTERSESSION")
+	if n.Action != "" {
+		sb.WriteString(fmt.Sprintf(" :action %q", n.Action))
+	}
 	if n.SetParams != nil {
 		sb.WriteString(" :setParams ")
 		writeNode(sb, n.SetParams)
+	}
+	if n.AdviseAction != "" {
+		sb.WriteString(fmt.Sprintf(" :adviseAction %q", n.AdviseAction))
+	}
+	if n.DBLink != "" {
+		sb.WriteString(fmt.Sprintf(" :dbLink %q", n.DBLink))
+	}
+	if n.Feature != "" {
+		sb.WriteString(fmt.Sprintf(" :feature %q", n.Feature))
+	}
+	if n.ParallelDegree != 0 {
+		sb.WriteString(fmt.Sprintf(" :parallelDegree %d", n.ParallelDegree))
+	}
+	if n.Timeout != 0 {
+		sb.WriteString(fmt.Sprintf(" :timeout %d", n.Timeout))
+	}
+	if n.ResumableName != "" {
+		sb.WriteString(fmt.Sprintf(" :resumableName %q", n.ResumableName))
 	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
@@ -3131,12 +3152,105 @@ func writeAlterSessionStmt(sb *strings.Builder, n *AlterSessionStmt) {
 
 func writeAlterSystemStmt(sb *strings.Builder, n *AlterSystemStmt) {
 	sb.WriteString("{ALTERSYSTEM")
+	if n.Action != "" {
+		sb.WriteString(fmt.Sprintf(" :action %q", n.Action))
+	}
 	if n.SetParams != nil {
 		sb.WriteString(" :setParams ")
 		writeNode(sb, n.SetParams)
 	}
-	if n.Kill != "" {
-		sb.WriteString(fmt.Sprintf(" :kill %q", n.Kill))
+	if n.ResetParam != "" {
+		sb.WriteString(fmt.Sprintf(" :resetParam %q", n.ResetParam))
+	}
+	if n.SessionID != "" {
+		sb.WriteString(fmt.Sprintf(" :sessionId %q", n.SessionID))
+	}
+	if n.InstanceID != "" {
+		sb.WriteString(fmt.Sprintf(" :instanceId %q", n.InstanceID))
+	}
+	if n.Immediate {
+		sb.WriteString(" :immediate true")
+	}
+	if n.Force {
+		sb.WriteString(" :force true")
+	}
+	if n.PostTransaction {
+		sb.WriteString(" :postTransaction true")
+	}
+	if n.NoReplay {
+		sb.WriteString(" :noReplay true")
+	}
+	if n.Timeout != 0 {
+		sb.WriteString(fmt.Sprintf(" :timeout %d", n.Timeout))
+	}
+	if n.FlushTarget != "" {
+		sb.WriteString(fmt.Sprintf(" :flushTarget %q", n.FlushTarget))
+	}
+	if n.FlushScope != "" {
+		sb.WriteString(fmt.Sprintf(" :flushScope %q", n.FlushScope))
+	}
+	if n.FlushRedoDB != "" {
+		sb.WriteString(fmt.Sprintf(" :flushRedoDb %q", n.FlushRedoDB))
+	}
+	if n.FlushRedoConfirm != "" {
+		sb.WriteString(fmt.Sprintf(" :flushRedoConfirm %q", n.FlushRedoConfirm))
+	}
+	if n.ArchiveLogSpec != "" {
+		sb.WriteString(fmt.Sprintf(" :archiveLogSpec %q", n.ArchiveLogSpec))
+	}
+	if n.ArchiveLogValue != "" {
+		sb.WriteString(fmt.Sprintf(" :archiveLogValue %q", n.ArchiveLogValue))
+	}
+	if n.ArchiveInstance != "" {
+		sb.WriteString(fmt.Sprintf(" :archiveInstance %q", n.ArchiveInstance))
+	}
+	if n.ArchiveThread != 0 {
+		sb.WriteString(fmt.Sprintf(" :archiveThread %d", n.ArchiveThread))
+	}
+	if n.ArchiveNoSwitch {
+		sb.WriteString(" :archiveNoSwitch true")
+	}
+	if n.ArchiveBackupCF {
+		sb.WriteString(" :archiveBackupCF true")
+	}
+	if n.ArchiveTo != "" {
+		sb.WriteString(fmt.Sprintf(" :archiveTo %q", n.ArchiveTo))
+	}
+	if n.CheckScope != "" {
+		sb.WriteString(fmt.Sprintf(" :checkScope %q", n.CheckScope))
+	}
+	if n.Feature != "" {
+		sb.WriteString(fmt.Sprintf(" :feature %q", n.Feature))
+	}
+	if n.ShutdownDisp != "" {
+		sb.WriteString(fmt.Sprintf(" :shutdownDisp %q", n.ShutdownDisp))
+	}
+	if n.RelocateClient != "" {
+		sb.WriteString(fmt.Sprintf(" :relocateClient %q", n.RelocateClient))
+	}
+	if n.RollingVersion != "" {
+		sb.WriteString(fmt.Sprintf(" :rollingVersion %q", n.RollingVersion))
+	}
+	if n.EncryptionAction != "" {
+		sb.WriteString(fmt.Sprintf(" :encryptionAction %q", n.EncryptionAction))
+	}
+	if n.Comment != "" {
+		sb.WriteString(fmt.Sprintf(" :comment %q", n.Comment))
+	}
+	if n.Deferred {
+		sb.WriteString(" :deferred true")
+	}
+	if n.Scope != "" {
+		sb.WriteString(fmt.Sprintf(" :scope %q", n.Scope))
+	}
+	if n.SID != "" {
+		sb.WriteString(fmt.Sprintf(" :sid %q", n.SID))
+	}
+	if n.Container != "" {
+		sb.WriteString(fmt.Sprintf(" :container %q", n.Container))
+	}
+	if n.SqlID != "" {
+		sb.WriteString(fmt.Sprintf(" :sqlId %q", n.SqlID))
 	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

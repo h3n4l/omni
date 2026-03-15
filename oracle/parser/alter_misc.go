@@ -147,6 +147,41 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 }
 
 // parseAlterSessionStmt parses ALTER SESSION SET param = value [, ...].
+// parseAlterSessionStmt parses an ALTER SESSION statement.
+// Called after ALTER has been consumed.
+//
+// BNF: oracle/parser/bnf/ALTER-SESSION.bnf
+//
+//	ALTER SESSION
+//	    { ADVISE { COMMIT | ROLLBACK | NOTHING }
+//	    | CLOSE DATABASE LINK dblink
+//	    | { ENABLE | DISABLE } COMMIT IN PROCEDURE
+//	    | { ENABLE | DISABLE } GUARD
+//	    | { ENABLE | DISABLE } PARALLEL { DML | DDL | QUERY }
+//	    | FORCE PARALLEL { DML | DDL | QUERY } [ PARALLEL integer ]
+//	    | { ENABLE | DISABLE } RESUMABLE [ TIMEOUT integer ] [ NAME 'string' ]
+//	    | { ENABLE | DISABLE } SHARD DDL
+//	    | SYNC WITH PRIMARY
+//	    | alter_session_set_clause
+//	    }
+//
+//	alter_session_set_clause:
+//	    SET { parameter_name = parameter_value [, parameter_name = parameter_value ]...
+//	        | EDITION = edition_name
+//	        | CONTAINER = container_name [ SERVICE = service_name ]
+//	        | ROW ARCHIVAL VISIBILITY = { ACTIVE | ALL }
+//	        | DEFAULT_COLLATION = { collation_name | NONE }
+//	        | CONSTRAINT[S] = { IMMEDIATE | DEFERRED | DEFAULT }
+//	        | CURRENT_SCHEMA = schema
+//	        | ERROR_ON_OVERLAP_TIME = { TRUE | FALSE }
+//	        | FLAGGER = { ENTRY | OFF }
+//	        | INSTANCE = integer
+//	        | ISOLATION_LEVEL = { SERIALIZABLE | READ COMMITTED }
+//	        | STANDBY_MAX_DATA_DELAY = { integer | NONE }
+//	        | TIME_ZONE = { '{ + | - } hh:mi' | LOCAL | DBTIMEZONE | 'time_zone_region' }
+//	        | USE_PRIVATE_OUTLINES = { TRUE | FALSE | category_name }
+//	        | USE_STORED_OUTLINES = { TRUE | FALSE | category_name }
+//	        }
 func (p *Parser) parseAlterSessionStmt(start int) nodes.StmtNode {
 	p.advance() // consume SESSION
 
@@ -154,18 +189,244 @@ func (p *Parser) parseAlterSessionStmt(start int) nodes.StmtNode {
 		Loc: nodes.Loc{Start: start},
 	}
 
-	if _, ok := p.matchKeyword(kwSET); ok {
+	switch {
+	case p.isIdentLikeStr("ADVISE"):
+		p.advance() // consume ADVISE
+		stmt.Action = "ADVISE"
+		if p.cur.Type == kwCOMMIT {
+			stmt.AdviseAction = "COMMIT"
+			p.advance()
+		} else if p.isIdentLikeStr("ROLLBACK") {
+			stmt.AdviseAction = "ROLLBACK"
+			p.advance()
+		} else if p.isIdentLikeStr("NOTHING") {
+			stmt.AdviseAction = "NOTHING"
+			p.advance()
+		}
+
+	case p.isIdentLikeStr("CLOSE"):
+		p.advance() // consume CLOSE
+		stmt.Action = "CLOSE_DATABASE_LINK"
+		// DATABASE
+		if p.cur.Type == kwDATABASE {
+			p.advance()
+		}
+		// LINK
+		if p.isIdentLikeStr("LINK") {
+			p.advance()
+		}
+		stmt.DBLink = p.parseIdentifier()
+
+	case p.cur.Type == kwENABLE || p.cur.Type == kwDISABLE:
+		action := "ENABLE"
+		if p.cur.Type == kwDISABLE {
+			action = "DISABLE"
+		}
+		stmt.Action = action
+		p.advance() // consume ENABLE/DISABLE
+
+		switch {
+		case p.cur.Type == kwCOMMIT:
+			// COMMIT IN PROCEDURE
+			stmt.Feature = "COMMIT_IN_PROCEDURE"
+			p.advance() // consume COMMIT
+			if p.cur.Type == kwIN {
+				p.advance() // consume IN
+			}
+			if p.isIdentLikeStr("PROCEDURE") {
+				p.advance()
+			}
+		case p.isIdentLikeStr("GUARD"):
+			stmt.Feature = "GUARD"
+			p.advance()
+		case p.cur.Type == kwPARALLEL:
+			p.advance() // consume PARALLEL
+			if p.isIdentLikeStr("DML") {
+				stmt.Feature = "PARALLEL_DML"
+				p.advance()
+			} else if p.isIdentLikeStr("DDL") {
+				stmt.Feature = "PARALLEL_DDL"
+				p.advance()
+			} else if p.isIdentLikeStr("QUERY") {
+				stmt.Feature = "PARALLEL_QUERY"
+				p.advance()
+			}
+		case p.isIdentLikeStr("RESUMABLE"):
+			stmt.Feature = "RESUMABLE"
+			p.advance()
+			// optional TIMEOUT integer
+			if p.isIdentLikeStr("TIMEOUT") {
+				p.advance()
+				if p.cur.Type == tokICONST {
+					stmt.Timeout = p.parseIntValue()
+				}
+			}
+			// optional NAME 'string'
+			if p.cur.Type == kwNAME {
+				p.advance()
+				if p.cur.Type == tokSCONST {
+					stmt.ResumableName = p.cur.Str
+					p.advance()
+				}
+			}
+		case p.isIdentLikeStr("SHARD"):
+			stmt.Feature = "SHARD_DDL"
+			p.advance() // consume SHARD
+			if p.isIdentLikeStr("DDL") {
+				p.advance()
+			}
+		}
+
+	case p.cur.Type == kwFORCE:
+		p.advance() // consume FORCE
+		stmt.Action = "FORCE_PARALLEL"
+		// PARALLEL
+		if p.cur.Type == kwPARALLEL {
+			p.advance()
+		}
+		// {DML | DDL | QUERY}
+		if p.isIdentLikeStr("DML") {
+			stmt.Feature = "PARALLEL_DML"
+			p.advance()
+		} else if p.isIdentLikeStr("DDL") {
+			stmt.Feature = "PARALLEL_DDL"
+			p.advance()
+		} else if p.isIdentLikeStr("QUERY") {
+			stmt.Feature = "PARALLEL_QUERY"
+			p.advance()
+		}
+		// optional PARALLEL integer
+		if p.cur.Type == kwPARALLEL {
+			p.advance()
+			if p.cur.Type == tokICONST {
+				stmt.ParallelDegree = p.parseIntValue()
+			}
+		}
+
+	case p.isIdentLikeStr("SYNC"):
+		p.advance() // consume SYNC
+		stmt.Action = "SYNC_WITH_PRIMARY"
+		if p.cur.Type == kwWITH {
+			p.advance()
+		}
+		if p.isIdentLikeStr("PRIMARY") {
+			p.advance()
+		}
+
+	case p.cur.Type == kwSET:
+		p.advance() // consume SET
+		stmt.Action = "SET"
 		stmt.SetParams = p.parseSetParams()
-	} else {
-		// ALTER SESSION with other clauses — skip remaining tokens.
-		p.skipToSemicolon()
 	}
 
 	stmt.Loc.End = p.pos()
 	return stmt
 }
 
-// parseAlterSystemStmt parses ALTER SYSTEM SET/KILL ... .
+// parseAlterSystemStmt parses an ALTER SYSTEM statement.
+// Called after ALTER has been consumed.
+//
+// BNF: oracle/parser/bnf/ALTER-SYSTEM.bnf
+//
+//	ALTER SYSTEM
+//	    { archive_log_clause
+//	    | checkpoint_clause
+//	    | check_datafiles_clause
+//	    | distributed_recov_clauses
+//	    | SWITCH LOGFILE
+//	    | { SUSPEND | RESUME }
+//	    | quiesce_clauses
+//	    | rolling_migration_clauses
+//	    | rolling_patch_clauses
+//	    | security_clauses
+//	    | shutdown_dispatcher_clause
+//	    | REGISTER
+//	    | alter_system_set_clause
+//	    | alter_system_reset_clause
+//	    | cancel_sql_clause
+//	    | flush_clause
+//	    | RELOCATE CLIENT 'client_id'
+//	    | end_session_clauses
+//	    }
+//
+//	archive_log_clause:
+//	    ARCHIVE LOG [ INSTANCE 'instance_name' ]
+//	        { SEQUENCE integer
+//	        | CHANGE integer
+//	        | CURRENT [ NOSWITCH ]
+//	        | GROUP integer
+//	        | LOGFILE 'filename' [ USING BACKUP CONTROLFILE ]
+//	        | NEXT
+//	        | ALL
+//	        }
+//	        [ THREAD integer ]
+//	        [ TO 'location' ]
+//
+//	checkpoint_clause:
+//	    CHECKPOINT [ { GLOBAL | LOCAL } ]
+//
+//	check_datafiles_clause:
+//	    CHECK DATAFILES [ { GLOBAL | LOCAL } ]
+//
+//	distributed_recov_clauses:
+//	    { ENABLE | DISABLE } DISTRIBUTED RECOVERY
+//
+//	end_session_clauses:
+//	    { DISCONNECT SESSION 'session_id, serial_number'
+//	        [ POST_TRANSACTION ] [ IMMEDIATE ]
+//	    | KILL SESSION 'session_id, serial_number' [ , @instance_id ]
+//	        [ IMMEDIATE | FORCE ]
+//	        [ NOREPLAY ]
+//	        [ TIMEOUT integer ]
+//	    }
+//
+//	quiesce_clauses:
+//	    { QUIESCE RESTRICTED | UNQUIESCE }
+//
+//	rolling_migration_clauses:
+//	    { START ROLLING MIGRATION TO 'ASM_version'
+//	    | STOP ROLLING MIGRATION
+//	    }
+//
+//	rolling_patch_clauses:
+//	    { START ROLLING PATCH | STOP ROLLING PATCH }
+//
+//	security_clauses:
+//	    { ENABLE RESTRICTED SESSION
+//	    | DISABLE RESTRICTED SESSION
+//	    | SET ENCRYPTION WALLET OPEN IDENTIFIED BY password
+//	    | SET ENCRYPTION WALLET CLOSE [ IDENTIFIED BY password ]
+//	    | SET ENCRYPTION KEY [ IDENTIFIED BY password ]
+//	    }
+//
+//	shutdown_dispatcher_clause:
+//	    SHUTDOWN [ IMMEDIATE ] 'dispatcher_name'
+//
+//	alter_system_set_clause:
+//	    SET parameter_name = parameter_value [, parameter_value ]...
+//	        [ COMMENT = 'comment' ]
+//	        [ DEFERRED ]
+//	        [ SCOPE = { MEMORY | SPFILE | BOTH } ]
+//	        [ SID = { 'sid' | '*' } ]
+//	        [ CONTAINER = { ALL | CURRENT } ]
+//
+//	alter_system_reset_clause:
+//	    RESET parameter_name
+//	        [ SCOPE = { MEMORY | SPFILE | BOTH } ]
+//	        [ SID = { 'sid' | '*' } ]
+//
+//	cancel_sql_clause:
+//	    CANCEL SQL 'session_id, serial_number' [ , @instance_id ] [ SQL_ID 'sql_id' ]
+//
+//	flush_clause:
+//	    FLUSH
+//	        { SHARED_POOL
+//	        | GLOBAL CONTEXT
+//	        | BUFFER_CACHE [ { GLOBAL | LOCAL } ]
+//	        | FLASH_CACHE [ { GLOBAL | LOCAL } ]
+//	        | REDO TO target_db_name [ { NO CONFIRM APPLY | CONFIRM APPLY } ]
+//	        | PASSWORDFILE_METADATA_CACHE
+//	        }
 func (p *Parser) parseAlterSystemStmt(start int) nodes.StmtNode {
 	p.advance() // consume SYSTEM
 
@@ -176,25 +437,538 @@ func (p *Parser) parseAlterSystemStmt(start int) nodes.StmtNode {
 	switch {
 	case p.cur.Type == kwSET:
 		p.advance() // consume SET
-		stmt.SetParams = p.parseSetParams()
-	default:
-		// ALTER SYSTEM KILL SESSION or other — consume remaining tokens.
-		// Capture KILL SESSION 'sid,serial#' if present.
-		if p.isIdentLike() && p.cur.Str == "KILL" {
-			p.advance() // consume KILL
-			if p.cur.Type == kwSESSION {
-				p.advance() // consume SESSION
+		// Check for SET ENCRYPTION (security clause)
+		if p.isIdentLikeStr("ENCRYPTION") {
+			p.parseAlterSystemEncryption(stmt)
+		} else {
+			stmt.Action = "SET"
+			stmt.SetParams = p.parseSetParams()
+			// Parse optional SET modifiers: COMMENT, DEFERRED, SCOPE, SID, CONTAINER
+			p.parseAlterSystemSetModifiers(stmt)
+		}
+
+	case p.isIdentLikeStr("RESET"):
+		p.advance() // consume RESET
+		stmt.Action = "RESET"
+		stmt.ResetParam = p.parseIdentifier()
+		// optional SCOPE
+		if p.isIdentLikeStr("SCOPE") {
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			stmt.Scope = p.parseIdentifier()
+		}
+		// optional SID
+		if p.isIdentLikeStr("SID") {
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
 			}
 			if p.cur.Type == tokSCONST {
-				stmt.Kill = p.cur.Str
+				stmt.SID = p.cur.Str
+				p.advance()
+			} else if p.cur.Type == '*' {
+				stmt.SID = "*"
 				p.advance()
 			}
 		}
+
+	case p.isIdentLikeStr("KILL"):
+		p.advance() // consume KILL
+		stmt.Action = "KILL_SESSION"
+		if p.cur.Type == kwSESSION {
+			p.advance()
+		}
+		if p.cur.Type == tokSCONST {
+			stmt.SessionID = p.cur.Str
+			p.advance()
+		}
+		// optional , @instance_id
+		if p.cur.Type == ',' {
+			p.advance()
+			if p.cur.Type == '@' {
+				p.advance()
+				if p.cur.Type == tokICONST {
+					stmt.InstanceID = p.cur.Str
+					p.advance()
+				}
+			}
+		}
+		// optional IMMEDIATE | FORCE
+		if p.cur.Type == kwIMMEDIATE {
+			stmt.Immediate = true
+			p.advance()
+		} else if p.cur.Type == kwFORCE {
+			stmt.Force = true
+			p.advance()
+		}
+		// optional NOREPLAY
+		if p.isIdentLikeStr("NOREPLAY") {
+			stmt.NoReplay = true
+			p.advance()
+		}
+		// optional TIMEOUT integer
+		if p.isIdentLikeStr("TIMEOUT") {
+			p.advance()
+			if p.cur.Type == tokICONST {
+				stmt.Timeout = p.parseIntValue()
+			}
+		}
+
+	case p.isIdentLikeStr("DISCONNECT"):
+		p.advance() // consume DISCONNECT
+		stmt.Action = "DISCONNECT_SESSION"
+		if p.cur.Type == kwSESSION {
+			p.advance()
+		}
+		if p.cur.Type == tokSCONST {
+			stmt.SessionID = p.cur.Str
+			p.advance()
+		}
+		// optional POST_TRANSACTION
+		if p.isIdentLikeStr("POST_TRANSACTION") {
+			stmt.PostTransaction = true
+			p.advance()
+		}
+		// optional IMMEDIATE
+		if p.cur.Type == kwIMMEDIATE {
+			stmt.Immediate = true
+			p.advance()
+		}
+
+	case p.isIdentLikeStr("FLUSH"):
+		p.advance() // consume FLUSH
+		stmt.Action = "FLUSH"
+		p.parseAlterSystemFlush(stmt)
+
+	case p.isIdentLikeStr("CHECKPOINT"):
+		p.advance() // consume CHECKPOINT
+		stmt.Action = "CHECKPOINT"
+		if p.cur.Type == kwGLOBAL {
+			stmt.CheckScope = "GLOBAL"
+			p.advance()
+		} else if p.isIdentLikeStr("LOCAL") {
+			stmt.CheckScope = "LOCAL"
+			p.advance()
+		}
+
+	case p.isIdentLikeStr("CHECK"):
+		p.advance() // consume CHECK
+		stmt.Action = "CHECK_DATAFILES"
+		if p.isIdentLikeStr("DATAFILES") {
+			p.advance()
+		}
+		if p.cur.Type == kwGLOBAL {
+			stmt.CheckScope = "GLOBAL"
+			p.advance()
+		} else if p.isIdentLikeStr("LOCAL") {
+			stmt.CheckScope = "LOCAL"
+			p.advance()
+		}
+
+	case p.isIdentLikeStr("SWITCH"):
+		p.advance() // consume SWITCH
+		stmt.Action = "SWITCH_LOGFILE"
+		if p.isIdentLikeStr("LOGFILE") {
+			p.advance()
+		}
+
+	case p.isIdentLikeStr("ARCHIVE"):
+		p.advance() // consume ARCHIVE
+		stmt.Action = "ARCHIVE_LOG"
+		if p.isIdentLikeStr("LOG") {
+			p.advance()
+		}
+		p.parseAlterSystemArchiveLog(stmt)
+
+	case p.isIdentLikeStr("SUSPEND"):
+		stmt.Action = "SUSPEND"
+		p.advance()
+
+	case p.isIdentLikeStr("RESUME"):
+		stmt.Action = "RESUME"
+		p.advance()
+
+	case p.isIdentLikeStr("QUIESCE"):
+		p.advance() // consume QUIESCE
+		stmt.Action = "QUIESCE"
+		if p.isIdentLikeStr("RESTRICTED") {
+			p.advance()
+		}
+
+	case p.isIdentLikeStr("UNQUIESCE"):
+		stmt.Action = "UNQUIESCE"
+		p.advance()
+
+	case p.cur.Type == kwENABLE:
+		p.advance() // consume ENABLE
+		stmt.Action = "ENABLE"
+		if p.isIdentLikeStr("DISTRIBUTED") {
+			stmt.Feature = "DISTRIBUTED_RECOVERY"
+			p.advance()
+			if p.isIdentLikeStr("RECOVERY") {
+				p.advance()
+			}
+		} else if p.isIdentLikeStr("RESTRICTED") {
+			stmt.Feature = "RESTRICTED_SESSION"
+			p.advance()
+			if p.cur.Type == kwSESSION {
+				p.advance()
+			}
+		}
+
+	case p.cur.Type == kwDISABLE:
+		p.advance() // consume DISABLE
+		stmt.Action = "DISABLE"
+		if p.isIdentLikeStr("DISTRIBUTED") {
+			stmt.Feature = "DISTRIBUTED_RECOVERY"
+			p.advance()
+			if p.isIdentLikeStr("RECOVERY") {
+				p.advance()
+			}
+		} else if p.isIdentLikeStr("RESTRICTED") {
+			stmt.Feature = "RESTRICTED_SESSION"
+			p.advance()
+			if p.cur.Type == kwSESSION {
+				p.advance()
+			}
+		}
+
+	case p.isIdentLikeStr("REGISTER"):
+		stmt.Action = "REGISTER"
+		p.advance()
+
+	case p.isIdentLikeStr("CANCEL"):
+		p.advance() // consume CANCEL
+		stmt.Action = "CANCEL_SQL"
+		if p.isIdentLikeStr("SQL") {
+			p.advance()
+		}
+		if p.cur.Type == tokSCONST {
+			stmt.SessionID = p.cur.Str
+			p.advance()
+		}
+		// optional , @instance_id
+		if p.cur.Type == ',' {
+			p.advance()
+			if p.cur.Type == '@' {
+				p.advance()
+				if p.cur.Type == tokICONST {
+					stmt.InstanceID = p.cur.Str
+					p.advance()
+				}
+			}
+		}
+		// optional SQL_ID 'sql_id'
+		if p.isIdentLikeStr("SQL_ID") {
+			p.advance()
+			if p.cur.Type == tokSCONST {
+				stmt.SqlID = p.cur.Str
+				p.advance()
+			}
+		}
+
+	case p.isIdentLikeStr("SHUTDOWN"):
+		p.advance() // consume SHUTDOWN
+		stmt.Action = "SHUTDOWN"
+		if p.cur.Type == kwIMMEDIATE {
+			stmt.Immediate = true
+			p.advance()
+		}
+		if p.cur.Type == tokSCONST {
+			stmt.ShutdownDisp = p.cur.Str
+			p.advance()
+		}
+
+	case p.isIdentLikeStr("RELOCATE"):
+		p.advance() // consume RELOCATE
+		stmt.Action = "RELOCATE_CLIENT"
+		if p.isIdentLikeStr("CLIENT") {
+			p.advance()
+		}
+		if p.cur.Type == tokSCONST {
+			stmt.RelocateClient = p.cur.Str
+			p.advance()
+		}
+
+	case p.cur.Type == kwSTART:
+		p.advance() // consume START
+		if p.isIdentLikeStr("ROLLING") {
+			p.advance() // consume ROLLING
+			if p.isIdentLikeStr("MIGRATION") {
+				stmt.Action = "START_ROLLING_MIGRATION"
+				p.advance()
+				if p.cur.Type == kwTO {
+					p.advance()
+				}
+				if p.cur.Type == tokSCONST {
+					stmt.RollingVersion = p.cur.Str
+					p.advance()
+				}
+			} else if p.isIdentLikeStr("PATCH") {
+				stmt.Action = "START_ROLLING_PATCH"
+				p.advance()
+			}
+		}
+
+	case p.isIdentLikeStr("STOP"):
+		p.advance() // consume STOP
+		if p.isIdentLikeStr("ROLLING") {
+			p.advance()
+			if p.isIdentLikeStr("MIGRATION") {
+				stmt.Action = "STOP_ROLLING_MIGRATION"
+				p.advance()
+			} else if p.isIdentLikeStr("PATCH") {
+				stmt.Action = "STOP_ROLLING_PATCH"
+				p.advance()
+			}
+		}
+
+	default:
 		p.skipToSemicolon()
 	}
 
 	stmt.Loc.End = p.pos()
 	return stmt
+}
+
+// parseAlterSystemSetModifiers parses optional modifiers for ALTER SYSTEM SET:
+// COMMENT, DEFERRED, SCOPE, SID, CONTAINER.
+func (p *Parser) parseAlterSystemSetModifiers(stmt *nodes.AlterSystemStmt) {
+	for {
+		switch {
+		case p.isIdentLikeStr("COMMENT"):
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			if p.cur.Type == tokSCONST {
+				stmt.Comment = p.cur.Str
+				p.advance()
+			}
+		case p.isIdentLikeStr("DEFERRED"):
+			stmt.Deferred = true
+			p.advance()
+		case p.isIdentLikeStr("SCOPE"):
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			stmt.Scope = p.parseIdentifier()
+		case p.isIdentLikeStr("SID"):
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			if p.cur.Type == tokSCONST {
+				stmt.SID = p.cur.Str
+				p.advance()
+			} else if p.cur.Type == '*' {
+				stmt.SID = "*"
+				p.advance()
+			}
+		case p.isIdentLikeStr("CONTAINER"):
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			stmt.Container = p.parseIdentifier()
+		default:
+			return
+		}
+	}
+}
+
+// parseAlterSystemFlush parses the FLUSH sub-clause of ALTER SYSTEM.
+func (p *Parser) parseAlterSystemFlush(stmt *nodes.AlterSystemStmt) {
+	switch {
+	case p.isIdentLikeStr("SHARED_POOL"):
+		stmt.FlushTarget = "SHARED_POOL"
+		p.advance()
+	case p.cur.Type == kwGLOBAL:
+		// GLOBAL CONTEXT
+		stmt.FlushTarget = "GLOBAL_CONTEXT"
+		p.advance()
+		if p.isIdentLikeStr("CONTEXT") {
+			p.advance()
+		}
+	case p.isIdentLikeStr("BUFFER_CACHE"):
+		stmt.FlushTarget = "BUFFER_CACHE"
+		p.advance()
+		if p.cur.Type == kwGLOBAL {
+			stmt.FlushScope = "GLOBAL"
+			p.advance()
+		} else if p.isIdentLikeStr("LOCAL") {
+			stmt.FlushScope = "LOCAL"
+			p.advance()
+		}
+	case p.isIdentLikeStr("FLASH_CACHE"):
+		stmt.FlushTarget = "FLASH_CACHE"
+		p.advance()
+		if p.cur.Type == kwGLOBAL {
+			stmt.FlushScope = "GLOBAL"
+			p.advance()
+		} else if p.isIdentLikeStr("LOCAL") {
+			stmt.FlushScope = "LOCAL"
+			p.advance()
+		}
+	case p.isIdentLikeStr("REDO"):
+		stmt.FlushTarget = "REDO"
+		p.advance()
+		if p.cur.Type == kwTO {
+			p.advance()
+		}
+		stmt.FlushRedoDB = p.parseIdentifier()
+		// optional {NO CONFIRM APPLY | CONFIRM APPLY}
+		if p.isIdentLikeStr("NO") {
+			p.advance() // consume NO
+			if p.isIdentLikeStr("CONFIRM") {
+				p.advance()
+			}
+			if p.isIdentLikeStr("APPLY") {
+				p.advance()
+			}
+			stmt.FlushRedoConfirm = "NO_CONFIRM_APPLY"
+		} else if p.isIdentLikeStr("CONFIRM") {
+			p.advance()
+			if p.isIdentLikeStr("APPLY") {
+				p.advance()
+			}
+			stmt.FlushRedoConfirm = "CONFIRM_APPLY"
+		}
+	case p.isIdentLikeStr("PASSWORDFILE_METADATA_CACHE"):
+		stmt.FlushTarget = "PASSWORDFILE_METADATA_CACHE"
+		p.advance()
+	}
+}
+
+// parseAlterSystemArchiveLog parses the ARCHIVE LOG sub-clause of ALTER SYSTEM.
+func (p *Parser) parseAlterSystemArchiveLog(stmt *nodes.AlterSystemStmt) {
+	// optional INSTANCE 'instance_name'
+	if p.isIdentLikeStr("INSTANCE") {
+		p.advance()
+		if p.cur.Type == tokSCONST {
+			stmt.ArchiveInstance = p.cur.Str
+			p.advance()
+		}
+	}
+
+	// archive log spec
+	switch {
+	case p.isIdentLikeStr("SEQUENCE"):
+		stmt.ArchiveLogSpec = "SEQUENCE"
+		p.advance()
+		if p.cur.Type == tokICONST {
+			stmt.ArchiveLogValue = p.cur.Str
+			p.advance()
+		}
+	case p.isIdentLikeStr("CHANGE"):
+		stmt.ArchiveLogSpec = "CHANGE"
+		p.advance()
+		if p.cur.Type == tokICONST {
+			stmt.ArchiveLogValue = p.cur.Str
+			p.advance()
+		}
+	case p.isIdentLikeStr("CURRENT"):
+		stmt.ArchiveLogSpec = "CURRENT"
+		p.advance()
+		if p.isIdentLikeStr("NOSWITCH") {
+			stmt.ArchiveNoSwitch = true
+			p.advance()
+		}
+	case p.cur.Type == kwGROUP:
+		stmt.ArchiveLogSpec = "GROUP"
+		p.advance()
+		if p.cur.Type == tokICONST {
+			stmt.ArchiveLogValue = p.cur.Str
+			p.advance()
+		}
+	case p.isIdentLikeStr("LOGFILE"):
+		stmt.ArchiveLogSpec = "LOGFILE"
+		p.advance()
+		if p.cur.Type == tokSCONST {
+			stmt.ArchiveLogValue = p.cur.Str
+			p.advance()
+		}
+		// optional USING BACKUP CONTROLFILE
+		if p.cur.Type == kwUSING {
+			p.advance()
+			if p.isIdentLikeStr("BACKUP") {
+				p.advance()
+			}
+			if p.isIdentLikeStr("CONTROLFILE") {
+				p.advance()
+			}
+			stmt.ArchiveBackupCF = true
+		}
+	case p.cur.Type == kwNEXT:
+		stmt.ArchiveLogSpec = "NEXT"
+		p.advance()
+	case p.cur.Type == kwALL:
+		stmt.ArchiveLogSpec = "ALL"
+		p.advance()
+	}
+
+	// optional THREAD integer
+	if p.isIdentLikeStr("THREAD") {
+		p.advance()
+		if p.cur.Type == tokICONST {
+			stmt.ArchiveThread = p.parseIntValue()
+		}
+	}
+
+	// optional TO 'location'
+	if p.cur.Type == kwTO {
+		p.advance()
+		if p.cur.Type == tokSCONST {
+			stmt.ArchiveTo = p.cur.Str
+			p.advance()
+		}
+	}
+}
+
+// parseAlterSystemEncryption parses the SET ENCRYPTION sub-clause of ALTER SYSTEM.
+func (p *Parser) parseAlterSystemEncryption(stmt *nodes.AlterSystemStmt) {
+	stmt.Action = "SET_ENCRYPTION"
+	p.advance() // consume ENCRYPTION
+	if p.isIdentLikeStr("WALLET") {
+		p.advance() // consume WALLET
+		if p.cur.Type == kwOPEN {
+			stmt.EncryptionAction = "OPEN"
+			p.advance()
+			// IDENTIFIED BY password
+			if p.isIdentLikeStr("IDENTIFIED") {
+				p.advance()
+				if p.cur.Type == kwBY {
+					p.advance()
+				}
+				p.parseIdentifier() // consume password (not stored for security)
+			}
+		} else if p.isIdentLikeStr("CLOSE") {
+			stmt.EncryptionAction = "CLOSE"
+			p.advance()
+			// optional IDENTIFIED BY password
+			if p.isIdentLikeStr("IDENTIFIED") {
+				p.advance()
+				if p.cur.Type == kwBY {
+					p.advance()
+				}
+				p.parseIdentifier()
+			}
+		}
+	} else if p.cur.Type == kwKEY {
+		stmt.EncryptionAction = "SET_KEY"
+		p.advance()
+		// optional IDENTIFIED BY password
+		if p.isIdentLikeStr("IDENTIFIED") {
+			p.advance()
+			if p.cur.Type == kwBY {
+				p.advance()
+			}
+			p.parseIdentifier()
+		}
+	}
 }
 
 // parseSetParams parses one or more param = value pairs.

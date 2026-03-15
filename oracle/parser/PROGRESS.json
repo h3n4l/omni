@@ -793,7 +793,7 @@
       "id": 98,
       "name": "alter_session_system",
       "file": "alter_misc.go",
-      "status": "pending",
+      "status": "done",
       "description": "ALTER SESSION — only SET parsed, need ADVISE, CLOSE DATABASE LINK, ENABLE/DISABLE clauses. ALTER SYSTEM — only SET/KILL parsed, need FLUSH, CHECKPOINT, SWITCH LOGFILE, ARCHIVE LOG, DISCONNECT SESSION, CANCEL SQL, etc.",
       "bnf_files": ["ALTER-SESSION.bnf", "ALTER-SYSTEM.bnf"],
       "bnf_lines": 135,

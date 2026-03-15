@@ -97,8 +97,11 @@ func TestParseAlterSystemKillSession(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected AlterSystemStmt, got %T", raw.Stmt)
 	}
-	if stmt.Kill != "12,34" {
-		t.Errorf("expected Kill='12,34', got %q", stmt.Kill)
+	if stmt.Action != "KILL_SESSION" {
+		t.Errorf("expected Action='KILL_SESSION', got %q", stmt.Action)
+	}
+	if stmt.SessionID != "12,34" {
+		t.Errorf("expected SessionID='12,34', got %q", stmt.SessionID)
 	}
 }
 

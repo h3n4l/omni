@@ -1980,8 +1980,15 @@ func (n *CommentStmt) stmtNode() {}
 
 // AlterSessionStmt represents an ALTER SESSION statement.
 type AlterSessionStmt struct {
-	SetParams *List // list of *SetParam
-	Loc       Loc   // start location
+	Action         string // "SET", "ADVISE", "CLOSE_DATABASE_LINK", "ENABLE", "DISABLE", "FORCE_PARALLEL", "SYNC_WITH_PRIMARY"
+	SetParams      *List  // list of *SetParam (for SET action)
+	AdviseAction   string // "COMMIT", "ROLLBACK", "NOTHING" (for ADVISE action)
+	DBLink         string // database link name (for CLOSE DATABASE LINK)
+	Feature        string // "COMMIT_IN_PROCEDURE", "GUARD", "PARALLEL_DML", "PARALLEL_DDL", "PARALLEL_QUERY", "RESUMABLE", "SHARD_DDL"
+	ParallelDegree int    // PARALLEL integer (for FORCE PARALLEL)
+	Timeout        int    // TIMEOUT integer (for RESUMABLE)
+	ResumableName  string // NAME 'string' (for RESUMABLE)
+	Loc            Loc
 }
 
 func (n *AlterSessionStmt) nodeTag()  {}
@@ -1989,9 +1996,40 @@ func (n *AlterSessionStmt) stmtNode() {}
 
 // AlterSystemStmt represents an ALTER SYSTEM statement.
 type AlterSystemStmt struct {
-	SetParams *List  // list of *SetParam
-	Kill      string // KILL SESSION 'sid,serial#'
-	Loc       Loc    // start location
+	Action          string // "SET", "RESET", "KILL_SESSION", "DISCONNECT_SESSION", "FLUSH", "CHECKPOINT", "SWITCH_LOGFILE", "ARCHIVE_LOG", "REGISTER", "SUSPEND", "RESUME", "QUIESCE", "UNQUIESCE", "CANCEL_SQL", "SHUTDOWN", "RELOCATE_CLIENT", "CHECK_DATAFILES", "ENABLE", "DISABLE", "START_ROLLING_MIGRATION", "STOP_ROLLING_MIGRATION", "START_ROLLING_PATCH", "STOP_ROLLING_PATCH", "SET_ENCRYPTION"
+	SetParams       *List  // list of *SetParam (for SET action)
+	ResetParam      string // parameter name (for RESET action)
+	SessionID       string // 'sid,serial#' (for KILL/DISCONNECT/CANCEL)
+	InstanceID      string // @instance_id (for KILL/CANCEL)
+	Immediate       bool   // IMMEDIATE flag
+	Force           bool   // FORCE flag (for KILL SESSION)
+	PostTransaction bool   // POST_TRANSACTION (for DISCONNECT SESSION)
+	NoReplay        bool   // NOREPLAY (for KILL SESSION)
+	Timeout         int    // TIMEOUT integer (for KILL SESSION)
+	FlushTarget     string // "SHARED_POOL", "GLOBAL_CONTEXT", "BUFFER_CACHE", "FLASH_CACHE", "REDO", "PASSWORDFILE_METADATA_CACHE"
+	FlushScope      string // "GLOBAL", "LOCAL" (for BUFFER_CACHE/FLASH_CACHE)
+	FlushRedoDB     string // target_db_name (for REDO flush)
+	FlushRedoConfirm string // "NO_CONFIRM_APPLY", "CONFIRM_APPLY" (for REDO flush)
+	ArchiveLogSpec  string // "SEQUENCE", "CHANGE", "CURRENT", "GROUP", "LOGFILE", "NEXT", "ALL"
+	ArchiveLogValue string // integer/filename for archive log
+	ArchiveInstance string // INSTANCE 'instance_name'
+	ArchiveThread   int    // THREAD integer
+	ArchiveNoSwitch bool   // NOSWITCH (for CURRENT)
+	ArchiveBackupCF bool   // USING BACKUP CONTROLFILE (for LOGFILE)
+	ArchiveTo       string // TO 'location'
+	CheckScope      string // "GLOBAL", "LOCAL" (for CHECKPOINT/CHECK DATAFILES)
+	Feature         string // "DISTRIBUTED_RECOVERY", "RESTRICTED_SESSION" (for ENABLE/DISABLE)
+	ShutdownDisp    string // dispatcher name (for SHUTDOWN)
+	RelocateClient  string // client_id (for RELOCATE CLIENT)
+	RollingVersion  string // ASM_version (for START ROLLING MIGRATION)
+	EncryptionAction string // "OPEN", "CLOSE", "SET_KEY" (for SET ENCRYPTION WALLET/KEY)
+	Comment         string // COMMENT = 'text' (for SET)
+	Deferred        bool   // DEFERRED (for SET)
+	Scope           string // "MEMORY", "SPFILE", "BOTH" (for SET/RESET)
+	SID             string // SID = 'sid' | '*' (for SET/RESET)
+	Container       string // "ALL", "CURRENT" (for SET)
+	SqlID           string // SQL_ID 'sql_id' (for CANCEL SQL)
+	Loc             Loc
 }
 
 func (n *AlterSystemStmt) nodeTag()  {}
