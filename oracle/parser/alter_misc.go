@@ -110,7 +110,7 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 		if p.isIdentLike() && p.cur.Str == "ARCHIVE" {
 			p.advance() // consume ARCHIVE
 		}
-		return p.parseAdminDDLStmt("ALTER", nodes.OBJECT_FLASHBACK_ARCHIVE, start)
+		return p.parseAlterFlashbackArchiveStmt(start)
 	case kwUSER, kwROLE, kwPROFILE,
 		kwTABLESPACE, kwCLUSTER, kwJAVA, kwLIBRARY:
 		if adminStmt := p.parseAlterAdminObject(start); adminStmt != nil {

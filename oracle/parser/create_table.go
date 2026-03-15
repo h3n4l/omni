@@ -95,6 +95,21 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 		p.advance()
 	}
 
+	// [ AND { RESOLVE | COMPILE } ] [ NOFORCE ] — only for CREATE [OR REPLACE] JAVA
+	// These modifiers appear before the JAVA keyword. Consume them and dispatch.
+	if p.cur.Type == kwAND {
+		p.advance() // consume AND
+		if p.isIdentLike() && (p.cur.Str == "RESOLVE" || p.cur.Str == "COMPILE") {
+			p.advance()
+		}
+	}
+	if p.isIdentLike() && p.cur.Str == "NOFORCE" {
+		next := p.peekNext()
+		if next.Type == kwJAVA {
+			p.advance() // consume NOFORCE
+		}
+	}
+
 	switch p.cur.Type {
 	case kwTABLE:
 		return p.parseCreateTableStmt(start, orReplace, global, private, sharded, duplicated)
@@ -148,7 +163,7 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 	case kwUSER, kwROLE, kwPROFILE,
 		kwTABLESPACE, kwDIRECTORY, kwCONTEXT,
 		kwCLUSTER, kwJAVA, kwLIBRARY, kwSCHEMA:
-		return p.parseCreateAdminObject(start)
+		return p.parseCreateAdminObject(start, orReplace)
 	case kwTEMPORARY:
 		// CREATE TEMPORARY TABLESPACE (standalone, not GLOBAL TEMPORARY TABLE)
 		if !global && !private {
@@ -256,10 +271,27 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 					p.advance() // consume INDEX
 				}
 				return p.parseCreateVectorIndexStmt(start, ifNotExists)
+			case "ROLLBACK":
+				// CREATE [PUBLIC] ROLLBACK SEGMENT
+				p.advance() // consume ROLLBACK
+				if p.isIdentLike() && p.cur.Str == "SEGMENT" {
+					p.advance() // consume SEGMENT
+				}
+				return p.parseCreateRollbackSegmentStmt(start, public)
+			case "PURE":
+				// CREATE [PURE] MLE ENV
+				p.advance() // consume PURE
+				if p.isIdentLike() && p.cur.Str == "MLE" {
+					p.advance() // consume MLE
+					if p.isIdentLike() && p.cur.Str == "ENV" {
+						p.advance() // consume ENV
+						return p.parseCreateMLEEnvStmt(start, orReplace)
+					}
+				}
 			}
 		}
 		// Check for DIMENSION, FLASHBACK ARCHIVE
-		if adminStmt := p.parseCreateAdminObject(start); adminStmt != nil {
+		if adminStmt := p.parseCreateAdminObject(start, orReplace); adminStmt != nil {
 			return adminStmt
 		}
 		return nil

@@ -1192,7 +1192,7 @@
       "id": 105,
       "name": "small_objects_bundle",
       "file": "create_admin.go",
-      "status": "pending",
+      "status": "done",
       "description": "All small objects currently stubbed. Java (21+10), Library (13+12), Directory (6), Context (8), MLE Env/Module (17+14), PFILE/SPFILE (5+7), Flashback Archive (14+17), Rollback Segment (6+9), Edition (5), Restore Point (8), Schema (11, review), Logical Partition Tracking (9), PMEM Filestore (9).",
       "bnf_files": [
         "CREATE-JAVA.bnf",

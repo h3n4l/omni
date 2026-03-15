@@ -119,7 +119,7 @@ done:
 
 // parseCreateAdminObject handles CREATE dispatches for admin DDL objects
 // (called from parseCreateStmt after consuming CREATE and modifiers).
-func (p *Parser) parseCreateAdminObject(start int) nodes.StmtNode {
+func (p *Parser) parseCreateAdminObject(start int, orReplace bool) nodes.StmtNode {
 	switch p.cur.Type {
 	case kwUSER:
 		p.advance()
@@ -140,19 +140,19 @@ func (p *Parser) parseCreateAdminObject(start int) nodes.StmtNode {
 		return p.parseCreateTablespaceStmt(start, false, false, false, false, false)
 	case kwDIRECTORY:
 		p.advance()
-		return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_DIRECTORY, start)
+		return p.parseCreateDirectoryStmt(start, orReplace)
 	case kwCONTEXT:
 		p.advance()
-		return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_CONTEXT, start)
+		return p.parseCreateContextStmt(start, orReplace)
 	case kwCLUSTER:
 		p.advance()
 		return p.parseCreateClusterStmt(start)
 	case kwJAVA:
 		p.advance()
-		return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_JAVA, start)
+		return p.parseCreateJavaStmt(start, orReplace)
 	case kwLIBRARY:
 		p.advance()
-		return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_LIBRARY, start)
+		return p.parseCreateLibraryStmt(start, orReplace)
 	case kwSCHEMA:
 		p.advance()
 		return p.parseCreateSchemaStmt(start)
@@ -168,7 +168,7 @@ func (p *Parser) parseCreateAdminObject(start int) nodes.StmtNode {
 				if p.isIdentLike() && p.cur.Str == "ARCHIVE" {
 					p.advance()
 				}
-				return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_FLASHBACK_ARCHIVE, start)
+				return p.parseCreateFlashbackArchiveStmt(start)
 			case "MANDATORY":
 				p.advance()
 				if p.cur.Type == kwPROFILE {
@@ -231,27 +231,27 @@ func (p *Parser) parseCreateAdminObject(start int) nodes.StmtNode {
 			if p.isIdentLike() && p.cur.Str == "SEGMENT" {
 				p.advance() // consume SEGMENT
 			}
-			return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_ROLLBACK_SEGMENT, start)
+			return p.parseCreateRollbackSegmentStmt(start, false)
 		case "EDITION":
 			p.advance()
-			return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_EDITION, start)
+			return p.parseCreateEditionStmt(start)
 		case "MLE":
 			p.advance() // consume MLE
 			if p.isIdentLike() && p.cur.Str == "ENV" {
 				p.advance() // consume ENV
-				return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_MLE_ENV, start)
+				return p.parseCreateMLEEnvStmt(start, orReplace)
 			}
 			if p.isIdentLike() && p.cur.Str == "MODULE" {
 				p.advance() // consume MODULE
-				return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_MLE_MODULE, start)
+				return p.parseCreateMLEModuleStmt(start, orReplace)
 			}
-			return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_MLE_ENV, start)
+			return p.parseCreateMLEEnvStmt(start, orReplace)
 		case "PFILE":
 			p.advance()
-			return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_PFILE, start)
+			return p.parseCreatePfileStmt(start)
 		case "SPFILE":
 			p.advance()
-			return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_SPFILE, start)
+			return p.parseCreateSpfileStmt(start)
 		case "PROPERTY":
 			p.advance() // consume PROPERTY
 			if p.isIdentLike() && p.cur.Str == "GRAPH" {
@@ -269,7 +269,16 @@ func (p *Parser) parseCreateAdminObject(start int) nodes.StmtNode {
 			if p.isIdentLike() && p.cur.Str == "POINT" {
 				p.advance() // consume POINT
 			}
-			return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_RESTORE_POINT, start)
+			return p.parseCreateRestorePointStmt(start, false)
+		case "CLEAN":
+			p.advance() // consume CLEAN
+			if p.isIdentLike() && p.cur.Str == "RESTORE" {
+				p.advance() // consume RESTORE
+			}
+			if p.isIdentLike() && p.cur.Str == "POINT" {
+				p.advance() // consume POINT
+			}
+			return p.parseCreateRestorePointStmt(start, true)
 		case "LOGICAL":
 			p.advance() // consume LOGICAL
 			if p.cur.Type == kwPARTITION || (p.isIdentLike() && p.cur.Str == "PARTITION") {
@@ -278,13 +287,13 @@ func (p *Parser) parseCreateAdminObject(start int) nodes.StmtNode {
 			if p.isIdentLike() && p.cur.Str == "TRACKING" {
 				p.advance() // consume TRACKING
 			}
-			return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_LOGICAL_PARTITION_TRACKING, start)
+			return p.parseCreateLogicalPartitionTrackingStmt(start)
 		case "PMEM":
 			p.advance() // consume PMEM
 			if p.isIdentLike() && p.cur.Str == "FILESTORE" {
 				p.advance() // consume FILESTORE
 			}
-			return p.parseAdminDDLStmt("CREATE", nodes.OBJECT_PMEM_FILESTORE, start)
+			return p.parseCreatePmemFilestoreStmt(start)
 		}
 	}
 	return nil
@@ -342,19 +351,19 @@ func (p *Parser) parseDropAdminObject(start int) nodes.StmtNode {
 		return p.parseDropTablespaceStmt(start, false)
 	case kwDIRECTORY:
 		p.advance()
-		return p.parseAdminDDLStmt("DROP", nodes.OBJECT_DIRECTORY, start)
+		return p.parseDropSimpleStmt(nodes.OBJECT_DIRECTORY, start)
 	case kwCONTEXT:
 		p.advance()
-		return p.parseAdminDDLStmt("DROP", nodes.OBJECT_CONTEXT, start)
+		return p.parseDropSimpleStmt(nodes.OBJECT_CONTEXT, start)
 	case kwCLUSTER:
 		p.advance()
 		return p.parseDropClusterStmt(start)
 	case kwJAVA:
 		p.advance()
-		return p.parseAdminDDLStmt("DROP", nodes.OBJECT_JAVA, start)
+		return p.parseDropJavaStmt(start)
 	case kwLIBRARY:
 		p.advance()
-		return p.parseAdminDDLStmt("DROP", nodes.OBJECT_LIBRARY, start)
+		return p.parseDropSimpleStmt(nodes.OBJECT_LIBRARY, start)
 	default:
 		if p.isIdentLike() {
 			switch p.cur.Str {
@@ -366,7 +375,7 @@ func (p *Parser) parseDropAdminObject(start int) nodes.StmtNode {
 				if p.isIdentLike() && p.cur.Str == "ARCHIVE" {
 					p.advance()
 				}
-				return p.parseAdminDDLStmt("DROP", nodes.OBJECT_FLASHBACK_ARCHIVE, start)
+				return p.parseDropSimpleStmt(nodes.OBJECT_FLASHBACK_ARCHIVE, start)
 			case "DISKGROUP":
 				p.advance()
 				return p.parseDropDiskgroupStmt(start)
@@ -423,39 +432,39 @@ func (p *Parser) parseDropAdminObject(start int) nodes.StmtNode {
 				if p.isIdentLike() && p.cur.Str == "SEGMENT" {
 					p.advance() // consume SEGMENT
 				}
-				return p.parseAdminDDLStmt("DROP", nodes.OBJECT_ROLLBACK_SEGMENT, start)
+				return p.parseDropSimpleStmt(nodes.OBJECT_ROLLBACK_SEGMENT, start)
 			case "EDITION":
 				p.advance()
-				return p.parseAdminDDLStmt("DROP", nodes.OBJECT_EDITION, start)
+				return p.parseDropEditionStmt(start)
 			case "MLE":
 				p.advance() // consume MLE
 				if p.isIdentLike() && p.cur.Str == "ENV" {
 					p.advance() // consume ENV
-					return p.parseAdminDDLStmt("DROP", nodes.OBJECT_MLE_ENV, start)
+					return p.parseDropSimpleStmt(nodes.OBJECT_MLE_ENV, start)
 				}
 				if p.isIdentLike() && p.cur.Str == "MODULE" {
 					p.advance() // consume MODULE
-					return p.parseAdminDDLStmt("DROP", nodes.OBJECT_MLE_MODULE, start)
+					return p.parseDropSimpleStmt(nodes.OBJECT_MLE_MODULE, start)
 				}
-				return p.parseAdminDDLStmt("DROP", nodes.OBJECT_MLE_ENV, start)
+				return p.parseDropSimpleStmt(nodes.OBJECT_MLE_ENV, start)
 			case "PROPERTY":
 				p.advance() // consume PROPERTY
 				if p.isIdentLike() && p.cur.Str == "GRAPH" {
 					p.advance() // consume GRAPH
 				}
-				return p.parseAdminDDLStmt("DROP", nodes.OBJECT_PROPERTY_GRAPH, start)
+				return p.parseDropSimpleStmt(nodes.OBJECT_PROPERTY_GRAPH, start)
 			case "VECTOR":
 				p.advance() // consume VECTOR
 				if p.cur.Type == kwINDEX {
 					p.advance() // consume INDEX
 				}
-				return p.parseAdminDDLStmt("DROP", nodes.OBJECT_VECTOR_INDEX, start)
+				return p.parseDropSimpleStmt(nodes.OBJECT_VECTOR_INDEX, start)
 			case "RESTORE":
 				p.advance() // consume RESTORE
 				if p.isIdentLike() && p.cur.Str == "POINT" {
 					p.advance() // consume POINT
 				}
-				return p.parseAdminDDLStmt("DROP", nodes.OBJECT_RESTORE_POINT, start)
+				return p.parseDropSimpleStmt(nodes.OBJECT_RESTORE_POINT, start)
 			case "LOGICAL":
 				p.advance() // consume LOGICAL
 				if p.cur.Type == kwPARTITION || (p.isIdentLike() && p.cur.Str == "PARTITION") {
@@ -464,13 +473,13 @@ func (p *Parser) parseDropAdminObject(start int) nodes.StmtNode {
 				if p.isIdentLike() && p.cur.Str == "TRACKING" {
 					p.advance() // consume TRACKING
 				}
-				return p.parseAdminDDLStmt("DROP", nodes.OBJECT_LOGICAL_PARTITION_TRACKING, start)
+				return p.parseDropSimpleStmt(nodes.OBJECT_LOGICAL_PARTITION_TRACKING, start)
 			case "PMEM":
 				p.advance() // consume PMEM
 				if p.isIdentLike() && p.cur.Str == "FILESTORE" {
 					p.advance() // consume FILESTORE
 				}
-				return p.parseAdminDDLStmt("DROP", nodes.OBJECT_PMEM_FILESTORE, start)
+				return p.parseDropSimpleStmt(nodes.OBJECT_PMEM_FILESTORE, start)
 			}
 		}
 		return nil
@@ -2930,10 +2939,10 @@ func (p *Parser) parseAlterAdminObject(start int) nodes.StmtNode {
 		return p.parseAlterClusterStmt(start)
 	case kwJAVA:
 		p.advance()
-		return p.parseAdminDDLStmt("ALTER", nodes.OBJECT_JAVA, start)
+		return p.parseAlterJavaStmt(start)
 	case kwLIBRARY:
 		p.advance()
-		return p.parseAdminDDLStmt("ALTER", nodes.OBJECT_LIBRARY, start)
+		return p.parseAlterLibraryStmt(start)
 	default:
 		if p.isIdentLike() {
 			switch p.cur.Str {
@@ -2996,7 +3005,7 @@ func (p *Parser) parseAlterAdminObject(start int) nodes.StmtNode {
 				if p.isIdentLike() && p.cur.Str == "ARCHIVE" {
 					p.advance() // consume ARCHIVE
 				}
-				return p.parseAdminDDLStmt("ALTER", nodes.OBJECT_FLASHBACK_ARCHIVE, start)
+				return p.parseAlterFlashbackArchiveStmt(start)
 			case "RESOURCE":
 				p.advance() // consume RESOURCE
 				if p.isIdentLike() && p.cur.Str == "COST" {
@@ -3008,7 +3017,7 @@ func (p *Parser) parseAlterAdminObject(start int) nodes.StmtNode {
 				if p.isIdentLike() && p.cur.Str == "SEGMENT" {
 					p.advance() // consume SEGMENT
 				}
-				return p.parseAdminDDLStmt("ALTER", nodes.OBJECT_ROLLBACK_SEGMENT, start)
+				return p.parseAlterRollbackSegmentStmt(start)
 			case "MATERIALIZED":
 				p.advance() // consume MATERIALIZED (already a keyword, handled above for MVIEW)
 				if p.isIdentLike() && p.cur.Str == "ZONEMAP" {
@@ -5083,6 +5092,1344 @@ func (p *Parser) parseAlterOutlineStmt(start int) *nodes.AlterOutlineStmt {
 	} else if p.cur.Type == kwDISABLE {
 		stmt.Action = "DISABLE"
 		p.advance()
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// ---------------------------------------------------------------------------
+// Batch 105 — small objects bundle
+// ---------------------------------------------------------------------------
+
+// parseCreateJavaStmt parses a CREATE JAVA statement.
+// Called after CREATE [OR REPLACE] [IF NOT EXISTS] JAVA has been consumed.
+//
+// BNF:
+//
+//	CREATE [ OR REPLACE | IF NOT EXISTS ] [ AND { RESOLVE | COMPILE } ] [ NOFORCE ]
+//	    JAVA { SOURCE | CLASS | RESOURCE }
+//	    [ NAMED [ schema. ] primary_name ]
+//	    [ SHARING = { METADATA | NONE } ]
+//	    [ invoker_rights_clause ]
+//	    [ resolver_clause ]
+//	    { USING { BFILE ( directory_object_name , server_file_name )
+//	            | { CLOB | BLOB | BFILE } subquery
+//	            | key_for_BLOB }
+//	    | AS source_char }
+func (p *Parser) parseCreateJavaStmt(start int, orReplace bool) nodes.StmtNode {
+	stmt := &nodes.AdminDDLStmt{
+		Action:     "CREATE",
+		ObjectType: nodes.OBJECT_JAVA,
+		OrReplace:  orReplace,
+		Loc:        nodes.Loc{Start: start},
+	}
+	opts := &nodes.List{}
+
+	// [ AND { RESOLVE | COMPILE } ]
+	if p.isIdentLike() && p.cur.Str == "AND" {
+		p.advance()
+		if p.isIdentLike() && (p.cur.Str == "RESOLVE" || p.cur.Str == "COMPILE") {
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "AND", Value: p.cur.Str})
+			p.advance()
+		}
+	}
+
+	// [ NOFORCE ]
+	if p.isIdentLike() && p.cur.Str == "NOFORCE" {
+		opts.Items = append(opts.Items, &nodes.DDLOption{Key: "NOFORCE"})
+		p.advance()
+	}
+
+	// { SOURCE | CLASS | RESOURCE }
+	if p.isIdentLike() && (p.cur.Str == "SOURCE" || p.cur.Str == "CLASS" || p.cur.Str == "RESOURCE") {
+		opts.Items = append(opts.Items, &nodes.DDLOption{Key: "JAVA_TYPE", Value: p.cur.Str})
+		p.advance()
+	}
+
+	// [ NAMED [ schema. ] primary_name ]
+	if p.isIdentLike() && p.cur.Str == "NAMED" {
+		p.advance()
+		stmt.Name = p.parseObjectName()
+	}
+
+	// Parse remaining clauses until ; or EOF
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		if p.isIdentLike() && p.cur.Str == "SHARING" {
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			if p.isIdentLike() || p.cur.Type == tokIDENT {
+				opts.Items = append(opts.Items, &nodes.DDLOption{Key: "SHARING", Value: p.cur.Str})
+				p.advance()
+			}
+		} else if p.isIdentLike() && p.cur.Str == "AUTHID" {
+			p.advance()
+			if p.isIdentLike() || p.cur.Type == tokIDENT {
+				opts.Items = append(opts.Items, &nodes.DDLOption{Key: "AUTHID", Value: p.cur.Str})
+				p.advance()
+			}
+		} else if p.isIdentLike() && p.cur.Str == "RESOLVER" {
+			p.advance()
+			if p.cur.Type == '(' {
+				p.skipParenthesized()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "RESOLVER"})
+		} else if p.isIdentLike() && p.cur.Str == "USING" {
+			p.advance()
+			val := ""
+			if p.isIdentLike() || p.cur.Type == tokIDENT {
+				val = p.cur.Str
+				p.advance()
+			}
+			if p.cur.Type == '(' {
+				p.skipParenthesized()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "USING", Value: val})
+		} else if p.cur.Type == kwAS {
+			p.advance()
+			// source_char — typically a string constant
+			if p.cur.Type == tokSCONST {
+				opts.Items = append(opts.Items, &nodes.DDLOption{Key: "AS", Value: p.cur.Str})
+				p.advance()
+			}
+		} else {
+			p.advance()
+		}
+	}
+
+	if len(opts.Items) > 0 {
+		stmt.Options = opts
+	}
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseAlterJavaStmt parses an ALTER JAVA statement.
+// Called after ALTER JAVA has been consumed.
+//
+// BNF:
+//
+//	ALTER JAVA [ IF EXISTS ] { SOURCE | CLASS } [ schema. ] object_name
+//	    [ RESOLVER ( ( match_string schema_name ) [, ...] ) ]
+//	    [ invoker_rights_clause ]
+//	    { RESOLVE | COMPILE } ;
+func (p *Parser) parseAlterJavaStmt(start int) nodes.StmtNode {
+	stmt := &nodes.AdminDDLStmt{
+		Action:     "ALTER",
+		ObjectType: nodes.OBJECT_JAVA,
+		Loc:        nodes.Loc{Start: start},
+	}
+	opts := &nodes.List{}
+
+	// [ IF EXISTS ]
+	if p.cur.Type == kwIF {
+		next := p.peekNext()
+		if next.Type == kwEXISTS {
+			p.advance()
+			p.advance()
+			stmt.IfExists = true
+		}
+	}
+
+	// { SOURCE | CLASS }
+	if p.isIdentLike() && (p.cur.Str == "SOURCE" || p.cur.Str == "CLASS") {
+		opts.Items = append(opts.Items, &nodes.DDLOption{Key: "JAVA_TYPE", Value: p.cur.Str})
+		p.advance()
+	}
+
+	stmt.Name = p.parseObjectName()
+
+	// Parse remaining clauses
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		if p.isIdentLike() && p.cur.Str == "RESOLVER" {
+			p.advance()
+			if p.cur.Type == '(' {
+				p.skipParenthesized()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "RESOLVER"})
+		} else if p.isIdentLike() && p.cur.Str == "AUTHID" {
+			p.advance()
+			if p.isIdentLike() || p.cur.Type == tokIDENT {
+				opts.Items = append(opts.Items, &nodes.DDLOption{Key: "AUTHID", Value: p.cur.Str})
+				p.advance()
+			}
+		} else if p.isIdentLike() && (p.cur.Str == "RESOLVE" || p.cur.Str == "COMPILE") {
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: p.cur.Str})
+			p.advance()
+		} else {
+			p.advance()
+		}
+	}
+
+	if len(opts.Items) > 0 {
+		stmt.Options = opts
+	}
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseCreateLibraryStmt parses a CREATE LIBRARY statement.
+// Called after CREATE [OR REPLACE] [IF NOT EXISTS] [EDITIONABLE|NONEDITIONABLE] LIBRARY has been consumed.
+//
+// BNF:
+//
+//	CREATE [ OR REPLACE | IF NOT EXISTS ] [ EDITIONABLE | NONEDITIONABLE ]
+//	    LIBRARY [ schema. ] library_name
+//	    { IS | AS } library_path
+//	    [ AGENT agent_dblink ]
+//	    [ CREDENTIAL credential_name ]
+//	    [ SHARING = { METADATA | NONE } ]
+func (p *Parser) parseCreateLibraryStmt(start int, orReplace bool) nodes.StmtNode {
+	stmt := &nodes.AdminDDLStmt{
+		Action:     "CREATE",
+		ObjectType: nodes.OBJECT_LIBRARY,
+		OrReplace:  orReplace,
+		Loc:        nodes.Loc{Start: start},
+	}
+	opts := &nodes.List{}
+
+	stmt.Name = p.parseObjectName()
+
+	// { IS | AS } library_path
+	if p.cur.Type == kwIS || p.cur.Type == kwAS {
+		p.advance()
+	}
+	if p.cur.Type == tokSCONST {
+		opts.Items = append(opts.Items, &nodes.DDLOption{Key: "PATH", Value: p.cur.Str})
+		p.advance()
+	}
+
+	// Parse optional clauses
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		if p.isIdentLike() && p.cur.Str == "AGENT" {
+			p.advance()
+			if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokSCONST {
+				opts.Items = append(opts.Items, &nodes.DDLOption{Key: "AGENT", Value: p.cur.Str})
+				p.advance()
+			}
+		} else if p.isIdentLike() && p.cur.Str == "CREDENTIAL" {
+			p.advance()
+			if p.isIdentLike() || p.cur.Type == tokIDENT {
+				opts.Items = append(opts.Items, &nodes.DDLOption{Key: "CREDENTIAL", Value: p.cur.Str})
+				p.advance()
+			}
+		} else if p.isIdentLike() && p.cur.Str == "SHARING" {
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			if p.isIdentLike() || p.cur.Type == tokIDENT {
+				opts.Items = append(opts.Items, &nodes.DDLOption{Key: "SHARING", Value: p.cur.Str})
+				p.advance()
+			}
+		} else {
+			p.advance()
+		}
+	}
+
+	if len(opts.Items) > 0 {
+		stmt.Options = opts
+	}
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseAlterLibraryStmt parses an ALTER LIBRARY statement.
+// Called after ALTER LIBRARY has been consumed.
+//
+// BNF:
+//
+//	ALTER LIBRARY [ IF EXISTS ] [ schema. ] library_name
+//	    { library_compile_clause }
+//	    [ EDITIONABLE | NONEDITIONABLE ] ;
+//
+//	library_compile_clause:
+//	    COMPILE [ DEBUG ] [ compiler_parameters_clause ] [ REUSE SETTINGS ]
+func (p *Parser) parseAlterLibraryStmt(start int) nodes.StmtNode {
+	stmt := &nodes.AdminDDLStmt{
+		Action:     "ALTER",
+		ObjectType: nodes.OBJECT_LIBRARY,
+		Loc:        nodes.Loc{Start: start},
+	}
+	opts := &nodes.List{}
+
+	// [ IF EXISTS ]
+	if p.cur.Type == kwIF {
+		next := p.peekNext()
+		if next.Type == kwEXISTS {
+			p.advance()
+			p.advance()
+			stmt.IfExists = true
+		}
+	}
+
+	stmt.Name = p.parseObjectName()
+
+	// Parse remaining clauses
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		if p.isIdentLike() && p.cur.Str == "COMPILE" {
+			p.advance()
+			opt := &nodes.DDLOption{Key: "COMPILE"}
+			if p.isIdentLike() && p.cur.Str == "DEBUG" {
+				opt.Value = "DEBUG"
+				p.advance()
+			}
+			opts.Items = append(opts.Items, opt)
+			// compiler_parameters_clause: name = value [, ...]
+			for p.isIdentLike() && p.cur.Str != "REUSE" &&
+				p.cur.Type != ';' && p.cur.Type != tokEOF {
+				if p.cur.Str == "EDITIONABLE" || p.cur.Str == "NONEDITIONABLE" {
+					break
+				}
+				paramName := p.cur.Str
+				p.advance()
+				if p.cur.Type == '=' {
+					p.advance()
+					paramVal := ""
+					if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokICONST || p.cur.Type == tokSCONST {
+						paramVal = p.cur.Str
+						p.advance()
+					}
+					opts.Items = append(opts.Items, &nodes.DDLOption{Key: paramName, Value: paramVal})
+				}
+			}
+			// [ REUSE SETTINGS ]
+			if p.isIdentLike() && p.cur.Str == "REUSE" {
+				p.advance()
+				if p.isIdentLike() && p.cur.Str == "SETTINGS" {
+					p.advance()
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{Key: "REUSE SETTINGS"})
+			}
+		} else if p.isIdentLike() && (p.cur.Str == "EDITIONABLE" || p.cur.Str == "NONEDITIONABLE") {
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: p.cur.Str})
+			p.advance()
+		} else {
+			p.advance()
+		}
+	}
+
+	if len(opts.Items) > 0 {
+		stmt.Options = opts
+	}
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseCreateDirectoryStmt parses a CREATE DIRECTORY statement.
+// Called after CREATE [OR REPLACE] [IF NOT EXISTS] DIRECTORY has been consumed.
+//
+// BNF:
+//
+//	CREATE [ OR REPLACE | IF NOT EXISTS ] DIRECTORY directory
+//	    [ SHARING = { METADATA | NONE } ]
+//	    AS 'path_name' ;
+func (p *Parser) parseCreateDirectoryStmt(start int, orReplace bool) nodes.StmtNode {
+	stmt := &nodes.AdminDDLStmt{
+		Action:     "CREATE",
+		ObjectType: nodes.OBJECT_DIRECTORY,
+		OrReplace:  orReplace,
+		Loc:        nodes.Loc{Start: start},
+	}
+	opts := &nodes.List{}
+
+	stmt.Name = p.parseObjectName()
+
+	// [ SHARING = { METADATA | NONE } ]
+	if p.isIdentLike() && p.cur.Str == "SHARING" {
+		p.advance()
+		if p.cur.Type == '=' {
+			p.advance()
+		}
+		if p.isIdentLike() || p.cur.Type == tokIDENT {
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "SHARING", Value: p.cur.Str})
+			p.advance()
+		}
+	}
+
+	// AS 'path_name'
+	if p.cur.Type == kwAS {
+		p.advance()
+		if p.cur.Type == tokSCONST {
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "AS", Value: p.cur.Str})
+			p.advance()
+		}
+	}
+
+	if len(opts.Items) > 0 {
+		stmt.Options = opts
+	}
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseCreateContextStmt parses a CREATE CONTEXT statement.
+// Called after CREATE [OR REPLACE] CONTEXT has been consumed.
+//
+// BNF:
+//
+//	CREATE [ OR REPLACE ] CONTEXT namespace
+//	    USING [ schema. ] package
+//	    [ SHARING = { METADATA | NONE } ]
+//	    [ INITIALIZED { EXTERNALLY | GLOBALLY } ]
+//	    [ ACCESSED GLOBALLY ] ;
+func (p *Parser) parseCreateContextStmt(start int, orReplace bool) nodes.StmtNode {
+	stmt := &nodes.AdminDDLStmt{
+		Action:     "CREATE",
+		ObjectType: nodes.OBJECT_CONTEXT,
+		OrReplace:  orReplace,
+		Loc:        nodes.Loc{Start: start},
+	}
+	opts := &nodes.List{}
+
+	stmt.Name = p.parseObjectName()
+
+	// USING [ schema. ] package
+	if p.isIdentLike() && p.cur.Str == "USING" {
+		p.advance()
+		usingName := p.parseObjectName()
+		if usingName != nil {
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "USING", Value: usingName.Name})
+		}
+	}
+
+	// Parse remaining clauses
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		if p.isIdentLike() && p.cur.Str == "SHARING" {
+			p.advance()
+			if p.cur.Type == '=' {
+				p.advance()
+			}
+			if p.isIdentLike() || p.cur.Type == tokIDENT {
+				opts.Items = append(opts.Items, &nodes.DDLOption{Key: "SHARING", Value: p.cur.Str})
+				p.advance()
+			}
+		} else if p.isIdentLike() && p.cur.Str == "INITIALIZED" {
+			p.advance()
+			if p.isIdentLike() && (p.cur.Str == "EXTERNALLY" || p.cur.Str == "GLOBALLY") {
+				opts.Items = append(opts.Items, &nodes.DDLOption{Key: "INITIALIZED", Value: p.cur.Str})
+				p.advance()
+			}
+		} else if p.isIdentLike() && p.cur.Str == "ACCESSED" {
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "GLOBALLY" {
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "ACCESSED GLOBALLY"})
+		} else {
+			p.advance()
+		}
+	}
+
+	if len(opts.Items) > 0 {
+		stmt.Options = opts
+	}
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseCreateMLEEnvStmt parses a CREATE MLE ENV statement.
+// Called after CREATE [OR REPLACE] [IF NOT EXISTS] [PURE] MLE ENV has been consumed.
+//
+// BNF:
+//
+//	CREATE [ OR REPLACE | IF NOT EXISTS ] [ PURE ] MLE ENV
+//	    [ schema. ] environment_name
+//	    [ CLONE [ schema. ] existing_environment ]
+//	    [ imports_clause ]
+//	    [ language_options_clause ]
+//
+//	imports_clause: IMPORTS ( import_item [, import_item ]... )
+//	import_item: import_name MODULE [ schema. ] module_name
+//	language_options_clause: LANGUAGE OPTIONS language_options_string
+func (p *Parser) parseCreateMLEEnvStmt(start int, orReplace bool) nodes.StmtNode {
+	stmt := &nodes.AdminDDLStmt{
+		Action:     "CREATE",
+		ObjectType: nodes.OBJECT_MLE_ENV,
+		OrReplace:  orReplace,
+		Loc:        nodes.Loc{Start: start},
+	}
+	opts := &nodes.List{}
+
+	stmt.Name = p.parseObjectName()
+
+	// [ CLONE [ schema. ] existing_environment ]
+	if p.isIdentLike() && p.cur.Str == "CLONE" {
+		p.advance()
+		cloneName := p.parseObjectName()
+		if cloneName != nil {
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "CLONE", Value: cloneName.Name})
+		}
+	}
+
+	// Parse remaining clauses
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		if p.isIdentLike() && p.cur.Str == "IMPORTS" {
+			p.advance()
+			if p.cur.Type == '(' {
+				p.skipParenthesized()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "IMPORTS"})
+		} else if p.isIdentLike() && p.cur.Str == "LANGUAGE" {
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "OPTIONS" {
+				p.advance()
+			}
+			val := ""
+			if p.cur.Type == tokSCONST {
+				val = p.cur.Str
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "LANGUAGE OPTIONS", Value: val})
+		} else {
+			p.advance()
+		}
+	}
+
+	if len(opts.Items) > 0 {
+		stmt.Options = opts
+	}
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseCreateMLEModuleStmt parses a CREATE MLE MODULE statement.
+// Called after CREATE [OR REPLACE] [IF NOT EXISTS] MLE MODULE has been consumed.
+//
+// BNF:
+//
+//	CREATE [ OR REPLACE | IF NOT EXISTS ] MLE MODULE
+//	    [ schema. ] module_name
+//	    LANGUAGE JAVASCRIPT
+//	    [ VERSION version_string ]
+//	    { USING { CLOB ( subquery ) | BLOB ( subquery ) | BFILE ( subquery )
+//	            | BFILE ( directory_object_name , server_file_name ) }
+//	    | AS source_code }
+func (p *Parser) parseCreateMLEModuleStmt(start int, orReplace bool) nodes.StmtNode {
+	stmt := &nodes.AdminDDLStmt{
+		Action:     "CREATE",
+		ObjectType: nodes.OBJECT_MLE_MODULE,
+		OrReplace:  orReplace,
+		Loc:        nodes.Loc{Start: start},
+	}
+	opts := &nodes.List{}
+
+	stmt.Name = p.parseObjectName()
+
+	// LANGUAGE JAVASCRIPT
+	if p.isIdentLike() && p.cur.Str == "LANGUAGE" {
+		p.advance()
+		if p.isIdentLike() && p.cur.Str == "JAVASCRIPT" {
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "LANGUAGE", Value: "JAVASCRIPT"})
+			p.advance()
+		}
+	}
+
+	// [ VERSION version_string ]
+	if p.isIdentLike() && p.cur.Str == "VERSION" {
+		p.advance()
+		if p.cur.Type == tokSCONST {
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "VERSION", Value: p.cur.Str})
+			p.advance()
+		}
+	}
+
+	// USING or AS
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		if p.isIdentLike() && p.cur.Str == "USING" {
+			p.advance()
+			val := ""
+			if p.isIdentLike() || p.cur.Type == tokIDENT {
+				val = p.cur.Str
+				p.advance()
+			}
+			if p.cur.Type == '(' {
+				p.skipParenthesized()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "USING", Value: val})
+		} else if p.cur.Type == kwAS {
+			p.advance()
+			if p.cur.Type == tokSCONST {
+				opts.Items = append(opts.Items, &nodes.DDLOption{Key: "AS", Value: p.cur.Str})
+				p.advance()
+			}
+		} else {
+			p.advance()
+		}
+	}
+
+	if len(opts.Items) > 0 {
+		stmt.Options = opts
+	}
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseCreatePfileStmt parses a CREATE PFILE statement.
+// Called after CREATE PFILE has been consumed.
+//
+// BNF:
+//
+//	CREATE PFILE [ = 'pfile_name' ]
+//	    FROM { SPFILE [ = 'spfile_name' ] | MEMORY } ;
+func (p *Parser) parseCreatePfileStmt(start int) nodes.StmtNode {
+	stmt := &nodes.AdminDDLStmt{
+		Action:     "CREATE",
+		ObjectType: nodes.OBJECT_PFILE,
+		Loc:        nodes.Loc{Start: start},
+	}
+	opts := &nodes.List{}
+
+	// [ = 'pfile_name' ] or [ 'pfile_name' ]
+	if p.cur.Type == '=' {
+		p.advance()
+	}
+	if p.cur.Type == tokSCONST {
+		opts.Items = append(opts.Items, &nodes.DDLOption{Key: "PFILE", Value: p.cur.Str})
+		p.advance()
+	}
+
+	// FROM
+	if p.cur.Type == kwFROM {
+		p.advance()
+	}
+
+	// { SPFILE [ = 'spfile_name' ] | MEMORY }
+	if p.isIdentLike() && p.cur.Str == "SPFILE" {
+		p.advance()
+		val := ""
+		if p.cur.Type == '=' {
+			p.advance()
+		}
+		if p.cur.Type == tokSCONST {
+			val = p.cur.Str
+			p.advance()
+		}
+		opts.Items = append(opts.Items, &nodes.DDLOption{Key: "FROM", Value: "SPFILE"})
+		if val != "" {
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "SPFILE", Value: val})
+		}
+	} else if p.isIdentLike() && p.cur.Str == "MEMORY" {
+		opts.Items = append(opts.Items, &nodes.DDLOption{Key: "FROM", Value: "MEMORY"})
+		p.advance()
+	}
+
+	if len(opts.Items) > 0 {
+		stmt.Options = opts
+	}
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseCreateSpfileStmt parses a CREATE SPFILE statement.
+// Called after CREATE SPFILE has been consumed.
+//
+// BNF:
+//
+//	CREATE SPFILE [ = 'spfile_name' ]
+//	    FROM { PFILE [ = 'pfile_name' ] [ AS COPY ] | MEMORY } ;
+func (p *Parser) parseCreateSpfileStmt(start int) nodes.StmtNode {
+	stmt := &nodes.AdminDDLStmt{
+		Action:     "CREATE",
+		ObjectType: nodes.OBJECT_SPFILE,
+		Loc:        nodes.Loc{Start: start},
+	}
+	opts := &nodes.List{}
+
+	// [ = 'spfile_name' ] or [ 'spfile_name' ]
+	if p.cur.Type == '=' {
+		p.advance()
+	}
+	if p.cur.Type == tokSCONST {
+		opts.Items = append(opts.Items, &nodes.DDLOption{Key: "SPFILE", Value: p.cur.Str})
+		p.advance()
+	}
+
+	// FROM
+	if p.cur.Type == kwFROM {
+		p.advance()
+	}
+
+	// { PFILE [ = 'pfile_name' ] [ AS COPY ] | MEMORY }
+	if p.isIdentLike() && p.cur.Str == "PFILE" {
+		p.advance()
+		val := ""
+		if p.cur.Type == '=' {
+			p.advance()
+		}
+		if p.cur.Type == tokSCONST {
+			val = p.cur.Str
+			p.advance()
+		}
+		opts.Items = append(opts.Items, &nodes.DDLOption{Key: "FROM", Value: "PFILE"})
+		if val != "" {
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "PFILE", Value: val})
+		}
+		// [ AS COPY ]
+		if p.cur.Type == kwAS {
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "COPY" {
+				p.advance()
+				opts.Items = append(opts.Items, &nodes.DDLOption{Key: "AS COPY"})
+			}
+		}
+	} else if p.isIdentLike() && p.cur.Str == "MEMORY" {
+		opts.Items = append(opts.Items, &nodes.DDLOption{Key: "FROM", Value: "MEMORY"})
+		p.advance()
+	}
+
+	if len(opts.Items) > 0 {
+		stmt.Options = opts
+	}
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseCreateFlashbackArchiveStmt parses a CREATE FLASHBACK ARCHIVE statement.
+// Called after CREATE FLASHBACK ARCHIVE has been consumed.
+//
+// BNF:
+//
+//	CREATE FLASHBACK ARCHIVE [ DEFAULT ] flashback_archive
+//	    TABLESPACE tablespace_name
+//	    [ flashback_archive_quota ]
+//	    [ { NO OPTIMIZE DATA | OPTIMIZE DATA } ]
+//	    flashback_archive_retention ;
+//
+//	flashback_archive_quota: QUOTA integer { K | M | G | T | P | E }
+//	flashback_archive_retention: RETENTION integer { DAY | DAYS | MONTH | MONTHS | YEAR | YEARS }
+func (p *Parser) parseCreateFlashbackArchiveStmt(start int) nodes.StmtNode {
+	stmt := &nodes.AdminDDLStmt{
+		Action:     "CREATE",
+		ObjectType: nodes.OBJECT_FLASHBACK_ARCHIVE,
+		Loc:        nodes.Loc{Start: start},
+	}
+	opts := &nodes.List{}
+
+	// [ DEFAULT ]
+	if p.isIdentLike() && p.cur.Str == "DEFAULT" {
+		opts.Items = append(opts.Items, &nodes.DDLOption{Key: "DEFAULT"})
+		p.advance()
+	}
+
+	stmt.Name = p.parseObjectName()
+
+	// Parse remaining clauses
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		if p.cur.Type == kwTABLESPACE {
+			p.advance()
+			if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+				opts.Items = append(opts.Items, &nodes.DDLOption{Key: "TABLESPACE", Value: p.cur.Str})
+				p.advance()
+			}
+		} else if p.isIdentLike() && p.cur.Str == "QUOTA" {
+			p.advance()
+			size := p.parseSizeClause()
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "QUOTA", Value: size})
+		} else if p.isIdentLike() && p.cur.Str == "NO" {
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "OPTIMIZE" {
+				p.advance()
+				if p.isIdentLike() && p.cur.Str == "DATA" {
+					p.advance()
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{Key: "NO OPTIMIZE DATA"})
+			}
+		} else if p.isIdentLike() && p.cur.Str == "OPTIMIZE" {
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "DATA" {
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "OPTIMIZE DATA"})
+		} else if p.isIdentLike() && p.cur.Str == "RETENTION" {
+			p.advance()
+			val := ""
+			if p.cur.Type == tokICONST {
+				val = p.cur.Str
+				p.advance()
+			}
+			if p.isIdentLike() {
+				val += " " + p.cur.Str
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "RETENTION", Value: val})
+		} else {
+			p.advance()
+		}
+	}
+
+	if len(opts.Items) > 0 {
+		stmt.Options = opts
+	}
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseAlterFlashbackArchiveStmt parses an ALTER FLASHBACK ARCHIVE statement.
+// Called after ALTER FLASHBACK ARCHIVE has been consumed.
+//
+// BNF:
+//
+//	ALTER FLASHBACK ARCHIVE flashback_archive_name
+//	    { SET DEFAULT
+//	    | { ADD | MODIFY } TABLESPACE tablespace_name [ flashback_archive_quota ]
+//	    | REMOVE TABLESPACE tablespace_name
+//	    | MODIFY RETENTION flashback_archive_retention
+//	    | PURGE { ALL | BEFORE SCN scn_value | BEFORE TIMESTAMP timestamp_value }
+//	    | [ NO ] OPTIMIZE DATA
+//	    } ;
+func (p *Parser) parseAlterFlashbackArchiveStmt(start int) nodes.StmtNode {
+	stmt := &nodes.AdminDDLStmt{
+		Action:     "ALTER",
+		ObjectType: nodes.OBJECT_FLASHBACK_ARCHIVE,
+		Loc:        nodes.Loc{Start: start},
+	}
+	opts := &nodes.List{}
+
+	stmt.Name = p.parseObjectName()
+
+	// Parse action clause
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		if p.cur.Type == kwSET {
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "DEFAULT" {
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "SET DEFAULT"})
+		} else if p.isIdentLike() && (p.cur.Str == "ADD" || p.cur.Str == "MODIFY") {
+			action := p.cur.Str
+			p.advance()
+			if p.cur.Type == kwTABLESPACE {
+				p.advance()
+				tsName := ""
+				if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+					tsName = p.cur.Str
+					p.advance()
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{Key: action + " TABLESPACE", Value: tsName})
+				// optional quota
+				if p.isIdentLike() && p.cur.Str == "QUOTA" {
+					p.advance()
+					size := p.parseSizeClause()
+					opts.Items = append(opts.Items, &nodes.DDLOption{Key: "QUOTA", Value: size})
+				}
+			} else if p.isIdentLike() && p.cur.Str == "RETENTION" {
+				p.advance()
+				val := ""
+				if p.cur.Type == tokICONST {
+					val = p.cur.Str
+					p.advance()
+				}
+				if p.isIdentLike() {
+					val += " " + p.cur.Str
+					p.advance()
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{Key: "MODIFY RETENTION", Value: val})
+			}
+		} else if p.isIdentLike() && p.cur.Str == "REMOVE" {
+			p.advance()
+			if p.cur.Type == kwTABLESPACE {
+				p.advance()
+			}
+			tsName := ""
+			if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+				tsName = p.cur.Str
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "REMOVE TABLESPACE", Value: tsName})
+		} else if p.isIdentLike() && p.cur.Str == "PURGE" {
+			p.advance()
+			val := ""
+			if p.isIdentLike() && p.cur.Str == "ALL" {
+				val = "ALL"
+				p.advance()
+			} else if p.isIdentLike() && p.cur.Str == "BEFORE" {
+				p.advance()
+				if p.isIdentLike() && p.cur.Str == "SCN" {
+					p.advance()
+					val = "BEFORE SCN"
+					if p.cur.Type == tokICONST {
+						val += " " + p.cur.Str
+						p.advance()
+					}
+				} else if p.isIdentLike() && p.cur.Str == "TIMESTAMP" {
+					p.advance()
+					val = "BEFORE TIMESTAMP"
+					// Skip the timestamp expression
+					for p.cur.Type != ';' && p.cur.Type != tokEOF {
+						p.advance()
+					}
+				}
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "PURGE", Value: val})
+		} else if p.isIdentLike() && p.cur.Str == "NO" {
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "OPTIMIZE" {
+				p.advance()
+				if p.isIdentLike() && p.cur.Str == "DATA" {
+					p.advance()
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{Key: "NO OPTIMIZE DATA"})
+			}
+		} else if p.isIdentLike() && p.cur.Str == "OPTIMIZE" {
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "DATA" {
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "OPTIMIZE DATA"})
+		} else {
+			p.advance()
+		}
+	}
+
+	if len(opts.Items) > 0 {
+		stmt.Options = opts
+	}
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseCreateRollbackSegmentStmt parses a CREATE ROLLBACK SEGMENT statement.
+// Called after CREATE [PUBLIC] ROLLBACK SEGMENT has been consumed.
+//
+// BNF:
+//
+//	CREATE [ PUBLIC ] ROLLBACK SEGMENT rollback_segment
+//	    [ TABLESPACE tablespace ]
+//	    [ storage_clause ] ;
+func (p *Parser) parseCreateRollbackSegmentStmt(start int, public bool) nodes.StmtNode {
+	stmt := &nodes.AdminDDLStmt{
+		Action:     "CREATE",
+		ObjectType: nodes.OBJECT_ROLLBACK_SEGMENT,
+		Loc:        nodes.Loc{Start: start},
+	}
+	opts := &nodes.List{}
+
+	if public {
+		opts.Items = append(opts.Items, &nodes.DDLOption{Key: "PUBLIC"})
+	}
+
+	stmt.Name = p.parseObjectName()
+
+	// [ TABLESPACE tablespace ]
+	if p.cur.Type == kwTABLESPACE {
+		p.advance()
+		if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "TABLESPACE", Value: p.cur.Str})
+			p.advance()
+		}
+	}
+
+	// [ storage_clause ] and remaining
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		if p.isIdentLike() && p.cur.Str == "STORAGE" {
+			p.advance()
+			if p.cur.Type == '(' {
+				p.skipParenthesized()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "STORAGE"})
+		} else {
+			p.advance()
+		}
+	}
+
+	if len(opts.Items) > 0 {
+		stmt.Options = opts
+	}
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseAlterRollbackSegmentStmt parses an ALTER ROLLBACK SEGMENT statement.
+// Called after ALTER ROLLBACK SEGMENT has been consumed.
+//
+// BNF:
+//
+//	ALTER ROLLBACK SEGMENT rollback_segment
+//	    { ONLINE | OFFLINE | storage_clause | SHRINK [ TO size_clause ] }
+func (p *Parser) parseAlterRollbackSegmentStmt(start int) nodes.StmtNode {
+	stmt := &nodes.AdminDDLStmt{
+		Action:     "ALTER",
+		ObjectType: nodes.OBJECT_ROLLBACK_SEGMENT,
+		Loc:        nodes.Loc{Start: start},
+	}
+	opts := &nodes.List{}
+
+	stmt.Name = p.parseObjectName()
+
+	// Parse action
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		if p.isIdentLike() && p.cur.Str == "ONLINE" {
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "ONLINE"})
+			p.advance()
+		} else if p.isIdentLike() && p.cur.Str == "OFFLINE" {
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "OFFLINE"})
+			p.advance()
+		} else if p.isIdentLike() && p.cur.Str == "SHRINK" {
+			p.advance()
+			val := ""
+			if p.cur.Type == kwTO {
+				p.advance()
+				val = p.parseSizeClause()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "SHRINK", Value: val})
+		} else if p.isIdentLike() && p.cur.Str == "STORAGE" {
+			p.advance()
+			if p.cur.Type == '(' {
+				p.skipParenthesized()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "STORAGE"})
+		} else {
+			p.advance()
+		}
+	}
+
+	if len(opts.Items) > 0 {
+		stmt.Options = opts
+	}
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseCreateEditionStmt parses a CREATE EDITION statement.
+// Called after CREATE [IF NOT EXISTS] EDITION has been consumed.
+//
+// BNF:
+//
+//	CREATE EDITION [ IF NOT EXISTS ] edition
+//	    [ AS CHILD OF parent_edition ] ;
+func (p *Parser) parseCreateEditionStmt(start int) nodes.StmtNode {
+	stmt := &nodes.AdminDDLStmt{
+		Action:     "CREATE",
+		ObjectType: nodes.OBJECT_EDITION,
+		Loc:        nodes.Loc{Start: start},
+	}
+	opts := &nodes.List{}
+
+	// [ IF NOT EXISTS ] — may have been consumed by the caller already,
+	// but check here for cases where EDITION is dispatched through parseCreateAdminObject.
+	if p.cur.Type == kwIF {
+		next := p.peekNext()
+		if next.Type == kwNOT {
+			p.advance() // IF
+			p.advance() // NOT
+			if p.cur.Type == kwEXISTS {
+				p.advance() // EXISTS
+			}
+		}
+	}
+
+	stmt.Name = p.parseObjectName()
+
+	// [ AS CHILD OF parent_edition ]
+	if p.cur.Type == kwAS {
+		p.advance()
+		if p.isIdentLike() && p.cur.Str == "CHILD" {
+			p.advance()
+		}
+		if p.isIdentLike() && p.cur.Str == "OF" {
+			p.advance()
+		}
+		if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "AS CHILD OF", Value: p.cur.Str})
+			p.advance()
+		}
+	}
+
+	if len(opts.Items) > 0 {
+		stmt.Options = opts
+	}
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseDropEditionStmt parses a DROP EDITION statement.
+// Called after DROP EDITION has been consumed.
+//
+// BNF:
+//
+//	DROP EDITION [ IF EXISTS ] edition [ CASCADE ] ;
+func (p *Parser) parseDropEditionStmt(start int) *nodes.DropStmt {
+	stmt := &nodes.DropStmt{
+		ObjectType: nodes.OBJECT_EDITION,
+		Names:      &nodes.List{},
+		Loc:        nodes.Loc{Start: start},
+	}
+
+	// [ IF EXISTS ]
+	if p.cur.Type == kwIF {
+		next := p.peekNext()
+		if next.Type == kwEXISTS {
+			p.advance()
+			p.advance()
+			stmt.IfExists = true
+		}
+	}
+
+	name := p.parseObjectName()
+	if name != nil {
+		stmt.Names.Items = append(stmt.Names.Items, name)
+	}
+
+	// [ CASCADE ]
+	if p.cur.Type == kwCASCADE {
+		stmt.Cascade = true
+		p.advance()
+	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseCreateRestorePointStmt parses a CREATE RESTORE POINT statement.
+// Called after CREATE [CLEAN] RESTORE POINT has been consumed.
+//
+// BNF:
+//
+//	CREATE [ CLEAN ] RESTORE POINT restore_point
+//	    [ FOR PLUGGABLE DATABASE pdb_name ]
+//	    [ AS OF { TIMESTAMP | SCN } expr ]
+//	    [ PRESERVE ]
+//	    [ GUARANTEE FLASHBACK DATABASE ] ;
+func (p *Parser) parseCreateRestorePointStmt(start int, clean bool) nodes.StmtNode {
+	stmt := &nodes.AdminDDLStmt{
+		Action:     "CREATE",
+		ObjectType: nodes.OBJECT_RESTORE_POINT,
+		Loc:        nodes.Loc{Start: start},
+	}
+	opts := &nodes.List{}
+
+	if clean {
+		opts.Items = append(opts.Items, &nodes.DDLOption{Key: "CLEAN"})
+	}
+
+	stmt.Name = p.parseObjectName()
+
+	// Parse remaining clauses
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		if p.isIdentLike() && p.cur.Str == "FOR" {
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "PLUGGABLE" {
+				p.advance()
+			}
+			if p.cur.Type == kwDATABASE {
+				p.advance()
+			}
+			if p.isIdentLike() || p.cur.Type == tokIDENT || p.cur.Type == tokQIDENT {
+				opts.Items = append(opts.Items, &nodes.DDLOption{Key: "FOR PLUGGABLE DATABASE", Value: p.cur.Str})
+				p.advance()
+			}
+		} else if p.cur.Type == kwAS {
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "OF" {
+				p.advance()
+			}
+			if p.isIdentLike() && (p.cur.Str == "TIMESTAMP" || p.cur.Str == "SCN") {
+				asOfType := p.cur.Str
+				p.advance()
+				opts.Items = append(opts.Items, &nodes.DDLOption{Key: "AS OF", Value: asOfType})
+				// Skip the expression
+				for p.cur.Type != ';' && p.cur.Type != tokEOF &&
+					!(p.isIdentLike() && (p.cur.Str == "PRESERVE" || p.cur.Str == "GUARANTEE")) {
+					p.advance()
+				}
+			}
+		} else if p.isIdentLike() && p.cur.Str == "PRESERVE" {
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "PRESERVE"})
+			p.advance()
+		} else if p.isIdentLike() && p.cur.Str == "GUARANTEE" {
+			p.advance()
+			if p.cur.Type == kwFLASHBACK {
+				p.advance()
+			}
+			if p.cur.Type == kwDATABASE {
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "GUARANTEE FLASHBACK DATABASE"})
+		} else {
+			p.advance()
+		}
+	}
+
+	if len(opts.Items) > 0 {
+		stmt.Options = opts
+	}
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseCreateLogicalPartitionTrackingStmt parses a CREATE LOGICAL PARTITION TRACKING statement.
+// Called after CREATE LOGICAL PARTITION TRACKING has been consumed.
+//
+// BNF:
+//
+//	CREATE LOGICAL PARTITION TRACKING ON [ schema. ] table_name
+//	    PARTITION BY { RANGE | INTERVAL } ( column_name )
+//	    ( partition_definition [, partition_definition ]... )
+//
+//	partition_definition: PARTITION partition_name VALUES LESS THAN ( value )
+func (p *Parser) parseCreateLogicalPartitionTrackingStmt(start int) nodes.StmtNode {
+	stmt := &nodes.AdminDDLStmt{
+		Action:     "CREATE",
+		ObjectType: nodes.OBJECT_LOGICAL_PARTITION_TRACKING,
+		Loc:        nodes.Loc{Start: start},
+	}
+	opts := &nodes.List{}
+
+	// ON [ schema. ] table_name
+	if p.cur.Type == kwON {
+		p.advance()
+	}
+	stmt.Name = p.parseObjectName()
+
+	// PARTITION BY { RANGE | INTERVAL } ( column_name )
+	if p.cur.Type == kwPARTITION || (p.isIdentLike() && p.cur.Str == "PARTITION") {
+		p.advance()
+	}
+	if p.cur.Type == kwBY {
+		p.advance()
+	}
+	if p.cur.Type == kwRANGE || (p.isIdentLike() && (p.cur.Str == "RANGE" || p.cur.Str == "INTERVAL")) {
+		opts.Items = append(opts.Items, &nodes.DDLOption{Key: "PARTITION BY", Value: p.cur.Str})
+		p.advance()
+	}
+	if p.cur.Type == '(' {
+		p.skipParenthesized()
+	}
+
+	// ( partition_definition [, ...] )
+	if p.cur.Type == '(' {
+		p.skipParenthesized()
+		opts.Items = append(opts.Items, &nodes.DDLOption{Key: "PARTITIONS"})
+	}
+
+	// Skip remaining
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		p.advance()
+	}
+
+	if len(opts.Items) > 0 {
+		stmt.Options = opts
+	}
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseCreatePmemFilestoreStmt parses a CREATE PMEM FILESTORE statement.
+// Called after CREATE PMEM FILESTORE has been consumed.
+//
+// BNF:
+//
+//	CREATE PMEM FILESTORE filestore_name
+//	    MOUNTPOINT 'file_path'
+//	    BACKINGFILE 'backing_file_path' SIZE size_value BLOCKSIZE blocksize_value
+//	    [ AUTOEXTEND { ON | OFF } [ NEXT size_value ] [ MAXSIZE { UNLIMITED | size_value } ] ] ;
+func (p *Parser) parseCreatePmemFilestoreStmt(start int) nodes.StmtNode {
+	stmt := &nodes.AdminDDLStmt{
+		Action:     "CREATE",
+		ObjectType: nodes.OBJECT_PMEM_FILESTORE,
+		Loc:        nodes.Loc{Start: start},
+	}
+	opts := &nodes.List{}
+
+	stmt.Name = p.parseObjectName()
+
+	// Parse clauses
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		if p.isIdentLike() && p.cur.Str == "MOUNTPOINT" {
+			p.advance()
+			if p.cur.Type == tokSCONST {
+				opts.Items = append(opts.Items, &nodes.DDLOption{Key: "MOUNTPOINT", Value: p.cur.Str})
+				p.advance()
+			}
+		} else if p.isIdentLike() && p.cur.Str == "BACKINGFILE" {
+			p.advance()
+			if p.cur.Type == tokSCONST {
+				opts.Items = append(opts.Items, &nodes.DDLOption{Key: "BACKINGFILE", Value: p.cur.Str})
+				p.advance()
+			}
+		} else if p.isIdentLike() && p.cur.Str == "SIZE" {
+			p.advance()
+			size := p.parseSizeClause()
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "SIZE", Value: size})
+		} else if p.isIdentLike() && p.cur.Str == "BLOCKSIZE" {
+			p.advance()
+			size := p.parseSizeClause()
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "BLOCKSIZE", Value: size})
+		} else if p.isIdentLike() && p.cur.Str == "AUTOEXTEND" {
+			p.advance()
+			val := ""
+			if p.cur.Type == kwON || (p.isIdentLike() && p.cur.Str == "ON") {
+				val = "ON"
+				p.advance()
+			} else if p.isIdentLike() && p.cur.Str == "OFF" {
+				val = "OFF"
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{Key: "AUTOEXTEND", Value: val})
+			// [ NEXT size_value ]
+			if p.isIdentLike() && p.cur.Str == "NEXT" {
+				p.advance()
+				nextSize := p.parseSizeClause()
+				opts.Items = append(opts.Items, &nodes.DDLOption{Key: "NEXT", Value: nextSize})
+			}
+			// [ MAXSIZE { UNLIMITED | size_value } ]
+			if p.isIdentLike() && p.cur.Str == "MAXSIZE" {
+				p.advance()
+				maxVal := ""
+				if p.isIdentLike() && p.cur.Str == "UNLIMITED" {
+					maxVal = "UNLIMITED"
+					p.advance()
+				} else {
+					maxVal = p.parseSizeClause()
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{Key: "MAXSIZE", Value: maxVal})
+			}
+		} else {
+			p.advance()
+		}
+	}
+
+	if len(opts.Items) > 0 {
+		stmt.Options = opts
+	}
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseDropJavaStmt parses a DROP JAVA statement.
+// Called after DROP JAVA has been consumed.
+//
+// BNF:
+//
+//	DROP JAVA { SOURCE | CLASS | RESOURCE } [ IF EXISTS ] [ schema. ] object_name ;
+func (p *Parser) parseDropJavaStmt(start int) *nodes.DropStmt {
+	stmt := &nodes.DropStmt{
+		ObjectType: nodes.OBJECT_JAVA,
+		Names:      &nodes.List{},
+		Loc:        nodes.Loc{Start: start},
+	}
+
+	// { SOURCE | CLASS | RESOURCE }
+	if p.isIdentLike() && (p.cur.Str == "SOURCE" || p.cur.Str == "CLASS" || p.cur.Str == "RESOURCE") {
+		p.advance()
+	}
+
+	// [ IF EXISTS ]
+	if p.cur.Type == kwIF {
+		next := p.peekNext()
+		if next.Type == kwEXISTS {
+			p.advance()
+			p.advance()
+			stmt.IfExists = true
+		}
+	}
+
+	name := p.parseObjectName()
+	if name != nil {
+		stmt.Names.Items = append(stmt.Names.Items, name)
 	}
 
 	stmt.Loc.End = p.pos()

@@ -3727,22 +3727,26 @@ func TestBatch72_AlterMiscRound3(t *testing.T) {
 
 // TestBatch73_RollbackSegmentEdition tests CREATE/DROP ROLLBACK SEGMENT and EDITION.
 func TestBatch73_RollbackSegmentEdition(t *testing.T) {
-	tests := []struct {
-		name   string
-		sql    string
-		action string
-		obj    ast.ObjectType
-	}{
-		{"create_rollback_segment", "CREATE ROLLBACK SEGMENT rbs1 TABLESPACE undotbs", "CREATE", ast.OBJECT_ROLLBACK_SEGMENT},
-		{"drop_rollback_segment", "DROP ROLLBACK SEGMENT rbs1", "DROP", ast.OBJECT_ROLLBACK_SEGMENT},
-		{"create_edition", "CREATE EDITION e2 AS CHILD OF ora$base", "CREATE", ast.OBJECT_EDITION},
-		{"drop_edition", "DROP EDITION e2", "DROP", ast.OBJECT_EDITION},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			adminDDLTest(t, tt.sql, tt.action, tt.obj)
-		})
-	}
+	t.Run("create_rollback_segment", func(t *testing.T) {
+		adminDDLTest(t, "CREATE ROLLBACK SEGMENT rbs1 TABLESPACE undotbs", "CREATE", ast.OBJECT_ROLLBACK_SEGMENT)
+	})
+	t.Run("drop_rollback_segment", func(t *testing.T) {
+		result := ParseAndCheck(t, "DROP ROLLBACK SEGMENT rbs1")
+		raw := result.Items[0].(*ast.RawStmt)
+		if _, ok := raw.Stmt.(*ast.DropStmt); !ok {
+			t.Fatalf("expected *DropStmt, got %T", raw.Stmt)
+		}
+	})
+	t.Run("create_edition", func(t *testing.T) {
+		adminDDLTest(t, "CREATE EDITION e2 AS CHILD OF ora$base", "CREATE", ast.OBJECT_EDITION)
+	})
+	t.Run("drop_edition", func(t *testing.T) {
+		result := ParseAndCheck(t, "DROP EDITION e2")
+		raw := result.Items[0].(*ast.RawStmt)
+		if _, ok := raw.Stmt.(*ast.DropStmt); !ok {
+			t.Fatalf("expected *DropStmt, got %T", raw.Stmt)
+		}
+	})
 }
 
 // TestBatch74_TablespaceSet tests CREATE/ALTER/DROP TABLESPACE SET.
@@ -3774,22 +3778,26 @@ func TestBatch74_TablespaceSet(t *testing.T) {
 
 // TestBatch75_MleEnvModule tests CREATE/DROP MLE ENV and MLE MODULE.
 func TestBatch75_MleEnvModule(t *testing.T) {
-	tests := []struct {
-		name   string
-		sql    string
-		action string
-		obj    ast.ObjectType
-	}{
-		{"create_mle_env", "CREATE MLE ENV my_env IMPORTS ('module1')", "CREATE", ast.OBJECT_MLE_ENV},
-		{"drop_mle_env", "DROP MLE ENV my_env", "DROP", ast.OBJECT_MLE_ENV},
-		{"create_mle_module", "CREATE MLE MODULE my_module LANGUAGE JAVASCRIPT AS 'export function hello() { return 1; }'", "CREATE", ast.OBJECT_MLE_MODULE},
-		{"drop_mle_module", "DROP MLE MODULE my_module", "DROP", ast.OBJECT_MLE_MODULE},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			adminDDLTest(t, tt.sql, tt.action, tt.obj)
-		})
-	}
+	t.Run("create_mle_env", func(t *testing.T) {
+		adminDDLTest(t, "CREATE MLE ENV my_env IMPORTS ('module1')", "CREATE", ast.OBJECT_MLE_ENV)
+	})
+	t.Run("drop_mle_env", func(t *testing.T) {
+		result := ParseAndCheck(t, "DROP MLE ENV my_env")
+		raw := result.Items[0].(*ast.RawStmt)
+		if _, ok := raw.Stmt.(*ast.DropStmt); !ok {
+			t.Fatalf("expected *DropStmt, got %T", raw.Stmt)
+		}
+	})
+	t.Run("create_mle_module", func(t *testing.T) {
+		adminDDLTest(t, "CREATE MLE MODULE my_module LANGUAGE JAVASCRIPT AS 'export function hello() { return 1; }'", "CREATE", ast.OBJECT_MLE_MODULE)
+	})
+	t.Run("drop_mle_module", func(t *testing.T) {
+		result := ParseAndCheck(t, "DROP MLE MODULE my_module")
+		raw := result.Items[0].(*ast.RawStmt)
+		if _, ok := raw.Stmt.(*ast.DropStmt); !ok {
+			t.Fatalf("expected *DropStmt, got %T", raw.Stmt)
+		}
+	})
 }
 
 // TestBatch76_PfileSpfile tests CREATE PFILE and SPFILE.
@@ -3850,23 +3858,25 @@ func TestBatch77_PropertyGraphVectorIndex(t *testing.T) {
 
 // TestBatch78_RestorePointMisc tests CREATE/DROP RESTORE POINT, LOGICAL PARTITION TRACKING, PMEM FILESTORE.
 func TestBatch78_RestorePointMisc(t *testing.T) {
-	tests := []struct {
-		name   string
-		sql    string
-		action string
-		obj    ast.ObjectType
-	}{
-		{"create_restore_point", "CREATE RESTORE POINT before_upgrade", "CREATE", ast.OBJECT_RESTORE_POINT},
-		{"create_restore_point_guaranteed", "CREATE RESTORE POINT before_upgrade GUARANTEE FLASHBACK DATABASE", "CREATE", ast.OBJECT_RESTORE_POINT},
-		{"drop_restore_point", "DROP RESTORE POINT before_upgrade", "DROP", ast.OBJECT_RESTORE_POINT},
-		{"create_logical_partition_tracking", "CREATE LOGICAL PARTITION TRACKING my_tracking ON my_table", "CREATE", ast.OBJECT_LOGICAL_PARTITION_TRACKING},
-		{"create_pmem_filestore", "CREATE PMEM FILESTORE my_pmem MOUNTPOINT '/pmem0' SIZE 100G", "CREATE", ast.OBJECT_PMEM_FILESTORE},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			adminDDLTest(t, tt.sql, tt.action, tt.obj)
-		})
-	}
+	t.Run("create_restore_point", func(t *testing.T) {
+		adminDDLTest(t, "CREATE RESTORE POINT before_upgrade", "CREATE", ast.OBJECT_RESTORE_POINT)
+	})
+	t.Run("create_restore_point_guaranteed", func(t *testing.T) {
+		adminDDLTest(t, "CREATE RESTORE POINT before_upgrade GUARANTEE FLASHBACK DATABASE", "CREATE", ast.OBJECT_RESTORE_POINT)
+	})
+	t.Run("drop_restore_point", func(t *testing.T) {
+		result := ParseAndCheck(t, "DROP RESTORE POINT before_upgrade")
+		raw := result.Items[0].(*ast.RawStmt)
+		if _, ok := raw.Stmt.(*ast.DropStmt); !ok {
+			t.Fatalf("expected *DropStmt, got %T", raw.Stmt)
+		}
+	})
+	t.Run("create_logical_partition_tracking", func(t *testing.T) {
+		adminDDLTest(t, "CREATE LOGICAL PARTITION TRACKING ON my_table PARTITION BY RANGE (col1) (PARTITION p1 VALUES LESS THAN (100))", "CREATE", ast.OBJECT_LOGICAL_PARTITION_TRACKING)
+	})
+	t.Run("create_pmem_filestore", func(t *testing.T) {
+		adminDDLTest(t, "CREATE PMEM FILESTORE my_pmem MOUNTPOINT '/pmem0' SIZE 100G", "CREATE", ast.OBJECT_PMEM_FILESTORE)
+	})
 }
 
 // TestBatch79_TruncateClusterDropTypeBody tests TRUNCATE CLUSTER and DROP TYPE BODY.
@@ -8270,6 +8280,345 @@ func TestBatch104_GraphVectorLockdownOutline(t *testing.T) {
 		}
 		if stmt.ObjectType != ast.OBJECT_OUTLINE {
 			t.Fatalf("expected OBJECT_OUTLINE, got %d", stmt.ObjectType)
+		}
+	})
+}
+
+// TestBatch105_SmallObjectsBundle tests all small object DDL parsers added in batch 105.
+func TestBatch105_SmallObjectsBundle(t *testing.T) {
+	// CREATE JAVA SOURCE
+	t.Run("create_java_source", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE JAVA SOURCE NAMED my_java AS 'public class Foo {}'")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+		if !ok {
+			t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "CREATE" || stmt.ObjectType != ast.OBJECT_JAVA {
+			t.Errorf("unexpected action/type: %s/%d", stmt.Action, stmt.ObjectType)
+		}
+		if stmt.Name == nil || stmt.Name.Name != "MY_JAVA" {
+			t.Errorf("expected name MY_JAVA")
+		}
+	})
+
+	// CREATE OR REPLACE JAVA CLASS
+	t.Run("create_or_replace_java_class", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE OR REPLACE AND RESOLVE JAVA CLASS NAMED my_class USING BFILE (data_dir, 'MyClass.class')")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+		if !ok {
+			t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+		}
+		if !stmt.OrReplace {
+			t.Errorf("expected OrReplace=true")
+		}
+	})
+
+	// ALTER JAVA SOURCE
+	t.Run("alter_java_source", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER JAVA SOURCE my_schema.my_java COMPILE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+		if !ok {
+			t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "ALTER" || stmt.ObjectType != ast.OBJECT_JAVA {
+			t.Errorf("unexpected action/type: %s/%d", stmt.Action, stmt.ObjectType)
+		}
+	})
+
+	// DROP JAVA SOURCE
+	t.Run("drop_java_source", func(t *testing.T) {
+		result := ParseAndCheck(t, "DROP JAVA SOURCE my_java")
+		raw := result.Items[0].(*ast.RawStmt)
+		_, ok := raw.Stmt.(*ast.DropStmt)
+		if !ok {
+			t.Fatalf("expected *DropStmt, got %T", raw.Stmt)
+		}
+	})
+
+	// CREATE LIBRARY
+	t.Run("create_library", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE LIBRARY my_lib AS '/usr/lib/mylib.so' AGENT dblink1")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+		if !ok {
+			t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "CREATE" || stmt.ObjectType != ast.OBJECT_LIBRARY {
+			t.Errorf("unexpected action/type")
+		}
+	})
+
+	// ALTER LIBRARY COMPILE
+	t.Run("alter_library_compile", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER LIBRARY my_lib COMPILE DEBUG REUSE SETTINGS")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+		if !ok {
+			t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "ALTER" || stmt.ObjectType != ast.OBJECT_LIBRARY {
+			t.Errorf("unexpected action/type")
+		}
+	})
+
+	// CREATE DIRECTORY with SHARING
+	t.Run("create_directory_sharing", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE OR REPLACE DIRECTORY data_dir SHARING = METADATA AS '/u01/data'")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+		if !ok {
+			t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+		}
+		if !stmt.OrReplace {
+			t.Errorf("expected OrReplace=true")
+		}
+		if stmt.ObjectType != ast.OBJECT_DIRECTORY {
+			t.Errorf("expected OBJECT_DIRECTORY")
+		}
+	})
+
+	// CREATE CONTEXT
+	t.Run("create_context", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE OR REPLACE CONTEXT app_ctx USING hr.ctx_pkg INITIALIZED GLOBALLY ACCESSED GLOBALLY")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+		if !ok {
+			t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+		}
+		if stmt.ObjectType != ast.OBJECT_CONTEXT {
+			t.Errorf("expected OBJECT_CONTEXT")
+		}
+	})
+
+	// CREATE MLE ENV with CLONE
+	t.Run("create_mle_env_clone", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE MLE ENV new_env CLONE existing_env")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+		if !ok {
+			t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+		}
+		if stmt.ObjectType != ast.OBJECT_MLE_ENV {
+			t.Errorf("expected OBJECT_MLE_ENV")
+		}
+	})
+
+	// CREATE MLE MODULE
+	t.Run("create_mle_module", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE MLE MODULE my_mod LANGUAGE JAVASCRIPT VERSION '1.0' AS 'export function f() {}'")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+		if !ok {
+			t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+		}
+		if stmt.ObjectType != ast.OBJECT_MLE_MODULE {
+			t.Errorf("expected OBJECT_MLE_MODULE")
+		}
+	})
+
+	// CREATE PFILE FROM SPFILE
+	t.Run("create_pfile_from_spfile", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE PFILE = '/tmp/init.ora' FROM SPFILE = '/u01/spfile.ora'")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+		if !ok {
+			t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+		}
+		if stmt.ObjectType != ast.OBJECT_PFILE {
+			t.Errorf("expected OBJECT_PFILE")
+		}
+	})
+
+	// CREATE SPFILE FROM MEMORY
+	t.Run("create_spfile_from_memory", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE SPFILE FROM MEMORY")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+		if !ok {
+			t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+		}
+		if stmt.ObjectType != ast.OBJECT_SPFILE {
+			t.Errorf("expected OBJECT_SPFILE")
+		}
+	})
+
+	// CREATE FLASHBACK ARCHIVE with all options
+	t.Run("create_flashback_archive", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE FLASHBACK ARCHIVE DEFAULT fba1 TABLESPACE ts1 QUOTA 1G OPTIMIZE DATA RETENTION 1 YEAR")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+		if !ok {
+			t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+		}
+		if stmt.ObjectType != ast.OBJECT_FLASHBACK_ARCHIVE {
+			t.Errorf("expected OBJECT_FLASHBACK_ARCHIVE")
+		}
+		if stmt.Name == nil || stmt.Name.Name != "FBA1" {
+			t.Errorf("expected name FBA1")
+		}
+	})
+
+	// ALTER FLASHBACK ARCHIVE SET DEFAULT
+	t.Run("alter_flashback_archive_set_default", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER FLASHBACK ARCHIVE fba1 SET DEFAULT")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+		if !ok {
+			t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "ALTER" || stmt.ObjectType != ast.OBJECT_FLASHBACK_ARCHIVE {
+			t.Errorf("unexpected action/type")
+		}
+	})
+
+	// ALTER FLASHBACK ARCHIVE PURGE ALL
+	t.Run("alter_flashback_archive_purge", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER FLASHBACK ARCHIVE fba1 PURGE ALL")
+		raw := result.Items[0].(*ast.RawStmt)
+		_, ok := raw.Stmt.(*ast.AdminDDLStmt)
+		if !ok {
+			t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+		}
+	})
+
+	// CREATE ROLLBACK SEGMENT
+	t.Run("create_rollback_segment", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE ROLLBACK SEGMENT rbs1 TABLESPACE undotbs")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+		if !ok {
+			t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+		}
+		if stmt.ObjectType != ast.OBJECT_ROLLBACK_SEGMENT {
+			t.Errorf("expected OBJECT_ROLLBACK_SEGMENT")
+		}
+	})
+
+	// ALTER ROLLBACK SEGMENT
+	t.Run("alter_rollback_segment_online", func(t *testing.T) {
+		result := ParseAndCheck(t, "ALTER ROLLBACK SEGMENT rbs1 ONLINE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+		if !ok {
+			t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+		}
+		if stmt.Action != "ALTER" || stmt.ObjectType != ast.OBJECT_ROLLBACK_SEGMENT {
+			t.Errorf("unexpected action/type")
+		}
+	})
+
+	// ALTER ROLLBACK SEGMENT SHRINK
+	t.Run("alter_rollback_segment_shrink", func(t *testing.T) {
+		ParseAndCheck(t, "ALTER ROLLBACK SEGMENT rbs1 SHRINK TO 100M")
+	})
+
+	// CREATE EDITION
+	t.Run("create_edition", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE EDITION e2 AS CHILD OF ora$base")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+		if !ok {
+			t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+		}
+		if stmt.ObjectType != ast.OBJECT_EDITION {
+			t.Errorf("expected OBJECT_EDITION")
+		}
+	})
+
+	// DROP EDITION CASCADE
+	t.Run("drop_edition_cascade", func(t *testing.T) {
+		result := ParseAndCheck(t, "DROP EDITION IF EXISTS e2 CASCADE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.DropStmt)
+		if !ok {
+			t.Fatalf("expected *DropStmt, got %T", raw.Stmt)
+		}
+		if !stmt.IfExists {
+			t.Errorf("expected IfExists=true")
+		}
+		if !stmt.Cascade {
+			t.Errorf("expected Cascade=true")
+		}
+	})
+
+	// CREATE RESTORE POINT with PRESERVE and GUARANTEE
+	t.Run("create_restore_point_preserve", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE RESTORE POINT rp1 PRESERVE GUARANTEE FLASHBACK DATABASE")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+		if !ok {
+			t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+		}
+		if stmt.ObjectType != ast.OBJECT_RESTORE_POINT {
+			t.Errorf("expected OBJECT_RESTORE_POINT")
+		}
+	})
+
+	// CREATE CLEAN RESTORE POINT
+	t.Run("create_clean_restore_point", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE CLEAN RESTORE POINT rp2")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+		if !ok {
+			t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+		}
+		if stmt.ObjectType != ast.OBJECT_RESTORE_POINT {
+			t.Errorf("expected OBJECT_RESTORE_POINT")
+		}
+	})
+
+	// CREATE LOGICAL PARTITION TRACKING
+	t.Run("create_logical_partition_tracking", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE LOGICAL PARTITION TRACKING ON my_table PARTITION BY RANGE (id) (PARTITION p1 VALUES LESS THAN (1000))")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+		if !ok {
+			t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+		}
+		if stmt.ObjectType != ast.OBJECT_LOGICAL_PARTITION_TRACKING {
+			t.Errorf("expected OBJECT_LOGICAL_PARTITION_TRACKING")
+		}
+	})
+
+	// CREATE PMEM FILESTORE with AUTOEXTEND
+	t.Run("create_pmem_filestore", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE PMEM FILESTORE my_fs MOUNTPOINT '/pmem0' BACKINGFILE '/pmem0/backing' SIZE 100G BLOCKSIZE 8K AUTOEXTEND ON NEXT 10G MAXSIZE UNLIMITED")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+		if !ok {
+			t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+		}
+		if stmt.ObjectType != ast.OBJECT_PMEM_FILESTORE {
+			t.Errorf("expected OBJECT_PMEM_FILESTORE")
+		}
+	})
+
+	// DROP JAVA CLASS IF EXISTS
+	t.Run("drop_java_class_if_exists", func(t *testing.T) {
+		result := ParseAndCheck(t, "DROP JAVA CLASS IF EXISTS my_schema.MyClass")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.DropStmt)
+		if !ok {
+			t.Fatalf("expected *DropStmt, got %T", raw.Stmt)
+		}
+		if !stmt.IfExists {
+			t.Errorf("expected IfExists=true")
+		}
+	})
+
+	// CREATE SPFILE FROM PFILE AS COPY
+	t.Run("create_spfile_as_copy", func(t *testing.T) {
+		result := ParseAndCheck(t, "CREATE SPFILE FROM PFILE = '/tmp/init.ora' AS COPY")
+		raw := result.Items[0].(*ast.RawStmt)
+		stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+		if !ok {
+			t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+		}
+		if stmt.ObjectType != ast.OBJECT_SPFILE {
+			t.Errorf("expected OBJECT_SPFILE")
 		}
 	})
 }
