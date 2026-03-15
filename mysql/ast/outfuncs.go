@@ -437,6 +437,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeCacheIndexStmt(sb, n)
 	case *LoadIndexIntoCacheStmt:
 		writeLoadIndexIntoCacheStmt(sb, n)
+	case *LoadIndexTable:
+		writeLoadIndexTable(sb, n)
 	case *ResetPersistStmt:
 		writeResetPersistStmt(sb, n)
 	case *RenameUserStmt:
@@ -1621,8 +1623,18 @@ func writeCreateEventStmt(sb *strings.Builder, n *CreateEventStmt) {
 }
 
 func writeLoadDataStmt(sb *strings.Builder, n *LoadDataStmt) {
-	sb.WriteString("{LOAD_DATA")
+	if n.IsXML {
+		sb.WriteString("{LOAD_XML")
+	} else {
+		sb.WriteString("{LOAD_DATA")
+	}
 	fmt.Fprintf(sb, " :loc %d", n.Loc.Start)
+	if n.LowPriority {
+		sb.WriteString(" :low_priority true")
+	}
+	if n.Concurrent {
+		sb.WriteString(" :concurrent true")
+	}
 	if n.Local {
 		sb.WriteString(" :local true")
 	}
@@ -1638,6 +1650,15 @@ func writeLoadDataStmt(sb *strings.Builder, n *LoadDataStmt) {
 	if n.Table != nil {
 		sb.WriteString(" :table ")
 		writeNode(sb, n.Table)
+	}
+	if len(n.Partitions) > 0 {
+		fmt.Fprintf(sb, " :partitions (%s)", strings.Join(n.Partitions, ", "))
+	}
+	if n.CharacterSet != "" {
+		fmt.Fprintf(sb, " :charset %s", n.CharacterSet)
+	}
+	if n.RowsIdentifiedBy != "" {
+		fmt.Fprintf(sb, " :rows_identified_by %q", n.RowsIdentifiedBy)
 	}
 	if len(n.Columns) > 0 {
 		sb.WriteString(" :columns ")
@@ -1668,6 +1689,9 @@ func writeLoadDataStmt(sb *strings.Builder, n *LoadDataStmt) {
 	}
 	if n.FieldsEnclosedBy != "" {
 		fmt.Fprintf(sb, " :fields_enclosed %q", n.FieldsEnclosedBy)
+	}
+	if n.FieldsOptionalEncl {
+		sb.WriteString(" :fields_optionally_enclosed true")
 	}
 	if n.FieldsEscapedBy != "" {
 		fmt.Fprintf(sb, " :fields_escaped %q", n.FieldsEscapedBy)
@@ -3868,6 +3892,10 @@ func writeTableStmt(sb *strings.Builder, n *TableStmt) {
 		sb.WriteString(" :limit ")
 		writeNode(sb, n.Limit)
 	}
+	if n.Into != nil {
+		sb.WriteString(" :into ")
+		writeNode(sb, n.Into)
+	}
 	sb.WriteString("}")
 }
 
@@ -4648,6 +4676,25 @@ func writeLoadIndexIntoCacheStmt(sb *strings.Builder, n *LoadIndexIntoCacheStmt)
 			writeNode(sb, t)
 		}
 		sb.WriteString(")")
+	}
+	sb.WriteString("}")
+}
+
+func writeLoadIndexTable(sb *strings.Builder, n *LoadIndexTable) {
+	sb.WriteString("{LOAD_INDEX_TABLE")
+	fmt.Fprintf(sb, " :loc %d", n.Loc.Start)
+	if n.Table != nil {
+		sb.WriteString(" :table ")
+		writeNode(sb, n.Table)
+	}
+	if len(n.Partitions) > 0 {
+		fmt.Fprintf(sb, " :partitions (%s)", strings.Join(n.Partitions, ", "))
+	}
+	if len(n.Indexes) > 0 {
+		fmt.Fprintf(sb, " :indexes (%s)", strings.Join(n.Indexes, ", "))
+	}
+	if n.IgnoreLeaves {
+		sb.WriteString(" :ignore_leaves true")
 	}
 	sb.WriteString("}")
 }

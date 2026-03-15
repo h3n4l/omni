@@ -2677,8 +2677,8 @@
       "id": 110,
       "name": "review_load_import",
       "file": "load_data.go",
-      "status": "pending",
-      "description": "BNF review: LOAD DATA, LOAD XML, LOAD INDEX INTO CACHE, TABLE statement, VALUES statement against 86 lines of BNF.",
+      "status": "done",
+      "description": "BNF review: LOAD DATA, LOAD XML, LOAD INDEX INTO CACHE, TABLE statement, VALUES statement against 86 lines of BNF. Added LOW_PRIORITY/CONCURRENT, PARTITION, CHARACTER SET, OPTIONALLY ENCLOSED BY, IsXML flag, ROWS IDENTIFIED BY for LOAD XML. Restructured LOAD INDEX INTO CACHE to store partitions/indexes/ignore_leaves per table. Added INTO clause to TABLE statement.",
       "effort": "review",
       "bnf_files": [
         "load-data.bnf",
@@ -2696,7 +2696,26 @@
       "depends_on": [
         97
       ],
-      "tests": []
+      "tests": [
+        "TestReviewBatch110_LoadDataLowPriority",
+        "TestReviewBatch110_LoadDataConcurrent",
+        "TestReviewBatch110_LoadDataPartition",
+        "TestReviewBatch110_LoadDataCharacterSet",
+        "TestReviewBatch110_LoadDataOptionallyEnclosed",
+        "TestReviewBatch110_LoadXmlBasic",
+        "TestReviewBatch110_LoadXmlRowsIdentifiedBy",
+        "TestReviewBatch110_LoadXmlCharsetSetClause",
+        "TestReviewBatch110_LoadDataFullSyntax",
+        "TestReviewBatch110_LoadIndexIntoCachePartition",
+        "TestReviewBatch110_LoadIndexIntoCacheIndex",
+        "TestReviewBatch110_LoadIndexIntoCachePartitionAll",
+        "TestReviewBatch110_LoadIndexIntoCacheMultiTable",
+        "TestReviewBatch110_TableIntoOutfile",
+        "TestReviewBatch110_TableIntoDumpfile",
+        "TestReviewBatch110_TableIntoVar",
+        "TestReviewBatch110_ValuesBasic",
+        "TestReviewBatch110_ValuesOrderByLimit"
+      ]
     },
     {
       "id": 111,

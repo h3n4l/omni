@@ -10741,3 +10741,79 @@ func TestReviewBatch109_HelpString(t *testing.T) {
 func TestReviewBatch109_SetResourceGroupFor(t *testing.T) {
 	ParseAndCheck(t, "SET RESOURCE GROUP rg1 FOR 10, 20")
 }
+
+// ============================================================================
+// Batch 110: review_load_import
+// ============================================================================
+
+func TestReviewBatch110_LoadDataLowPriority(t *testing.T) {
+	ParseAndCheck(t, "LOAD DATA LOW_PRIORITY INFILE '/tmp/data.csv' INTO TABLE t")
+}
+
+func TestReviewBatch110_LoadDataConcurrent(t *testing.T) {
+	ParseAndCheck(t, "LOAD DATA CONCURRENT INFILE '/tmp/data.csv' INTO TABLE t")
+}
+
+func TestReviewBatch110_LoadDataPartition(t *testing.T) {
+	ParseAndCheck(t, "LOAD DATA INFILE '/tmp/data.csv' INTO TABLE t PARTITION (p0, p1)")
+}
+
+func TestReviewBatch110_LoadDataCharacterSet(t *testing.T) {
+	ParseAndCheck(t, "LOAD DATA INFILE '/tmp/data.csv' INTO TABLE t CHARACTER SET utf8mb4")
+}
+
+func TestReviewBatch110_LoadDataOptionallyEnclosed(t *testing.T) {
+	ParseAndCheck(t, "LOAD DATA INFILE '/tmp/data.csv' INTO TABLE t FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"'")
+}
+
+func TestReviewBatch110_LoadXmlBasic(t *testing.T) {
+	ParseAndCheck(t, "LOAD XML INFILE '/tmp/data.xml' INTO TABLE t")
+}
+
+func TestReviewBatch110_LoadXmlRowsIdentifiedBy(t *testing.T) {
+	ParseAndCheck(t, "LOAD XML INFILE '/tmp/data.xml' INTO TABLE t ROWS IDENTIFIED BY '<row>'")
+}
+
+func TestReviewBatch110_LoadXmlCharsetSetClause(t *testing.T) {
+	ParseAndCheck(t, "LOAD XML LOCAL INFILE '/tmp/data.xml' REPLACE INTO TABLE t CHARACTER SET utf8 SET col1 = UPPER(col1)")
+}
+
+func TestReviewBatch110_LoadDataFullSyntax(t *testing.T) {
+	ParseAndCheck(t, "LOAD DATA LOW_PRIORITY LOCAL INFILE '/tmp/data.csv' REPLACE INTO TABLE db1.t1 PARTITION (p0) CHARACTER SET utf8mb4 FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' ESCAPED BY '\\\\' LINES STARTING BY '>>' TERMINATED BY '\\n' IGNORE 1 LINES (col1, col2) SET col3 = col1 + col2")
+}
+
+func TestReviewBatch110_LoadIndexIntoCachePartition(t *testing.T) {
+	ParseAndCheck(t, "LOAD INDEX INTO CACHE t1 PARTITION (p0, p1) IGNORE LEAVES")
+}
+
+func TestReviewBatch110_LoadIndexIntoCacheIndex(t *testing.T) {
+	ParseAndCheck(t, "LOAD INDEX INTO CACHE t1 INDEX (idx1, idx2)")
+}
+
+func TestReviewBatch110_LoadIndexIntoCachePartitionAll(t *testing.T) {
+	ParseAndCheck(t, "LOAD INDEX INTO CACHE t1 PARTITION (ALL)")
+}
+
+func TestReviewBatch110_LoadIndexIntoCacheMultiTable(t *testing.T) {
+	ParseAndCheck(t, "LOAD INDEX INTO CACHE t1 IGNORE LEAVES, t2 INDEX (idx1)")
+}
+
+func TestReviewBatch110_TableIntoOutfile(t *testing.T) {
+	ParseAndCheck(t, "TABLE t1 INTO OUTFILE '/tmp/out.csv'")
+}
+
+func TestReviewBatch110_TableIntoDumpfile(t *testing.T) {
+	ParseAndCheck(t, "TABLE t1 INTO DUMPFILE '/tmp/out.dat'")
+}
+
+func TestReviewBatch110_TableIntoVar(t *testing.T) {
+	ParseAndCheck(t, "TABLE t1 INTO @v1, @v2")
+}
+
+func TestReviewBatch110_ValuesBasic(t *testing.T) {
+	ParseAndCheck(t, "VALUES ROW(1, 2), ROW(3, 4)")
+}
+
+func TestReviewBatch110_ValuesOrderByLimit(t *testing.T) {
+	ParseAndCheck(t, "VALUES ROW(1, 2), ROW(3, 4) ORDER BY column_0 LIMIT 1")
+}

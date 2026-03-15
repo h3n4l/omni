@@ -1490,17 +1490,24 @@ func (s *EventSchedule) nodeTag() {}
 // LoadDataStmt represents a LOAD DATA statement.
 type LoadDataStmt struct {
 	Loc                Loc
+	IsXML              bool   // true for LOAD XML, false for LOAD DATA
+	LowPriority        bool   // LOW_PRIORITY modifier
+	Concurrent         bool   // CONCURRENT modifier
 	Local              bool
 	Infile             string
 	Replace            bool
 	Ignore             bool
 	Table              *TableRef
+	Partitions         []string // PARTITION (p0, p1, ...)
+	CharacterSet       string   // CHARACTER SET charset_name
+	RowsIdentifiedBy   string   // ROWS IDENTIFIED BY '<tagname>' (XML only)
 	Columns            []*ColumnRef
 	SetList            []*Assignment
 	LinesStartingBy    string
 	LinesTerminatedBy  string
 	FieldsTerminatedBy string
 	FieldsEnclosedBy   string
+	FieldsOptionalEncl bool // OPTIONALLY ENCLOSED BY
 	FieldsEscapedBy    string
 	IgnoreRows         int
 }
@@ -1989,6 +1996,7 @@ type TableStmt struct {
 	Table   *TableRef      // table name
 	OrderBy []*OrderByItem // optional ORDER BY
 	Limit   *Limit         // optional LIMIT/OFFSET
+	Into    *IntoClause    // optional INTO OUTFILE/DUMPFILE/var
 }
 
 func (s *TableStmt) nodeTag()  {}
@@ -2663,8 +2671,19 @@ func (s *CacheIndexStmt) stmtNode() {}
 // LoadIndexIntoCacheStmt represents a LOAD INDEX INTO CACHE statement.
 type LoadIndexIntoCacheStmt struct {
 	Loc    Loc
-	Tables []*TableRef
+	Tables []*LoadIndexTable
 }
+
+// LoadIndexTable represents a table entry in LOAD INDEX INTO CACHE.
+type LoadIndexTable struct {
+	Loc          Loc
+	Table        *TableRef
+	Partitions   []string // PARTITION (p0, p1, ...) or ALL
+	Indexes      []string // INDEX|KEY (idx1, idx2, ...)
+	IgnoreLeaves bool     // IGNORE LEAVES
+}
+
+func (n *LoadIndexTable) nodeTag() {}
 
 func (s *LoadIndexIntoCacheStmt) nodeTag()  {}
 func (s *LoadIndexIntoCacheStmt) stmtNode() {}

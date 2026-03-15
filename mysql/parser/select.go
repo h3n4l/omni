@@ -1549,6 +1549,18 @@ func (p *Parser) parseNamedWindowList() ([]*nodes.WindowDef, error) {
 // Ref: https://dev.mysql.com/doc/refman/8.0/en/table.html
 //
 //	TABLE table_name [ORDER BY column_name] [LIMIT number [OFFSET number]]
+// parseTableStmt parses a TABLE statement.
+//
+// Ref: https://dev.mysql.com/doc/refman/8.0/en/table.html
+//
+//	TABLE table_name
+//	    [ORDER BY column_name]
+//	    [LIMIT number [OFFSET number]]
+//	    [INTO OUTFILE 'file_name'
+//	        [{FIELDS | COLUMNS} ...]
+//	        [LINES ...]
+//	    | INTO DUMPFILE 'file_name'
+//	    | INTO var_name [, var_name] ...]
 func (p *Parser) parseTableStmt() (*nodes.TableStmt, error) {
 	start := p.pos()
 	p.advance() // consume TABLE
@@ -1583,6 +1595,16 @@ func (p *Parser) parseTableStmt() (*nodes.TableStmt, error) {
 			return nil, err
 		}
 		stmt.Limit = limit
+	}
+
+	// INTO clause
+	if p.cur.Type == kwINTO {
+		p.advance()
+		into, err := p.parseIntoClause()
+		if err != nil {
+			return nil, err
+		}
+		stmt.Into = into
 	}
 
 	stmt.Loc.End = p.pos()

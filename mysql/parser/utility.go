@@ -1992,7 +1992,24 @@ func (p *Parser) parseCacheIndexStmt() (*nodes.CacheIndexStmt, error) {
 	return stmt, nil
 }
 
-// parseLoadIndexIntoCacheStmt parses LOAD INDEX INTO CACHE tbl_name [, tbl_name] ...
+// parseLoadIndexIntoCacheStmt parses LOAD INDEX INTO CACHE.
+//
+// Ref: https://dev.mysql.com/doc/refman/8.0/en/load-index.html
+//
+//	LOAD INDEX INTO CACHE
+//	  tbl_index_list [, tbl_index_list] ...
+//
+//	tbl_index_list:
+//	  tbl_name
+//	    [PARTITION (partition_list)]
+//	    [{INDEX | KEY} (index_name [, index_name] ...)]
+//	    [IGNORE LEAVES]
+//
+//	partition_list: {
+//	    partition_name [, partition_name] ...
+//	  | ALL
+//	}
+//
 // LOAD and INDEX already consumed. p.cur is INTO.
 func (p *Parser) parseLoadIndexIntoCacheStmt(start int) (*nodes.LoadIndexIntoCacheStmt, error) {
 	p.advance() // consume INTO
@@ -2004,25 +2021,67 @@ func (p *Parser) parseLoadIndexIntoCacheStmt(start int) (*nodes.LoadIndexIntoCac
 
 	// Parse table list
 	for {
+		tblStart := p.pos()
 		ref, err := p.parseTableRef()
 		if err != nil {
 			return nil, err
 		}
-		stmt.Tables = append(stmt.Tables, ref)
-		// Skip optional IGNORE LEAVES or INDEX/KEY hints
-		for p.isIdentToken() && (eqFold(p.cur.Str, "IGNORE") || eqFold(p.cur.Str, "INDEX") || eqFold(p.cur.Str, "KEY")) {
+		entry := &nodes.LoadIndexTable{
+			Loc:   nodes.Loc{Start: tblStart},
+			Table: ref,
+		}
+
+		// [PARTITION (partition_list | ALL)]
+		if p.cur.Type == kwPARTITION {
 			p.advance()
 			if p.cur.Type == '(' {
-				for p.cur.Type != ')' && p.cur.Type != tokEOF {
+				p.advance()
+				if p.cur.Type == kwALL {
+					entry.Partitions = []string{"ALL"}
 					p.advance()
+				} else {
+					for {
+						name, _, _ := p.parseIdentifier()
+						entry.Partitions = append(entry.Partitions, name)
+						if p.cur.Type != ',' {
+							break
+						}
+						p.advance()
+					}
 				}
-				if p.cur.Type == ')' {
-					p.advance()
-				}
-			} else if p.isIdentToken() {
-				p.advance() // e.g. LEAVES
+				p.match(')')
 			}
 		}
+
+		// [{INDEX | KEY} (index_name [, index_name] ...)]
+		if p.cur.Type == kwINDEX || p.cur.Type == kwKEY {
+			p.advance()
+			if p.cur.Type == '(' {
+				p.advance()
+				for {
+					name, _, _ := p.parseIdentifier()
+					entry.Indexes = append(entry.Indexes, name)
+					if p.cur.Type != ',' {
+						break
+					}
+					p.advance()
+				}
+				p.match(')')
+			}
+		}
+
+		// [IGNORE LEAVES]
+		if p.cur.Type == kwIGNORE {
+			p.advance()
+			if p.isIdentToken() && eqFold(p.cur.Str, "LEAVES") {
+				p.advance()
+			}
+			entry.IgnoreLeaves = true
+		}
+
+		entry.Loc.End = p.pos()
+		stmt.Tables = append(stmt.Tables, entry)
+
 		if p.cur.Type != ',' {
 			break
 		}

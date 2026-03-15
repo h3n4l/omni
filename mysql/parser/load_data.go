@@ -4,22 +4,55 @@ import (
 	nodes "github.com/bytebase/omni/mysql/ast"
 )
 
-// parseLoadDataStmt parses a LOAD DATA statement.
+// parseLoadDataStmt parses a LOAD DATA or LOAD XML statement.
 //
 // Ref: https://dev.mysql.com/doc/refman/8.0/en/load-data.html
+// Ref: https://dev.mysql.com/doc/refman/8.0/en/load-xml.html
 //
-//	LOAD DATA [LOCAL] INFILE 'file_name'
+//	LOAD DATA
+//	    [LOW_PRIORITY | CONCURRENT] [LOCAL]
+//	    INFILE 'file_name'
 //	    [REPLACE | IGNORE]
 //	    INTO TABLE tbl_name
-//	    [FIELDS [TERMINATED BY 'string'] [[OPTIONALLY] ENCLOSED BY 'char'] [ESCAPED BY 'char']]
-//	    [LINES [STARTING BY 'string'] [TERMINATED BY 'string']]
+//	    [PARTITION (partition_name [, partition_name] ...)]
+//	    [CHARACTER SET charset_name]
+//	    [{FIELDS | COLUMNS}
+//	        [TERMINATED BY 'string']
+//	        [[OPTIONALLY] ENCLOSED BY 'char']
+//	        [ESCAPED BY 'char']
+//	    ]
+//	    [LINES
+//	        [STARTING BY 'string']
+//	        [TERMINATED BY 'string']
+//	    ]
 //	    [IGNORE number {LINES | ROWS}]
 //	    [(col_name_or_user_var [, col_name_or_user_var] ...)]
 //	    [SET col_name={expr | DEFAULT} [, col_name={expr | DEFAULT}] ...]
+//
+//	LOAD XML
+//	    [LOW_PRIORITY | CONCURRENT] [LOCAL]
+//	    INFILE 'file_name'
+//	    [REPLACE | IGNORE]
+//	    INTO TABLE [db_name.]tbl_name
+//	    [CHARACTER SET charset_name]
+//	    [ROWS IDENTIFIED BY '<tagname>']
+//	    [IGNORE number {LINES | ROWS}]
+//	    [(field_name_or_user_var [, field_name_or_user_var] ...)]
+//	    [SET col_name={expr | DEFAULT} [, col_name={expr | DEFAULT}] ...]
 func (p *Parser) parseLoadDataStmt(start int) (*nodes.LoadDataStmt, error) {
+	isXML := p.cur.Type == tokIDENT && eqFold(p.cur.Str, "XML")
 	p.advance() // consume DATA or XML
 
-	stmt := &nodes.LoadDataStmt{Loc: nodes.Loc{Start: start}}
+	stmt := &nodes.LoadDataStmt{Loc: nodes.Loc{Start: start}, IsXML: isXML}
+
+	// [LOW_PRIORITY | CONCURRENT]
+	if p.cur.Type == kwLOW_PRIORITY {
+		stmt.LowPriority = true
+		p.advance()
+	} else if p.isIdentToken() && eqFold(p.cur.Str, "CONCURRENT") {
+		stmt.Concurrent = true
+		p.advance()
+	}
 
 	// [LOCAL]
 	if p.cur.Type == kwLOCAL {
@@ -52,7 +85,46 @@ func (p *Parser) parseLoadDataStmt(start int) (*nodes.LoadDataStmt, error) {
 	}
 	stmt.Table = ref
 
-	// [FIELDS ...]
+	// [PARTITION (partition_name, ...)] (LOAD DATA only)
+	if !isXML && p.cur.Type == kwPARTITION {
+		p.advance()
+		parts, err := p.parseParenIdentList()
+		if err != nil {
+			return nil, err
+		}
+		stmt.Partitions = parts
+	}
+
+	// [CHARACTER SET charset_name]
+	if p.cur.Type == kwCHARACTER {
+		p.advance()
+		p.match(kwSET)
+		if p.isIdentToken() {
+			name, _, _ := p.parseIdentifier()
+			stmt.CharacterSet = name
+		}
+	} else if p.cur.Type == kwCHARSET {
+		p.advance()
+		if p.isIdentToken() {
+			name, _, _ := p.parseIdentifier()
+			stmt.CharacterSet = name
+		}
+	}
+
+	// [ROWS IDENTIFIED BY '<tagname>'] (LOAD XML only)
+	if isXML && p.cur.Type == kwROWS {
+		p.advance()
+		if p.cur.Type == kwIDENTIFIED {
+			p.advance()
+			p.match(kwBY)
+			if p.cur.Type == tokSCONST {
+				stmt.RowsIdentifiedBy = p.cur.Str
+				p.advance()
+			}
+		}
+	}
+
+	// [{FIELDS | COLUMNS} ...]
 	if p.cur.Type == kwFIELDS || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "columns")) {
 		p.advance()
 		p.parseFieldsClause(stmt)
@@ -132,15 +204,9 @@ func (p *Parser) parseFieldsClause(stmt *nodes.LoadDataStmt) {
 				stmt.FieldsTerminatedBy = p.cur.Str
 				p.advance()
 			}
-		} else if p.cur.Type == kwENCLOSED {
-			p.advance()
-			p.match(kwBY)
-			if p.cur.Type == tokSCONST {
-				stmt.FieldsEnclosedBy = p.cur.Str
-				p.advance()
-			}
 		} else if p.cur.Type == kwOPTIONALLY {
 			p.advance()
+			stmt.FieldsOptionalEncl = true
 			if p.cur.Type == kwENCLOSED {
 				p.advance()
 				p.match(kwBY)
@@ -148,6 +214,13 @@ func (p *Parser) parseFieldsClause(stmt *nodes.LoadDataStmt) {
 					stmt.FieldsEnclosedBy = p.cur.Str
 					p.advance()
 				}
+			}
+		} else if p.cur.Type == kwENCLOSED {
+			p.advance()
+			p.match(kwBY)
+			if p.cur.Type == tokSCONST {
+				stmt.FieldsEnclosedBy = p.cur.Str
+				p.advance()
 			}
 		} else if p.cur.Type == kwESCAPED {
 			p.advance()
