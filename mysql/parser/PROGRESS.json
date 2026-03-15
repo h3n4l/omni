@@ -2777,7 +2777,7 @@
       "id": 113,
       "name": "review_replication",
       "file": "replication.go",
-      "status": "pending",
+      "status": "done",
       "description": "BNF review: CHANGE REPLICATION SOURCE, START/STOP REPLICA, RESET, RESET PERSIST, CHANGE MASTER TO, START/STOP GROUP REPLICATION against 14+ lines of BNF plus replication docs.",
       "effort": "review",
       "bnf_files": [
