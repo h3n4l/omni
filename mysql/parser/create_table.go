@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"strings"
+
 	nodes "github.com/bytebase/omni/mysql/ast"
 )
 
@@ -977,6 +979,70 @@ func (p *Parser) parseTableOption() (*nodes.TableOption, bool) {
 			return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "START TRANSACTION", Value: ""}, true
 		}
 		return nil, false
+
+	case kwCHECKSUM:
+		// CHECKSUM [=] {0 | 1}
+		p.advance()
+		p.match('=')
+		val := p.consumeOptionValue()
+		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "CHECKSUM", Value: val}, true
+
+	case kwTABLESPACE:
+		// TABLESPACE tablespace_name [STORAGE {DISK | MEMORY}]
+		p.advance()
+		p.match('=')
+		val := p.consumeOptionValue()
+		opt := &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "TABLESPACE", Value: val}
+		if p.cur.Type == kwSTORAGE {
+			p.advance()
+			storageVal := p.consumeOptionValue()
+			opt.Storage = storageVal
+		}
+		opt.Loc.End = p.pos()
+		return opt, true
+
+	case kwENCRYPTION:
+		// ENCRYPTION [=] {'Y' | 'N'}
+		p.advance()
+		p.match('=')
+		val := p.consumeOptionValue()
+		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "ENCRYPTION", Value: val}, true
+
+	case kwUNION:
+		// UNION [=] (tbl_name[,tbl_name]...)
+		p.advance()
+		p.match('=')
+		if p.cur.Type == '(' {
+			names, err := p.parseParenIdentList()
+			if err == nil {
+				val := strings.Join(names, ",")
+				return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "UNION", Value: val}, true
+			}
+		}
+		val := p.consumeOptionValue()
+		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "UNION", Value: val}, true
+
+	case kwINDEX:
+		// INDEX DIRECTORY [=] 'path' (as table option)
+		if next := p.peekNext(); next.Type == kwDIRECTORY {
+			p.advance() // consume INDEX
+			p.advance() // consume DIRECTORY
+			p.match('=')
+			val := p.consumeOptionValue()
+			return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "INDEX DIRECTORY", Value: val}, true
+		}
+		return nil, false
+
+	case kwDATA:
+		// DATA DIRECTORY [=] 'path'
+		if next := p.peekNext(); next.Type == kwDIRECTORY {
+			p.advance() // consume DATA
+			p.advance() // consume DIRECTORY
+			p.match('=')
+			val := p.consumeOptionValue()
+			return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "DATA DIRECTORY", Value: val}, true
+		}
+		return nil, false
 	}
 
 	// Handle identifier-based options: KEY_BLOCK_SIZE, STATS_AUTO_RECALC, etc.
@@ -991,15 +1057,9 @@ func (p *Parser) parseTableOption() (*nodes.TableOption, bool) {
 			eqFold(optName, "min_rows"),
 			eqFold(optName, "avg_row_length"),
 			eqFold(optName, "pack_keys"),
-			eqFold(optName, "checksum"),
 			eqFold(optName, "delay_key_write"),
 			eqFold(optName, "compression"),
-			eqFold(optName, "encryption"),
 			eqFold(optName, "insert_method"),
-			eqFold(optName, "data_directory"),
-			eqFold(optName, "index_directory"),
-			eqFold(optName, "tablespace"),
-			eqFold(optName, "union"),
 			eqFold(optName, "secondary_engine"),
 			eqFold(optName, "secondary_engine_attribute"),
 			eqFold(optName, "autoextend_size"),

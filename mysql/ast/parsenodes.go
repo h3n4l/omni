@@ -468,9 +468,10 @@ const (
 
 // TableOption represents a table option (ENGINE, CHARSET, etc.).
 type TableOption struct {
-	Loc   Loc
-	Name  string
-	Value string
+	Loc     Loc
+	Name    string
+	Value   string
+	Storage string // TABLESPACE ... STORAGE {DISK|MEMORY}
 }
 
 func (o *TableOption) nodeTag() {}

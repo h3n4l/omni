@@ -2902,14 +2902,34 @@
       "rules": ["writeBinaryExpr", "writeUnaryExpr", "writeIsExpr"],
       "depends_on": [3],
       "tests": ["TestDeparseBinaryExprLoc", "TestDeparseUnaryExprLoc", "TestDeparseIsExprLoc"]
+    },
+    {
+      "id": 121,
+      "name": "depth_fix_table_option_keywords",
+      "file": "create_table.go",
+      "status": "done",
+      "description": "Fix batch 7 gap: parseTableOption() checks for CHECKSUM, TABLESPACE, ENCRYPTION, UNION in the tokIDENT fallback branch, but the lexer registers these as keyword tokens (kwCHECKSUM, kwTABLESPACE, kwENCRYPTION, kwUNION) so they never enter that branch. Add explicit case entries in the switch statement. UNION also needs parenthesized list parsing instead of consumeOptionValue.",
+      "rules": ["parseTableOption"],
+      "depends_on": [7, 80, 89],
+      "tests": ["TestParseCreateTableChecksum", "TestParseCreateTableTablespace", "TestParseCreateTableEncryption", "TestParseCreateTableUnion"]
+    },
+    {
+      "id": 122,
+      "name": "depth_fix_table_option_data_index_directory",
+      "file": "create_table.go",
+      "status": "done",
+      "description": "Fix batch 7 gap: DATA DIRECTORY and INDEX DIRECTORY table options are two-token sequences (DATA is kwDATA, INDEX is kwINDEX) but parseTableOption() checks for 'data_directory' and 'index_directory' as single tokIDENT strings, which never matches. Add case kwDATA: and case kwINDEX: that peek for DIRECTORY next token and parse [=] 'path'.",
+      "rules": ["parseTableOption"],
+      "depends_on": [7, 121],
+      "tests": ["TestParseCreateTableDataDirectory", "TestParseCreateTableIndexDirectory"]
     }
   ],
   "stats": {
-    "total": 121,
-    "done": 121,
+    "total": 123,
+    "done": 123,
     "pending": 0,
     "failed": 0,
     "in_progress": 0
   },
-  "audit_round": 21
+  "audit_round": 22
 }

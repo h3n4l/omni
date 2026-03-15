@@ -244,7 +244,11 @@ func writeNode(sb *strings.Builder, node Node) {
 	case *AlterTableCmd:
 		writeAlterTableCmd(sb, n)
 	case *TableOption:
-		fmt.Fprintf(sb, "{TABLE_OPT :loc %d :name %s :val %s}", n.Loc.Start, n.Name, n.Value)
+		if n.Storage != "" {
+			fmt.Fprintf(sb, "{TABLE_OPT :loc %d :name %s :val %s :storage %s}", n.Loc.Start, n.Name, n.Value, n.Storage)
+		} else {
+			fmt.Fprintf(sb, "{TABLE_OPT :loc %d :name %s :val %s}", n.Loc.Start, n.Name, n.Value)
+		}
 	case *DatabaseOption:
 		fmt.Fprintf(sb, "{DB_OPT :loc %d :name %s :val %s}", n.Loc.Start, n.Name, n.Value)
 	case *PartitionClause:

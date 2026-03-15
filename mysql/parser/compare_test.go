@@ -11304,3 +11304,80 @@ func TestDeparseIsExprLoc(t *testing.T) {
 		t.Errorf("IsExpr missing :loc in deparse output: %s", got)
 	}
 }
+
+func TestParseCreateTableChecksum(t *testing.T) {
+	tests := []string{
+		"CREATE TABLE t (id INT) CHECKSUM = 1",
+		"CREATE TABLE t (id INT) CHECKSUM = 0",
+		"CREATE TABLE t (id INT) CHECKSUM 1",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseCreateTableTablespace(t *testing.T) {
+	tests := []string{
+		"CREATE TABLE t (id INT) TABLESPACE ts1",
+		"CREATE TABLE t (id INT) TABLESPACE = ts1",
+		"CREATE TABLE t (id INT) TABLESPACE ts1 STORAGE DISK",
+		"CREATE TABLE t (id INT) TABLESPACE ts1 STORAGE MEMORY",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseCreateTableEncryption(t *testing.T) {
+	tests := []string{
+		"CREATE TABLE t (id INT) ENCRYPTION = 'Y'",
+		"CREATE TABLE t (id INT) ENCRYPTION = 'N'",
+		"CREATE TABLE t (id INT) ENCRYPTION 'Y'",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseCreateTableUnion(t *testing.T) {
+	tests := []string{
+		"CREATE TABLE t (id INT) UNION = (t1, t2, t3)",
+		"CREATE TABLE t (id INT) UNION = (t1)",
+		"CREATE TABLE t (id INT) UNION (t1, t2)",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseCreateTableDataDirectory(t *testing.T) {
+	tests := []string{
+		"CREATE TABLE t (id INT) DATA DIRECTORY = '/var/data'",
+		"CREATE TABLE t (id INT) DATA DIRECTORY '/var/data'",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestParseCreateTableIndexDirectory(t *testing.T) {
+	tests := []string{
+		"CREATE TABLE t (id INT) INDEX DIRECTORY = '/var/idx'",
+		"CREATE TABLE t (id INT) INDEX DIRECTORY '/var/idx'",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
