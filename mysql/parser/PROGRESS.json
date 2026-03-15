@@ -2378,7 +2378,7 @@
       "id": 101,
       "name": "review_alter_table",
       "file": "alter_table.go",
-      "status": "pending",
+      "status": "done",
       "description": "BNF review: Full review against 121-line BNF. ADD/MODIFY/CHANGE/DROP COLUMN, ADD/DROP INDEX/KEY, RENAME, CONVERT CHARACTER SET, PARTITION operations (ADD/DROP/TRUNCATE/REORGANIZE/COALESCE/EXCHANGE/ANALYZE/CHECK/OPTIMIZE/REBUILD/REPAIR/REMOVE), ALGORITHM, LOCK, FORCE, ORDER BY, ENABLE/DISABLE KEYS, SECONDARY_LOAD/UNLOAD.",
       "effort": "review",
       "bnf_files": ["alter-table.bnf"],

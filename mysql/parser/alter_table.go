@@ -479,14 +479,10 @@ func (p *Parser) parseAlterDrop(cmd *nodes.AlterTableCmd) (*nodes.AlterTableCmd,
 		p.match(kwCOLUMN)
 		if p.cur.Type == kwIF {
 			p.advance()
-			p.match(kwNOT) // IF EXISTS (not IF NOT)
-			// Actually it's IF EXISTS for DROP
-			// But let's check: MySQL uses DROP [COLUMN] [IF EXISTS] col_name
-			// Here we consumed IF, let's check for EXISTS
-			if p.cur.Type == kwEXISTS_KW {
-				p.advance()
-				cmd.IfExists = true
+			if _, err := p.expect(kwEXISTS_KW); err != nil {
+				return nil, err
 			}
+			cmd.IfExists = true
 		}
 		name, _, err := p.parseIdentifier()
 		if err != nil {
@@ -588,13 +584,13 @@ func (p *Parser) parseAlterColumn(cmd *nodes.AlterTableCmd) (*nodes.AlterTableCm
 		cmd.Type = nodes.ATAlterCheckEnforced
 		if p.cur.Type == kwNOT {
 			p.advance()
-			cmd.NewName = "NOT ENFORCED"
-		}
-		if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "enforced") {
-			p.advance()
-			if cmd.NewName == "" {
-				cmd.NewName = "ENFORCED"
+			if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "enforced") {
+				p.advance()
 			}
+			cmd.NewName = "NOT ENFORCED"
+		} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "enforced") {
+			p.advance()
+			cmd.NewName = "ENFORCED"
 		}
 		cmd.Loc.End = p.pos()
 		return cmd, nil
@@ -611,13 +607,13 @@ func (p *Parser) parseAlterColumn(cmd *nodes.AlterTableCmd) (*nodes.AlterTableCm
 		cmd.Type = nodes.ATAlterCheckEnforced
 		if p.cur.Type == kwNOT {
 			p.advance()
-			cmd.NewName = "NOT ENFORCED"
-		}
-		if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "enforced") {
-			p.advance()
-			if cmd.NewName == "" {
-				cmd.NewName = "ENFORCED"
+			if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "enforced") {
+				p.advance()
 			}
+			cmd.NewName = "NOT ENFORCED"
+		} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "enforced") {
+			p.advance()
+			cmd.NewName = "ENFORCED"
 		}
 		cmd.Loc.End = p.pos()
 		return cmd, nil
