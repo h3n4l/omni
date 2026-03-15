@@ -89,8 +89,8 @@ func (p *Parser) parseCreateFunctionStmt(isProcedure bool) (*nodes.CreateFunctio
 		IsProcedure: isProcedure,
 	}
 
-	// Optional IF NOT EXISTS (loadable UDF form, MySQL 8.0.29+)
-	if !isProcedure && p.cur.Type == kwIF {
+	// Optional IF NOT EXISTS (MySQL 8.0.29+, applies to both FUNCTION and PROCEDURE)
+	if p.cur.Type == kwIF {
 		p.advance() // consume IF
 		p.match(kwNOT)
 		p.match(kwEXISTS_KW)

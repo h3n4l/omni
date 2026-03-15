@@ -10298,3 +10298,30 @@ func TestBatch102_DropTriggerFull(t *testing.T) {
 		})
 	}
 }
+
+// Batch 103: BNF review — routines and events
+func TestBatch103_CreateProcedureIfNotExists(t *testing.T) {
+	tests := []string{
+		"CREATE PROCEDURE IF NOT EXISTS myproc() SELECT 1",
+		"CREATE PROCEDURE IF NOT EXISTS mydb.myproc(IN x INT) SELECT x",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestBatch103_CreateEventEnableDisable(t *testing.T) {
+	tests := []string{
+		"CREATE EVENT ev1 ON SCHEDULE AT '2024-01-01 00:00:00' ENABLE DO SELECT 1",
+		"CREATE EVENT ev1 ON SCHEDULE AT '2024-01-01 00:00:00' DISABLE DO SELECT 1",
+		"CREATE EVENT ev1 ON SCHEDULE AT '2024-01-01 00:00:00' DISABLE ON SLAVE DO SELECT 1",
+		"CREATE EVENT ev1 ON SCHEDULE EVERY 1 DAY ENABLE COMMENT 'daily' DO DELETE FROM t WHERE created < NOW() - INTERVAL 30 DAY",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}

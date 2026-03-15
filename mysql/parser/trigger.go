@@ -185,15 +185,15 @@ func (p *Parser) parseCreateEventStmt() (*nodes.CreateEventStmt, error) {
 	}
 
 	// Optional: ENABLE | DISABLE [ON SLAVE]
-	if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "enable") {
+	if p.cur.Type == kwENABLE {
 		stmt.Enable = "ENABLE"
 		p.advance()
-	} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "disable") {
+	} else if p.cur.Type == kwDISABLE {
 		stmt.Enable = "DISABLE"
 		p.advance()
 		if p.cur.Type == kwON {
 			next := p.peekNext()
-			if next.Type == tokIDENT && eqFold(next.Str, "slave") {
+			if next.Type == kwSLAVE || (next.Type == tokIDENT && eqFold(next.Str, "slave")) {
 				p.advance()
 				p.advance()
 				stmt.Enable = "DISABLE ON SLAVE"

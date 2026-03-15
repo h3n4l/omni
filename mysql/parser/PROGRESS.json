@@ -2406,7 +2406,7 @@
       "id": 103,
       "name": "review_routines_events",
       "file": "create_function.go",
-      "status": "pending",
+      "status": "done",
       "description": "BNF review: CREATE/ALTER/DROP PROCEDURE, CREATE/ALTER/DROP FUNCTION, CALL, CREATE/ALTER/DROP EVENT against 145 lines of BNF.",
       "effort": "review",
       "bnf_files": ["create-procedure.bnf", "alter-procedure.bnf", "create-function.bnf", "alter-function.bnf", "drop-procedure.bnf", "drop-function.bnf", "call.bnf", "create-event.bnf", "alter-event.bnf", "drop-event.bnf"],
