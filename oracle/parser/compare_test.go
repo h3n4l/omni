@@ -9078,3 +9078,61 @@ func TestAlterMaterializedView(t *testing.T) {
 		})
 	}
 }
+
+// TestCommit tests COMMIT statement parsing (batch 113).
+// Covers WRITE [WAIT|NOWAIT] [IMMEDIATE|BATCH] and FORCE 'string' [, integer].
+func TestCommit(t *testing.T) {
+	tests := []struct {
+		sql       string
+		writeWait string
+		writeBat  string
+		force     string
+		hasForce  bool
+		forceInt  int
+	}{
+		{"COMMIT", "", "", "", false, 0},
+		{"COMMIT WORK", "", "", "", false, 0},
+		{"COMMIT COMMENT 'batch complete'", "", "", "", false, 0},
+		{"COMMIT WRITE WAIT IMMEDIATE", "WAIT", "IMMEDIATE", "", false, 0},
+		{"COMMIT WRITE NOWAIT BATCH", "NOWAIT", "BATCH", "", false, 0},
+		{"COMMIT WRITE WAIT", "WAIT", "", "", false, 0},
+		{"COMMIT WRITE NOWAIT", "NOWAIT", "", "", false, 0},
+		{"COMMIT WRITE IMMEDIATE", "", "IMMEDIATE", "", false, 0},
+		{"COMMIT WRITE BATCH", "", "BATCH", "", false, 0},
+		{"COMMIT FORCE 'txn123'", "", "", "txn123", false, 0},
+		{"COMMIT FORCE 'txn123', 5", "", "", "txn123", true, 5},
+		{"COMMIT WORK COMMENT 'done' WRITE NOWAIT BATCH", "NOWAIT", "BATCH", "", false, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.sql, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() != 1 {
+				t.Fatalf("expected 1 statement, got %d", result.Len())
+			}
+			raw := result.Items[0].(*ast.RawStmt)
+			stmt, ok := raw.Stmt.(*ast.CommitStmt)
+			if !ok {
+				t.Fatalf("expected CommitStmt, got %T", raw.Stmt)
+			}
+			if stmt.WriteWait != tt.writeWait {
+				t.Errorf("WriteWait: got %q, want %q", stmt.WriteWait, tt.writeWait)
+			}
+			if stmt.WriteBatch != tt.writeBat {
+				t.Errorf("WriteBatch: got %q, want %q", stmt.WriteBatch, tt.writeBat)
+			}
+			if stmt.Force != tt.force {
+				t.Errorf("Force: got %q, want %q", stmt.Force, tt.force)
+			}
+			if stmt.HasForceInt != tt.hasForce {
+				t.Errorf("HasForceInt: got %v, want %v", stmt.HasForceInt, tt.hasForce)
+			}
+			if tt.hasForce && stmt.ForceInteger != tt.forceInt {
+				t.Errorf("ForceInteger: got %d, want %d", stmt.ForceInteger, tt.forceInt)
+			}
+			s := ast.NodeToString(result.Items[0])
+			if s == "" {
+				t.Errorf("expected non-empty serialization for %q", tt.sql)
+			}
+		})
+	}
+}

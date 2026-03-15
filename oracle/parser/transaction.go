@@ -35,12 +35,39 @@ func (p *Parser) parseCommitStmt() nodes.StmtNode {
 		}
 	}
 
-	// Optional FORCE 'text'
+	// Optional WRITE [WAIT|NOWAIT] [IMMEDIATE|BATCH]
+	if p.isIdentLikeStr("WRITE") {
+		p.advance() // consume WRITE
+		if p.isIdentLikeStr("WAIT") {
+			stmt.WriteWait = "WAIT"
+			p.advance()
+		} else if p.isIdentLikeStr("NOWAIT") {
+			stmt.WriteWait = "NOWAIT"
+			p.advance()
+		}
+		if p.cur.Type == kwIMMEDIATE {
+			stmt.WriteBatch = "IMMEDIATE"
+			p.advance()
+		} else if p.isIdentLikeStr("BATCH") {
+			stmt.WriteBatch = "BATCH"
+			p.advance()
+		}
+	}
+
+	// Optional FORCE 'text' [, integer]
 	if p.cur.Type == kwFORCE {
 		p.advance() // consume FORCE
 		if p.cur.Type == tokSCONST {
 			stmt.Force = p.cur.Str
 			p.advance()
+		}
+		// optional , integer
+		if p.cur.Type == ',' {
+			p.advance()
+			if p.cur.Type == tokICONST {
+				stmt.ForceInteger = p.parseIntValue()
+				stmt.HasForceInt = true
+			}
 		}
 	}
 

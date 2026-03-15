@@ -3416,8 +3416,17 @@ func writeCommitStmt(sb *strings.Builder, n *CommitStmt) {
 	if n.Comment != "" {
 		sb.WriteString(fmt.Sprintf(" :comment %q", n.Comment))
 	}
+	if n.WriteWait != "" {
+		sb.WriteString(fmt.Sprintf(" :writeWait %q", n.WriteWait))
+	}
+	if n.WriteBatch != "" {
+		sb.WriteString(fmt.Sprintf(" :writeBatch %q", n.WriteBatch))
+	}
 	if n.Force != "" {
 		sb.WriteString(fmt.Sprintf(" :force %q", n.Force))
+	}
+	if n.HasForceInt {
+		sb.WriteString(fmt.Sprintf(" :forceInteger %d", n.ForceInteger))
 	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

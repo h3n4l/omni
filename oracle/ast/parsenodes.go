@@ -2071,10 +2071,14 @@ func (n *SetParam) nodeTag() {}
 
 // CommitStmt represents a COMMIT statement.
 type CommitStmt struct {
-	Work    bool   // WORK keyword
-	Comment string // COMMENT 'text'
-	Force   string // FORCE 'text'
-	Loc     Loc
+	Work         bool   // WORK keyword
+	Comment      string // COMMENT 'text'
+	WriteWait    string // "WAIT" or "NOWAIT"
+	WriteBatch   string // "IMMEDIATE" or "BATCH"
+	Force        string // FORCE 'text'
+	ForceInteger int    // optional integer after FORCE string
+	HasForceInt  bool   // whether ForceInteger was specified
+	Loc          Loc
 }
 
 func (n *CommitStmt) nodeTag()  {}

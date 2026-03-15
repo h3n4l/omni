@@ -1565,7 +1565,7 @@
       "id": 113,
       "name": "commit_write_clause",
       "file": "transaction.go",
-      "status": "pending",
+      "status": "done",
       "description": "Fix batch 106 gap: parseCommitStmt missing WRITE [WAIT|NOWAIT] [IMMEDIATE|BATCH] clause. Also missing optional integer after FORCE string.",
       "bnf_files": [
         "COMMIT.bnf"
