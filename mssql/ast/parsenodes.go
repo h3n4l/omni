@@ -294,6 +294,7 @@ type CreateTableStmt struct {
 	IfNotExists bool
 	IsNode      bool // AS NODE (graph table)
 	IsEdge      bool // AS EDGE (graph table)
+	IsFileTable bool // AS FILETABLE
 
 	// PERIOD FOR SYSTEM_TIME (start_col, end_col)
 	PeriodStartCol string
@@ -326,14 +327,17 @@ func (n *CreateTableStmt) stmtNode() {}
 //	    [ WHERE <filter_predicate> ]
 //	    [ WITH ( <index_option> [ ,...n ] ) ]
 type InlineIndexDef struct {
-	Name        string
-	Unique      bool
-	Clustered   *bool    // true=CLUSTERED, false=NONCLUSTERED, nil=unspecified
-	Columns     *List    // list of *IndexColumn
-	IncludeCols *List    // INCLUDE columns
-	WhereClause ExprNode // filtered index
-	Options     *List    // WITH options
-	Loc         Loc
+	Name         string
+	Unique       bool
+	Clustered    *bool    // true=CLUSTERED, false=NONCLUSTERED, nil=unspecified
+	Columnstore  bool     // COLUMNSTORE index
+	Columns      *List    // list of *IndexColumn
+	IncludeCols  *List    // INCLUDE columns
+	WhereClause  ExprNode // filtered index
+	Options      *List    // WITH options
+	OnFilegroup  string   // ON filegroup or partition scheme
+	FilestreamOn string   // FILESTREAM_ON filegroup
+	Loc          Loc
 }
 
 func (n *InlineIndexDef) nodeTag() {}
@@ -350,10 +354,11 @@ type ColumnDef struct {
 	Nullable    *NullableSpec
 
 	// Advanced column options
-	Sparse     bool // SPARSE
-	Filestream bool // FILESTREAM
-	Rowguidcol bool // ROWGUIDCOL
-	Hidden     bool // HIDDEN
+	Sparse      bool // SPARSE
+	Filestream  bool // FILESTREAM
+	Rowguidcol  bool // ROWGUIDCOL
+	Hidden      bool // HIDDEN
+	IsColumnSet bool // XML COLUMN_SET FOR ALL_SPARSE_COLUMNS
 
 	// MASKED WITH (FUNCTION = 'mask_function')
 	MaskFunction string
@@ -393,6 +398,7 @@ func (n *IdentitySpec) nodeTag() {}
 type ComputedColumnDef struct {
 	Expr      ExprNode
 	Persisted bool
+	NotNull   bool // NOT NULL after PERSISTED
 	Loc       Loc
 }
 
@@ -440,11 +446,15 @@ type ConstraintDef struct {
 	Expr       ExprNode // CHECK expression, default expression
 	RefTable   *TableRef
 	RefColumns *List // FK referenced columns
-	OnDelete        ReferentialAction
-	OnUpdate        ReferentialAction
-	Clustered       *bool // true=CLUSTERED, false=NONCLUSTERED, nil=unspecified
-	EdgeConnections *List // list of *EdgeConnectionDef for EDGE CONSTRAINT
-	Loc             Loc
+	OnDelete          ReferentialAction
+	OnUpdate          ReferentialAction
+	Clustered         *bool  // true=CLUSTERED, false=NONCLUSTERED, nil=unspecified
+	NotForReplication bool   // NOT FOR REPLICATION (CHECK, FK)
+	IndexOptions      *List  // WITH ( index_option [,...n] )
+	Fillfactor        int    // WITH FILLFACTOR = N
+	OnFilegroup       string // ON filegroup or partition_scheme(col)
+	EdgeConnections   *List  // list of *EdgeConnectionDef for EDGE CONSTRAINT
+	Loc               Loc
 }
 
 func (n *ConstraintDef) nodeTag() {}

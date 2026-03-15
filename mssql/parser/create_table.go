@@ -9,7 +9,7 @@ import (
 
 // parseCreateTableStmt parses a CREATE TABLE statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-table-transact-sql
+// BNF: mssql/parser/bnf/create-table-transact-sql.bnf
 //
 //	CREATE TABLE
 //	    { database_name.schema_name.table_name | schema_name.table_name | table_name }
@@ -51,6 +51,10 @@ func (p *Parser) parseCreateTableStmt() *nodes.CreateTableStmt {
 			p.advance() // AS
 			p.advance() // EDGE
 			stmt.IsEdge = true
+		} else if next.Type == tokIDENT && strings.EqualFold(next.Str, "filetable") {
+			p.advance() // AS
+			p.advance() // FILETABLE
+			stmt.IsFileTable = true
 		}
 	}
 
@@ -125,12 +129,21 @@ func (p *Parser) parseCreateTableStmt() *nodes.CreateTableStmt {
 		stmt.Constraints = &nodes.List{Items: constraints}
 	}
 
-	// ON filegroup
+	// ON { partition_scheme_name ( partition_column_name ) | filegroup | "default" }
 	if p.cur.Type == kwON {
 		p.advance()
 		if p.isIdentLike() {
-			stmt.OnFilegroup = p.cur.Str
+			name := p.cur.Str
 			p.advance()
+			if p.cur.Type == '(' {
+				// partition_scheme_name ( partition_column_name )
+				p.advance()
+				partCol, _ := p.parseIdentifier()
+				p.expect(')')
+				stmt.OnFilegroup = name + "(" + partCol + ")"
+			} else {
+				stmt.OnFilegroup = name
+			}
 		}
 	}
 
@@ -159,7 +172,7 @@ func (p *Parser) parseCreateTableStmt() *nodes.CreateTableStmt {
 	}
 
 	// AS NODE | AS EDGE (graph tables) -- can also appear after closing paren
-	if !stmt.IsNode && !stmt.IsEdge && p.cur.Type == kwAS {
+	if !stmt.IsNode && !stmt.IsEdge && !stmt.IsFileTable && p.cur.Type == kwAS {
 		next := p.peekNext()
 		if next.Type == tokIDENT && strings.EqualFold(next.Str, "node") {
 			p.advance() // AS
@@ -183,8 +196,19 @@ func (p *Parser) parseCreateTableStmt() *nodes.CreateTableStmt {
 //	  | XML_COMPRESSION = { ON | OFF }
 //	  | MEMORY_OPTIMIZED = ON
 //	  | DURABILITY = { SCHEMA_ONLY | SCHEMA_AND_DATA }
-//	  | SYSTEM_VERSIONING = ON [ ( HISTORY_TABLE = schema.table [, DATA_CONSISTENCY_CHECK = { ON | OFF } ] ) ]
-//	  | LEDGER = ON | OFF
+//	  | SYSTEM_VERSIONING = ON [ ( HISTORY_TABLE = schema.table
+//	      [, DATA_CONSISTENCY_CHECK = { ON | OFF } ]
+//	      [, HISTORY_RETENTION_PERIOD = { INFINITE | number { DAY | DAYS | WEEK | WEEKS
+//	                                    | MONTH | MONTHS | YEAR | YEARS } } ] ) ]
+//	  | REMOTE_DATA_ARCHIVE = { ON [ ( <table_stretch_options> ) ] | OFF ( MIGRATION_STATE = PAUSED ) }
+//	  | DATA_DELETION = ON { ( FILTER_COLUMN = column_name,
+//	      RETENTION_PERIOD = { INFINITE | number { DAY | DAYS | ... } } ) }
+//	  | LEDGER = ON [ ( <ledger_option> [ ,...n ] ) ] | OFF
+//	  | FILETABLE_DIRECTORY = <directory_name>
+//	  | FILETABLE_COLLATE_FILENAME = { <collation_name> | database_default }
+//	  | FILETABLE_PRIMARY_KEY_CONSTRAINT_NAME = <constraint_name>
+//	  | FILETABLE_STREAMID_UNIQUE_CONSTRAINT_NAME = <constraint_name>
+//	  | FILETABLE_FULLPATH_UNIQUE_CONSTRAINT_NAME = <constraint_name>
 func (p *Parser) parseTableOptions() *nodes.List {
 	if p.cur.Type != '(' {
 		return nil
@@ -312,9 +336,9 @@ func (p *Parser) parseOneTableOption() *nodes.TableOption {
 	return opt
 }
 
-// parseColumnDef parses a column definition.
+// parseColumnDef parses a column definition, computed column, or column set.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-table-transact-sql
+// BNF: mssql/parser/bnf/create-table-transact-sql.bnf
 //
 //	<column_definition> ::=
 //	column_name <data_type>
@@ -335,6 +359,15 @@ func (p *Parser) parseOneTableOption() *nodes.TableOption {
 //	          ALGORITHM = 'AEAD_AES_256_CBC_HMAC_SHA_256'
 //	        ) ]
 //	    [ <column_constraint> [ ,...n ] ]
+//	    [ <column_index> ]
+//
+//	<computed_column_definition> ::=
+//	column_name AS computed_column_expression
+//	[ PERSISTED [ NOT NULL ] ]
+//	[ <column_constraint> ]
+//
+//	<column_set_definition> ::=
+//	column_set_name XML COLUMN_SET FOR ALL_SPARSE_COLUMNS
 func (p *Parser) parseColumnDef() *nodes.ColumnDef {
 	loc := p.pos()
 
@@ -348,20 +381,44 @@ func (p *Parser) parseColumnDef() *nodes.ColumnDef {
 		Loc:  nodes.Loc{Start: loc},
 	}
 
-	// Check for computed column: name AS expr
+	// Check for computed column: name AS expr [ PERSISTED [ NOT NULL ] ]
 	if p.cur.Type == kwAS {
 		p.advance()
 		compLoc := p.pos()
 		expr := p.parseExpr()
 		persisted := false
+		notNull := false
 		if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "persisted") {
 			persisted = true
 			p.advance()
+			// [ NOT NULL ]
+			if p.cur.Type == kwNOT && p.peekNext().Type == kwNULL {
+				p.advance() // NOT
+				p.advance() // NULL
+				notNull = true
+			}
 		}
 		col.Computed = &nodes.ComputedColumnDef{
 			Expr:      expr,
 			Persisted: persisted,
+			NotNull:   notNull,
 			Loc:       nodes.Loc{Start: compLoc},
+		}
+		// Computed columns can also have column constraints (PK, UNIQUE, etc.)
+		for p.cur.Type == kwCONSTRAINT || p.cur.Type == kwPRIMARY || p.cur.Type == kwUNIQUE ||
+			p.cur.Type == kwCHECK || p.cur.Type == kwFOREIGN || p.cur.Type == kwREFERENCES {
+			var constraint *nodes.ConstraintDef
+			if p.cur.Type == kwCONSTRAINT {
+				constraint = p.parseColumnConstraint()
+			} else {
+				constraint = p.parseInlineConstraint("")
+			}
+			if constraint != nil {
+				if col.Constraints == nil {
+					col.Constraints = &nodes.List{}
+				}
+				col.Constraints.Items = append(col.Constraints.Items, constraint)
+			}
 		}
 		col.Loc.End = p.pos()
 		return col
@@ -369,6 +426,21 @@ func (p *Parser) parseColumnDef() *nodes.ColumnDef {
 
 	// Data type
 	col.DataType = p.parseDataType()
+
+	// column_set_definition: column_set_name XML COLUMN_SET FOR ALL_SPARSE_COLUMNS
+	if col.DataType != nil && strings.EqualFold(col.DataType.Name, "xml") &&
+		p.isIdentLike() && strings.EqualFold(p.cur.Str, "column_set") {
+		p.advance() // COLUMN_SET
+		if p.cur.Type == kwFOR {
+			p.advance() // FOR
+		}
+		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "all_sparse_columns") {
+			p.advance()
+		}
+		col.IsColumnSet = true
+		col.Loc.End = p.pos()
+		return col
+	}
 
 	// Column-level options in any order
 	for {
@@ -699,6 +771,24 @@ func (p *Parser) parseColumnConstraint() *nodes.ConstraintDef {
 }
 
 // parseInlineConstraint parses a constraint type (PRIMARY KEY, UNIQUE, CHECK, DEFAULT, REFERENCES).
+//
+// BNF: mssql/parser/bnf/create-table-transact-sql.bnf
+//
+//	<column_constraint> ::=
+//	[ CONSTRAINT constraint_name ]
+//	{
+//	   { PRIMARY KEY | UNIQUE }
+//	        [ CLUSTERED | NONCLUSTERED ]
+//	        [ WITH FILLFACTOR = fillfactor | WITH ( <index_option> [ ,...n ] ) ]
+//	        [ ON { partition_scheme_name ( partition_column_name )
+//	            | filegroup | "default" } ]
+//	  | [ FOREIGN KEY ]
+//	        REFERENCES [ schema_name. ] referenced_table_name [ ( ref_column ) ]
+//	        [ ON DELETE { NO ACTION | CASCADE | SET NULL | SET DEFAULT } ]
+//	        [ ON UPDATE { NO ACTION | CASCADE | SET NULL | SET DEFAULT } ]
+//	        [ NOT FOR REPLICATION ]
+//	  | CHECK [ NOT FOR REPLICATION ] ( logical_expression )
+//	}
 func (p *Parser) parseInlineConstraint(name string) *nodes.ConstraintDef {
 	loc := p.pos()
 	cd := &nodes.ConstraintDef{
@@ -712,13 +802,26 @@ func (p *Parser) parseInlineConstraint(name string) *nodes.ConstraintDef {
 		p.match(kwKEY)
 		cd.Type = nodes.ConstraintPrimaryKey
 		p.parseClusteredOption(cd)
+		p.parseConstraintWithOptions(cd)
+		p.parseConstraintOnFilegroup(cd)
 	case kwUNIQUE:
 		p.advance()
 		cd.Type = nodes.ConstraintUnique
 		p.parseClusteredOption(cd)
+		p.parseConstraintWithOptions(cd)
+		p.parseConstraintOnFilegroup(cd)
 	case kwCHECK:
 		p.advance()
 		cd.Type = nodes.ConstraintCheck
+		// [ NOT FOR REPLICATION ]
+		if p.cur.Type == kwNOT && p.peekNext().Type == kwFOR {
+			p.advance() // NOT
+			p.advance() // FOR
+			if p.cur.Type == kwREPLICATION {
+				p.advance()
+			}
+			cd.NotForReplication = true
+		}
 		if _, err := p.expect('('); err == nil {
 			cd.Expr = p.parseExpr()
 			_, _ = p.expect(')')
@@ -735,6 +838,15 @@ func (p *Parser) parseInlineConstraint(name string) *nodes.ConstraintDef {
 			cd.RefColumns = p.parseParenIdentList()
 		}
 		p.parseReferentialActions(cd)
+		// [ NOT FOR REPLICATION ]
+		if p.cur.Type == kwNOT && p.peekNext().Type == kwFOR {
+			p.advance() // NOT
+			p.advance() // FOR
+			if p.cur.Type == kwREPLICATION {
+				p.advance()
+			}
+			cd.NotForReplication = true
+		}
 	default:
 		return nil
 	}
@@ -743,7 +855,67 @@ func (p *Parser) parseInlineConstraint(name string) *nodes.ConstraintDef {
 	return cd
 }
 
+// parseConstraintWithOptions parses [ WITH FILLFACTOR = N | WITH ( index_options ) ] on PK/UNIQUE constraints.
+func (p *Parser) parseConstraintWithOptions(cd *nodes.ConstraintDef) {
+	if p.cur.Type != kwWITH {
+		return
+	}
+	p.advance()
+	if p.cur.Type == '(' {
+		cd.IndexOptions = p.parseAlterIndexOptions()
+	} else if p.isIdentLike() && strings.EqualFold(p.cur.Str, "FILLFACTOR") {
+		p.advance()
+		if p.cur.Type == '=' {
+			p.advance()
+		}
+		if p.cur.Type == tokICONST {
+			cd.Fillfactor = int(p.cur.Ival)
+			p.advance()
+		}
+	}
+}
+
+// parseConstraintOnFilegroup parses [ ON { partition_scheme(col) | filegroup | "default" } ].
+func (p *Parser) parseConstraintOnFilegroup(cd *nodes.ConstraintDef) {
+	if p.cur.Type != kwON {
+		return
+	}
+	p.advance()
+	if p.isIdentLike() {
+		name := p.cur.Str
+		p.advance()
+		if p.cur.Type == '(' {
+			p.advance()
+			col, _ := p.parseIdentifier()
+			p.expect(')')
+			cd.OnFilegroup = name + "(" + col + ")"
+		} else {
+			cd.OnFilegroup = name
+		}
+	}
+}
+
 // parseTableConstraint parses a table-level constraint.
+//
+// BNF: mssql/parser/bnf/create-table-transact-sql.bnf
+//
+//	<table_constraint> ::=
+//	[ CONSTRAINT constraint_name ]
+//	{
+//	    { PRIMARY KEY | UNIQUE }
+//	        [ CLUSTERED | NONCLUSTERED ]
+//	        ( column_name [ ASC | DESC ] [ ,...n ] )
+//	        [ WITH FILLFACTOR = fillfactor | WITH ( <index_option> [ ,...n ] ) ]
+//	        [ ON { partition_scheme_name (partition_column_name)
+//	            | filegroup | "default" } ]
+//	    | FOREIGN KEY
+//	        ( column_name [ ,...n ] )
+//	        REFERENCES referenced_table_name [ ( ref_column [ ,...n ] ) ]
+//	        [ ON DELETE { NO ACTION | CASCADE | SET NULL | SET DEFAULT } ]
+//	        [ ON UPDATE { NO ACTION | CASCADE | SET NULL | SET DEFAULT } ]
+//	        [ NOT FOR REPLICATION ]
+//	    | CHECK [ NOT FOR REPLICATION ] ( logical_expression )
+//	}
 func (p *Parser) parseTableConstraint() *nodes.ConstraintDef {
 	loc := p.pos()
 	var name string
@@ -765,18 +937,31 @@ func (p *Parser) parseTableConstraint() *nodes.ConstraintDef {
 		cd.Type = nodes.ConstraintPrimaryKey
 		p.parseClusteredOption(cd)
 		if p.cur.Type == '(' {
-			cd.Columns = p.parseParenIdentList()
+			cd.Columns = p.parseIndexColumnList()
 		}
+		p.parseConstraintWithOptions(cd)
+		p.parseConstraintOnFilegroup(cd)
 	case kwUNIQUE:
 		p.advance()
 		cd.Type = nodes.ConstraintUnique
 		p.parseClusteredOption(cd)
 		if p.cur.Type == '(' {
-			cd.Columns = p.parseParenIdentList()
+			cd.Columns = p.parseIndexColumnList()
 		}
+		p.parseConstraintWithOptions(cd)
+		p.parseConstraintOnFilegroup(cd)
 	case kwCHECK:
 		p.advance()
 		cd.Type = nodes.ConstraintCheck
+		// [ NOT FOR REPLICATION ]
+		if p.cur.Type == kwNOT && p.peekNext().Type == kwFOR {
+			p.advance() // NOT
+			p.advance() // FOR
+			if p.cur.Type == kwREPLICATION {
+				p.advance()
+			}
+			cd.NotForReplication = true
+		}
 		if _, err := p.expect('('); err == nil {
 			cd.Expr = p.parseExpr()
 			_, _ = p.expect(')')
@@ -794,6 +979,15 @@ func (p *Parser) parseTableConstraint() *nodes.ConstraintDef {
 				cd.RefColumns = p.parseParenIdentList()
 			}
 			p.parseReferentialActions(cd)
+		}
+		// [ NOT FOR REPLICATION ]
+		if p.cur.Type == kwNOT && p.peekNext().Type == kwFOR {
+			p.advance() // NOT
+			p.advance() // FOR
+			if p.cur.Type == kwREPLICATION {
+				p.advance()
+			}
+			cd.NotForReplication = true
 		}
 	case kwDEFAULT:
 		p.advance()
@@ -907,13 +1101,21 @@ func (p *Parser) parseRefAction() nodes.ReferentialAction {
 
 // parseInlineTableIndex parses an inline INDEX definition inside a CREATE TABLE body.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-table-transact-sql
+// BNF: mssql/parser/bnf/create-table-transact-sql.bnf
 //
-//	INDEX index_name [ UNIQUE ] [ CLUSTERED | NONCLUSTERED ]
-//	    ( column_name [ ASC | DESC ] [ ,...n ] )
+//	<table_index> ::=
+//	{
+//	    INDEX index_name [ UNIQUE ] [ CLUSTERED | NONCLUSTERED ]
+//	         ( column_name [ ASC | DESC ] [ ,...n ] )
+//	    | INDEX index_name CLUSTERED COLUMNSTORE [ ORDER (column_name [ ,...n ] ) ]
+//	    | INDEX index_name [ NONCLUSTERED ] COLUMNSTORE ( column_name [ ,...n ] )
 //	    [ INCLUDE ( column_name [ ,...n ] ) ]
 //	    [ WHERE <filter_predicate> ]
 //	    [ WITH ( <index_option> [ ,...n ] ) ]
+//	    [ ON { partition_scheme_name ( column_name )
+//	         | filegroup_name | default } ]
+//	    [ FILESTREAM_ON { filestream_filegroup_name | partition_scheme_name | "NULL" } ]
+//	}
 func (p *Parser) parseInlineTableIndex() *nodes.InlineIndexDef {
 	loc := p.pos()
 	p.advance() // consume INDEX
@@ -937,10 +1139,32 @@ func (p *Parser) parseInlineTableIndex() *nodes.InlineIndexDef {
 		v := true
 		idx.Clustered = &v
 		p.advance()
+		// CLUSTERED COLUMNSTORE [ ORDER ( col [,...n] ) ]
+		if p.cur.Type == kwCOLUMNSTORE {
+			p.advance()
+			idx.Columnstore = true
+			if p.cur.Type == kwORDER || (p.isIdentLike() && strings.EqualFold(p.cur.Str, "ORDER")) {
+				p.advance()
+				if p.cur.Type == '(' {
+					idx.Columns = p.parseIndexColumnList()
+				}
+			}
+			goto trailingOptions
+		}
 	} else if p.cur.Type == kwNONCLUSTERED {
 		v := false
 		idx.Clustered = &v
 		p.advance()
+	}
+
+	// [ NONCLUSTERED ] COLUMNSTORE ( column_name [,...n] )
+	if p.cur.Type == kwCOLUMNSTORE {
+		p.advance()
+		idx.Columnstore = true
+		if p.cur.Type == '(' {
+			idx.Columns = p.parseIndexColumnList()
+		}
+		goto trailingOptions
 	}
 
 	// ( column_name [ ASC | DESC ] [ ,...n ] )
@@ -948,6 +1172,7 @@ func (p *Parser) parseInlineTableIndex() *nodes.InlineIndexDef {
 		idx.Columns = p.parseIndexColumnList()
 	}
 
+trailingOptions:
 	// [ INCLUDE ( column_name [ ,...n ] ) ]
 	if p.cur.Type == kwINCLUDE {
 		p.advance()
@@ -966,6 +1191,32 @@ func (p *Parser) parseInlineTableIndex() *nodes.InlineIndexDef {
 		p.advance()
 		if p.cur.Type == '(' {
 			idx.Options = p.parseOptionList()
+		}
+	}
+
+	// [ ON { partition_scheme_name ( column_name ) | filegroup_name | default } ]
+	if p.cur.Type == kwON {
+		p.advance()
+		if p.isIdentLike() {
+			fg := p.cur.Str
+			p.advance()
+			if p.cur.Type == '(' {
+				p.advance()
+				col, _ := p.parseIdentifier()
+				p.expect(')')
+				idx.OnFilegroup = fg + "(" + col + ")"
+			} else {
+				idx.OnFilegroup = fg
+			}
+		}
+	}
+
+	// [ FILESTREAM_ON { ... } ]
+	if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "filestream_on") {
+		p.advance()
+		if p.isIdentLike() {
+			idx.FilestreamOn = p.cur.Str
+			p.advance()
 		}
 	}
 

@@ -732,6 +732,9 @@ func writeCreateTableStmt(sb *strings.Builder, n *CreateTableStmt) {
 	if n.IsEdge {
 		sb.WriteString(" :isEdge true")
 	}
+	if n.IsFileTable {
+		sb.WriteString(" :isFileTable true")
+	}
 	if n.PeriodStartCol != "" {
 		sb.WriteString(fmt.Sprintf(" :periodStart \"%s\"", escapeString(n.PeriodStartCol)))
 		sb.WriteString(fmt.Sprintf(" :periodEnd \"%s\"", escapeString(n.PeriodEndCol)))
@@ -768,6 +771,9 @@ func writeInlineIndexDef(sb *strings.Builder, n *InlineIndexDef) {
 	if n.Clustered != nil {
 		sb.WriteString(fmt.Sprintf(" :clustered %t", *n.Clustered))
 	}
+	if n.Columnstore {
+		sb.WriteString(" :columnstore true")
+	}
 	if n.Columns != nil {
 		sb.WriteString(" :columns ")
 		writeNode(sb, n.Columns)
@@ -783,6 +789,12 @@ func writeInlineIndexDef(sb *strings.Builder, n *InlineIndexDef) {
 	if n.Options != nil {
 		sb.WriteString(" :options ")
 		writeNode(sb, n.Options)
+	}
+	if n.OnFilegroup != "" {
+		sb.WriteString(fmt.Sprintf(" :onFilegroup \"%s\"", escapeString(n.OnFilegroup)))
+	}
+	if n.FilestreamOn != "" {
+		sb.WriteString(fmt.Sprintf(" :filestreamOn \"%s\"", escapeString(n.FilestreamOn)))
 	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
@@ -2449,6 +2461,9 @@ func writeColumnDef(sb *strings.Builder, n *ColumnDef) {
 	if n.Hidden {
 		sb.WriteString(" :hidden true")
 	}
+	if n.IsColumnSet {
+		sb.WriteString(" :isColumnSet true")
+	}
 	if n.MaskFunction != "" {
 		sb.WriteString(fmt.Sprintf(" :maskFunction \"%s\"", escapeString(n.MaskFunction)))
 	}
@@ -2533,6 +2548,19 @@ func writeConstraintDef(sb *strings.Builder, n *ConstraintDef) {
 	}
 	if n.Clustered != nil {
 		sb.WriteString(fmt.Sprintf(" :clustered %t", *n.Clustered))
+	}
+	if n.NotForReplication {
+		sb.WriteString(" :notForReplication true")
+	}
+	if n.IndexOptions != nil {
+		sb.WriteString(" :indexOptions ")
+		writeNode(sb, n.IndexOptions)
+	}
+	if n.Fillfactor != 0 {
+		sb.WriteString(fmt.Sprintf(" :fillfactor %d", n.Fillfactor))
+	}
+	if n.OnFilegroup != "" {
+		sb.WriteString(fmt.Sprintf(" :onFilegroup \"%s\"", escapeString(n.OnFilegroup)))
 	}
 	if n.EdgeConnections != nil {
 		sb.WriteString(" :edgeConnections ")
@@ -2739,6 +2767,9 @@ func writeComputedColumnDef(sb *strings.Builder, n *ComputedColumnDef) {
 	}
 	if n.Persisted {
 		sb.WriteString(" :persisted true")
+	}
+	if n.NotNull {
+		sb.WriteString(" :notNull true")
 	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

@@ -232,7 +232,7 @@
       "id": 157,
       "name": "bnf_review_create_table",
       "file": "create_table.go",
-      "status": "pending",
+      "status": "done",
       "description": "Full BNF review of CREATE TABLE. Column definitions, computed columns, constraints, filegroup, partition, memory-optimized, temporal tables (SYSTEM_VERSIONING), graph tables (AS NODE/AS EDGE), ledger tables.",
       "rules": [
         "create_table_stmt",

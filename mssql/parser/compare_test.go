@@ -18285,3 +18285,452 @@ func TestParseDmlBnfReview(t *testing.T) {
 		}
 	})
 }
+
+// TestParseCreateTableBnfReview tests CREATE TABLE BNF review gaps (batch 157).
+func TestParseCreateTableBnfReview(t *testing.T) {
+	// AS FILETABLE
+	t.Run("as_filetable", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.MyFiles AS FILETABLE (
+			col1 int,
+			col2 varchar(100)
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		if !stmt.IsFileTable {
+			t.Error("expected IsFileTable to be true")
+		}
+	})
+
+	// ON partition_scheme(partition_column)
+	t.Run("on_partition_scheme", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.t1 (
+			id int PRIMARY KEY
+		) ON ps_scheme(id)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		if stmt.OnFilegroup != "ps_scheme(id)" {
+			t.Errorf("expected OnFilegroup=ps_scheme(id), got %q", stmt.OnFilegroup)
+		}
+	})
+
+	// TEXTIMAGE_ON and FILESTREAM_ON
+	t.Run("textimage_filestream_on", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.t1 (
+			id int PRIMARY KEY,
+			data varbinary(max)
+		) TEXTIMAGE_ON fg1 FILESTREAM_ON fg2`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		if stmt.TextImageOn != "fg1" {
+			t.Errorf("expected TextImageOn=fg1, got %q", stmt.TextImageOn)
+		}
+		if stmt.FilestreamOn != "fg2" {
+			t.Errorf("expected FilestreamOn=fg2, got %q", stmt.FilestreamOn)
+		}
+	})
+
+	// Column set definition
+	t.Run("column_set_definition", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.t1 (
+			id int PRIMARY KEY,
+			col1 int SPARSE,
+			col2 varchar(100) SPARSE,
+			cs XML COLUMN_SET FOR ALL_SPARSE_COLUMNS
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		if stmt.Columns == nil || len(stmt.Columns.Items) < 4 {
+			t.Fatal("expected at least 4 columns")
+		}
+		csCol := stmt.Columns.Items[3].(*ast.ColumnDef)
+		if !csCol.IsColumnSet {
+			t.Error("expected IsColumnSet to be true for cs column")
+		}
+	})
+
+	// Computed column with PERSISTED NOT NULL
+	t.Run("computed_persisted_not_null", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.t1 (
+			id int,
+			price decimal(10,2),
+			qty int,
+			total AS price * qty PERSISTED NOT NULL
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		total := stmt.Columns.Items[3].(*ast.ColumnDef)
+		if total.Computed == nil {
+			t.Fatal("expected computed column definition")
+		}
+		if !total.Computed.Persisted {
+			t.Error("expected Persisted to be true")
+		}
+		if !total.Computed.NotNull {
+			t.Error("expected NotNull to be true")
+		}
+	})
+
+	// Computed column with constraint
+	t.Run("computed_with_constraint", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.t1 (
+			id int,
+			total AS id * 2 PERSISTED PRIMARY KEY
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		total := stmt.Columns.Items[1].(*ast.ColumnDef)
+		if total.Computed == nil {
+			t.Fatal("expected computed column definition")
+		}
+		if total.Constraints == nil || len(total.Constraints.Items) == 0 {
+			t.Error("expected constraints on computed column")
+		}
+	})
+
+	// Inline COLUMNSTORE INDEX (clustered)
+	t.Run("inline_clustered_columnstore_index", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.t1 (
+			id int,
+			name varchar(100),
+			INDEX cci CLUSTERED COLUMNSTORE
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		if stmt.Indexes == nil || len(stmt.Indexes.Items) == 0 {
+			t.Fatal("expected at least one inline index")
+		}
+		idx := stmt.Indexes.Items[0].(*ast.InlineIndexDef)
+		if !idx.Columnstore {
+			t.Error("expected Columnstore to be true")
+		}
+		if idx.Clustered == nil || !*idx.Clustered {
+			t.Error("expected Clustered to be true")
+		}
+	})
+
+	// Inline COLUMNSTORE INDEX with ORDER
+	t.Run("inline_clustered_columnstore_order", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.t1 (
+			id int,
+			name varchar(100),
+			INDEX cci CLUSTERED COLUMNSTORE ORDER (id, name)
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		idx := stmt.Indexes.Items[0].(*ast.InlineIndexDef)
+		if !idx.Columnstore {
+			t.Error("expected Columnstore to be true")
+		}
+		if idx.Columns == nil || len(idx.Columns.Items) != 2 {
+			t.Error("expected 2 ORDER columns")
+		}
+	})
+
+	// Inline NONCLUSTERED COLUMNSTORE INDEX
+	t.Run("inline_nonclustered_columnstore_index", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.t1 (
+			id int,
+			name varchar(100),
+			INDEX ncci NONCLUSTERED COLUMNSTORE (id, name)
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		idx := stmt.Indexes.Items[0].(*ast.InlineIndexDef)
+		if !idx.Columnstore {
+			t.Error("expected Columnstore to be true")
+		}
+		if idx.Clustered == nil || *idx.Clustered {
+			t.Error("expected Clustered to be false (NONCLUSTERED)")
+		}
+	})
+
+	// Inline index with ON filegroup
+	t.Run("inline_index_on_filegroup", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.t1 (
+			id int,
+			INDEX ix1 NONCLUSTERED (id) ON fg1
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		idx := stmt.Indexes.Items[0].(*ast.InlineIndexDef)
+		if idx.OnFilegroup != "fg1" {
+			t.Errorf("expected OnFilegroup=fg1, got %q", idx.OnFilegroup)
+		}
+	})
+
+	// Table PK constraint with ASC/DESC columns
+	t.Run("pk_with_asc_desc", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.t1 (
+			id int,
+			name varchar(100),
+			CONSTRAINT pk_t1 PRIMARY KEY CLUSTERED (id ASC, name DESC)
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		if stmt.Constraints == nil || len(stmt.Constraints.Items) == 0 {
+			t.Fatal("expected at least one constraint")
+		}
+		pk := stmt.Constraints.Items[0].(*ast.ConstraintDef)
+		if pk.Type != ast.ConstraintPrimaryKey {
+			t.Error("expected PK constraint")
+		}
+		if pk.Columns == nil || len(pk.Columns.Items) != 2 {
+			t.Error("expected 2 columns in PK")
+		}
+	})
+
+	// PK with WITH FILLFACTOR
+	t.Run("pk_with_fillfactor", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.t1 (
+			id int,
+			CONSTRAINT pk_t1 PRIMARY KEY (id) WITH FILLFACTOR = 80
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		pk := stmt.Constraints.Items[0].(*ast.ConstraintDef)
+		if pk.Fillfactor != 80 {
+			t.Errorf("expected Fillfactor=80, got %d", pk.Fillfactor)
+		}
+	})
+
+	// PK with WITH (index_options)
+	t.Run("pk_with_index_options", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.t1 (
+			id int,
+			CONSTRAINT pk_t1 PRIMARY KEY (id) WITH (PAD_INDEX = ON, FILLFACTOR = 70)
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		pk := stmt.Constraints.Items[0].(*ast.ConstraintDef)
+		if pk.IndexOptions == nil || len(pk.IndexOptions.Items) != 2 {
+			t.Error("expected 2 index options")
+		}
+	})
+
+	// PK with ON filegroup
+	t.Run("pk_on_filegroup", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.t1 (
+			id int,
+			CONSTRAINT pk_t1 PRIMARY KEY (id) ON fg1
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		pk := stmt.Constraints.Items[0].(*ast.ConstraintDef)
+		if pk.OnFilegroup != "fg1" {
+			t.Errorf("expected OnFilegroup=fg1, got %q", pk.OnFilegroup)
+		}
+	})
+
+	// CHECK NOT FOR REPLICATION
+	t.Run("check_not_for_replication", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.t1 (
+			id int,
+			CONSTRAINT chk_id CHECK NOT FOR REPLICATION (id > 0)
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		chk := stmt.Constraints.Items[0].(*ast.ConstraintDef)
+		if chk.Type != ast.ConstraintCheck {
+			t.Error("expected CHECK constraint")
+		}
+		if !chk.NotForReplication {
+			t.Error("expected NotForReplication to be true")
+		}
+	})
+
+	// FK NOT FOR REPLICATION
+	t.Run("fk_not_for_replication", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.t1 (
+			id int,
+			parent_id int,
+			CONSTRAINT fk_parent FOREIGN KEY (parent_id) REFERENCES parent_table (id)
+				ON DELETE CASCADE NOT FOR REPLICATION
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		fk := stmt.Constraints.Items[0].(*ast.ConstraintDef)
+		if fk.Type != ast.ConstraintForeignKey {
+			t.Error("expected FK constraint")
+		}
+		if !fk.NotForReplication {
+			t.Error("expected NotForReplication to be true")
+		}
+		if fk.OnDelete != ast.RefActCascade {
+			t.Error("expected ON DELETE CASCADE")
+		}
+	})
+
+	// Column-level CHECK NOT FOR REPLICATION
+	t.Run("column_check_not_for_replication", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.t1 (
+			id int CONSTRAINT chk_id CHECK NOT FOR REPLICATION (id > 0)
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		col := stmt.Columns.Items[0].(*ast.ColumnDef)
+		if col.Constraints == nil || len(col.Constraints.Items) == 0 {
+			t.Fatal("expected at least one constraint")
+		}
+		chk := col.Constraints.Items[0].(*ast.ConstraintDef)
+		if !chk.NotForReplication {
+			t.Error("expected NotForReplication to be true")
+		}
+	})
+
+	// Column-level PK with WITH and ON
+	t.Run("column_pk_with_on", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.t1 (
+			id int PRIMARY KEY CLUSTERED WITH FILLFACTOR = 90 ON fg1
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		col := stmt.Columns.Items[0].(*ast.ColumnDef)
+		if col.Constraints == nil || len(col.Constraints.Items) == 0 {
+			t.Fatal("expected at least one constraint")
+		}
+		pk := col.Constraints.Items[0].(*ast.ConstraintDef)
+		if pk.Fillfactor != 90 {
+			t.Errorf("expected Fillfactor=90, got %d", pk.Fillfactor)
+		}
+		if pk.OnFilegroup != "fg1" {
+			t.Errorf("expected OnFilegroup=fg1, got %q", pk.OnFilegroup)
+		}
+	})
+
+	// SYSTEM_VERSIONING with all sub-options
+	t.Run("system_versioning_full", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.t1 (
+			id int PRIMARY KEY,
+			SysStart datetime2 GENERATED ALWAYS AS ROW START HIDDEN,
+			SysEnd datetime2 GENERATED ALWAYS AS ROW END HIDDEN,
+			PERIOD FOR SYSTEM_TIME (SysStart, SysEnd)
+		) WITH (
+			SYSTEM_VERSIONING = ON (
+				HISTORY_TABLE = dbo.t1_history,
+				DATA_CONSISTENCY_CHECK = ON,
+				HISTORY_RETENTION_PERIOD = 6 MONTHS
+			)
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		if stmt.PeriodStartCol != "SysStart" {
+			t.Errorf("expected PeriodStartCol=SysStart, got %q", stmt.PeriodStartCol)
+		}
+		if stmt.PeriodEndCol != "SysEnd" {
+			t.Errorf("expected PeriodEndCol=SysEnd, got %q", stmt.PeriodEndCol)
+		}
+		if stmt.TableOptions == nil || len(stmt.TableOptions.Items) == 0 {
+			t.Fatal("expected table options")
+		}
+		opt := stmt.TableOptions.Items[0].(*ast.TableOption)
+		if opt.Name != "SYSTEM_VERSIONING" || opt.Value != "ON" {
+			t.Errorf("expected SYSTEM_VERSIONING=ON, got %s=%s", opt.Name, opt.Value)
+		}
+		if opt.HistoryTable != "dbo.t1_history" {
+			t.Errorf("expected HistoryTable=dbo.t1_history, got %q", opt.HistoryTable)
+		}
+		if opt.DataConsistencyCheck != "ON" {
+			t.Errorf("expected DataConsistencyCheck=ON, got %q", opt.DataConsistencyCheck)
+		}
+	})
+
+	// Graph table AS NODE
+	t.Run("graph_as_node", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.Person AS NODE (
+			id int,
+			name varchar(100)
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		if !stmt.IsNode {
+			t.Error("expected IsNode to be true")
+		}
+	})
+
+	// Graph table AS EDGE
+	t.Run("graph_as_edge", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.Likes AS EDGE (
+			since datetime
+		)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		if !stmt.IsEdge {
+			t.Error("expected IsEdge to be true")
+		}
+	})
+
+	// LEDGER table option
+	t.Run("ledger_option", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.t1 (
+			id int PRIMARY KEY
+		) WITH (LEDGER = ON)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		if stmt.TableOptions == nil || len(stmt.TableOptions.Items) == 0 {
+			t.Fatal("expected table options")
+		}
+		opt := stmt.TableOptions.Items[0].(*ast.TableOption)
+		if opt.Name != "LEDGER" || opt.Value != "ON" {
+			t.Errorf("expected LEDGER=ON, got %s=%s", opt.Name, opt.Value)
+		}
+	})
+
+	// Multiple table options
+	t.Run("multiple_table_options", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.t1 (
+			id int PRIMARY KEY
+		) WITH (DATA_COMPRESSION = PAGE, XML_COMPRESSION = ON)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		if stmt.TableOptions == nil || len(stmt.TableOptions.Items) != 2 {
+			t.Fatalf("expected 2 table options, got %d", len(stmt.TableOptions.Items))
+		}
+	})
+
+	// Memory-optimized and durability
+	t.Run("memory_optimized_durability", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.t1 (
+			id int PRIMARY KEY NONCLUSTERED
+		) WITH (MEMORY_OPTIMIZED = ON, DURABILITY = SCHEMA_AND_DATA)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		if stmt.TableOptions == nil || len(stmt.TableOptions.Items) != 2 {
+			t.Fatalf("expected 2 table options, got %d", len(stmt.TableOptions.Items))
+		}
+	})
+
+	// Complete CREATE TABLE with all clauses
+	t.Run("complete_create_table", func(t *testing.T) {
+		sql := `CREATE TABLE dbo.Orders (
+			OrderID int IDENTITY(1,1) NOT NULL,
+			CustomerID int NOT NULL,
+			OrderDate datetime2 DEFAULT GETDATE(),
+			Amount decimal(10,2) NOT NULL,
+			Total AS Amount * 1.1 PERSISTED,
+			CONSTRAINT pk_orders PRIMARY KEY CLUSTERED (OrderID ASC)
+				WITH (PAD_INDEX = ON, FILLFACTOR = 80) ON PRIMARY,
+			CONSTRAINT fk_customer FOREIGN KEY (CustomerID) REFERENCES Customers (CustomerID)
+				ON DELETE NO ACTION ON UPDATE CASCADE,
+			CONSTRAINT chk_amount CHECK (Amount > 0),
+			INDEX ix_date NONCLUSTERED (OrderDate DESC)
+		) ON PRIMARY TEXTIMAGE_ON PRIMARY
+		WITH (DATA_COMPRESSION = ROW)`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateTableStmt)
+		if stmt.Columns == nil || len(stmt.Columns.Items) < 4 {
+			t.Fatal("expected at least 4 columns")
+		}
+		if stmt.Constraints == nil || len(stmt.Constraints.Items) < 3 {
+			t.Fatal("expected at least 3 constraints")
+		}
+		if stmt.Indexes == nil || len(stmt.Indexes.Items) == 0 {
+			t.Fatal("expected at least one inline index")
+		}
+		if !strings.EqualFold(stmt.OnFilegroup, "PRIMARY") {
+			t.Errorf("expected OnFilegroup=PRIMARY, got %q", stmt.OnFilegroup)
+		}
+		if !strings.EqualFold(stmt.TextImageOn, "PRIMARY") {
+			t.Errorf("expected TextImageOn=PRIMARY, got %q", stmt.TextImageOn)
+		}
+	})
+}
