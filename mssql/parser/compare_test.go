@@ -21928,3 +21928,406 @@ func TestParseTransactionBnfReview(t *testing.T) {
 		}
 	})
 }
+
+// TestParseBackupRestoreBnfReview tests batch 168: BNF review of BACKUP/RESTORE statements.
+func TestParseBackupRestoreBnfReview(t *testing.T) {
+	t.Run("backup_file_filegroup_specs", func(t *testing.T) {
+		tests := []struct {
+			name      string
+			sql       string
+			wantSpecs int
+		}{
+			{
+				name:      "file_spec",
+				sql:       "BACKUP DATABASE mydb FILE = 'mydb_data' TO DISK = '/backup/mydb.bak'",
+				wantSpecs: 1,
+			},
+			{
+				name:      "filegroup_spec",
+				sql:       "BACKUP DATABASE mydb FILEGROUP = 'PRIMARY' TO DISK = '/backup/mydb.bak'",
+				wantSpecs: 1,
+			},
+			{
+				name:      "read_write_filegroups",
+				sql:       "BACKUP DATABASE mydb READ_WRITE_FILEGROUPS TO DISK = '/backup/mydb.bak'",
+				wantSpecs: 1,
+			},
+			{
+				name:      "multiple_file_specs",
+				sql:       "BACKUP DATABASE mydb FILE = 'mydb_data', FILEGROUP = 'FG1' TO DISK = '/backup/mydb.bak'",
+				wantSpecs: 2,
+			},
+			{
+				name:      "read_write_with_filegroup",
+				sql:       "BACKUP DATABASE mydb READ_WRITE_FILEGROUPS, FILEGROUP = 'ReadOnlyFG' TO DISK = '/backup/mydb.bak'",
+				wantSpecs: 2,
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				stmt, ok := result.Items[0].(*ast.BackupStmt)
+				if !ok {
+					t.Fatalf("expected *BackupStmt, got %T", result.Items[0])
+				}
+				if stmt.FileSpecs == nil {
+					t.Fatalf("expected FileSpecs, got nil")
+				}
+				if len(stmt.FileSpecs.Items) != tt.wantSpecs {
+					t.Errorf("expected %d file specs, got %d", tt.wantSpecs, len(stmt.FileSpecs.Items))
+				}
+			})
+		}
+	})
+
+	t.Run("backup_multiple_devices", func(t *testing.T) {
+		tests := []struct {
+			name       string
+			sql        string
+			wantDevs   int
+			wantTarget string
+		}{
+			{
+				name:       "single_disk",
+				sql:        "BACKUP DATABASE mydb TO DISK = '/backup/mydb.bak'",
+				wantDevs:   1,
+				wantTarget: "/backup/mydb.bak",
+			},
+			{
+				name:       "two_disks",
+				sql:        "BACKUP DATABASE mydb TO DISK = '/backup/mydb1.bak', DISK = '/backup/mydb2.bak'",
+				wantDevs:   2,
+				wantTarget: "/backup/mydb1.bak",
+			},
+			{
+				name:       "three_disks",
+				sql:        "BACKUP DATABASE mydb TO DISK = '/backup/mydb1.bak', DISK = '/backup/mydb2.bak', DISK = '/backup/mydb3.bak'",
+				wantDevs:   3,
+				wantTarget: "/backup/mydb1.bak",
+			},
+			{
+				name:       "url_device",
+				sql:        "BACKUP DATABASE mydb TO URL = 'https://storage.blob.core.windows.net/container/mydb.bak'",
+				wantDevs:   1,
+				wantTarget: "https://storage.blob.core.windows.net/container/mydb.bak",
+			},
+			{
+				name:       "logical_device",
+				sql:        "BACKUP DATABASE mydb TO myLogicalDevice",
+				wantDevs:   1,
+				wantTarget: "myLogicalDevice",
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				stmt, ok := result.Items[0].(*ast.BackupStmt)
+				if !ok {
+					t.Fatalf("expected *BackupStmt, got %T", result.Items[0])
+				}
+				if stmt.Devices == nil {
+					t.Fatalf("expected Devices, got nil")
+				}
+				if len(stmt.Devices.Items) != tt.wantDevs {
+					t.Errorf("expected %d devices, got %d", tt.wantDevs, len(stmt.Devices.Items))
+				}
+				if stmt.Target != tt.wantTarget {
+					t.Errorf("target = %q, want %q", stmt.Target, tt.wantTarget)
+				}
+			})
+		}
+	})
+
+	t.Run("backup_mirror_to", func(t *testing.T) {
+		tests := []struct {
+			name string
+			sql  string
+		}{
+			{
+				name: "mirror_to_basic",
+				sql:  "BACKUP DATABASE mydb TO DISK = '/backup/mydb1.bak' MIRROR TO DISK = '/mirror/mydb1.bak'",
+			},
+			{
+				name: "mirror_to_with_options",
+				sql:  "BACKUP DATABASE mydb TO DISK = '/backup/mydb.bak' MIRROR TO DISK = '/mirror/mydb.bak' WITH FORMAT, INIT",
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				stmt, ok := result.Items[0].(*ast.BackupStmt)
+				if !ok {
+					t.Fatalf("expected *BackupStmt, got %T", result.Items[0])
+				}
+				if !stmt.MirrorTo {
+					t.Error("expected MirrorTo = true")
+				}
+			})
+		}
+	})
+
+	t.Run("restore_file_filegroup_specs", func(t *testing.T) {
+		tests := []struct {
+			name      string
+			sql       string
+			wantSpecs int
+		}{
+			{
+				name:      "file_spec",
+				sql:       "RESTORE DATABASE mydb FILE = 'mydb_data' FROM DISK = '/backup/mydb.bak'",
+				wantSpecs: 1,
+			},
+			{
+				name:      "filegroup_spec",
+				sql:       "RESTORE DATABASE mydb FILEGROUP = 'PRIMARY' FROM DISK = '/backup/mydb.bak' WITH NORECOVERY",
+				wantSpecs: 1,
+			},
+			{
+				name:      "page_spec",
+				sql:       "RESTORE DATABASE mydb PAGE = '1:57' FROM DISK = '/backup/mydb.bak' WITH NORECOVERY",
+				wantSpecs: 1,
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				stmt, ok := result.Items[0].(*ast.RestoreStmt)
+				if !ok {
+					t.Fatalf("expected *RestoreStmt, got %T", result.Items[0])
+				}
+				if stmt.FileSpecs == nil {
+					t.Fatalf("expected FileSpecs, got nil")
+				}
+				if len(stmt.FileSpecs.Items) != tt.wantSpecs {
+					t.Errorf("expected %d file specs, got %d", tt.wantSpecs, len(stmt.FileSpecs.Items))
+				}
+			})
+		}
+	})
+
+	t.Run("restore_multiple_devices", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			sql      string
+			wantDevs int
+		}{
+			{
+				name:     "two_disks",
+				sql:      "RESTORE DATABASE mydb FROM DISK = '/backup/mydb1.bak', DISK = '/backup/mydb2.bak'",
+				wantDevs: 2,
+			},
+			{
+				name:     "logical_device",
+				sql:      "RESTORE DATABASE mydb FROM myLogicalDevice",
+				wantDevs: 1,
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				stmt, ok := result.Items[0].(*ast.RestoreStmt)
+				if !ok {
+					t.Fatalf("expected *RestoreStmt, got %T", result.Items[0])
+				}
+				if stmt.Devices == nil {
+					t.Fatalf("expected Devices, got nil")
+				}
+				if len(stmt.Devices.Items) != tt.wantDevs {
+					t.Errorf("expected %d devices, got %d", tt.wantDevs, len(stmt.Devices.Items))
+				}
+			})
+		}
+	})
+
+	t.Run("restore_database_snapshot", func(t *testing.T) {
+		sql := "RESTORE DATABASE mydb FROM DATABASE_SNAPSHOT = 'mydb_snapshot'"
+		result := ParseAndCheck(t, sql)
+		stmt, ok := result.Items[0].(*ast.RestoreStmt)
+		if !ok {
+			t.Fatalf("expected *RestoreStmt, got %T", result.Items[0])
+		}
+		if stmt.SnapshotName != "mydb_snapshot" {
+			t.Errorf("snapshotName = %q, want %q", stmt.SnapshotName, "mydb_snapshot")
+		}
+	})
+
+	t.Run("backup_restore_new_flag_options", func(t *testing.T) {
+		tests := []struct {
+			name string
+			sql  string
+		}{
+			{
+				name: "partial_norecovery",
+				sql:  "RESTORE DATABASE mydb FILEGROUP = 'PRIMARY' FROM DISK = '/backup/mydb.bak' WITH PARTIAL, NORECOVERY",
+			},
+			{
+				name: "metadata_only",
+				sql:  "BACKUP DATABASE mydb TO DISK = '/backup/mydb.bak' WITH METADATA_ONLY",
+			},
+			{
+				name: "snapshot",
+				sql:  "BACKUP DATABASE mydb TO DISK = '/backup/mydb.bak' WITH SNAPSHOT",
+			},
+			{
+				name: "credential",
+				sql:  "BACKUP DATABASE mydb TO URL = 'https://storage.blob.core.windows.net/container/mydb.bak' WITH CREDENTIAL",
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				ParseAndCheck(t, tt.sql)
+			})
+		}
+	})
+
+	t.Run("restore_password_dbname_options", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			sql      string
+			wantOpts int
+		}{
+			{
+				name:     "password",
+				sql:      "RESTORE DATABASE mydb FROM DISK = '/backup/mydb.bak' WITH PASSWORD = 'secret'",
+				wantOpts: 1,
+			},
+			{
+				name:     "dbname",
+				sql:      "RESTORE HEADERONLY FROM DISK = '/backup/mydb.bak' WITH DBNAME = 'newdb'",
+				wantOpts: 1,
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				if result.Len() != 1 {
+					t.Fatalf("expected 1 stmt, got %d", result.Len())
+				}
+			})
+		}
+	})
+
+	t.Run("restore_filestream_option", func(t *testing.T) {
+		sql := "RESTORE DATABASE mydb FROM DISK = '/backup/mydb.bak' WITH FILESTREAM (DIRECTORY_NAME = 'mydir')"
+		result := ParseAndCheck(t, sql)
+		stmt, ok := result.Items[0].(*ast.RestoreStmt)
+		if !ok {
+			t.Fatalf("expected *RestoreStmt, got %T", result.Items[0])
+		}
+		if stmt.Options == nil {
+			t.Fatalf("expected options, got nil")
+		}
+		opt, ok := stmt.Options.Items[0].(*ast.BackupRestoreOption)
+		if !ok {
+			t.Fatalf("expected *BackupRestoreOption, got %T", stmt.Options.Items[0])
+		}
+		if opt.Name != "FILESTREAM" {
+			t.Errorf("name = %q, want FILESTREAM", opt.Name)
+		}
+		if opt.Value != "mydir" {
+			t.Errorf("value = %q, want %q", opt.Value, "mydir")
+		}
+	})
+
+	t.Run("restore_stopatmark_after", func(t *testing.T) {
+		sql := "RESTORE LOG mydb FROM DISK = '/backup/log.bak' WITH STOPATMARK = 'lsn:15000000' AFTER '2025-06-01'"
+		result := ParseAndCheck(t, sql)
+		stmt, ok := result.Items[0].(*ast.RestoreStmt)
+		if !ok {
+			t.Fatalf("expected *RestoreStmt, got %T", result.Items[0])
+		}
+		if stmt.Options == nil {
+			t.Fatalf("expected options, got nil")
+		}
+		opt, ok := stmt.Options.Items[0].(*ast.BackupRestoreOption)
+		if !ok {
+			t.Fatalf("expected *BackupRestoreOption, got %T", stmt.Options.Items[0])
+		}
+		if opt.Name != "STOPATMARK" {
+			t.Errorf("name = %q, want STOPATMARK", opt.Name)
+		}
+		if !strings.Contains(opt.Value, "AFTER") {
+			t.Errorf("expected value to contain AFTER, got %q", opt.Value)
+		}
+	})
+
+	t.Run("restore_stopbeforemark_after", func(t *testing.T) {
+		sql := "RESTORE LOG mydb FROM DISK = '/backup/log.bak' WITH STOPBEFOREMARK = 'my_mark' AFTER '2025-06-01'"
+		result := ParseAndCheck(t, sql)
+		stmt, ok := result.Items[0].(*ast.RestoreStmt)
+		if !ok {
+			t.Fatalf("expected *RestoreStmt, got %T", result.Items[0])
+		}
+		if stmt.Options == nil {
+			t.Fatalf("expected options, got nil")
+		}
+		opt, ok := stmt.Options.Items[0].(*ast.BackupRestoreOption)
+		if !ok {
+			t.Fatalf("expected *BackupRestoreOption, got %T", stmt.Options.Items[0])
+		}
+		if opt.Name != "STOPBEFOREMARK" {
+			t.Errorf("name = %q, want STOPBEFOREMARK", opt.Name)
+		}
+		if !strings.Contains(opt.Value, "AFTER") {
+			t.Errorf("expected value to contain AFTER, got %q", opt.Value)
+		}
+	})
+
+	t.Run("backup_log_no_truncate", func(t *testing.T) {
+		sql := "BACKUP LOG mydb TO DISK = '/backup/mydb.bak' WITH NO_TRUNCATE, NORECOVERY"
+		result := ParseAndCheck(t, sql)
+		stmt, ok := result.Items[0].(*ast.BackupStmt)
+		if !ok {
+			t.Fatalf("expected *BackupStmt, got %T", result.Items[0])
+		}
+		if stmt.Type != "LOG" {
+			t.Errorf("type = %q, want LOG", stmt.Type)
+		}
+		if stmt.Options == nil || len(stmt.Options.Items) != 2 {
+			t.Fatalf("expected 2 options, got %v", stmt.Options)
+		}
+	})
+
+	t.Run("restore_keep_cdc", func(t *testing.T) {
+		sql := "RESTORE DATABASE mydb FROM DISK = '/backup/mydb.bak' WITH KEEP_CDC, RECOVERY"
+		result := ParseAndCheck(t, sql)
+		stmt, ok := result.Items[0].(*ast.RestoreStmt)
+		if !ok {
+			t.Fatalf("expected *RestoreStmt, got %T", result.Items[0])
+		}
+		if stmt.Options == nil || len(stmt.Options.Items) != 2 {
+			t.Fatalf("expected 2 options")
+		}
+	})
+
+	// Comprehensive round-trip tests
+	t.Run("roundtrip", func(t *testing.T) {
+		tests := []string{
+			"BACKUP DATABASE mydb TO DISK = '/backup/mydb.bak'",
+			"BACKUP LOG mydb TO DISK = '/backup/mydb.bak'",
+			"BACKUP DATABASE mydb TO DISK = '/backup/mydb1.bak', DISK = '/backup/mydb2.bak'",
+			"BACKUP DATABASE mydb FILE = 'data1' TO DISK = '/backup/mydb.bak'",
+			"BACKUP DATABASE mydb TO DISK = '/backup/mydb.bak' MIRROR TO DISK = '/mirror/mydb.bak'",
+			"BACKUP DATABASE mydb TO DISK = '/backup/mydb.bak' WITH DIFFERENTIAL, COMPRESSION",
+			"BACKUP DATABASE mydb TO DISK = '/backup/mydb.bak' WITH ENCRYPTION (ALGORITHM = AES_256, SERVER CERTIFICATE = MyCert)",
+			"RESTORE DATABASE mydb FROM DISK = '/backup/mydb.bak'",
+			"RESTORE LOG mydb FROM DISK = '/backup/mydb.bak'",
+			"RESTORE HEADERONLY FROM DISK = '/backup/mydb.bak'",
+			"RESTORE FILELISTONLY FROM DISK = '/backup/mydb.bak'",
+			"RESTORE VERIFYONLY FROM DISK = '/backup/mydb.bak'",
+			"RESTORE LABELONLY FROM DISK = '/backup/mydb.bak'",
+			"RESTORE DATABASE mydb FROM DISK = '/backup/mydb1.bak', DISK = '/backup/mydb2.bak'",
+			"RESTORE DATABASE mydb FROM DATABASE_SNAPSHOT = 'mydb_snapshot'",
+			"RESTORE DATABASE mydb FILE = 'data1' FROM DISK = '/backup/mydb.bak' WITH NORECOVERY",
+			"RESTORE DATABASE mydb FROM DISK = '/backup/mydb.bak' WITH MOVE 'mydb' TO 'C:\\data\\mydb.mdf', MOVE 'mydb_log' TO 'C:\\data\\mydb_log.ldf', REPLACE",
+			"RESTORE DATABASE mydb FROM DISK = '/backup/mydb.bak' WITH FILESTREAM (DIRECTORY_NAME = 'mydir')",
+			"RESTORE DATABASE mydb FILEGROUP = 'PRIMARY' FROM DISK = '/backup/mydb.bak' WITH PARTIAL, NORECOVERY",
+			"RESTORE LOG mydb FROM DISK = '/backup/log.bak' WITH STOPAT = '2025-01-01T12:00:00'",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				ParseAndCheck(t, sql)
+			})
+		}
+	})
+}

@@ -512,7 +512,7 @@
       "id": 168,
       "name": "bnf_review_backup_restore",
       "file": "backup_restore.go",
-      "status": "pending",
+      "status": "done",
       "description": "BNF review of BACKUP DATABASE/LOG, RESTORE DATABASE/LOG/HEADERONLY/FILELISTONLY/VERIFYONLY.",
       "rules": [
         "backup_database_stmt",

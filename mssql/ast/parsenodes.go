@@ -2254,13 +2254,21 @@ func (n *DbccOption) nodeTag() {}
 //
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/backup-transact-sql
 //
-//	BACKUP { DATABASE | LOG } database_name TO { DISK | URL } = 'path' [WITH ...]
+//	BACKUP { DATABASE | LOG } { database_name | @database_name_var }
+//	  [ <file_or_filegroup> [ ,...n ] ]
+//	  TO <backup_device> [ ,...n ]
+//	  [ <MIRROR TO clause> ] [ next-mirror-to ]
+//	  [ WITH { DIFFERENTIAL | <general_WITH_options> } [ ,...n ] ]
 type BackupStmt struct {
-	Type     string // "DATABASE" or "LOG"
-	Database string // database name
-	Target   string // TO DISK/URL path value
-	Options  *List  // WITH options (as BackupRestoreOption nodes)
-	Loc      Loc
+	Type         string // "DATABASE", "LOG", or "CERTIFICATE"
+	Database     string // database name
+	Target       string // first TO device path value (backward compat)
+	FileSpecs    *List  // FILE/FILEGROUP/READ_WRITE_FILEGROUPS specs (String nodes)
+	Devices      *List  // all TO devices (String nodes: "TYPE=path" or "logical_name")
+	MirrorTo     bool   // true if MIRROR TO clause present
+	MirrorDevice string // first MIRROR TO device path
+	Options      *List  // WITH options (as BackupRestoreOption nodes)
+	Loc          Loc
 }
 
 func (n *BackupStmt) nodeTag()  {}
@@ -2270,14 +2278,25 @@ func (n *BackupStmt) stmtNode() {}
 //
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/restore-statements-transact-sql
 //
-//	RESTORE { DATABASE | LOG | HEADERONLY | FILELISTONLY | ... } [database_name]
-//	    FROM { DISK | URL } = 'path' [WITH ...]
+//	RESTORE { DATABASE | LOG } { database_name | @database_name_var }
+//	  [ <file_or_filegroup> [ ,...n ] ]
+//	  [ FROM <backup_device> [ ,...n ] ]
+//	  [ WITH options ]
+//
+//	RESTORE { HEADERONLY | FILELISTONLY | VERIFYONLY | LABELONLY | REWINDONLY }
+//	  FROM <backup_device> [ ,...n ]
+//	  [ WITH options ]
+//
+//	RESTORE DATABASE { database_name } FROM DATABASE_SNAPSHOT = snapshot_name
 type RestoreStmt struct {
-	Type     string // "DATABASE", "LOG", "HEADERONLY", "FILELISTONLY", etc.
-	Database string // database name (may be empty for HEADERONLY/FILELISTONLY)
-	Source   string // FROM DISK/URL path value
-	Options  *List  // WITH options (as BackupRestoreOption nodes)
-	Loc      Loc
+	Type         string // "DATABASE", "LOG", "HEADERONLY", "FILELISTONLY", "VERIFYONLY", "LABELONLY", "REWINDONLY"
+	Database     string // database name (may be empty for HEADERONLY/FILELISTONLY)
+	Source       string // first FROM device path value (backward compat)
+	FileSpecs    *List  // FILE/FILEGROUP/READ_WRITE_FILEGROUPS/PAGE specs (String nodes)
+	Devices      *List  // all FROM devices (String nodes)
+	SnapshotName string // DATABASE_SNAPSHOT = name
+	Options      *List  // WITH options (as BackupRestoreOption nodes)
+	Loc          Loc
 }
 
 func (n *RestoreStmt) nodeTag()  {}
@@ -2289,17 +2308,21 @@ func (n *RestoreStmt) stmtNode() {}
 //
 //	NOSKIP, SKIP, FORMAT, NOFORMAT, NO_CHECKSUM, CHECKSUM,
 //	STOP_ON_ERROR, CONTINUE_AFTER_ERROR, RESTART, REPLACE,
-//	RECOVERY, NORECOVERY, ENABLE_BROKER, NEW_BROKER,
-//	ERROR_BROKER_CONVERSATIONS
+//	RECOVERY, NORECOVERY, NO_TRUNCATE, FILE_SNAPSHOT,
+//	ENABLE_BROKER, NEW_BROKER, ERROR_BROKER_CONVERSATIONS,
+//	REWIND, NOREWIND, UNLOAD, NOUNLOAD,
+//	RESTRICTED_USER, KEEP_REPLICATION, KEEP_CDC,
+//	PARTIAL, CREDENTIAL, METADATA_ONLY, SNAPSHOT
 //
 // Key=value options: NAME, DESCRIPTION, EXPIREDATE, RETAINDAYS, STATS,
 //
 //	BLOCKSIZE, BUFFERCOUNT, MAXTRANSFERSIZE, MEDIADESCRIPTION,
 //	MEDIANAME, MEDIAPASSWORD, STANDBY, STOPAT, STOPATMARK,
-//	STOPBEFOREMARK, FILE
+//	STOPBEFOREMARK, FILE, PASSWORD, DBNAME
 //
 // ENCRYPTION: ALGORITHM = alg, SERVER CERTIFICATE name | ASYMMETRIC KEY name
 // MOVE: MOVE 'logical' TO 'physical'
+// FILESTREAM: FILESTREAM ( DIRECTORY_NAME = directory_name )
 type BackupRestoreOption struct {
 	Name  string // option name
 	Value string // value for key=value options

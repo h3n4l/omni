@@ -9,41 +9,79 @@ import (
 
 // parseBackupStmt parses a BACKUP DATABASE or BACKUP LOG statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/backup-transact-sql
+// BNF: mssql/parser/bnf/backup-transact-sql.bnf
 //
-//	BACKUP { DATABASE | LOG } database_name
-//	    TO { DISK | URL | TAPE } = 'path' [ , ...n ]
-//	    [ <mirror_to_clause> ] [ ...next-mirror-to ]
-//	    [ WITH { <general_WITH_options> | <backup_set_WITH_options> } [ ,...n ] ]
+//	backupStatement:
+//	    backupMain
+//	    ( backupDevices )?
+//	    ( backupOptions )?
+//	    ;
 //
-//	<general_WITH_options> ::=
-//	    COPY_ONLY
-//	  | { COMPRESSION | NO_COMPRESSION }
-//	  | DESCRIPTION = { 'text' | @text_variable }
-//	  | NAME = { backup_set_name | @backup_set_name_var }
-//	  | CREDENTIAL
-//	  | ENCRYPTION ( ALGORITHM = { AES_128 | AES_192 | AES_256 | TRIPLE_DES_3KEY },
-//	        SERVER CERTIFICATE = cert_name | SERVER ASYMMETRIC KEY = key_name )
-//	  | FILE_SNAPSHOT
-//	  | { EXPIREDATE = { 'date' | @date_var } | RETAINDAYS = { days | @days_var } }
-//	  | { NOINIT | INIT }
-//	  | { NOSKIP | SKIP }
-//	  | { NOFORMAT | FORMAT }
-//	  | MEDIADESCRIPTION = { 'text' | @text_variable }
-//	  | MEDIANAME = { media_name | @media_name_variable }
-//	  | BLOCKSIZE = { blocksize | @blocksize_variable }
-//	  | BUFFERCOUNT = { buffercount | @buffercount_variable }
-//	  | MAXTRANSFERSIZE = { maxtransfersize | @maxtransfersize_variable }
-//	  | { NO_CHECKSUM | CHECKSUM }
-//	  | { STOP_ON_ERROR | CONTINUE_AFTER_ERROR }
-//	  | RESTART
-//	  | STATS [ = percentage ]
-//	  | { REWIND | NOREWIND }
-//	  | { UNLOAD | NOUNLOAD }
-//	  | NORECOVERY
-//	  | STANDBY = standby_file_name
-//	  | NO_TRUNCATE
-//	  | DIFFERENTIAL
+//	backupMain:
+//	    backupDatabase
+//	    | backupTransactionLog
+//	    ;
+//
+//	backupDatabase:
+//	    Database identifierOrVariable
+//	    backupFileListOpt
+//	    ;
+//
+//	backupTransactionLog:
+//	    Identifier /* LOG */ identifierOrVariable
+//	    ;
+//
+//	backupFileListOpt:
+//	    ( backupRestoreFile ( Comma backupRestoreFile )* )?
+//	    ;
+//
+//	backupRestoreFile:
+//	    File EqualsSign ( stringOrVariable | backupRestoreFileNameList )
+//	    | Identifier /* FILEGROUP | PAGE */ EqualsSign ( stringOrVariable | backupRestoreFileNameList )
+//	    | Identifier /* READ_WRITE_FILEGROUPS */
+//	    ;
+//
+//	backupRestoreFileNameList:
+//	    LeftParenthesis stringOrVariable ( Comma stringOrVariable )* RightParenthesis
+//	    ;
+//
+//	backupDevices:
+//	    To devList ( mirrorTo )*
+//	    ;
+//
+//	mirrorTo:
+//	    Identifier /* MIRROR */ To devList
+//	    ;
+//
+//	devList:
+//	    deviceInfo ( Comma deviceInfo )*
+//	    ;
+//
+//	deviceInfo:
+//	    identifierOrVariable
+//	    | Identifier /* DISK | TAPE | URL */ EqualsSign stringOrVariable
+//	    ;
+//
+//	backupOptions:
+//	    With backupOption ( Comma backupOption )*
+//	    ;
+//
+//	backupOption:
+//	    backupEncryptionOption
+//	    | Identifier
+//	    | Identifier EqualsSign ( signedIntegerOrVariable | stringLiteral )
+//	    ;
+//
+//	backupEncryptionOption:
+//	    Identifier /* ENCRYPTION */ LeftParenthesis
+//	        Identifier /* ALGORITHM */ EqualsSign Identifier /* algorithm kind */
+//	        Comma backupEncryptor
+//	    RightParenthesis
+//	    ;
+//
+//	backupEncryptor:
+//	    dekEncryptorType EqualsSign identifier
+//	    ;
 func (p *Parser) parseBackupStmt() *nodes.BackupStmt {
 	loc := p.pos()
 	p.advance() // consume BACKUP
@@ -52,7 +90,7 @@ func (p *Parser) parseBackupStmt() *nodes.BackupStmt {
 		Loc: nodes.Loc{Start: loc},
 	}
 
-	// DATABASE or LOG (or identifier like LOG)
+	// DATABASE or LOG (or identifier like LOG/CERTIFICATE)
 	if p.cur.Type == kwDATABASE {
 		stmt.Type = "DATABASE"
 		p.advance()
@@ -74,18 +112,35 @@ func (p *Parser) parseBackupStmt() *nodes.BackupStmt {
 		}
 	}
 
-	// TO { DISK | URL | TAPE | ... } = 'path'
+	// backupFileListOpt: FILE = ..., FILEGROUP = ..., READ_WRITE_FILEGROUPS (only for DATABASE)
+	if stmt.Type == "DATABASE" {
+		stmt.FileSpecs = p.parseBackupRestoreFileList()
+	}
+
+	// TO devList [ MIRROR TO devList ]*
 	if p.cur.Type == kwTO {
 		p.advance() // consume TO
-		// consume DISK / URL / TAPE / identifier
-		if p.isIdentLike() || p.cur.Type == kwFILE {
-			p.advance()
+		stmt.Devices = p.parseDeviceList()
+		// Extract first device path for backward compat Target field
+		if stmt.Devices != nil && len(stmt.Devices.Items) > 0 {
+			if s, ok := stmt.Devices.Items[0].(*nodes.String); ok {
+				// Extract path from "TYPE=path" format or use as-is
+				stmt.Target = extractDevicePath(s.Str)
+			}
 		}
-		// = 'path'
-		if _, ok := p.match('='); ok {
-			if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
-				stmt.Target = p.cur.Str
-				p.advance()
+
+		// MIRROR TO devList (may repeat)
+		for p.isIdentLike() && strings.EqualFold(p.cur.Str, "MIRROR") {
+			stmt.MirrorTo = true
+			p.advance() // consume MIRROR
+			if p.cur.Type == kwTO {
+				p.advance() // consume TO
+			}
+			mirrorDevs := p.parseDeviceList()
+			if stmt.MirrorDevice == "" && mirrorDevs != nil && len(mirrorDevs.Items) > 0 {
+				if s, ok := mirrorDevs.Items[0].(*nodes.String); ok {
+					stmt.MirrorDevice = extractDevicePath(s.Str)
+				}
 			}
 		}
 	}
@@ -102,39 +157,63 @@ func (p *Parser) parseBackupStmt() *nodes.BackupStmt {
 
 // parseRestoreStmt parses a RESTORE DATABASE / LOG / HEADERONLY / FILELISTONLY statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/restore-statements-transact-sql
+// BNF: mssql/parser/bnf/restore-statements-transact-sql.bnf
 //
-//	RESTORE { DATABASE | LOG } database_name
-//	    FROM { DISK | URL | TAPE } = 'path' [ , ...n ]
-//	    [ WITH
-//	        { MOVE 'logical_file_name' TO 'operating_system_file_name' } [ ,...n ]
-//	      | REPLACE
-//	      | { RECOVERY | NORECOVERY | STANDBY = standby_file_name }
-//	      | STOPAT = { 'datetime' | @datetime_var }
-//	      | STOPATMARK = { 'lsn:lsn_number' | 'mark_name' } [ AFTER 'datetime' ]
-//	      | STOPBEFOREMARK = { 'lsn:lsn_number' | 'mark_name' } [ AFTER 'datetime' ]
-//	      | FILE = { backup_set_file_number | @backup_set_file_number }
-//	      | MEDIANAME = { media_name | @media_name_variable }
-//	      | MEDIAPASSWORD = { mediapassword | @mediapassword_variable }
-//	      | ENABLE_BROKER
-//	      | NEW_BROKER
-//	      | ERROR_BROKER_CONVERSATIONS
-//	      | { NO_CHECKSUM | CHECKSUM }
-//	      | { STOP_ON_ERROR | CONTINUE_AFTER_ERROR }
-//	      | STATS [ = percentage ]
-//	      | { REWIND | NOREWIND }
-//	      | { UNLOAD | NOUNLOAD }
-//	      | RESTRICTED_USER
-//	      | KEEP_REPLICATION
-//	      | KEEP_CDC
-//	      | BUFFERCOUNT = buffercount
-//	      | MAXTRANSFERSIZE = maxtransfersize
-//	      | BLOCKSIZE = blocksize
-//	    ]
+//	restoreStatement:
+//	    (
+//	        (
+//	            restoreMain
+//	            (From devList)?
+//	        )
+//	    |
+//	        (
+//	            Identifier /* HEADERONLY | FILELISTONLY | VERIFYONLY | LABELONLY | REWINDONLY */
+//	            From devList
+//	        )
+//	    )
+//	    (restoreOptions)?
+//	    ;
 //
-//	RESTORE { HEADERONLY | FILELISTONLY | VERIFYONLY | LABELONLY | REWINDONLY }
-//	    FROM { DISK | URL | TAPE } = 'path'
-//	    [ WITH options ]
+//	restoreMain:
+//	    Database identifierOrVariable restoreFileListOpt
+//	    | Identifier /* LOG */ identifierOrVariable restoreFileListOpt
+//	    ;
+//
+//	restoreFileListOpt:
+//	    (backupRestoreFile (Comma backupRestoreFile)*)?
+//	    ;
+//
+//	backupRestoreFile:
+//	    File EqualsSign (stringOrVariable | backupRestoreFileNameList)
+//	    | Identifier /* FILEGROUP | PAGE */ EqualsSign (stringOrVariable | backupRestoreFileNameList)
+//	    ;
+//
+//	devList:
+//	    deviceInfo (Comma deviceInfo)*
+//	    ;
+//
+//	deviceInfo:
+//	    identifierOrVariable
+//	    | Identifier /* DISK | TAPE | URL | VIRTUAL_DEVICE */ EqualsSign stringOrVariable
+//	    ;
+//
+//	restoreOptions:
+//	    With restoreOptionsList
+//	    ;
+//
+//	restoreOptionsList:
+//	    restoreOption (Comma restoreOption)*
+//	    ;
+//
+//	restoreOption:
+//	    fileStreamRestoreOption
+//	    | simpleRestoreOption
+//	    | Identifier EqualsSign (stringOrVariable | signedInteger)
+//	    | moveRestoreOption
+//	    | fileRestoreOption
+//	    ;
+//
+//	-- Also: RESTORE DATABASE db FROM DATABASE_SNAPSHOT = snapshot_name
 func (p *Parser) parseRestoreStmt() *nodes.RestoreStmt {
 	loc := p.pos()
 	p.advance() // consume RESTORE
@@ -186,18 +265,31 @@ func (p *Parser) parseRestoreStmt() *nodes.RestoreStmt {
 		}
 	}
 
-	// FROM { DISK | URL | TAPE | ... } = 'path'
+	// File/filegroup list for DATABASE/LOG restores
+	if stmt.Type == "DATABASE" || stmt.Type == "LOG" {
+		stmt.FileSpecs = p.parseBackupRestoreFileList()
+	}
+
+	// FROM clause
 	if p.cur.Type == kwFROM {
 		p.advance() // consume FROM
-		// consume DISK / URL / TAPE / identifier
-		if p.isIdentLike() || p.cur.Type == kwFILE {
-			p.advance()
-		}
-		// = 'path'
-		if _, ok := p.match('='); ok {
-			if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
-				stmt.Source = p.cur.Str
-				p.advance()
+
+		// DATABASE_SNAPSHOT = snapshot_name
+		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "DATABASE_SNAPSHOT") {
+			p.advance() // consume DATABASE_SNAPSHOT
+			if _, ok := p.match('='); ok {
+				if p.isIdentLike() || p.cur.Type == tokSCONST {
+					stmt.SnapshotName = p.cur.Str
+					p.advance()
+				}
+			}
+		} else {
+			// devList: deviceInfo [ , deviceInfo ]*
+			stmt.Devices = p.parseDeviceList()
+			if stmt.Devices != nil && len(stmt.Devices.Items) > 0 {
+				if s, ok := stmt.Devices.Items[0].(*nodes.String); ok {
+					stmt.Source = extractDevicePath(s.Str)
+				}
 			}
 		}
 	}
@@ -212,6 +304,199 @@ func (p *Parser) parseRestoreStmt() *nodes.RestoreStmt {
 	return stmt
 }
 
+// parseBackupRestoreFileList parses the optional file/filegroup list.
+//
+//	backupRestoreFile:
+//	    FILE = ( stringOrVariable | backupRestoreFileNameList )
+//	    | Identifier /* FILEGROUP | PAGE */ = ( stringOrVariable | backupRestoreFileNameList )
+//	    | Identifier /* READ_WRITE_FILEGROUPS */
+//	    ;
+func (p *Parser) parseBackupRestoreFileList() *nodes.List {
+	var specs []nodes.Node
+
+	for {
+		if p.cur.Type == kwFILE {
+			// FILE = value
+			spec := "FILE="
+			p.advance() // consume FILE
+			if _, ok := p.match('='); ok {
+				spec += p.parseFileSpecValue()
+			}
+			specs = append(specs, &nodes.String{Str: spec})
+		} else if p.isIdentLike() && strings.EqualFold(p.cur.Str, "FILEGROUP") {
+			spec := "FILEGROUP="
+			p.advance() // consume FILEGROUP
+			if _, ok := p.match('='); ok {
+				spec += p.parseFileSpecValue()
+			}
+			specs = append(specs, &nodes.String{Str: spec})
+		} else if p.isIdentLike() && strings.EqualFold(p.cur.Str, "PAGE") {
+			spec := "PAGE="
+			p.advance() // consume PAGE
+			if _, ok := p.match('='); ok {
+				spec += p.parseFileSpecValue()
+			}
+			specs = append(specs, &nodes.String{Str: spec})
+		} else if p.isIdentLike() && strings.EqualFold(p.cur.Str, "READ_WRITE_FILEGROUPS") {
+			specs = append(specs, &nodes.String{Str: "READ_WRITE_FILEGROUPS"})
+			p.advance()
+		} else {
+			break
+		}
+
+		// comma to continue
+		if p.cur.Type == ',' {
+			// Peek: is this another file spec or the start of TO/FROM?
+			// If next token after comma is FILE, FILEGROUP, PAGE, READ_WRITE_FILEGROUPS, consume comma
+			next := p.peekNext()
+			if next.Type == kwFILE ||
+				(next.Type == tokIDENT && (strings.EqualFold(next.Str, "FILEGROUP") ||
+					strings.EqualFold(next.Str, "PAGE") ||
+					strings.EqualFold(next.Str, "READ_WRITE_FILEGROUPS"))) {
+				p.advance() // consume comma
+			} else {
+				break
+			}
+		} else {
+			break
+		}
+	}
+
+	if len(specs) == 0 {
+		return nil
+	}
+	return &nodes.List{Items: specs}
+}
+
+// parseFileSpecValue parses the value after FILE= / FILEGROUP= / PAGE=.
+// This can be a string/variable or a parenthesized list.
+func (p *Parser) parseFileSpecValue() string {
+	if p.cur.Type == '(' {
+		// backupRestoreFileNameList: ( stringOrVariable [ , stringOrVariable ]* )
+		p.advance() // consume (
+		var parts []string
+		for {
+			if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
+				parts = append(parts, p.cur.Str)
+				p.advance()
+			} else if p.isIdentLike() {
+				parts = append(parts, p.cur.Str)
+				p.advance()
+			} else {
+				break
+			}
+			if p.cur.Type == ',' {
+				p.advance()
+			} else {
+				break
+			}
+		}
+		if p.cur.Type == ')' {
+			p.advance()
+		}
+		return "(" + strings.Join(parts, ",") + ")"
+	}
+	// stringOrVariable
+	if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
+		val := p.cur.Str
+		p.advance()
+		return val
+	}
+	if p.isIdentLike() {
+		val := p.cur.Str
+		p.advance()
+		return val
+	}
+	return ""
+}
+
+// parseDeviceList parses a comma-separated list of backup/restore devices.
+//
+//	devList: deviceInfo ( Comma deviceInfo )*
+//
+//	deviceInfo:
+//	    identifierOrVariable
+//	    | Identifier /* DISK | TAPE | URL | VIRTUAL_DEVICE */ EqualsSign stringOrVariable
+func (p *Parser) parseDeviceList() *nodes.List {
+	var devs []nodes.Node
+
+	for {
+		dev := p.parseOneDevice()
+		if dev == "" {
+			break
+		}
+		devs = append(devs, &nodes.String{Str: dev})
+
+		if p.cur.Type == ',' {
+			p.advance()
+		} else {
+			break
+		}
+	}
+
+	if len(devs) == 0 {
+		return nil
+	}
+	return &nodes.List{Items: devs}
+}
+
+// parseOneDevice parses a single device entry.
+// Returns "TYPE=path" for physical devices or "logical_name" for logical devices.
+func (p *Parser) parseOneDevice() string {
+	if !p.isIdentLike() && p.cur.Type != kwFILE {
+		return ""
+	}
+
+	// Check if this is a known device type keyword followed by =
+	upper := strings.ToUpper(p.cur.Str)
+	switch upper {
+	case "DISK", "TAPE", "URL", "VIRTUAL_DEVICE":
+		devType := upper
+		p.advance() // consume type keyword
+		if _, ok := p.match('='); ok {
+			if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
+				path := p.cur.Str
+				p.advance()
+				return devType + "=" + path
+			}
+			if p.isIdentLike() {
+				// variable like @path_var
+				path := p.cur.Str
+				p.advance()
+				return devType + "=" + path
+			}
+		}
+		return devType
+	default:
+		// Logical device name
+		name := p.cur.Str
+		p.advance()
+		// Check if followed by = (could be a device type we don't know)
+		if p.cur.Type == '=' {
+			p.advance()
+			if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
+				path := p.cur.Str
+				p.advance()
+				return name + "=" + path
+			}
+			if p.isIdentLike() {
+				path := p.cur.Str
+				p.advance()
+				return name + "=" + path
+			}
+		}
+		return name
+	}
+}
+
+// extractDevicePath extracts the path portion from a "TYPE=path" device string.
+func extractDevicePath(dev string) string {
+	if idx := strings.Index(dev, "="); idx >= 0 {
+		return dev[idx+1:]
+	}
+	return dev
+}
+
 // parseBackupRestoreOptions parses structured BACKUP/RESTORE WITH options.
 // Called after WITH has been consumed.
 //
@@ -224,6 +509,7 @@ func (p *Parser) parseRestoreStmt() *nodes.RestoreStmt {
 //	  | ENABLE_BROKER | NEW_BROKER | ERROR_BROKER_CONVERSATIONS
 //	  | REWIND | NOREWIND | UNLOAD | NOUNLOAD
 //	  | RESTRICTED_USER | KEEP_REPLICATION | KEEP_CDC
+//	  | PARTIAL | CREDENTIAL | METADATA_ONLY | SNAPSHOT
 //	  | NAME = { 'name' | @var }
 //	  | DESCRIPTION = { 'text' | @var }
 //	  | EXPIREDATE = { 'date' | @var }
@@ -235,13 +521,16 @@ func (p *Parser) parseRestoreStmt() *nodes.RestoreStmt {
 //	  | MEDIADESCRIPTION = { 'text' | @var }
 //	  | MEDIANAME = { 'name' | @var }
 //	  | MEDIAPASSWORD = { 'password' | @var }
+//	  | PASSWORD = { 'password' | @var }
 //	  | STANDBY = standby_file_name
 //	  | STOPAT = { 'datetime' | @var }
 //	  | STOPATMARK = { 'mark' } [ AFTER 'datetime' ]
 //	  | STOPBEFOREMARK = { 'mark' } [ AFTER 'datetime' ]
 //	  | FILE = { n | @var }
+//	  | DBNAME = { database_name | @var }
 //	  | ENCRYPTION ( ALGORITHM = alg, SERVER { CERTIFICATE | ASYMMETRIC KEY } = name )
 //	  | MOVE 'logical_file_name' TO 'os_file_name'
+//	  | FILESTREAM ( DIRECTORY_NAME = directory_name )
 func (p *Parser) parseBackupRestoreOptions() *nodes.List {
 	var opts []nodes.Node
 
@@ -286,6 +575,8 @@ var backupRestoreFlagOptions = map[string]bool{
 	"UNLOAD": true, "NOUNLOAD": true,
 	"RESTRICTED_USER": true,
 	"KEEP_REPLICATION": true, "KEEP_CDC": true,
+	"PARTIAL": true, "CREDENTIAL": true,
+	"METADATA_ONLY": true, "SNAPSHOT": true,
 }
 
 // backupRestoreKVOptions lists option names that take = value.
@@ -294,9 +585,10 @@ var backupRestoreKVOptions = map[string]bool{
 	"EXPIREDATE": true, "RETAINDAYS": true,
 	"BLOCKSIZE": true, "BUFFERCOUNT": true, "MAXTRANSFERSIZE": true,
 	"MEDIADESCRIPTION": true, "MEDIANAME": true, "MEDIAPASSWORD": true,
+	"PASSWORD": true,
 	"STANDBY": true, "STOPAT": true,
 	"STOPATMARK": true, "STOPBEFOREMARK": true,
-	"FILE": true, "CREDENTIAL": true,
+	"FILE": true, "DBNAME": true,
 }
 
 // parseOneBackupRestoreOption parses a single BACKUP/RESTORE WITH option.
@@ -316,6 +608,11 @@ func (p *Parser) parseOneBackupRestoreOption() *nodes.BackupRestoreOption {
 	// MOVE 'logical' TO 'physical'
 	if name == "MOVE" {
 		return p.parseRestoreMoveOption()
+	}
+
+	// FILESTREAM ( DIRECTORY_NAME = directory_name )
+	if name == "FILESTREAM" {
+		return p.parseRestoreFilestreamOption()
 	}
 
 	// STATS [ = percentage ] — special: '=' is optional
@@ -492,6 +789,44 @@ func (p *Parser) parseRestoreMoveOption() *nodes.BackupRestoreOption {
 	// 'os_file_name'
 	if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
 		opt.MoveTo = p.cur.Str
+		p.advance()
+	}
+
+	opt.Loc.End = p.pos()
+	return opt
+}
+
+// parseRestoreFilestreamOption parses FILESTREAM ( DIRECTORY_NAME = directory_name ).
+func (p *Parser) parseRestoreFilestreamOption() *nodes.BackupRestoreOption {
+	optLoc := p.pos()
+	p.advance() // consume FILESTREAM
+
+	opt := &nodes.BackupRestoreOption{
+		Name: "FILESTREAM",
+		Loc:  nodes.Loc{Start: optLoc},
+	}
+
+	if p.cur.Type != '(' {
+		opt.Loc.End = p.pos()
+		return opt
+	}
+	p.advance() // consume (
+
+	// DIRECTORY_NAME = directory_name
+	if p.isIdentLike() && strings.EqualFold(p.cur.Str, "DIRECTORY_NAME") {
+		p.advance() // consume DIRECTORY_NAME
+		if _, ok := p.match('='); ok {
+			if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
+				opt.Value = p.cur.Str
+				p.advance()
+			} else if p.isIdentLike() {
+				opt.Value = p.cur.Str
+				p.advance()
+			}
+		}
+	}
+
+	if p.cur.Type == ')' {
 		p.advance()
 	}
 

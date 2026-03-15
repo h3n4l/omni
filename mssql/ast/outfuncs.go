@@ -3204,6 +3204,20 @@ func writeBackupStmt(sb *strings.Builder, n *BackupStmt) {
 	fmt.Fprintf(sb, " :type \"%s\"", escapeString(n.Type))
 	fmt.Fprintf(sb, " :database \"%s\"", escapeString(n.Database))
 	fmt.Fprintf(sb, " :target \"%s\"", escapeString(n.Target))
+	if n.FileSpecs != nil {
+		sb.WriteString(" :fileSpecs ")
+		writeNode(sb, n.FileSpecs)
+	}
+	if n.Devices != nil {
+		sb.WriteString(" :devices ")
+		writeNode(sb, n.Devices)
+	}
+	if n.MirrorTo {
+		sb.WriteString(" :mirrorTo true")
+		if n.MirrorDevice != "" {
+			fmt.Fprintf(sb, " :mirrorDevice \"%s\"", escapeString(n.MirrorDevice))
+		}
+	}
 	if n.Options != nil {
 		sb.WriteString(" :options ")
 		writeNode(sb, n.Options)
@@ -3217,6 +3231,17 @@ func writeRestoreStmt(sb *strings.Builder, n *RestoreStmt) {
 	fmt.Fprintf(sb, " :type \"%s\"", escapeString(n.Type))
 	fmt.Fprintf(sb, " :database \"%s\"", escapeString(n.Database))
 	fmt.Fprintf(sb, " :source \"%s\"", escapeString(n.Source))
+	if n.FileSpecs != nil {
+		sb.WriteString(" :fileSpecs ")
+		writeNode(sb, n.FileSpecs)
+	}
+	if n.Devices != nil {
+		sb.WriteString(" :devices ")
+		writeNode(sb, n.Devices)
+	}
+	if n.SnapshotName != "" {
+		fmt.Fprintf(sb, " :snapshotName \"%s\"", escapeString(n.SnapshotName))
+	}
 	if n.Options != nil {
 		sb.WriteString(" :options ")
 		writeNode(sb, n.Options)
