@@ -1,0 +1,129 @@
+-- Statement: CREATE TABLESPACE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-TABLESPACE.html
+
+CREATE [ BIGFILE | SMALLFILE ]
+    { permanent_tablespace_clause
+    | temporary_tablespace_clause
+    | undo_tablespace_clause
+    } ;
+
+permanent_tablespace_clause:
+    TABLESPACE tablespace [ IF NOT EXISTS ]
+    [ DATAFILE file_specification [, file_specification ] ... ]
+    [ permanent_tablespace_attrs ]
+
+permanent_tablespace_attrs:
+    [ MINIMUM EXTENT size_clause ]
+    [ BLOCKSIZE integer [ K ] ]
+    [ logging_clause ]
+    [ FORCE LOGGING ]
+    [ tablespace_encryption_clause ]
+    [ DEFAULT [ default_tablespace_params ] ]
+    [ { ONLINE | OFFLINE } ]
+    [ extent_management_clause ]
+    [ segment_management_clause ]
+    [ flashback_mode_clause ]
+    [ lost_write_protection ]
+
+temporary_tablespace_clause:
+    [ LOCAL ] TEMPORARY TABLESPACE tablespace [ IF NOT EXISTS ]
+    [ TEMPFILE file_specification [, file_specification ] ... ]
+    [ tablespace_group_clause ]
+    [ extent_management_clause ]
+    [ tablespace_encryption_clause ]
+    [ FOR { ALL | LEAF } ]
+
+undo_tablespace_clause:
+    UNDO TABLESPACE tablespace [ IF NOT EXISTS ]
+    [ DATAFILE file_specification [, file_specification ] ... ]
+    [ extent_management_clause ]
+    [ tablespace_retention_clause ]
+    [ tablespace_encryption_clause ]
+
+tablespace_encryption_clause:
+    ENCRYPTION [ tablespace_encryption_spec ] { ENCRYPT | DECRYPT }
+
+tablespace_encryption_spec:
+    USING 'encrypt_algorithm'
+
+default_tablespace_params:
+    { default_table_compression
+    | default_index_compression
+    | inmemory_clause
+    | ilm_clause
+    | storage_clause
+    } [ ... ]
+
+default_table_compression:
+    { TABLE { COMPRESS FOR { OLTP | QUERY [ LOW | HIGH ] | ARCHIVE [ LOW | HIGH ] }
+            | NOCOMPRESS
+            | ROW STORE COMPRESS [ BASIC | ADVANCED ]
+            | COLUMN STORE COMPRESS FOR { QUERY | ARCHIVE } [ LOW | HIGH ]
+            }
+    }
+
+default_index_compression:
+    { INDEX { COMPRESS [ ADVANCED [ LOW | HIGH ] ] | NOCOMPRESS } }
+
+inmemory_clause:
+    { INMEMORY [ inmemory_attributes ]
+    | NO INMEMORY
+    }
+
+inmemory_attributes:
+    [ inmemory_memcompress ]
+    [ inmemory_priority ]
+    [ inmemory_distribute ]
+    [ inmemory_duplicate ]
+
+inmemory_memcompress:
+    { MEMCOMPRESS FOR { DML | QUERY [ LOW | HIGH ] | CAPACITY [ LOW | HIGH ] }
+    | NO MEMCOMPRESS
+    }
+
+inmemory_priority:
+    PRIORITY { NONE | LOW | MEDIUM | HIGH | CRITICAL }
+
+inmemory_distribute:
+    DISTRIBUTE [ AUTO | BY { ROWID RANGE | PARTITION | SUBPARTITION } ]
+
+inmemory_duplicate:
+    { DUPLICATE | DUPLICATE ALL | NO DUPLICATE }
+
+logging_clause:
+    { LOGGING | NOLOGGING | FILESYSTEM_LIKE_LOGGING }
+
+extent_management_clause:
+    EXTENT MANAGEMENT
+    { LOCAL [ { AUTOALLOCATE | UNIFORM [ SIZE size_clause ] } ]
+    | DICTIONARY
+    }
+
+segment_management_clause:
+    SEGMENT SPACE MANAGEMENT { AUTO | MANUAL }
+
+flashback_mode_clause:
+    FLASHBACK { ON | OFF }
+
+tablespace_retention_clause:
+    RETENTION { GUARANTEE | NOGUARANTEE }
+
+tablespace_group_clause:
+    TABLESPACE GROUP { tablespace_group_name | '' }
+
+lost_write_protection:
+    { ENABLE | DISABLE | SUSPEND | REMOVE } LOST WRITE PROTECTION
+
+file_specification:
+    [ 'filename' | 'ASM_filename' ]
+    [ SIZE size_clause ]
+    [ REUSE ]
+    [ autoextend_clause ]
+
+autoextend_clause:
+    { AUTOEXTEND OFF
+    | AUTOEXTEND ON [ NEXT size_clause ] [ MAXSIZE { UNLIMITED | size_clause } ]
+    }
+
+size_clause:
+    integer [ K | M | G | T | P | E ]

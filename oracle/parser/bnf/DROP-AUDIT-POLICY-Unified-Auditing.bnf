@@ -1,0 +1,5 @@
+-- Statement: DROP AUDIT POLICY (Unified Auditing)
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-AUDIT-POLICY-Unified-Auditing.html
+
+drop_audit_policy::=
+    DROP AUDIT POLICY policy

@@ -1,0 +1,26 @@
+-- Statement: CREATE OPERATOR
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-OPERATOR.html
+
+CREATE [ OR REPLACE | IF NOT EXISTS ] OPERATOR
+    [ schema. ] operator
+    binding_clause
+    [ SHARING = { METADATA | NONE } ] ;
+
+binding_clause:
+    BINDING ( [ parameter_type [, parameter_type ]... ] )
+    RETURN return_type
+    [ implementation_clause ]
+    using_function_clause
+
+implementation_clause:
+    { context_clause
+    | ANCILLARY TO primary_operator ( parameter_type [, parameter_type ]... )
+    }
+
+context_clause:
+    [ WITH INDEX CONTEXT , SCAN CONTEXT implementation_type ]
+    [ COMPUTE ANCILLARY DATA ]
+    [ WITH COLUMN CONTEXT ]
+
+using_function_clause:
+    USING [ schema. ] [ package_name. | type_name. ] function_name

@@ -1,0 +1,74 @@
+-- Statement: INSERT
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/INSERT.html
+
+INSERT [ hint ]
+    { single_table_insert | multi_table_insert }
+
+single_table_insert::=
+    insert_into_clause
+    { values_clause | subquery | insert_set_clause | by_name_position_clause }
+    [ returning_clause ]
+    [ error_logging_clause ]
+
+insert_into_clause::=
+    INTO [ schema. ] { table | view | materialized_view }
+    [ partition_extension_clause ]
+    [ @ dblink ]
+    [ t_alias ]
+    [ ( column [, column ]... ) ]
+
+DML_table_expression_clause::=
+    [ schema. ] { table | view | materialized_view }
+    [ partition_extension_clause ]
+    [ @ dblink ]
+    [ t_alias ]
+  | ( subquery [ subquery_restriction_clause ] ) [ t_alias ]
+  | TABLE ( collection_expression ) [ (+) ] [ t_alias ]
+
+partition_extension_clause::=
+    PARTITION ( partition )
+  | PARTITION FOR ( partition_key_value [, partition_key_value ]... )
+  | SUBPARTITION ( subpartition )
+  | SUBPARTITION FOR ( subpartition_key_value [, subpartition_key_value ]... )
+
+subquery_restriction_clause::=
+    WITH { READ ONLY | CHECK OPTION [ CONSTRAINT constraint ] }
+
+values_clause::=
+    VALUES ( expr [, expr ]... )
+
+insert_set_clause::=
+    SET column = { expr | DEFAULT } [, column = { expr | DEFAULT } ]...
+
+by_name_position_clause::=
+    BY { NAME | POSITION } subquery
+
+returning_clause::=
+    { RETURNING | RETURN } expr [, expr ]...
+    INTO data_item [, data_item ]...
+
+multi_table_insert::=
+    { ALL into_clause [ values_clause ] [, into_clause [ values_clause ] ]...
+    | conditional_insert_clause
+    }
+    subquery
+
+conditional_insert_clause::=
+    [ ALL | FIRST ]
+    WHEN condition THEN
+        into_clause [ values_clause ]
+        [, into_clause [ values_clause ] ]...
+    [ WHEN condition THEN
+        into_clause [ values_clause ]
+        [, into_clause [ values_clause ] ]... ]...
+    [ ELSE
+        into_clause [ values_clause ]
+        [, into_clause [ values_clause ] ]... ]
+
+into_clause::=
+    INTO [ schema. ] { table | view } [ ( column [, column ]... ) ]
+
+error_logging_clause::=
+    LOG ERRORS [ INTO [ schema. ] table ]
+    [ ( simple_expression ) ]
+    [ REJECT LIMIT { integer | UNLIMITED } ]

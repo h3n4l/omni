@@ -1,0 +1,13 @@
+-- Statement: CALL
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CALL.html
+
+CALL
+    { routine_clause | object_access_expression }
+    [ INTO :host_variable [ [ INDICATOR ] :indicator_variable ] ] ;
+
+routine_clause:
+    [ schema. ] [ { type_name | package_name } . ] routine_name [ @dblink_name ]
+    ( [ argument [, argument ]... ] )
+
+object_access_expression:
+    ( expr ) . method_name ( [ argument [, argument ]... ] )

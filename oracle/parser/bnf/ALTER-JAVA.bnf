@@ -1,0 +1,10 @@
+-- Statement: ALTER JAVA
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-JAVA.html
+
+ALTER JAVA [ IF EXISTS ] { SOURCE | CLASS } [ schema. ] object_name
+    [ RESOLVER ( ( match_string schema_name ) [, ( match_string schema_name ) ]... ) ]
+    [ invoker_rights_clause ]
+    { RESOLVE | COMPILE } ;
+
+invoker_rights_clause:
+    AUTHID { CURRENT_USER | DEFINER }

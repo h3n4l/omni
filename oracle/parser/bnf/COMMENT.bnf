@@ -1,0 +1,15 @@
+-- Statement: COMMENT
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/COMMENT.html
+
+COMMENT ON
+    { AUDIT POLICY policy_name
+    | COLUMN [ schema. ] { table | view | materialized_view } . column
+    | EDITION edition_name
+    | INDEXTYPE [ schema. ] indextype
+    | MATERIALIZED VIEW [ schema. ] materialized_view
+    | MINING MODEL [ schema. ] mining_model
+    | OPERATOR [ schema. ] operator
+    | PROPERTY GRAPH [ schema. ] property_graph
+    | TABLE [ schema. ] { table | view }
+    }
+    IS string ;

@@ -1,0 +1,9 @@
+-- Statement: ALTER ATTRIBUTE DIMENSION
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-ATTRIBUTE-DIMENSION.html
+
+alter_attribute_dimension ::=
+    ALTER ATTRIBUTE DIMENSION [ IF EXISTS ] [ schema . ] attr_dim_name
+    {
+        RENAME TO new_attr_dim_name
+      | COMPILE
+    }

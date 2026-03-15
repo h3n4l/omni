@@ -1,0 +1,61 @@
+-- Statement: GRANT
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/GRANT.html
+
+grant::=
+    grant_system_privileges
+  | grant_schema_privileges
+  | grant_object_privileges
+  | grant_roles_to_programs
+
+grant_system_privileges::=
+    GRANT { system_privilege [, system_privilege ]...
+          | ALL PRIVILEGES
+          | role [, role ]...
+          }
+        TO { grantee_clause [, grantee_clause ]... }
+        [ IDENTIFIED BY password [, password ]... ]
+        [ WITH { ADMIN | DELEGATE } OPTION ]
+        [ CONTAINER = { CURRENT | ALL } ]
+
+grant_schema_privileges::=
+    GRANT { schema_privilege [, schema_privilege ]...
+          | ALL [ PRIVILEGES ]
+          }
+        ON SCHEMA schema
+        TO { grantee_clause [, grantee_clause ]... }
+        [ WITH ADMIN OPTION ]
+        [ CONTAINER = { CURRENT | ALL } ]
+
+grant_object_privileges::=
+    GRANT { object_privilege [ ( column [, column ]... ) ]
+              [, object_privilege [ ( column [, column ]... ) ] ]...
+          | ALL [ PRIVILEGES ]
+          }
+        on_object_clause
+        TO { grantee_clause [, grantee_clause ]... }
+        [ WITH { GRANT | HIERARCHY } OPTION ]
+        [ CONTAINER = { CURRENT | ALL } ]
+
+on_object_clause::=
+    ON [ schema. ] object
+  | ON USER user [, user ]...
+  | ON DIRECTORY directory_name
+  | ON EDITION edition_name
+  | ON MINING MODEL [ schema. ] mining_model_name
+  | ON JAVA { SOURCE | RESOURCE } [ schema. ] object
+  | ON SQL TRANSLATION PROFILE [ schema. ] profile
+
+grant_roles_to_programs::=
+    GRANT role [, role ]...
+        TO program_unit [, program_unit ]...
+        [ WITH { ADMIN | DELEGATE } OPTION ]
+        [ CONTAINER = { CURRENT | ALL } ]
+
+program_unit::=
+    [ schema. ] { FUNCTION function_name
+                 | PROCEDURE procedure_name
+                 | PACKAGE package_name
+                 }
+
+grantee_clause::=
+    { user | role | PUBLIC }

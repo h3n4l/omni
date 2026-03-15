@@ -1,0 +1,7 @@
+-- Statement: CREATE TYPE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-TYPE.html
+-- Note: Type body syntax is defined in PL/SQL Language Reference (plsql_type_source)
+
+CREATE [ OR REPLACE | IF NOT EXISTS ]
+    [ EDITIONABLE | NONEDITIONABLE ]
+    TYPE plsql_type_source ;

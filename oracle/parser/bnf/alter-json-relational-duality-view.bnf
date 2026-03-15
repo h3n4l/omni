@@ -1,0 +1,9 @@
+-- Statement: ALTER JSON RELATIONAL DUALITY VIEW
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/alter-json-relational-duality-view.html
+
+ALTER JSON RELATIONAL DUALITY VIEW [ schema. ] view_name
+    duality_view_replication_clause
+
+duality_view_replication_clause:
+    ENABLE LOGICAL REPLICATION
+  | DISABLE LOGICAL REPLICATION

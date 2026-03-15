@@ -1,0 +1,50 @@
+-- Statement: ALTER PROFILE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-PROFILE.html
+
+ALTER PROFILE profile_name
+    LIMIT { resource_parameters | password_parameters }
+    [ CONTAINER = { ALL | CURRENT } ] ;
+
+resource_parameters:
+    { SESSIONS_PER_USER { integer | UNLIMITED | DEFAULT }
+    | CPU_PER_SESSION { integer | UNLIMITED | DEFAULT }
+    | CPU_PER_CALL { integer | UNLIMITED | DEFAULT }
+    | CONNECT_TIME { integer | UNLIMITED | DEFAULT }
+    | IDLE_TIME { integer | UNLIMITED | DEFAULT }
+    | LOGICAL_READS_PER_SESSION { integer | UNLIMITED | DEFAULT }
+    | LOGICAL_READS_PER_CALL { integer | UNLIMITED | DEFAULT }
+    | PRIVATE_SGA { size_clause | UNLIMITED | DEFAULT }
+    | COMPOSITE_LIMIT { integer | UNLIMITED | DEFAULT }
+    }
+    [ { SESSIONS_PER_USER { integer | UNLIMITED | DEFAULT }
+      | CPU_PER_SESSION { integer | UNLIMITED | DEFAULT }
+      | CPU_PER_CALL { integer | UNLIMITED | DEFAULT }
+      | CONNECT_TIME { integer | UNLIMITED | DEFAULT }
+      | IDLE_TIME { integer | UNLIMITED | DEFAULT }
+      | LOGICAL_READS_PER_SESSION { integer | UNLIMITED | DEFAULT }
+      | LOGICAL_READS_PER_CALL { integer | UNLIMITED | DEFAULT }
+      | PRIVATE_SGA { size_clause | UNLIMITED | DEFAULT }
+      | COMPOSITE_LIMIT { integer | UNLIMITED | DEFAULT }
+      } ]...
+
+password_parameters:
+    { PASSWORD_LIFE_TIME { integer | UNLIMITED | DEFAULT }
+    | PASSWORD_GRACE_TIME { integer | UNLIMITED | DEFAULT }
+    | PASSWORD_REUSE_TIME { integer | UNLIMITED | DEFAULT }
+    | PASSWORD_REUSE_MAX { integer | UNLIMITED | DEFAULT }
+    | PASSWORD_LOCK_TIME { integer | UNLIMITED | DEFAULT }
+    | FAILED_LOGIN_ATTEMPTS { integer | UNLIMITED | DEFAULT }
+    | INACTIVE_ACCOUNT_TIME { integer | UNLIMITED | DEFAULT }
+    | PASSWORD_ROLLOVER_TIME { integer | UNLIMITED | DEFAULT }
+    | PASSWORD_VERIFY_FUNCTION { function_name | NULL | DEFAULT }
+    }
+    [ { PASSWORD_LIFE_TIME { integer | UNLIMITED | DEFAULT }
+      | PASSWORD_GRACE_TIME { integer | UNLIMITED | DEFAULT }
+      | PASSWORD_REUSE_TIME { integer | UNLIMITED | DEFAULT }
+      | PASSWORD_REUSE_MAX { integer | UNLIMITED | DEFAULT }
+      | PASSWORD_LOCK_TIME { integer | UNLIMITED | DEFAULT }
+      | FAILED_LOGIN_ATTEMPTS { integer | UNLIMITED | DEFAULT }
+      | INACTIVE_ACCOUNT_TIME { integer | UNLIMITED | DEFAULT }
+      | PASSWORD_ROLLOVER_TIME { integer | UNLIMITED | DEFAULT }
+      | PASSWORD_VERIFY_FUNCTION { function_name | NULL | DEFAULT }
+      } ]...

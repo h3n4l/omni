@@ -1,0 +1,21 @@
+-- Statement: CREATE JAVA
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-JAVA.html
+
+CREATE [ OR REPLACE | IF NOT EXISTS ] [ AND { RESOLVE | COMPILE } ] [ NOFORCE ]
+    JAVA { SOURCE | CLASS | RESOURCE }
+    [ NAMED [ schema. ] primary_name ]
+    [ SHARING = { METADATA | NONE } ]
+    [ invoker_rights_clause ]
+    [ resolver_clause ]
+    { USING { BFILE ( directory_object_name , server_file_name )
+            | { CLOB | BLOB | BFILE } subquery
+            | key_for_BLOB
+            }
+    | AS source_char
+    }
+
+invoker_rights_clause:
+    AUTHID { CURRENT_USER | DEFINER }
+
+resolver_clause:
+    RESOLVER ( ( match_string { schema_name | - } ) [ ( match_string { schema_name | - } ) ]... )

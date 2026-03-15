@@ -1,0 +1,61 @@
+-- Statement: CREATE PROPERTY GRAPH
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/create-property-graph.html
+
+CREATE [ OR REPLACE ] PROPERTY GRAPH [ IF NOT EXISTS ]
+    [ schema. ] graph_name
+    vertex_tables_clause
+    [ edge_tables_clause ]
+    [ graph_options ] ;
+
+vertex_tables_clause:
+    VERTEX TABLES ( vertex_table_definition [, vertex_table_definition ]... )
+
+vertex_table_definition:
+    graph_element_name_and_key
+    [ graph_table_label_and_properties ]
+
+graph_element_name_and_key:
+    [ schema. ] graph_element_object_name
+    [ AS graph_element_name ]
+    [ graph_element_key ]
+
+graph_element_object_name:
+    { table_name | view_name | materialized_view_name | synonym_name }
+
+graph_element_key:
+    KEY ( column_name [, column_name ]... )
+
+graph_table_label_and_properties:
+    [ graph_table_label_clause ]
+    [ graph_table_label_properties_clause ]
+    [ DEFAULT LABEL ]
+
+graph_table_label_clause:
+    LABEL label_name [ LABEL label_name ]...
+
+graph_table_label_properties_clause:
+    PROPERTIES [ ARE ] ALL COLUMNS
+  | PROPERTIES [ ARE ] ALL COLUMNS EXCEPT ( column_name [, column_name ]... )
+  | PROPERTIES ( column_name [ AS property_name ] [, column_name [ AS property_name ] ]... )
+  | PROPERTIES ( value_expression AS property_name [, value_expression AS property_name ]... )
+  | NO PROPERTIES
+
+edge_tables_clause:
+    EDGE TABLES ( edge_table_definition [, edge_table_definition ]... )
+
+edge_table_definition:
+    [ schema. ] graph_element_object_name
+    [ AS graph_element_name ]
+    [ graph_element_key ]
+    SOURCE [ KEY ( column_name [, column_name ]... ) REFERENCES ] vertex_table_reference
+    DESTINATION [ KEY ( column_name [, column_name ]... ) REFERENCES ] vertex_table_reference
+    [ graph_table_label_and_properties ]
+
+vertex_table_reference:
+    graph_element_name ( column_name [, column_name ]... )
+
+graph_options:
+    OPTIONS (
+        [ { ENFORCED MODE | TRUSTED MODE } ]
+        [, { ALLOW MIXED PROPERTY TYPES | DISALLOW MIXED PROPERTY TYPES } ]
+    )

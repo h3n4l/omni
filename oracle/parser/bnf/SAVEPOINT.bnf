@@ -1,0 +1,4 @@
+-- Statement: SAVEPOINT
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/SAVEPOINT.html
+
+SAVEPOINT savepoint_name ;

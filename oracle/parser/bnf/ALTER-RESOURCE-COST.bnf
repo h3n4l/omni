@@ -1,0 +1,13 @@
+-- Statement: ALTER RESOURCE COST
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-RESOURCE-COST.html
+
+ALTER RESOURCE COST
+    { CPU_PER_SESSION integer
+    | CONNECT_TIME integer
+    | LOGICAL_READS_PER_SESSION integer
+    | PRIVATE_SGA integer
+    } [ { CPU_PER_SESSION integer
+        | CONNECT_TIME integer
+        | LOGICAL_READS_PER_SESSION integer
+        | PRIVATE_SGA integer
+        } ]...

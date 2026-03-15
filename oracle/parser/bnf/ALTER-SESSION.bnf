@@ -1,0 +1,33 @@
+-- Statement: ALTER SESSION
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-SESSION.html
+
+ALTER SESSION
+    { ADVISE { COMMIT | ROLLBACK | NOTHING }
+    | CLOSE DATABASE LINK dblink
+    | { ENABLE | DISABLE } COMMIT IN PROCEDURE
+    | { ENABLE | DISABLE } GUARD
+    | { ENABLE | DISABLE } PARALLEL { DML | DDL | QUERY }
+    | FORCE PARALLEL { DML | DDL | QUERY } [ PARALLEL integer ]
+    | { ENABLE | DISABLE } RESUMABLE [ TIMEOUT integer ] [ NAME 'string' ]
+    | { ENABLE | DISABLE } SHARD DDL
+    | SYNC WITH PRIMARY
+    | alter_session_set_clause
+    }
+
+alter_session_set_clause:
+    SET { parameter_name = parameter_value [, parameter_name = parameter_value ]...
+        | EDITION = edition_name
+        | CONTAINER = container_name [ SERVICE = service_name ]
+        | ROW ARCHIVAL VISIBILITY = { ACTIVE | ALL }
+        | DEFAULT_COLLATION = { collation_name | NONE }
+        | CONSTRAINT[S] = { IMMEDIATE | DEFERRED | DEFAULT }
+        | CURRENT_SCHEMA = schema
+        | ERROR_ON_OVERLAP_TIME = { TRUE | FALSE }
+        | FLAGGER = { ENTRY | OFF }
+        | INSTANCE = integer
+        | ISOLATION_LEVEL = { SERIALIZABLE | READ COMMITTED }
+        | STANDBY_MAX_DATA_DELAY = { integer | NONE }
+        | TIME_ZONE = { '{ + | - } hh:mi' | LOCAL | DBTIMEZONE | 'time_zone_region' }
+        | USE_PRIVATE_OUTLINES = { TRUE | FALSE | category_name }
+        | USE_STORED_OUTLINES = { TRUE | FALSE | category_name }
+        }

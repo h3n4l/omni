@@ -1,0 +1,13 @@
+-- Statement: CREATE LIBRARY
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-LIBRARY.html
+
+CREATE [ OR REPLACE | IF NOT EXISTS ]
+    [ EDITIONABLE | NONEDITIONABLE ]
+    LIBRARY [ schema. ] library_name
+    plsql_library_source
+
+plsql_library_source:
+    { IS | AS } library_path
+    [ AGENT agent_dblink ]
+    [ CREDENTIAL credential_name ]
+    [ SHARING = { METADATA | NONE } ]

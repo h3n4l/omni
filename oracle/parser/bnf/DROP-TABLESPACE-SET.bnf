@@ -1,0 +1,6 @@
+-- Statement: DROP TABLESPACE SET
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-TABLESPACE-SET.html
+
+DROP TABLESPACE SET tablespace_set
+    [ INCLUDING CONTENTS [ { AND DATAFILES | KEEP DATAFILES } ]
+      [ CASCADE CONSTRAINTS ] ] ;

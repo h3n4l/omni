@@ -1,0 +1,6 @@
+-- Statement: DROP CLUSTER
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-CLUSTER.html
+
+drop_cluster::=
+    DROP CLUSTER [ IF EXISTS ] [ schema. ] cluster
+    [ INCLUDING TABLES [ CASCADE CONSTRAINTS ] ]

@@ -1,0 +1,166 @@
+-- Statement: ALTER PLUGGABLE DATABASE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-PLUGGABLE-DATABASE.html
+
+ALTER PLUGGABLE DATABASE [ pdb_name ]
+    { pdb_unplug_clause
+    | pdb_settings_clauses
+    | pdb_datafile_clause
+    | pdb_recovery_clauses
+    | pdb_change_state
+    | pdb_change_state_from_root
+    | application_clauses
+    | snapshot_clauses
+    } ;
+
+pdb_unplug_clause:
+    UNPLUG INTO 'filename' [ pdb_unplug_encrypt ]
+
+pdb_unplug_encrypt:
+    ENCRYPT USING transport_secret
+
+pdb_settings_clauses:
+    { DEFAULT EDITION edition_name
+    | SET DEFAULT TABLESPACE { BIGFILE | SMALLFILE }
+    | DEFAULT TABLESPACE tablespace_name
+    | DEFAULT TEMPORARY TABLESPACE { tablespace_name | tablespace_group_name }
+    | RENAME GLOBAL_NAME TO global_database_name
+    | set_time_zone_clause
+    | database_file_clauses
+    | supplemental_db_logging
+    | pdb_storage_clause
+    | pdb_logging_clauses
+    | pdb_refresh_mode_clause
+    | pdb_refresh_switchover_clause
+    | CONTAINERS { DEFAULT TARGET { container_name | NONE }
+                 | HOST = 'hostname'
+                 | PORT = port_number
+                 }
+    | PRIORITY { integer | NONE }
+    }
+
+set_time_zone_clause:
+    SET TIME_ZONE = '{ { + | - } hh:mm | time_zone_region }'
+
+pdb_storage_clause:
+    STORAGE (
+      [ MAXSIZE { size_clause | UNLIMITED } ]
+      [ MAX_AUDIT_SIZE { size_clause | UNLIMITED } ]
+      [ MAX_DIAG_SIZE { size_clause | UNLIMITED } ]
+    )
+
+pdb_logging_clauses:
+    { logging_clause | pdb_force_logging_clause }
+
+logging_clause:
+    { LOGGING | NOLOGGING }
+
+pdb_force_logging_clause:
+    { ENABLE FORCE LOGGING
+    | DISABLE FORCE LOGGING
+    | ENABLE FORCE NOLOGGING
+    | DISABLE FORCE NOLOGGING
+    | SET STANDBY NOLOGGING FOR LOAD PERFORMANCE
+    | SET STANDBY NOLOGGING FOR DATA AVAILABILITY
+    }
+
+pdb_refresh_mode_clause:
+    REFRESH MODE { NONE | MANUAL | EVERY integer { MINUTES | HOURS } }
+
+pdb_refresh_switchover_clause:
+    REFRESH SWITCHOVER TO PRIMARY dblink
+
+pdb_datafile_clause:
+    [ pdb_name ] DATAFILE { ALL | 'filename' | filenumber }
+    { ONLINE | OFFLINE }
+
+pdb_recovery_clauses:
+    { pdb_general_recovery
+    | BACKUP { BEGIN | END }
+    | { ENABLE | DISABLE } RECOVERY
+    }
+
+pdb_general_recovery:
+    RECOVER [ STANDBY ]
+    [ UNTIL { CANCEL | TIME date | CHANGE integer | SEQUENCE integer } ]
+    [ USING BACKUP CONTROLFILE ]
+
+pdb_change_state:
+    { pdb_open | pdb_close | pdb_save_or_discard_state }
+
+pdb_open:
+    OPEN [ { READ WRITE | READ ONLY | HYBRID READ ONLY | [ READ WRITE ] UPGRADE } ]
+    [ RESTRICTED ] [ FORCE ] [ RESETLOGS ]
+    [ instances_clause ]
+    [ services_clause ]
+
+pdb_close:
+    CLOSE [ { IMMEDIATE | ABORT } ]
+    [ instances_clause ]
+    [ relocate_clause ]
+
+relocate_clause:
+    { RELOCATE [ TO 'instance_name' ] | NORELOCATE }
+
+pdb_save_or_discard_state:
+    { SAVE | DISCARD } STATE [ instances_clause ]
+
+instances_clause:
+    INSTANCES = ( { instance_name [, instance_name ]...
+                  | ALL
+                  | ALL EXCEPT ( instance_name [, instance_name ]... )
+                  } )
+
+services_clause:
+    SERVICES = ( { service_name [, service_name ]...
+                 | ALL
+                 | ALL EXCEPT ( service_name [, service_name ]... )
+                 } )
+
+pdb_change_state_from_root:
+    { pdb_name
+    | ALL
+    | ALL EXCEPT ( pdb_name [, pdb_name ]... )
+    }
+    { pdb_open | pdb_close | pdb_save_or_discard_state }
+
+application_clauses:
+    APPLICATION
+    { app_name
+      { BEGIN { INSTALL VERSION app_version [ COMMENT 'comment' ]
+              | PATCH number [ MINIMUM VERSION app_version ] [ COMMENT 'comment' ]
+              | UPGRADE FROM start_app_version TO end_app_version [ COMMENT 'comment' ]
+              | UNINSTALL
+              }
+      | END { INSTALL [ VERSION app_version ]
+            | PATCH [ number ]
+            | UPGRADE [ TO end_app_version ]
+            | UNINSTALL
+            }
+      | SET PATCH number
+      | SET VERSION app_version
+      | SET COMPATIBILITY VERSION { app_version | CURRENT }
+      | SYNC [ TO { app_version | PATCH patch_number } ]
+      }
+    | { app_name [, app_name ]... } SYNC
+    | ALL [ EXCEPT ( app_name [, app_name ]... ) ] SYNC
+    }
+
+snapshot_clauses:
+    { pdb_snapshot_clause
+    | MATERIALIZE
+    | CREATE SNAPSHOT snapshot_name
+    | DROP SNAPSHOT snapshot_name
+    | SET MAX_PDB_SNAPSHOTS = integer
+    | prepare_clause
+    | DROP MIRROR COPY mirror_name
+    | { ENABLE | DISABLE } LOST WRITE PROTECTION
+    | { ENABLE | DISABLE } BACKUP
+    }
+
+pdb_snapshot_clause:
+    SNAPSHOT { NONE | MANUAL | EVERY integer { MINUTES | HOURS } }
+
+prepare_clause:
+    PREPARE MIRROR COPY mirror_name
+    [ WITH { EXTERNAL | NORMAL | HIGH } REDUNDANCY ]
+    [ FOR DATABASE database_name ]

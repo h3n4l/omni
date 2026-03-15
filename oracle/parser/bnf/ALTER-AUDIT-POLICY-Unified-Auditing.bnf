@@ -1,0 +1,26 @@
+-- Statement: ALTER AUDIT POLICY (Unified Auditing)
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-AUDIT-POLICY-Unified-Auditing.html
+
+alter_audit_policy ::=
+  ALTER AUDIT POLICY policy
+    { ADD | DROP }
+      [ privilege_audit_clause ] [ action_audit_clause ] [ role_audit_clause ]
+  | ALTER AUDIT POLICY policy
+      CONDITION { DROP | 'audit_condition' [ EVALUATE { PER STATEMENT | PER SESSION | PER INSTANCE } ] }
+  | ALTER AUDIT POLICY policy
+      { ADD | DROP } ONLY TOPLEVEL
+
+privilege_audit_clause ::=
+  PRIVILEGES privilege [, privilege ]...
+
+action_audit_clause ::=
+  ACTIONS { standard_actions | component_actions } [, { standard_actions | component_actions } ]...
+
+standard_actions ::=
+  action [ ON [ schema . ] object [ ( column [, column ]... ) ] ]
+
+component_actions ::=
+  COMPONENT = component_name action [, action ]...
+
+role_audit_clause ::=
+  ROLES role [, role ]...

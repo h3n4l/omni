@@ -1,0 +1,5 @@
+-- Statement: ALTER INMEMORY JOIN GROUP
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-INMEMORY-JOIN-GROUP.html
+
+ALTER INMEMORY JOIN GROUP [ IF EXISTS ] [ schema. ] join_group
+    { ADD | REMOVE } ( [ schema. ] table ( column ) ) ;

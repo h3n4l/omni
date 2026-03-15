@@ -1,0 +1,34 @@
+-- Statement: CREATE HIERARCHY
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-HIERARCHY.html
+
+CREATE [ OR REPLACE ] [ { FORCE | NOFORCE } ] HIERARCHY
+    [ IF NOT EXISTS ] [ schema. ] hierarchy
+    [ SHARING = { METADATA | NONE } ]
+    [ classification_clause ]...
+    hier_using_clause
+    ( level_hier_clause )
+    [ hier_attrs_clause ] ;
+
+classification_clause:
+    { CAPTION 'caption'
+    | DESCRIPTION 'description'
+    | CLASSIFICATION classification_name VALUE 'classification_value'
+        [ LANGUAGE language ] }
+
+hier_using_clause:
+    USING [ schema. ] attr_dimension
+
+level_hier_clause:
+    level_name [ classification_clause ]...
+        [ CHILD OF level_hier_clause ]
+
+hier_attrs_clause:
+    HIERARCHICAL ATTRIBUTES ( hier_attr_clause [, hier_attr_clause ]... )
+
+hier_attr_clause:
+    hier_attr_name [ classification_clause ]...
+
+hier_attr_name:
+    { HIER_ORDER | DEPTH | IS_LEAF | IS_ROOT
+    | MEMBER_NAME | MEMBER_UNIQUE_NAME | MEMBER_CAPTION | MEMBER_DESCRIPTION
+    | PARENT_LEVEL_NAME | PARENT_UNIQUE_NAME }

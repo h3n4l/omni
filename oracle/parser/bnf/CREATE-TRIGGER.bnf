@@ -1,0 +1,7 @@
+-- Statement: CREATE TRIGGER
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-TRIGGER.html
+-- Note: Trigger body syntax is defined in PL/SQL Language Reference (plsql_trigger_source)
+
+CREATE [ OR REPLACE | IF NOT EXISTS ]
+    [ EDITIONABLE | NONEDITIONABLE ]
+    TRIGGER plsql_trigger_source ;

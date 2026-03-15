@@ -1,6 +1,6 @@
 # Recursive Descent Parser Implementation Skill (Oracle PL/SQL)
 
-You are implementing a recursive descent Oracle PL/SQL parser.
+You are implementing a recursive descent Oracle PL/SQL parser using a BNF-first methodology.
 
 **Working directory:** `/Users/rebeliceyang/Github/omni`
 **Parser source:** `oracle/parser/`
@@ -9,8 +9,8 @@ You are implementing a recursive descent Oracle PL/SQL parser.
 
 ## Reference Documentation
 
-- **Oracle Database 23c SQL Language Reference**: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/
-- **Oracle Database 23c PL/SQL Language Reference**: https://docs.oracle.com/en/database/oracle/oracle-database/23/lnpls/
+- **BNF definitions**: `oracle/parser/bnf/{STATEMENT-NAME}.bnf` — 171 statements, extracted from Oracle 26 official docs
+- These BNF files are the **authoritative ground truth** — do NOT use WebFetch or other sources
 - Also reference the ANTLR2-based open-source Oracle grammar for understanding edge cases
 
 ## Your Task
@@ -20,7 +20,7 @@ You are implementing a recursive descent Oracle PL/SQL parser.
    - If any batch has `"status": "in_progress"`, **resume that batch** (it was interrupted mid-work — read the existing code in its target file and continue from where it left off)
    - Otherwise, find the first batch with `"status": "pending"` whose dependencies (by id) are all `"done"`
    - If any batch has `"status": "failed"`, **retry it** (reset to `"in_progress"` and try again)
-3. Implement that batch following the steps below
+3. Implement that batch following the **BNF-First Workflow** below
 4. Update `oracle/parser/PROGRESS.json` (the full file, NOT the summary):
    - Set `"in_progress"` before starting work
    - Set `"done"` only after `go build` and `go test` pass
@@ -30,69 +30,76 @@ If all batches are `"done"`, output `ALL_BATCHES_COMPLETE` and stop.
 
 ## Progress Logging (MANDATORY)
 
-You MUST print progress markers to stdout at each step. This is how the pipeline operator monitors your work. Use this exact format:
+You MUST print progress markers to stdout at each step:
 
 ```
 [BATCH N] STARTED - batch_name
-[BATCH N] STEP reading_refs - Reading BNF and AST definitions
-[BATCH N] STEP writing_tests - Writing test cases
-[BATCH N] STEP writing_code - Implementing parse functions
+[BATCH N] STEP reading_bnf - Reading BNF files: file1.bnf, file2.bnf
+[BATCH N] STEP reviewing_code - Reviewing existing code in target files
+[BATCH N] STEP writing_tests - Writing test cases (N tests for M BNF lines)
+[BATCH N] STEP writing_code - Implementing/fixing parse functions
 [BATCH N] STEP build - Running go build
 [BATCH N] STEP test - Running go test (X passed, Y failed)
 [BATCH N] STEP commit - Committing changes
 [BATCH N] DONE
 ```
 
-If a step fails, print:
+If a step fails:
 ```
 [BATCH N] FAIL test - description of failure
 [BATCH N] RETRY - what you're fixing
 ```
 
-**Do NOT skip these markers.** They appear in the build log and are essential for debugging pipeline issues.
+**Do NOT skip these markers.**
 
-## Implementation Steps for Each Batch
+## BNF-First Workflow (Per-Batch)
 
-### Step 1: Read Official Documentation (MANDATORY)
+### Step 1: Read ALL BNF Files (MANDATORY — DO NOT SKIP)
 
-**This is the most critical step. Do NOT skip it. Do NOT write BNF from memory.**
+**This is the most critical step. Every batch starts here.**
 
-Documentation has been **pre-fetched** to local files. For every grammar rule in the batch:
+For every BNF file listed in the batch's `bnf_files` array:
 
-1. **First check local docs**: Read from `oracle/parser/docs/{STATEMENT-NAME}.txt` (e.g., `CREATE-TABLE.txt`, `ALTER-TABLESPACE.txt`)
-   - Use the Read tool to read these files — they contain the full page text with BNF
-2. **Only if the local file is missing**, use WebFetch as fallback:
-   - SQL Reference: `https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/{command}.html`
-   - PL/SQL Reference: `https://docs.oracle.com/en/database/oracle/oracle-database/23/lnpls/{topic}.html`
-3. **Extract the COMPLETE BNF/syntax diagram** — every branch, every option, every sub-clause
-4. **Do NOT abbreviate** — never write `...` or truncate the BNF
-5. **For sub-clauses that have their own doc page**, check `oracle/parser/docs/` first, then WebFetch if missing
+1. **Read the BNF file**: `oracle/parser/bnf/{STATEMENT-NAME}.bnf`
+2. **Read ALL referenced sub-clause BNFs**: If the BNF references `storage_clause`, `physical_attributes_clause`, etc., check if they have their own `.bnf` file and read those too
+3. **Count branches**: Every `|` alternative, every `[ optional ]` clause, every `{ required choice }` — these ALL need code paths
+4. **Note the BNF line count**: This determines minimum test count (see Quality Requirements)
 
-### Step 2: Read AST and Existing Code
+### Step 2: Review Existing Code (MANDATORY)
 
-- Read the AST node definitions from `oracle/ast/parsenodes.go` (and `node.go`)
-- Read the existing parser code in `oracle/parser/` to understand available helpers
-- If the existing AST types don't cover all BNF branches, add new node types / fields to `parsenodes.go`
+Read the target `.go` files and identify:
+
+1. **Stubs**: `skipToSemicolon` calls — these MUST be replaced with proper parsing
+2. **Stubs**: `parseAdminDDLStmt` dispatches — these MUST be replaced with dedicated parsers for any statement that has a `.bnf` file
+3. **Missing branches**: Compare BNF branches against code `switch`/`if` branches. Every BNF alternative must have a code path
+4. **Incorrect BNF comments**: Compare existing code comments against the `.bnf` file content. Fix any divergence
+5. **Missing `Loc` recording**: Every AST node must have `Loc.Start` and `Loc.End` set
 
 ### Step 3: Write Tests FIRST (Test-Driven Development)
 
-**TEST-DRIVEN**: Write tests FIRST, then implement.
+**TEST-DRIVEN**: Write tests BEFORE implementing.
 
-**Every branch of the BNF must have at least one test case.** For example, if ALTER TABLE has ADD, MODIFY, DROP COLUMN, DROP CONSTRAINT, RENAME, ENABLE CONSTRAINT, DISABLE CONSTRAINT, MOVE, SPLIT PARTITION, EXCHANGE PARTITION — then you need at least 10 test cases, one per branch.
+**Minimum test count**: `max(3, bnf_lines / 15)` test cases per batch.
 
-Add test cases to `compare_test.go` using SQL strings relevant to the batch's grammar rules.
-Add a new `TestParse{BatchName}` function.
+Rules:
+- **Every branch in the BNF must have at least one test case**
+- If ALTER TABLE has ADD, MODIFY, DROP COLUMN, DROP CONSTRAINT, RENAME, ENABLE, DISABLE, MOVE, SPLIT PARTITION, EXCHANGE PARTITION — you need at least 10 test cases
+- Add test cases to `compare_test.go` using a new `TestParse{BatchName}` function
+- For "review" effort batches: add any **missing** tests, even if the code is already correct
+- Test SQL should be realistic Oracle SQL, not minimal stubs
 
-### Step 4: Write Parse Functions
+### Step 4: Implement / Fix Parse Functions
 
-Create or update the target file (e.g., `oracle/parser/select.go`).
+Create or update the target file(s).
 
-**Every parse function MUST have the COMPLETE BNF in its comment. This is a hard requirement.**
+**BNF Comment Requirement (HARD REQUIREMENT):**
+
+Every parse function MUST have the COMPLETE BNF from the `.bnf` file in its doc comment:
 
 ```go
 // parseCreateTableStmt parses a CREATE TABLE statement.
 //
-// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/CREATE-TABLE.html
+// BNF: oracle/parser/bnf/CREATE-TABLE.bnf
 //
 //  CREATE [ GLOBAL TEMPORARY | PRIVATE TEMPORARY | SHARDED | DUPLICATED ]
 //      TABLE [ schema. ] table_name
@@ -103,46 +110,32 @@ Create or update the target file (e.g., `oracle/parser/select.go`).
 //
 //  relational_table:
 //      [ ( relational_properties ) ]
-//      [ DEFAULT COLLATION collation_name ]
-//      [ ON COMMIT { DROP | PRESERVE | DELETE } ROWS ]
-//      [ physical_properties ]
-//      [ table_properties ]
-//
-//  relational_properties:
-//      { column_definition | virtual_column_definition
-//        | period_definition
-//        | { out_of_line_constraint | out_of_line_ref_constraint }
-//        | supplemental_logging_props }
-//      [, ...]
+//      ...
 func (p *Parser) parseCreateTableStmt() *ast.CreateTableStmt {
 ```
 
-**The comment BNF must match the official docs exactly. No abbreviation, no `...` for omitted branches. Every branch in the BNF must have a corresponding code path in the function.**
+**The BNF comment must match the `.bnf` file exactly. No abbreviation, no `...` for omitted branches.**
+
+**Implementation Rules:**
+
+1. **Every BNF branch → code path**: If the BNF says `{ ADD | MODIFY | DROP | RENAME | ENABLE | DISABLE | MOVE | SPLIT | MERGE | EXCHANGE }`, handle ALL of them. If a branch requires a new AST node type or field, add it to `parsenodes.go` and `outfuncs.go`.
+2. **Sub-clauses must be recursively complete**: If `column_definition` has a full BNF with DEFAULT, IDENTITY, ENCRYPT, inline_constraint — implement it completely.
+3. **NO `skipToSemicolon` in new code**: If a clause is truly optional/rare, parse it as a generic option list, not skip.
+4. **NO `parseAdminDDLStmt` for any statement that has a `.bnf` file**: Replace with a dedicated parser.
+5. **Record `Loc` on EVERY AST node**: Set `Loc: nodes.Loc{Start: p.pos()}` at start, `node.Loc.End = p.pos()` at end.
+6. **Serialization**: Add serialization in `oracle/ast/outfuncs.go` for every new node type. Every node with `nodeTag()` must have a `writeNode` case and `writeXxx` function.
+7. **Use existing AST types** from `oracle/ast/` — do NOT create new node types unless absolutely necessary.
+8. **Token constants** are keyword constants (kw*) and lexer tokens (tok*) in `oracle/parser/lexer.go`.
+9. **Match Oracle grammar semantics exactly**.
+10. **Error recovery**: Skip to next semicolon for statement-level errors, return partial AST node.
+11. **Operator precedence**: Use Pratt parsing (precedence climbing) for expressions.
 
 **Return type conventions:**
 - Expression parsers return `ExprNode` (e.g., `parseExpr() ast.ExprNode`)
 - Table reference parsers return `TableExpr` (e.g., `parseTableRef() ast.TableExpr`)
-- Statement parsers return `StmtNode` (e.g., `parseSelectStmt() *ast.SelectStmt` which satisfies `StmtNode`)
+- Statement parsers return `StmtNode` (e.g., `parseSelectStmt() *ast.SelectStmt`)
 
-**Rules for parse function implementation:**
-
-1. **Use the existing AST types** from `oracle/ast/` — do NOT create new node types unless absolutely necessary
-1a. **Every branch in the BNF comment MUST have a corresponding implementation.** If the BNF says `{ ADD | MODIFY | DROP | RENAME | ENABLE | DISABLE | MOVE | SPLIT | MERGE | EXCHANGE }`, you must handle ALL of them, not just a subset. If a branch requires a new AST node type or field, add it to `parsenodes.go` and `outfuncs.go`.
-1b. **Sub-clauses must be recursively complete.** If a statement's BNF references `column_definition`, and `column_definition` itself has a full BNF (with DEFAULT, IDENTITY, ENCRYPT, inline_constraint, etc.), you must fetch that sub-clause's BNF and implement it completely too.
-2. **Record positions** on EVERY AST node that has a `Loc` field.
-   Set `Loc: nodes.Loc{Start: p.pos()}` at the beginning of parsing a node.
-   Set `node.Loc.End = p.pos()` at the end of parsing a node.
-   **This is a hard requirement.**
-3. **Token constants** are keyword constants (kw*) and lexer tokens (tok*) in `oracle/parser/lexer.go`
-4. **Match the Oracle grammar semantics exactly**
-5. **Error recovery**: When encountering unexpected tokens, try to recover by:
-   - Skipping to the next semicolon for statement-level errors
-   - Returning a partial AST node with what was parsed so far
-6. **Operator precedence** in expressions: use Pratt parsing (precedence climbing)
-7. **Serialization**: When implementing a new batch, you MUST also add serialization to `oracle/ast/outfuncs.go` for any new node types used. Every node type that has a `nodeTag()` method must have a corresponding case in `writeNode` and a `writeXxx` function.
-8. **Incremental dispatch**: The `parseStmt` dispatch in `parser.go` should be extended incrementally as each statement batch is implemented. Do not wait until batch 23 — wire in each statement parser as it is completed.
-
-Run these commands in order:
+### Step 5: Build + Test
 
 ```bash
 # Must compile
@@ -155,24 +148,52 @@ cd /Users/rebeliceyang/Github/omni && go test -v -count=1 ./oracle/parser/ -run 
 cd /Users/rebeliceyang/Github/omni && go test ./oracle/...
 ```
 
-### Step 5: Update Progress
+**NEVER mark `"done"` if `go build` or `go test` fails.**
+
+### Step 6: Update Progress
 
 Edit `PROGRESS.json`:
 - **Before starting work**: set `"status"` to `"in_progress"`
 - **After all tests pass**: set `"status"` to `"done"`
 - **If tests fail and you cannot fix**: set `"status"` to `"failed"` and add `"error": "description"`
-- **NEVER mark `"done"` if `go build ./oracle/...` or `go test ./oracle/...` fails**
 
-### Step 6: Git Commit
+### Step 7: Git Commit
 
 ```bash
 ../../scripts/git-commit.sh "oracle/parser: implement batch N - name" oracle/
 ```
 
+## Quality Requirements
+
+### Code Quality Rules
+- Every parse function MUST have the complete BNF from the `.bnf` file in its doc comment
+- Every branch in the BNF comment MUST have a corresponding code path (no silent drops)
+- NO `skipToSemicolon` in new code — parse properly or use a generic option list
+- NO `parseAdminDDLStmt` for any statement that has a `.bnf` file
+- Record `Loc` (Start/End) on every AST node
+- Add serialization in `outfuncs.go` for every new node type
+- Test count requirement: minimum `max(3, bnf_lines / 15)` test cases per batch
+
+### Review Criteria (for "review" effort batches)
+Even review-only batches MUST:
+- Verify every BNF branch has a code path
+- Verify every code path has a test
+- Add missing tests
+- Fix any divergence between code comments and actual BNF
+- Update BNF comments in code to match the `.bnf` file exactly
+
+### Batch Effort Types
+- **review**: Read BNF, compare against existing code, add missing tests, fix BNF comment divergence
+- **review+fix**: Review + fix missing branches, replace stubs with proper parsing
+- **fix+implement**: Fix existing partial implementations + implement new statements from scratch
+- **implement**: Full implementation from scratch (statement was previously stubbed via `parseAdminDDLStmt` or `skipToSemicolon`)
+- **implement+review**: Implement new + review existing related statements
+
 ## Key Files Reference
 
 | File | Purpose |
 |------|---------|
+| `oracle/parser/bnf/*.bnf` | **BNF syntax definitions** (171 files, primary reference) |
 | `oracle/parser/parser.go` | Parser struct, Parse() entry point, helpers |
 | `oracle/parser/lexer.go` | Lexer (Token, Lexer, NewLexer), keywords |
 | `oracle/ast/node.go` | Node interface, List, String, Integer |
@@ -180,6 +201,7 @@ Edit `PROGRESS.json`:
 | `oracle/ast/outfuncs.go` | AST serialization (NodeToString) |
 | `oracle/parser/compare_test.go` | Test infrastructure |
 | `oracle/parser/PROGRESS.json` | Batch progress tracking |
+| `oracle/parser/ORACLE_BNF_CATALOG.json` | BNF extraction catalog (statement list + status) |
 
 ## Oracle-Specific Parsing Notes
 
@@ -230,16 +252,7 @@ Edit `PROGRESS.json`:
 - Compound triggers (multiple timing sections)
 - DDL and database event triggers
 
-### Known Gaps in Existing Batches (tracked as new batches)
-- Batch 4 (select): PIVOT, UNPIVOT, MODEL, SAMPLE, FLASHBACK query clauses are listed in rules but not implemented
-- Batch 3 (expressions): EXISTS skips subquery content instead of parsing it; parenthesized subquery detection missing
-- Batch 8 (create_table): Partitioning, storage, LOB storage listed but implemented as stubs only
-- Batch 14 (create_trigger): Compound triggers and DDL/database event triggers not implemented
-- Batch 17 (alter_misc): ALTER INDEX/VIEW/SEQUENCE use skipToSemicolon stub returning placeholder node
-- Batch 18 (grant): CREATE/ALTER/DROP USER/ROLE listed in rules but only GRANT/REVOKE are implemented
-- Batch 21 (plsql_block): Procedure calls return nil; EXIT/CONTINUE missing
-
-## Expression Parsing Strategy
+### Expression Parsing Strategy
 
 Use **Pratt parsing / precedence climbing**:
 
@@ -256,3 +269,41 @@ Precedence levels (from low to high, matching Oracle):
 10. unary: +, -, PRIOR, CONNECT_BY_ROOT
 11. exponentiation: **
 12. function call, column ref, bind variable
+
+## Batch Summary
+
+| ID | Name | BNF Lines | Effort | Deps |
+|----|------|-----------|--------|------|
+| 87 | Infrastructure & Shared Sub-rules | — | review | — |
+| 88 | SELECT | 397 | review | 87 |
+| 89 | INSERT/UPDATE/DELETE/MERGE | 232 | review | 87 |
+| 90 | CREATE TABLE | 774 | review+fix | 87 |
+| 91 | ALTER TABLE | 1,010 | review+fix | 90 |
+| 92 | Index + Indextype + Operator | 459 | fix+implement | 87 |
+| 93 | Views (all types) | 645 | fix+implement | 87 |
+| 94 | Database + Controlfile | 445 | review+fix | 87 |
+| 95 | Pluggable Database | 372 | implement | 94 |
+| 96 | Diskgroup | 235 | implement | 87 |
+| 97 | Tablespace (all) | 293 | review+fix | 87 |
+| 98 | ALTER SESSION + SYSTEM | 135 | implement | 87 |
+| 99 | User / Role / Profile | 207 | fix+review | 87 |
+| 100 | Audit (all) | 180 | implement+review | 87 |
+| 101 | PL/SQL Objects (all) | 202 | review+fix | 87 |
+| 102 | Attr Dimension / Hierarchy / Domain | 217 | implement | 87 |
+| 103 | Cluster / Dimension / Zonemap / InMem | 228 | review+implement | 87 |
+| 104 | Graph / Vector / Lockdown / Outline | 188 | implement | 87 |
+| 105 | Small Objects Bundle | 239 | implement+review | 87 |
+| 106 | Review Bundle (Txn+Utility+DCL+Drop) | 880 | review | 87 |
+
+## Verification
+
+After each batch:
+```bash
+cd /Users/rebeliceyang/Github/omni
+go build ./oracle/...
+go test -v ./oracle/...
+```
+
+After all batches complete:
+- Run `/audit-parser` skill to verify completeness
+- Cross-check: every `.bnf` file has a code path and a test

@@ -1,0 +1,17 @@
+-- Statement: ALTER FLASHBACK ARCHIVE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-FLASHBACK-ARCHIVE.html
+
+ALTER FLASHBACK ARCHIVE flashback_archive_name
+    { SET DEFAULT
+    | { ADD | MODIFY } TABLESPACE tablespace_name [ flashback_archive_quota ]
+    | REMOVE TABLESPACE tablespace_name
+    | MODIFY RETENTION flashback_archive_retention
+    | PURGE { ALL | BEFORE SCN scn_value | BEFORE TIMESTAMP timestamp_value }
+    | [ NO ] OPTIMIZE DATA
+    } ;
+
+flashback_archive_quota:
+    QUOTA integer { M | G | T | P | E }
+
+flashback_archive_retention:
+    integer { YEAR | MONTH | DAY }

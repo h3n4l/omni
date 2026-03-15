@@ -1,0 +1,397 @@
+-- Statement: SELECT
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/SELECT.html
+
+select:
+    [ with_clause ] subquery [ for_update_clause ] ;
+
+subquery:
+    query_block
+    [ { UNION [ ALL ] | INTERSECT | MINUS } query_block ]...
+    [ order_by_clause ]
+    [ row_limiting_clause ]
+
+query_block:
+    SELECT [ hint ] [ DISTINCT | UNIQUE | ALL ]
+    select_list
+    [ FROM { table_reference | join_clause } [, { table_reference | join_clause } ]... ]
+    [ where_clause ]
+    [ hierarchical_query_clause ]
+    [ group_by_clause ]
+    [ model_clause ]
+    [ window_clause ]
+    [ qualify_clause ]
+
+with_clause:
+    WITH
+    { plsql_declarations
+    | subquery_factoring_clause
+    | subav_factoring_clause
+    }...
+
+plsql_declarations:
+    { function_declaration | procedure_declaration }...
+
+subquery_factoring_clause:
+    query_name [ ( c_alias [, c_alias ]... ) ] AS ( subquery )
+    [ search_clause ]
+    [ cycle_clause ]
+    [, query_name [ ( c_alias [, c_alias ]... ) ] AS ( subquery )
+       [ search_clause ]
+       [ cycle_clause ] ]...
+
+search_clause:
+    SEARCH { BREADTH FIRST | DEPTH FIRST }
+    BY c_alias [ ASC | DESC ] [ NULLS FIRST | NULLS LAST ]
+       [, c_alias [ ASC | DESC ] [ NULLS FIRST | NULLS LAST ] ]...
+    SET ordering_column
+
+cycle_clause:
+    CYCLE c_alias [, c_alias ]...
+    SET cycle_mark_c_alias TO cycle_value
+    DEFAULT no_cycle_value
+
+subav_factoring_clause:
+    subav_name AS ( sub_av_clause )
+    [, subav_name AS ( sub_av_clause ) ]...
+
+sub_av_clause:
+    ANALYTIC VIEW
+    USING analytic_view_name
+    [ hierarchies_clause ]
+    [ filter_clauses ]
+    [ add_meas_clause ]
+
+hierarchies_clause:
+    HIERARCHIES ( hier_alias [, hier_alias ]... )
+
+filter_clauses:
+    filter_clause [ filter_clause ]...
+
+filter_clause:
+    FILTER FACT ( hier_alias TO [ attr_dim_alias. ] condition )
+
+add_meas_clause:
+    ADD MEASURES ( calc_meas_clause [, calc_meas_clause ]... )
+
+calc_meas_clause:
+    meas_name AS ( calc_meas_expression )
+
+select_list:
+    { * | { query_name | [ schema. ] { table | view | materialized_view } | t_alias } . *
+    | expr [ [ AS ] c_alias ] }
+    [, { * | { query_name | [ schema. ] { table | view | materialized_view } | t_alias } . *
+       | expr [ [ AS ] c_alias ] } ]...
+
+table_reference:
+    { query_table_expression
+    | ( join_clause )
+    | inline_external_table
+    } [ t_alias ]
+
+query_table_expression:
+    { [ schema. ] { table | view | materialized_view | analytic_view | hierarchy }
+      [ partition_extension_clause ]
+      [ @ dblink ]
+    | ( subquery [ subquery_restriction_clause ] )
+    | table_collection_expression
+    | inline_analytic_view
+    }
+    [ flashback_query_clause ]
+    [ sample_clause ]
+    [ pivot_clause | unpivot_clause ]
+    [ row_pattern_clause ]
+    [ containers_clause ]
+    [ shards_clause ]
+
+flashback_query_clause:
+    { VERSIONS BETWEEN { SCN | TIMESTAMP } expr AND expr
+    | VERSIONS PERIOD FOR valid_time_column BETWEEN expr AND expr
+    | AS OF { SCN | TIMESTAMP } expr
+    | AS OF PERIOD FOR valid_time_column expr
+    }
+
+partition_extension_clause:
+    { PARTITION ( partition_name )
+    | PARTITION FOR ( partition_key_value [, partition_key_value ]... )
+    | SUBPARTITION ( subpartition_name )
+    | SUBPARTITION FOR ( subpartition_key_value [, subpartition_key_value ]... )
+    }
+
+sample_clause:
+    SAMPLE [ BLOCK ] ( sample_percent ) [ SEED ( seed_value ) ]
+
+subquery_restriction_clause:
+    WITH { READ ONLY | CHECK OPTION [ CONSTRAINT constraint_name ] }
+
+table_collection_expression:
+    TABLE ( collection_expression ) [ ( + ) ]
+
+inline_analytic_view:
+    ANALYTIC VIEW ( sub_av_clause ) [ inline_av_alias ]
+
+inline_external_table:
+    EXTERNAL ( ( column_definition [, column_definition ]... )
+    inline_external_table_properties )
+
+inline_external_table_properties:
+    TYPE external_table_type
+    DEFAULT DIRECTORY directory
+    [ ACCESS PARAMETERS { ( opaque_format_spec ) | USING CLOB subquery } ]
+    LOCATION ( 'file_uri_list' )
+    [ REJECT LIMIT { integer | UNLIMITED } ]
+
+pivot_clause:
+    PIVOT [ XML ]
+    ( aggregate_function ( expr ) [ [ AS ] c_alias ]
+      [, aggregate_function ( expr ) [ [ AS ] c_alias ] ]...
+      pivot_for_clause
+      pivot_in_clause
+    )
+
+pivot_for_clause:
+    FOR { column | ( column [, column ]... ) }
+
+pivot_in_clause:
+    IN ( { { expr | ( expr [, expr ]... ) } [ [ AS ] c_alias ]
+         [, { expr | ( expr [, expr ]... ) } [ [ AS ] c_alias ] ]...
+         | subquery
+         | ANY [, ANY ]...
+         } )
+
+unpivot_clause:
+    UNPIVOT [ { INCLUDE | EXCLUDE } NULLS ]
+    ( { column | ( column [, column ]... ) }
+      pivot_for_clause
+      unpivot_in_clause
+    )
+
+unpivot_in_clause:
+    IN ( { column | ( column [, column ]... ) }
+         [ AS { literal | ( literal [, literal ]... ) } ]
+         [, { column | ( column [, column ]... ) }
+            [ AS { literal | ( literal [, literal ]... ) } ] ]...
+       )
+
+containers_clause:
+    CONTAINERS ( [ schema. ] { table | view } )
+
+shards_clause:
+    SHARDS ( [ schema. ] { table | view } )
+
+join_clause:
+    table_reference
+    { inner_cross_join_clause | outer_join_clause | cross_outer_apply_clause }...
+
+inner_cross_join_clause:
+    { [ INNER ] JOIN table_reference { ON condition | USING ( column [, column ]... ) }
+    | CROSS JOIN table_reference
+    | NATURAL [ INNER ] JOIN table_reference
+    }
+
+outer_join_clause:
+    { query_partition_clause outer_join_type JOIN table_reference
+          { ON condition | USING ( column [, column ]... ) }
+    | outer_join_type JOIN query_partition_clause table_reference
+          { ON condition | USING ( column [, column ]... ) }
+    | NATURAL outer_join_type JOIN table_reference
+    }
+
+outer_join_type:
+    { LEFT | RIGHT | FULL } [ OUTER ]
+
+query_partition_clause:
+    PARTITION BY { expr [, expr ]...
+                 | ( expr [, expr ]... ) }
+
+cross_outer_apply_clause:
+    { CROSS | OUTER } APPLY { table_reference | collection_expression }
+
+where_clause:
+    WHERE condition
+
+hierarchical_query_clause:
+    { START WITH condition CONNECT BY [ NOCYCLE ] condition
+    | CONNECT BY [ NOCYCLE ] condition [ START WITH condition ]
+    }
+
+group_by_clause:
+    GROUP BY
+    { expr
+    | rollup_cube_clause
+    | grouping_sets_clause
+    }
+    [, { expr
+       | rollup_cube_clause
+       | grouping_sets_clause
+       } ]...
+    [ HAVING condition ]
+
+rollup_cube_clause:
+    { ROLLUP | CUBE } ( grouping_expression_list )
+
+grouping_sets_clause:
+    GROUPING SETS
+    ( { rollup_cube_clause | grouping_expression_list }
+      [, { rollup_cube_clause | grouping_expression_list } ]... )
+
+grouping_expression_list:
+    expression_list [, expression_list ]...
+
+expression_list:
+    { expr [, expr ]...
+    | ( [ expr [, expr ]... ] )
+    }
+
+model_clause:
+    MODEL
+    [ cell_reference_options ]
+    [ return_rows_clause ]
+    [ reference_model ]...
+    main_model
+
+cell_reference_options:
+    { IGNORE NAV | KEEP NAV }
+    { UNIQUE { DIMENSION | SINGLE REFERENCE } }
+
+return_rows_clause:
+    RETURN { ALL | UPDATED } ROWS
+
+reference_model:
+    REFERENCE reference_model_name
+    ON ( subquery )
+    model_column_clauses
+    [ cell_reference_options ]
+
+main_model:
+    [ MAIN main_model_name ]
+    model_column_clauses
+    [ cell_reference_options ]
+    model_rules_clause
+
+model_column_clauses:
+    [ query_partition_clause ]
+    DIMENSION BY ( model_column [, model_column ]... )
+    MEASURES ( model_column [, model_column ]... )
+
+model_column:
+    expr [ [ AS ] c_alias ]
+
+model_rules_clause:
+    [ RULES
+      [ { UPDATE | UPSERT [ ALL ] } ]
+      [ { AUTOMATIC | SEQUENTIAL } ORDER ]
+      [ model_iterate_clause ]
+    ]
+    ( [ { UPDATE | UPSERT [ ALL ] } ]
+      cell_assignment [ order_by_clause ] = expr
+      [, [ { UPDATE | UPSERT [ ALL ] } ]
+         cell_assignment [ order_by_clause ] = expr ]...
+    )
+
+model_iterate_clause:
+    ITERATE ( number ) [ UNTIL ( condition ) ]
+
+cell_assignment:
+    measure_column [ { condition | expr | single_column_for_loop | multi_column_for_loop }
+                     [, { condition | expr | single_column_for_loop | multi_column_for_loop } ]... ]
+
+single_column_for_loop:
+    FOR dimension_column
+    { IN ( { literal [, literal ]... | subquery } )
+    | [ LIKE pattern ] FROM literal TO literal
+      { INCREMENT | DECREMENT } literal
+    }
+
+multi_column_for_loop:
+    FOR ( dimension_column [, dimension_column ]... )
+    IN ( { ( literal [, literal ]... ) [, ( literal [, literal ]... ) ]...
+         | subquery
+         } )
+
+window_clause:
+    WINDOW window_name AS ( window_specification )
+    [, window_name AS ( window_specification ) ]...
+
+window_specification:
+    [ existing_window_name ]
+    [ query_partition_clause ]
+    [ order_by_clause ]
+    [ windowing_clause ]
+
+windowing_clause:
+    { ROWS | RANGE | GROUPS }
+    { BETWEEN
+      { UNBOUNDED PRECEDING | CURRENT ROW | value_expr { PRECEDING | FOLLOWING } }
+      AND
+      { UNBOUNDED FOLLOWING | CURRENT ROW | value_expr { PRECEDING | FOLLOWING } }
+    | { UNBOUNDED PRECEDING | CURRENT ROW | value_expr PRECEDING }
+    }
+    [ { EXCLUDE CURRENT ROW | EXCLUDE GROUP | EXCLUDE TIES | EXCLUDE NO OTHERS } ]
+
+qualify_clause:
+    QUALIFY condition
+
+order_by_clause:
+    ORDER [ SIBLINGS ] BY
+    { expr | position | c_alias } [ ASC | DESC ] [ NULLS FIRST | NULLS LAST ]
+    [, { expr | position | c_alias } [ ASC | DESC ] [ NULLS FIRST | NULLS LAST ] ]...
+
+row_limiting_clause:
+    [ OFFSET offset { ROW | ROWS } ]
+    [ FETCH { FIRST | NEXT } [ { rowcount | percent PERCENT } ] { ROW | ROWS }
+      { ONLY | WITH TIES } ]
+
+for_update_clause:
+    FOR UPDATE
+    [ OF [ [ schema. ] { table | view } . ] column
+      [, [ [ schema. ] { table | view } . ] column ]... ]
+    [ NOWAIT | WAIT integer | SKIP LOCKED ]
+
+row_pattern_clause:
+    MATCH_RECOGNIZE (
+      [ PARTITION BY column [, column ]... ]
+      [ ORDER BY column [ ASC | DESC ] [, column [ ASC | DESC ] ]... ]
+      [ MEASURES row_pattern_measure_column [, row_pattern_measure_column ]... ]
+      [ ONE ROW PER MATCH | ALL ROWS PER MATCH [ { SHOW | OMIT } EMPTY MATCHES ] ]
+      [ AFTER MATCH SKIP
+        { PAST LAST ROW
+        | TO NEXT ROW
+        | TO FIRST variable_name
+        | TO LAST variable_name
+        | TO variable_name
+        } ]
+      PATTERN ( row_pattern )
+      [ SUBSET subset_item [, subset_item ]... ]
+      DEFINE row_pattern_definition [, row_pattern_definition ]...
+    )
+
+row_pattern_measure_column:
+    expr AS c_alias
+
+row_pattern:
+    row_pattern_term [ '|' row_pattern_term ]...
+
+row_pattern_term:
+    row_pattern_factor [ row_pattern_factor ]...
+
+row_pattern_factor:
+    row_pattern_primary [ row_pattern_quantifier ]
+
+row_pattern_primary:
+    variable_name
+    | '$'
+    | '^'
+    | ( [ row_pattern ] )
+    | '{-' row_pattern '-}'
+    | PERMUTE ( row_pattern [, row_pattern ]... )
+
+row_pattern_quantifier:
+    { '*' | '+' | '?' }  [ '?' ]
+    | '{' integer [ ',' [ integer ] ] '}' [ '?' ]
+    | '{' ',' integer '}' [ '?' ]
+
+subset_item:
+    variable_name = ( variable_name [, variable_name ]... )
+
+row_pattern_definition:
+    variable_name AS condition

@@ -1,0 +1,5 @@
+-- Statement: ALTER SYNONYM
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-SYNONYM.html
+
+ALTER [ PUBLIC ] SYNONYM [ IF EXISTS ] [ schema. ] synonym
+    { EDITIONABLE | NONEDITIONABLE | COMPILE }

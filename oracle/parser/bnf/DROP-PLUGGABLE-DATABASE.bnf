@@ -1,0 +1,5 @@
+-- Statement: DROP PLUGGABLE DATABASE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-PLUGGABLE-DATABASE.html
+
+DROP PLUGGABLE DATABASE [ IF EXISTS ] pdb_name [ FORCE ]
+    { KEEP DATAFILES | INCLUDING DATAFILES } ;

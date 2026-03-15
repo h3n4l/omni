@@ -1,0 +1,6 @@
+-- Statement: DROP DISKGROUP
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-DISKGROUP.html
+
+drop_diskgroup::=
+    DROP DISKGROUP diskgroup_name
+    [ INCLUDING CONTENTS [ FORCE ] | EXCLUDING CONTENTS ]

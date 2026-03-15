@@ -1,0 +1,20 @@
+-- Statement: CREATE PACKAGE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-PACKAGE.html
+
+CREATE [ OR REPLACE | IF NOT EXISTS ]
+    [ EDITIONABLE | NONEDITIONABLE ]
+    PACKAGE [ schema. ] package_name
+    [ SHARING = { METADATA | NONE } ]
+    [ ACCESSIBLE BY ( accessor [, accessor ]... ) ]
+    [ invoker_rights_clause ]
+    { IS | AS }
+    plsql_package_source ;
+
+invoker_rights_clause:
+    AUTHID { CURRENT_USER | DEFINER }
+
+accessor:
+    [ unit_kind ] [ schema. ] unit_name
+
+unit_kind:
+    { FUNCTION | PROCEDURE | PACKAGE | TRIGGER | TYPE }

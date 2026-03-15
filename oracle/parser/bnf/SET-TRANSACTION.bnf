@@ -1,0 +1,9 @@
+-- Statement: SET TRANSACTION
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/SET-TRANSACTION.html
+
+SET TRANSACTION
+    { { READ ONLY | READ WRITE }
+    | ISOLATION LEVEL { SERIALIZABLE | READ COMMITTED }
+    | USE ROLLBACK SEGMENT rollback_segment
+    | NAME 'string'
+    }... ;

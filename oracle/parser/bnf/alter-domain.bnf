@@ -1,0 +1,12 @@
+-- Statement: ALTER DOMAIN
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/alter-domain.html
+
+ALTER [ USECASE ] DOMAIN [ IF EXISTS ] [ schema. ] domain_name
+    { ADD DISPLAY display_expression
+    | MODIFY DISPLAY display_expression
+    | DROP DISPLAY
+    | ADD ORDER order_expression
+    | MODIFY ORDER order_expression
+    | DROP ORDER
+    | annotations_clause
+    } ;

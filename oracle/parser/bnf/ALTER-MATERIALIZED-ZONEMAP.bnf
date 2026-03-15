@@ -1,0 +1,21 @@
+-- Statement: ALTER MATERIALIZED ZONEMAP
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-MATERIALIZED-ZONEMAP.html
+
+ALTER MATERIALIZED ZONEMAP [ IF EXISTS ] [ schema. ] zonemap_name
+    { alter_zonemap_attributes
+    | zonemap_refresh_clause
+    | { ENABLE | DISABLE } PRUNING
+    | COMPILE
+    | REBUILD
+    | UNUSABLE
+    } ;
+
+alter_zonemap_attributes:
+    [ PCTFREE integer ]
+    [ PCTUSED integer ]
+    [ { CACHE | NOCACHE } ]
+
+zonemap_refresh_clause:
+    REFRESH
+    [ { FAST | COMPLETE | FORCE } ]
+    [ { ON COMMIT | ON DEMAND | ON LOAD | ON DATA MOVEMENT | ON STATEMENT } ]

@@ -1,0 +1,877 @@
+-- Statement: ALTER TABLE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-TABLE.html
+
+ALTER TABLE [ schema. ] table
+    { alter_table_properties
+    | column_clauses
+    | constraint_clauses
+    | alter_table_partitioning
+    | alter_table_partitionset
+    | alter_external_table
+    | move_table_clause
+    | modify_to_partitioned
+    | modify_opaque_type
+    | immutable_table_clauses
+    | blockchain_table_clauses
+    | duplicated_table_refresh
+    | enable_disable_clause
+    }
+    [ enable_disable_clause ]...
+    [ { ENABLE | DISABLE } TABLE LOCK ]
+    [ { ENABLE | DISABLE } ALL TRIGGERS ]
+
+alter_table_properties:
+    { physical_attributes_clause
+    | logging_clause
+    | table_compression
+    | inmemory_table_clause
+    | ilm_clause
+    | supplemental_table_logging
+    | allocate_extent_clause
+    | deallocate_unused_clause
+    | RENAME LOB ( lob_item ) TO new_lob_name
+    | RESULT_CACHE ( MODE { DEFAULT | FORCE } )
+    | upgrade_table_clause
+    | RECORDS_PER_BLOCK integer
+    | parallel_clause
+    | row_movement_clause
+    | logical_replication_clause
+    | flashback_archive_clause
+    | SHRINK SPACE [ CASCADE ]
+    | MODIFY CLUSTERING attribute_clustering_clause
+    | alter_iot_clauses
+    | alter_XMLSchema_clause
+    | MEMOPTIMIZE FOR READ
+    | NO MEMOPTIMIZE FOR READ
+    | MEMOPTIMIZE FOR WRITE
+    | NO MEMOPTIMIZE FOR WRITE
+    | annotations_clause
+    | RENAME TO new_table_name
+    }
+
+physical_attributes_clause:
+    { PCTFREE integer
+    | PCTUSED integer
+    | INITRANS integer
+    | storage_clause
+    }
+
+logging_clause:
+    { LOGGING | NOLOGGING }
+
+table_compression:
+    { COMPRESS [ BASIC ]
+    | ROW STORE COMPRESS [ BASIC | ADVANCED ]
+    | COLUMN STORE COMPRESS [ FOR { QUERY | ARCHIVE } [ LOW | HIGH ] ]
+    | NOCOMPRESS
+    }
+
+inmemory_table_clause:
+    { INMEMORY [ inmemory_memcompress ] [ inmemory_priority ]
+        [ inmemory_distribute ] [ inmemory_duplicate ]
+    | NO INMEMORY
+    }
+    [ inmemory_column_clause ]
+
+inmemory_memcompress:
+    MEMCOMPRESS FOR { DML | QUERY [ LOW | HIGH ] | CAPACITY [ LOW | HIGH ] }
+    | NO MEMCOMPRESS
+
+inmemory_priority:
+    PRIORITY { NONE | LOW | MEDIUM | HIGH | CRITICAL }
+
+inmemory_distribute:
+    DISTRIBUTE [ AUTO | BY { ROWID RANGE | PARTITION | SUBPARTITION } ]
+    [ FOR SERVICE { DEFAULT | ALL | service_name | NONE } ]
+
+inmemory_duplicate:
+    DUPLICATE [ ALL ] | NO DUPLICATE
+
+inmemory_column_clause:
+    ( { INMEMORY inmemory_memcompress | NO INMEMORY } ( column [, column ]... ) )...
+
+ilm_clause:
+    ILM { ADD POLICY ilm_policy_clause
+        | DELETE POLICY policy_name
+        | DELETE_ALL
+        | ENABLE_ALL
+        | DISABLE_ALL
+        }
+
+ilm_policy_clause:
+    { ilm_compression_policy
+    | ilm_tiering_policy
+    | ilm_inmemory_policy
+    }
+
+ilm_compression_policy:
+    { table_compression | ROW STORE COMPRESS [ ADVANCED ] | COLUMN STORE COMPRESS [ FOR QUERY [ LOW | HIGH ] ] }
+    { SEGMENT | GROUP | ROW }
+    AFTER ilm_time_period OF { NO ACCESS | NO MODIFICATION | CREATION }
+
+ilm_tiering_policy:
+    TIER TO tablespace
+    [ SEGMENT | GROUP | ROW ]
+    [ ON function_name ]
+
+ilm_inmemory_policy:
+    { SET INMEMORY [ inmemory_memcompress ] [ inmemory_priority ]
+    | MODIFY INMEMORY inmemory_memcompress
+    | NO INMEMORY
+    }
+    SEGMENT
+    AFTER ilm_time_period OF { NO ACCESS | NO MODIFICATION | CREATION }
+
+ilm_time_period:
+    integer { DAY | DAYS | MONTH | MONTHS | YEAR | YEARS }
+
+supplemental_table_logging:
+    { ADD SUPPLEMENTAL LOG
+        { DATA ( { ALL | PRIMARY KEY | UNIQUE | FOREIGN KEY } [, ...] ) COLUMNS
+        | GROUP log_group ( column [ NO LOG ] [, column [ NO LOG ] ]... ) [ ALWAYS ]
+        }
+    | DROP SUPPLEMENTAL LOG
+        { DATA ( { ALL | PRIMARY KEY | UNIQUE | FOREIGN KEY } [, ...] ) COLUMNS
+        | GROUP log_group
+        }
+    }
+
+allocate_extent_clause:
+    ALLOCATE EXTENT [ ( { SIZE size_clause
+                        | DATAFILE 'filename'
+                        | INSTANCE integer
+                        } ...
+                      ) ]
+
+deallocate_unused_clause:
+    DEALLOCATE UNUSED [ KEEP size_clause ]
+
+row_movement_clause:
+    { ENABLE | DISABLE } ROW MOVEMENT
+
+logical_replication_clause:
+    { ENABLE | DISABLE } LOGICAL REPLICATION [ ALL KEYS | ALLOW NOVALIDATE KEYS ]
+
+flashback_archive_clause:
+    FLASHBACK ARCHIVE [ flashback_archive ]
+    | NO FLASHBACK ARCHIVE
+
+upgrade_table_clause:
+    UPGRADE [ NOT ] INCLUDING DATA [ column_properties ]
+
+alter_iot_clauses:
+    { index_org_table_clause
+    | alter_overflow_clause
+    | alter_mapping_table_clauses
+    | COALESCE
+    }
+
+index_org_table_clause:
+    { mapping_table_clauses
+    | PCTTHRESHOLD integer
+    | prefix_compression
+    | index_org_overflow_clause
+    }
+
+mapping_table_clauses:
+    { MAPPING TABLE | NOMAPPING }
+
+prefix_compression:
+    { COMPRESS [ integer ] | NOCOMPRESS }
+
+index_org_overflow_clause:
+    [ INCLUDING column_name ] OVERFLOW [ segment_attributes_clause ]
+
+alter_overflow_clause:
+    { OVERFLOW
+        { allocate_extent_clause
+        | deallocate_unused_clause
+        | segment_attributes_clause
+        }
+    | ADD OVERFLOW [ segment_attributes_clause ]
+    }
+
+alter_mapping_table_clauses:
+    MAPPING TABLE { allocate_extent_clause | deallocate_unused_clause }
+
+column_clauses:
+    { add_column_clause
+    | modify_column_clauses
+    | drop_column_clause
+    | add_period_clause
+    | drop_period_clause
+    | rename_column_clause
+    | modify_collection_retrieval
+    | modify_LOB_storage_clause
+    | alter_varray_col_properties
+    }
+
+add_column_clause:
+    ADD ( { column_definition | virtual_column_definition }
+        [, { column_definition | virtual_column_definition } ]... )
+    [ column_properties ]
+    [ out_of_line_part_storage ]
+
+column_definition:
+    column datatype [ COLLATE collation_name ]
+        [ SORT ] [ VISIBLE | INVISIBLE ]
+        [ DEFAULT [ ON NULL ] expr | identity_clause ]
+        [ ENCRYPT encryption_spec ]
+        [ { inline_constraint }... ]
+        [ inline_ref_constraint ]
+        [ annotations_clause ]
+
+virtual_column_definition:
+    column [ datatype ] [ COLLATE collation_name ]
+        [ VISIBLE | INVISIBLE ]
+        [ GENERATED ALWAYS ] AS ( column_expression )
+        [ VIRTUAL ]
+        [ evaluation_edition_clause ]
+        [ unusable_editions_clause ]
+        [ { inline_constraint }... ]
+
+identity_clause:
+    GENERATED { ALWAYS | BY DEFAULT [ ON NULL ] } AS IDENTITY
+        [ ( identity_options ) ]
+
+identity_options:
+    { START WITH { integer | LIMIT VALUE }
+    | INCREMENT BY integer
+    | MAXVALUE integer | NOMAXVALUE
+    | MINVALUE integer | NOMINVALUE
+    | CYCLE | NOCYCLE
+    | CACHE integer | NOCACHE
+    | ORDER | NOORDER
+    }...
+
+modify_column_clauses:
+    MODIFY
+        { ( modify_col_properties [, modify_col_properties ]... )
+        | ( modify_virtcol_properties [, modify_virtcol_properties ]... )
+        | modify_col_visibility
+        | modify_col_substitutable
+        }
+
+modify_col_properties:
+    column [ datatype ] [ COLLATE collation_name ]
+        [ DEFAULT [ ON NULL ] expr | identity_clause | DROP IDENTITY ]
+        [ { ENCRYPT encryption_spec | DECRYPT } ]
+        [ { inline_constraint }... ]
+        [ LOB_storage_clause ]
+        [ alter_XMLSchema_clause ]
+        [ annotations_clause ]
+
+modify_virtcol_properties:
+    column [ datatype ] [ COLLATE collation_name ]
+        [ GENERATED ALWAYS ] AS ( column_expression )
+        [ VIRTUAL ]
+        [ evaluation_edition_clause ]
+        [ unusable_editions_clause ]
+        [ { inline_constraint }... ]
+
+modify_col_visibility:
+    column { VISIBLE | INVISIBLE }
+
+modify_col_substitutable:
+    COLUMN column [ NOT ] SUBSTITUTABLE AT ALL LEVELS [ FORCE ]
+
+drop_column_clause:
+    { SET UNUSED { COLUMN column | ( column [, column ]... ) }
+        [ { CASCADE CONSTRAINTS | INVALIDATE }... ]
+        [ ONLINE ]
+    | DROP { COLUMN column | ( column [, column ]... ) }
+        [ { CASCADE CONSTRAINTS | INVALIDATE }... ]
+        [ CHECKPOINT integer ]
+    | DROP { UNUSED COLUMNS | COLUMNS CONTINUE }
+        [ CHECKPOINT integer ]
+    }
+
+add_period_clause:
+    ADD ( PERIOD FOR valid_time_column [ ( start_time_column , end_time_column ) ] )
+
+drop_period_clause:
+    DROP ( PERIOD FOR valid_time_column )
+
+rename_column_clause:
+    RENAME COLUMN old_name TO new_name
+
+modify_collection_retrieval:
+    MODIFY NESTED TABLE collection_item RETURN AS { LOCATOR | VALUE }
+
+modify_LOB_storage_clause:
+    MODIFY LOB ( lob_item ) ( modify_LOB_parameters )
+
+modify_LOB_parameters:
+    { storage_clause
+    | PCTVERSION integer
+    | FREEPOOLS integer
+    | REBUILD FREEPOOLS
+    | LOB_retention_clause
+    | LOB_deduplicate_clause
+    | LOB_compression_clause
+    | { ENCRYPT encryption_spec | DECRYPT }
+    | { CACHE | NOCACHE | CACHE READS } [ logging_clause ]
+    | allocate_extent_clause
+    | SHRINK SPACE [ CASCADE ]
+    | deallocate_unused_clause
+    }...
+
+LOB_retention_clause:
+    RETENTION [ MAX | MIN integer | AUTO | NONE ]
+
+LOB_deduplicate_clause:
+    { DEDUPLICATE | KEEP_DUPLICATES }
+
+LOB_compression_clause:
+    { COMPRESS [ HIGH | MEDIUM | LOW ] | NOCOMPRESS }
+
+alter_varray_col_properties:
+    MODIFY VARRAY varray_item ( modify_LOB_parameters )
+
+constraint_clauses:
+    { ADD { out_of_line_constraint
+          | out_of_line_ref_constraint
+          | constraint_state
+          }
+    | MODIFY { CONSTRAINT constraint_name | PRIMARY KEY | UNIQUE ( column [, column ]... ) }
+        constraint_state [ CASCADE ]
+    | RENAME CONSTRAINT old_name TO new_name
+    | drop_constraint_clause
+    }
+
+drop_constraint_clause:
+    DROP
+        { { PRIMARY KEY | UNIQUE ( column [, column ]... ) }
+            [ CASCADE ] [ { KEEP | DROP } INDEX ] [ ONLINE ]
+        | CONSTRAINT constraint_name [ CASCADE ] [ ONLINE ]
+        }
+
+alter_table_partitioning:
+    { modify_table_default_attrs
+    | alter_automatic_partitioning
+    | alter_interval_partitioning
+    | set_subpartition_template
+    | modify_table_partition
+    | modify_table_subpartition
+    | move_table_partition
+    | move_table_subpartition
+    | add_table_partition
+    | coalesce_table_partition
+    | coalesce_table_subpartition
+    | drop_table_partition
+    | drop_table_subpartition
+    | rename_partition_subpart
+    | truncate_partition_subpart
+    | split_table_partition
+    | split_table_subpartition
+    | merge_table_partitions
+    | merge_table_subpartitions
+    | exchange_partition_subpart
+    }
+
+modify_table_default_attrs:
+    MODIFY DEFAULT ATTRIBUTES
+        [ FOR PARTITION partition ]
+        [ deferred_segment_creation ]
+        [ read_only_clause ]
+        [ indexing_clause ]
+        [ segment_attributes_clause ]
+        [ table_compression ]
+        [ inmemory_clause ]
+        [ prefix_compression ]
+        [ OVERFLOW segment_attributes_clause ]
+        [ { LOB ( lob_item ) | VARRAY varray } ( LOB_parameters ) ]...
+
+segment_attributes_clause:
+    { physical_attributes_clause
+    | TABLESPACE tablespace
+    | logging_clause
+    }...
+
+deferred_segment_creation:
+    SEGMENT CREATION { IMMEDIATE | DEFERRED }
+
+read_only_clause:
+    { READ ONLY | READ WRITE }
+
+indexing_clause:
+    INDEXING { ON | OFF }
+
+alter_automatic_partitioning:
+    SET PARTITIONING { AUTOMATIC | MANUAL }
+
+alter_interval_partitioning:
+    SET INTERVAL ( [ expr ] )
+
+set_subpartition_template:
+    SET SUBPARTITION TEMPLATE
+        { ( { range_subpartition_desc | list_subpartition_desc | individual_hash_subparts }
+            [, { range_subpartition_desc | list_subpartition_desc | individual_hash_subparts } ]... )
+        | hash_subparts_by_quantity
+        }
+
+modify_table_partition:
+    MODIFY { PARTITION partition
+        { partition_attributes
+        | { add_range_subpartition | add_hash_subpartition | add_list_subpartition }
+        | COALESCE SUBPARTITION [ update_index_clauses ] [ parallel_clause ]
+        | [ REBUILD ] UNUSABLE LOCAL INDEXES
+        | read_only_clause
+        | indexing_clause
+        }
+    }
+
+modify_table_subpartition:
+    MODIFY SUBPARTITION subpartition
+        { allocate_extent_clause
+        | deallocate_unused_clause
+        | SHRINK SPACE [ CASCADE ]
+        | { LOB ( lob_item ) | VARRAY varray } ( modify_LOB_parameters )
+        | [ REBUILD ] UNUSABLE LOCAL INDEXES
+        | { ADD | DROP } VALUES ( value [, value ]... )
+        | read_only_clause
+        | indexing_clause
+        }
+
+partition_attributes:
+    [ physical_attributes_clause ]
+    [ logging_clause ]
+    [ allocate_extent_clause ]
+    [ deallocate_unused_clause ]
+    [ SHRINK SPACE [ CASCADE ] ]
+    [ { table_compression | prefix_compression } ]
+    [ inmemory_clause ]
+    [ { LOB ( lob_item ) | VARRAY varray } ( modify_LOB_parameters ) ]...
+    [ OVERFLOW { physical_attributes_clause | logging_clause | allocate_extent_clause
+        | deallocate_unused_clause | SHRINK SPACE [ CASCADE ] } ]
+
+move_table_partition:
+    MOVE PARTITION partition
+        [ MAPPING TABLE ]
+        [ table_partition_description ]
+        [ filter_condition ]
+        [ update_index_clauses ]
+        [ parallel_clause ]
+        [ allow_disallow_clustering ]
+        [ ONLINE ]
+
+move_table_subpartition:
+    MOVE SUBPARTITION subpartition
+        [ indexing_clause ]
+        [ partitioning_storage_clause ]
+        [ update_index_clauses ]
+        [ filter_condition ]
+        [ parallel_clause ]
+        [ allow_disallow_clustering ]
+        [ ONLINE ]
+
+add_table_partition:
+    ADD { add_range_partition_clause
+        | add_list_partition_clause
+        | add_system_partition_clause
+        | add_hash_partition_clause
+        }
+
+add_range_partition_clause:
+    PARTITION [ partition ] range_values_clause
+        [ table_partition_description ]
+        [ external_part_subpart_data_props ]
+        [ ( { range_subpartition_desc | list_subpartition_desc
+            | individual_hash_subparts } [, ...] )
+          | hash_subparts_by_quantity ]
+        [ update_index_clauses ]
+
+add_list_partition_clause:
+    PARTITION [ partition ] list_values_clause
+        [ table_partition_description ]
+        [ external_part_subpart_data_props ]
+        [ ( { range_subpartition_desc | list_subpartition_desc
+            | individual_hash_subparts } [, ...] )
+          | hash_subparts_by_quantity ]
+        [ update_index_clauses ]
+
+add_system_partition_clause:
+    PARTITION [ partition ]
+        [ table_partition_description ]
+        [ update_index_clauses ]
+
+add_hash_partition_clause:
+    PARTITION [ partition ]
+        [ partitioning_storage_clause ]
+        [ update_index_clauses ]
+        [ parallel_clause ]
+        [ read_only_clause ]
+        [ indexing_clause ]
+
+add_range_subpartition:
+    ADD range_subpartition_desc [, range_subpartition_desc ]...
+        [ dependent_tables_clause ] [ update_index_clauses ]
+
+add_hash_subpartition:
+    ADD individual_hash_subparts [, individual_hash_subparts ]...
+        [ dependent_tables_clause ] [ update_index_clauses ]
+        [ parallel_clause ]
+
+add_list_subpartition:
+    ADD list_subpartition_desc [, list_subpartition_desc ]...
+        [ dependent_tables_clause ] [ update_index_clauses ]
+
+coalesce_table_partition:
+    COALESCE PARTITION [ update_index_clauses ] [ parallel_clause ]
+        [ allow_disallow_clustering ]
+
+coalesce_table_subpartition:
+    COALESCE SUBPARTITION [ subpartition ]
+        [ update_index_clauses ] [ parallel_clause ]
+        [ allow_disallow_clustering ]
+
+drop_table_partition:
+    DROP PARTITION { partition | FOR ( partition_key_value [, partition_key_value ]... ) }
+        [, { partition | FOR ( partition_key_value [, partition_key_value ]... ) } ]...
+        [ update_index_clauses ] [ parallel_clause ]
+
+drop_table_subpartition:
+    DROP SUBPARTITION { subpartition | FOR ( subpartition_key_value [, subpartition_key_value ]... ) }
+        [, { subpartition | FOR ( subpartition_key_value [, subpartition_key_value ]... ) } ]...
+        [ update_index_clauses ] [ parallel_clause ]
+
+rename_partition_subpart:
+    RENAME { PARTITION partition | SUBPARTITION subpartition } TO new_name
+
+truncate_partition_subpart:
+    TRUNCATE { PARTITION | SUBPARTITION }
+        { name | FOR ( key_value [, key_value ]... ) }
+        [, { name | FOR ( key_value [, key_value ]... ) } ]...
+        [ { DROP [ ALL ] | REUSE } STORAGE ]
+        [ update_index_clauses ] [ parallel_clause ]
+        [ CASCADE ]
+
+split_table_partition:
+    SPLIT PARTITION partition
+        { AT ( value [, value ]... )
+            [ INTO ( partition_spec , partition_spec ) ]
+        | VALUES ( value [, value ]... )
+            [ INTO ( partition_spec , partition_spec ) ]
+        | INTO ( partition_spec [, partition_spec ]... , partition_spec )
+        }
+        [ split_nested_table_part ]
+        [ filter_condition ]
+        [ dependent_tables_clause ]
+        [ update_index_clauses ]
+        [ parallel_clause ]
+        [ allow_disallow_clustering ]
+        [ ONLINE ]
+
+split_table_subpartition:
+    SPLIT SUBPARTITION subpartition
+        { AT ( value [, value ]... )
+            [ INTO ( subpartition_spec , subpartition_spec ) ]
+        | VALUES ( value [, value ]... )
+            [ INTO ( subpartition_spec , subpartition_spec ) ]
+        | INTO ( subpartition_spec [, subpartition_spec ]... , subpartition_spec )
+        }
+        [ filter_condition ]
+        [ dependent_tables_clause ]
+        [ update_index_clauses ]
+        [ parallel_clause ]
+        [ allow_disallow_clustering ]
+        [ ONLINE ]
+
+merge_table_partitions:
+    MERGE PARTITIONS
+        { partition_or_key_value , partition_or_key_value
+            [ INTO partition_spec ]
+        | partition_or_key_value TO partition_or_key_value
+            [ INTO partition_spec ]
+        }
+        [ filter_condition ]
+        [ dependent_tables_clause ]
+        [ update_index_clauses ]
+        [ parallel_clause ]
+        [ allow_disallow_clustering ]
+        [ ONLINE ]
+
+merge_table_subpartitions:
+    MERGE SUBPARTITIONS
+        { subpartition_or_key_value , subpartition_or_key_value
+            [ INTO subpartition_spec ]
+        | subpartition_or_key_value TO subpartition_or_key_value
+            [ INTO subpartition_spec ]
+        }
+        [ filter_condition ]
+        [ dependent_tables_clause ]
+        [ update_index_clauses ]
+        [ parallel_clause ]
+        [ allow_disallow_clustering ]
+        [ ONLINE ]
+
+exchange_partition_subpart:
+    EXCHANGE { PARTITION partition | SUBPARTITION subpartition }
+        WITH TABLE [ schema. ] table
+        [ { INCLUDING | EXCLUDING } INDEXES ]
+        [ { WITH | WITHOUT } VALIDATION ]
+        [ exceptions_clause ]
+        [ update_index_clauses ]
+        [ parallel_clause ]
+        [ CASCADE ]
+        [ ONLINE ]
+
+range_values_clause:
+    VALUES LESS THAN ( { value | MAXVALUE } [, { value | MAXVALUE } ]... )
+
+list_values_clause:
+    VALUES ( { value [, value ]... | DEFAULT } )
+
+table_partition_description:
+    [ deferred_segment_creation ]
+    [ read_only_clause ]
+    [ indexing_clause ]
+    [ segment_attributes_clause ]
+    [ table_compression | prefix_compression ]
+    [ inmemory_clause ]
+    [ ilm_clause ]
+    [ OVERFLOW [ segment_attributes_clause ] ]
+    [ { LOB ( lob_item ) STORE AS [ lob_segname ] ( LOB_parameters )
+      | VARRAY varray STORE AS [ SECUREFILE | BASICFILE ] LOB [ lob_segname ] ( LOB_parameters )
+      } ]...
+
+range_subpartition_desc:
+    SUBPARTITION [ subpartition ] range_values_clause
+        [ read_only_clause ] [ indexing_clause ]
+        [ partitioning_storage_clause ]
+
+list_subpartition_desc:
+    SUBPARTITION [ subpartition ] list_values_clause
+        [ read_only_clause ] [ indexing_clause ]
+        [ partitioning_storage_clause ]
+
+individual_hash_subparts:
+    SUBPARTITION [ subpartition ]
+        [ read_only_clause ] [ indexing_clause ]
+        [ partitioning_storage_clause ]
+
+hash_subparts_by_quantity:
+    SUBPARTITIONS integer [ STORE IN ( tablespace [, tablespace ]... ) ]
+
+partitioning_storage_clause:
+    [ TABLESPACE tablespace ]
+    [ OVERFLOW TABLESPACE tablespace ]
+    [ table_compression ]
+    [ inmemory_clause ]
+    [ { LOB ( lob_item ) STORE AS [ lob_segname ] ( LOB_parameters )
+      | VARRAY varray STORE AS [ SECUREFILE | BASICFILE ] LOB [ lob_segname ] ( LOB_parameters )
+      } ]...
+
+partition_spec:
+    PARTITION [ partition ] [ table_partition_description ]
+
+subpartition_spec:
+    SUBPARTITION [ subpartition ] [ partitioning_storage_clause ]
+
+partition_or_key_value:
+    partition | FOR ( partition_key_value [, partition_key_value ]... )
+
+subpartition_or_key_value:
+    subpartition | FOR ( subpartition_key_value [, subpartition_key_value ]... )
+
+filter_condition:
+    INCLUDING ROWS WHERE condition
+
+dependent_tables_clause:
+    DEPENDENT TABLES ( table ( partition_spec [, partition_spec ]... )
+        [, table ( partition_spec [, partition_spec ]... ) ]... )
+
+update_index_clauses:
+    { update_global_index_clause | update_all_indexes_clause }
+
+update_global_index_clause:
+    { UPDATE | INVALIDATE } GLOBAL INDEXES
+
+update_all_indexes_clause:
+    UPDATE INDEXES
+        [ ( index ( { index_partition_description | index_subpartition_clause } [, ...] )
+            [, index ( { index_partition_description | index_subpartition_clause } [, ...] ) ]... ) ]
+
+split_nested_table_part:
+    NESTED TABLE column INTO
+        ( nested_table_partition_spec , nested_table_partition_spec )
+
+nested_table_partition_spec:
+    PARTITION partition [ segment_attributes_clause ]
+
+allow_disallow_clustering:
+    { ALLOW | DISALLOW } CLUSTERING
+
+parallel_clause:
+    { NOPARALLEL | PARALLEL [ integer ] }
+
+alter_table_partitionset:
+    MODIFY PARTITIONSET partitionset
+        { ADD PARTITIONSET partition_spec
+        | MODIFY PARTITIONSET partition_spec
+        }
+
+move_table_clause:
+    MOVE [ ONLINE ]
+        [ segment_attributes_clause ]
+        [ table_compression ]
+        [ index_org_table_clause ]
+        [ { LOB ( lob_item ) STORE AS [ lob_segname ] ( LOB_parameters ) }... ]
+        [ { VARRAY varray STORE AS [ SECUREFILE | BASICFILE ] LOB [ lob_segname ] ( LOB_parameters ) }... ]
+        [ parallel_clause ]
+        [ allow_disallow_clustering ]
+        [ update_index_clauses ]
+
+modify_to_partitioned:
+    MODIFY table_partitioning_clauses
+        [ filter_condition ]
+        [ ONLINE ]
+        [ update_index_clauses ]
+
+modify_opaque_type:
+    MODIFY OPAQUE TYPE column_name
+        STORE AS [ LOB | OBJECT RELATIONAL ] ( column_properties )
+
+immutable_table_clauses:
+    { NO DROP [ UNTIL integer { DAY | DAYS } IDLE ]
+    | NO DELETE [ LOCKED ]
+        [ UNTIL integer { DAY | DAYS } AFTER INSERT ]
+    }
+
+blockchain_table_clauses:
+    { NO DROP [ UNTIL integer { DAY | DAYS } IDLE ]
+    | NO DELETE [ LOCKED ]
+        [ UNTIL integer { DAY | DAYS } AFTER INSERT ]
+    | HASHING USING 'hash_algorithm'
+    | VERSION 'version'
+    }
+
+duplicated_table_refresh:
+    { REFRESH | NO REFRESH }
+
+enable_disable_clause:
+    { ENABLE | DISABLE }
+        [ VALIDATE | NOVALIDATE ]
+        { UNIQUE ( column [, column ]... )
+        | PRIMARY KEY
+        | CONSTRAINT constraint_name
+        }
+        [ using_index_clause ]
+        [ exceptions_clause ]
+        [ CASCADE ]
+        [ { KEEP | DROP } INDEX ]
+
+using_index_clause:
+    USING INDEX
+        { [ schema. ] index
+        | ( create_index_statement )
+        | index_attributes
+        }
+
+index_attributes:
+    { physical_attributes_clause
+    | TABLESPACE { tablespace | DEFAULT }
+    | logging_clause
+    | index_compression
+    | partial_index_clause
+    | parallel_clause
+    }...
+
+index_compression:
+    { COMPRESS [ integer ] | NOCOMPRESS }
+
+exceptions_clause:
+    EXCEPTIONS INTO [ schema. ] table
+
+annotations_clause:
+    ANNOTATIONS ( { ADD | DROP | REPLACE } annotation [, { ADD | DROP | REPLACE } annotation ]... )
+
+annotation:
+    annotation_name [ 'annotation_value' ]
+
+evaluation_edition_clause:
+    EVALUATE USING { CURRENT EDITION | EDITION edition | NULL EDITION }
+
+unusable_editions_clause:
+    [ UNUSABLE BEFORE { CURRENT EDITION | EDITION edition } ]
+    [ UNUSABLE BEGINNING WITH { CURRENT EDITION | EDITION edition | NULL EDITION } ]
+
+encryption_spec:
+    [ USING 'encrypt_algorithm' ]
+    [ IDENTIFIED BY password ]
+    [ 'integrity_algorithm' ]
+    [ [ NO ] SALT ]
+
+inline_constraint:
+    [ CONSTRAINT constraint_name ]
+    { [ NOT ] NULL
+    | UNIQUE
+    | PRIMARY KEY
+    | REFERENCES [ schema. ] object [ ( column ) ]
+        [ ON DELETE { CASCADE | SET NULL } ]
+    | CHECK ( condition )
+    }
+    [ constraint_state ]
+
+out_of_line_constraint:
+    [ CONSTRAINT constraint_name ]
+    { UNIQUE ( column [, column ]... )
+    | PRIMARY KEY ( column [, column ]... )
+    | FOREIGN KEY ( column [, column ]... )
+        REFERENCES [ schema. ] object [ ( column [, column ]... ) ]
+        [ ON DELETE { CASCADE | SET NULL } ]
+    | CHECK ( condition )
+    }
+    [ constraint_state ]
+
+constraint_state:
+    [ [ NOT ] DEFERRABLE [ INITIALLY { DEFERRED | IMMEDIATE } ]
+    | INITIALLY { DEFERRED | IMMEDIATE } [ [ NOT ] DEFERRABLE ] ]
+    [ RELY | NORELY ]
+    [ using_index_clause ]
+    [ { ENABLE | DISABLE } ]
+    [ { VALIDATE | NOVALIDATE } ]
+    [ exceptions_clause ]
+
+out_of_line_ref_constraint:
+    { SCOPE FOR ( ref_column ) IS [ schema. ] scope_table
+    | REF ( ref_column ) WITH ROWID
+    | [ CONSTRAINT constraint_name ]
+        FOREIGN KEY ( ref_column ) REFERENCES [ schema. ] object
+        [ ON DELETE { CASCADE | SET NULL } ]
+        [ constraint_state ]
+    }
+
+alter_external_table:
+    { add_column_clause
+    | modify_column_clauses
+    | drop_column_clause
+    | parallel_clause
+    | external_table_data_props
+    | REJECT LIMIT { integer | UNLIMITED }
+    | PROJECT COLUMN { ALL | REFERENCED }
+    }
+
+external_table_data_props:
+    [ DEFAULT DIRECTORY directory ]
+    [ ACCESS PARAMETERS { ( opaque_format_spec ) | USING CLOB subquery } ]
+    [ LOCATION ( [ directory: ] 'location_specifier' [, [ directory: ] 'location_specifier' ]... ) ]
+
+attribute_clustering_clause:
+    CLUSTERING [ [ schema. ] table JOIN [ schema. ] table ON ( condition ) ]...
+        BY [ LINEAR ORDER | INTERLEAVED ORDER ]
+        ( { column | column_expression } [ ASC | DESC ] [, ...] )
+        [ yes_no ]
+        [ zonemap_clause ]
+
+zonemap_clause:
+    { WITH MATERIALIZED ZONEMAP [ ( zonemap_name ) ]
+    | WITHOUT MATERIALIZED ZONEMAP
+    }
+
+alter_XMLSchema_clause:
+    ALLOW { ANYSCHEMA | NONSCHEMA }
+    | DISALLOW NONSCHEMA
+
+alter_table_partitionset:
+    MODIFY PARTITIONSET

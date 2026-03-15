@@ -1,0 +1,28 @@
+-- Statement: CREATE JSON RELATIONAL DUALITY VIEW
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/create-json-relational-duality-view.html
+
+CREATE [ OR REPLACE | IF NOT EXISTS ] JSON RELATIONAL DUALITY VIEW
+    [ schema. ] view_name
+    [ duality_view_replication_clause ]
+    AS
+    duality_view_subquery
+
+duality_view_replication_clause:
+    { ENABLE | DISABLE } LOGICAL REPLICATION
+
+duality_view_subquery:
+    SELECT JSON { key_value_clause [, key_value_clause ]... }
+    FROM table_name [ table_tags_clause ]
+    [ WHERE condition ]
+
+key_value_clause:
+    '_id' : column
+    | field_name : column [ column_tags_clause ]
+    | field_name : ( subquery ) [ column_tags_clause ]
+    | field_name : JSON_ARRAYAGG ( JSON { key_value_clause [, key_value_clause ]... } )
+
+table_tags_clause:
+    WITH [ INSERT ] [ UPDATE ] [ DELETE ] [ { CHECK | NOCHECK } ETAG ]
+
+column_tags_clause:
+    WITH [ { UPDATE | NOUPDATE } ] [ { CHECK | NOCHECK } ETAG ]

@@ -1,0 +1,8 @@
+-- Statement: CREATE PROCEDURE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-PROCEDURE.html
+
+CREATE [ OR REPLACE | IF NOT EXISTS ]
+    [ EDITIONABLE | NONEDITIONABLE ]
+    PROCEDURE [ schema. ] procedure_name
+    [ SHARING = { METADATA | NONE } ]
+    plsql_procedure_source ;

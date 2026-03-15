@@ -1,0 +1,5 @@
+-- Statement: DROP FLASHBACK ARCHIVE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-FLASHBACK-ARCHIVE.html
+
+drop_flashback_archive::=
+    DROP FLASHBACK ARCHIVE flashback_archive

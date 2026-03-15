@@ -1,0 +1,8 @@
+-- Statement: CREATE RESTORE POINT
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-RESTORE-POINT.html
+
+CREATE [ CLEAN ] RESTORE POINT restore_point
+    [ FOR PLUGGABLE DATABASE pdb_name ]
+    [ AS OF { TIMESTAMP | SCN } expr ]
+    [ PRESERVE ]
+    [ GUARANTEE FLASHBACK DATABASE ] ;

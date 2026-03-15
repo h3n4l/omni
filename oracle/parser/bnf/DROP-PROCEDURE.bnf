@@ -1,0 +1,4 @@
+-- Statement: DROP PROCEDURE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-PROCEDURE.html
+
+DROP PROCEDURE [ IF EXISTS ] [ schema. ] procedure ;

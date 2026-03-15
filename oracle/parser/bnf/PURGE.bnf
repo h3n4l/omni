@@ -1,0 +1,10 @@
+-- Statement: PURGE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/PURGE.html
+
+PURGE { TABLE [ schema. ] table
+      | INDEX [ schema. ] index
+      | TABLESPACE tablespace [ USER user ]
+      | TABLESPACE SET tablespace_set [ USER user ]
+      | RECYCLEBIN
+      | DBA_RECYCLEBIN
+      } ;

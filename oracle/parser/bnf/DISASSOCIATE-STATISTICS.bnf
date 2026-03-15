@@ -1,0 +1,7 @@
+-- Statement: DISASSOCIATE STATISTICS
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DISASSOCIATE-STATISTICS.html
+
+DISASSOCIATE STATISTICS
+    FROM { COLUMNS | FUNCTIONS | PACKAGES | TYPES | INDEXES | INDEXTYPES }
+    [ schema. ] object_name [, [ schema. ] object_name ]...
+    [ FORCE ] ;

@@ -1,0 +1,17 @@
+-- Statement: CREATE MLE ENV
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/create-mle-env.html
+
+CREATE [ OR REPLACE | IF NOT EXISTS ] [ PURE ] MLE ENV
+    [ schema. ] environment_name
+    [ CLONE [ schema. ] existing_environment ]
+    [ imports_clause ]
+    [ language_options_clause ]
+
+imports_clause:
+    IMPORTS ( import_item [, import_item ]... )
+
+import_item:
+    import_name MODULE [ schema. ] module_name
+
+language_options_clause:
+    LANGUAGE OPTIONS language_options_string

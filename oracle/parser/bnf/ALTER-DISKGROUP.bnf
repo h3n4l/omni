@@ -1,0 +1,212 @@
+-- Statement: ALTER DISKGROUP
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-DISKGROUP.html
+
+alter_diskgroup ::=
+    ALTER DISKGROUP diskgroup_name
+    { add_disk_clause
+    | drop_disk_clause
+    | resize_disk_clause
+    | replace_disk_clause
+    | rename_disk_clause
+    | disk_online_clause
+    | disk_offline_clause
+    | rebalance_diskgroup_clause
+    | check_diskgroup_clause
+    | diskgroup_template_clauses
+    | diskgroup_directory_clauses
+    | diskgroup_alias_clauses
+    | diskgroup_volume_clauses
+    | diskgroup_attributes
+    | modify_diskgroup_file
+    | drop_diskgroup_file_clause
+    | convert_redundancy_clause
+    | usergroup_clauses
+    | user_clauses
+    | file_permissions_clause
+    | file_owner_clause
+    | scrub_clause
+    | quotagroup_clauses
+    | filegroup_clauses
+    | undrop_disk_clause
+    | diskgroup_availability
+    | enable_disable_volume
+    }
+
+add_disk_clause ::=
+    ADD DISK qualified_disk_clause [, qualified_disk_clause ]...
+
+qualified_disk_clause ::=
+    [ QUORUM | REGULAR ]
+    [ NAME disk_name ]
+    path_name
+    [ size_clause ]
+    [ FAILGROUP failgroup_name ]
+
+drop_disk_clause ::=
+    DROP DISK disk_name [, disk_name ]... [ FORCE | NOFORCE ] [ rebalance_diskgroup_clause ]
+  | DROP DISKS IN FAILGROUP failgroup_name [ FORCE | NOFORCE ] [ rebalance_diskgroup_clause ]
+
+resize_disk_clause ::=
+    RESIZE ALL size_clause
+
+replace_disk_clause ::=
+    REPLACE DISK disk_name WITH path_name
+    [ FORCE | NOFORCE ]
+    [ POWER integer | POWER LIMIT integer ]
+    [ WAIT | NOWAIT ]
+
+rename_disk_clause ::=
+    RENAME DISK old_disk_name TO new_disk_name [, old_disk_name TO new_disk_name ]...
+  | RENAME DISKS ALL
+
+disk_online_clause ::=
+    ONLINE DISK disk_name [, disk_name ]... [ POWER integer ] [ WAIT | NOWAIT ]
+  | ONLINE DISKS IN FAILGROUP failgroup_name [ POWER integer ] [ WAIT | NOWAIT ]
+  | ONLINE ALL [ POWER integer ] [ WAIT | NOWAIT ]
+
+disk_offline_clause ::=
+    OFFLINE DISK disk_name [, disk_name ]... [ timeout_clause ] [ WAIT | NOWAIT ]
+  | OFFLINE DISKS IN FAILGROUP failgroup_name [ timeout_clause ] [ WAIT | NOWAIT ]
+
+timeout_clause ::=
+    DISK REPAIR TIME [ integer MINUTE | integer HOUR ]
+
+rebalance_diskgroup_clause ::=
+    REBALANCE [ WITH { RESTORE | BALANCE | PREPARE | COMPACT } [, { RESTORE | BALANCE | PREPARE | COMPACT } ]... ]
+  | REBALANCE [ WITHOUT { BALANCE | PREPARE | COMPACT } [, { BALANCE | PREPARE | COMPACT } ]... ]
+    [ POWER integer ]
+    [ WAIT | NOWAIT ]
+  | MODIFY POWER [ integer ]
+
+check_diskgroup_clause ::=
+    CHECK [ REPAIR | NOREPAIR ]
+  | CHECK ALL [ REPAIR | NOREPAIR ]
+  | CHECK DISK disk_name [, disk_name ]... [ REPAIR | NOREPAIR ]
+  | CHECK DISKS IN FAILGROUP failgroup_name [ REPAIR | NOREPAIR ]
+  | CHECK FILE file_specification [, file_specification ]... [ REPAIR | NOREPAIR ]
+
+diskgroup_template_clauses ::=
+    ADD TEMPLATE template_name ATTRIBUTES ( qualified_template_clause )
+  | MODIFY TEMPLATE template_name ATTRIBUTES ( qualified_template_clause )
+  | ALTER TEMPLATE template_name ATTRIBUTES ( qualified_template_clause )
+  | DROP TEMPLATE template_name
+
+qualified_template_clause ::=
+    [ redundancy_clause ]
+    [ striping_clause ]
+
+redundancy_clause ::=
+    MIRROR | HIGH | UNPROTECTED | PARITY | DOUBLE
+
+striping_clause ::=
+    FINE | COARSE
+
+diskgroup_directory_clauses ::=
+    ADD DIRECTORY '+diskgroup_name/directory_path'
+  | DROP DIRECTORY '+diskgroup_name/directory_path' [ FORCE ]
+  | RENAME DIRECTORY '+diskgroup_name/old_directory_path' TO '+diskgroup_name/new_directory_path'
+
+diskgroup_alias_clauses ::=
+    ADD ALIAS '+diskgroup_name/alias_name' FOR '+diskgroup_name.file_number.file_incarnation'
+  | DROP ALIAS '+diskgroup_name/alias_name'
+  | RENAME ALIAS '+diskgroup_name/old_alias_name' TO '+diskgroup_name/new_alias_name'
+
+diskgroup_volume_clauses ::=
+    add_volume_clause
+  | modify_volume_clause
+  | RESIZE VOLUME asm_volume size_clause
+  | DROP VOLUME asm_volume
+
+add_volume_clause ::=
+    ADD VOLUME asm_volume size_clause
+    [ redundancy_clause ]
+    [ STRIPE_WIDTH size_clause ]
+    [ STRIPE_COLUMNS integer ]
+
+modify_volume_clause ::=
+    MODIFY VOLUME asm_volume
+    [ MOUNTPATH 'mountpath_name' ]
+    [ USAGE 'usage_name' ]
+
+diskgroup_attributes ::=
+    SET ATTRIBUTE attribute_name = attribute_value [, attribute_name = attribute_value ]...
+
+modify_diskgroup_file ::=
+    MODIFY FILE '+diskgroup_name.file_number.file_incarnation'
+    [ redundancy_clause ]
+
+drop_diskgroup_file_clause ::=
+    DROP FILE '+diskgroup_name.file_number.file_incarnation'
+  | DROP FILE file_alias_name
+
+convert_redundancy_clause ::=
+    CONVERT REDUNDANCY
+
+usergroup_clauses ::=
+    ADD USERGROUP usergroup_name [ MEMBER member_name ]
+  | MODIFY USERGROUP usergroup_name { ADD MEMBER member_name | DROP MEMBER member_name }
+  | DROP USERGROUP usergroup_name
+
+user_clauses ::=
+    ADD USER os_user_name [, os_user_name ]...
+  | DROP USER os_user_name [ CASCADE ] [, os_user_name [ CASCADE ] ]...
+  | REPLACE USER old_os_user_name WITH new_os_user_name
+
+file_permissions_clause ::=
+    SET PERMISSION '+diskgroup_name.file_number.file_incarnation'
+    [ FILE_PERM_OWNER perm_value ]
+    [ FILE_PERM_GROUP perm_value ]
+    [ FILE_PERM_OTHER perm_value ]
+
+file_owner_clause ::=
+    SET OWNER owner_name FILE '+diskgroup_name.file_number.file_incarnation'
+  | SET GROUP usergroup_name FILE '+diskgroup_name.file_number.file_incarnation'
+
+scrub_clause ::=
+    SCRUB [ [ FILE file_specification ] | [ DISK disk_name ] ]
+    [ REPAIR | NOREPAIR ]
+    [ POWER { AUTO | LOW | HIGH | MAX } ]
+    [ WAIT | NOWAIT ]
+    [ FORCE | NOFORCE ]
+  | SCRUB STOP
+
+quotagroup_clauses ::=
+    ADD QUOTAGROUP quotagroup_name [ SET QUOTA = { size_clause | UNLIMITED } ]
+  | MODIFY QUOTAGROUP quotagroup_name SET QUOTA = { size_clause | UNLIMITED }
+  | MOVE FILEGROUP filegroup_name TO QUOTAGROUP quotagroup_name
+  | DROP QUOTAGROUP quotagroup_name
+
+filegroup_clauses ::=
+    add_filegroup_clause
+  | modify_filegroup_clause
+  | move_to_filegroup_clause
+  | drop_filegroup_clause
+
+add_filegroup_clause ::=
+    ADD FILEGROUP filegroup_name
+    [ DATABASE [ db_unique_name ] ]
+    [ CLUSTER cluster_name ]
+    [ VOLUME volume_name ]
+    [ TEMPLATE template_name ]
+    [ SET property_name = property_value [, property_name = property_value ]... ]
+
+modify_filegroup_clause ::=
+    MODIFY FILEGROUP filegroup_name
+    [ SET property_name = property_value [, property_name = property_value ]... ]
+
+move_to_filegroup_clause ::=
+    MOVE FILE file_specification TO FILEGROUP filegroup_name
+
+drop_filegroup_clause ::=
+    DROP FILEGROUP filegroup_name [ CASCADE [ FOR DATABASE db_unique_name [ FOR PLUGGABLE DATABASE pdb_name ] ] ]
+
+undrop_disk_clause ::=
+    UNDROP DISKS
+
+diskgroup_availability ::=
+    MOUNT [ ALL ] [ RESTRICTED | NORMAL ] [ FORCE | NOFORCE ]
+  | DISMOUNT [ ALL ] [ FORCE ]
+
+enable_disable_volume ::=
+    ENABLE VOLUME { ALL | volume_name [, volume_name ]... }
+  | DISABLE VOLUME { ALL | volume_name [, volume_name ]... }

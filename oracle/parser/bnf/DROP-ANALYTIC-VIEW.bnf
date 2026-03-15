@@ -1,0 +1,4 @@
+-- Statement: DROP ANALYTIC VIEW
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-ANALYTIC-VIEW.html
+
+DROP ANALYTIC VIEW [ IF EXISTS ] [ schema. ] analytic_view_name ;

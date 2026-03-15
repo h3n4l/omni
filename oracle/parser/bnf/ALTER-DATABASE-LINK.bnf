@@ -1,0 +1,11 @@
+-- Statement: ALTER DATABASE LINK
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-DATABASE-LINK.html
+
+alter_database_link ::=
+  ALTER [ SHARED ] [ PUBLIC ] DATABASE LINK dblink_name
+    [ IF EXISTS ]
+    dblink_authentication
+
+dblink_authentication ::=
+  CONNECT TO user IDENTIFIED BY password
+  [ AUTHENTICATED BY user IDENTIFIED BY password ]

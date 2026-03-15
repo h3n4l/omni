@@ -1,0 +1,7 @@
+-- Statement: DROP TABLESPACE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-TABLESPACE.html
+
+DROP TABLESPACE [ IF EXISTS ] tablespace
+    [ { DROP | KEEP } QUOTA ]
+    [ INCLUDING CONTENTS [ { AND DATAFILES | KEEP DATAFILES } ]
+      [ CASCADE CONSTRAINTS ] ] ;

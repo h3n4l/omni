@@ -1,0 +1,4 @@
+-- Statement: DROP LIBRARY
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-LIBRARY.html
+
+DROP LIBRARY [ IF EXISTS ] library_name ;

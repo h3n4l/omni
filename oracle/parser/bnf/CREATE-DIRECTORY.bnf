@@ -1,0 +1,6 @@
+-- Statement: CREATE DIRECTORY
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-DIRECTORY.html
+
+CREATE [ OR REPLACE | IF NOT EXISTS ] DIRECTORY directory
+    [ SHARING = { METADATA | NONE } ]
+    AS 'path_name' ;

@@ -1,0 +1,8 @@
+-- Statement: CREATE CONTEXT
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-CONTEXT.html
+
+CREATE [ OR REPLACE ] CONTEXT namespace
+    USING [ schema. ] package
+    [ SHARING = { METADATA | NONE } ]
+    [ INITIALIZED { EXTERNALLY | GLOBALLY } ]
+    [ ACCESSED GLOBALLY ] ;

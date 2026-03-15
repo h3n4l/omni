@@ -1,0 +1,34 @@
+-- Statement: CREATE DIMENSION
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-DIMENSION.html
+
+CREATE DIMENSION [ schema. ] dimension
+    level_clause [ level_clause ]...
+    { hierarchy_clause
+    | dimension_join_clause
+    | attribute_clause
+    | extended_attribute_clause
+    }... ;
+
+level_clause:
+    LEVEL level IS ( [ schema. ] table. column [, [ schema. ] table. column ]... )
+    [ SKIP WHEN NULL ]
+
+hierarchy_clause:
+    HIERARCHY hierarchy (
+        child_level CHILD OF parent_level
+        [ CHILD OF parent_level ]...
+        [ dimension_join_clause ]...
+    )
+
+dimension_join_clause:
+    JOIN KEY ( [ [ schema. ] table. ] child_key_column
+        [, [ [ schema. ] table. ] child_key_column ]... )
+    REFERENCES parent_level
+
+attribute_clause:
+    ATTRIBUTE level DETERMINES ( [ schema. ] table. column
+        [, [ schema. ] table. column ]... )
+
+extended_attribute_clause:
+    ATTRIBUTE attribute LEVEL level DETERMINES ( [ schema. ] table. column
+        [, [ schema. ] table. column ]... )

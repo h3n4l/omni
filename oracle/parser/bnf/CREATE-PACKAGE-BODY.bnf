@@ -1,0 +1,8 @@
+-- Statement: CREATE PACKAGE BODY
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-PACKAGE-BODY.html
+
+CREATE [ OR REPLACE | IF NOT EXISTS ]
+    [ EDITIONABLE | NONEDITIONABLE ]
+    PACKAGE BODY [ schema. ] package_name
+    { IS | AS }
+    plsql_package_body_source ;

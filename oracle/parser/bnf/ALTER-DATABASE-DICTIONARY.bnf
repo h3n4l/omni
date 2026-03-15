@@ -1,0 +1,9 @@
+-- Statement: ALTER DATABASE DICTIONARY
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-DATABASE-DICTIONARY.html
+
+alter_database_dictionary ::=
+  ALTER DATABASE DICTIONARY
+    { ENCRYPT CREDENTIALS
+    | REKEY CREDENTIALS
+    | DELETE CREDENTIALS KEY
+    }

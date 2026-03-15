@@ -1,0 +1,4 @@
+-- Statement: DROP OUTLINE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-OUTLINE.html
+
+DROP OUTLINE outline ;

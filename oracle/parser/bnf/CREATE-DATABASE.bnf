@@ -1,0 +1,75 @@
+-- Statement: CREATE DATABASE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-DATABASE.html
+
+CREATE DATABASE [ database ]
+    [ USER SYS IDENTIFIED BY password ]
+    [ USER SYSTEM IDENTIFIED BY password ]
+    [ CONTROLFILE REUSE ]
+    [ MAXDATAFILES integer ]
+    [ MAXINSTANCES integer ]
+    [ CHARACTER SET charset ]
+    [ NATIONAL CHARACTER SET { AL16UTF16 | UTF8 } ]
+    [ SET DEFAULT { BIGFILE | SMALLFILE } TABLESPACE ]
+    [ database_logging_clauses ]
+    [ tablespace_clauses ]
+    [ set_time_zone_clause ]
+    [ enable_pluggable_database ]
+    [ USING MIRROR COPY mirror_name ] ;
+
+database_logging_clauses:
+    [ LOGFILE [ GROUP integer ] file_specification
+        [, [ GROUP integer ] file_specification ]... ]
+    [ MAXLOGFILES integer ]
+    [ MAXLOGMEMBERS integer ]
+    [ MAXLOGHISTORY integer ]
+    [ { ARCHIVELOG | NOARCHIVELOG } ]
+    [ FORCE LOGGING ]
+    [ SET STANDBY NOLOGGING FOR { DATA AVAILABILITY | LOAD PERFORMANCE } ]
+
+tablespace_clauses:
+    [ EXTENT MANAGEMENT LOCAL [ { AUTOALLOCATE | UNIFORM [ SIZE size_clause ] } ] ]
+    [ DATAFILE file_specification [, file_specification ]... ]
+    [ SYSAUX DATAFILE file_specification [, file_specification ]... ]
+    [ default_tablespace ]
+    [ default_temp_tablespace ]
+    [ undo_tablespace ]
+    [ USER_DATA TABLESPACE tablespace_name [ { BIGFILE | SMALLFILE } ]
+        DATAFILE file_specification [, file_specification ]... ]
+
+default_tablespace:
+    DEFAULT TABLESPACE tablespace_name [ { BIGFILE | SMALLFILE } ]
+    [ DATAFILE file_specification [, file_specification ]... ]
+    [ EXTENT MANAGEMENT LOCAL [ { AUTOALLOCATE | UNIFORM [ SIZE size_clause ] } ] ]
+
+default_temp_tablespace:
+    { DEFAULT TEMPORARY TABLESPACE
+    | DEFAULT LOCAL TEMPORARY TABLESPACE [ FOR { ALL | LEAF } ]
+    }
+    tablespace_name [ { BIGFILE | SMALLFILE } ]
+    [ TEMPFILE file_specification [, file_specification ]... ]
+    [ EXTENT MANAGEMENT LOCAL [ { AUTOALLOCATE | UNIFORM [ SIZE size_clause ] } ] ]
+
+undo_tablespace:
+    UNDO TABLESPACE tablespace_name [ { BIGFILE | SMALLFILE } ]
+    [ DATAFILE file_specification [, file_specification ]... ]
+
+set_time_zone_clause:
+    SET TIME_ZONE = { ' { + | - } hh:mi ' | time_zone_region }
+
+enable_pluggable_database:
+    ENABLE PLUGGABLE DATABASE
+    [ SEED
+        [ file_name_convert ]
+        [ SYSTEM DATAFILES SIZE size_clause
+            [ AUTOEXTEND { ON [ NEXT size_clause ] [ MAXSIZE { size_clause | UNLIMITED } ] | OFF } ] ]
+        [ SYSAUX DATAFILES SIZE size_clause
+            [ AUTOEXTEND { ON [ NEXT size_clause ] [ MAXSIZE { size_clause | UNLIMITED } ] | OFF } ] ]
+        [ undo_mode_clause ]
+    ]
+
+file_name_convert:
+    FILE_NAME_CONVERT = { ( 'filename_pattern' , 'replacement_filename_pattern'
+        [, 'filename_pattern' , 'replacement_filename_pattern' ]... ) | NONE }
+
+undo_mode_clause:
+    LOCAL UNDO { ON | OFF }

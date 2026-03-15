@@ -1,0 +1,17 @@
+-- Statement: CREATE DISKGROUP
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-DISKGROUP.html
+
+CREATE DISKGROUP diskgroup_name
+    [ { NORMAL | HIGH | FLEX | EXTENDED | EXTERNAL } REDUNDANCY ]
+    [ { QUORUM | REGULAR } FAILGROUP failgroup_name ]
+        DISK qualified_disk_clause [, qualified_disk_clause ]...
+    [ { QUORUM | REGULAR } FAILGROUP failgroup_name
+        DISK qualified_disk_clause [, qualified_disk_clause ]... ]...
+    [ ATTRIBUTE 'attribute_name' = 'attribute_value'
+        [, 'attribute_name' = 'attribute_value' ]... ] ;
+
+qualified_disk_clause:
+    search_string
+    [ NAME disk_name ]
+    [ SIZE size_clause ]
+    [ FORCE | NOFORCE ]

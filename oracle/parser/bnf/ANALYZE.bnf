@@ -1,0 +1,25 @@
+-- Statement: ANALYZE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ANALYZE.html
+
+ANALYZE
+    { TABLE [ schema. ] table [ partition_extension_clause ]
+    | INDEX [ schema. ] index [ partition_extension_clause ]
+    | CLUSTER [ schema. ] cluster
+    }
+    { validation_clauses
+    | DELETE [ SYSTEM ] STATISTICS
+    } ;
+
+partition_extension_clause:
+    { PARTITION ( partition_name )
+    | SUBPARTITION ( subpartition_name )
+    }
+
+validation_clauses:
+    { VALIDATE REF UPDATE [ SET DANGLING TO NULL ]
+    | VALIDATE STRUCTURE [ CASCADE [ FAST ] ] [ ONLINE | OFFLINE ] [ into_clause ]
+    | LIST CHAINED ROWS [ into_clause ]
+    }
+
+into_clause:
+    INTO [ schema. ] table

@@ -1,0 +1,73 @@
+-- Statement: CREATE DOMAIN
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/create-domain.html
+
+CREATE [ OR REPLACE ] [ USECASE ] DOMAIN [ IF NOT EXISTS ] [ schema. ] domain_name
+    AS { create_single_column_domain
+       | create_multi_column_domain
+       | create_flexible_domain } ;
+
+create_single_column_domain:
+    datatype [ STRICT ]
+    [ DEFAULT [ ON NULL ] default_expression ]
+    [ { constraint_clause }... ]
+    [ COLLATE collation_name ]
+    [ DISPLAY display_expression ]
+    [ ORDER order_expression ]
+    [ annotations_clause ]
+
+create_single_column_domain:  -- ENUM variant
+    ENUM ( enum_list ) [ STRICT ]
+    [ DEFAULT [ ON NULL ] default_expression ]
+    [ { constraint_clause }... ]
+    [ COLLATE collation_name ]
+    [ DISPLAY display_expression ]
+    [ ORDER order_expression ]
+    [ annotations_clause ]
+
+enum_list:
+    enum_item_list [, enum_item_list ]...
+
+enum_item_list:
+    name [ = enum_alias_list ] [ = value ]
+
+enum_alias_list:
+    alias [ = alias ]...
+
+column_properties_clause:
+    [ DEFAULT [ ON NULL ] default_expression ]
+    [ { constraint_clause }... ]
+    [ COLLATE collation_name ]
+    [ DISPLAY display_expression ]
+    [ ORDER order_expression ]
+
+create_multi_column_domain:
+    ( column_name AS datatype [ annotations_clause ]
+      [, column_name AS datatype [ annotations_clause ] ]... )
+    [ { constraint_clause }... ]
+    [ COLLATE collation_name ]
+    [ DISPLAY display_expression ]
+    [ ORDER order_expression ]
+    [ annotations_clause ]
+
+create_flexible_domain:
+    FLEXIBLE DOMAIN [ schema. ] domain_name
+        ( column_name [, column_name ]... )
+    CHOOSE DOMAIN USING ( domain_discriminant_column datatype
+        [, domain_discriminant_column datatype ]... )
+    FROM { DECODE ( expr , comparison_expr , result_expr
+                    [, comparison_expr , result_expr ]... )
+         | CASE { WHEN condition THEN result_expr }... END }
+
+result_expr:
+    [ schema. ] domain_name ( column_name [, column_name ]... )
+
+default_clause:
+    DEFAULT [ ON NULL ] default_expression
+
+constraint_clause:
+    [ CONSTRAINT constraint_name ]
+    { NOT NULL | NULL | CHECK ( condition ) }
+    [ constraint_state ]
+
+annotations_clause:
+    ANNOTATIONS ( annotation [, annotation ]... )

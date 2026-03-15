@@ -1,0 +1,20 @@
+-- Statement: ALTER ANALYTIC VIEW
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-ANALYTIC-VIEW.html
+
+alter_analytic_view ::=
+  ALTER ANALYTIC VIEW [ IF EXISTS ] [ schema . ] analytic_view_name
+    { RENAME TO new_av_name
+    | COMPILE
+    | alter_add_cache_clause
+    | alter_drop_cache_clause
+    }
+
+alter_add_cache_clause ::=
+  ADD CACHE
+    MEASURE GROUP ( measure_name [, measure_name ]... )
+    LEVELS ( level_specification [, level_specification ]... )
+
+alter_drop_cache_clause ::=
+  DROP CACHE
+    MEASURE GROUP ( measure_name [, measure_name ]... )
+    LEVELS ( level_specification [, level_specification ]... )

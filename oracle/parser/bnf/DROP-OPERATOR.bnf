@@ -1,0 +1,4 @@
+-- Statement: DROP OPERATOR
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-OPERATOR.html
+
+DROP OPERATOR [ IF EXISTS ] [ schema. ] operator [ FORCE ] ;

@@ -1,0 +1,15 @@
+-- Statement: CREATE DATABASE LINK
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-DATABASE-LINK.html
+
+CREATE [ SHARED ] [ PUBLIC ] DATABASE LINK [ IF NOT EXISTS ] dblink
+    [ CONNECT TO
+        { CURRENT_USER
+        | user IDENTIFIED BY password [ dblink_authentication ]
+        }
+    | CONNECT WITH credential
+    ]
+    [ dblink_authentication ]
+    USING 'connect_string' ;
+
+dblink_authentication:
+    AUTHENTICATED BY user IDENTIFIED BY password

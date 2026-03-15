@@ -1,0 +1,9 @@
+-- Statement: CREATE PMEM FILESTORE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/create-pmem-filestore.html
+
+CREATE PMEM FILESTORE filestore_name
+    MOUNTPOINT 'file_path'
+    BACKINGFILE 'backing_file_path' SIZE size_value BLOCKSIZE blocksize_value
+    [ AUTOEXTEND { ON | OFF }
+        [ NEXT size_value ]
+        [ MAXSIZE { UNLIMITED | size_value } ] ] ;

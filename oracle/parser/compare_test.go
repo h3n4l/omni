@@ -3718,3 +3718,296 @@ func TestParseAlterSynonym(t *testing.T) {
 		}
 	})
 }
+
+// TestParseAlterDatabaseProper tests ALTER DATABASE clause parsing (batch 87).
+func TestParseAlterDatabaseProper(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		// startup_clauses
+		{"mount", "ALTER DATABASE MOUNT"},
+		{"mount_standby", "ALTER DATABASE MOUNT STANDBY DATABASE"},
+		{"mount_clone", "ALTER DATABASE MOUNT CLONE DATABASE"},
+		{"open_default", "ALTER DATABASE OPEN"},
+		{"open_read_write", "ALTER DATABASE OPEN READ WRITE"},
+		{"open_read_only", "ALTER DATABASE OPEN READ ONLY"},
+		{"open_resetlogs", "ALTER DATABASE OPEN RESETLOGS"},
+		{"open_noresetlogs", "ALTER DATABASE OPEN NORESETLOGS"},
+		{"open_upgrade", "ALTER DATABASE OPEN READ WRITE RESETLOGS UPGRADE"},
+		{"open_downgrade", "ALTER DATABASE OPEN DOWNGRADE"},
+
+		// recovery_clauses
+		{"recover_database", "ALTER DATABASE RECOVER DATABASE"},
+		{"recover_automatic", "ALTER DATABASE RECOVER AUTOMATIC DATABASE"},
+		{"recover_managed_standby", "ALTER DATABASE RECOVER MANAGED STANDBY DATABASE"},
+		{"recover_managed_cancel", "ALTER DATABASE RECOVER MANAGED STANDBY DATABASE CANCEL"},
+		{"recover_managed_disconnect", "ALTER DATABASE RECOVER MANAGED STANDBY DATABASE DISCONNECT FROM SESSION"},
+		{"begin_backup", "ALTER DATABASE BEGIN BACKUP"},
+		{"end_backup", "ALTER DATABASE END BACKUP"},
+		{"recover_datafile", "ALTER DATABASE RECOVER DATAFILE '/u01/data01.dbf'"},
+		{"recover_tablespace", "ALTER DATABASE RECOVER TABLESPACE users"},
+
+		// database_file_clauses
+		{"rename_file", "ALTER DATABASE RENAME FILE '/old/file.dbf' TO '/new/file.dbf'"},
+		{"rename_file_multi", "ALTER DATABASE RENAME FILE '/old1.dbf', '/old2.dbf' TO '/new1.dbf', '/new2.dbf'"},
+		{"create_datafile", "ALTER DATABASE CREATE DATAFILE '/u01/data01.dbf'"},
+		{"create_datafile_as", "ALTER DATABASE CREATE DATAFILE '/u01/data01.dbf' AS '/u01/data02.dbf'"},
+		{"datafile_online", "ALTER DATABASE DATAFILE '/u01/data01.dbf' ONLINE"},
+		{"datafile_offline", "ALTER DATABASE DATAFILE '/u01/data01.dbf' OFFLINE"},
+		{"datafile_resize", "ALTER DATABASE DATAFILE '/u01/data01.dbf' RESIZE 100M"},
+		{"datafile_autoextend", "ALTER DATABASE DATAFILE '/u01/data01.dbf' AUTOEXTEND ON NEXT 10M MAXSIZE 1G"},
+		{"datafile_end_backup", "ALTER DATABASE DATAFILE '/u01/data01.dbf' END BACKUP"},
+		{"tempfile_resize", "ALTER DATABASE TEMPFILE '/u01/temp01.dbf' RESIZE 200M"},
+		{"tempfile_autoextend", "ALTER DATABASE TEMPFILE '/u01/temp01.dbf' AUTOEXTEND ON NEXT 50M"},
+		{"tempfile_online", "ALTER DATABASE TEMPFILE '/u01/temp01.dbf' ONLINE"},
+		{"tempfile_offline", "ALTER DATABASE TEMPFILE '/u01/temp01.dbf' OFFLINE"},
+		{"tempfile_drop", "ALTER DATABASE TEMPFILE '/u01/temp01.dbf' DROP INCLUDING DATAFILES"},
+		{"move_datafile", "ALTER DATABASE MOVE DATAFILE '/u01/old.dbf' TO '/u01/new.dbf'"},
+
+		// logfile_clauses
+		{"add_logfile", "ALTER DATABASE ADD LOGFILE GROUP 3 '/u01/redo03.log' SIZE 100M"},
+		{"add_logfile_member", "ALTER DATABASE ADD LOGFILE MEMBER '/u01/redo03b.log' TO GROUP 3"},
+		{"drop_logfile", "ALTER DATABASE DROP LOGFILE GROUP 3"},
+		{"drop_logfile_member", "ALTER DATABASE DROP LOGFILE MEMBER '/u01/redo03b.log'"},
+		{"add_standby_logfile", "ALTER DATABASE ADD STANDBY LOGFILE GROUP 10 '/u01/standby10.log' SIZE 100M"},
+		{"drop_standby_logfile", "ALTER DATABASE DROP STANDBY LOGFILE GROUP 10"},
+		{"clear_logfile", "ALTER DATABASE CLEAR LOGFILE GROUP 3"},
+		{"clear_unarchived_logfile", "ALTER DATABASE CLEAR UNARCHIVED LOGFILE GROUP 3"},
+		{"switch_logfile", "ALTER DATABASE SWITCH ALL LOGFILE"},
+
+		// controlfile_clauses
+		{"backup_controlfile_to", "ALTER DATABASE BACKUP CONTROLFILE TO '/u01/backup.ctl'"},
+		{"backup_controlfile_reuse", "ALTER DATABASE BACKUP CONTROLFILE TO '/u01/backup.ctl' REUSE"},
+		{"backup_controlfile_trace", "ALTER DATABASE BACKUP CONTROLFILE TO TRACE"},
+		{"backup_controlfile_trace_as", "ALTER DATABASE BACKUP CONTROLFILE TO TRACE AS '/u01/trace.sql'"},
+
+		// standby_database_clauses
+		{"activate_standby", "ALTER DATABASE ACTIVATE STANDBY DATABASE"},
+		{"activate_physical_standby", "ALTER DATABASE ACTIVATE PHYSICAL STANDBY DATABASE"},
+		{"set_standby_maximize", "ALTER DATABASE SET STANDBY DATABASE TO MAXIMIZE PROTECTION"},
+		{"register_logfile", "ALTER DATABASE REGISTER LOGFILE '/u01/arch01.log'"},
+		{"convert_to_standby", "ALTER DATABASE CONVERT TO PHYSICAL STANDBY"},
+
+		// default_settings_clauses
+		{"set_default_bigfile", "ALTER DATABASE SET DEFAULT BIGFILE TABLESPACE"},
+		{"default_tablespace", "ALTER DATABASE DEFAULT TABLESPACE users"},
+		{"default_temp_tablespace", "ALTER DATABASE DEFAULT TEMPORARY TABLESPACE temp"},
+		{"rename_global_name", "ALTER DATABASE RENAME GLOBAL_NAME TO mydb.world"},
+		{"enable_block_tracking", "ALTER DATABASE ENABLE BLOCK CHANGE TRACKING"},
+		{"disable_block_tracking", "ALTER DATABASE DISABLE BLOCK CHANGE TRACKING"},
+		{"flashback_on", "ALTER DATABASE FLASHBACK ON"},
+		{"flashback_off", "ALTER DATABASE FLASHBACK OFF"},
+		{"set_time_zone", "ALTER DATABASE SET TIME_ZONE = '+08:00'"},
+		{"default_edition", "ALTER DATABASE DEFAULT EDITION myedition"},
+
+		// security_clause
+		{"guard_all", "ALTER DATABASE GUARD ALL"},
+		{"guard_standby", "ALTER DATABASE GUARD STANDBY"},
+		{"guard_none", "ALTER DATABASE GUARD NONE"},
+
+		// instance_clauses
+		{"enable_instance", "ALTER DATABASE ENABLE INSTANCE 'inst1'"},
+		{"disable_instance", "ALTER DATABASE DISABLE INSTANCE 'inst1'"},
+
+		// with database name
+		{"named_db_mount", "ALTER DATABASE mydb MOUNT"},
+		{"named_db_open", "ALTER DATABASE mydb OPEN READ WRITE"},
+
+		// supplemental logging
+		{"add_supplemental_log", "ALTER DATABASE ADD SUPPLEMENTAL LOG DATA"},
+		{"drop_supplemental_log", "ALTER DATABASE DROP SUPPLEMENTAL LOG DATA"},
+
+		// lost write protection / suspend resume
+		{"suspend", "ALTER DATABASE SUSPEND"},
+		{"resume", "ALTER DATABASE RESUME"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tc.sql)
+			if result.Len() != 1 {
+				t.Fatalf("expected 1 statement, got %d", result.Len())
+			}
+			raw, ok := result.Items[0].(*ast.RawStmt)
+			if !ok {
+				t.Fatalf("expected *RawStmt, got %T", result.Items[0])
+			}
+			stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+			if !ok {
+				t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+			}
+			if stmt.Action != "ALTER" {
+				t.Fatalf("expected action ALTER, got %s", stmt.Action)
+			}
+			if stmt.ObjectType != ast.OBJECT_DATABASE {
+				t.Fatalf("expected OBJECT_DATABASE, got %d", stmt.ObjectType)
+			}
+			// Verify that options were actually parsed (not empty skip)
+			if stmt.Options == nil || len(stmt.Options.Items) == 0 {
+				t.Fatal("expected parsed options, got nil/empty")
+			}
+		})
+	}
+}
+
+// TestParseCreateControlfileProper tests CREATE CONTROLFILE parsing (batch 87).
+func TestParseCreateControlfileProper(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		{"basic", "CREATE CONTROLFILE SET DATABASE mydb LOGFILE GROUP 1 '/u01/redo01.log' SIZE 100M RESETLOGS"},
+		{"reuse", "CREATE CONTROLFILE REUSE DATABASE mydb LOGFILE GROUP 1 '/u01/redo01.log' SIZE 50M NORESETLOGS"},
+		{"with_datafile", "CREATE CONTROLFILE SET DATABASE mydb LOGFILE GROUP 1 '/u01/redo01.log' SIZE 100M RESETLOGS DATAFILE '/u01/data01.dbf'"},
+		{"full", "CREATE CONTROLFILE REUSE SET DATABASE mydb LOGFILE GROUP 1 '/u01/redo01.log' SIZE 100M RESETLOGS DATAFILE '/u01/data01.dbf' MAXLOGFILES 16 MAXLOGMEMBERS 3 MAXDATAFILES 100 MAXINSTANCES 8 ARCHIVELOG"},
+		{"noresetlogs_noarchive", "CREATE CONTROLFILE DATABASE mydb LOGFILE GROUP 1 '/u01/redo01.log' SIZE 50M NORESETLOGS NOARCHIVELOG"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tc.sql)
+			if result.Len() != 1 {
+				t.Fatalf("expected 1 statement, got %d", result.Len())
+			}
+			raw, ok := result.Items[0].(*ast.RawStmt)
+			if !ok {
+				t.Fatalf("expected *RawStmt, got %T", result.Items[0])
+			}
+			stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+			if !ok {
+				t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+			}
+			if stmt.Action != "CREATE" {
+				t.Fatalf("expected action CREATE, got %s", stmt.Action)
+			}
+			if stmt.ObjectType != ast.OBJECT_CONTROLFILE {
+				t.Fatalf("expected OBJECT_CONTROLFILE, got %d", stmt.ObjectType)
+			}
+			if stmt.Options == nil || len(stmt.Options.Items) == 0 {
+				t.Fatal("expected parsed options, got nil/empty")
+			}
+		})
+	}
+}
+
+// TestParseAlterDatabaseDictionaryProper tests ALTER DATABASE DICTIONARY parsing (batch 87).
+func TestParseAlterDatabaseDictionaryProper(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+		key  string
+	}{
+		{"encrypt", "ALTER DATABASE DICTIONARY ENCRYPT CREDENTIALS", "ENCRYPT_CREDENTIALS"},
+		{"rekey", "ALTER DATABASE DICTIONARY REKEY CREDENTIALS", "REKEY_CREDENTIALS"},
+		{"delete", "ALTER DATABASE DICTIONARY DELETE CREDENTIALS KEY", "DELETE_CREDENTIALS_KEY"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tc.sql)
+			if result.Len() != 1 {
+				t.Fatalf("expected 1 statement, got %d", result.Len())
+			}
+			raw, ok := result.Items[0].(*ast.RawStmt)
+			if !ok {
+				t.Fatalf("expected *RawStmt, got %T", result.Items[0])
+			}
+			stmt, ok := raw.Stmt.(*ast.AdminDDLStmt)
+			if !ok {
+				t.Fatalf("expected *AdminDDLStmt, got %T", raw.Stmt)
+			}
+			if stmt.Action != "ALTER" {
+				t.Fatalf("expected action ALTER, got %s", stmt.Action)
+			}
+			if stmt.ObjectType != ast.OBJECT_DATABASE_DICTIONARY {
+				t.Fatalf("expected OBJECT_DATABASE_DICTIONARY, got %d", stmt.ObjectType)
+			}
+			if stmt.Options == nil || len(stmt.Options.Items) == 0 {
+				t.Fatal("expected parsed options, got nil/empty")
+			}
+			opt := stmt.Options.Items[0].(*ast.DDLOption)
+			if opt.Key != tc.key {
+				t.Fatalf("expected key %q, got %q", tc.key, opt.Key)
+			}
+		})
+	}
+}
+
+// TestParseInfrastructureSharedHelpers tests shared parser helpers
+// that are used across all statement parsers (batch 87).
+func TestParseInfrastructureSharedHelpers(t *testing.T) {
+	// Test schema-qualified names in various statements
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		// Schema-qualified object names
+		{"schema_qualified_select", `SELECT * FROM hr.employees`},
+		{"schema_qualified_insert", `INSERT INTO hr.employees (id) VALUES (1)`},
+		{"dblink_reference", `SELECT * FROM employees@remote_db`},
+		{"schema_dblink_reference", `SELECT * FROM hr.employees@remote_db`},
+		// Column references: simple, table-qualified, schema-qualified
+		{"column_ref_simple", `SELECT name FROM employees`},
+		{"column_ref_table_qualified", `SELECT e.name FROM employees e`},
+		{"column_ref_schema_table_qualified", `SELECT hr.employees.name FROM hr.employees`},
+		{"column_ref_star", `SELECT e.* FROM employees e`},
+		// Bind variables
+		{"bind_variable_named", `SELECT * FROM employees WHERE id = :emp_id`},
+		{"bind_variable_positional", `SELECT * FROM employees WHERE id = :1`},
+		// Pseudo-columns
+		{"pseudo_rownum", `SELECT * FROM employees WHERE ROWNUM <= 10`},
+		{"pseudo_rowid", `SELECT ROWID, name FROM employees`},
+		{"pseudo_level", `SELECT LEVEL, name FROM employees CONNECT BY PRIOR id = manager_id`},
+		{"pseudo_sysdate", `SELECT SYSDATE FROM DUAL`},
+		{"pseudo_systimestamp", `SELECT SYSTIMESTAMP FROM DUAL`},
+		// Expression basics
+		{"expr_concatenation", `SELECT first_name || ' ' || last_name FROM employees`},
+		{"expr_arithmetic", `SELECT salary * 1.1 + bonus FROM employees`},
+		{"expr_exponent", `SELECT 2 ** 10 FROM DUAL`},
+		{"expr_between", `SELECT * FROM employees WHERE salary BETWEEN 1000 AND 5000`},
+		{"expr_in_list", `SELECT * FROM employees WHERE dept_id IN (10, 20, 30)`},
+		{"expr_like", `SELECT * FROM employees WHERE name LIKE 'A%'`},
+		{"expr_is_null", `SELECT * FROM employees WHERE manager_id IS NULL`},
+		{"expr_is_not_null", `SELECT * FROM employees WHERE manager_id IS NOT NULL`},
+		{"expr_case", `SELECT CASE WHEN salary > 5000 THEN 'high' ELSE 'low' END FROM employees`},
+		// Multi-statement parsing
+		{"multi_statement", `SELECT 1 FROM DUAL; SELECT 2 FROM DUAL`},
+		// Keywords as identifiers
+		{"keyword_as_column", `SELECT "TYPE", "NAME" FROM my_table`},
+		// Type parsing in DDL context
+		{"type_varchar2", `CREATE TABLE t (c VARCHAR2(100))`},
+		{"type_number_precision", `CREATE TABLE t (c NUMBER(10, 2))`},
+		{"type_timestamp_tz", `CREATE TABLE t (c TIMESTAMP WITH TIME ZONE)`},
+		{"type_interval_ym", `CREATE TABLE t (c INTERVAL YEAR TO MONTH)`},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tc.sql)
+			if result.Len() == 0 {
+				t.Fatal("expected at least 1 statement")
+			}
+		})
+	}
+}
+
+// TestParseInfrastructureLocTracking tests that AST nodes have Loc set.
+func TestParseInfrastructureLocTracking(t *testing.T) {
+	result := ParseAndCheck(t, `SELECT * FROM employees WHERE id = 1`)
+	if result.Len() != 1 {
+		t.Fatalf("expected 1 statement, got %d", result.Len())
+	}
+	raw := result.Items[0].(*ast.RawStmt)
+	if raw.StmtLocation != 0 {
+		t.Errorf("expected StmtLocation=0, got %d", raw.StmtLocation)
+	}
+	if raw.StmtLen <= 0 {
+		t.Errorf("expected StmtLen>0, got %d", raw.StmtLen)
+	}
+}
+
+// TestParseInfrastructureErrorRecovery tests that parse errors are reported properly.
+func TestParseInfrastructureErrorRecovery(t *testing.T) {
+	// Completely invalid SQL should produce an error
+	_, err := Parse("!!! not valid sql !!!")
+	if err == nil {
+		t.Fatal("expected parse error for invalid SQL")
+	}
+}

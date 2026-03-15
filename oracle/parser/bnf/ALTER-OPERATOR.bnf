@@ -1,0 +1,30 @@
+-- Statement: ALTER OPERATOR
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-OPERATOR.html
+
+ALTER OPERATOR [ IF EXISTS ] [ schema. ] operator
+    { add_binding_clause
+    | drop_binding_clause
+    | COMPILE
+    } ;
+
+add_binding_clause:
+    ADD BINDING ( datatype [, datatype ]... )
+    RETURN ( datatype )
+    [ implementation_clause ]
+    using_function_clause
+
+implementation_clause:
+    { ANCILLARY TO primary_operator ( datatype [, datatype ]... )
+    | context_clause
+    }
+
+context_clause:
+    WITH INDEX CONTEXT , SCAN CONTEXT implementation_type
+    [ COMPUTE ANCILLARY DATA ]
+    [ WITH COLUMN CONTEXT ]
+
+using_function_clause:
+    USING [ schema. ] [ package_name. ] function_name
+
+drop_binding_clause:
+    DROP BINDING ( datatype [, datatype ]... ) [ FORCE ]

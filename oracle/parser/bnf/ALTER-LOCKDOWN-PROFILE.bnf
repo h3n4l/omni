@@ -1,0 +1,50 @@
+-- Statement: ALTER LOCKDOWN PROFILE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-LOCKDOWN-PROFILE.html
+
+ALTER LOCKDOWN PROFILE profile_name
+    { lockdown_features
+    | lockdown_options
+    | lockdown_statements
+    }
+    [ USERS = { ALL | COMMON | LOCAL } ] ;
+
+lockdown_features:
+    { DISABLE | ENABLE } FEATURE =
+    ( { feature_name
+      | feature_bundle_name
+      | ALL
+      | ALL EXCEPT = ( { feature_name | feature_bundle_name } [, { feature_name | feature_bundle_name } ]... )
+      }
+    )
+
+lockdown_options:
+    { DISABLE | ENABLE } OPTION =
+    ( { option_name
+      | ALL
+      | ALL EXCEPT = ( option_name [, option_name ]... )
+      }
+    )
+
+lockdown_statements:
+    { DISABLE | ENABLE } STATEMENT = ( SQL_statement [, SQL_statement ]... )
+    [ statement_clauses ]
+
+statement_clauses:
+    CLAUSE =
+    ( { clause_keyword [, clause_keyword ]...
+      | ALL
+      | ALL EXCEPT = ( clause_keyword [, clause_keyword ]... )
+      }
+    )
+    [ clause_options ]
+
+clause_options:
+    OPTION = ( { clause_option | clause_option_pattern } [, { clause_option | clause_option_pattern } ]... )
+    [ option_values ]
+
+option_values:
+    { VALUE = ( option_value [, option_value ]... )
+    | MINVALUE = option_value
+    | MAXVALUE = option_value
+    | [ MINVALUE = option_value ] [ MAXVALUE = option_value ]
+    }

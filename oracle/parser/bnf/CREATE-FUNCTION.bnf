@@ -1,0 +1,19 @@
+-- Statement: CREATE FUNCTION
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-FUNCTION.html
+
+CREATE [ OR REPLACE ] [ EDITIONABLE | NONEDITIONABLE ]
+    FUNCTION [ IF NOT EXISTS ] [ schema. ] function_name
+    [ ( parameter_declaration [, parameter_declaration ]... ) ]
+    RETURN datatype
+    [ SHARING = { METADATA | NONE } ]
+    [ { invoker_rights_clause
+      | accessible_by_clause
+      | default_collation_clause
+      | deterministic_clause
+      | parallel_enable_clause
+      | result_cache_clause
+      | aggregate_clause
+      | pipelined_clause
+      | sql_macro_clause }... ]
+    { IS | AS }
+    { plsql_function_source | call_spec } ;

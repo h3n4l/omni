@@ -1,0 +1,5 @@
+-- Statement: DROP EDITION
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-EDITION.html
+
+drop_edition::=
+    DROP EDITION [ IF EXISTS ] edition [ CASCADE ]

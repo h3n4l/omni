@@ -1,0 +1,16 @@
+-- Statement: NOAUDIT (Unified Auditing)
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/NOAUDIT-Unified-Auditing.html
+
+NOAUDIT POLICY policy
+    [ BY user [, user ]...
+      [ WITH ROLE role [, role ]... ]
+    ] ;
+
+NOAUDIT CONTEXT NAMESPACE namespace
+    ATTRIBUTES attribute [, attribute ]...
+    [ BY user [, user ]...
+      [ WITH ROLE role [, role ]... ]
+    ] ;
+
+by_users_with_roles::=
+    user [, user ]... WITH ROLE role [, role ]...

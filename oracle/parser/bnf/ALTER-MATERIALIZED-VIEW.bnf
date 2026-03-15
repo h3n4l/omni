@@ -1,0 +1,135 @@
+-- Statement: ALTER MATERIALIZED VIEW
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-MATERIALIZED-VIEW.html
+
+ALTER MATERIALIZED VIEW [ IF EXISTS ] [ schema. ] materialized_view
+    { physical_attributes_clause
+    | modify_mv_column_clause
+    | table_compression
+    | inmemory_table_clause
+    | LOB_storage_clause
+    | modify_LOB_storage_clause
+    | alter_table_partitioning
+    | parallel_clause
+    | logging_clause
+    | allocate_extent_clause
+    | deallocate_unused_clause
+    | shrink_clause
+    | { CACHE | NOCACHE }
+    | annotations_clause
+    | alter_iot_clauses
+    | MODIFY scoped_table_ref_constraint
+    | alter_mv_refresh
+    | evaluation_edition_clause
+    | { ENABLE | DISABLE } ON QUERY COMPUTATION
+    | alter_query_rewrite_clause
+    | COMPILE
+    | CONSIDER FRESH
+    } ;
+
+physical_attributes_clause:
+    [ PCTFREE integer ]
+    [ PCTUSED integer ]
+    [ INITRANS integer ]
+    [ storage_clause ]
+
+modify_mv_column_clause:
+    MODIFY ( column_name encryption_spec [, column_name encryption_spec ]... )
+
+table_compression:
+    { COMPRESS [ BASIC ]
+    | COMPRESS FOR { OLTP | QUERY [ LOW | HIGH ] | ARCHIVE [ LOW | HIGH ] }
+    | NOCOMPRESS
+    }
+
+inmemory_table_clause:
+    { INMEMORY [ inmemory_attributes ] [ inmemory_column_clause ]
+    | NO INMEMORY
+    }
+
+inmemory_attributes:
+    [ inmemory_memcompress ]
+    [ inmemory_priority ]
+    [ inmemory_distribute ]
+    [ inmemory_duplicate ]
+
+inmemory_memcompress:
+    MEMCOMPRESS FOR { QUERY [ LOW | HIGH ] | OLTP | ARCHIVE [ LOW | HIGH ] }
+
+inmemory_priority:
+    PRIORITY { LOW | MEDIUM | HIGH | CRITICAL }
+
+inmemory_distribute:
+    DISTRIBUTE BY { ROWID [ ACROSS [ integer ] ] | PARTITION | SUBPARTITION }
+
+inmemory_duplicate:
+    DUPLICATE { ALL | FOR SERVICE service_name [, service_name ]... | NONE }
+
+inmemory_column_clause:
+    INMEMORY MEMCOMPRESS FOR { QUERY [ LOW | HIGH ] | OLTP | ARCHIVE [ LOW | HIGH ] }
+    ( column_name [, column_name ]... )
+
+LOB_storage_clause:
+    LOB ( lob_item [, lob_item ]... )
+    STORE AS [ lob_segname ] ( LOB_storage_parameters )
+
+modify_LOB_storage_clause:
+    MODIFY LOB ( lob_item [, lob_item ]... )
+    ( modify_LOB_parameters )
+
+modify_LOB_parameters:
+    [ storage_clause ]
+    [ LOB_retention_clause ]
+    [ LOB_compression_clause ]
+    [ logging_clause ]
+    [ allocate_extent_clause ]
+    [ shrink_clause ]
+    [ deallocate_unused_clause ]
+    [ { ENCRYPT encryption_algorithm | DECRYPT } ]
+
+parallel_clause:
+    { PARALLEL [ integer ] | NOPARALLEL }
+
+logging_clause:
+    { LOGGING | NOLOGGING }
+
+allocate_extent_clause:
+    ALLOCATE EXTENT [ ( [ SIZE size_clause ] [ DATAFILE 'filename' ] [ INSTANCE integer ] ) ]
+
+deallocate_unused_clause:
+    DEALLOCATE UNUSED [ KEEP size_clause ]
+
+shrink_clause:
+    SHRINK SPACE [ COMPACT ] [ CASCADE ]
+
+annotations_clause:
+    ANNOTATIONS ( { ADD annotation | DROP annotation_name [, annotation_name ]... | REMOVE ALL } )
+
+alter_iot_clauses:
+    { index_org_table_clause | alter_overflow_clause }
+
+scoped_table_ref_constraint:
+    SCOPE FOR ( ref_column_name ) IS [ schema. ] table_name
+
+alter_mv_refresh:
+    REFRESH
+    { FAST | COMPLETE | FORCE }
+    [ { ON COMMIT | ON DEMAND } ]
+    [ START WITH date_expression ]
+    [ NEXT date_expression ]
+    [ USING ROLLBACK SEGMENT rollback_segment_name ]
+    [ WITH PRIMARY KEY ]
+    [ { ENABLE | DISABLE } CONCURRENT REFRESH ]
+
+evaluation_edition_clause:
+    EVALUATE USING EDITION edition_name
+    [ CONSIDER FRESH ]
+
+alter_query_rewrite_clause:
+    QUERY REWRITE
+    { ENABLE [ unusable_editions_clause ]
+    | DISABLE
+    | unusable_editions_clause
+    }
+
+unusable_editions_clause:
+    FOR EDITION edition_name [, edition_name ]...

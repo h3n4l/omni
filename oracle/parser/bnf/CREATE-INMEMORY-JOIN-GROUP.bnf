@@ -1,0 +1,6 @@
+-- Statement: CREATE INMEMORY JOIN GROUP
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-INMEMORY-JOIN-GROUP.html
+
+CREATE INMEMORY JOIN GROUP [ IF NOT EXISTS ] [ schema. ] join_group
+    ( [ schema. ] table ( column )
+      [, [ schema. ] table ( column ) ]... ) ;

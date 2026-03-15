@@ -1,0 +1,4 @@
+-- Statement: DROP TYPE BODY
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-TYPE-BODY.html
+
+DROP TYPE BODY [ IF EXISTS ] [ schema. ] type_name ;

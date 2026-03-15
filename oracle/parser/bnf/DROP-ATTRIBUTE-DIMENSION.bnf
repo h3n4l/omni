@@ -1,0 +1,4 @@
+-- Statement: DROP ATTRIBUTE DIMENSION
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-ATTRIBUTE-DIMENSION.html
+
+DROP ATTRIBUTE DIMENSION [ IF EXISTS ] [ schema. ] attr_dimension_name ;

@@ -1,0 +1,11 @@
+-- Statement: ALTER ROLE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-ROLE.html
+
+ALTER ROLE role
+    { NOT IDENTIFIED
+    | IDENTIFIED BY password
+    | IDENTIFIED EXTERNALLY
+    | IDENTIFIED GLOBALLY AS 'domain_name'
+    | IDENTIFIED USING [ schema. ] package_name
+    }
+    [ CONTAINER = { ALL | CURRENT } ]

@@ -1,0 +1,73 @@
+-- Statement: CREATE VIEW
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-VIEW.html
+
+CREATE [ OR REPLACE | IF NOT EXISTS ]
+    [ { FORCE | NOFORCE } ]
+    [ EDITIONING ]
+    [ EDITIONABLE | NONEDITIONABLE ]
+    [ SHARING = { METADATA | DATA | EXTENDED DATA | NONE } ]
+    VIEW [ schema. ] view
+    [ ( { alias [ VISIBLE | INVISIBLE ]
+          [ inline_constraint ]...
+        } [, ...]
+        [, out_of_line_constraint ]...
+      )
+    ]
+    [ object_view_clause
+    | XMLType_view_clause
+    ]
+    [ annotations_clause ]
+    [ DEFAULT COLLATION collation_name ]
+    [ BEQUEATH { CURRENT_USER | DEFINER } ]
+    AS subquery
+    [ subquery_restriction_clause ]
+    [ CONTAINER_MAP | CONTAINERS_DEFAULT ] ;
+
+object_view_clause:
+    OF [ schema. ] type_name
+    { WITH OBJECT IDENTIFIER { DEFAULT | ( attribute [, attribute ]... ) }
+    | UNDER [ schema. ] superview
+    }
+
+XMLType_view_clause:
+    OF XMLTYPE
+    XMLSchema_spec
+    [ WITH OBJECT IDENTIFIER { DEFAULT | ( expression [, expression ]... ) } ]
+
+XMLSchema_spec:
+    XMLSCHEMA XMLSchema_URL
+    ELEMENT { element_name | XMLSchema_URL # element_name }
+
+subquery_restriction_clause:
+    { WITH READ ONLY [ CONSTRAINT constraint_name ]
+    | WITH CHECK OPTION [ CONSTRAINT constraint_name ]
+    }
+
+inline_constraint:
+    [ CONSTRAINT constraint_name ]
+    { NOT NULL
+    | UNIQUE
+    | PRIMARY KEY
+    | REFERENCES [ schema. ] table [ ( column ) ]
+        [ ON DELETE { CASCADE | SET NULL } ]
+    | CHECK ( condition )
+    }
+    [ RELY | NORELY ]
+    [ ENABLE | DISABLE ]
+    [ VALIDATE | NOVALIDATE ]
+
+out_of_line_constraint:
+    [ CONSTRAINT constraint_name ]
+    { UNIQUE ( column [, column ]... )
+    | PRIMARY KEY ( column [, column ]... )
+    | FOREIGN KEY ( column [, column ]... )
+        REFERENCES [ schema. ] table [ ( column [, column ]... ) ]
+        [ ON DELETE { CASCADE | SET NULL } ]
+    | CHECK ( condition )
+    }
+    [ RELY | NORELY ]
+    [ ENABLE | DISABLE ]
+    [ VALIDATE | NOVALIDATE ]
+
+annotations_clause:
+    ANNOTATIONS ( { annotation_name [ annotation_value ] } [, ...] )

@@ -1,0 +1,37 @@
+-- Statement: AUDIT (Traditional Auditing)
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/AUDIT-Traditional-Auditing.html
+-- Note: Traditional Auditing is desupported in Oracle 26; syntax extracted from Oracle 19 docs.
+
+AUDIT { audit_operation_clause [ auditing_by_clause | auditing_on_clause ]
+      | audit_schema_object_clause
+      }
+    [ BY { SESSION | ACCESS } ]
+    [ WHENEVER [ NOT ] SUCCESSFUL ]
+    [ CONTAINER = { CURRENT | ALL } ]
+
+audit_operation_clause:
+    { sql_statement_shortcut
+    | system_privilege
+    | ALL
+    | ALL STATEMENTS
+    | ALL PRIVILEGES
+    }
+    [, { sql_statement_shortcut | system_privilege } ]...
+
+auditing_by_clause:
+    BY { user [, user ]...
+       | SESSION CURRENT
+       }
+
+audit_schema_object_clause:
+    sql_operation [, sql_operation ]...
+    auditing_on_clause
+
+auditing_on_clause:
+    ON [ schema. ] object
+  | ON DEFAULT
+  | ON DIRECTORY directory_name
+  | ON MINING MODEL model_name
+  | ON SQL TRANSLATION PROFILE profile_name
+  | NETWORK
+  | DIRECT_PATH LOAD

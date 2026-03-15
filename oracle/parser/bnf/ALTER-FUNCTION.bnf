@@ -1,0 +1,12 @@
+-- Statement: ALTER FUNCTION
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-FUNCTION.html
+
+ALTER FUNCTION [ IF EXISTS ] [ schema. ] function_name
+    { function_compile_clause }
+    [ EDITIONABLE | NONEDITIONABLE ] ;
+
+function_compile_clause:
+    COMPILE [ DEBUG ] [ compiler_parameters_clause ] [ REUSE SETTINGS ]
+
+compiler_parameters_clause:
+    parameter_name = parameter_value

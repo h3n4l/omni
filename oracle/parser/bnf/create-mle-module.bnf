@@ -1,0 +1,14 @@
+-- Statement: CREATE MLE MODULE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/create-mle-module.html
+
+CREATE [ OR REPLACE | IF NOT EXISTS ] MLE MODULE
+    [ schema. ] module_name
+    LANGUAGE JAVASCRIPT
+    [ VERSION version_string ]
+    { USING { CLOB ( subquery )
+            | BLOB ( subquery )
+            | BFILE ( subquery )
+            | BFILE ( directory_object_name , server_file_name )
+            }
+    | AS source_code
+    }

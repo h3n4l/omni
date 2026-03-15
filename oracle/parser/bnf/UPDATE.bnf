@@ -1,0 +1,82 @@
+-- Statement: UPDATE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/UPDATE.html
+
+UPDATE [ hint ]
+    { { [ schema. ] { table | view | materialized_view }
+        [ t_alias ]
+        [ partition_extension_clause ]
+        [ @ dblink ]
+      }
+    | ( subquery [ subquery_restriction_clause ] )
+    | table_collection_expression
+    }
+    update_set_clause
+    [ from_using_clause ]
+    [ where_clause ]
+    [ returning_clause ]
+    [ error_logging_clause ] ;
+
+DML_table_expression_clause:
+    { [ ONLY ] ( [ schema. ] { table | view | materialized_view }
+        [ t_alias ]
+        [ partition_extension_clause ]
+        [ @ dblink ] )
+    | ( subquery [ subquery_restriction_clause ] )
+    | table_collection_expression
+    }
+
+partition_extension_clause:
+    { PARTITION ( partition_name )
+    | PARTITION FOR ( partition_key_value [, partition_key_value]... )
+    | SUBPARTITION ( subpartition_name )
+    | SUBPARTITION FOR ( subpartition_key_value [, subpartition_key_value]... )
+    }
+
+subquery_restriction_clause:
+    WITH { READ ONLY | CHECK OPTION [ CONSTRAINT constraint_name ] }
+
+table_collection_expression:
+    TABLE ( collection_expression ) [ (+) ]
+
+update_set_clause:
+    SET
+    { { column = { expr | ( subquery ) | DEFAULT }
+      | ( column [, column]... ) = ( subquery )
+      } [, { column = { expr | ( subquery ) | DEFAULT }
+           | ( column [, column]... ) = ( subquery )
+           } ]...
+    | VALUE ( t_alias ) = { expr | ( subquery ) }
+    }
+
+from_using_clause:
+    FROM { table_reference | join_clause }
+         [, { table_reference | join_clause } ]...
+
+table_reference:
+    { [ schema. ] { table | view | materialized_view } | ( subquery ) }
+    [ t_alias ]
+
+where_clause:
+    WHERE condition
+
+order_by_clause:
+    ORDER [ SIBLINGS ] BY
+    { expr | position | c_alias }
+    [ ASC | DESC ]
+    [ NULLS FIRST | NULLS LAST ]
+    [, { expr | position | c_alias }
+       [ ASC | DESC ]
+       [ NULLS FIRST | NULLS LAST ]
+    ]...
+
+returning_clause:
+    { RETURN | RETURNING }
+    { expr | OLD column | NEW column }
+    [, { expr | OLD column | NEW column } ]...
+    INTO data_item [, data_item]...
+
+error_logging_clause:
+    LOG ERRORS
+    [ INTO [ schema. ] table_name ]
+    [ ( simple_expression ) ]
+    [ REJECT LIMIT { integer | UNLIMITED } ]

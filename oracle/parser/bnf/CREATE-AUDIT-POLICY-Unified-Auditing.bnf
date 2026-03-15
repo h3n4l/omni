@@ -1,0 +1,50 @@
+-- Statement: CREATE AUDIT POLICY (Unified Auditing)
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-AUDIT-POLICY-Unified-Auditing.html
+
+CREATE AUDIT POLICY policy
+    [ privilege_audit_clause ]
+    [ action_audit_clause ]
+    [ role_audit_clause ]
+    [ WHEN 'audit_condition' EVALUATE PER { STATEMENT | SESSION | INSTANCE } ]
+    [ ONLY TOPLEVEL ]
+    [ CONTAINER = { ALL | CURRENT } ] ;
+
+privilege_audit_clause:
+    PRIVILEGES system_privilege [, system_privilege ]...
+
+action_audit_clause:
+    ACTIONS [ standard_actions ] [ component_actions ]
+
+standard_actions:
+    { object_action [ ( column [, column ]... ) ]
+        ON { [ schema. ] object_name
+           | DIRECTORY directory_name
+           | MINING MODEL [ schema. ] object_name }
+    | ALL ON { [ schema. ] object_name
+             | DIRECTORY directory_name
+             | MINING MODEL [ schema. ] object_name }
+    | system_action
+    | ALL
+    } [, { object_action [ ( column [, column ]... ) ]
+            ON { [ schema. ] object_name
+               | DIRECTORY directory_name
+               | MINING MODEL [ schema. ] object_name }
+          | ALL ON { [ schema. ] object_name
+                   | DIRECTORY directory_name
+                   | MINING MODEL [ schema. ] object_name }
+          | system_action
+          | ALL
+          } ]...
+
+component_actions:
+    COMPONENT = { DATAPUMP { component_action | ALL } [, { component_action | ALL } ]...
+                | DIRECT_LOAD { component_action | ALL } [, { component_action | ALL } ]...
+                | OLS { component_action | ALL } [, { component_action | ALL } ]...
+                | XS { component_action | ALL } [, { component_action | ALL } ]...
+                | DV { component_action [ ON object_name ] | ALL } [, { component_action [ ON object_name ] | ALL } ]...
+                | SQL_FIREWALL
+                | PROTOCOL { HTTP | FTP | AUTHENTICATION }
+                }
+
+role_audit_clause:
+    ROLES role [, role ]...

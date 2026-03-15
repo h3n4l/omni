@@ -1,0 +1,102 @@
+-- Statement: CREATE ANALYTIC VIEW
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-ANALYTIC-VIEW.html
+
+CREATE [ OR REPLACE ] [ { FORCE | NOFORCE } ] ANALYTIC VIEW
+    [ IF NOT EXISTS ] [ schema. ] analytic_view_name
+    [ SHARING = { METADATA | NONE } ]
+    [ classification_clause ]
+    using_clause
+    dim_by_clause
+    measures_clause
+    [ default_measure_clause ]
+    [ default_aggregate_clause ]
+    [ cache_clause ]
+    [ fact_columns_clause ]
+    [ qry_transform_clause ] ;
+
+classification_clause:
+    { CAPTION 'caption'
+    | DESCRIPTION 'description'
+    | CLASSIFICATION classification_name [ LANGUAGE language ] VALUE 'value'
+    } [ classification_clause ]
+
+using_clause:
+    USING source_clause
+
+source_clause:
+    [ REMOTE ] [ schema. ] { table | view } [ [ AS ] alias ]
+
+dim_by_clause:
+    DIMENSION BY ( dim_key [, dim_key ]... )
+
+dim_key:
+    dim_ref
+    KEY column [, column ]...
+    REFERENCES { attribute | DISTINCT attribute }
+    HIERARCHIES ( hier_ref [, hier_ref ]... )
+
+dim_ref:
+    [ schema. ] attribute_dimension [ [ AS ] alias ]
+
+hier_ref:
+    [ schema. ] hierarchy [ [ AS ] alias ] [ DEFAULT ]
+
+measures_clause:
+    MEASURES ( av_measure [, av_measure ]... )
+
+av_measure:
+    measure_name { base_meas_clause | calc_meas_clause }
+    [ classification_clause ]
+
+base_meas_clause:
+    [ FACT column_name ]
+    [ meas_aggregate_clause ]
+
+calc_meas_clause:
+    AS ( analytic_view_expression )
+
+meas_aggregate_clause:
+    aggr_function
+
+aggr_function:
+    { APPROX_COUNT_DISTINCT
+    | APPROX_COUNT_DISTINCT_AGG
+    | AVG
+    | COUNT
+    | MAX
+    | MIN
+    | STDDEV
+    | STDDEV_POP
+    | STDDEV_SAMP
+    | SUM
+    | VAR_POP
+    | VAR_SAMP
+    | VARIANCE }
+
+default_measure_clause:
+    DEFAULT MEASURE measure_name
+
+default_aggregate_clause:
+    DEFAULT AGGREGATE BY aggr_function
+
+cache_clause:
+    CACHE ( cache_specification [, cache_specification ]... )
+
+cache_specification:
+    MEASURE GROUP { ALL | measure_name [, measure_name ]... }
+    LEVELS ( level_grouping [, level_grouping ]... )
+
+level_grouping:
+    [ level_group_type ] ( level_specification [, level_specification ]... )
+
+level_specification:
+    [ hierarchy_alias. ] level_name
+
+level_group_type:
+    USING [ schema. ] table_name
+
+fact_columns_clause:
+    FACT COLUMNS ( column_name [ [ AS ] alias ] [, column_name [ [ AS ] alias ] ]... )
+
+qry_transform_clause:
+    ENABLE QUERY TRANSFORM [ { RELY | NORELY } ]

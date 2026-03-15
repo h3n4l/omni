@@ -1,0 +1,36 @@
+-- Statement: ALTER CLUSTER
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-CLUSTER.html
+
+alter_cluster ::=
+    ALTER CLUSTER [ IF EXISTS ] [ schema . ] cluster
+    { physical_attributes_clause
+    | SIZE integer
+    | MODIFY PARTITION partition allocate_extent_clause
+    | allocate_extent_clause
+    | deallocate_unused_clause
+    | parallel_clause
+    }
+
+physical_attributes_clause ::=
+    [ PCTUSED integer ]
+    [ PCTFREE integer ]
+    [ INITRANS integer ]
+    [ STORAGE storage_clause ]
+
+allocate_extent_clause ::=
+    ALLOCATE EXTENT
+    [ ( { SIZE size_clause
+        | DATAFILE 'filename'
+        | INSTANCE integer
+        }...
+      )
+    ]
+
+deallocate_unused_clause ::=
+    DEALLOCATE UNUSED [ KEEP size_clause ]
+
+parallel_clause ::=
+    { PARALLEL [ integer ] | NOPARALLEL }
+
+size_clause ::=
+    integer [ K | M | G | T | P ]

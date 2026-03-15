@@ -1,0 +1,102 @@
+-- Statement: ALTER SYSTEM
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-SYSTEM.html
+
+ALTER SYSTEM
+    { archive_log_clause
+    | checkpoint_clause
+    | check_datafiles_clause
+    | distributed_recov_clauses
+    | SWITCH LOGFILE
+    | { SUSPEND | RESUME }
+    | quiesce_clauses
+    | rolling_migration_clauses
+    | rolling_patch_clauses
+    | security_clauses
+    | shutdown_dispatcher_clause
+    | REGISTER
+    | alter_system_set_clause
+    | alter_system_reset_clause
+    | cancel_sql_clause
+    | flush_clause
+    | RELOCATE CLIENT 'client_id'
+    | end_session_clauses
+    }
+
+archive_log_clause:
+    ARCHIVE LOG [ INSTANCE 'instance_name' ]
+        { SEQUENCE integer
+        | CHANGE integer
+        | CURRENT [ NOSWITCH ]
+        | GROUP integer
+        | LOGFILE 'filename' [ USING BACKUP CONTROLFILE ]
+        | NEXT
+        | ALL
+        }
+        [ THREAD integer ]
+        [ TO 'location' ]
+
+checkpoint_clause:
+    CHECKPOINT [ { GLOBAL | LOCAL } ]
+
+check_datafiles_clause:
+    CHECK DATAFILES [ { GLOBAL | LOCAL } ]
+
+distributed_recov_clauses:
+    { ENABLE | DISABLE } DISTRIBUTED RECOVERY
+
+end_session_clauses:
+    { DISCONNECT SESSION 'session_id, serial_number'
+        [ POST_TRANSACTION ] [ IMMEDIATE ]
+    | KILL SESSION 'session_id, serial_number' [ , @instance_id ]
+        [ IMMEDIATE | FORCE ]
+        [ NOREPLAY ]
+        [ TIMEOUT integer ]
+    }
+
+quiesce_clauses:
+    { QUIESCE RESTRICTED | UNQUIESCE }
+
+rolling_migration_clauses:
+    { START ROLLING MIGRATION TO 'ASM_version'
+    | STOP ROLLING MIGRATION
+    }
+
+rolling_patch_clauses:
+    { START ROLLING PATCH | STOP ROLLING PATCH }
+
+security_clauses:
+    { ENABLE RESTRICTED SESSION
+    | DISABLE RESTRICTED SESSION
+    | SET ENCRYPTION WALLET OPEN IDENTIFIED BY password
+    | SET ENCRYPTION WALLET CLOSE [ IDENTIFIED BY password ]
+    | SET ENCRYPTION KEY [ IDENTIFIED BY password ]
+    }
+
+shutdown_dispatcher_clause:
+    SHUTDOWN [ IMMEDIATE ] 'dispatcher_name'
+
+alter_system_set_clause:
+    SET parameter_name = parameter_value [, parameter_value ]...
+        [ COMMENT = 'comment' ]
+        [ DEFERRED ]
+        [ SCOPE = { MEMORY | SPFILE | BOTH } ]
+        [ SID = { 'sid' | '*' } ]
+        [ CONTAINER = { ALL | CURRENT } ]
+
+alter_system_reset_clause:
+    RESET parameter_name
+        [ SCOPE = { MEMORY | SPFILE | BOTH } ]
+        [ SID = { 'sid' | '*' } ]
+
+cancel_sql_clause:
+    CANCEL SQL 'session_id, serial_number' [ , @instance_id ] [ SQL_ID 'sql_id' ]
+
+flush_clause:
+    FLUSH
+        { SHARED_POOL
+        | GLOBAL CONTEXT
+        | BUFFER_CACHE [ { GLOBAL | LOCAL } ]
+        | FLASH_CACHE [ { GLOBAL | LOCAL } ]
+        | REDO TO target_db_name [ { NO CONFIRM APPLY | CONFIRM APPLY } ]
+        | PASSWORDFILE_METADATA_CACHE
+        }

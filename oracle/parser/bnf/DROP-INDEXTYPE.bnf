@@ -1,0 +1,4 @@
+-- Statement: DROP INDEXTYPE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-INDEXTYPE.html
+
+DROP INDEXTYPE [ IF EXISTS ] [ schema. ] indextype_name [ FORCE ] ;

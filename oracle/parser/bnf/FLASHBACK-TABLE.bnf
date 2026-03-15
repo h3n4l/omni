@@ -1,0 +1,10 @@
+-- Statement: FLASHBACK TABLE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/FLASHBACK-TABLE.html
+
+FLASHBACK TABLE [ schema. ] table [, [ schema. ] table ]...
+    { TO SCN expr
+    | TO TIMESTAMP expr
+    | TO RESTORE POINT restore_point_name
+    | TO BEFORE DROP [ RENAME TO table ]
+    }
+    [ { ENABLE | DISABLE } TRIGGERS ] ;

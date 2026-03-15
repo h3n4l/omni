@@ -1,0 +1,34 @@
+-- Statement: CREATE MATERIALIZED ZONEMAP
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-MATERIALIZED-ZONEMAP.html
+
+CREATE MATERIALIZED ZONEMAP [ IF NOT EXISTS ]
+    [ schema. ] zonemap_name
+    [ zonemap_attributes ]
+    [ zonemap_refresh_clause ]
+    [ { ENABLE | DISABLE } PRUNING ]
+    { create_zonemap_on_table | create_zonemap_as_subquery }
+
+create_zonemap_on_table:
+    ON [ schema. ] table ( column [, column ]... )
+
+create_zonemap_as_subquery:
+    [ ( column_alias [, column_alias ]... ) ]
+    AS query_block
+
+zonemap_attributes:
+    [ TABLESPACE tablespace_name ]
+    [ SCALE integer ]
+    [ PCTFREE integer ]
+    [ PCTUSED integer ]
+    [ { CACHE | NOCACHE } ]
+
+zonemap_refresh_clause:
+    REFRESH
+    [ { FAST | COMPLETE | FORCE } ]
+    [ { ON DEMAND
+      | ON COMMIT
+      | ON LOAD
+      | ON DATA MOVEMENT
+      | ON LOAD DATA MOVEMENT
+      }
+    ]

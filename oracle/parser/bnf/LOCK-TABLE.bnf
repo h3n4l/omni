@@ -1,0 +1,23 @@
+-- Statement: LOCK TABLE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/LOCK-TABLE.html
+
+LOCK TABLE [ schema. ] { table | view } [ @dblink ]
+    [ partition_extension_clause ]
+    [, [ schema. ] { table | view } [ @dblink ]
+       [ partition_extension_clause ] ]...
+    IN lockmode MODE
+    [ NOWAIT | WAIT integer ] ;
+
+partition_extension_clause::=
+    PARTITION ( partition )
+  | PARTITION FOR ( partition_key_value )
+  | SUBPARTITION ( subpartition )
+  | SUBPARTITION FOR ( subpartition_key_value )
+
+lockmode::=
+    ROW SHARE
+  | ROW EXCLUSIVE
+  | SHARE UPDATE
+  | SHARE
+  | SHARE ROW EXCLUSIVE
+  | EXCLUSIVE

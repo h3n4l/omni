@@ -1,0 +1,34 @@
+-- Statement: ASSOCIATE STATISTICS
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ASSOCIATE-STATISTICS.html
+
+ASSOCIATE STATISTICS
+    WITH { column_association | function_association }
+    using_statistics_type
+    [ default_cost_clause ]
+    [ default_selectivity_clause ]
+    [ storage_table_clause ] ;
+
+column_association:
+    COLUMNS [ schema. ] table . column [, [ schema. ] table . column ]...
+
+function_association:
+    { FUNCTIONS [ schema. ] function [, [ schema. ] function ]...
+    | PACKAGES [ schema. ] package [, [ schema. ] package ]...
+    | TYPES [ schema. ] type [, [ schema. ] type ]...
+    | DOMAIN INDEXES [ schema. ] index [, [ schema. ] index ]...
+    | INDEXTYPES [ schema. ] indextype [, [ schema. ] indextype ]...
+    }
+
+using_statistics_type:
+    USING { [ schema. ] statistics_type | NULL }
+
+default_cost_clause:
+    DEFAULT COST ( cpu_cost , io_cost , network_cost )
+
+default_selectivity_clause:
+    DEFAULT SELECTIVITY default_selectivity
+
+storage_table_clause:
+    WITH { SYSTEM MANAGED STORAGE TABLES
+         | USER MANAGED STORAGE TABLES
+         }

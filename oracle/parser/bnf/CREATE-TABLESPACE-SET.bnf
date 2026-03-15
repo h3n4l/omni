@@ -1,0 +1,18 @@
+-- Statement: CREATE TABLESPACE SET
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-TABLESPACE-SET.html
+
+CREATE TABLESPACE SET tablespace_set
+    [ IN SHARDSPACE shardspace_name ]
+    [ USING TEMPLATE
+      ( [ DATAFILE [ file_specification ] ]
+        [ permanent_tablespace_attrs ]
+      )
+    ] ;
+
+permanent_tablespace_attrs:
+    [ logging_clause ]
+    [ tablespace_encryption_clause ]
+    [ DEFAULT default_tablespace_params ]
+    [ extent_management_clause ]
+    [ segment_management_clause ]
+    [ flashback_mode_clause ]

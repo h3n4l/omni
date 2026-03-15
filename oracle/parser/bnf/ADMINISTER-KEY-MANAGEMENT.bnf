@@ -1,0 +1,204 @@
+-- Statement: ADMINISTER KEY MANAGEMENT
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ADMINISTER-KEY-MANAGEMENT.html
+
+administer_key_management ::=
+  ADMINISTER KEY MANAGEMENT
+    ( keystore_management_clauses
+    | key_management_clauses
+    | secret_management_clauses
+    | zero_downtime_software_patching_clauses
+    )
+
+keystore_management_clauses ::=
+    create_keystore
+  | open_keystore
+  | close_keystore
+  | backup_keystore
+  | alter_keystore_password
+  | merge_into_new_keystore
+  | merge_into_existing_keystore
+  | isolate_keystore
+  | unite_keystore
+
+create_keystore ::=
+    CREATE KEYSTORE keystore_location IDENTIFIED BY keystore_password
+  | CREATE [ LOCAL ] AUTO_LOGIN KEYSTORE FROM KEYSTORE keystore_location IDENTIFIED BY keystore_password
+
+open_keystore ::=
+    SET KEYSTORE OPEN
+      [ FORCE KEYSTORE ]
+      IDENTIFIED BY keystore_password
+      [ CONTAINER = { CURRENT | ALL } ]
+
+close_keystore ::=
+    SET KEYSTORE CLOSE
+      [ IDENTIFIED BY keystore_password ]
+      [ CONTAINER = { CURRENT | ALL } ]
+
+backup_keystore ::=
+    BACKUP KEYSTORE
+      [ USING backup_identifier ]
+      [ FORCE KEYSTORE ]
+      IDENTIFIED BY keystore_password
+      [ TO keystore_location ]
+
+alter_keystore_password ::=
+    ALTER KEYSTORE PASSWORD IDENTIFIED BY old_keystore_password
+      SET new_keystore_password
+      [ WITH BACKUP [ USING backup_identifier ] ]
+      [ FORCE KEYSTORE ]
+
+merge_into_new_keystore ::=
+    MERGE KEYSTORE keystore1_location
+      [ IDENTIFIED BY keystore1_password ]
+      AND KEYSTORE keystore2_location
+      [ IDENTIFIED BY keystore2_password ]
+      INTO NEW KEYSTORE keystore3_location
+      IDENTIFIED BY keystore3_password
+
+merge_into_existing_keystore ::=
+    MERGE KEYSTORE keystore1_location
+      [ IDENTIFIED BY keystore1_password ]
+      INTO EXISTING KEYSTORE keystore2_location
+      IDENTIFIED BY keystore2_password
+      [ WITH BACKUP [ USING backup_identifier ] ]
+
+isolate_keystore ::=
+    [ FORCE ] ISOLATE KEYSTORE
+      IDENTIFIED BY isolated_keystore_password
+      FROM ROOT KEYSTORE
+      [ FORCE KEYSTORE ]
+      IDENTIFIED BY [ EXTERNAL STORE | united_keystore_password ]
+      [ WITH BACKUP [ USING backup_identifier ] ]
+
+unite_keystore ::=
+    UNITE KEYSTORE
+      IDENTIFIED BY isolated_keystore_password
+      WITH ROOT KEYSTORE
+      [ FORCE KEYSTORE ]
+      IDENTIFIED BY [ EXTERNAL STORE | united_keystore_password ]
+      [ WITH BACKUP [ USING backup_identifier ] ]
+
+key_management_clauses ::=
+    set_key
+  | create_key
+  | use_key
+  | set_key_tag
+  | export_keys
+  | import_keys
+  | migrate_key
+  | reverse_migrate_key
+  | move_keys
+
+set_key ::=
+    SET [ ENCRYPTION ] KEY
+      [ MKID:MK ]
+      [ USING TAG tag ]
+      [ USING ALGORITHM { AES256 | ARIA256 | GOST256 | SEED128 } ]
+      [ FORCE KEYSTORE ]
+      IDENTIFIED BY keystore_password
+      [ WITH BACKUP [ USING backup_identifier ] ]
+      [ CONTAINER = { CURRENT | ALL } ]
+
+create_key ::=
+    CREATE [ ENCRYPTION ] KEY
+      [ MKID:MK ]
+      [ USING TAG tag ]
+      [ USING ALGORITHM { AES256 | ARIA256 | GOST256 | SEED128 } ]
+      [ FORCE KEYSTORE ]
+      IDENTIFIED BY keystore_password
+      [ WITH BACKUP [ USING backup_identifier ] ]
+      [ CONTAINER = { CURRENT | ALL } ]
+
+use_key ::=
+    USE [ ENCRYPTION ] KEY key_id
+      [ USING TAG tag ]
+      [ FORCE KEYSTORE ]
+      IDENTIFIED BY keystore_password
+      [ WITH BACKUP [ USING backup_identifier ] ]
+
+set_key_tag ::=
+    SET TAG tag FOR key_id
+      [ FORCE KEYSTORE ]
+      IDENTIFIED BY keystore_password
+      [ WITH BACKUP [ USING backup_identifier ] ]
+
+export_keys ::=
+    EXPORT [ ENCRYPTION ] KEYS
+      WITH SECRET secret
+      TO filename
+      [ FORCE KEYSTORE ]
+      IDENTIFIED BY keystore_password
+      [ WITH IDENTIFIER IN
+          ( key_id [, key_id ]...
+          | subquery
+          )
+      ]
+
+import_keys ::=
+    IMPORT [ ENCRYPTION ] KEYS
+      WITH SECRET secret
+      FROM filename
+      [ FORCE KEYSTORE ]
+      IDENTIFIED BY keystore_password
+      [ WITH BACKUP [ USING backup_identifier ] ]
+
+migrate_key ::=
+    [ USE ENCRYPTION KEY key_id ]
+      IDENTIFIED BY HSM_auth_string
+      [ FORCE KEYSTORE ]
+      MIGRATE USING software_keystore_password
+      [ WITH BACKUP [ USING backup_identifier ] ]
+
+reverse_migrate_key ::=
+    SET [ ENCRYPTION ] KEY
+      IDENTIFIED BY software_keystore_password
+      [ FORCE KEYSTORE ]
+      REVERSE MIGRATE USING HSM_auth_string
+
+move_keys ::=
+    MOVE KEYS
+      TO NEW KEYSTORE keystore_location1
+      IDENTIFIED BY keystore1_password
+      FROM [ FORCE ] KEYSTORE
+      IDENTIFIED BY keystore_password
+      [ WITH BACKUP [ USING backup_identifier ] ]
+      WITH IDENTIFIER IN
+        ( key_identifier [, key_identifier ]...
+        | subquery
+        )
+
+secret_management_clauses ::=
+    add_update_secret
+  | delete_secret
+  | add_update_secret_seps
+  | delete_secret_seps
+
+add_update_secret ::=
+    { ADD | UPDATE } SECRET secret FOR CLIENT client_identifier
+      [ USING TAG tag ]
+      [ FORCE KEYSTORE ]
+      IDENTIFIED BY keystore_password
+      [ WITH BACKUP [ USING backup_identifier ] ]
+
+delete_secret ::=
+    DELETE SECRET FOR CLIENT client_identifier
+      [ FORCE KEYSTORE ]
+      IDENTIFIED BY keystore_password
+      [ WITH BACKUP [ USING backup_identifier ] ]
+
+add_update_secret_seps ::=
+    { ADD | UPDATE } SECRET secret FOR CLIENT client_identifier
+      [ USING TAG tag ]
+      [ FORCE KEYSTORE ]
+      IDENTIFIED BY [ EXTERNAL STORE | keystore_password ]
+      [ WITH BACKUP [ USING backup_identifier ] ]
+
+delete_secret_seps ::=
+    DELETE SECRET FOR CLIENT client_identifier
+      [ FORCE KEYSTORE ]
+      IDENTIFIED BY [ EXTERNAL STORE | keystore_password ]
+      [ WITH BACKUP [ USING backup_identifier ] ]
+
+zero_downtime_software_patching_clauses ::=
+    SWITCHOVER TO LIBRARY library_path FOR ALL CONTAINERS

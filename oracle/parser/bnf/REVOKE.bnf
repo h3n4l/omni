@@ -1,0 +1,47 @@
+-- Statement: REVOKE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/REVOKE.html
+
+REVOKE
+  { revoke_system_privileges
+  | revoke_schema_privileges
+  | revoke_object_privileges
+  | revoke_roles_from_programs
+  }
+  [ CONTAINER = { CURRENT | ALL } ] ;
+
+revoke_system_privileges:
+    REVOKE { system_privilege [, system_privilege ]...
+           | role [, role ]...
+           | ALL PRIVILEGES }
+    FROM revokee_clause
+
+revoke_schema_privileges:
+    REVOKE { schema_privilege [, schema_privilege ]...
+           | ALL [ PRIVILEGES ] }
+    ON SCHEMA schema_name
+    FROM revokee_clause
+
+revoke_object_privileges:
+    REVOKE { object_privilege [, object_privilege ]...
+           | ALL [ PRIVILEGES ] }
+    on_object_clause
+    FROM revokee_clause
+    [ CASCADE CONSTRAINTS ]
+    [ FORCE ]
+
+on_object_clause:
+    ON { [ schema. ] object
+       | USER user [, user ]...
+       | DIRECTORY directory_name
+       | EDITION edition_name
+       | MINING MODEL [ schema. ] mining_model_name
+       | JAVA { SOURCE | RESOURCE } [ schema. ] object
+       | SQL TRANSLATION PROFILE [ schema. ] profile_name
+       }
+
+revokee_clause:
+    { user | role | PUBLIC } [, { user | role | PUBLIC } ]...
+
+revoke_roles_from_programs:
+    REVOKE { role [, role ]... | ALL }
+    FROM { PROCEDURE | FUNCTION | PACKAGE } [ schema. ] program_unit

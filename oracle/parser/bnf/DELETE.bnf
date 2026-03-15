@@ -1,0 +1,47 @@
+-- Statement: DELETE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DELETE.html
+
+DELETE [ hint ]
+    [ FROM ]
+    dml_table_expression_clause
+    [ from_using_clause ]
+    [ where_clause ]
+    [ returning_clause ]
+    [ error_logging_clause ] ;
+
+dml_table_expression_clause:
+    { [ schema. ] { table | view | materialized_view }
+        [ partition_extension_clause ]
+        [ @ dblink ]
+        [ t_alias ]
+    | ( subquery [ subquery_restriction_clause ] ) [ t_alias ]
+    | TABLE ( collection_expression ) [ (+) ] [ t_alias ]
+    }
+
+partition_extension_clause:
+    { PARTITION ( partition_name )
+    | SUBPARTITION ( subpartition_name )
+    }
+
+subquery_restriction_clause:
+    { WITH READ ONLY
+    | WITH CHECK OPTION [ CONSTRAINT constraint_name ]
+    }
+
+from_using_clause:
+    FROM { table_reference
+         | [ LATERAL ] inline_view [ join_clause ]
+         | join_clause
+         }
+
+where_clause:
+    WHERE condition
+
+returning_clause:
+    RETURNING expr [, expr ]...
+    INTO data_item [, data_item ]...
+
+error_logging_clause:
+    LOG ERRORS [ INTO [ schema. ] table_name ]
+    [ ( simple_expression ) ]
+    [ REJECT LIMIT { integer | UNLIMITED } ]

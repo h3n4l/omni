@@ -1,0 +1,6 @@
+-- Statement: CREATE ROLLBACK SEGMENT
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-ROLLBACK-SEGMENT.html
+
+CREATE [ PUBLIC ] ROLLBACK SEGMENT rollback_segment
+    [ TABLESPACE tablespace ]
+    [ storage_clause ] ;

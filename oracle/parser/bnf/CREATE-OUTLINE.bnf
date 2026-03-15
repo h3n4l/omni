@@ -1,0 +1,8 @@
+-- Statement: CREATE OUTLINE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-OUTLINE.html
+
+CREATE [ OR REPLACE ] [ PUBLIC | PRIVATE ] OUTLINE [ outline ]
+    [ FOR CATEGORY category ]
+    { FROM [ PRIVATE ] source_outline
+    | ON statement
+    } ;

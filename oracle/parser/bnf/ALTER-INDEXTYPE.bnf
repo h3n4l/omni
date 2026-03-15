@@ -1,0 +1,25 @@
+-- Statement: ALTER INDEXTYPE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-INDEXTYPE.html
+
+ALTER INDEXTYPE [ IF EXISTS ] [ schema. ] indextype
+    { { ADD | DROP } [ schema. ] operator ( parameter_type [, parameter_type ]... )
+        [ , { ADD | DROP } [ schema. ] operator ( parameter_type [, parameter_type ]... ) ]...
+        [ using_type_clause ]
+    | COMPILE
+    }
+    [ WITH LOCAL PARTITION ]
+    [ storage_table_clause ] ;
+
+using_type_clause:
+    USING [ schema. ] implementation_type
+    [ array_DML_clause ]
+
+array_DML_clause:
+    WITH ARRAY DML
+    [ ( [ schema. ] type , [ schema. ] varray_type )
+      [, ( [ schema. ] type , [ schema. ] varray_type ) ]...
+    ]
+
+storage_table_clause:
+    WITH SYSTEM MANAGED STORAGE TABLES
+    | WITH USER MANAGED STORAGE TABLES

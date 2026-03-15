@@ -1,0 +1,1033 @@
+{
+  "engine": "oracle",
+  "base_url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf",
+  "description": "Complete Oracle SQL statement catalog with verified documentation URLs",
+  "statements": [
+    {
+      "name": "ADMINISTER KEY MANAGEMENT",
+      "slug": "ADMINISTER-KEY-MANAGEMENT",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ADMINISTER-KEY-MANAGEMENT.html"
+    },
+    {
+      "name": "ALTER ANALYTIC VIEW",
+      "slug": "ALTER-ANALYTIC-VIEW",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-ANALYTIC-VIEW.html"
+    },
+    {
+      "name": "ALTER ATTRIBUTE DIMENSION",
+      "slug": "ALTER-ATTRIBUTE-DIMENSION",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-ATTRIBUTE-DIMENSION.html"
+    },
+    {
+      "name": "ALTER AUDIT POLICY (Unified Auditing)",
+      "slug": "ALTER-AUDIT-POLICY-Unified-Auditing",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-AUDIT-POLICY-Unified-Auditing.html"
+    },
+    {
+      "name": "ALTER CLUSTER",
+      "slug": "ALTER-CLUSTER",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-CLUSTER.html"
+    },
+    {
+      "name": "ALTER DATABASE",
+      "slug": "ALTER-DATABASE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-DATABASE.html"
+    },
+    {
+      "name": "ALTER DATABASE DICTIONARY",
+      "slug": "ALTER-DATABASE-DICTIONARY",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-DATABASE-DICTIONARY.html"
+    },
+    {
+      "name": "ALTER DATABASE LINK",
+      "slug": "ALTER-DATABASE-LINK",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-DATABASE-LINK.html"
+    },
+    {
+      "name": "ALTER DIMENSION",
+      "slug": "ALTER-DIMENSION",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-DIMENSION.html"
+    },
+    {
+      "name": "ALTER DISKGROUP",
+      "slug": "ALTER-DISKGROUP",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-DISKGROUP.html"
+    },
+    {
+      "name": "ALTER DOMAIN",
+      "slug": "alter-domain",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/alter-domain.html"
+    },
+    {
+      "name": "ALTER FLASHBACK ARCHIVE",
+      "slug": "ALTER-FLASHBACK-ARCHIVE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-FLASHBACK-ARCHIVE.html"
+    },
+    {
+      "name": "ALTER FUNCTION",
+      "slug": "ALTER-FUNCTION",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-FUNCTION.html"
+    },
+    {
+      "name": "ALTER HIERARCHY",
+      "slug": "ALTER-HIERARCHY",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-HIERARCHY.html"
+    },
+    {
+      "name": "ALTER INDEX",
+      "slug": "ALTER-INDEX",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-INDEX.html"
+    },
+    {
+      "name": "ALTER INDEXTYPE",
+      "slug": "ALTER-INDEXTYPE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-INDEXTYPE.html"
+    },
+    {
+      "name": "ALTER INMEMORY JOIN GROUP",
+      "slug": "ALTER-INMEMORY-JOIN-GROUP",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-INMEMORY-JOIN-GROUP.html"
+    },
+    {
+      "name": "ALTER JAVA",
+      "slug": "ALTER-JAVA",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-JAVA.html"
+    },
+    {
+      "name": "ALTER JSON RELATIONAL DUALITY VIEW",
+      "slug": "alter-json-relational-duality-view",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/alter-json-relational-duality-view.html"
+    },
+    {
+      "name": "ALTER LIBRARY",
+      "slug": "ALTER-LIBRARY",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-LIBRARY.html"
+    },
+    {
+      "name": "ALTER LOCKDOWN PROFILE",
+      "slug": "ALTER-LOCKDOWN-PROFILE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-LOCKDOWN-PROFILE.html"
+    },
+    {
+      "name": "ALTER MATERIALIZED VIEW",
+      "slug": "ALTER-MATERIALIZED-VIEW",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-MATERIALIZED-VIEW.html"
+    },
+    {
+      "name": "ALTER MATERIALIZED VIEW LOG",
+      "slug": "ALTER-MATERIALIZED-VIEW-LOG",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-MATERIALIZED-VIEW-LOG.html"
+    },
+    {
+      "name": "ALTER MATERIALIZED ZONEMAP",
+      "slug": "ALTER-MATERIALIZED-ZONEMAP",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-MATERIALIZED-ZONEMAP.html"
+    },
+    {
+      "name": "ALTER OPERATOR",
+      "slug": "ALTER-OPERATOR",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-OPERATOR.html"
+    },
+    {
+      "name": "ALTER OUTLINE",
+      "slug": "ALTER-OUTLINE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-OUTLINE.html"
+    },
+    {
+      "name": "ALTER PACKAGE",
+      "slug": "ALTER-PACKAGE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-PACKAGE.html"
+    },
+    {
+      "name": "ALTER PLUGGABLE DATABASE",
+      "slug": "ALTER-PLUGGABLE-DATABASE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-PLUGGABLE-DATABASE.html"
+    },
+    {
+      "name": "ALTER PROCEDURE",
+      "slug": "ALTER-PROCEDURE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-PROCEDURE.html"
+    },
+    {
+      "name": "ALTER PROFILE",
+      "slug": "ALTER-PROFILE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-PROFILE.html"
+    },
+    {
+      "name": "ALTER RESOURCE COST",
+      "slug": "ALTER-RESOURCE-COST",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-RESOURCE-COST.html"
+    },
+    {
+      "name": "ALTER ROLE",
+      "slug": "ALTER-ROLE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-ROLE.html"
+    },
+    {
+      "name": "ALTER ROLLBACK SEGMENT",
+      "slug": "ALTER-ROLLBACK-SEGMENT",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-ROLLBACK-SEGMENT.html"
+    },
+    {
+      "name": "ALTER SEQUENCE",
+      "slug": "ALTER-SEQUENCE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-SEQUENCE.html"
+    },
+    {
+      "name": "ALTER SESSION",
+      "slug": "ALTER-SESSION",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-SESSION.html"
+    },
+    {
+      "name": "ALTER SYNONYM",
+      "slug": "ALTER-SYNONYM",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-SYNONYM.html"
+    },
+    {
+      "name": "ALTER SYSTEM",
+      "slug": "ALTER-SYSTEM",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-SYSTEM.html"
+    },
+    {
+      "name": "ALTER TABLE",
+      "slug": "ALTER-TABLE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-TABLE.html"
+    },
+    {
+      "name": "ALTER TABLESPACE",
+      "slug": "ALTER-TABLESPACE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-TABLESPACE.html"
+    },
+    {
+      "name": "ALTER TABLESPACE SET",
+      "slug": "ALTER-TABLESPACE-SET",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-TABLESPACE-SET.html"
+    },
+    {
+      "name": "ALTER TRIGGER",
+      "slug": "ALTER-TRIGGER",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-TRIGGER.html"
+    },
+    {
+      "name": "ALTER TYPE",
+      "slug": "ALTER-TYPE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-TYPE.html"
+    },
+    {
+      "name": "ALTER USER",
+      "slug": "ALTER-USER",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-USER.html"
+    },
+    {
+      "name": "ALTER VIEW",
+      "slug": "ALTER-VIEW",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-VIEW.html"
+    },
+    {
+      "name": "ANALYZE",
+      "slug": "ANALYZE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ANALYZE.html"
+    },
+    {
+      "name": "ASSOCIATE STATISTICS",
+      "slug": "ASSOCIATE-STATISTICS",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ASSOCIATE-STATISTICS.html"
+    },
+    {
+      "name": "AUDIT (Traditional Auditing)",
+      "slug": "AUDIT-Traditional-Auditing",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/AUDIT-Traditional-Auditing.html"
+    },
+    {
+      "name": "AUDIT (Unified Auditing)",
+      "slug": "AUDIT-Unified-Auditing",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/AUDIT-Unified-Auditing.html"
+    },
+    {
+      "name": "CALL",
+      "slug": "CALL",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CALL.html"
+    },
+    {
+      "name": "COMMENT",
+      "slug": "COMMENT",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/COMMENT.html"
+    },
+    {
+      "name": "COMMIT",
+      "slug": "COMMIT",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/COMMIT.html"
+    },
+    {
+      "name": "CREATE ANALYTIC VIEW",
+      "slug": "CREATE-ANALYTIC-VIEW",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-ANALYTIC-VIEW.html"
+    },
+    {
+      "name": "CREATE ATTRIBUTE DIMENSION",
+      "slug": "CREATE-ATTRIBUTE-DIMENSION",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-ATTRIBUTE-DIMENSION.html"
+    },
+    {
+      "name": "CREATE AUDIT POLICY (Unified Auditing)",
+      "slug": "CREATE-AUDIT-POLICY-Unified-Auditing",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-AUDIT-POLICY-Unified-Auditing.html"
+    },
+    {
+      "name": "CREATE CLUSTER",
+      "slug": "CREATE-CLUSTER",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-CLUSTER.html"
+    },
+    {
+      "name": "CREATE CONTEXT",
+      "slug": "CREATE-CONTEXT",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-CONTEXT.html"
+    },
+    {
+      "name": "CREATE CONTROLFILE",
+      "slug": "CREATE-CONTROLFILE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-CONTROLFILE.html"
+    },
+    {
+      "name": "CREATE DATABASE",
+      "slug": "CREATE-DATABASE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-DATABASE.html"
+    },
+    {
+      "name": "CREATE DATABASE LINK",
+      "slug": "CREATE-DATABASE-LINK",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-DATABASE-LINK.html"
+    },
+    {
+      "name": "CREATE DIMENSION",
+      "slug": "CREATE-DIMENSION",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-DIMENSION.html"
+    },
+    {
+      "name": "CREATE DIRECTORY",
+      "slug": "CREATE-DIRECTORY",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-DIRECTORY.html"
+    },
+    {
+      "name": "CREATE DISKGROUP",
+      "slug": "CREATE-DISKGROUP",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-DISKGROUP.html"
+    },
+    {
+      "name": "CREATE DOMAIN",
+      "slug": "create-domain",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/create-domain.html"
+    },
+    {
+      "name": "CREATE EDITION",
+      "slug": "CREATE-EDITION",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-EDITION.html"
+    },
+    {
+      "name": "CREATE FLASHBACK ARCHIVE",
+      "slug": "CREATE-FLASHBACK-ARCHIVE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-FLASHBACK-ARCHIVE.html"
+    },
+    {
+      "name": "CREATE FUNCTION",
+      "slug": "CREATE-FUNCTION",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-FUNCTION.html"
+    },
+    {
+      "name": "CREATE HIERARCHY",
+      "slug": "CREATE-HIERARCHY",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-HIERARCHY.html"
+    },
+    {
+      "name": "CREATE INDEX",
+      "slug": "CREATE-INDEX",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-INDEX.html"
+    },
+    {
+      "name": "CREATE INDEXTYPE",
+      "slug": "CREATE-INDEXTYPE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-INDEXTYPE.html"
+    },
+    {
+      "name": "CREATE INMEMORY JOIN GROUP",
+      "slug": "CREATE-INMEMORY-JOIN-GROUP",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-INMEMORY-JOIN-GROUP.html"
+    },
+    {
+      "name": "CREATE JAVA",
+      "slug": "CREATE-JAVA",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-JAVA.html"
+    },
+    {
+      "name": "CREATE JSON RELATIONAL DUALITY VIEW",
+      "slug": "create-json-relational-duality-view",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/create-json-relational-duality-view.html"
+    },
+    {
+      "name": "CREATE LIBRARY",
+      "slug": "CREATE-LIBRARY",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-LIBRARY.html"
+    },
+    {
+      "name": "CREATE LOCKDOWN PROFILE",
+      "slug": "CREATE-LOCKDOWN-PROFILE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-LOCKDOWN-PROFILE.html"
+    },
+    {
+      "name": "CREATE LOGICAL PARTITION TRACKING",
+      "slug": "create-logical-partition-tracking",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/create-logical-partition-tracking.html"
+    },
+    {
+      "name": "CREATE MATERIALIZED VIEW",
+      "slug": "CREATE-MATERIALIZED-VIEW",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-MATERIALIZED-VIEW.html"
+    },
+    {
+      "name": "CREATE MATERIALIZED VIEW LOG",
+      "slug": "CREATE-MATERIALIZED-VIEW-LOG",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-MATERIALIZED-VIEW-LOG.html"
+    },
+    {
+      "name": "CREATE MATERIALIZED ZONEMAP",
+      "slug": "CREATE-MATERIALIZED-ZONEMAP",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-MATERIALIZED-ZONEMAP.html"
+    },
+    {
+      "name": "CREATE MLE ENV",
+      "slug": "create-mle-env",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/create-mle-env.html"
+    },
+    {
+      "name": "CREATE MLE MODULE",
+      "slug": "create-mle-module",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/create-mle-module.html"
+    },
+    {
+      "name": "CREATE OPERATOR",
+      "slug": "CREATE-OPERATOR",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-OPERATOR.html"
+    },
+    {
+      "name": "CREATE OUTLINE",
+      "slug": "CREATE-OUTLINE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-OUTLINE.html"
+    },
+    {
+      "name": "CREATE PACKAGE",
+      "slug": "CREATE-PACKAGE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-PACKAGE.html"
+    },
+    {
+      "name": "CREATE PACKAGE BODY",
+      "slug": "CREATE-PACKAGE-BODY",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-PACKAGE-BODY.html"
+    },
+    {
+      "name": "CREATE PFILE",
+      "slug": "CREATE-PFILE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-PFILE.html"
+    },
+    {
+      "name": "CREATE PLUGGABLE DATABASE",
+      "slug": "CREATE-PLUGGABLE-DATABASE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-PLUGGABLE-DATABASE.html"
+    },
+    {
+      "name": "CREATE PMEM FILESTORE",
+      "slug": "create-pmem-filestore",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/create-pmem-filestore.html"
+    },
+    {
+      "name": "CREATE PROCEDURE",
+      "slug": "CREATE-PROCEDURE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-PROCEDURE.html"
+    },
+    {
+      "name": "CREATE PROFILE",
+      "slug": "CREATE-PROFILE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-PROFILE.html"
+    },
+    {
+      "name": "CREATE PROPERTY GRAPH",
+      "slug": "create-property-graph",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/create-property-graph.html"
+    },
+    {
+      "name": "CREATE RESTORE POINT",
+      "slug": "CREATE-RESTORE-POINT",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-RESTORE-POINT.html"
+    },
+    {
+      "name": "CREATE ROLE",
+      "slug": "CREATE-ROLE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-ROLE.html"
+    },
+    {
+      "name": "CREATE ROLLBACK SEGMENT",
+      "slug": "CREATE-ROLLBACK-SEGMENT",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-ROLLBACK-SEGMENT.html"
+    },
+    {
+      "name": "CREATE SCHEMA",
+      "slug": "CREATE-SCHEMA",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-SCHEMA.html"
+    },
+    {
+      "name": "CREATE SEQUENCE",
+      "slug": "CREATE-SEQUENCE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-SEQUENCE.html"
+    },
+    {
+      "name": "CREATE SPFILE",
+      "slug": "CREATE-SPFILE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-SPFILE.html"
+    },
+    {
+      "name": "CREATE SYNONYM",
+      "slug": "CREATE-SYNONYM",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-SYNONYM.html"
+    },
+    {
+      "name": "CREATE TABLE",
+      "slug": "CREATE-TABLE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-TABLE.html"
+    },
+    {
+      "name": "CREATE TABLESPACE",
+      "slug": "CREATE-TABLESPACE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-TABLESPACE.html"
+    },
+    {
+      "name": "CREATE TABLESPACE SET",
+      "slug": "CREATE-TABLESPACE-SET",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-TABLESPACE-SET.html"
+    },
+    {
+      "name": "CREATE TRIGGER",
+      "slug": "CREATE-TRIGGER",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-TRIGGER.html"
+    },
+    {
+      "name": "CREATE TYPE",
+      "slug": "CREATE-TYPE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-TYPE.html"
+    },
+    {
+      "name": "CREATE TYPE BODY",
+      "slug": "CREATE-TYPE-BODY",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-TYPE-BODY.html"
+    },
+    {
+      "name": "CREATE USER",
+      "slug": "CREATE-USER",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-USER.html"
+    },
+    {
+      "name": "CREATE VECTOR INDEX",
+      "slug": "create-vector-index",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/create-vector-index.html"
+    },
+    {
+      "name": "CREATE VIEW",
+      "slug": "CREATE-VIEW",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-VIEW.html"
+    },
+    {
+      "name": "DELETE",
+      "slug": "DELETE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DELETE.html"
+    },
+    {
+      "name": "DISASSOCIATE STATISTICS",
+      "slug": "DISASSOCIATE-STATISTICS",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DISASSOCIATE-STATISTICS.html"
+    },
+    {
+      "name": "DROP ANALYTIC VIEW",
+      "slug": "DROP-ANALYTIC-VIEW",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-ANALYTIC-VIEW.html"
+    },
+    {
+      "name": "DROP ATTRIBUTE DIMENSION",
+      "slug": "DROP-ATTRIBUTE-DIMENSION",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-ATTRIBUTE-DIMENSION.html"
+    },
+    {
+      "name": "DROP AUDIT POLICY (Unified Auditing)",
+      "slug": "DROP-AUDIT-POLICY-Unified-Auditing",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-AUDIT-POLICY-Unified-Auditing.html"
+    },
+    {
+      "name": "DROP CLUSTER",
+      "slug": "DROP-CLUSTER",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-CLUSTER.html"
+    },
+    {
+      "name": "DROP CONTEXT",
+      "slug": "DROP-CONTEXT",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-CONTEXT.html"
+    },
+    {
+      "name": "DROP DATABASE",
+      "slug": "DROP-DATABASE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-DATABASE.html"
+    },
+    {
+      "name": "DROP DATABASE LINK",
+      "slug": "DROP-DATABASE-LINK",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-DATABASE-LINK.html"
+    },
+    {
+      "name": "DROP DIMENSION",
+      "slug": "DROP-DIMENSION",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-DIMENSION.html"
+    },
+    {
+      "name": "DROP DIRECTORY",
+      "slug": "DROP-DIRECTORY",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-DIRECTORY.html"
+    },
+    {
+      "name": "DROP DISKGROUP",
+      "slug": "DROP-DISKGROUP",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-DISKGROUP.html"
+    },
+    {
+      "name": "DROP EDITION",
+      "slug": "DROP-EDITION",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-EDITION.html"
+    },
+    {
+      "name": "DROP FLASHBACK ARCHIVE",
+      "slug": "DROP-FLASHBACK-ARCHIVE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-FLASHBACK-ARCHIVE.html"
+    },
+    {
+      "name": "DROP FUNCTION",
+      "slug": "DROP-FUNCTION",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-FUNCTION.html"
+    },
+    {
+      "name": "DROP HIERARCHY",
+      "slug": "DROP-HIERARCHY",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-HIERARCHY.html"
+    },
+    {
+      "name": "DROP INDEX",
+      "slug": "DROP-INDEX",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-INDEX.html"
+    },
+    {
+      "name": "DROP INDEXTYPE",
+      "slug": "DROP-INDEXTYPE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-INDEXTYPE.html"
+    },
+    {
+      "name": "DROP INMEMORY JOIN GROUP",
+      "slug": "DROP-INMEMORY-JOIN-GROUP",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-INMEMORY-JOIN-GROUP.html"
+    },
+    {
+      "name": "DROP JAVA",
+      "slug": "DROP-JAVA",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-JAVA.html"
+    },
+    {
+      "name": "DROP LIBRARY",
+      "slug": "DROP-LIBRARY",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-LIBRARY.html"
+    },
+    {
+      "name": "DROP LOCKDOWN PROFILE",
+      "slug": "DROP-LOCKDOWN-PROFILE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-LOCKDOWN-PROFILE.html"
+    },
+    {
+      "name": "DROP MATERIALIZED VIEW",
+      "slug": "DROP-MATERIALIZED-VIEW",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-MATERIALIZED-VIEW.html"
+    },
+    {
+      "name": "DROP MATERIALIZED VIEW LOG",
+      "slug": "DROP-MATERIALIZED-VIEW-LOG",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-MATERIALIZED-VIEW-LOG.html"
+    },
+    {
+      "name": "DROP MATERIALIZED ZONEMAP",
+      "slug": "DROP-MATERIALIZED-ZONEMAP",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-MATERIALIZED-ZONEMAP.html"
+    },
+    {
+      "name": "DROP OPERATOR",
+      "slug": "DROP-OPERATOR",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-OPERATOR.html"
+    },
+    {
+      "name": "DROP OUTLINE",
+      "slug": "DROP-OUTLINE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-OUTLINE.html"
+    },
+    {
+      "name": "DROP PACKAGE",
+      "slug": "DROP-PACKAGE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-PACKAGE.html"
+    },
+    {
+      "name": "DROP PLUGGABLE DATABASE",
+      "slug": "DROP-PLUGGABLE-DATABASE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-PLUGGABLE-DATABASE.html"
+    },
+    {
+      "name": "DROP PROCEDURE",
+      "slug": "DROP-PROCEDURE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-PROCEDURE.html"
+    },
+    {
+      "name": "DROP PROFILE",
+      "slug": "DROP-PROFILE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-PROFILE.html"
+    },
+    {
+      "name": "DROP RESTORE POINT",
+      "slug": "DROP-RESTORE-POINT",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-RESTORE-POINT.html"
+    },
+    {
+      "name": "DROP ROLE",
+      "slug": "DROP-ROLE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-ROLE.html"
+    },
+    {
+      "name": "DROP ROLLBACK SEGMENT",
+      "slug": "DROP-ROLLBACK-SEGMENT",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-ROLLBACK-SEGMENT.html"
+    },
+    {
+      "name": "DROP SEQUENCE",
+      "slug": "DROP-SEQUENCE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-SEQUENCE.html"
+    },
+    {
+      "name": "DROP SYNONYM",
+      "slug": "DROP-SYNONYM",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-SYNONYM.html"
+    },
+    {
+      "name": "DROP TABLE",
+      "slug": "DROP-TABLE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-TABLE.html"
+    },
+    {
+      "name": "DROP TABLESPACE",
+      "slug": "DROP-TABLESPACE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-TABLESPACE.html"
+    },
+    {
+      "name": "DROP TABLESPACE SET",
+      "slug": "DROP-TABLESPACE-SET",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-TABLESPACE-SET.html"
+    },
+    {
+      "name": "DROP TRIGGER",
+      "slug": "DROP-TRIGGER",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-TRIGGER.html"
+    },
+    {
+      "name": "DROP TYPE",
+      "slug": "DROP-TYPE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-TYPE.html"
+    },
+    {
+      "name": "DROP TYPE BODY",
+      "slug": "DROP-TYPE-BODY",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-TYPE-BODY.html"
+    },
+    {
+      "name": "DROP USER",
+      "slug": "DROP-USER",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-USER.html"
+    },
+    {
+      "name": "DROP VIEW",
+      "slug": "DROP-VIEW",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-VIEW.html"
+    },
+    {
+      "name": "EXPLAIN PLAN",
+      "slug": "EXPLAIN-PLAN",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/EXPLAIN-PLAN.html"
+    },
+    {
+      "name": "FLASHBACK DATABASE",
+      "slug": "FLASHBACK-DATABASE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/FLASHBACK-DATABASE.html"
+    },
+    {
+      "name": "FLASHBACK TABLE",
+      "slug": "FLASHBACK-TABLE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/FLASHBACK-TABLE.html"
+    },
+    {
+      "name": "GRANT",
+      "slug": "GRANT",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/GRANT.html"
+    },
+    {
+      "name": "INSERT",
+      "slug": "INSERT",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/INSERT.html"
+    },
+    {
+      "name": "LOCK TABLE",
+      "slug": "LOCK-TABLE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/LOCK-TABLE.html"
+    },
+    {
+      "name": "MERGE",
+      "slug": "MERGE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/MERGE.html"
+    },
+    {
+      "name": "NOAUDIT (Traditional Auditing)",
+      "slug": "NOAUDIT-Traditional-Auditing",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/NOAUDIT-Traditional-Auditing.html"
+    },
+    {
+      "name": "NOAUDIT (Unified Auditing)",
+      "slug": "NOAUDIT-Unified-Auditing",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/NOAUDIT-Unified-Auditing.html"
+    },
+    {
+      "name": "PURGE",
+      "slug": "PURGE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/PURGE.html"
+    },
+    {
+      "name": "RENAME",
+      "slug": "RENAME",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/RENAME.html"
+    },
+    {
+      "name": "REVOKE",
+      "slug": "REVOKE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/REVOKE.html"
+    },
+    {
+      "name": "ROLLBACK",
+      "slug": "ROLLBACK",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ROLLBACK.html"
+    },
+    {
+      "name": "SAVEPOINT",
+      "slug": "SAVEPOINT",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/SAVEPOINT.html"
+    },
+    {
+      "name": "SELECT",
+      "slug": "SELECT",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/SELECT.html"
+    },
+    {
+      "name": "SET CONSTRAINT[S]",
+      "slug": "SET-CONSTRAINTS",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/SET-CONSTRAINTS.html"
+    },
+    {
+      "name": "SET ROLE",
+      "slug": "SET-ROLE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/SET-ROLE.html"
+    },
+    {
+      "name": "SET TRANSACTION",
+      "slug": "SET-TRANSACTION",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/SET-TRANSACTION.html"
+    },
+    {
+      "name": "TRUNCATE CLUSTER",
+      "slug": "TRUNCATE-CLUSTER",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/TRUNCATE-CLUSTER.html"
+    },
+    {
+      "name": "TRUNCATE TABLE",
+      "slug": "TRUNCATE-TABLE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/TRUNCATE-TABLE.html"
+    },
+    {
+      "name": "UPDATE",
+      "slug": "UPDATE",
+      "status": "bnf_done",
+      "url": "https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/UPDATE.html"
+    }
+  ]
+}

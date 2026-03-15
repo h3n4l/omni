@@ -1,0 +1,5 @@
+-- Statement: TRUNCATE CLUSTER
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/TRUNCATE-CLUSTER.html
+
+TRUNCATE CLUSTER [ schema. ] cluster_name
+    [ { DROP STORAGE | REUSE STORAGE } ] ;

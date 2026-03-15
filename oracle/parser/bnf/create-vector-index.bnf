@@ -1,0 +1,41 @@
+-- Statement: CREATE VECTOR INDEX
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/create-vector-index.html
+
+CREATE VECTOR INDEX [ IF NOT EXISTS ] [ schema. ] index_name
+    ON [ schema. ] table_name ( column_name )
+    [ INCLUDE ( column_name [, column_name ]... ) ]
+    [ vector_index_organization_clause ]
+    [ DISTANCE metric_name ]
+    [ WITH TARGET ACCURACY integer [ PARAMETERS ( vector_index_parameters_clause ) ] ]
+    [ vector_index_hnsw_replication_clause ]
+    [ ONLINE ]
+    [ PARALLEL integer ] ;
+
+vector_index_organization_clause:
+    ORGANIZATION { INMEMORY NEIGHBOR GRAPH
+                 | NEIGHBOR PARTITIONS
+                 }
+
+vector_index_parameters_clause:
+    { vector_index_parameters_hnsw_clause
+    | vector_index_parameters_ivf_clause
+    }
+
+vector_index_parameters_hnsw_clause:
+    TYPE HNSW
+    [, { NEIGHBORS | M } integer ]
+    [, EFCONSTRUCTION integer ]
+    [, RESCORE_FACTOR integer ]
+    [, QUANTIZATION quantization_algorithm ]
+
+vector_index_parameters_ivf_clause:
+    TYPE IVF
+    [, NEIGHBOR PARTITIONS integer ]
+    [, SAMPLES_PER_PARTITION integer ]
+    [, MIN_VECTORS_PER_PARTITION integer ]
+    [, QUANTIZATION { SCALAR [ compression_ratio ] } ]
+
+vector_index_hnsw_replication_clause:
+    { DUPLICATE ALL
+    | DISTRIBUTE [ AUTO | BY ROWID RANGE | BY PARTITION | BY SUBPARTITION ]
+    }

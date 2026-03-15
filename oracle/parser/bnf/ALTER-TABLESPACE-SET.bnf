@@ -1,0 +1,30 @@
+-- Statement: ALTER TABLESPACE SET
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-TABLESPACE-SET.html
+
+ALTER TABLESPACE SET tablespace_set
+    alter_tablespace_attrs
+
+alter_tablespace_attrs:
+    { default_tablespace_params
+    | RESIZE size_clause
+    | COALESCE
+    | RENAME TO new_tablespace_set_name
+    | BEGIN BACKUP
+    | END BACKUP
+    | datafile_tempfile_clauses
+    | tablespace_logging_clauses
+    | tablespace_state_clauses
+    | autoextend_clause
+    | alter_tablespace_encryption
+    | lost_write_protection
+    }
+
+-- Note: The following subclauses are NOT supported for tablespace sets:
+--   MINIMUM EXTENT size_clause
+--   SHRINK SPACE [ KEEP size_clause ]
+--   tablespace_group_clause
+--   flashback_mode_clause
+--   tablespace_retention_clause
+-- For datafile_tempfile_clauses, only RENAME DATAFILE and DATAFILE { ONLINE | OFFLINE } are supported.
+-- For tablespace_state_clauses, PERMANENT and TEMPORARY are not supported.
+-- All other subclauses have the same semantics as ALTER TABLESPACE.

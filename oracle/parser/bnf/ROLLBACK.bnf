@@ -1,0 +1,7 @@
+-- Statement: ROLLBACK
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ROLLBACK.html
+
+ROLLBACK [ WORK ]
+    [ TO [ SAVEPOINT ] savepoint_name
+    | FORCE 'string'
+    ] ;

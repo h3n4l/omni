@@ -1,0 +1,7 @@
+-- Statement: TRUNCATE TABLE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/TRUNCATE-TABLE.html
+
+TRUNCATE TABLE [ schema. ] table_name
+    [ { PRESERVE | PURGE } MATERIALIZED VIEW LOG ]
+    [ { DROP STORAGE | DROP ALL STORAGE | REUSE STORAGE } ]
+    [ CASCADE ] ;

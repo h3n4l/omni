@@ -1,0 +1,6 @@
+-- Statement: DROP TABLE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-TABLE.html
+
+DROP TABLE [ IF EXISTS ] [ schema. ] table
+    [ CASCADE CONSTRAINTS ]
+    [ PURGE ] ;

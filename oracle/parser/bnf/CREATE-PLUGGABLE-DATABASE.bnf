@@ -1,0 +1,201 @@
+-- Statement: CREATE PLUGGABLE DATABASE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-PLUGGABLE-DATABASE.html
+
+CREATE PLUGGABLE DATABASE pdb_name
+    { create_pdb_from_seed
+    | create_pdb_clone
+    | create_pdb_from_xml
+    | create_pdb_from_mirror_copy
+    | create_pdb_decrypt_from_xml
+    } ;
+
+create_pdb_from_seed:
+    [ USING snapshot_clause ]
+    [ AS { APPLICATION CONTAINER | SEED } ]
+    [ ADMIN USER admin_user_name IDENTIFIED BY password ]
+    [ pdb_dba_roles ]
+    [ parallel_pdb_creation_clause ]
+    [ default_tablespace ]
+    [ file_name_convert ]
+    [ service_name_convert ]
+    [ pdb_storage_clause ]
+    [ path_prefix_clause ]
+    [ tempfile_reuse_clause ]
+    [ user_tablespaces_clause ]
+    [ standbys_clause ]
+    [ logging_clause ]
+    [ create_file_dest_clause ]
+    [ container_map_clause ]
+    [ pdb_snapshot_clause ]
+
+create_pdb_clone:
+    { FROM src_pdb_name [ @ dblink ]
+    | AS PROXY FROM src_pdb_name @ dblink
+        [ HOST 'hostname' ]
+        [ PORT number ]
+    }
+    [ parallel_pdb_creation_clause ]
+    [ default_tablespace ]
+    [ pdb_storage_clause ]
+    [ file_name_convert ]
+    [ service_name_convert ]
+    [ path_prefix_clause ]
+    [ tempfile_reuse_clause ]
+    [ user_tablespaces_clause ]
+    [ standbys_clause ]
+    [ logging_clause ]
+    [ create_file_dest_clause ]
+    [ keystore_clause ]
+    [ pdb_refresh_mode_clause ]
+    [ container_map_clause ]
+    [ pdb_snapshot_clause ]
+    [ SNAPSHOT COPY [ NO DATA ] | NO DATA ]
+    [ RELOCATE [ KEEP SOURCE ]
+        [ REFRESH MODE { MANUAL | EVERY integer { MINUTES | HOURS } | NONE } ]
+        [ AVAILABILITY { NORMAL | MAX } ] ]
+
+create_pdb_from_xml:
+    USING filename
+    [ source_file_name_convert ]
+    [ source_file_directory ]
+    [ { COPY | MOVE | NOCOPY } ]
+    [ file_name_convert ]
+    [ service_name_convert ]
+    [ default_tablespace ]
+    [ pdb_storage_clause ]
+    [ path_prefix_clause ]
+    [ tempfile_reuse_clause ]
+    [ user_tablespaces_clause ]
+    [ standbys_clause ]
+    [ logging_clause ]
+    [ create_file_dest_clause ]
+    [ AS CLONE ]
+    [ container_map_clause ]
+    [ pdb_snapshot_clause ]
+
+create_pdb_from_mirror_copy:
+    FROM mirror_name [ @ dblink ]
+    [ using_snapshot_clause ]
+    [ parallel_pdb_creation_clause ]
+    [ default_tablespace ]
+    [ pdb_storage_clause ]
+    [ file_name_convert ]
+    [ service_name_convert ]
+    [ path_prefix_clause ]
+    [ tempfile_reuse_clause ]
+    [ user_tablespaces_clause ]
+    [ standbys_clause ]
+    [ logging_clause ]
+    [ create_file_dest_clause ]
+    [ container_map_clause ]
+    [ pdb_snapshot_clause ]
+
+create_pdb_decrypt_from_xml:
+    USING filename
+    [ source_file_name_convert ]
+    [ source_file_directory ]
+    [ { COPY | MOVE | NOCOPY } ]
+    [ file_name_convert ]
+    [ service_name_convert ]
+    [ default_tablespace ]
+    [ pdb_storage_clause ]
+    [ path_prefix_clause ]
+    [ tempfile_reuse_clause ]
+    [ user_tablespaces_clause ]
+    [ standbys_clause ]
+    [ logging_clause ]
+    [ create_file_dest_clause ]
+    [ DECRYPT USING transport_secret ]
+    [ KEYSTORE IDENTIFIED BY keystore_password ]
+    [ container_map_clause ]
+    [ pdb_snapshot_clause ]
+
+pdb_dba_roles:
+    ROLES = ( role [, role ]... )
+
+parallel_pdb_creation_clause:
+    PARALLEL [ integer ]
+
+default_tablespace:
+    DEFAULT TABLESPACE tablespace_name
+    [ datafile_tempfile_spec ]
+
+file_name_convert:
+    FILE_NAME_CONVERT = ( 'filename_pattern' , 'replacement_filename_pattern'
+        [, 'filename_pattern' , 'replacement_filename_pattern' ]... )
+  | FILE_NAME_CONVERT = NONE
+
+service_name_convert:
+    SERVICE_NAME_CONVERT = ( 'service_name' , 'replacement_service_name'
+        [, 'service_name' , 'replacement_service_name' ]... )
+  | SERVICE_NAME_CONVERT = NONE
+
+pdb_storage_clause:
+    STORAGE ( [ MAXSIZE { size_clause | UNLIMITED } ]
+              [ MAX_AUDIT_SIZE { size_clause | UNLIMITED } ]
+              [ MAX_DIAG_SIZE { size_clause | UNLIMITED } ] )
+  | STORAGE UNLIMITED
+
+path_prefix_clause:
+    PATH_PREFIX = { 'path_name' | directory_object_name }
+  | PATH_PREFIX = NONE
+
+tempfile_reuse_clause:
+    TEMPFILE REUSE
+
+user_tablespaces_clause:
+    USER_TABLESPACES = ( tablespace [, tablespace ]... )
+  | USER_TABLESPACES = ALL
+  | USER_TABLESPACES = ALL EXCEPT ( tablespace [, tablespace ]... )
+  | USER_TABLESPACES = NONE
+
+standbys_clause:
+    STANDBYS = ( cdb_name [, cdb_name ]... )
+  | STANDBYS = ALL
+  | STANDBYS = ALL EXCEPT ( cdb_name [, cdb_name ]... )
+  | STANDBYS = NONE
+
+logging_clause:
+    { LOGGING | NOLOGGING }
+
+create_file_dest_clause:
+    CREATE_FILE_DEST = { 'directory_path_name' | diskgroup_name }
+  | CREATE_FILE_DEST = NONE
+
+keystore_clause:
+    KEYSTORE IDENTIFIED BY keystore_password [ DECRYPT USING transport_secret ]
+  | KEYSTORE EXTERNAL STORE [ DECRYPT USING transport_secret ]
+
+pdb_refresh_mode_clause:
+    REFRESH MODE { MANUAL | EVERY integer { MINUTES | HOURS } | NONE }
+
+source_file_name_convert:
+    SOURCE_FILE_NAME_CONVERT = ( 'filename_pattern' , 'replacement_filename_pattern'
+        [, 'filename_pattern' , 'replacement_filename_pattern' ]... )
+  | SOURCE_FILE_NAME_CONVERT = NONE
+
+source_file_directory:
+    SOURCE_FILE_DIRECTORY = { 'directory_path_name' | directory_object_name }
+  | SOURCE_FILE_DIRECTORY = NONE
+
+using_snapshot_clause:
+    USING SNAPSHOT snapshot_name
+  | USING SNAPSHOT AT SCN integer
+  | USING SNAPSHOT AT TIME timestamp
+
+container_map_clause:
+    CONTAINER_MAP UPDATE
+    ( { add_partition_clause | split_partition_clause } )
+
+add_partition_clause:
+    ADD PARTITION pdb_name VALUES LESS THAN ( value )
+
+split_partition_clause:
+    SPLIT PARTITION partition_name
+    AT ( value )
+    INTO ( PARTITION partition_name , PARTITION partition_name )
+
+pdb_snapshot_clause:
+    SNAPSHOT = NONE
+  | SNAPSHOT = MANUAL
+  | SNAPSHOT = EVERY integer { MINUTES | HOURS }

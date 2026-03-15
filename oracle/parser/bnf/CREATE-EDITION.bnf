@@ -1,0 +1,5 @@
+-- Statement: CREATE EDITION
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-EDITION.html
+
+CREATE EDITION [ IF NOT EXISTS ] edition
+    [ AS CHILD OF parent_edition ] ;

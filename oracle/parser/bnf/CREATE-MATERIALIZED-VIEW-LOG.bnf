@@ -1,0 +1,50 @@
+-- Statement: CREATE MATERIALIZED VIEW LOG
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-MATERIALIZED-VIEW-LOG.html
+
+CREATE MATERIALIZED VIEW LOG
+    [ IF NOT EXISTS ]
+    ON [ schema. ] table
+    [ SHARING = { METADATA | NONE } ]
+    [ physical_attributes_clause ]
+    [ TABLESPACE tablespace ]
+    [ logging_clause ]
+    [ { CACHE | NOCACHE } ]
+    [ parallel_clause ]
+    [ table_partitioning_clauses ]
+    [ WITH [ { PRIMARY KEY | ROWID | OBJECT ID } ]
+            [ SEQUENCE ]
+            [ ( column [, column ]... ) ]
+            [ COMMIT SCN ]
+    ]
+    [ new_values_clause ]
+    [ mv_log_purge_clause ]
+    [ for_refresh_clause ]
+
+physical_attributes_clause:
+    [ PCTFREE integer ]
+    [ PCTUSED integer ]
+    [ INITRANS integer ]
+    [ MAXTRANS integer ]
+    [ storage_clause ]
+
+logging_clause:
+    { LOGGING | NOLOGGING }
+
+parallel_clause:
+    { NOPARALLEL | PARALLEL [ integer ] }
+
+new_values_clause:
+    { INCLUDING | EXCLUDING } NEW VALUES
+
+mv_log_purge_clause:
+    PURGE
+    { IMMEDIATE { SYNCHRONOUS | ASYNCHRONOUS }
+    | START WITH datetime_expression
+        [ NEXT datetime_expression ]
+        [ REPEAT INTERVAL interval_expression ]
+    }
+
+for_refresh_clause:
+    { FOR FAST REFRESH
+    | FOR SYNCHRONOUS REFRESH USING staging_log_name
+    }

@@ -1,0 +1,10 @@
+-- Statement: CREATE TYPE BODY
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-TYPE-BODY.html
+-- Note: Type body implementation is defined in PL/SQL Language Reference (plsql_type_body_source)
+
+CREATE [ OR REPLACE | IF NOT EXISTS ]
+    [ EDITIONABLE | NONEDITIONABLE ]
+    TYPE BODY [ schema. ] type_name
+    { IS | AS }
+        plsql_type_body_source
+    END ;

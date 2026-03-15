@@ -1,0 +1,7 @@
+-- Statement: ALTER HIERARCHY
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-HIERARCHY.html
+
+ALTER HIERARCHY [ IF EXISTS ] [ schema. ] hierarchy_name
+    { RENAME TO new_hier_name
+    | COMPILE
+    } ;

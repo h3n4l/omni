@@ -1,0 +1,33 @@
+-- Statement: ALTER DIMENSION
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-DIMENSION.html
+
+alter_dimension ::=
+    ALTER DIMENSION [ schema . ] dimension
+    { ADD level_clause
+    | ADD hierarchy_clause
+    | ADD attribute_clause
+    | ADD extended_attribute_clause
+    | DROP level_clause
+    | DROP hierarchy_clause
+    | DROP attribute_clause
+    | DROP extended_attribute_clause
+    | COMPILE
+    }
+
+level_clause ::=
+    LEVEL level IS ( table . column [, table . column ]... )
+    [ SKIP WHEN expression ]
+
+hierarchy_clause ::=
+    HIERARCHY hierarchy_name ( child_level CHILD OF parent_level
+      [ JOIN KEY child_key_column REFERENCES parent_level ]
+      [, child_level CHILD OF parent_level
+        [ JOIN KEY child_key_column REFERENCES parent_level ] ]...
+    )
+
+attribute_clause ::=
+    ATTRIBUTE level DETERMINES ( dependent_column [, dependent_column ]... )
+
+extended_attribute_clause ::=
+    ATTRIBUTE attribute_name OF level_name
+      DETERMINES ( dependent_column [, dependent_column ]... )

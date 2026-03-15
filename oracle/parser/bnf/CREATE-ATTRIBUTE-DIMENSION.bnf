@@ -1,0 +1,70 @@
+-- Statement: CREATE ATTRIBUTE DIMENSION
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-ATTRIBUTE-DIMENSION.html
+
+CREATE [ OR REPLACE ] [ { FORCE | NOFORCE } ] ATTRIBUTE DIMENSION
+    [ IF NOT EXISTS ] [ schema. ] attr_dimension
+    [ SHARING = { METADATA | NONE } ]
+    [ classification_clause ]
+    [ DIMENSION TYPE { STANDARD | TIME } ]
+    attr_dim_using_clause
+    attributes_clause
+    attr_dim_level_clause [ attr_dim_level_clause ]...
+    [ all_clause ] ;
+
+classification_clause:
+    { CAPTION 'caption'
+    | DESCRIPTION 'description'
+    | CLASSIFICATION classification_name [ LANGUAGE language ] VALUE 'value'
+    } [ classification_clause ]
+
+attr_dim_using_clause:
+    USING source_clause [, source_clause ]...
+
+source_clause:
+    [ REMOTE ] [ schema. ] { table | view } [ [ AS ] alias ]
+    | join_path_clause
+
+join_path_clause:
+    JOIN PATH join_path_name ON join_condition
+
+join_condition:
+    join_condition_elem [ AND join_condition_elem ]...
+
+join_condition_elem:
+    [ table_alias. ] column = [ table_alias. ] column
+
+attributes_clause:
+    ATTRIBUTES ( attr_dim_attribute_clause [, attr_dim_attribute_clause ]... )
+
+attr_dim_attribute_clause:
+    column [ AS alias ]
+    [ classification_clause ]
+
+attr_dim_level_clause:
+    LEVEL level_name
+    [ LEVEL TYPE { STANDARD | YEARS | HALF_YEARS | QUARTERS | MONTHS | WEEKS | DAYS | HOURS | MINUTES | SECONDS } ]
+    [ classification_clause ]
+    key_clause
+    [ alternate_key_clause ]
+    [ MEMBER NAME expression ]
+    [ MEMBER CAPTION expression ]
+    [ MEMBER DESCRIPTION expression ]
+    [ dim_order_clause ]
+    [ DETERMINES ( attribute [, attribute ]... ) ]
+
+key_clause:
+    KEY { attribute [ NOT NULL | SKIP WHEN NULL ]
+        | ( attribute [, attribute ]... ) }
+
+alternate_key_clause:
+    ALTERNATE KEY { attribute
+                  | ( attribute [, attribute ]... ) }
+
+dim_order_clause:
+    ORDER BY { attribute [ ASC | DESC ]
+             | ( attribute [ ASC | DESC ] [, attribute [ ASC | DESC ] ]... ) }
+
+all_clause:
+    ALL [ MEMBER NAME expression ]
+        [ MEMBER CAPTION expression ]
+        [ MEMBER DESCRIPTION expression ]

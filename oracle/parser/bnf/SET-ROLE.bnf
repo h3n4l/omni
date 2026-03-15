@@ -1,0 +1,9 @@
+-- Statement: SET ROLE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/SET-ROLE.html
+
+SET ROLE
+    { role [ IDENTIFIED BY password ]
+      [, role [ IDENTIFIED BY password ] ]...
+    | ALL [ EXCEPT role [, role ]... ]
+    | NONE
+    } ;

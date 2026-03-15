@@ -1,0 +1,14 @@
+-- Statement: ALTER PROCEDURE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-PROCEDURE.html
+
+ALTER PROCEDURE [ IF EXISTS ] [ schema. ] procedure_name
+    [ procedure_compile_clause ]
+    [ { EDITIONABLE | NONEDITIONABLE } ] ;
+
+procedure_compile_clause:
+    COMPILE [ DEBUG ]
+    [ compiler_parameters_clause ]
+    [ REUSE SETTINGS ]
+
+compiler_parameters_clause:
+    parameter_name = parameter_value

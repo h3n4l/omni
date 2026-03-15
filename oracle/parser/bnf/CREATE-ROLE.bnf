@@ -1,0 +1,12 @@
+-- Statement: CREATE ROLE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-ROLE.html
+
+CREATE ROLE role
+    [ NOT IDENTIFIED
+    | IDENTIFIED { BY password
+                 | USING [ schema. ] package
+                 | EXTERNALLY
+                 | GLOBALLY [ AS 'directory_name' ]
+                 }
+    ]
+    [ CONTAINER = { ALL | CURRENT } ] ;

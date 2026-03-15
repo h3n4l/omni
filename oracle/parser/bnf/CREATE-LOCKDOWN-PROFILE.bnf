@@ -1,0 +1,11 @@
+-- Statement: CREATE LOCKDOWN PROFILE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-LOCKDOWN-PROFILE.html
+
+CREATE LOCKDOWN PROFILE profile_name
+    [ static_base_profile | dynamic_base_profile ]
+
+static_base_profile:
+    USING base_profile_name
+
+dynamic_base_profile:
+    INCLUDING base_profile_name

@@ -1,0 +1,14 @@
+-- Statement: CREATE FLASHBACK ARCHIVE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-FLASHBACK-ARCHIVE.html
+
+CREATE FLASHBACK ARCHIVE [ DEFAULT ] flashback_archive
+    TABLESPACE tablespace_name
+    [ flashback_archive_quota ]
+    [ { NO OPTIMIZE DATA | OPTIMIZE DATA } ]
+    flashback_archive_retention ;
+
+flashback_archive_quota:
+    QUOTA integer { K | M | G | T | P | E }
+
+flashback_archive_retention:
+    RETENTION integer { DAY | DAYS | MONTH | MONTHS | YEAR | YEARS }

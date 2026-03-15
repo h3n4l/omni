@@ -1,0 +1,51 @@
+-- Statement: ALTER USER
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-USER.html
+
+ALTER USER user
+    [ IF EXISTS ]
+    { alter_identified_clause
+    | proxy_clause
+    | alter_user_clauses
+    } ;
+
+alter_identified_clause:
+    IDENTIFIED
+    { BY password [ REPLACE old_password ]
+    | EXTERNALLY [ AS 'certificate_DN' | AS 'kerberos_principal_name' ]
+    | GLOBALLY [ AS '[ directory_DN ]' ]
+    }
+  | NO AUTHENTICATION
+
+alter_user_clauses:
+    [ DEFAULT TABLESPACE tablespace ]
+    [ TEMPORARY TABLESPACE { tablespace | tablespace_group_name } ]
+    [ LOCAL TEMPORARY TABLESPACE { tablespace | tablespace_group_name } ]
+    [ quota_clause [, quota_clause ]... ]
+    [ PROFILE profile ]
+    [ DEFAULT ROLE { role [, role ]... | ALL [ EXCEPT role [, role ]... ] | NONE } ]
+    [ PASSWORD EXPIRE ]
+    [ EXPIRE PASSWORD ROLLOVER PERIOD ]
+    [ ACCOUNT { LOCK | UNLOCK } ]
+    [ ENABLE EDITIONS [ FOR object_type [, object_type ]... ] [ FORCE ] ]
+    [ [ HTTP ] DIGEST { ENABLE | DISABLE } ]
+    [ CONTAINER = { ALL | CURRENT } ]
+    [ { ENABLE | DISABLE } DICTIONARY PROTECTION ]
+    [ DEFAULT COLLATION collation_name ]
+    [ container_data_clause ]
+
+quota_clause:
+    QUOTA { size_clause | UNLIMITED } ON tablespace
+
+proxy_clause:
+    { GRANT CONNECT THROUGH { ENTERPRISE USERS | db_user_proxy [ proxy_clause_options ] }
+    | REVOKE CONNECT THROUGH { ENTERPRISE USERS | db_user_proxy }
+    }
+
+proxy_clause_options:
+    [ WITH { ROLE { role [, role ]... | ALL EXCEPT role [, role ]... } | NO ROLES } ]
+    [ AUTHENTICATION REQUIRED ]
+
+container_data_clause:
+    { SET | ADD | REMOVE } CONTAINER_DATA
+    { ( container_name [, container_name ]... ) | ALL | DEFAULT }
+    [ FOR [ schema. ] object_name ]

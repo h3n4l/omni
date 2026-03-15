@@ -1,0 +1,38 @@
+-- Statement: ALTER TYPE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-TYPE.html
+
+ALTER TYPE [ IF EXISTS ] [ schema. ] type_name
+    alter_type_clause
+    [ EDITIONABLE | NONEDITIONABLE ] ;
+
+alter_type_clause:
+    { alter_type_compile_clause
+    | REPLACE alter_type_replace_clause
+    | { alter_method_spec | alter_attribute_definition | alter_collection_clauses | MODIFY modifier_clause } [ dependent_handling_clause ]
+    }
+
+alter_type_compile_clause:
+    COMPILE [ DEBUG ] [ SPECIFICATION | BODY ] [ compiler_parameters_clause [ compiler_parameters_clause ]... ] [ REUSE SETTINGS ]
+
+compiler_parameters_clause:
+    parameter_name = parameter_value
+
+alter_method_spec:
+    { ADD | DROP } { map_order_function_spec | subprogram_spec } [, { map_order_function_spec | subprogram_spec } ]...
+
+alter_attribute_definition:
+    { ADD | DROP | MODIFY } ATTRIBUTE { attribute datatype | ( attribute datatype [, attribute datatype ]... ) }
+
+alter_collection_clauses:
+    MODIFY { LIMIT integer | ELEMENT TYPE datatype }
+
+modifier_clause:
+    { NOT INSTANTIABLE | INSTANTIABLE | NOT FINAL | FINAL }
+
+dependent_handling_clause:
+    { INVALIDATE
+    | CASCADE [ { NOT INCLUDING TABLE DATA | INCLUDING TABLE DATA } ] [ FORCE ] [ { CONVERT TO SUBSTITUTABLE | NOT SUBSTITUTABLE } ] [ exceptions_clause ]
+    }
+
+exceptions_clause:
+    EXCEPTIONS INTO [ schema. ] table

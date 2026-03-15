@@ -1,0 +1,24 @@
+-- Statement: CREATE USER
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-USER.html
+
+CREATE USER [ IF NOT EXISTS ] user
+    IDENTIFIED { BY password
+               | EXTERNALLY [ AS 'certificate_DN' ]
+               | GLOBALLY [ AS 'directory_DN' ]
+               | NO AUTHENTICATION
+               }
+    [ AND FACTOR 'auth_method' AS 'external_name' ]
+    [ [ HTTP ] DIGEST { ENABLE | DISABLE } ]
+    [ DEFAULT COLLATION collation_name ]
+    [ DEFAULT TABLESPACE tablespace ]
+    [ [ LOCAL ] TEMPORARY TABLESPACE { tablespace | tablespace_group_name } ]
+    [ { QUOTA { size_clause | UNLIMITED } ON tablespace } ]...
+    [ PROFILE profile_name ]
+    [ PASSWORD EXPIRE ]
+    [ ACCOUNT { LOCK | UNLOCK } ]
+    [ ENABLE EDITIONS ]
+    [ CONTAINER = { ALL | CURRENT } ]
+    [ READ ONLY | READ WRITE ] ;
+
+size_clause:
+    integer { K | M | G | T }

@@ -1,0 +1,7 @@
+-- Statement: COMMIT
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/COMMIT.html
+
+COMMIT [ WORK ]
+    [ COMMENT 'text' ]
+    [ WRITE [ WAIT | NOWAIT ] [ IMMEDIATE | BATCH ] ]
+    [ FORCE 'string' [, integer ] ] ;

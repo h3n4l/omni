@@ -1,0 +1,14 @@
+-- Statement: ALTER PACKAGE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-PACKAGE.html
+
+ALTER PACKAGE [ IF EXISTS ] [ schema. ] package_name
+    [ package_compile_clause ]
+    [ { EDITIONABLE | NONEDITIONABLE } ] ;
+
+package_compile_clause:
+    COMPILE [ DEBUG ] [ PACKAGE | SPECIFICATION | BODY ]
+    [ compiler_parameters_clause ]
+    [ REUSE SETTINGS ]
+
+compiler_parameters_clause:
+    parameter_name = parameter_value

@@ -1,0 +1,12 @@
+-- Statement: ALTER LIBRARY
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-LIBRARY.html
+
+ALTER LIBRARY [ IF EXISTS ] [ schema. ] library_name
+    { library_compile_clause }
+    [ EDITIONABLE | NONEDITIONABLE ] ;
+
+library_compile_clause:
+    COMPILE [ DEBUG ] [ compiler_parameters_clause ] [ REUSE SETTINGS ]
+
+compiler_parameters_clause:
+    parameter_name = parameter_value

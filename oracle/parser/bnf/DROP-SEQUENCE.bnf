@@ -1,0 +1,4 @@
+-- Statement: DROP SEQUENCE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-SEQUENCE.html
+
+DROP SEQUENCE [ IF EXISTS ] [ schema. ] sequence_name ;

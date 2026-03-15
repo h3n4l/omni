@@ -1,0 +1,103 @@
+-- Statement: ALTER TABLESPACE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-TABLESPACE.html
+
+ALTER TABLESPACE [ IF EXISTS ] tablespace
+    alter_tablespace_attrs
+
+alter_tablespace_attrs:
+    { default_tablespace_params
+    | MINIMUM EXTENT size_clause
+    | RESIZE size_clause
+    | COALESCE
+    | SHRINK SPACE [ KEEP size_clause ]
+    | RENAME TO new_tablespace_name
+    | BEGIN BACKUP
+    | END BACKUP
+    | datafile_tempfile_clauses
+    | tablespace_logging_clauses
+    | tablespace_group_clause
+    | tablespace_state_clauses
+    | autoextend_clause
+    | flashback_mode_clause
+    | tablespace_retention_clause
+    | alter_tablespace_encryption
+    | lost_write_protection
+    }
+
+default_tablespace_params:
+    DEFAULT [ default_table_compression ]
+        [ default_index_compression ]
+        [ inmemory_clause ]
+        [ ilm_clause ]
+        [ storage_clause ]
+
+default_table_compression:
+    TABLE { COMPRESS [ BASIC | FOR OLTP ]
+          | ROW STORE COMPRESS [ BASIC | ADVANCED ]
+          | COLUMN STORE COMPRESS [ FOR { QUERY | ARCHIVE } [ LOW | HIGH ] ]
+          | NOCOMPRESS
+          }
+
+default_index_compression:
+    INDEX { COMPRESS [ ADVANCED [ LOW | HIGH ] ]
+          | NOCOMPRESS
+          }
+
+datafile_tempfile_clauses:
+    { ADD { DATAFILE | TEMPFILE }
+        [ file_specification [, file_specification ]... ]
+    | DROP { DATAFILE | TEMPFILE } { 'filename' | file_number }
+    | SHRINK TEMPFILE { 'filename' | file_number } [ KEEP size_clause ]
+    | RENAME DATAFILE 'filename' [, 'filename' ]...
+        TO 'filename' [, 'filename' ]...
+    | { DATAFILE | TEMPFILE } { ONLINE | OFFLINE }
+    }
+
+tablespace_logging_clauses:
+    { logging_clause
+    | [ NO ] FORCE LOGGING
+    }
+
+tablespace_group_clause:
+    GROUP { tablespace_group_name | '' }
+
+tablespace_state_clauses:
+    { ONLINE
+    | OFFLINE [ NORMAL | TEMPORARY | IMMEDIATE ]
+    | READ ONLY
+    | READ WRITE
+    | PERMANENT
+    | TEMPORARY
+    }
+
+autoextend_clause:
+    AUTOEXTEND { OFF
+               | ON [ NEXT size_clause ] [ maxsize_clause ]
+               }
+
+maxsize_clause:
+    MAXSIZE { UNLIMITED | size_clause }
+
+flashback_mode_clause:
+    FLASHBACK { ON | OFF }
+
+tablespace_retention_clause:
+    RETENTION { GUARANTEE | NOGUARANTEE }
+
+alter_tablespace_encryption:
+    ENCRYPTION
+        { ONLINE [ tablespace_encryption_spec ] [ ts_file_name_convert ]
+        | OFFLINE { ENCRYPT [ tablespace_encryption_spec ] | DECRYPT }
+        | FINISH [ ENCRYPT | DECRYPT ] [ ts_file_name_convert ]
+        }
+
+tablespace_encryption_spec:
+    USING 'encrypt_algorithm'
+
+ts_file_name_convert:
+    FILE_NAME_CONVERT = ( 'filename_pattern' , 'replacement_filename_pattern'
+        [, 'filename_pattern' , 'replacement_filename_pattern' ]... )
+    [ KEEP ]
+
+lost_write_protection:
+    { ENABLE | DISABLE | REMOVE | SUSPEND } LOST WRITE PROTECTION

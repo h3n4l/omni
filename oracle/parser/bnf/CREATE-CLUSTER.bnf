@@ -1,0 +1,37 @@
+-- Statement: CREATE CLUSTER
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-CLUSTER.html
+
+CREATE CLUSTER [ IF NOT EXISTS ] [ schema. ] cluster
+    [ SHARING = { METADATA | NONE } ]
+    ( column datatype [ COLLATE column_collation_name ] [ SORT ]
+      [, column datatype [ COLLATE column_collation_name ] [ SORT ] ]... )
+    [ physical_attributes_clause ]
+    [ SIZE size_clause ]
+    [ TABLESPACE tablespace ]
+    [ { INDEX
+      | HASHKEYS integer [ HASH IS expr ] }
+    ]
+    [ SINGLE TABLE ]
+    [ parallel_clause ]
+    [ { NOROWDEPENDENCIES | ROWDEPENDENCIES } ]
+    [ { CACHE | NOCACHE } ]
+    [ cluster_range_partitions ] ;
+
+physical_attributes_clause:
+    [ PCTFREE integer ]
+    [ PCTUSED integer ]
+    [ INITRANS integer ]
+    [ storage_clause ]
+
+parallel_clause:
+    { NOPARALLEL | PARALLEL [ integer ] }
+
+cluster_range_partitions:
+    PARTITION BY RANGE ( column [, column ]... )
+    ( PARTITION [ partition ]
+        VALUES LESS THAN ( { value | MAXVALUE } [, { value | MAXVALUE } ]... )
+        [ table_partition_description ]
+      [, PARTITION [ partition ]
+          VALUES LESS THAN ( { value | MAXVALUE } [, { value | MAXVALUE } ]... )
+          [ table_partition_description ] ]...
+    )

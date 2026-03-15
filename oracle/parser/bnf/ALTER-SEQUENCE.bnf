@@ -1,0 +1,14 @@
+-- Statement: ALTER SEQUENCE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-SEQUENCE.html
+
+ALTER SEQUENCE [ IF EXISTS ] [ schema. ] sequence
+    [ INCREMENT BY integer ]
+    [ { MAXVALUE integer | NOMAXVALUE } ]
+    [ { MINVALUE integer | NOMINVALUE } ]
+    [ { CYCLE | NOCYCLE } ]
+    [ { CACHE integer | NOCACHE } ]
+    [ { ORDER | NOORDER } ]
+    [ { KEEP | NOKEEP } ]
+    [ { SCALE [ EXTEND | NOEXTEND ] | NOSCALE } ]
+    [ { SHARD [ EXTEND | NOEXTEND ] | NOSHARD } ]
+    [ RESTART [ WITH integer ] ]

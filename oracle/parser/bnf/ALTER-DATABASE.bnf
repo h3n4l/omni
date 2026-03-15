@@ -1,0 +1,320 @@
+-- Statement: ALTER DATABASE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-DATABASE.html
+
+alter_database ::=
+  ALTER DATABASE [ db_name ]
+    { startup_clauses
+    | recovery_clauses
+    | database_file_clauses
+    | logfile_clauses
+    | controlfile_clauses
+    | standby_database_clauses
+    | default_settings_clauses
+    | instance_clauses
+    | security_clause
+    | RENAME GLOBAL_NAME TO db_name
+    | { ENABLE | DISABLE } BLOCK CHANGE TRACKING [ USING FILE 'filename' | USING FILE '+asm_diskgroup' ]
+    | cdb_fleet_clauses
+    | replay_upgrade_clause
+    }
+
+startup_clauses ::=
+  { MOUNT [ STANDBY DATABASE | CLONE DATABASE ]
+  | OPEN [ READ WRITE | READ ONLY ]
+      [ RESETLOGS | NORESETLOGS ]
+      [ UPGRADE | DOWNGRADE ]
+  }
+
+recovery_clauses ::=
+  { BEGIN BACKUP
+  | END BACKUP
+  | general_recovery
+  | managed_standby_recovery
+  }
+
+general_recovery ::=
+  RECOVER
+    [ AUTOMATIC | FROM 'location' ]
+    { full_database_recovery
+    | partial_database_recovery
+    }
+    [ LOGFILE 'filename' ]
+    [ TEST ]
+    [ ALLOW integer CORRUPTION ]
+    [ CONTINUE [ DEFAULT ] | CANCEL ]
+    [ parallel_clause ]
+
+full_database_recovery ::=
+  { DATABASE
+  | STANDBY DATABASE
+      [ UNTIL
+          { CANCEL
+          | TIME 'YYYY-MM-DD:HH24:MI:SS'
+          | CHANGE integer
+          | CONSISTENT
+          }
+      ]
+      [ USING BACKUP CONTROLFILE ]
+  }
+
+partial_database_recovery ::=
+  { TABLESPACE tablespace_name [, tablespace_name ]...
+  | DATAFILE { 'filename' | integer } [, { 'filename' | integer } ]...
+  }
+
+parallel_clause ::=
+  { PARALLEL [ integer ] | NOPARALLEL }
+
+managed_standby_recovery ::=
+  RECOVER MANAGED STANDBY DATABASE
+    [ USING ARCHIVED LOGFILE | USING CURRENT LOGFILE ]
+    [ DISCONNECT [ FROM SESSION ] ]
+    [ NODELAY ]
+    [ UNTIL CHANGE integer | UNTIL CONSISTENT ]
+    [ USING INSTANCES { ALL | integer } ]
+    [ FINISH [ FORCE | WAIT | NOWAIT ] ]
+    [ CANCEL [ IMMEDIATE | WAIT | NOWAIT ] ]
+    [ TO LOGICAL STANDBY db_name [ KEEP IDENTITY ] ]
+    [ parallel_clause ]
+
+database_file_clauses ::=
+  { RENAME FILE 'old_filename' TO 'new_filename' [, 'old_filename' TO 'new_filename' ]...
+  | CREATE DATAFILE { 'filename' | integer }
+      AS { NEW | file_specification }
+  | DATAFILE { 'filename' | integer }
+      { ONLINE
+      | OFFLINE [ FOR DROP ]
+      | RESIZE size_clause
+      | END BACKUP
+      | ENCRYPT
+      | DECRYPT
+      | autoextend_clause
+      }
+  | TEMPFILE { 'filename' | integer }
+      { RESIZE size_clause
+      | autoextend_clause
+      | DROP [ INCLUDING DATAFILES ]
+      }
+  | MOVE DATAFILE { 'filename' | ASM_filename | integer }
+      TO { 'filename' | ASM_filename }
+      [ REUSE ]
+      [ KEEP ]
+  }
+
+autoextend_clause ::=
+  AUTOEXTEND { OFF | ON [ NEXT size_clause ] [ maxsize_clause ] }
+
+maxsize_clause ::=
+  MAXSIZE { size_clause | UNLIMITED }
+
+logfile_clauses ::=
+  { ARCHIVELOG | MANUAL | NOARCHIVELOG
+  | [ NO ] FORCE LOGGING
+  | SET STANDBY NOLOGGING
+      FOR { LOAD PERFORMANCE | DATA AVAILABILITY }
+  | RENAME FILE 'old_filename' TO 'new_filename' [, 'old_filename' TO 'new_filename' ]...
+  | CLEAR LOGFILE logfile_descriptor
+      [ UNARCHIVED | UNRECOVERABLE DATAFILE ]
+  | add_logfile_clauses
+  | drop_logfile_clauses
+  | switch_logfile_clause
+  | supplemental_db_logging
+  }
+
+add_logfile_clauses ::=
+  { ADD [ STANDBY ] LOGFILE [ INSTANCE 'instance_name' ]
+      [ THREAD integer ]
+      [ GROUP integer ]
+      redo_log_file_spec [, redo_log_file_spec ]...
+  | ADD LOGFILE MEMBER
+      [ STANDBY ]
+      'filename' [, 'filename' ]...
+      TO logfile_descriptor
+  }
+
+drop_logfile_clauses ::=
+  { DROP LOGFILE logfile_descriptor
+  | DROP LOGFILE MEMBER 'filename' [, 'filename' ]...
+  }
+
+logfile_descriptor ::=
+  { GROUP integer
+  | ( 'filename' [, 'filename' ]... )
+  }
+
+switch_logfile_clause ::=
+  SWITCH LOGFILE TO BLOCK SIZE integer
+
+supplemental_db_logging ::=
+  { ADD SUPPLEMENTAL LOG
+      { DATA
+      | supplemental_id_key_clause
+      | supplemental_plsql_clause
+      | DATA SUBSET DATABASE REPLICATION
+      }
+  | DROP SUPPLEMENTAL LOG
+      { DATA
+      | supplemental_id_key_clause
+      | supplemental_plsql_clause
+      | DATA SUBSET DATABASE REPLICATION
+      }
+  }
+
+supplemental_id_key_clause ::=
+  DATA ( { PRIMARY KEY | UNIQUE | FOREIGN KEY | ALL } COLUMNS )
+
+supplemental_plsql_clause ::=
+  DATA ( PL/SQL CALL )
+
+controlfile_clauses ::=
+  { CREATE [ PHYSICAL | LOGICAL ] STANDBY CONTROLFILE AS 'filename'
+      [ REUSE ]
+  | CREATE FAR SYNC INSTANCE CONTROLFILE AS 'filename'
+      [ REUSE ]
+  | BACKUP CONTROLFILE
+      TO 'filename' [ REUSE ]
+  | BACKUP CONTROLFILE TO TRACE
+      [ AS 'filename' ]
+      [ REUSE ]
+      [ { RESETLOGS | NORESETLOGS } ]
+  }
+
+standby_database_clauses ::=
+  { activate_standby_db_clause
+  | maximize_standby_db_clause
+  | register_logfile_clause
+  | commit_switchover_clause
+  | start_standby_clause
+  | stop_standby_clause
+  | convert_database_clause
+  | switchover_clause
+  | failover_clause
+  }
+
+activate_standby_db_clause ::=
+  ACTIVATE [ PHYSICAL | LOGICAL ] STANDBY DATABASE
+    [ FINISH APPLY ]
+
+maximize_standby_db_clause ::=
+  SET STANDBY DATABASE TO
+    { MAXIMIZE PROTECTION
+    | MAXIMIZE AVAILABILITY
+    | MAXIMIZE PERFORMANCE
+    }
+
+register_logfile_clause ::=
+  RECOVER [ MANAGED STANDBY DATABASE ]
+    REGISTER LOGFILE redo_log_file_spec [, redo_log_file_spec ]...
+    [ OR REPLACE ]
+    [ FOR logminer_session_name ]
+
+switchover_clause ::=
+  SWITCHOVER TO { PRIMARY | PHYSICAL STANDBY | LOGICAL STANDBY }
+    [ VERIFY ]
+    [ FORCE ]
+    target_db_name
+
+failover_clause ::=
+  FAILOVER TO { PRIMARY | PHYSICAL STANDBY | LOGICAL STANDBY }
+    [ FORCE ]
+    target_db_name
+
+commit_switchover_clause ::=
+  { PREPARE TO SWITCHOVER TO
+      { LOGICAL STANDBY
+      | PRIMARY DATABASE
+      }
+  | COMMIT TO SWITCHOVER TO
+      { [ PHYSICAL ] STANDBY
+      | LOGICAL STANDBY
+      | PRIMARY DATABASE
+      }
+  }
+  [ WITH SESSION SHUTDOWN | WITHOUT SESSION SHUTDOWN ]
+  [ WAIT | NOWAIT ]
+  [ CANCEL ]
+
+start_standby_clause ::=
+  START LOGICAL STANDBY APPLY
+    [ IMMEDIATE ]
+    [ NODELAY ]
+    [ INITIAL ]
+    [ NEW PRIMARY ]
+    [ SKIP FAILED [ TRANSACTION ] ]
+    [ FINISH ]
+
+stop_standby_clause ::=
+  STOP LOGICAL STANDBY APPLY
+
+convert_database_clause ::=
+  CONVERT TO
+    { PHYSICAL STANDBY
+    | SNAPSHOT STANDBY
+    }
+
+default_settings_clauses ::=
+  { DEFAULT EDITION = edition_name
+  | DEFAULT TABLESPACE tablespace_name
+  | DEFAULT [ LOCAL ] TEMPORARY TABLESPACE tablespace_name
+  | SET DEFAULT { BIGFILE | SMALLFILE } TABLESPACE
+  | flashback_mode_clause
+  | undo_mode_clause
+  | set_time_zone_clause
+  }
+
+flashback_mode_clause ::=
+  FLASHBACK { ON | OFF }
+
+undo_mode_clause ::=
+  SET UNDO TABLESPACE = undo_tablespace_name
+
+set_time_zone_clause ::=
+  SET TIME_ZONE = { 'timezone' | DBTIMEZONE | LOCAL }
+
+instance_clauses ::=
+  { ENABLE RESTRICTED SESSION
+  | DISABLE RESTRICTED SESSION
+  }
+
+security_clause ::=
+  { prepare_clause
+  | drop_mirror_copy
+  | lost_write_protection
+  }
+
+prepare_clause ::=
+  PREPARE MIRROR COPY
+
+drop_mirror_copy ::=
+  DROP MIRROR COPY
+
+lost_write_protection ::=
+  { ENABLE LOST WRITE PROTECTION
+  | DISABLE LOST WRITE PROTECTION
+  }
+
+cdb_fleet_clauses ::=
+  { lead_cdb_clause
+  | lead_cdb_uri_clause
+  | property_clause
+  }
+
+lead_cdb_clause ::=
+  SET LEAD_CDB [ = ]
+    { lead_cdb_name
+    | NONE
+    }
+
+lead_cdb_uri_clause ::=
+  SET LEAD_CDB_URI [ = ]
+    { 'uri_string'
+    | NONE
+    }
+
+property_clause ::=
+  SET PROPERTY { property_name = property_value }
+
+replay_upgrade_clause ::=
+  { START REPLAY
+  | STOP REPLAY
+  }

@@ -1,0 +1,5 @@
+-- Statement: DROP CONTEXT
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-CONTEXT.html
+
+drop_context::=
+    DROP CONTEXT namespace

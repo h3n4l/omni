@@ -1,0 +1,9 @@
+-- Statement: ALTER ROLLBACK SEGMENT
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-ROLLBACK-SEGMENT.html
+
+ALTER ROLLBACK SEGMENT rollback_segment
+    { ONLINE
+    | OFFLINE
+    | storage_clause
+    | SHRINK [ TO size_clause ]
+    }

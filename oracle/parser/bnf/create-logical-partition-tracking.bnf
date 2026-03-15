@@ -1,0 +1,9 @@
+-- Statement: CREATE LOGICAL PARTITION TRACKING
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/create-logical-partition-tracking.html
+
+CREATE LOGICAL PARTITION TRACKING ON [ schema. ] table_name
+    PARTITION BY { RANGE | INTERVAL } ( column_name )
+    ( partition_definition [, partition_definition ]... )
+
+partition_definition:
+    PARTITION partition_name VALUES LESS THAN ( value )

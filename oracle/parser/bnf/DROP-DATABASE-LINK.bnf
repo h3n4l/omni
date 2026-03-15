@@ -1,0 +1,5 @@
+-- Statement: DROP DATABASE LINK
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-DATABASE-LINK.html
+
+drop_database_link::=
+    DROP [ PUBLIC ] DATABASE LINK [ IF EXISTS ] dblink

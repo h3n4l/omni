@@ -1,0 +1,7 @@
+-- Statement: CREATE SPFILE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-SPFILE.html
+
+CREATE SPFILE [ = 'spfile_name' ]
+    FROM { PFILE [ = 'pfile_name' ] [ AS COPY ]
+         | MEMORY
+         } ;

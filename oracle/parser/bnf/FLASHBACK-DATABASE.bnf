@@ -1,0 +1,11 @@
+-- Statement: FLASHBACK DATABASE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/FLASHBACK-DATABASE.html
+
+FLASHBACK [ STANDBY | PLUGGABLE ] DATABASE [ database ]
+    { TO SCN scn_number
+    | TO BEFORE SCN scn_number
+    | TO TIMESTAMP timestamp_expression
+    | TO BEFORE TIMESTAMP timestamp_expression
+    | TO RESTORE POINT restore_point_name
+    | TO BEFORE RESETLOGS
+    } ;

@@ -1,0 +1,5 @@
+-- Statement: DROP DIMENSION
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-DIMENSION.html
+
+drop_dimension::=
+    DROP DIMENSION [ schema. ] dimension

@@ -1,0 +1,65 @@
+-- Statement: ALTER MATERIALIZED VIEW LOG
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-MATERIALIZED-VIEW-LOG.html
+
+ALTER MATERIALIZED VIEW LOG [ IF EXISTS ]
+    [ FORCE ]
+    ON [ schema. ] table
+    { physical_attributes_clause
+    | add_mv_log_column_clause
+    | alter_table_partitioning
+    | parallel_clause
+    | logging_clause
+    | allocate_extent_clause
+    | shrink_clause
+    | move_mv_log_clause
+    | mv_log_augmentation
+    | mv_log_purge_clause
+    | for_refresh_clause
+    } ;
+
+physical_attributes_clause:
+    [ PCTFREE integer ]
+    [ PCTUSED integer ]
+    [ INITRANS integer ]
+    [ storage_clause ]
+
+add_mv_log_column_clause:
+    ADD ( column [, column ]... )
+
+parallel_clause:
+    { PARALLEL [ integer ] | NOPARALLEL }
+
+logging_clause:
+    { LOGGING | NOLOGGING | FILESYSTEM_LIKE_LOGGING }
+
+allocate_extent_clause:
+    ALLOCATE EXTENT [ ( [ SIZE size_clause ] [ DATAFILE 'filename' ] [ INSTANCE integer ] ) ]
+
+shrink_clause:
+    SHRINK SPACE [ COMPACT ] [ CASCADE ]
+
+move_mv_log_clause:
+    MOVE [ segment_attributes ] [ TABLESPACE tablespace ]
+
+mv_log_augmentation:
+    ADD
+    { PRIMARY KEY
+    | ROWID
+    | OBJECT ID
+    | SEQUENCE
+    | ( column [, column ]... )
+    }
+    [ new_values_clause ]
+
+new_values_clause:
+    { INCLUDING NEW VALUES | EXCLUDING NEW VALUES }
+
+mv_log_purge_clause:
+    PURGE
+    { IMMEDIATE SYNCHRONOUS
+    | IMMEDIATE ASYNCHRONOUS
+    | START WITH date NEXT date
+    }
+
+for_refresh_clause:
+    { FOR SYNCHRONOUS REFRESH | FOR FAST REFRESH }

@@ -1,0 +1,12 @@
+-- Statement: AUDIT (Unified Auditing)
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/AUDIT-Unified-Auditing.html
+
+AUDIT
+    { POLICY policy_name
+        [ { BY | EXCEPT } user [, user ]... ]
+        [ { BY | EXCEPT } USERS WITH ROLE role [, role ]... ]
+        [ WHENEVER [ NOT ] SUCCESSFUL ]
+    | CONTEXT NAMESPACE namespace
+        ATTRIBUTES attribute [, attribute ]...
+        [ BY user [, user ]... ]
+    } ;

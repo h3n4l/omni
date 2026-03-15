@@ -1,0 +1,17 @@
+-- Statement: ALTER TRIGGER
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-TRIGGER.html
+
+ALTER TRIGGER [ IF EXISTS ] [ schema. ] trigger_name
+    { trigger_compile_clause
+    | ENABLE
+    | DISABLE
+    | RENAME TO new_name
+    | EDITIONABLE
+    | NONEDITIONABLE
+    } ;
+
+trigger_compile_clause:
+    COMPILE [ DEBUG ] [ compiler_parameters_clause [ compiler_parameters_clause ]... ] [ REUSE SETTINGS ]
+
+compiler_parameters_clause:
+    parameter_name = parameter_value

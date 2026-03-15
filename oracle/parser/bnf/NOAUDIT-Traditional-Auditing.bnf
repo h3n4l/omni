@@ -1,0 +1,34 @@
+-- Statement: NOAUDIT (Traditional Auditing)
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/NOAUDIT-Traditional-Auditing.html
+
+NOAUDIT
+    { audit_operation_clause [ auditing_by_clause ]
+    | audit_schema_object_clause
+    }
+    [ WHENEVER [ NOT ] SUCCESSFUL ]
+    [ CONTAINER = { CURRENT | ALL } ] ;
+
+audit_operation_clause::=
+    { statement_option [, statement_option ]...
+    | ALL
+    | ALL STATEMENTS
+    | system_privilege [, system_privilege ]...
+    | ALL PRIVILEGES
+    }
+
+auditing_by_clause::=
+    BY user [, user ]...
+
+audit_schema_object_clause::=
+    { sql_operation [, sql_operation ]...
+    | ALL
+    }
+    ON auditing_on_clause
+
+auditing_on_clause::=
+    [ schema. ] object
+  | DIRECTORY directory_name
+  | SQL TRANSLATION PROFILE [ schema. ] profile
+  | DEFAULT
+  | NETWORK
+  | DIRECT_PATH LOAD

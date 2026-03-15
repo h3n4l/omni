@@ -1,0 +1,774 @@
+-- Statement: CREATE TABLE
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-TABLE.html
+
+CREATE [ { GLOBAL TEMPORARY | PRIVATE TEMPORARY | SHARDED | DUPLICATED } ]
+    TABLE [ IF NOT EXISTS ] [ schema. ] table
+    [ SHARING = { METADATA | DATA | EXTENDED DATA | NONE } ]
+    { relational_table
+    | object_table
+    | XMLType_table
+    | JSON_collection_table
+    }
+    [ MEMOPTIMIZE FOR READ ]
+    [ MEMOPTIMIZE FOR WRITE ]
+    [ PARENT [ schema. ] table ] ;
+
+relational_table:
+    [ ( relational_properties ) ]
+    [ immutable_table_clauses ]
+    [ blockchain_table_clauses ]
+    [ DEFAULT COLLATION collation_name ]
+    [ ON COMMIT { DELETE | PRESERVE } ROWS ]
+    [ physical_properties ]
+    [ table_properties ]
+
+object_table:
+    OF [ schema. ] object_type
+    [ object_table_substitution ]
+    [ ( object_properties ) ]
+    [ ON COMMIT { DELETE | PRESERVE } ROWS ]
+    [ oid_clause ]
+    [ oid_index_clause ]
+    [ physical_properties ]
+    [ table_properties ]
+
+XMLType_table:
+    OF XMLTYPE
+    [ ( oject_properties ) ]
+    [ XMLType_storage ]
+    [ XMLSchema_spec ]
+    [ XMLType_virtual_columns ]
+    [ ON COMMIT { DELETE | PRESERVE } ROWS ]
+    [ oid_clause ]
+    [ oid_index_clause ]
+    [ physical_properties ]
+    [ table_properties ]
+
+JSON_collection_table:
+    ( column json_column_definition )
+    [ physical_properties ]
+    [ table_properties ]
+
+relational_properties:
+    { column_definition
+    | virtual_column_definition
+    | period_definition
+    | out_of_line_constraint
+    | out_of_line_ref_constraint
+    | supplemental_logging_props
+    | domain_clause
+    } [, { column_definition
+          | virtual_column_definition
+          | period_definition
+          | out_of_line_constraint
+          | out_of_line_ref_constraint
+          | supplemental_logging_props
+          | domain_clause
+          } ] ...
+
+column_definition:
+    column [ datatype | DOMAIN [ schema. ] domain_name ]
+    [ SORT ]
+    [ VISIBLE | INVISIBLE ]
+    [ DEFAULT [ ON NULL [ FOR INSERT ONLY ] ] expr
+    | identity_clause
+    ]
+    [ ENCRYPT encryption_spec ]
+    [ COLLATE column_collation_name ]
+    [ inline_constraint [ inline_constraint ] ... ]
+    [ inline_ref_constraint ]
+    [ annotations_clause ]
+
+identity_clause:
+    GENERATED { ALWAYS | BY DEFAULT [ ON NULL ] } AS IDENTITY
+    [ ( identity_options ) ]
+
+identity_options:
+    [ START WITH { integer | LIMIT VALUE } ]
+    [ INCREMENT BY integer ]
+    [ { MAXVALUE integer | NOMAXVALUE } ]
+    [ { MINVALUE integer | NOMINVALUE } ]
+    [ { CYCLE | NOCYCLE } ]
+    [ { CACHE integer | NOCACHE } ]
+    [ { ORDER | NOORDER } ]
+
+encryption_spec:
+    [ USING 'encrypt_algorithm' ]
+    [ IDENTIFIED BY password ]
+    [ SALT | NO SALT ]
+
+virtual_column_definition:
+    column [ datatype ]
+    [ COLLATE column_collation_name ]
+    [ VISIBLE | INVISIBLE ]
+    [ GENERATED ALWAYS ] AS ( column_expression )
+    [ VIRTUAL ]
+    [ evaluation_edition_clause ]
+    [ unusable_editions_clause ]
+    [ inline_constraint [ inline_constraint ] ... ]
+    [ annotations_clause ]
+
+evaluation_edition_clause:
+    EVALUATE USING { CURRENT EDITION | EDITION edition }
+    | EVALUATE USING NULL EDITION
+
+unusable_editions_clause:
+    [ UNUSABLE BEFORE { CURRENT EDITION | EDITION edition } ]
+    [ UNUSABLE BEGINNING WITH { CURRENT EDITION | EDITION edition | NULL EDITION } ]
+
+period_definition:
+    PERIOD FOR valid_time_column
+    [ ( start_time_column , end_time_column ) ]
+
+inline_constraint:
+    [ CONSTRAINT constraint_name ]
+    { [ NOT ] NULL
+    | UNIQUE
+    | PRIMARY KEY
+    | REFERENCES [ schema. ] table [ ( column ) ]
+      [ ON DELETE { CASCADE | SET NULL } ]
+    | CHECK ( condition )
+    }
+    [ constraint_state ]
+
+out_of_line_constraint:
+    [ CONSTRAINT constraint_name ]
+    { UNIQUE ( column [, column ] ... )
+    | PRIMARY KEY ( column [, column ] ... )
+    | FOREIGN KEY ( column [, column ] ... )
+      REFERENCES [ schema. ] table [ ( column [, column ] ... ) ]
+      [ ON DELETE { CASCADE | SET NULL } ]
+    | CHECK ( condition )
+    }
+    [ constraint_state ]
+
+out_of_line_ref_constraint:
+    { SCOPE FOR ( { ref_col | ref_attr } ) IS [ schema. ] scope_table
+    | REF ( { ref_col | ref_attr } ) WITH ROWID
+    | [ CONSTRAINT constraint_name ] FOREIGN KEY ( { ref_col | ref_attr } )
+      REFERENCES [ schema. ] object [ ( column [, column ] ... ) ]
+      [ ON DELETE { CASCADE | SET NULL } ]
+      [ constraint_state ]
+    }
+
+inline_ref_constraint:
+    { SCOPE IS [ schema. ] scope_table
+    | WITH ROWID
+    | [ CONSTRAINT constraint_name ] REFERENCES [ schema. ] object
+      [ ( column [, column ] ... ) ]
+      [ ON DELETE { CASCADE | SET NULL } ]
+      [ constraint_state ]
+    }
+
+constraint_state:
+    [ [ NOT ] DEFERRABLE [ INITIALLY { DEFERRED | IMMEDIATE } ]
+    | INITIALLY { DEFERRED | IMMEDIATE } [ [ NOT ] DEFERRABLE ]
+    ]
+    [ RELY | NORELY ]
+    [ using_index_clause ]
+    [ ENABLE | DISABLE ]
+    [ VALIDATE | NOVALIDATE ]
+    [ exceptions_clause ]
+
+using_index_clause:
+    USING INDEX
+    { [ schema. ] index
+    | ( create_index_statement )
+    | index_properties
+    }
+
+exceptions_clause:
+    EXCEPTIONS INTO [ schema. ] table
+
+supplemental_logging_props:
+    SUPPLEMENTAL LOG { supplemental_log_grp_clause
+                     | supplemental_id_key_clause
+                     }
+
+supplemental_log_grp_clause:
+    GROUP log_group ( column [ NO LOG ] [, column [ NO LOG ] ] ... ) [ ALWAYS ]
+
+supplemental_id_key_clause:
+    DATA ( { ALL | PRIMARY KEY | UNIQUE | FOREIGN KEY } [, ...] ) COLUMNS
+
+domain_clause:
+    DOMAIN [ schema. ] domain_name ( column [, column ] ... )
+
+annotations_clause:
+    ANNOTATIONS ( { ADD | DROP } annotation_name [ annotation_value ] [, ...] )
+
+physical_properties:
+    { deferred_segment_creation
+    | segment_attributes_clause
+    | table_compression
+    | inmemory_table_clause
+    | ilm_clause
+    | heap_org_table_clause
+    | index_org_table_clause
+    | external_table_clause
+    }
+
+deferred_segment_creation:
+    SEGMENT CREATION { IMMEDIATE | DEFERRED }
+
+segment_attributes_clause:
+    { physical_attributes_clause
+    | TABLESPACE tablespace
+    | logging_clause
+    }
+
+physical_attributes_clause:
+    [ PCTFREE integer ]
+    [ PCTUSED integer ]
+    [ INITRANS integer ]
+    [ storage_clause ]
+
+logging_clause:
+    { LOGGING | NOLOGGING | FILESYSTEM_LIKE_LOGGING }
+
+table_compression:
+    { NOCOMPRESS
+    | ROW STORE COMPRESS [ BASIC | ADVANCED ]
+    | COLUMN STORE COMPRESS FOR { QUERY | ARCHIVE } [ LOW | HIGH ]
+    }
+
+inmemory_table_clause:
+    { INMEMORY [ inmemory_attributes ] [ inmemory_column_clause ]
+    | NO INMEMORY
+    }
+
+inmemory_attributes:
+    [ inmemory_memcompress ]
+    [ inmemory_priority ]
+    [ inmemory_distribute ]
+    [ inmemory_duplicate ]
+
+inmemory_memcompress:
+    { MEMCOMPRESS FOR { DML | QUERY [ LOW | HIGH ] | CAPACITY [ LOW | HIGH ] }
+    | NO MEMCOMPRESS
+    }
+
+inmemory_priority:
+    PRIORITY { NONE | LOW | MEDIUM | HIGH | CRITICAL }
+
+inmemory_distribute:
+    DISTRIBUTE [ AUTO | BY { ROWID RANGE | PARTITION | SUBPARTITION } ]
+    [ FOR SERVICE { DEFAULT | ALL | service_name | NONE } ]
+
+inmemory_duplicate:
+    { DUPLICATE | DUPLICATE ALL | NO DUPLICATE }
+
+inmemory_column_clause:
+    { INMEMORY [ inmemory_memcompress ] | NO INMEMORY } ( column [, column ] ... )
+    [ { INMEMORY [ inmemory_memcompress ] | NO INMEMORY } ( column [, column ] ... ) ] ...
+
+ilm_clause:
+    ILM { ADD POLICY ilm_policy_clause
+        | { DELETE | ENABLE | DISABLE } POLICY ilm_policy_name
+        | DELETE_ALL | ENABLE_ALL | DISABLE_ALL
+        }
+
+ilm_policy_clause:
+    { ilm_compression_policy
+    | ilm_tiering_policy
+    | ilm_inmemory_policy
+    }
+
+ilm_compression_policy:
+    { table_compression | { REBUILD | MERGE } }
+    { SEGMENT
+      | GROUP
+      | ROW
+    }
+    { AFTER ilm_time_period OF { NO ACCESS | NO MODIFICATION | CREATION }
+    | ON function_name
+    }
+
+ilm_tiering_policy:
+    TIER TO tablespace
+    [ READ ONLY ]
+    { SEGMENT | GROUP }
+    { AFTER ilm_time_period OF { NO ACCESS | NO MODIFICATION | CREATION }
+    | ON function_name
+    }
+
+ilm_inmemory_policy:
+    { SET INMEMORY [ inmemory_attributes ]
+    | MODIFY INMEMORY inmemory_memcompress
+    | NO INMEMORY
+    }
+    SEGMENT
+    { AFTER ilm_time_period OF { NO ACCESS | NO MODIFICATION | CREATION }
+    | ON function_name
+    }
+
+ilm_time_period:
+    integer { DAY | DAYS | MONTH | MONTHS | YEAR | YEARS }
+
+heap_org_table_clause:
+    [ ORGANIZATION HEAP ]
+
+index_org_table_clause:
+    ORGANIZATION INDEX
+    [ segment_attributes_clause ]
+    [ index_org_table_compression ]
+    [ { MAPPING TABLE | NOMAPPING } ]
+    [ index_org_overflow_clause ]
+
+index_org_table_compression:
+    { NOCOMPRESS | COMPRESS integer | COMPRESS ADVANCED [ LOW | HIGH ] }
+
+index_org_overflow_clause:
+    [ INCLUDING column_name ] OVERFLOW [ segment_attributes_clause ]
+
+external_table_clause:
+    ORGANIZATION EXTERNAL
+    ( TYPE access_driver_type
+      [ DEFAULT DIRECTORY directory ]
+      [ ACCESS PARAMETERS { ( opaque_format_spec ) | USING CLOB subquery } ]
+      [ LOCATION ( [ directory: ] 'location_specifier'
+                   [, [ directory: ] 'location_specifier' ] ... ) ]
+    )
+    [ REJECT LIMIT { integer | UNLIMITED } ]
+    [ parallel_clause ]
+    [ AS subquery ]
+
+table_properties:
+    [ column_properties ]
+    [ read_only_clause ]
+    [ indexing_clause ]
+    [ table_partitioning_clauses ]
+    [ attribute_clustering_clause ]
+    [ CACHE | NOCACHE ]
+    [ RESULT_CACHE ( MODE { DEFAULT | FORCE } ) ]
+    [ parallel_clause ]
+    [ ROWDEPENDENCIES | NOROWDEPENDENCIES ]
+    [ enable_disable_clause [ enable_disable_clause ] ... ]
+    [ row_movement_clause ]
+    [ logical_replication_clause ]
+    [ flashback_archive_clause ]
+    [ AS subquery ]
+
+column_properties:
+    { object_type_col_properties
+    | nested_table_col_properties
+    | { varray_col_properties | LOB_storage_clause }
+      [ ( LOB_partition_storage [, LOB_partition_storage ] ... ) ]
+    | XMLType_column_properties
+    | json_storage_clause
+    } [ ... ]
+
+object_type_col_properties:
+    COLUMN column substitutable_column_clause
+
+substitutable_column_clause:
+    { ELEMENT IS OF [ TYPE ] ( [ ONLY ] type )
+    | [ NOT ] SUBSTITUTABLE AT ALL LEVELS
+    }
+
+nested_table_col_properties:
+    NESTED TABLE { nested_item | COLUMN_VALUE }
+    [ substitutable_column_clause ]
+    [ LOCAL | GLOBAL ] STORE AS storage_table
+    [ ( ( object_properties )
+        [ physical_properties ]
+        [ column_properties ]
+      ) ]
+    [ RETURN [ AS ] { LOCATOR | VALUE } ]
+
+varray_col_properties:
+    VARRAY varray_item
+    { [ substitutable_column_clause ] STORE AS [ SECUREFILE | BASICFILE ] LOB
+      { [ LOB_segname ] ( LOB_storage_parameters )
+      | LOB_segname
+      }
+    | substitutable_column_clause
+    }
+
+LOB_storage_clause:
+    LOB { ( LOB_item [, LOB_item ] ... ) STORE AS [ SECUREFILE | BASICFILE ]
+          { ( LOB_storage_parameters )
+          | LOB_segname [ ( LOB_storage_parameters ) ]
+          }
+        | ( LOB_item ) STORE AS [ SECUREFILE | BASICFILE ]
+          { LOB_segname
+          | ( LOB_storage_parameters )
+          | LOB_segname ( LOB_storage_parameters )
+          }
+        }
+
+LOB_storage_parameters:
+    { { TABLESPACE tablespace | storage_clause | logging_clause } [ ... ]
+    | { ENABLE | DISABLE } STORAGE IN ROW
+    | CHUNK integer
+    | PCTVERSION integer
+    | FREEPOOLS integer
+    | LOB_retention_clause
+    | LOB_deduplicate_clause
+    | LOB_compression_clause
+    | { ENCRYPT encryption_spec | DECRYPT }
+    | { CACHE | NOCACHE | CACHE READS } [ logging_clause ]
+    } [ ... ]
+
+LOB_retention_clause:
+    RETENTION [ { MAX | MIN integer | AUTO | NONE } ]
+
+LOB_deduplicate_clause:
+    { DEDUPLICATE | KEEP_DUPLICATES }
+
+LOB_compression_clause:
+    { COMPRESS [ HIGH | MEDIUM | LOW ] | NOCOMPRESS }
+
+LOB_partition_storage:
+    PARTITION partition
+    { LOB_storage_clause | varray_col_properties } [ ... ]
+    [ ( SUBPARTITION subpartition
+        { LOB_storage_clause | varray_col_properties } [ ... ]
+      ) [ ... ]
+    ]
+
+XMLType_column_properties:
+    XMLTYPE [ COLUMN ] column
+    [ XMLType_storage ]
+    [ XMLSchema_spec ]
+
+XMLType_storage:
+    STORE AS
+    { OBJECT RELATIONAL
+    | [ SECUREFILE | BASICFILE ] { CLOB | BINARY XML }
+      [ LOB_segname [ ( LOB_storage_parameters ) ]
+      | ( LOB_storage_parameters )
+      ]
+    }
+
+XMLSchema_spec:
+    [ XMLSCHEMA XMLSchema_URL ]
+    ELEMENT { element | XMLSchema_URL # element }
+    [ STORE ALL VARRAYS AS { LOBS | TABLES } ]
+    [ { ALLOW | DISALLOW } NONSCHEMA ]
+    [ { ALLOW | DISALLOW } ANYSCHEMA ]
+
+json_storage_clause:
+    JSON ( column ) STORE AS [ json_parameters ]
+
+read_only_clause:
+    { READ ONLY | READ WRITE }
+
+indexing_clause:
+    INDEXING { ON | OFF }
+
+parallel_clause:
+    { NOPARALLEL | PARALLEL [ integer ] }
+
+enable_disable_clause:
+    { ENABLE | DISABLE } [ VALIDATE | NOVALIDATE ]
+    { UNIQUE ( column [, column ] ... )
+    | PRIMARY KEY
+    | CONSTRAINT constraint_name
+    }
+    [ using_index_clause ]
+    [ exceptions_clause ]
+    [ CASCADE ]
+    [ { KEEP | DROP } INDEX ]
+
+row_movement_clause:
+    { ENABLE | DISABLE } ROW MOVEMENT
+
+logical_replication_clause:
+    [ { ENABLE | DISABLE } LOGICAL REPLICATION ]
+
+flashback_archive_clause:
+    { FLASHBACK ARCHIVE [ flashback_archive ]
+    | NO FLASHBACK ARCHIVE
+    }
+
+table_partitioning_clauses:
+    { range_partitions
+    | list_partitions
+    | hash_partitions
+    | composite_range_partitions
+    | composite_list_partitions
+    | composite_hash_partitions
+    | reference_partitioning
+    | system_partitioning
+    | consistent_hash_partitions
+    | consistent_hash_with_subpartitions
+    | partitionset_clauses
+    }
+
+range_partitions:
+    PARTITION BY RANGE ( column [, column ] ... )
+    [ INTERVAL ( expr ) [ STORE IN ( tablespace [, tablespace ] ... ) ] ]
+    ( PARTITION [ partition ]
+      range_values_clause
+      [ table_partition_description ]
+      [, PARTITION [ partition ]
+         range_values_clause
+         [ table_partition_description ] ] ...
+    )
+
+range_values_clause:
+    VALUES LESS THAN ( { literal | MAXVALUE } [, { literal | MAXVALUE } ] ... )
+
+list_partitions:
+    PARTITION BY LIST ( column [, column ] ... )
+    [ AUTOMATIC [ STORE IN ( tablespace [, tablespace ] ... ) ] ]
+    ( PARTITION [ partition ]
+      list_values_clause
+      [ table_partition_description ]
+      [, PARTITION [ partition ]
+         list_values_clause
+         [ table_partition_description ] ] ...
+    )
+
+list_values_clause:
+    VALUES ( { list_values | DEFAULT } )
+
+list_values:
+    { literal | NULL } [, { literal | NULL } ] ...
+
+hash_partitions:
+    PARTITION BY HASH ( column [, column ] ... )
+    { individual_hash_partitions
+    | hash_partitions_by_quantity
+    }
+
+individual_hash_partitions:
+    ( PARTITION [ partition ]
+      [ read_only_clause ]
+      [ indexing_clause ]
+      [ partitioning_storage_clause ]
+      [, PARTITION [ partition ]
+         [ read_only_clause ]
+         [ indexing_clause ]
+         [ partitioning_storage_clause ] ] ...
+    )
+
+hash_partitions_by_quantity:
+    PARTITIONS hash_partition_quantity
+    [ STORE IN ( tablespace [, tablespace ] ... ) ]
+    [ table_compression | index_compression ]
+    [ OVERFLOW STORE IN ( tablespace [, tablespace ] ... ) ]
+
+composite_range_partitions:
+    PARTITION BY RANGE ( column [, column ] ... )
+    [ INTERVAL ( expr ) [ STORE IN ( tablespace [, tablespace ] ... ) ] ]
+    { subpartition_by_range | subpartition_by_list | subpartition_by_hash }
+    ( PARTITION [ partition ]
+      range_values_clause
+      [ table_partition_description ]
+      [ { range_subpartition_desc | list_subpartition_desc | individual_hash_subparts | hash_subparts_by_quantity } ]
+      [, ...] ...
+    )
+
+composite_list_partitions:
+    PARTITION BY LIST ( column [, column ] ... )
+    [ AUTOMATIC [ STORE IN ( tablespace [, tablespace ] ... ) ] ]
+    { subpartition_by_range | subpartition_by_list | subpartition_by_hash }
+    ( PARTITION [ partition ]
+      list_values_clause
+      [ table_partition_description ]
+      [ { range_subpartition_desc | list_subpartition_desc | individual_hash_subparts | hash_subparts_by_quantity } ]
+      [, ...] ...
+    )
+
+composite_hash_partitions:
+    PARTITION BY HASH ( column [, column ] ... )
+    { subpartition_by_range | subpartition_by_list | subpartition_by_hash }
+    { individual_hash_partitions
+    | hash_partitions_by_quantity
+    }
+
+subpartition_by_range:
+    SUBPARTITION BY RANGE ( column [, column ] ... )
+    [ subpartition_template ]
+
+subpartition_by_list:
+    SUBPARTITION BY LIST ( column [, column ] ... )
+    [ subpartition_template ]
+
+subpartition_by_hash:
+    SUBPARTITION BY HASH ( column [, column ] ... )
+    [ SUBPARTITIONS quantity [ STORE IN ( tablespace [, tablespace ] ... ) ]
+    | subpartition_template
+    ]
+
+subpartition_template:
+    SUBPARTITION TEMPLATE
+    ( { range_subpartition_desc | list_subpartition_desc | individual_hash_subparts }
+      [, { range_subpartition_desc | list_subpartition_desc | individual_hash_subparts } ] ...
+    )
+    | SUBPARTITION TEMPLATE hash_subpart_quantity
+
+range_subpartition_desc:
+    SUBPARTITION [ subpartition ] range_values_clause
+    [ read_only_clause ]
+    [ indexing_clause ]
+    [ partitioning_storage_clause ]
+
+list_subpartition_desc:
+    SUBPARTITION [ subpartition ] list_values_clause
+    [ read_only_clause ]
+    [ indexing_clause ]
+    [ partitioning_storage_clause ]
+
+individual_hash_subparts:
+    SUBPARTITION [ subpartition ]
+    [ read_only_clause ]
+    [ indexing_clause ]
+    [ partitioning_storage_clause ]
+
+hash_subparts_by_quantity:
+    SUBPARTITIONS quantity [ STORE IN ( tablespace [, tablespace ] ... ) ]
+
+table_partition_description:
+    [ deferred_segment_creation ]
+    [ read_only_clause ]
+    [ indexing_clause ]
+    [ segment_attributes_clause ]
+    [ table_compression | index_compression ]
+    [ inmemory_clause ]
+    [ ilm_clause ]
+    [ OVERFLOW [ segment_attributes_clause ] ]
+    [ { LOB_storage_clause | varray_col_properties | nested_table_col_properties } [ ... ] ]
+
+partitioning_storage_clause:
+    [ TABLESPACE tablespace ]
+    [ OVERFLOW [ TABLESPACE tablespace ] ]
+    [ table_compression ]
+    [ index_compression ]
+    [ inmemory_clause ]
+    [ ilm_clause ]
+    [ LOB_partitioning_storage [, LOB_partitioning_storage ] ... ]
+    [ VARRAY varray_item STORE AS [ SECUREFILE | BASICFILE ] LOB LOB_segname ]
+
+LOB_partitioning_storage:
+    LOB ( LOB_item ) STORE AS [ SECUREFILE | BASICFILE ]
+    [ LOB_segname [ ( TABLESPACE tablespace | storage_clause ) [ ... ] ]
+    | ( TABLESPACE tablespace | storage_clause ) [ ... ]
+    ]
+
+reference_partitioning:
+    PARTITION BY REFERENCE ( constraint )
+    [ ( PARTITION [ partition ]
+        [ table_partition_description ]
+        [, PARTITION [ partition ]
+           [ table_partition_description ] ] ...
+      )
+    ]
+
+system_partitioning:
+    [ PARTITION BY SYSTEM ]
+    [ PARTITIONS quantity
+    | ( PARTITION [ partition ] [ table_partition_description ]
+        [, PARTITION [ partition ] [ table_partition_description ] ] ... )
+    ]
+
+consistent_hash_partitions:
+    PARTITION BY CONSISTENT HASH ( column [, column ] ... )
+    [ PARTITIONS AUTO ] TABLESPACE SET tablespace_set
+
+consistent_hash_with_subpartitions:
+    PARTITION BY CONSISTENT HASH ( column [, column ] ... )
+    { subpartition_by_range | subpartition_by_list | subpartition_by_hash }
+    [ PARTITIONS AUTO ] TABLESPACE SET tablespace_set
+
+partitionset_clauses:
+    { range_partitionset_clause | list_partitionset_clause }
+
+range_partitionset_clause:
+    PARTITIONSET BY RANGE ( column [, column ] ... )
+    PARTITION BY CONSISTENT HASH ( column [, column ] ... )
+    [ subpartition_by_range | subpartition_by_list | subpartition_by_hash ]
+    PARTITIONS AUTO
+    ( PARTITIONSET partitionset
+      range_values_clause [ TABLESPACE SET tablespace_set ]
+      [ LOB_storage_clause ] [ subpartition_template ]
+      [, PARTITIONSET partitionset
+         range_values_clause [ TABLESPACE SET tablespace_set ]
+         [ LOB_storage_clause ] [ subpartition_template ] ] ...
+    )
+
+list_partitionset_clause:
+    PARTITIONSET BY LIST ( column )
+    PARTITION BY CONSISTENT HASH ( column [, column ] ... )
+    [ subpartition_by_range | subpartition_by_list | subpartition_by_hash ]
+    PARTITIONS AUTO
+    ( PARTITIONSET partitionset
+      list_values_clause [ TABLESPACE SET tablespace_set ]
+      [ LOB_storage_clause ] [ subpartition_template ]
+      [, PARTITIONSET partitionset
+         list_values_clause [ TABLESPACE SET tablespace_set ]
+         [ LOB_storage_clause ] [ subpartition_template ] ] ...
+    )
+
+attribute_clustering_clause:
+    CLUSTERING [ [ schema. ] table ] clustering_join
+    BY [ LINEAR ORDER | INTERLEAVED ORDER ]
+    ( clustering_columns )
+    [ clustering_when ]
+    [ zonemap_clause ]
+
+clustering_join:
+    JOIN [ schema. ] table ON ( column = column )
+    [ JOIN [ schema. ] table ON ( column = column ) ] ...
+    [ YES ON LOAD [ YES ON DATA MOVEMENT ]
+    | NO ON LOAD [ NO ON DATA MOVEMENT ]
+    ]
+
+clustering_columns:
+    { column | ( column [, column ] ... ) }
+    [ { ASC | DESC } ]
+    [, { column | ( column [, column ] ... ) } [ { ASC | DESC } ] ] ...
+
+clustering_when:
+    { YES | NO } ON LOAD
+    [ { YES | NO } ON DATA MOVEMENT ]
+
+zonemap_clause:
+    { WITH MATERIALIZED ZONEMAP [ ( column [, column ] ... ) ]
+    | WITHOUT MATERIALIZED ZONEMAP
+    }
+
+immutable_table_clauses:
+    [ immutable_table_no_drop_clause ]
+    [ immutable_table_no_delete_clause ]
+
+immutable_table_no_drop_clause:
+    NO DROP [ UNTIL integer DAYS IDLE ]
+
+immutable_table_no_delete_clause:
+    NO DELETE [ LOCKED | UNTIL integer DAYS AFTER INSERT ]
+
+blockchain_table_clauses:
+    [ blockchain_drop_table_clause ]
+    [ blockchain_row_retention_clause ]
+    [ blockchain_hash_and_data_format_clause ]
+
+blockchain_drop_table_clause:
+    NO DROP [ UNTIL integer DAYS IDLE ]
+
+blockchain_row_retention_clause:
+    NO DELETE { LOCKED | UNTIL integer DAYS AFTER INSERT }
+
+blockchain_hash_and_data_format_clause:
+    HASHING USING 'hash_algorithm'
+    VERSION 'version_string'
+
+object_table_substitution:
+    [ NOT ] SUBSTITUTABLE AT ALL LEVELS
+
+object_properties:
+    { { column | attribute }
+      [ DEFAULT expr ]
+      [ { inline_constraint | inline_ref_constraint } [ ... ] ]
+    | out_of_line_constraint
+    | out_of_line_ref_constraint
+    | supplemental_logging_props
+    } [, ... ]
+
+oid_clause:
+    OBJECT IDENTIFIER IS { SYSTEM GENERATED | PRIMARY KEY }
+
+oid_index_clause:
+    OIDINDEX [ index ] ( [ physical_attributes_clause | TABLESPACE tablespace ] [ ... ] )

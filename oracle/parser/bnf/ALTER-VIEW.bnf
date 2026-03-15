@@ -1,0 +1,18 @@
+-- Statement: ALTER VIEW
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-VIEW.html
+
+ALTER VIEW [ IF EXISTS ] [ schema. ] view
+    { COMPILE
+    | { READ ONLY | READ WRITE }
+    | ADD out_of_line_constraint
+    | MODIFY CONSTRAINT constraint_name { RELY | NORELY }
+    | DROP CONSTRAINT constraint_name
+    | { EDITIONABLE | NONEDITIONABLE }
+    | ANNOTATIONS ( annotations_clause )
+    } ;
+
+annotations_clause:
+    { ADD OR REPLACE | DROP } ANNOTATIONS ( annotation [, annotation ]... )
+
+annotation:
+    annotation_name [ annotation_value ]

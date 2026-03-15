@@ -1,0 +1,5 @@
+-- Statement: DROP JAVA
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/DROP-JAVA.html
+
+DROP JAVA { SOURCE | CLASS | RESOURCE }
+    [ IF EXISTS ] [ schema. ] object_name ;

@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"strings"
+
 	nodes "github.com/bytebase/omni/oracle/ast"
 )
 
@@ -546,13 +548,13 @@ func (p *Parser) isCreateDatabaseClauseKeyword() bool {
 }
 
 // parseCreateControlfileStmt parses a CREATE CONTROLFILE statement.
-// The CREATE keyword has already been consumed.
+// The CREATE keyword has already been consumed, and "CONTROLFILE" has been consumed by caller.
 //
 // Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/CREATE-CONTROLFILE.html
 //
 //	CREATE CONTROLFILE [ REUSE ]
 //	    [ SET ] DATABASE database_name
-//	    logfile_clause
+//	    [ LOGFILE logfile_clause [, ...] ]
 //	    { RESETLOGS | NORESETLOGS }
 //	    [ DATAFILE file_specification [, ...] ]
 //	    [ MAXLOGFILES integer ]
@@ -573,10 +575,223 @@ func (p *Parser) parseCreateControlfileStmt(start int) nodes.StmtNode {
 		Loc:        nodes.Loc{Start: start},
 	}
 
-	// Skip remaining tokens until ;/EOF — the CONTROLFILE syntax includes
-	// DATABASE name, LOGFILE, DATAFILE, etc. which are consumed by skip.
-	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+	opts := &nodes.List{}
+
+	// Optional REUSE
+	if p.isIdentLike() && p.cur.Str == "REUSE" {
+		optStart := p.pos()
 		p.advance()
+		opts.Items = append(opts.Items, &nodes.DDLOption{
+			Key: "REUSE",
+			Loc: nodes.Loc{Start: optStart, End: p.pos()},
+		})
+	}
+
+	// [ SET ] DATABASE database_name
+	isSet := false
+	if p.cur.Type == kwSET {
+		isSet = true
+		p.advance()
+	}
+	if p.cur.Type == kwDATABASE {
+		p.advance() // consume DATABASE
+		dbName := ""
+		if p.isIdentLike() || p.cur.Type == tokQIDENT {
+			dbName = p.cur.Str
+			p.advance()
+		}
+		key := "DATABASE"
+		if isSet {
+			key = "SET_DATABASE"
+		}
+		stmt.Name = &nodes.ObjectName{Name: dbName, Loc: nodes.Loc{Start: p.pos()}}
+		opts.Items = append(opts.Items, &nodes.DDLOption{
+			Key: key, Value: dbName,
+		})
+	}
+
+	// Parse remaining clauses in a loop
+	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+		optStart := p.pos()
+
+		switch {
+		// LOGFILE GROUP n 'file' SIZE ... [, GROUP n ...]
+		case p.isIdentLike() && p.cur.Str == "LOGFILE":
+			p.advance()
+			logItems := &nodes.List{}
+			for {
+				lfStart := p.pos()
+				groupNum := ""
+				if p.cur.Type == kwGROUP {
+					p.advance()
+					if p.cur.Type == tokICONST {
+						groupNum = p.cur.Str
+						p.advance()
+					}
+				}
+				var files []*nodes.DatafileClause
+				for p.cur.Type == tokSCONST {
+					df := p.parseDatafileClause()
+					if df != nil {
+						files = append(files, df)
+					}
+					if p.cur.Type == ',' {
+						// peek: could be next file or next GROUP
+						break
+					}
+				}
+				fileList := &nodes.List{}
+				for _, f := range files {
+					fileList.Items = append(fileList.Items, f)
+				}
+				logItems.Items = append(logItems.Items, &nodes.DDLOption{
+					Key: "LOGFILE_GROUP", Value: groupNum,
+					Items: fileList,
+					Loc:   nodes.Loc{Start: lfStart, End: p.pos()},
+				})
+				if p.cur.Type == ',' {
+					p.advance()
+					continue
+				}
+				break
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "LOGFILE", Items: logItems,
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// RESETLOGS
+		case p.isIdentLike() && p.cur.Str == "RESETLOGS":
+			p.advance()
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "RESETLOGS",
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// NORESETLOGS
+		case p.isIdentLike() && p.cur.Str == "NORESETLOGS":
+			p.advance()
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "NORESETLOGS",
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// DATAFILE 'file' [, ...]
+		case p.isIdentLike() && p.cur.Str == "DATAFILE":
+			p.advance()
+			fileList := &nodes.List{}
+			for p.cur.Type == tokSCONST {
+				df := p.parseDatafileClause()
+				if df != nil {
+					fileList.Items = append(fileList.Items, df)
+				}
+				if p.cur.Type == ',' {
+					p.advance()
+					continue
+				}
+				break
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "DATAFILE", Items: fileList,
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// MAXLOGFILES, MAXLOGMEMBERS, MAXLOGHISTORY, MAXDATAFILES, MAXINSTANCES
+		case p.isIdentLike() && (p.cur.Str == "MAXLOGFILES" || p.cur.Str == "MAXLOGMEMBERS" ||
+			p.cur.Str == "MAXLOGHISTORY" || p.cur.Str == "MAXDATAFILES" || p.cur.Str == "MAXINSTANCES"):
+			key := p.cur.Str
+			p.advance()
+			val := ""
+			if p.cur.Type == tokICONST {
+				val = p.cur.Str
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: key, Value: val,
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// ARCHIVELOG
+		case p.isIdentLike() && p.cur.Str == "ARCHIVELOG":
+			p.advance()
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "ARCHIVELOG",
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// NOARCHIVELOG
+		case p.isIdentLike() && p.cur.Str == "NOARCHIVELOG":
+			p.advance()
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "NOARCHIVELOG",
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// FORCE LOGGING
+		case p.cur.Type == kwFORCE:
+			p.advance()
+			if p.cur.Type == kwLOGGING {
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "FORCE_LOGGING",
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// SET STANDBY NOLOGGING FOR ...
+		case p.cur.Type == kwSET:
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "STANDBY" {
+				p.advance()
+				if p.cur.Type == kwNOLOGGING {
+					p.advance()
+				}
+				if p.cur.Type == kwFOR {
+					p.advance()
+				}
+				val := ""
+				if p.isIdentLike() && p.cur.Str == "DATA" {
+					p.advance()
+					if p.isIdentLike() && p.cur.Str == "AVAILABILITY" {
+						p.advance()
+					}
+					val = "DATA AVAILABILITY"
+				} else if p.isIdentLike() && p.cur.Str == "LOAD" {
+					p.advance()
+					if p.isIdentLike() && p.cur.Str == "PERFORMANCE" {
+						p.advance()
+					}
+					val = "LOAD PERFORMANCE"
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{
+					Key: "SET_STANDBY_NOLOGGING", Value: val,
+					Loc: nodes.Loc{Start: optStart, End: p.pos()},
+				})
+			}
+
+		// CHARACTER SET charset
+		case p.isIdentLike() && p.cur.Str == "CHARACTER":
+			p.advance()
+			if p.cur.Type == kwSET {
+				p.advance()
+			}
+			val := ""
+			if p.isIdentLike() || p.cur.Type == tokQIDENT {
+				val = p.cur.Str
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "CHARACTER_SET", Value: val,
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		default:
+			p.advance()
+		}
+	}
+
+	if len(opts.Items) > 0 {
+		stmt.Options = opts
 	}
 
 	stmt.Loc.End = p.pos()
@@ -661,19 +876,1022 @@ func (p *Parser) parseAlterDatabaseStmt(start int) nodes.StmtNode {
 
 	// Optional database name — if next token is an identifier (not a keyword clause starter)
 	if p.isIdentLike() || p.cur.Type == tokQIDENT {
-		// Check this isn't a clause keyword like MOUNT, OPEN, etc.
 		if !p.isDatabaseClauseKeyword() {
 			stmt.Name = p.parseObjectName()
 		}
 	}
 
-	// Skip remaining tokens until ;/EOF
+	opts := &nodes.List{}
+
 	for p.cur.Type != ';' && p.cur.Type != tokEOF {
-		p.advance()
+		optStart := p.pos()
+
+		switch {
+		// ---- startup_clauses ----
+		// MOUNT [ STANDBY | CLONE DATABASE ]
+		case p.isIdentLike() && p.cur.Str == "MOUNT":
+			p.advance()
+			val := ""
+			if p.isIdentLike() && p.cur.Str == "STANDBY" {
+				p.advance()
+				val = "STANDBY"
+				if p.cur.Type == kwDATABASE {
+					p.advance()
+				}
+			} else if p.isIdentLike() && p.cur.Str == "CLONE" {
+				p.advance()
+				val = "CLONE"
+				if p.cur.Type == kwDATABASE {
+					p.advance()
+				}
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "MOUNT", Value: val,
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// OPEN { [ READ WRITE ] [ RESETLOGS | NORESETLOGS ] [ UPGRADE | DOWNGRADE ] | READ ONLY }
+		case p.cur.Type == kwOPEN:
+			p.advance()
+			val := ""
+			if p.cur.Type == kwREAD {
+				p.advance()
+				if p.cur.Type == kwONLY {
+					p.advance()
+					val = "READ ONLY"
+				} else if p.cur.Type == kwWRITE {
+					p.advance()
+					val = "READ WRITE"
+				}
+			}
+			// Optional RESETLOGS/NORESETLOGS
+			if p.isIdentLike() && p.cur.Str == "RESETLOGS" {
+				val += " RESETLOGS"
+				p.advance()
+			} else if p.isIdentLike() && p.cur.Str == "NORESETLOGS" {
+				val += " NORESETLOGS"
+				p.advance()
+			}
+			// Optional UPGRADE/DOWNGRADE
+			if p.isIdentLike() && p.cur.Str == "UPGRADE" {
+				val += " UPGRADE"
+				p.advance()
+			} else if p.isIdentLike() && p.cur.Str == "DOWNGRADE" {
+				val += " DOWNGRADE"
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "OPEN", Value: strings.TrimSpace(val),
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// ---- recovery_clauses ----
+		// RECOVER ...
+		case p.isIdentLike() && p.cur.Str == "RECOVER":
+			p.advance()
+			p.parseAlterDatabaseRecoverClause(opts, optStart)
+
+		// BEGIN BACKUP
+		case p.cur.Type == kwBEGIN:
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "BACKUP" {
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "BEGIN_BACKUP",
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// END BACKUP
+		case p.cur.Type == kwEND:
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "BACKUP" {
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "END_BACKUP",
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// ---- database_file_clauses ----
+		// RENAME FILE 'f1' [, ...] TO 'f2' [, ...]
+		case p.cur.Type == kwRENAME:
+			p.advance()
+			if p.cur.Type == kwFILE {
+				p.advance()
+				fromFiles := p.parseStringList()
+				if p.cur.Type == kwTO {
+					p.advance()
+				}
+				toFiles := p.parseStringList()
+				items := &nodes.List{}
+				for _, f := range fromFiles {
+					items.Items = append(items.Items, &nodes.DDLOption{Key: "FROM", Value: f})
+				}
+				for _, f := range toFiles {
+					items.Items = append(items.Items, &nodes.DDLOption{Key: "TO", Value: f})
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{
+					Key: "RENAME_FILE", Items: items,
+					Loc: nodes.Loc{Start: optStart, End: p.pos()},
+				})
+			} else if p.isIdentLike() && p.cur.Str == "GLOBAL_NAME" {
+				// RENAME GLOBAL_NAME TO database.domain
+				p.advance() // GLOBAL_NAME
+				if p.cur.Type == kwTO {
+					p.advance()
+				}
+				val := ""
+				for p.isIdentLike() || p.cur.Type == tokQIDENT || p.cur.Type == '.' {
+					val += p.cur.Str
+					p.advance()
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{
+					Key: "RENAME_GLOBAL_NAME", Value: val,
+					Loc: nodes.Loc{Start: optStart, End: p.pos()},
+				})
+			}
+
+		// CREATE DATAFILE 'file' [AS 'newfile']
+		case p.cur.Type == kwCREATE:
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "DATAFILE" {
+				p.advance()
+				val := ""
+				if p.cur.Type == tokSCONST {
+					val = p.cur.Str
+					p.advance()
+				}
+				asVal := ""
+				if p.cur.Type == kwAS {
+					p.advance()
+					if p.cur.Type == tokSCONST {
+						asVal = p.cur.Str
+						p.advance()
+					}
+				}
+				items := &nodes.List{}
+				if asVal != "" {
+					items.Items = append(items.Items, &nodes.DDLOption{Key: "AS", Value: asVal})
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{
+					Key: "CREATE_DATAFILE", Value: val,
+					Items: items,
+					Loc:   nodes.Loc{Start: optStart, End: p.pos()},
+				})
+			}
+
+		// DATAFILE 'file' { ONLINE | OFFLINE | RESIZE | AUTOEXTEND | END BACKUP }
+		case p.isIdentLike() && p.cur.Str == "DATAFILE":
+			p.advance()
+			file := ""
+			if p.cur.Type == tokSCONST {
+				file = p.cur.Str
+				p.advance()
+			}
+			p.parseAlterDatafileTempfileAction(opts, optStart, "DATAFILE", file)
+
+		// TEMPFILE 'file' { ONLINE | OFFLINE | RESIZE | AUTOEXTEND | DROP | END BACKUP }
+		case p.isIdentLike() && p.cur.Str == "TEMPFILE":
+			p.advance()
+			file := ""
+			if p.cur.Type == tokSCONST {
+				file = p.cur.Str
+				p.advance()
+			}
+			p.parseAlterDatafileTempfileAction(opts, optStart, "TEMPFILE", file)
+
+		// MOVE DATAFILE 'old' TO 'new'
+		case p.isIdentLike() && p.cur.Str == "MOVE":
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "DATAFILE" {
+				p.advance()
+			}
+			oldFile := ""
+			if p.cur.Type == tokSCONST {
+				oldFile = p.cur.Str
+				p.advance()
+			}
+			if p.cur.Type == kwTO {
+				p.advance()
+			}
+			newFile := ""
+			if p.cur.Type == tokSCONST {
+				newFile = p.cur.Str
+				p.advance()
+			}
+			items := &nodes.List{}
+			items.Items = append(items.Items, &nodes.DDLOption{Key: "TO", Value: newFile})
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "MOVE_DATAFILE", Value: oldFile,
+				Items: items,
+				Loc:   nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// ---- logfile_clauses ----
+		// ADD [STANDBY] LOGFILE ...
+		case p.cur.Type == kwADD:
+			p.advance()
+			standby := false
+			if p.isIdentLike() && p.cur.Str == "STANDBY" {
+				standby = true
+				p.advance()
+			}
+			if p.isIdentLike() && p.cur.Str == "LOGFILE" {
+				p.advance()
+				prefix := "ADD_LOGFILE"
+				if standby {
+					prefix = "ADD_STANDBY_LOGFILE"
+				}
+				// ADD LOGFILE MEMBER 'file' TO GROUP n
+				if p.isIdentLike() && p.cur.Str == "MEMBER" {
+					p.advance()
+					memberFile := ""
+					if p.cur.Type == tokSCONST {
+						memberFile = p.cur.Str
+						p.advance()
+					}
+					if p.cur.Type == kwTO {
+						p.advance()
+					}
+					groupNum := ""
+					if p.cur.Type == kwGROUP {
+						p.advance()
+						if p.cur.Type == tokICONST {
+							groupNum = p.cur.Str
+							p.advance()
+						}
+					}
+					opts.Items = append(opts.Items, &nodes.DDLOption{
+						Key: prefix + "_MEMBER", Value: memberFile,
+						Items: &nodes.List{Items: []nodes.Node{&nodes.DDLOption{Key: "GROUP", Value: groupNum}}},
+						Loc:   nodes.Loc{Start: optStart, End: p.pos()},
+					})
+				} else {
+					// ADD LOGFILE [GROUP n] 'file' SIZE ...
+					logItems := &nodes.List{}
+					for {
+						lfStart := p.pos()
+						groupNum := ""
+						if p.cur.Type == kwGROUP {
+							p.advance()
+							if p.cur.Type == tokICONST {
+								groupNum = p.cur.Str
+								p.advance()
+							}
+						}
+						var files []*nodes.DatafileClause
+						for p.cur.Type == tokSCONST {
+							df := p.parseDatafileClause()
+							if df != nil {
+								files = append(files, df)
+							}
+							if p.cur.Type == ',' {
+								break
+							}
+						}
+						fileList := &nodes.List{}
+						for _, f := range files {
+							fileList.Items = append(fileList.Items, f)
+						}
+						logItems.Items = append(logItems.Items, &nodes.DDLOption{
+							Key: "GROUP", Value: groupNum,
+							Items: fileList,
+							Loc:   nodes.Loc{Start: lfStart, End: p.pos()},
+						})
+						if p.cur.Type == ',' {
+							p.advance()
+							continue
+						}
+						break
+					}
+					opts.Items = append(opts.Items, &nodes.DDLOption{
+						Key: prefix, Items: logItems,
+						Loc: nodes.Loc{Start: optStart, End: p.pos()},
+					})
+				}
+			} else if p.isIdentLike() && p.cur.Str == "SUPPLEMENTAL" {
+				// ADD SUPPLEMENTAL LOG DATA
+				p.advance() // SUPPLEMENTAL
+				if p.cur.Type == kwLOG {
+					p.advance()
+				}
+				if p.isIdentLike() && p.cur.Str == "DATA" {
+					p.advance()
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{
+					Key: "ADD_SUPPLEMENTAL_LOG_DATA",
+					Loc: nodes.Loc{Start: optStart, End: p.pos()},
+				})
+			}
+
+		// DROP [STANDBY] LOGFILE ...
+		case p.cur.Type == kwDROP:
+			p.advance()
+			standby := false
+			if p.isIdentLike() && p.cur.Str == "STANDBY" {
+				standby = true
+				p.advance()
+			}
+			if p.isIdentLike() && p.cur.Str == "LOGFILE" {
+				p.advance()
+				prefix := "DROP_LOGFILE"
+				if standby {
+					prefix = "DROP_STANDBY_LOGFILE"
+				}
+				if p.isIdentLike() && p.cur.Str == "MEMBER" {
+					p.advance()
+					memberFile := ""
+					if p.cur.Type == tokSCONST {
+						memberFile = p.cur.Str
+						p.advance()
+					}
+					opts.Items = append(opts.Items, &nodes.DDLOption{
+						Key: prefix + "_MEMBER", Value: memberFile,
+						Loc: nodes.Loc{Start: optStart, End: p.pos()},
+					})
+				} else {
+					// DROP LOGFILE GROUP n
+					groupNum := ""
+					if p.cur.Type == kwGROUP {
+						p.advance()
+						if p.cur.Type == tokICONST {
+							groupNum = p.cur.Str
+							p.advance()
+						}
+					}
+					opts.Items = append(opts.Items, &nodes.DDLOption{
+						Key: prefix, Value: groupNum,
+						Loc: nodes.Loc{Start: optStart, End: p.pos()},
+					})
+				}
+			} else if p.isIdentLike() && p.cur.Str == "SUPPLEMENTAL" {
+				// DROP SUPPLEMENTAL LOG DATA
+				p.advance()
+				if p.cur.Type == kwLOG {
+					p.advance()
+				}
+				if p.isIdentLike() && p.cur.Str == "DATA" {
+					p.advance()
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{
+					Key: "DROP_SUPPLEMENTAL_LOG_DATA",
+					Loc: nodes.Loc{Start: optStart, End: p.pos()},
+				})
+			}
+
+		// CLEAR [UNARCHIVED] LOGFILE GROUP n
+		case p.isIdentLike() && p.cur.Str == "CLEAR":
+			p.advance()
+			unarchived := false
+			if p.isIdentLike() && p.cur.Str == "UNARCHIVED" {
+				unarchived = true
+				p.advance()
+			}
+			if p.isIdentLike() && p.cur.Str == "LOGFILE" {
+				p.advance()
+			}
+			groupNum := ""
+			if p.cur.Type == kwGROUP {
+				p.advance()
+				if p.cur.Type == tokICONST {
+					groupNum = p.cur.Str
+					p.advance()
+				}
+			}
+			key := "CLEAR_LOGFILE"
+			if unarchived {
+				key = "CLEAR_UNARCHIVED_LOGFILE"
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: key, Value: groupNum,
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// SWITCH ALL LOGFILE
+		case p.isIdentLike() && p.cur.Str == "SWITCH":
+			p.advance()
+			if p.cur.Type == kwALL {
+				p.advance()
+			}
+			if p.isIdentLike() && p.cur.Str == "LOGFILE" {
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "SWITCH_LOGFILE",
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// ---- controlfile_clauses ----
+		// BACKUP CONTROLFILE TO { 'filename' [REUSE] | TRACE [AS 'filename' [REUSE]] }
+		case p.isIdentLike() && p.cur.Str == "BACKUP":
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "CONTROLFILE" {
+				p.advance()
+			}
+			if p.cur.Type == kwTO {
+				p.advance()
+			}
+			if p.isIdentLike() && p.cur.Str == "TRACE" {
+				p.advance()
+				val := ""
+				if p.cur.Type == kwAS {
+					p.advance()
+					if p.cur.Type == tokSCONST {
+						val = p.cur.Str
+						p.advance()
+					}
+				}
+				if p.isIdentLike() && p.cur.Str == "REUSE" {
+					p.advance()
+				}
+				// Optional RESETLOGS/NORESETLOGS
+				if p.isIdentLike() && (p.cur.Str == "RESETLOGS" || p.cur.Str == "NORESETLOGS") {
+					p.advance()
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{
+					Key: "BACKUP_CONTROLFILE_TRACE", Value: val,
+					Loc: nodes.Loc{Start: optStart, End: p.pos()},
+				})
+			} else if p.cur.Type == tokSCONST {
+				file := p.cur.Str
+				p.advance()
+				if p.isIdentLike() && p.cur.Str == "REUSE" {
+					p.advance()
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{
+					Key: "BACKUP_CONTROLFILE", Value: file,
+					Loc: nodes.Loc{Start: optStart, End: p.pos()},
+				})
+			}
+
+		// ---- standby_database_clauses ----
+		// ACTIVATE [PHYSICAL | LOGICAL] STANDBY DATABASE [FINISH APPLY]
+		case p.isIdentLike() && p.cur.Str == "ACTIVATE":
+			p.advance()
+			val := ""
+			if p.isIdentLike() && (p.cur.Str == "PHYSICAL" || p.cur.Str == "LOGICAL") {
+				val = p.cur.Str
+				p.advance()
+			}
+			if p.isIdentLike() && p.cur.Str == "STANDBY" {
+				p.advance()
+			}
+			if p.cur.Type == kwDATABASE {
+				p.advance()
+			}
+			if p.isIdentLike() && p.cur.Str == "FINISH" {
+				p.advance()
+				if p.isIdentLike() && p.cur.Str == "APPLY" {
+					p.advance()
+				}
+				val += " FINISH APPLY"
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "ACTIVATE_STANDBY", Value: strings.TrimSpace(val),
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// SET STANDBY DATABASE TO MAXIMIZE { PROTECTION | AVAILABILITY | PERFORMANCE }
+		// SET DEFAULT { BIGFILE | SMALLFILE } TABLESPACE
+		// SET TIME_ZONE = 'value'
+		case p.cur.Type == kwSET:
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "STANDBY" {
+				p.advance()
+				if p.cur.Type == kwDATABASE {
+					p.advance()
+				}
+				if p.cur.Type == kwTO {
+					p.advance()
+				}
+				if p.isIdentLike() && p.cur.Str == "MAXIMIZE" {
+					p.advance()
+					val := ""
+					if p.isIdentLike() {
+						val = p.cur.Str // PROTECTION, AVAILABILITY, PERFORMANCE
+						p.advance()
+					}
+					opts.Items = append(opts.Items, &nodes.DDLOption{
+						Key: "SET_STANDBY_MAXIMIZE", Value: val,
+						Loc: nodes.Loc{Start: optStart, End: p.pos()},
+					})
+				}
+			} else if p.cur.Type == kwDEFAULT {
+				p.advance()
+				val := ""
+				if p.isIdentLike() && (p.cur.Str == "BIGFILE" || p.cur.Str == "SMALLFILE") {
+					val = p.cur.Str
+					p.advance()
+				}
+				if p.isIdentLike() && p.cur.Str == "TABLESPACE" {
+					p.advance()
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{
+					Key: "SET_DEFAULT_TABLESPACE_TYPE", Value: val,
+					Loc: nodes.Loc{Start: optStart, End: p.pos()},
+				})
+			} else if p.isIdentLike() && p.cur.Str == "TIME_ZONE" {
+				p.advance()
+				if p.cur.Type == '=' {
+					p.advance()
+				}
+				val := ""
+				if p.cur.Type == tokSCONST {
+					val = p.cur.Str
+					p.advance()
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{
+					Key: "SET_TIME_ZONE", Value: val,
+					Loc: nodes.Loc{Start: optStart, End: p.pos()},
+				})
+			}
+
+		// REGISTER [OR REPLACE] [PHYSICAL | LOGICAL] LOGFILE 'file' [, ...]
+		case p.isIdentLike() && p.cur.Str == "REGISTER":
+			p.advance()
+			if p.cur.Type == kwOR {
+				p.advance()
+				if p.cur.Type == kwREPLACE {
+					p.advance()
+				}
+			}
+			if p.isIdentLike() && (p.cur.Str == "PHYSICAL" || p.cur.Str == "LOGICAL") {
+				p.advance()
+			}
+			if p.isIdentLike() && p.cur.Str == "LOGFILE" {
+				p.advance()
+			}
+			fileList := &nodes.List{}
+			for p.cur.Type == tokSCONST {
+				df := p.parseDatafileClause()
+				if df != nil {
+					fileList.Items = append(fileList.Items, df)
+				}
+				if p.cur.Type == ',' {
+					p.advance()
+					continue
+				}
+				break
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "REGISTER_LOGFILE", Items: fileList,
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// CONVERT TO [PHYSICAL | SNAPSHOT] STANDBY
+		case p.isIdentLike() && p.cur.Str == "CONVERT":
+			p.advance()
+			if p.cur.Type == kwTO {
+				p.advance()
+			}
+			val := ""
+			if p.isIdentLike() && (p.cur.Str == "PHYSICAL" || p.cur.Str == "SNAPSHOT") {
+				val = p.cur.Str
+				p.advance()
+			}
+			if p.isIdentLike() && p.cur.Str == "STANDBY" {
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "CONVERT_TO_STANDBY", Value: val,
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// ---- default_settings_clauses ----
+		// DEFAULT TABLESPACE name | DEFAULT TEMPORARY TABLESPACE name | DEFAULT EDITION name
+		case p.cur.Type == kwDEFAULT:
+			p.advance()
+			if p.cur.Type == kwTEMPORARY {
+				p.advance()
+				if p.isIdentLike() && p.cur.Str == "TABLESPACE" {
+					p.advance()
+				}
+				tsName := ""
+				if p.isIdentLike() || p.cur.Type == tokQIDENT {
+					tsName = p.cur.Str
+					p.advance()
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{
+					Key: "DEFAULT_TEMPORARY_TABLESPACE", Value: tsName,
+					Loc: nodes.Loc{Start: optStart, End: p.pos()},
+				})
+			} else if p.isIdentLike() && p.cur.Str == "TABLESPACE" {
+				p.advance()
+				tsName := ""
+				if p.isIdentLike() || p.cur.Type == tokQIDENT {
+					tsName = p.cur.Str
+					p.advance()
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{
+					Key: "DEFAULT_TABLESPACE", Value: tsName,
+					Loc: nodes.Loc{Start: optStart, End: p.pos()},
+				})
+			} else if p.isIdentLike() && p.cur.Str == "EDITION" {
+				p.advance()
+				edName := ""
+				if p.isIdentLike() || p.cur.Type == tokQIDENT {
+					edName = p.cur.Str
+					p.advance()
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{
+					Key: "DEFAULT_EDITION", Value: edName,
+					Loc: nodes.Loc{Start: optStart, End: p.pos()},
+				})
+			} else {
+				p.advance()
+			}
+
+		// ENABLE { BLOCK CHANGE TRACKING | INSTANCE 'name' }
+		case p.cur.Type == kwENABLE:
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "INSTANCE" {
+				p.advance()
+				val := ""
+				if p.cur.Type == tokSCONST {
+					val = p.cur.Str
+					p.advance()
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{
+					Key: "ENABLE_INSTANCE", Value: val,
+					Loc: nodes.Loc{Start: optStart, End: p.pos()},
+				})
+			} else if p.cur.Type == kwBLOCK {
+				p.advance() // BLOCK
+				if p.isIdentLike() && p.cur.Str == "CHANGE" {
+					p.advance()
+				}
+				if p.isIdentLike() && p.cur.Str == "TRACKING" {
+					p.advance()
+				}
+				// Optional USING FILE 'filename' [REUSE]
+				if p.cur.Type == kwUSING {
+					p.advance()
+					if p.cur.Type == kwFILE {
+						p.advance()
+					}
+					if p.cur.Type == tokSCONST {
+						p.advance()
+					}
+					if p.isIdentLike() && p.cur.Str == "REUSE" {
+						p.advance()
+					}
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{
+					Key: "ENABLE_BLOCK_CHANGE_TRACKING",
+					Loc: nodes.Loc{Start: optStart, End: p.pos()},
+				})
+			}
+
+		// DISABLE { BLOCK CHANGE TRACKING | INSTANCE 'name' }
+		case p.cur.Type == kwDISABLE:
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "INSTANCE" {
+				p.advance()
+				val := ""
+				if p.cur.Type == tokSCONST {
+					val = p.cur.Str
+					p.advance()
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{
+					Key: "DISABLE_INSTANCE", Value: val,
+					Loc: nodes.Loc{Start: optStart, End: p.pos()},
+				})
+			} else if p.cur.Type == kwBLOCK {
+				p.advance()
+				if p.isIdentLike() && p.cur.Str == "CHANGE" {
+					p.advance()
+				}
+				if p.isIdentLike() && p.cur.Str == "TRACKING" {
+					p.advance()
+				}
+				opts.Items = append(opts.Items, &nodes.DDLOption{
+					Key: "DISABLE_BLOCK_CHANGE_TRACKING",
+					Loc: nodes.Loc{Start: optStart, End: p.pos()},
+				})
+			}
+
+		// FLASHBACK { ON | OFF }
+		case p.cur.Type == kwFLASHBACK:
+			p.advance()
+			val := ""
+			if p.cur.Type == kwON || (p.isIdentLike() && p.cur.Str == "ON") {
+				val = "ON"
+				p.advance()
+			} else if p.isIdentLike() && p.cur.Str == "OFF" {
+				val = "OFF"
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "FLASHBACK", Value: val,
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// GUARD { ALL | STANDBY | NONE }
+		case p.isIdentLike() && p.cur.Str == "GUARD":
+			p.advance()
+			val := ""
+			if p.cur.Type == kwALL {
+				val = "ALL"
+				p.advance()
+			} else if p.isIdentLike() && (p.cur.Str == "STANDBY" || p.cur.Str == "NONE") {
+				val = p.cur.Str
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "GUARD", Value: val,
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// FORCE LOGGING
+		case p.cur.Type == kwFORCE:
+			p.advance()
+			if p.cur.Type == kwLOGGING {
+				p.advance()
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "FORCE_LOGGING",
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// SUSPEND / RESUME
+		case p.isIdentLike() && p.cur.Str == "SUSPEND":
+			p.advance()
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "SUSPEND",
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		case p.isIdentLike() && p.cur.Str == "RESUME":
+			p.advance()
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "RESUME",
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		// PREPARE
+		case p.isIdentLike() && p.cur.Str == "PREPARE":
+			p.advance()
+			// PREPARE MIRROR COPY name WITH TAG 'tag' [EXTERNAL]
+			for p.cur.Type != ';' && p.cur.Type != tokEOF {
+				if p.isIdentLike() || p.cur.Type == tokSCONST || p.cur.Type == tokQIDENT {
+					p.advance()
+				} else {
+					break
+				}
+			}
+			opts.Items = append(opts.Items, &nodes.DDLOption{
+				Key: "PREPARE",
+				Loc: nodes.Loc{Start: optStart, End: p.pos()},
+			})
+
+		default:
+			// Unknown token, advance to avoid infinite loop
+			p.advance()
+		}
+	}
+
+	if len(opts.Items) > 0 {
+		stmt.Options = opts
 	}
 
 	stmt.Loc.End = p.pos()
 	return stmt
+}
+
+// parseAlterDatabaseRecoverClause parses the RECOVER sub-clauses of ALTER DATABASE.
+//
+//	RECOVER [ AUTOMATIC ] [ FROM 'location' ] DATABASE
+//	  [ UNTIL { CANCEL | TIME date | CHANGE integer } ]
+//	  [ USING BACKUP CONTROLFILE ]
+//	RECOVER [ AUTOMATIC ] [ FROM 'location' ] [ STANDBY ] DATAFILE 'file' [, ...]
+//	RECOVER [ AUTOMATIC ] [ FROM 'location' ] [ STANDBY ] TABLESPACE name [, ...]
+//	RECOVER MANAGED STANDBY DATABASE { CANCEL | DISCONNECT [FROM SESSION] | FINISH | ... }
+func (p *Parser) parseAlterDatabaseRecoverClause(opts *nodes.List, optStart int) {
+	// RECOVER already consumed
+	val := ""
+
+	// AUTOMATIC
+	if p.isIdentLike() && p.cur.Str == "AUTOMATIC" {
+		val = "AUTOMATIC "
+		p.advance()
+	}
+
+	// MANAGED STANDBY DATABASE ...
+	if p.isIdentLike() && p.cur.Str == "MANAGED" {
+		p.advance()
+		if p.isIdentLike() && p.cur.Str == "STANDBY" {
+			p.advance()
+		}
+		if p.cur.Type == kwDATABASE {
+			p.advance()
+		}
+		action := ""
+		// Parse managed standby options
+		for p.cur.Type != ';' && p.cur.Type != tokEOF {
+			if p.isIdentLike() && p.cur.Str == "CANCEL" {
+				action = "CANCEL"
+				p.advance()
+				break
+			} else if p.isIdentLike() && p.cur.Str == "DISCONNECT" {
+				action = "DISCONNECT"
+				p.advance()
+				if p.cur.Type == kwFROM {
+					p.advance()
+					if p.cur.Type == kwSESSION {
+						p.advance()
+					}
+					action = "DISCONNECT FROM SESSION"
+				}
+				break
+			} else if p.isIdentLike() && p.cur.Str == "FINISH" {
+				action = "FINISH"
+				p.advance()
+				break
+			} else {
+				break
+			}
+		}
+		opts.Items = append(opts.Items, &nodes.DDLOption{
+			Key: "RECOVER_MANAGED_STANDBY", Value: action,
+			Loc: nodes.Loc{Start: optStart, End: p.pos()},
+		})
+		return
+	}
+
+	// FROM 'location'
+	if p.cur.Type == kwFROM {
+		p.advance()
+		if p.cur.Type == tokSCONST {
+			p.advance()
+		}
+	}
+
+	// DATABASE
+	if p.cur.Type == kwDATABASE {
+		p.advance()
+		// Optional UNTIL { CANCEL | TIME date | CHANGE integer }
+		if p.isIdentLike() && p.cur.Str == "UNTIL" {
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "CANCEL" {
+				p.advance()
+			} else if p.isIdentLike() && p.cur.Str == "TIME" {
+				p.advance()
+				if p.cur.Type == tokSCONST {
+					p.advance()
+				}
+			} else if p.isIdentLike() && p.cur.Str == "CHANGE" {
+				p.advance()
+				if p.cur.Type == tokICONST {
+					p.advance()
+				}
+			}
+		}
+		// Optional USING BACKUP CONTROLFILE
+		if p.cur.Type == kwUSING {
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "BACKUP" {
+				p.advance()
+			}
+			if p.isIdentLike() && p.cur.Str == "CONTROLFILE" {
+				p.advance()
+			}
+		}
+		opts.Items = append(opts.Items, &nodes.DDLOption{
+			Key: "RECOVER_DATABASE", Value: strings.TrimSpace(val),
+			Loc: nodes.Loc{Start: optStart, End: p.pos()},
+		})
+		return
+	}
+
+	// STANDBY
+	if p.isIdentLike() && p.cur.Str == "STANDBY" {
+		p.advance()
+	}
+
+	// DATAFILE 'file' [, ...]
+	if p.isIdentLike() && p.cur.Str == "DATAFILE" {
+		p.advance()
+		file := ""
+		if p.cur.Type == tokSCONST {
+			file = p.cur.Str
+			p.advance()
+		}
+		opts.Items = append(opts.Items, &nodes.DDLOption{
+			Key: "RECOVER_DATAFILE", Value: file,
+			Loc: nodes.Loc{Start: optStart, End: p.pos()},
+		})
+		return
+	}
+
+	// TABLESPACE name [, ...]
+	if p.isIdentLike() && p.cur.Str == "TABLESPACE" {
+		p.advance()
+		tsName := ""
+		if p.isIdentLike() || p.cur.Type == tokQIDENT {
+			tsName = p.cur.Str
+			p.advance()
+		}
+		opts.Items = append(opts.Items, &nodes.DDLOption{
+			Key: "RECOVER_TABLESPACE", Value: tsName,
+			Loc: nodes.Loc{Start: optStart, End: p.pos()},
+		})
+		return
+	}
+
+	// Fallback: generic RECOVER
+	opts.Items = append(opts.Items, &nodes.DDLOption{
+		Key: "RECOVER", Value: strings.TrimSpace(val),
+		Loc: nodes.Loc{Start: optStart, End: p.pos()},
+	})
+}
+
+// parseAlterDatafileTempfileAction parses actions after DATAFILE/TEMPFILE 'file' in ALTER DATABASE.
+//
+//	{ ONLINE | OFFLINE [ FOR DROP ] | RESIZE size_clause | AUTOEXTEND ... | END BACKUP | DROP [INCLUDING DATAFILES] }
+func (p *Parser) parseAlterDatafileTempfileAction(opts *nodes.List, optStart int, prefix string, file string) {
+	switch {
+	case p.cur.Type == kwONLINE:
+		p.advance()
+		opts.Items = append(opts.Items, &nodes.DDLOption{
+			Key: prefix + "_ONLINE", Value: file,
+			Loc: nodes.Loc{Start: optStart, End: p.pos()},
+		})
+	case p.cur.Type == kwOFFLINE:
+		p.advance()
+		// Optional FOR DROP
+		if p.cur.Type == kwFOR {
+			p.advance()
+			if p.cur.Type == kwDROP {
+				p.advance()
+			}
+		}
+		opts.Items = append(opts.Items, &nodes.DDLOption{
+			Key: prefix + "_OFFLINE", Value: file,
+			Loc: nodes.Loc{Start: optStart, End: p.pos()},
+		})
+	case p.isIdentLike() && p.cur.Str == "RESIZE":
+		p.advance()
+		size := p.parseSizeValue()
+		opts.Items = append(opts.Items, &nodes.DDLOption{
+			Key: prefix + "_RESIZE", Value: file,
+			Items: &nodes.List{Items: []nodes.Node{&nodes.DDLOption{Key: "SIZE", Value: size}}},
+			Loc:   nodes.Loc{Start: optStart, End: p.pos()},
+		})
+	case p.isIdentLike() && p.cur.Str == "AUTOEXTEND":
+		ac := p.parseAutoextendClause()
+		items := &nodes.List{}
+		if ac != nil {
+			items.Items = append(items.Items, ac)
+		}
+		opts.Items = append(opts.Items, &nodes.DDLOption{
+			Key: prefix + "_AUTOEXTEND", Value: file,
+			Items: items,
+			Loc:   nodes.Loc{Start: optStart, End: p.pos()},
+		})
+	case p.cur.Type == kwEND:
+		p.advance()
+		if p.isIdentLike() && p.cur.Str == "BACKUP" {
+			p.advance()
+		}
+		opts.Items = append(opts.Items, &nodes.DDLOption{
+			Key: prefix + "_END_BACKUP", Value: file,
+			Loc: nodes.Loc{Start: optStart, End: p.pos()},
+		})
+	case p.cur.Type == kwDROP:
+		p.advance()
+		if p.isIdentLike() && p.cur.Str == "INCLUDING" {
+			p.advance()
+			if p.isIdentLike() && p.cur.Str == "DATAFILES" {
+				p.advance()
+			}
+		}
+		opts.Items = append(opts.Items, &nodes.DDLOption{
+			Key: prefix + "_DROP", Value: file,
+			Loc: nodes.Loc{Start: optStart, End: p.pos()},
+		})
+	default:
+		// unknown action, still record the file reference
+		opts.Items = append(opts.Items, &nodes.DDLOption{
+			Key: prefix, Value: file,
+			Loc: nodes.Loc{Start: optStart, End: p.pos()},
+		})
+	}
+}
+
+// parseStringList parses a comma-separated list of string constants.
+func (p *Parser) parseStringList() []string {
+	var result []string
+	for p.cur.Type == tokSCONST {
+		result = append(result, p.cur.Str)
+		p.advance()
+		if p.cur.Type == ',' {
+			p.advance()
+			continue
+		}
+		break
+	}
+	return result
 }
 
 // parseAlterDatabaseDictionaryStmt parses an ALTER DATABASE DICTIONARY statement.
@@ -693,9 +1911,49 @@ func (p *Parser) parseAlterDatabaseDictionaryStmt(start int) nodes.StmtNode {
 		Loc:        nodes.Loc{Start: start},
 	}
 
-	// Skip remaining tokens until ;/EOF
-	for p.cur.Type != ';' && p.cur.Type != tokEOF {
+	opts := &nodes.List{}
+	optStart := p.pos()
+
+	switch {
+	// ENCRYPT CREDENTIALS
+	case p.isIdentLike() && p.cur.Str == "ENCRYPT":
 		p.advance()
+		if p.isIdentLike() && p.cur.Str == "CREDENTIALS" {
+			p.advance()
+		}
+		opts.Items = append(opts.Items, &nodes.DDLOption{
+			Key: "ENCRYPT_CREDENTIALS",
+			Loc: nodes.Loc{Start: optStart, End: p.pos()},
+		})
+
+	// REKEY CREDENTIALS
+	case p.isIdentLike() && p.cur.Str == "REKEY":
+		p.advance()
+		if p.isIdentLike() && p.cur.Str == "CREDENTIALS" {
+			p.advance()
+		}
+		opts.Items = append(opts.Items, &nodes.DDLOption{
+			Key: "REKEY_CREDENTIALS",
+			Loc: nodes.Loc{Start: optStart, End: p.pos()},
+		})
+
+	// DELETE CREDENTIALS KEY
+	case p.cur.Type == kwDELETE:
+		p.advance()
+		if p.isIdentLike() && p.cur.Str == "CREDENTIALS" {
+			p.advance()
+		}
+		if p.cur.Type == kwKEY {
+			p.advance()
+		}
+		opts.Items = append(opts.Items, &nodes.DDLOption{
+			Key: "DELETE_CREDENTIALS_KEY",
+			Loc: nodes.Loc{Start: optStart, End: p.pos()},
+		})
+	}
+
+	if len(opts.Items) > 0 {
+		stmt.Options = opts
 	}
 
 	stmt.Loc.End = p.pos()
@@ -708,7 +1966,8 @@ func (p *Parser) isDatabaseClauseKeyword() bool {
 	switch p.cur.Type {
 	case kwOPEN, kwFORCE, kwSET, kwDEFAULT, kwADD, kwDROP,
 		kwENABLE, kwDISABLE, kwRENAME, kwCREATE,
-		kwFLASHBACK, kwNOLOGGING, kwLOGGING:
+		kwFLASHBACK, kwNOLOGGING, kwLOGGING,
+		kwBEGIN, kwEND, kwONLINE, kwOFFLINE:
 		return true
 	}
 	if p.isIdentLike() {
@@ -716,7 +1975,8 @@ func (p *Parser) isDatabaseClauseKeyword() bool {
 		case "MOUNT", "RECOVER", "RESETLOGS", "NORESETLOGS",
 			"ARCHIVELOG", "NOARCHIVELOG", "ACTIVATE", "GUARD",
 			"STANDBY", "CLEAR", "CONVERT", "DISMOUNT", "PREPARE",
-			"BACKUP":
+			"BACKUP", "DATAFILE", "TEMPFILE", "MOVE", "SWITCH",
+			"REGISTER", "SUSPEND", "RESUME":
 			return true
 		}
 	}

@@ -1,0 +1,11 @@
+-- Statement: CREATE SCHEMA
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-SCHEMA.html
+
+CREATE SCHEMA AUTHORIZATION schema
+    { create_table_statement
+    | create_view_statement
+    | grant_statement
+    } [ { create_table_statement
+        | create_view_statement
+        | grant_statement
+        } ] ... ;

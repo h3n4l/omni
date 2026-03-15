@@ -1,0 +1,154 @@
+-- Statement: ALTER INDEX
+-- Source: https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/ALTER-INDEX.html
+
+ALTER INDEX [ IF EXISTS ] [ schema. ] index_name
+    { deallocate_unused_clause
+    | allocate_extent_clause
+    | shrink_clause
+    | parallel_clause
+    | physical_attributes_clause
+    | logging_clause
+    | partial_index_clause
+    | index_ilm_clause
+    | rebuild_clause
+    | alter_index_partitioning
+    | PARAMETERS ( 'odci_parameters' )
+    | XMLIndex_parameters_clause
+    | { DEFERRED | IMMEDIATE } INVALIDATION
+    | COMPILE
+    | ENABLE
+    | DISABLE
+    | { USABLE | UNUSABLE } [ ONLINE ]
+    | { VISIBLE | INVISIBLE }
+    | RENAME TO new_index_name
+    | COALESCE [ CLEANUP [ ONLY ] ] [ parallel_clause ]
+    | MONITORING USAGE
+    | NOMONITORING USAGE
+    | UPDATE BLOCK REFERENCES
+    | annotations_clause
+    } ;
+
+deallocate_unused_clause:
+    DEALLOCATE UNUSED [ KEEP size_clause ]
+
+allocate_extent_clause:
+    ALLOCATE EXTENT [ ( { SIZE size_clause
+                        | DATAFILE 'filename'
+                        | INSTANCE integer
+                        } ...
+                      ) ]
+
+shrink_clause:
+    SHRINK SPACE [ COMPACT ] [ CASCADE ]
+
+parallel_clause:
+    { NOPARALLEL | PARALLEL [ integer ] }
+
+physical_attributes_clause:
+    [ PCTFREE integer ]
+    [ PCTUSED integer ]
+    [ INITRANS integer ]
+    [ MAXTRANS integer ]
+    [ storage_clause ]
+
+logging_clause:
+    { LOGGING | NOLOGGING }
+
+partial_index_clause:
+    INDEXING { FULL | PARTIAL }
+
+rebuild_clause:
+    REBUILD
+    [ PARTITION partition_name | SUBPARTITION subpartition_name ]
+    [ ONLINE ]
+    [ TABLESPACE tablespace ]
+    [ PARAMETERS ( 'odci_parameters' ) ]
+    [ XMLIndex_parameters_clause ]
+    [ { REVERSE | NOREVERSE } ]
+    [ parallel_clause ]
+    [ physical_attributes_clause ]
+    [ index_compression ]
+    [ logging_clause ]
+    [ partial_index_clause ]
+    [ { DEFERRED | IMMEDIATE } INVALIDATION ]
+
+index_compression:
+    { prefix_compression | advanced_index_compression | NOCOMPRESS }
+
+prefix_compression:
+    COMPRESS [ integer ]
+
+advanced_index_compression:
+    COMPRESS ADVANCED [ LOW | HIGH ]
+
+alter_index_partitioning:
+    { modify_index_default_attrs
+    | add_hash_index_partition
+    | modify_index_partition
+    | rename_index_partition
+    | drop_index_partition
+    | split_index_partition
+    | coalesce_index_partition
+    | modify_index_subpartition
+    }
+
+modify_index_default_attrs:
+    MODIFY DEFAULT ATTRIBUTES
+    [ FOR PARTITION partition_name ]
+    [ physical_attributes_clause ]
+    [ TABLESPACE { tablespace | DEFAULT } ]
+    [ logging_clause ]
+
+add_hash_index_partition:
+    ADD PARTITION [ partition_name ]
+    [ TABLESPACE tablespace ]
+    [ index_compression ]
+    [ parallel_clause ]
+
+modify_index_partition:
+    MODIFY PARTITION partition_name
+    { { deallocate_unused_clause
+      | allocate_extent_clause
+      | physical_attributes_clause
+      | logging_clause
+      | index_compression
+      }
+    | PARAMETERS ( 'odci_parameters' )
+    | COALESCE [ CLEANUP [ ONLY ] ]
+    | UPDATE BLOCK REFERENCES
+    | UNUSABLE
+    }
+
+rename_index_partition:
+    RENAME { PARTITION partition_name | SUBPARTITION subpartition_name }
+    TO new_name
+
+drop_index_partition:
+    DROP PARTITION partition_name
+
+split_index_partition:
+    SPLIT PARTITION partition_name_old
+    AT ( literal [, literal ]... )
+    [ INTO ( index_partition_description , index_partition_description ) ]
+    [ parallel_clause ]
+
+index_partition_description:
+    PARTITION [ partition_name ]
+    [ segment_attributes_clause ]
+    [ index_compression ]
+    [ { USABLE | UNUSABLE } ]
+
+segment_attributes_clause:
+    [ physical_attributes_clause ]
+    [ TABLESPACE tablespace ]
+    [ logging_clause ]
+
+coalesce_index_partition:
+    COALESCE PARTITION [ parallel_clause ]
+
+modify_index_subpartition:
+    MODIFY SUBPARTITION subpartition_name
+    { UNUSABLE
+    | allocate_extent_clause
+    | deallocate_unused_clause
+    }
