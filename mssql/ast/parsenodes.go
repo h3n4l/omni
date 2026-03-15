@@ -171,6 +171,7 @@ type InsertStmt struct {
 	Cols         *List // column name list
 	Source       Node  // SELECT, VALUES, EXEC, or DEFAULT VALUES
 	OutputClause *OutputClause
+	OptionClause *List // OPTION ( <query_hint> [,...n] )
 	Loc          Loc
 }
 
@@ -187,6 +188,7 @@ type UpdateStmt struct {
 	OutputClause *OutputClause
 	FromClause   *List
 	WhereClause  ExprNode
+	OptionClause *List // OPTION ( <query_hint> [,...n] )
 	Loc          Loc
 }
 
@@ -202,6 +204,7 @@ type DeleteStmt struct {
 	OutputClause *OutputClause
 	FromClause   *List
 	WhereClause  ExprNode
+	OptionClause *List // OPTION ( <query_hint> [,...n] )
 	Loc          Loc
 }
 
@@ -212,12 +215,14 @@ func (n *DeleteStmt) stmtNode() {}
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/merge-transact-sql
 type MergeStmt struct {
 	WithClause   *WithClause
+	Top          *TopClause
 	Target       *TableRef
 	Source       TableExpr // table source
 	SourceAlias  string
 	OnCondition  ExprNode
 	WhenClauses  *List // list of MergeWhenClause
 	OutputClause *OutputClause
+	OptionClause *List // OPTION ( <query_hint> [,...n] )
 	Loc          Loc
 }
 
@@ -252,12 +257,23 @@ func (n *MergeDeleteAction) nodeTag() {}
 
 // MergeInsertAction represents INSERT in a MERGE WHEN clause.
 type MergeInsertAction struct {
-	Cols   *List // column list
-	Values *List // VALUES list
-	Loc    Loc
+	Cols          *List // column list
+	Values        *List // VALUES list
+	DefaultValues bool  // DEFAULT VALUES
+	Loc           Loc
 }
 
 func (n *MergeInsertAction) nodeTag() {}
+
+// CurrentOfExpr represents WHERE CURRENT OF cursor_name in UPDATE/DELETE.
+type CurrentOfExpr struct {
+	CursorName string // cursor name or @cursor_variable
+	Global     bool   // GLOBAL cursor
+	Loc        Loc
+}
+
+func (n *CurrentOfExpr) nodeTag()  {}
+func (n *CurrentOfExpr) exprNode() {}
 
 // OutputClause represents an OUTPUT clause.
 type OutputClause struct {
@@ -2002,11 +2018,13 @@ const (
 
 // SetExpr represents SET column = expr in UPDATE.
 type SetExpr struct {
-	Column   *ColumnRef
-	Variable string // @var = expr
-	Operator string // "=" (default), "+=", "-=", "*=", "/=", "%=", "&=", "^=", "|="
-	Value    ExprNode
-	Loc      Loc
+	Column      *ColumnRef
+	Variable    string // @var = expr
+	VarColumn   *ColumnRef // @variable = column = expression (dual assignment)
+	Operator    string     // "=" (default), "+=", "-=", "*=", "/=", "%=", "&=", "^=", "|="
+	WriteMethod bool       // column.WRITE(expression, @Offset, @Length) form
+	Value       ExprNode
+	Loc         Loc
 }
 
 func (n *SetExpr) nodeTag() {}

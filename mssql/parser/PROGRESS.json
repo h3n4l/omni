@@ -211,7 +211,7 @@
       "id": 156,
       "name": "bnf_review_dml",
       "file": "insert.go",
-      "status": "pending",
+      "status": "done",
       "description": "BNF review of all DML statements. INSERT with OUTPUT, INSERT...EXEC, UPDATE with FROM, DELETE with FROM, OUTPUT on all, MERGE with WHEN MATCHED/NOT MATCHED/BY SOURCE, COPY INTO.",
       "rules": [
         "insert_stmt",

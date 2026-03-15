@@ -2,14 +2,51 @@
 package parser
 
 import (
+	"strings"
+
 	nodes "github.com/bytebase/omni/mssql/ast"
 )
 
 // parseUpdateStmt parses an UPDATE statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/queries/update-transact-sql
+// BNF: mssql/parser/bnf/update-transact-sql.bnf
 //
-//	UPDATE [TOP (...)] table SET col=expr, ... [OUTPUT ...] [FROM ...] [WHERE ...]
+//	[ WITH <common_table_expression> [...n] ]
+//	UPDATE
+//	    [ TOP ( expression ) [ PERCENT ] ]
+//	    { { table_alias | <object> | rowset_function_limited
+//	         [ WITH ( <Table_Hint_Limited> [ ...n ] ) ]
+//	      }
+//	      | @table_variable
+//	    }
+//	    SET
+//	        { column_name = { expression | DEFAULT | NULL }
+//	          | { udt_column_name.{ { property_name = expression
+//	                                | field_name = expression }
+//	                                | method_name ( argument [ ,...n ] )
+//	                              }
+//	          }
+//	          | column_name { .WRITE ( expression , @Offset , @Length ) }
+//	          | @variable = expression
+//	          | @variable = column = expression
+//	          | column_name { += | -= | *= | /= | %= | &= | ^= | |= } expression
+//	          | @variable { += | -= | *= | /= | %= | &= | ^= | |= } expression
+//	          | @variable = column { += | -= | *= | /= | %= | &= | ^= | |= } expression
+//	        } [ ,...n ]
+//
+//	    [ <OUTPUT Clause> ]
+//	    [ FROM{ <table_source> } [ ,...n ] ]
+//	    [ WHERE { <search_condition>
+//	            | { [ CURRENT OF
+//	                  { { [ GLOBAL ] cursor_name }
+//	                      | cursor_variable_name
+//	                  }
+//	                ]
+//	              }
+//	            }
+//	    ]
+//	    [ OPTION ( <query_hint> [ ,...n ] ) ]
+//	[ ; ]
 func (p *Parser) parseUpdateStmt() *nodes.UpdateStmt {
 	loc := p.pos()
 	p.advance() // consume UPDATE
@@ -23,8 +60,13 @@ func (p *Parser) parseUpdateStmt() *nodes.UpdateStmt {
 		stmt.Top = p.parseTopClause()
 	}
 
-	// Table name
+	// Table name or @table_variable
 	stmt.Relation = p.parseTableRef()
+
+	// Optional WITH ( <Table_Hint_Limited> ) on target
+	if p.cur.Type == kwWITH && p.peekNext().Type == '(' {
+		stmt.Relation.Hints = p.parseTableHints()
+	}
 
 	// SET clause
 	if _, err := p.expect(kwSET); err == nil {
@@ -41,9 +83,14 @@ func (p *Parser) parseUpdateStmt() *nodes.UpdateStmt {
 		stmt.FromClause = p.parseFromClause()
 	}
 
-	// WHERE clause
+	// WHERE clause (includes CURRENT OF cursor support)
 	if _, ok := p.match(kwWHERE); ok {
-		stmt.WhereClause = p.parseExpr()
+		stmt.WhereClause = p.parseWhereClauseBody()
+	}
+
+	// OPTION clause
+	if p.cur.Type == kwOPTION {
+		stmt.OptionClause = p.parseOptionClause()
 	}
 
 	stmt.Loc.End = p.pos()
@@ -52,9 +99,31 @@ func (p *Parser) parseUpdateStmt() *nodes.UpdateStmt {
 
 // parseDeleteStmt parses a DELETE statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/delete-transact-sql
+// BNF: mssql/parser/bnf/delete-transact-sql.bnf
 //
-//	DELETE [TOP (...)] [FROM] table [OUTPUT ...] [FROM ...] [WHERE ...]
+//	[ WITH <common_table_expression> [ ,...n ] ]
+//	DELETE
+//	    [ TOP ( expression ) [ PERCENT ] ]
+//	    [ FROM ]
+//	    { { table_alias
+//	      | <object>
+//	      | rowset_function_limited
+//	      [ WITH ( table_hint_limited [ ...n ] ) ] }
+//	      | @table_variable
+//	    }
+//	    [ <OUTPUT Clause> ]
+//	    [ FROM table_source [ ,...n ] ]
+//	    [ WHERE { <search_condition>
+//	            | { [ CURRENT OF
+//	                   { { [ GLOBAL ] cursor_name }
+//	                       | cursor_variable_name
+//	                   }
+//	                ]
+//	              }
+//	            }
+//	    ]
+//	    [ OPTION ( <Query Hint> [ ,...n ] ) ]
+//	[; ]
 func (p *Parser) parseDeleteStmt() *nodes.DeleteStmt {
 	loc := p.pos()
 	p.advance() // consume DELETE
@@ -71,8 +140,13 @@ func (p *Parser) parseDeleteStmt() *nodes.DeleteStmt {
 	// Optional FROM before table name
 	p.match(kwFROM)
 
-	// Table name
+	// Table name or @table_variable
 	stmt.Relation = p.parseTableRef()
+
+	// Optional WITH ( <Table_Hint_Limited> ) on target
+	if p.cur.Type == kwWITH && p.peekNext().Type == '(' {
+		stmt.Relation.Hints = p.parseTableHints()
+	}
 
 	// OUTPUT clause
 	if p.cur.Type == kwOUTPUT {
@@ -84,13 +158,51 @@ func (p *Parser) parseDeleteStmt() *nodes.DeleteStmt {
 		stmt.FromClause = p.parseFromClause()
 	}
 
-	// WHERE clause
+	// WHERE clause (includes CURRENT OF cursor support)
 	if _, ok := p.match(kwWHERE); ok {
-		stmt.WhereClause = p.parseExpr()
+		stmt.WhereClause = p.parseWhereClauseBody()
+	}
+
+	// OPTION clause
+	if p.cur.Type == kwOPTION {
+		stmt.OptionClause = p.parseOptionClause()
 	}
 
 	stmt.Loc.End = p.pos()
 	return stmt
+}
+
+// parseWhereClauseBody parses the body of a WHERE clause, handling both
+// normal search conditions and CURRENT OF cursor_name.
+//
+//	WHERE { <search_condition>
+//	      | CURRENT OF { { [ GLOBAL ] cursor_name } | cursor_variable_name }
+//	      }
+func (p *Parser) parseWhereClauseBody() nodes.ExprNode {
+	if p.cur.Type == kwCURRENT {
+		next := p.peekNext()
+		if next.Type == kwOF {
+			loc := p.pos()
+			p.advance() // consume CURRENT
+			p.advance() // consume OF
+
+			// CURRENT OF [ GLOBAL ] cursor_name | @cursor_variable
+			global := p.matchIdentCI("GLOBAL")
+			var cursorName string
+			if p.cur.Type == tokVARIABLE {
+				cursorName = p.cur.Str
+				p.advance()
+			} else if name, ok := p.parseIdentifier(); ok {
+				cursorName = name
+			}
+			return &nodes.CurrentOfExpr{
+				CursorName: cursorName,
+				Global:     global,
+				Loc:        nodes.Loc{Start: loc, End: p.pos()},
+			}
+		}
+	}
+	return p.parseExpr()
 }
 
 // isCompoundAssign returns the operator string if the current token is a compound assignment operator,
@@ -121,8 +233,6 @@ func (p *Parser) isCompoundAssign() string {
 // parseSetClauseList parses a comma-separated list of SET assignments.
 //
 //	set_clause_list = set_clause { ',' set_clause }
-//	set_clause = column_ref { = | += | -= | *= | /= | %= | &= | ^= | |= } expr
-//	           | @variable { = | += | -= | *= | /= | %= | &= | ^= | |= } expr
 func (p *Parser) parseSetClauseList() *nodes.List {
 	var items []nodes.Node
 	for {
@@ -138,8 +248,15 @@ func (p *Parser) parseSetClauseList() *nodes.List {
 	return &nodes.List{Items: items}
 }
 
-// parseSetClause parses a single SET assignment: column {=|+=|-=|*=|/=|%=|&=|^=||=} expr
-// or @var {=|+=|-=|*=|/=|%=|&=|^=||=} expr.
+// parseSetClause parses a single SET assignment.
+//
+//	column_name = { expression | DEFAULT | NULL }
+//	column_name { .WRITE ( expression , @Offset , @Length ) }
+//	@variable = expression
+//	@variable = column = expression
+//	column_name { += | -= | *= | /= | %= | &= | ^= | |= } expression
+//	@variable { += | -= | *= | /= | %= | &= | ^= | |= } expression
+//	@variable = column { += | -= | *= | /= | %= | &= | ^= | |= } expression
 func (p *Parser) parseSetClause() *nodes.SetExpr {
 	loc := p.pos()
 
@@ -155,6 +272,23 @@ func (p *Parser) parseSetClause() *nodes.SetExpr {
 		se.Column = p.parseSetTarget()
 		if se.Column == nil {
 			return nil
+		}
+
+		// Check for .WRITE(expression, @Offset, @Length) form
+		if p.cur.Type == '.' && p.peekNext().Type == tokIDENT {
+			next := p.peekNext()
+			if strings.EqualFold(next.Str, "WRITE") {
+				p.advance() // consume .
+				writeLoc := p.pos()
+				p.advance() // consume WRITE
+				if p.cur.Type == '(' {
+					se.WriteMethod = true
+					// Parse as a FuncCallExpr to store the args
+					se.Value = p.parseFuncCall("WRITE", writeLoc)
+					se.Loc.End = p.pos()
+					return se
+				}
+			}
 		}
 	}
 
@@ -186,7 +320,13 @@ func (p *Parser) parseSetTarget() *nodes.ColumnRef {
 	}
 
 	// Check for qualified name: table.column
+	// But don't consume dot if next is .WRITE
 	if p.cur.Type == '.' {
+		next := p.peekNext()
+		// Don't consume if it's .WRITE (handled separately)
+		if next.Type == tokIDENT && strings.EqualFold(next.Str, "WRITE") {
+			return ref
+		}
 		p.advance()
 		col, ok := p.parseIdentifier()
 		if ok {

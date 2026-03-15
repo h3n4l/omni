@@ -18053,3 +18053,235 @@ func TestParseSelectBnfReview(t *testing.T) {
 		ParseAndCheck(t, sql)
 	})
 }
+
+// TestParseDmlBnfReview tests DML BNF review gaps (batch 156).
+func TestParseDmlBnfReview(t *testing.T) {
+	// INSERT with OPTION clause
+	t.Run("insert with option", func(t *testing.T) {
+		sql := "INSERT INTO t (col1) VALUES (1) OPTION (MAXDOP 1)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.InsertStmt)
+		if stmt.OptionClause == nil {
+			t.Error("expected non-nil OptionClause")
+		}
+	})
+
+	// INSERT with table hints on target
+	t.Run("insert with table hints", func(t *testing.T) {
+		sql := "INSERT INTO t WITH (TABLOCK) (col1) VALUES (1)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.InsertStmt)
+		if stmt.Relation.Hints == nil {
+			t.Error("expected non-nil Hints on target table")
+		}
+	})
+
+	// INSERT with TOP
+	t.Run("insert with top", func(t *testing.T) {
+		sql := "INSERT TOP (10) INTO t (col1) SELECT col1 FROM t2"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.InsertStmt)
+		if stmt.Top == nil {
+			t.Error("expected non-nil Top")
+		}
+	})
+
+	// UPDATE with OPTION clause
+	t.Run("update with option", func(t *testing.T) {
+		sql := "UPDATE t SET col1 = 1 WHERE id = 1 OPTION (MAXDOP 1)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.UpdateStmt)
+		if stmt.OptionClause == nil {
+			t.Error("expected non-nil OptionClause")
+		}
+	})
+
+	// UPDATE with table hints on target
+	t.Run("update with table hints", func(t *testing.T) {
+		sql := "UPDATE t WITH (ROWLOCK) SET col1 = 1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.UpdateStmt)
+		if stmt.Relation.Hints == nil {
+			t.Error("expected non-nil Hints on target table")
+		}
+	})
+
+	// UPDATE with compound assignment
+	t.Run("update compound assignment", func(t *testing.T) {
+		sql := "UPDATE t SET col1 += 10 WHERE id = 1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.UpdateStmt)
+		se := stmt.SetClause.Items[0].(*ast.SetExpr)
+		if se.Operator != "+=" {
+			t.Errorf("expected operator +=, got %s", se.Operator)
+		}
+	})
+
+	// UPDATE with .WRITE method
+	t.Run("update write method", func(t *testing.T) {
+		sql := "UPDATE t SET col1.WRITE(N'new', 0, 3) WHERE id = 1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.UpdateStmt)
+		se := stmt.SetClause.Items[0].(*ast.SetExpr)
+		if !se.WriteMethod {
+			t.Error("expected WriteMethod to be true")
+		}
+	})
+
+	// UPDATE WHERE CURRENT OF cursor
+	t.Run("update where current of", func(t *testing.T) {
+		sql := "UPDATE t SET col1 = 1 WHERE CURRENT OF my_cursor"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.UpdateStmt)
+		cur, ok := stmt.WhereClause.(*ast.CurrentOfExpr)
+		if !ok {
+			t.Fatalf("expected *CurrentOfExpr, got %T", stmt.WhereClause)
+		}
+		if cur.CursorName != "my_cursor" {
+			t.Errorf("expected cursor name 'my_cursor', got '%s'", cur.CursorName)
+		}
+	})
+
+	// UPDATE WHERE CURRENT OF GLOBAL cursor
+	t.Run("update where current of global", func(t *testing.T) {
+		sql := "UPDATE t SET col1 = 1 WHERE CURRENT OF GLOBAL my_cursor"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.UpdateStmt)
+		cur := stmt.WhereClause.(*ast.CurrentOfExpr)
+		if !cur.Global {
+			t.Error("expected Global to be true")
+		}
+	})
+
+	// UPDATE WHERE CURRENT OF @cursor_variable
+	t.Run("update where current of variable", func(t *testing.T) {
+		sql := "UPDATE t SET col1 = 1 WHERE CURRENT OF @cur"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.UpdateStmt)
+		cur := stmt.WhereClause.(*ast.CurrentOfExpr)
+		if cur.CursorName != "@cur" {
+			t.Errorf("expected cursor name '@cur', got '%s'", cur.CursorName)
+		}
+	})
+
+	// DELETE with OPTION clause
+	t.Run("delete with option", func(t *testing.T) {
+		sql := "DELETE FROM t WHERE id = 1 OPTION (MAXDOP 1)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DeleteStmt)
+		if stmt.OptionClause == nil {
+			t.Error("expected non-nil OptionClause")
+		}
+	})
+
+	// DELETE with table hints
+	t.Run("delete with table hints", func(t *testing.T) {
+		sql := "DELETE FROM t WITH (ROWLOCK) WHERE id = 1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DeleteStmt)
+		if stmt.Relation.Hints == nil {
+			t.Error("expected non-nil Hints on target table")
+		}
+	})
+
+	// DELETE WHERE CURRENT OF cursor
+	t.Run("delete where current of", func(t *testing.T) {
+		sql := "DELETE FROM t WHERE CURRENT OF my_cursor"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DeleteStmt)
+		_, ok := stmt.WhereClause.(*ast.CurrentOfExpr)
+		if !ok {
+			t.Fatalf("expected *CurrentOfExpr, got %T", stmt.WhereClause)
+		}
+	})
+
+	// MERGE with TOP
+	t.Run("merge with top", func(t *testing.T) {
+		sql := `MERGE TOP (10) INTO target AS t
+			USING source AS s ON t.id = s.id
+			WHEN MATCHED THEN UPDATE SET t.col1 = s.col1;`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.MergeStmt)
+		if stmt.Top == nil {
+			t.Error("expected non-nil Top")
+		}
+	})
+
+	// MERGE with table hints on target
+	t.Run("merge with table hints", func(t *testing.T) {
+		sql := `MERGE INTO target WITH (HOLDLOCK) AS t
+			USING source AS s ON t.id = s.id
+			WHEN MATCHED THEN UPDATE SET t.col1 = s.col1;`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.MergeStmt)
+		if stmt.Target.Hints == nil {
+			t.Error("expected non-nil Hints on target table")
+		}
+	})
+
+	// MERGE with OPTION clause
+	t.Run("merge with option", func(t *testing.T) {
+		sql := `MERGE INTO target AS t
+			USING source AS s ON t.id = s.id
+			WHEN MATCHED THEN UPDATE SET t.col1 = s.col1
+			OPTION (MAXDOP 1);`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.MergeStmt)
+		if stmt.OptionClause == nil {
+			t.Error("expected non-nil OptionClause")
+		}
+	})
+
+	// MERGE with DEFAULT VALUES in insert action
+	t.Run("merge with default values", func(t *testing.T) {
+		sql := `MERGE INTO target AS t
+			USING source AS s ON t.id = s.id
+			WHEN NOT MATCHED THEN INSERT DEFAULT VALUES;`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.MergeStmt)
+		wc := stmt.WhenClauses.Items[0].(*ast.MergeWhenClause)
+		action := wc.Action.(*ast.MergeInsertAction)
+		if !action.DefaultValues {
+			t.Error("expected DefaultValues to be true")
+		}
+	})
+
+	// MERGE with NOT MATCHED BY SOURCE
+	t.Run("merge with not matched by source", func(t *testing.T) {
+		sql := `MERGE INTO target AS t
+			USING source AS s ON t.id = s.id
+			WHEN NOT MATCHED BY SOURCE THEN DELETE;`
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.MergeStmt)
+		wc := stmt.WhenClauses.Items[0].(*ast.MergeWhenClause)
+		if wc.Matched {
+			t.Error("expected Matched to be false")
+		}
+		if wc.ByTarget {
+			t.Error("expected ByTarget to be false (BY SOURCE)")
+		}
+	})
+
+	// UPDATE with OUTPUT clause
+	t.Run("update with output", func(t *testing.T) {
+		sql := "UPDATE t SET col1 = 1 OUTPUT deleted.col1, inserted.col1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.UpdateStmt)
+		if stmt.OutputClause == nil {
+			t.Error("expected non-nil OutputClause")
+		}
+	})
+
+	// DELETE with OUTPUT INTO
+	t.Run("delete with output into", func(t *testing.T) {
+		sql := "DELETE FROM t OUTPUT deleted.id INTO @deleted_ids WHERE id = 1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.DeleteStmt)
+		if stmt.OutputClause == nil {
+			t.Error("expected non-nil OutputClause")
+		}
+		if stmt.OutputClause.IntoTable == nil {
+			t.Error("expected non-nil IntoTable in OutputClause")
+		}
+	})
+}

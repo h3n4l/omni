@@ -9,14 +9,26 @@ import (
 
 // parseMergeStmt parses a MERGE statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/merge-transact-sql
+// BNF: mssql/parser/bnf/merge-transact-sql.bnf
 //
-//	MERGE [INTO] target [AS alias]
-//	USING source [AS alias] ON condition
-//	WHEN MATCHED [AND condition] THEN UPDATE SET ... | DELETE
-//	WHEN NOT MATCHED [BY TARGET] [AND condition] THEN INSERT [(cols)] VALUES (...)
-//	WHEN NOT MATCHED BY SOURCE [AND condition] THEN UPDATE SET ... | DELETE
-//	[OUTPUT ...]
+//	[ WITH <common_table_expression> [,...n] ]
+//	MERGE
+//	    [ TOP ( expression ) [ PERCENT ] ]
+//	    [ INTO ] <target_table> [ WITH ( <merge_hint> ) ] [ [ AS ] table_alias ]
+//	    USING <table_source> [ [ AS ] table_alias ]
+//	    ON <merge_search_condition>
+//	    [ WHEN MATCHED [ AND <clause_search_condition> ]
+//	        THEN <merge_matched> ] [ ...n ]
+//	    [ WHEN NOT MATCHED [ BY TARGET ] [ AND <clause_search_condition> ]
+//	        THEN <merge_not_matched> ]
+//	    [ WHEN NOT MATCHED BY SOURCE [ AND <clause_search_condition> ]
+//	        THEN <merge_matched> ] [ ...n ]
+//	    [ <output_clause> ]
+//	    [ OPTION ( <query_hint> [ ,...n ] ) ]
+//	;
+//
+//	<merge_matched>::= { UPDATE SET <set_clause> | DELETE }
+//	<merge_not_matched>::= { INSERT [ ( column_list ) ] { VALUES ( values_list ) | DEFAULT VALUES } }
 func (p *Parser) parseMergeStmt() *nodes.MergeStmt {
 	loc := p.pos()
 	p.advance() // consume MERGE
@@ -25,11 +37,21 @@ func (p *Parser) parseMergeStmt() *nodes.MergeStmt {
 		Loc: nodes.Loc{Start: loc},
 	}
 
+	// Optional TOP
+	if p.cur.Type == kwTOP {
+		stmt.Top = p.parseTopClause()
+	}
+
 	// Optional INTO
 	p.match(kwINTO)
 
 	// Target table
 	stmt.Target = p.parseTableRef()
+
+	// Optional WITH ( <merge_hint> ) on target
+	if p.cur.Type == kwWITH && p.peekNext().Type == '(' {
+		stmt.Target.Hints = p.parseTableHints()
+	}
 
 	// Optional alias
 	alias := p.parseOptionalAlias()
@@ -72,11 +94,20 @@ func (p *Parser) parseMergeStmt() *nodes.MergeStmt {
 		stmt.OutputClause = p.parseOutputClause()
 	}
 
+	// OPTION clause
+	if p.cur.Type == kwOPTION {
+		stmt.OptionClause = p.parseOptionClause()
+	}
+
 	stmt.Loc.End = p.pos()
 	return stmt
 }
 
 // parseMergeWhenClause parses a single WHEN clause in MERGE.
+//
+//	WHEN MATCHED [ AND <clause_search_condition> ] THEN <merge_matched>
+//	WHEN NOT MATCHED [ BY TARGET ] [ AND <clause_search_condition> ] THEN <merge_not_matched>
+//	WHEN NOT MATCHED BY SOURCE [ AND <clause_search_condition> ] THEN <merge_matched>
 func (p *Parser) parseMergeWhenClause() *nodes.MergeWhenClause {
 	loc := p.pos()
 	p.advance() // consume WHEN
@@ -142,7 +173,9 @@ func (p *Parser) parseMergeWhenClause() *nodes.MergeWhenClause {
 	return wc
 }
 
-// parseMergeInsertAction parses INSERT [(cols)] VALUES (...) in a MERGE WHEN clause.
+// parseMergeInsertAction parses INSERT [(cols)] { VALUES (...) | DEFAULT VALUES } in a MERGE WHEN clause.
+//
+//	INSERT [ ( column_list ) ] { VALUES ( values_list ) | DEFAULT VALUES }
 func (p *Parser) parseMergeInsertAction() *nodes.MergeInsertAction {
 	loc := p.pos()
 	p.advance() // consume INSERT
@@ -169,8 +202,14 @@ func (p *Parser) parseMergeInsertAction() *nodes.MergeInsertAction {
 		action.Cols = &nodes.List{Items: cols}
 	}
 
-	// VALUES (...)
-	if _, ok := p.match(kwVALUES); ok {
+	// DEFAULT VALUES or VALUES (...)
+	if p.cur.Type == kwDEFAULT {
+		p.advance() // consume DEFAULT
+		if p.cur.Type == kwVALUES {
+			p.advance() // consume VALUES
+		}
+		action.DefaultValues = true
+	} else if _, ok := p.match(kwVALUES); ok {
 		if _, err := p.expect('('); err == nil {
 			action.Values = p.parseExprList()
 			_, _ = p.expect(')')

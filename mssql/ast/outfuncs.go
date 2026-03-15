@@ -246,6 +246,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeWithClause(sb, n)
 	case *CommonTableExpr:
 		writeCommonTableExpr(sb, n)
+	case *CurrentOfExpr:
+		writeCurrentOfExpr(sb, n)
 	case *OutputClause:
 		writeOutputClause(sb, n)
 	case *ColumnDef:
@@ -588,6 +590,10 @@ func writeInsertStmt(sb *strings.Builder, n *InsertStmt) {
 		sb.WriteString(" :output ")
 		writeNode(sb, n.OutputClause)
 	}
+	if n.OptionClause != nil {
+		sb.WriteString(" :option ")
+		writeNode(sb, n.OptionClause)
+	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
 }
@@ -622,6 +628,10 @@ func writeUpdateStmt(sb *strings.Builder, n *UpdateStmt) {
 		sb.WriteString(" :output ")
 		writeNode(sb, n.OutputClause)
 	}
+	if n.OptionClause != nil {
+		sb.WriteString(" :option ")
+		writeNode(sb, n.OptionClause)
+	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
 }
@@ -652,6 +662,10 @@ func writeDeleteStmt(sb *strings.Builder, n *DeleteStmt) {
 		sb.WriteString(" :output ")
 		writeNode(sb, n.OutputClause)
 	}
+	if n.OptionClause != nil {
+		sb.WriteString(" :option ")
+		writeNode(sb, n.OptionClause)
+	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
 }
@@ -661,6 +675,10 @@ func writeMergeStmt(sb *strings.Builder, n *MergeStmt) {
 	if n.WithClause != nil {
 		sb.WriteString(" :with ")
 		writeNode(sb, n.WithClause)
+	}
+	if n.Top != nil {
+		sb.WriteString(" :top ")
+		writeNode(sb, n.Top)
 	}
 	if n.Target != nil {
 		sb.WriteString(" :target ")
@@ -684,6 +702,10 @@ func writeMergeStmt(sb *strings.Builder, n *MergeStmt) {
 	if n.OutputClause != nil {
 		sb.WriteString(" :output ")
 		writeNode(sb, n.OutputClause)
+	}
+	if n.OptionClause != nil {
+		sb.WriteString(" :option ")
+		writeNode(sb, n.OptionClause)
 	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
@@ -2285,8 +2307,15 @@ func writeSetExpr(sb *strings.Builder, n *SetExpr) {
 	if n.Variable != "" {
 		sb.WriteString(fmt.Sprintf(" :variable \"%s\"", escapeString(n.Variable)))
 	}
+	if n.VarColumn != nil {
+		sb.WriteString(" :varColumn ")
+		writeNode(sb, n.VarColumn)
+	}
 	if n.Operator != "" && n.Operator != "=" {
 		sb.WriteString(fmt.Sprintf(" :operator \"%s\"", n.Operator))
+	}
+	if n.WriteMethod {
+		sb.WriteString(" :writeMethod true")
 	}
 	if n.Value != nil {
 		sb.WriteString(" :value ")
@@ -2349,6 +2378,15 @@ func writeCommonTableExpr(sb *strings.Builder, n *CommonTableExpr) {
 	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
+}
+
+func writeCurrentOfExpr(sb *strings.Builder, n *CurrentOfExpr) {
+	sb.WriteString("{CURRENTOF")
+	sb.WriteString(fmt.Sprintf(" :cursor \"%s\"", escapeString(n.CursorName)))
+	if n.Global {
+		sb.WriteString(" :global true")
+	}
+	sb.WriteString(fmt.Sprintf(" :loc %d %d}", n.Loc.Start, n.Loc.End))
 }
 
 func writeOutputClause(sb *strings.Builder, n *OutputClause) {
@@ -2816,6 +2854,9 @@ func writeMergeInsertAction(sb *strings.Builder, n *MergeInsertAction) {
 	if n.Values != nil {
 		sb.WriteString(" :values ")
 		writeNode(sb, n.Values)
+	}
+	if n.DefaultValues {
+		sb.WriteString(" :defaultValues true")
 	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

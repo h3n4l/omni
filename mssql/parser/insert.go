@@ -9,11 +9,28 @@ import (
 
 // parseInsertStmt parses an INSERT statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/insert-transact-sql
+// BNF: mssql/parser/bnf/insert-transact-sql.bnf
 //
-//	INSERT [INTO] table [(col_list)]
-//	    { VALUES (...) [, (...)] | SELECT ... | EXEC ... | DEFAULT VALUES }
-//	    [OUTPUT clause]
+//	[ WITH <common_table_expression> [ ,...n ] ]
+//	INSERT
+//	{
+//	        [ TOP ( expression ) [ PERCENT ] ]
+//	        [ INTO ]
+//	        { <object> | rowset_function_limited
+//	          [ WITH ( <Table_Hint_Limited> [ ...n ] ) ]
+//	        }
+//	    {
+//	        [ ( column_list ) ]
+//	        [ <OUTPUT Clause> ]
+//	        { VALUES ( { DEFAULT | NULL | expression } [ ,...n ] ) [ ,...n ]
+//	        | derived_table
+//	        | execute_statement
+//	        | <dml_table_source>
+//	        | DEFAULT VALUES
+//	        }
+//	    }
+//	}
+//	[;]
 func (p *Parser) parseInsertStmt() *nodes.InsertStmt {
 	loc := p.pos()
 	p.advance() // consume INSERT
@@ -30,8 +47,13 @@ func (p *Parser) parseInsertStmt() *nodes.InsertStmt {
 	// Optional INTO
 	p.match(kwINTO)
 
-	// Table name
+	// Table name or @table_variable
 	stmt.Relation = p.parseTableRef()
+
+	// Optional WITH ( <Table_Hint_Limited> ) on target
+	if p.cur.Type == kwWITH && p.peekNext().Type == '(' {
+		stmt.Relation.Hints = p.parseTableHints()
+	}
 
 	// Optional column list
 	if p.cur.Type == '(' {
@@ -77,6 +99,11 @@ func (p *Parser) parseInsertStmt() *nodes.InsertStmt {
 		}
 	}
 
+	// Optional OPTION clause
+	if p.cur.Type == kwOPTION {
+		stmt.OptionClause = p.parseOptionClause()
+	}
+
 	stmt.Loc.End = p.pos()
 	return stmt
 }
@@ -111,7 +138,7 @@ func (p *Parser) parseValuesClause() *nodes.ValuesClause {
 
 // parseOutputClause parses an OUTPUT clause.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/queries/output-clause-transact-sql
+// BNF: OUTPUT { dml_select_list } [ INTO { @table_variable | output_table } [ ( column_list ) ] ]
 //
 //	OUTPUT output_columns [INTO table [(col_list)]]
 func (p *Parser) parseOutputClause() *nodes.OutputClause {
@@ -122,12 +149,21 @@ func (p *Parser) parseOutputClause() *nodes.OutputClause {
 		Loc: nodes.Loc{Start: loc},
 	}
 
-	// Parse output targets (comma-separated expressions like inserted.col, deleted.col)
+	// Parse output targets (comma-separated expressions like inserted.col, deleted.col, $action)
 	oc.Targets = p.parseTargetList()
 
-	// Optional INTO
+	// Optional INTO @table_variable | output_table
 	if _, ok := p.match(kwINTO); ok {
-		oc.IntoTable = p.parseTableRef()
+		if p.cur.Type == tokVARIABLE {
+			// @table_variable
+			oc.IntoTable = &nodes.TableRef{
+				Object: p.cur.Str,
+				Loc:    nodes.Loc{Start: p.pos(), End: p.pos()},
+			}
+			p.advance()
+		} else {
+			oc.IntoTable = p.parseTableRef()
+		}
 		// Optional column list
 		if p.cur.Type == '(' {
 			p.advance()
