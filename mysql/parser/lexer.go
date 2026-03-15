@@ -452,6 +452,7 @@ const (
 	kwSQL_BUFFER_RESULT
 	kwSQL_NO_CACHE
 	kwMODE
+	kwEXPANSION
 	kwRANDOM
 	kwRETAIN
 	kwOLD
@@ -868,6 +869,7 @@ var keywords = map[string]int{
 	"sql_buffer_result":   kwSQL_BUFFER_RESULT,
 	"sql_no_cache":        kwSQL_NO_CACHE,
 	"mode":                kwMODE,
+	"expansion":           kwEXPANSION,
 	"random":              kwRANDOM,
 	"retain":              kwRETAIN,
 	"old":                 kwOLD,

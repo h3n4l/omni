@@ -1411,28 +1411,40 @@ func (p *Parser) parseMatchExpr() (nodes.ExprNode, error) {
 		if p.cur.Type == kwNATURAL {
 			// IN NATURAL LANGUAGE MODE [WITH QUERY EXPANSION]
 			p.advance() // consume NATURAL
-			p.advance() // consume LANGUAGE
-			p.advance() // consume MODE
+			if _, err := p.expect(kwLANGUAGE); err != nil {
+				return nil, err
+			}
+			if _, err := p.expect(kwMODE); err != nil {
+				return nil, err
+			}
 			// Check for optional WITH QUERY EXPANSION
 			if p.cur.Type == kwWITH && p.peekNext().Type == kwQUERY {
 				p.advance() // consume WITH
 				p.advance() // consume QUERY
-				p.advance() // consume EXPANSION
+				if _, err := p.expect(kwEXPANSION); err != nil {
+					return nil, err
+				}
 				me.Modifier = "IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION"
 			} else {
 				me.Modifier = "IN NATURAL LANGUAGE MODE"
 			}
 		} else {
 			// IN BOOLEAN MODE
-			p.advance() // consume BOOLEAN
-			p.advance() // consume MODE
+			if _, err := p.expect(kwBOOLEAN); err != nil {
+				return nil, err
+			}
+			if _, err := p.expect(kwMODE); err != nil {
+				return nil, err
+			}
 			me.Modifier = "IN BOOLEAN MODE"
 		}
 	} else if p.cur.Type == kwWITH && p.peekNext().Type == kwQUERY {
 		// WITH QUERY EXPANSION
 		p.advance() // consume WITH
 		p.advance() // consume QUERY
-		p.advance() // consume EXPANSION
+		if _, err := p.expect(kwEXPANSION); err != nil {
+			return nil, err
+		}
 		me.Modifier = "WITH QUERY EXPANSION"
 	}
 
