@@ -1169,7 +1169,11 @@ func writeRollbackStmt(sb *strings.Builder, n *RollbackStmt) {
 }
 
 func writeSavepointStmt(sb *strings.Builder, n *SavepointStmt) {
-	sb.WriteString("{SAVEPOINT")
+	if n.Release {
+		sb.WriteString("{RELEASE_SAVEPOINT")
+	} else {
+		sb.WriteString("{SAVEPOINT")
+	}
 	fmt.Fprintf(sb, " :loc %d :name %s", n.Loc.Start, n.Name)
 	sb.WriteString("}")
 }

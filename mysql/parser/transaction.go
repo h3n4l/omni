@@ -171,6 +171,10 @@ func (p *Parser) parseSavepointStmt() (*nodes.SavepointStmt, error) {
 }
 
 // parseReleaseSavepointStmt parses RELEASE SAVEPOINT.
+//
+// Ref: https://dev.mysql.com/doc/refman/8.0/en/savepoint.html
+//
+//	RELEASE SAVEPOINT identifier
 func (p *Parser) parseReleaseSavepointStmt() (*nodes.SavepointStmt, error) {
 	start := p.pos()
 	p.advance() // consume RELEASE
@@ -182,8 +186,9 @@ func (p *Parser) parseReleaseSavepointStmt() (*nodes.SavepointStmt, error) {
 	}
 
 	return &nodes.SavepointStmt{
-		Loc:  nodes.Loc{Start: start, End: p.pos()},
-		Name: name,
+		Loc:     nodes.Loc{Start: start, End: p.pos()},
+		Name:    name,
+		Release: true,
 	}, nil
 }
 
@@ -191,8 +196,14 @@ func (p *Parser) parseReleaseSavepointStmt() (*nodes.SavepointStmt, error) {
 //
 // Ref: https://dev.mysql.com/doc/refman/8.0/en/lock-tables.html
 //
-//	LOCK TABLES tbl_name [[AS] alias] lock_type [, tbl_name [[AS] alias] lock_type] ...
-//	lock_type: READ [LOCAL] | [LOW_PRIORITY] WRITE
+//	LOCK {TABLE | TABLES}
+//	    tbl_name [[AS] alias] lock_type
+//	    [, tbl_name [[AS] alias] lock_type] ...
+//
+//	lock_type: {
+//	    READ [LOCAL]
+//	  | [LOW_PRIORITY] WRITE
+//	}
 func (p *Parser) parseLockTablesStmt() (*nodes.LockTablesStmt, error) {
 	start := p.pos()
 	p.advance() // consume TABLES
@@ -242,7 +253,7 @@ func (p *Parser) parseLockTablesStmt() (*nodes.LockTablesStmt, error) {
 //
 // Ref: https://dev.mysql.com/doc/refman/8.0/en/lock-tables.html
 //
-//	UNLOCK TABLES
+//	UNLOCK {TABLE | TABLES}
 func (p *Parser) parseUnlockTablesStmt() (*nodes.UnlockTablesStmt, error) {
 	start := p.pos()
 	p.advance() // consume TABLES

@@ -2570,7 +2570,7 @@
       "id": 107,
       "name": "review_transaction_xa_locking",
       "file": "transaction.go",
-      "status": "pending",
+      "status": "done",
       "description": "BNF review: BEGIN/START TRANSACTION, COMMIT, ROLLBACK, SAVEPOINT/RELEASE, SET TRANSACTION, XA START/END/PREPARE/COMMIT/ROLLBACK/RECOVER, LOCK TABLES/UNLOCK TABLES, LOCK INSTANCE FOR BACKUP against 84 lines of BNF.",
       "effort": "review",
       "bnf_files": [

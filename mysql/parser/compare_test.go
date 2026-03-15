@@ -10471,3 +10471,66 @@ func TestBNFReviewSecurity(t *testing.T) {
 		})
 	}
 }
+
+// -----------------------------------------------------------------------
+// Review batch 107: transaction_xa_locking BNF review
+// -----------------------------------------------------------------------
+
+func TestReviewBatch107_CommitWorkAndVariants(t *testing.T) {
+	tests := []string{
+		"COMMIT WORK",
+		"COMMIT WORK AND CHAIN",
+		"COMMIT AND NO CHAIN",
+		"COMMIT WORK AND NO CHAIN",
+		"COMMIT NO RELEASE",
+		"COMMIT WORK NO RELEASE",
+		"COMMIT WORK AND CHAIN RELEASE",
+		"COMMIT WORK AND CHAIN NO RELEASE",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestReviewBatch107_RollbackWorkAndVariants(t *testing.T) {
+	tests := []string{
+		"ROLLBACK WORK",
+		"ROLLBACK WORK TO SAVEPOINT sp1",
+		"ROLLBACK WORK TO sp1",
+		"ROLLBACK AND NO CHAIN",
+		"ROLLBACK WORK AND NO CHAIN",
+		"ROLLBACK NO RELEASE",
+		"ROLLBACK WORK NO RELEASE",
+		"ROLLBACK WORK AND CHAIN RELEASE",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestReviewBatch107_ReleaseSavepoint(t *testing.T) {
+	ParseAndCompare(t, "RELEASE SAVEPOINT sp1", "{RELEASE_SAVEPOINT :loc 0 :name sp1}")
+}
+
+func TestReviewBatch107_LockTableSingular(t *testing.T) {
+	tests := []string{
+		"LOCK TABLE t READ",
+		"LOCK TABLE t WRITE",
+		"LOCK TABLE t READ LOCAL",
+		"LOCK TABLE t LOW_PRIORITY WRITE",
+		"LOCK TABLE t AS a READ, t2 WRITE",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
+func TestReviewBatch107_UnlockTableSingular(t *testing.T) {
+	ParseAndCheck(t, "UNLOCK TABLE")
+}

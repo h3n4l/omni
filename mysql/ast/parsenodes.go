@@ -1135,10 +1135,11 @@ type RollbackStmt struct {
 func (s *RollbackStmt) nodeTag()  {}
 func (s *RollbackStmt) stmtNode() {}
 
-// SavepointStmt represents a SAVEPOINT statement.
+// SavepointStmt represents a SAVEPOINT or RELEASE SAVEPOINT statement.
 type SavepointStmt struct {
-	Loc  Loc
-	Name string
+	Loc     Loc
+	Name    string
+	Release bool // true for RELEASE SAVEPOINT
 }
 
 func (s *SavepointStmt) nodeTag()  {}
