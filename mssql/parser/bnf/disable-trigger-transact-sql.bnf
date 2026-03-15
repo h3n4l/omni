@@ -1,0 +1,32 @@
+-- Statement: DISABLE TRIGGER
+-- Grammar rule: disableTriggerStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/disable-trigger-transact-sql
+
+-- From TSql170.g:
+disableTriggerStatement:
+    Identifier/*Disable*/
+    enableDisableTriggerBody
+    ;
+
+enableDisableTriggerBody:
+    Trigger
+    (
+        schemaObjectThreePartName ( Comma schemaObjectThreePartName )*
+    |   All
+    )
+    On triggerObject
+    ;
+
+triggerObject:
+    schemaObjectThreePartName
+    | triggerScope
+    ;
+
+triggerScope:
+    Database
+    | All Identifier/*Server*/
+    ;
+
+-- From Microsoft docs:
+DISABLE TRIGGER { [ schema_name . ] trigger_name [ ,...n ] | ALL }
+ON { object_name | DATABASE | ALL SERVER } [ ; ]

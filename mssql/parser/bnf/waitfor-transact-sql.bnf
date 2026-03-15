@@ -1,0 +1,27 @@
+-- Statement: WAITFOR
+-- Grammar rule: waitForStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/waitfor-transact-sql
+
+-- From TSql170.g:
+waitForStatement:
+    WaitFor
+    (
+        Identifier /* DELAY | TIME */ stringOrVariable
+    |   LeftParenthesis waitforInnerStatement RightParenthesis
+        (Comma Identifier /* TIMEOUT */ signedIntegerOrVariable)?
+    )
+    ;
+
+waitforInnerStatement:
+      receiveStatement
+    | getConversationGroupStatement
+    ;
+
+-- From Microsoft docs:
+WAITFOR
+{
+    DELAY 'time_to_pass'
+  | TIME 'time_to_execute'
+  | [ ( receive_statement ) | ( get_conversation_group_statement ) ]
+    [ , TIMEOUT timeout ]
+}

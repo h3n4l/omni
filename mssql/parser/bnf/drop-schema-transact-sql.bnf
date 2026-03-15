@@ -1,0 +1,21 @@
+-- Statement: DROP SCHEMA
+-- Grammar rule: dropSchemaStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-schema-transact-sql
+
+-- From TSql170.g:
+dropSchemaStatement:
+    Schema
+    ( If Exists )?
+    schemaObjectThreePartName
+    ( Cascade | Restrict )?
+    ;
+
+-- Note: Schema name with more than one part must be followed by either
+-- Restrict or Cascade (SQL 2000 syntax).
+
+-- From Microsoft docs:
+-- Syntax for SQL Server and Azure SQL Database
+DROP SCHEMA [ IF EXISTS ] schema_name
+
+-- Syntax for Azure Synapse Analytics and Parallel Data Warehouse
+DROP SCHEMA schema_name

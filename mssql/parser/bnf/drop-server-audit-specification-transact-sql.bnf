@@ -1,0 +1,14 @@
+-- Statement: DROP SERVER AUDIT SPECIFICATION
+-- Grammar rule: dropServerAuditSpecificationStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-server-audit-specification-transact-sql
+
+-- From TSql170.g:
+dropServerAuditSpecificationStatement:
+    tSpecification:Identifier vName = identifier
+    ;
+    -- Note: Called within DROP SERVER AUDIT context. tSpecification must match "Specification".
+    -- identifier = audit_specification_name
+
+-- From Microsoft docs:
+DROP SERVER AUDIT SPECIFICATION audit_specification_name
+[ ; ]

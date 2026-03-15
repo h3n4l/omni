@@ -1,0 +1,12 @@
+-- Statement: CONTINUE
+-- Grammar rule: continueStatement (TSql170.g:16356)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/continue-transact-sql
+
+-- From TSql170.g:
+continueStatement:
+    Continue
+    ;
+
+-- From Microsoft docs:
+-- CONTINUE
+-- (Restarts a WHILE loop, ignoring any statements after CONTINUE)

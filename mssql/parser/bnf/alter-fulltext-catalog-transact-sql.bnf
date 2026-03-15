@@ -1,0 +1,27 @@
+-- Statement: ALTER FULLTEXT CATALOG
+-- Grammar rule: alterFulltextCatalogStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-fulltext-catalog-transact-sql
+
+-- From TSql170.g:
+alterFulltextCatalogStatement:
+    tCatalog:Identifier identifier  // CATALOG catalog_name
+    (
+        (
+            tAction:Identifier  // REBUILD or REORGANIZE
+            (
+                options {greedy = true; } :
+                With accentSensitivity  // WITH ACCENT_SENSITIVITY = { ON | OFF }
+                // Only valid with REBUILD
+            )?
+        )
+    |
+        As Default  // AS DEFAULT
+    )
+    ;
+
+-- From Microsoft docs:
+-- ALTER FULLTEXT CATALOG catalog_name
+-- { REBUILD [ WITH ACCENT_SENSITIVITY = { ON | OFF } ]
+-- | REORGANIZE
+-- | AS DEFAULT
+-- }

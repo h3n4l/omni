@@ -1,0 +1,19 @@
+-- Statement: RESTORE SERVICE MASTER KEY
+-- Grammar rule: restoreServiceMasterKeyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/restore-service-master-key-transact-sql
+
+-- From TSql170.g:
+restoreServiceMasterKeyStatement:
+    Identifier /* SERVICE */
+    restoreMasterKeyBody
+    (Identifier /* FORCE */)?
+    ;
+
+restoreMasterKeyBody:
+    Identifier /* MASTER */ Key From File EqualsSign stringLiteral
+    Identifier /* DECRYPTION */ By Identifier /* PASSWORD */ EqualsSign stringLiteral
+    ;
+
+-- From Microsoft docs:
+RESTORE SERVICE MASTER KEY FROM FILE = 'path_to_file'
+    DECRYPTION BY PASSWORD = 'password' [FORCE]

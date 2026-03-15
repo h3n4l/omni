@@ -1,0 +1,36 @@
+-- Statement: ALTER SEQUENCE
+-- Grammar rule: alterSequenceStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-sequence-transact-sql
+
+-- From TSql170.g:
+alterSequenceStatement:
+    Identifier /* SEQUENCE */ schemaObjectTwoPartName
+    (alterSequenceOptionList)?
+    ;
+
+alterSequenceOptionList:
+    (alterSequenceOptionListElement)+
+    ;
+
+alterSequenceOptionListElement:
+      sequenceRestartOptionListElement
+    | commonSequenceOptionListElement
+    ;
+
+commonSequenceOptionListElement:
+      sequenceCacheOptionListElement
+    | sequenceCycleOptionListElement
+    | sequenceIncrementOptionListElement
+    | sequenceNoOptionListElement
+    | sequenceMinMaxOptionListElement
+    ;
+
+-- From Microsoft docs:
+ALTER SEQUENCE [ schema_name. ] sequence_name
+    [ RESTART [ WITH <constant> ] ]
+    [ INCREMENT BY <constant> ]
+    [ { MINVALUE <constant> } | { NO MINVALUE } ]
+    [ { MAXVALUE <constant> } | { NO MAXVALUE } ]
+    [ CYCLE | { NO CYCLE } ]
+    [ { CACHE [ <constant> ] } | { NO CACHE } ]
+[ ; ]

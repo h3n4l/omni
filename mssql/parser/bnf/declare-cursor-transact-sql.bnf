@@ -1,0 +1,42 @@
+-- Statement: DECLARE CURSOR
+-- Grammar rule: declareCursorStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/declare-cursor-transact-sql
+
+-- From TSql170.g:
+declareCursorStatement:
+    identifier cursorOpts cursorDefinitionOptions
+    ;
+
+cursorDefinitionOptions:
+    Cursor cursorOpts For selectStatement
+    ;
+
+cursorOpts:
+    (cursorOption)*
+    ;
+
+cursorOption:
+    Identifier
+    /* Options parsed by CursorOptionsHelper:
+       INSENSITIVE, SCROLL, LOCAL, GLOBAL, FORWARD_ONLY,
+       STATIC, KEYSET, DYNAMIC, FAST_FORWARD,
+       READ_ONLY, SCROLL_LOCKS, OPTIMISTIC, TYPE_WARNING */
+    ;
+
+-- From Microsoft docs:
+
+-- ISO Syntax:
+DECLARE cursor_name [ INSENSITIVE ] [ SCROLL ] CURSOR
+    FOR select_statement
+    [ FOR { READ_ONLY | UPDATE [ OF column_name [ ,...n ] ] } ]
+[ ; ]
+
+-- Transact-SQL Extended Syntax:
+DECLARE cursor_name CURSOR [ LOCAL | GLOBAL ]
+    [ FORWARD_ONLY | SCROLL ]
+    [ STATIC | KEYSET | DYNAMIC | FAST_FORWARD ]
+    [ READ_ONLY | SCROLL_LOCKS | OPTIMISTIC ]
+    [ TYPE_WARNING ]
+    FOR select_statement
+    [ FOR UPDATE [ OF column_name [ ,...n ] ] ]
+[ ; ]

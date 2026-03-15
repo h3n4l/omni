@@ -1,0 +1,16 @@
+-- Statement: DROP SYMMETRIC KEY
+-- Grammar rule: dropSymmetricKeyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-symmetric-key-transact-sql
+
+-- From TSql170.g:
+dropSymmetricKeyStatement:
+    DROP SYMMETRIC KEY symmetric_key_name
+    removeProviderKeyOpt?
+    ;
+
+removeProviderKeyOpt:
+    REMOVE PROVIDER KEY
+    ;
+
+-- From Microsoft docs:
+DROP SYMMETRIC KEY symmetric_key_name [REMOVE PROVIDER KEY]

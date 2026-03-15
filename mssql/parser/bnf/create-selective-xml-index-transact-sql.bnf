@@ -1,0 +1,102 @@
+-- Statement: CREATE SELECTIVE XML INDEX
+-- Grammar rule: createSelectiveXmlIndexStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-selective-xml-index-transact-sql
+
+-- From TSql170.g:
+createSelectiveXmlIndexStatement:
+    CREATE SELECTIVE XML INDEX identifier
+    ON schemaObjectThreePartName
+    LeftParenthesis identifier RightParenthesis          -- (xml_column)
+    ( WITH xmlNamespaces )?
+    FOR LeftParenthesis
+        promotedSelectiveXmlIndexPath
+        ( Comma promotedSelectiveXmlIndexPath )*
+    RightParenthesis
+    ( WITH indexOptionList )?
+    ;
+
+promotedSelectiveXmlIndexPath:
+    identifier EqualsSign stringLiteral                  -- path_name = 'xpath'
+    (
+        AS
+        (
+            XQUERY ( stringLiteral )?                    -- AS XQUERY 'xsd_type'
+            ( MAXLENGTH LeftParenthesis integer RightParenthesis )?
+        |   SQL scalarDataType                           -- AS SQL sql_type
+        )
+        ( SINGLETON )?
+    )?
+    ;
+
+singletonOption:
+    ( SINGLETON )?
+    ;
+
+maxlengthOption:
+    ( MAXLENGTH LeftParenthesis integer RightParenthesis )?
+    ;
+
+-- From Microsoft docs:
+CREATE SELECTIVE XML INDEX index_name
+    ON <table_object> (xml_column_name)
+    [WITH XMLNAMESPACES (<xmlnamespace_list>)]
+    FOR (<promoted_node_path_list>)
+    [WITH (<index_options>)]
+
+<table_object> ::=
+ { database_name.schema_name.table_name | schema_name.table_name | table_name }
+
+<promoted_node_path_list> ::=
+<named_promoted_node_path_item> [, <promoted_node_path_list>]
+
+<named_promoted_node_path_item> ::=
+<path_name> = <promoted_node_path_item>
+
+<promoted_node_path_item>::=
+<xquery_node_path_item> | <sql_values_node_path_item>
+
+<xquery_node_path_item> ::=
+<node_path> [AS XQUERY <xsd_type_or_node_hint>] [SINGLETON]
+
+<xsd_type_or_node_hint> ::=
+[<xsd_type>] [MAXLENGTH(x)] | node()
+
+<sql_values_node_path_item> ::=
+<node_path> AS SQL <sql_type> [SINGLETON]
+
+<node_path> ::=
+character_string_literal
+
+<xsd_type> ::=
+character_string_literal
+
+<sql_type> ::=
+identifier
+
+<path_name> ::=
+identifier
+
+<xmlnamespace_list> ::=
+<xmlnamespace_item> [, <xmlnamespace_list>]
+
+<xmlnamespace_item> ::=
+<xmlnamespace_uri> AS <xmlnamespace_prefix>
+
+<xml_namespace_uri> ::=
+character_string_literal
+
+<xml_namespace_prefix> ::=
+identifier
+
+<index_options> ::=
+(
+  | PAD_INDEX  = { ON | OFF }
+  | FILLFACTOR = fillfactor
+  | SORT_IN_TEMPDB = { ON | OFF }
+  | IGNORE_DUP_KEY = OFF
+  | DROP_EXISTING = { ON | OFF }
+  | ONLINE = OFF
+  | ALLOW_ROW_LOCKS = { ON | OFF }
+  | ALLOW_PAGE_LOCKS = { ON | OFF }
+  | MAXDOP = max_degree_of_parallelism
+)

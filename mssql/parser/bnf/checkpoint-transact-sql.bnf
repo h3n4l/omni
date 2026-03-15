@@ -1,0 +1,12 @@
+-- Statement: CHECKPOINT
+-- Grammar rule: checkpointStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/checkpoint-transact-sql
+
+-- From TSql170.g:
+checkpointStatement:
+    Checkpoint
+    (integer)?
+    ;
+
+-- From Microsoft docs:
+CHECKPOINT [ checkpoint_duration ]

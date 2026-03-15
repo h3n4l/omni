@@ -1,0 +1,19 @@
+-- Statement: DROP FULLTEXT INDEX
+-- Grammar rule: dropFulltextIndexStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-fulltext-index-transact-sql
+
+-- From TSql170.g:
+-- (dispatched via dropFulltextStatements after matching DROP FULLTEXT)
+
+dropFulltextIndexStatement:
+    Index On dropObject[false]
+    ;
+
+-- Sub-rules:
+
+dropObject [bool onlyTwoPartNames]:
+    schemaObjectThreePartName
+    ;
+
+-- From Microsoft docs:
+DROP FULLTEXT INDEX ON table_name

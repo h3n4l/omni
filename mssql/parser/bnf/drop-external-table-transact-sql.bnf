@@ -1,0 +1,22 @@
+-- Statement: DROP EXTERNAL TABLE
+-- Grammar rule: dropExternalTableStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-external-table-transact-sql
+
+-- From TSql170.g:
+dropExternalTableStatement:
+    -- Note: DROP EXTERNAL is parsed by the dispatcher; this rule handles TABLE <object_list>
+    Table dropObjectList[onlyTwoPartNames=false]
+    ;
+
+-- Sub-rules:
+dropObjectList:
+    dropObject ( Comma dropObject )*
+    ;
+
+dropObject:
+    schemaObjectThreePartName
+    ;
+
+-- From Microsoft docs:
+DROP EXTERNAL TABLE { database_name.schema_name.table_name | schema_name.table_name | table_name }
+[;]

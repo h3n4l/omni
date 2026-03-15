@@ -1,0 +1,39 @@
+-- Statement: CREATE DATABASE ENCRYPTION KEY
+-- Grammar rule: createDatabaseEncryptionKey (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-database-encryption-key-transact-sql
+
+-- From TSql170.g:
+createDatabaseEncryptionKey:
+    tEncryption:Identifier Key    -- 'ENCRYPTION' KEY
+    With tAlgorithm:Identifier EqualsSign tAlgorithmKind:Identifier
+    tEncryption2:Identifier       -- 'ENCRYPTION'
+    By dekEncryptor
+    ;
+
+-- Sub-rule: dekEncryptor
+dekEncryptor:
+    dekEncryptorType identifier
+    ;
+
+-- Sub-rule: dekEncryptorType
+dekEncryptorType:
+      tServer:Identifier          -- 'SERVER'
+      (
+          tCertificate:Identifier  -- 'CERTIFICATE'
+        | tAsymmetric:Identifier Key  -- 'ASYMMETRIC' KEY
+      )
+    ;
+
+-- Full syntax: CREATE DATABASE ENCRYPTION KEY
+--   WITH ALGORITHM = { AES_128 | AES_192 | AES_256 | TRIPLE_DES_3KEY }
+--   ENCRYPTION BY SERVER { CERTIFICATE encryptor_name | ASYMMETRIC KEY encryptor_name }
+
+-- From Microsoft docs:
+-- CREATE DATABASE ENCRYPTION KEY
+--        WITH ALGORITHM = { AES_128 | AES_192 | AES_256 | TRIPLE_DES_3KEY }
+--    ENCRYPTION BY SERVER
+--     {
+--         CERTIFICATE Encryptor_Name |
+--         ASYMMETRIC KEY Encryptor_Name
+--     }
+-- [ ; ]

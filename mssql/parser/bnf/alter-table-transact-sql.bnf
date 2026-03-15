@@ -1,0 +1,125 @@
+-- Statement: ALTER TABLE
+-- Grammar rule: alterTableStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-table-transact-sql
+
+-- From TSql170.g:
+alterTableStatement:
+    Alter Table schemaObjectThreePartName
+    (
+        alterTableAlterColumnStatement
+    |   alterTableAlterIndexStatement
+    |   alterTableTriggerModificationStatement
+    |   alterTableDropTableElementStatement
+    |   alterTableSwitchStatement
+    |   (With constraintEnforcement)?
+        (
+            alterTableAddTableElementStatement
+        |   alterTableConstraintModificationStatement
+        )
+    |   alterTableRebuildStatement
+    |   alterTableAlterPartitionStatement
+    |   alterTableChangeTrackingModificationStatement
+    |   alterTableFileTableNamespaceStatement
+    |   alterTableSetStatement
+    )
+    ;
+
+constraintEnforcement:
+      Check
+    | NoCheck
+    ;
+
+alterTableRebuildStatement:
+    Identifier /* Rebuild */
+    (partitionSpecifier)?
+    (With indexOptionList)?
+    ;
+
+alterTableAlterPartitionStatement:
+    (Identifier /* Split */ | Merge)
+    Identifier /* Range */
+    LeftParenthesis expression RightParenthesis
+    ;
+
+-- From Microsoft docs:
+
+-- Disk-Based Syntax:
+ALTER TABLE { database_name.schema_name.table_name | schema_name.table_name | table_name }
+{
+    ALTER COLUMN column_name
+    {
+        [ type_schema_name. ] type_name
+            [ ( { precision [ , scale ] | max | xml_schema_collection } ) ]
+        [ COLLATE collation_name ]
+        [ NULL | NOT NULL ] [ SPARSE ]
+      | { ADD | DROP }
+          { ROWGUIDCOL | PERSISTED | NOT FOR REPLICATION | SPARSE | HIDDEN }
+      | { ADD | DROP } MASKED [ WITH ( FUNCTION = ' mask_function ') ]
+    }
+    [ WITH ( ONLINE = ON | OFF ) ]
+    | [ WITH { CHECK | NOCHECK } ]
+
+    | ADD
+    {
+        <column_definition>
+      | <computed_column_definition>
+      | <table_constraint>
+      | <column_set_definition>
+    } [ ,...n ]
+
+    | DROP
+     [ {
+         [ CONSTRAINT ] [ IF EXISTS ]
+         { constraint_name [ WITH ( <drop_clustered_constraint_option> [ ,...n ] ) ] } [ ,...n ]
+       | COLUMN [ IF EXISTS ] { column_name } [ ,...n ]
+       | PERIOD FOR SYSTEM_TIME
+     } [ ,...n ] ]
+
+    | [ WITH { CHECK | NOCHECK } ] { CHECK | NOCHECK } CONSTRAINT
+        { ALL | constraint_name [ ,...n ] }
+
+    | { ENABLE | DISABLE } TRIGGER
+        { ALL | trigger_name [ ,...n ] }
+
+    | { ENABLE | DISABLE } CHANGE_TRACKING
+        [ WITH ( TRACK_COLUMNS_UPDATED = { ON | OFF } ) ]
+
+    | SWITCH [ PARTITION source_partition_number_expression ]
+        TO target_table
+        [ PARTITION target_partition_number_expression ]
+        [ WITH ( <low_priority_lock_wait> ) ]
+
+    | SET
+        (
+            [ FILESTREAM_ON = { partition_scheme_name | filegroup | "default" | "NULL" } ]
+          | SYSTEM_VERSIONING = { OFF | ON [ ( HISTORY_TABLE = schema_name.history_table_name
+              [, DATA_CONSISTENCY_CHECK = { ON | OFF } ] ) ] }
+          | DATA_DELETION = { OFF | ON [ ( [ FILTER_COLUMN = column_name ]
+              [, RETENTION_PERIOD = { INFINITE | number { DAY | DAYS | WEEK | WEEKS
+                  | MONTH | MONTHS | YEAR | YEARS } } ] ) ] }
+        )
+
+    | REBUILD
+      [ [ PARTITION = ALL ] [ WITH ( <rebuild_option> [ ,...n ] ) ]
+      | [ PARTITION = partition_number [ WITH ( <single_partition_rebuild_option> [ ,...n ] ) ] ]
+      ]
+
+    | <table_option>
+    | <filetable_option>
+    | <stretch_configuration>
+}
+[ ; ]
+
+<drop_clustered_constraint_option> ::=
+{
+    MAXDOP = max_degree_of_parallelism
+  | ONLINE = { ON | OFF }
+  | MOVE TO { partition_scheme_name ( column_name ) | filegroup | "default" }
+}
+
+<table_option> ::=
+    SET ( LOCK_ESCALATION = { AUTO | TABLE | DISABLE } )
+
+<low_priority_lock_wait> ::=
+    WAIT_AT_LOW_PRIORITY ( MAX_DURATION = <time> [ MINUTES ],
+        ABORT_AFTER_WAIT = { NONE | SELF | BLOCKERS } )

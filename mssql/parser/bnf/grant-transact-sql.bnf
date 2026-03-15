@@ -1,0 +1,63 @@
+-- Statement: GRANT
+-- Grammar rule: grantStatement90 (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/grant-transact-sql
+
+-- From TSql170.g:
+grantStatement90:
+    Grant
+    permissionsList
+    securityStatementTargetObjectOpt
+    To securityStatementPrincipalList
+    (
+        With Grant Option
+    )?
+    securityStatementAsClauseOpt
+    ;
+
+permissionsList:
+    permission ( Comma permission )*
+    ;
+
+permission:
+    ( securityStatementPermission )+
+    ( columnNameList )?
+    ;
+
+securityStatementTargetObjectOpt:
+    ( securityTargetObject )?
+    ;
+
+securityTargetObject:
+    securityTargetObjectCommon
+    ( columnNameList )?
+    ;
+
+securityTargetObjectCommon:
+    On
+    (
+        ( securityStatementPermission+ DoubleColon ) =>
+        securityStatementPermission DoubleColon multiPartIdentifier
+    |
+        multiPartIdentifier
+    )
+    ;
+
+securityStatementPrincipalList:
+    principal ( Comma principal )*
+    ;
+
+principal:
+      Public
+    | Null
+    | identifier
+    ;
+
+securityStatementAsClauseOpt:
+    ( As identifier )?
+    ;
+
+-- From Microsoft docs:
+GRANT { ALL [ PRIVILEGES ] }
+      | permission [ ( column [ , ...n ] ) ] [ , ...n ]
+      [ ON [ class :: ] securable ] TO principal [ , ...n ]
+      [ WITH GRANT OPTION ] [ AS principal ]

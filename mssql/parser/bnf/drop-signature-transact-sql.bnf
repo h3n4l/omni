@@ -1,0 +1,41 @@
+-- Statement: DROP SIGNATURE
+-- Grammar rule: dropSignatureStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-signature-transact-sql
+
+-- From TSql170.g:
+-- Parent: dropStatement handles DROP keyword
+dropSignatureStatement:
+    signatureType FROM signableElement BY cryptoListWithOptionalPasswordSignature
+    ;
+
+signatureType:
+    ( COUNTER )? SIGNATURE
+    ;
+
+signableElement:
+      schemaObjectThreePartName
+    | ( OBJECT | ASSEMBLY ) DoubleColon schemaObjectThreePartName
+    | DATABASE DoubleColon schemaObjectThreePartName
+    ;
+
+cryptoListWithOptionalPasswordSignature:
+    cryptoWithOptionalPasswordSignature ( Comma cryptoWithOptionalPasswordSignature )*
+    ;
+
+cryptoWithOptionalPasswordSignature:
+      certificateCrypto withSignatureOrPasswordOpt?
+    | keyCrypto withSignatureOrPasswordOpt?
+    | passwordCrypto
+    ;
+
+withSignatureOrPasswordOpt:
+    WITH Identifier EqualsSign ( stringLiteral | binary )
+    ;
+
+-- From Microsoft docs:
+DROP [ COUNTER ] SIGNATURE FROM module_name
+    BY <crypto_list> [ ,...n ]
+
+<crypto_list> ::=
+    CERTIFICATE cert_name
+    | ASYMMETRIC KEY Asym_key_name

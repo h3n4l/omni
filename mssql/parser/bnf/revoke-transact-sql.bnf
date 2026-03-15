@@ -1,0 +1,67 @@
+-- Statement: REVOKE
+-- Grammar rule: revokeStatement90 (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/revoke-transact-sql
+
+-- From TSql170.g:
+revokeStatement90:
+    Revoke
+    ( Grant Option For )?
+    permissionsList
+    securityStatementTargetObjectOpt
+    ( To | From ) securityStatementPrincipalList
+    ( Cascade )?
+    securityStatementAsClauseOpt
+    ;
+
+permissionsList:
+    permission ( Comma permission )*
+    ;
+
+permission:
+    ( securityStatementPermission )+
+    ( columnNameList )?
+    ;
+
+securityStatementTargetObjectOpt:
+    ( securityTargetObject )?
+    ;
+
+securityTargetObject:
+    securityTargetObjectCommon
+    ( columnNameList )?
+    ;
+
+securityTargetObjectCommon:
+    On
+    (
+        ( securityStatementPermission+ DoubleColon ) =>
+        securityStatementPermission DoubleColon multiPartIdentifier
+    |
+        multiPartIdentifier
+    )
+    ;
+
+securityStatementPrincipalList:
+    principal ( Comma principal )*
+    ;
+
+principal:
+      Public
+    | Null
+    | identifier
+    ;
+
+securityStatementAsClauseOpt:
+    ( As identifier )?
+    ;
+
+-- From Microsoft docs:
+REVOKE [ GRANT OPTION FOR ]
+      {
+        [ ALL [ PRIVILEGES ] ]
+        |
+                permission [ ( column [ , ...n ] ) ] [ , ...n ]
+      }
+      [ ON [ class :: ] securable ]
+      { TO | FROM } principal [ , ...n ]
+      [ CASCADE ] [ AS principal ]

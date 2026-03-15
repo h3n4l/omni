@@ -1,0 +1,44 @@
+-- Statement: ADD SIGNATURE
+-- Grammar rule: addSignatureStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/add-signature-transact-sql
+
+-- From TSql170.g:
+addSignatureStatement:
+    signatureType TO signableElement BY cryptoListWithOptionalPasswordSignature
+    ;
+
+signatureType:
+    (COUNTER)? SIGNATURE
+    ;
+
+signableElement:
+      schemaObjectThreePartName
+    | (OBJECT | ASSEMBLY) DoubleColon schemaObjectThreePartName
+    | DATABASE DoubleColon schemaObjectThreePartName
+    ;
+
+cryptoListWithOptionalPasswordSignature:
+    cryptoWithOptionalPasswordSignature (Comma cryptoWithOptionalPasswordSignature)*
+    ;
+
+cryptoWithOptionalPasswordSignature:
+      certificateCrypto withSignatureOrPasswordOpt
+    | keyCrypto withSignatureOrPasswordOpt
+    | passwordCrypto
+    ;
+
+withSignatureOrPasswordOpt:
+    (WITH Identifier EqualsSign (stringLiteral | binary))?
+    ;
+
+-- From Microsoft docs:
+ADD [ COUNTER ] SIGNATURE TO module_class::module_name
+    BY <crypto_list> [ , ...n ]
+
+<crypto_list> ::=
+    CERTIFICATE cert_name
+    | CERTIFICATE cert_name [ WITH PASSWORD = 'password' ]
+    | CERTIFICATE cert_name WITH SIGNATURE = signed_blob
+    | ASYMMETRIC KEY Asym_Key_Name
+    | ASYMMETRIC KEY Asym_Key_Name [ WITH PASSWORD = 'password' ]
+    | ASYMMETRIC KEY Asym_Key_Name WITH SIGNATURE = signed_blob

@@ -1,0 +1,42 @@
+-- Statement: ALTER SEARCH PROPERTY LIST
+-- Grammar rule: alterSearchPropertyListStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-search-property-list-transact-sql
+
+-- From TSql170.g:
+alterSearchPropertyListStatement:
+    Identifier /* SEARCH */ Identifier /* PROPERTY */ Identifier /* LIST */ identifier
+    searchPropertyListAction
+    requiredSemicolon
+    ;
+
+searchPropertyListAction:
+      addSearchPropertyListAction
+    | dropSearchPropertyListAction
+    ;
+
+addSearchPropertyListAction:
+    Add stringLiteral
+    With LeftParenthesis
+        Identifier /* PROPERTY_SET_GUID */ EqualsSign stringLiteral
+        Comma Identifier /* PROPERTY_INT_ID */ EqualsSign integer
+        (Comma Identifier /* PROPERTY_DESCRIPTION */ EqualsSign stringLiteral)?
+    RightParenthesis
+    ;
+
+dropSearchPropertyListAction:
+    Drop stringLiteral
+    ;
+
+-- From Microsoft docs:
+ALTER SEARCH PROPERTY LIST list_name
+{
+   ADD 'property_name'
+     WITH
+      (
+          PROPERTY_SET_GUID = 'property_set_guid'
+        , PROPERTY_INT_ID = property_int_id
+      [ , PROPERTY_DESCRIPTION = 'property_description' ]
+      )
+ | DROP 'property_name'
+}
+;

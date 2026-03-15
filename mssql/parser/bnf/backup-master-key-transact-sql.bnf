@@ -1,0 +1,23 @@
+-- Statement: BACKUP MASTER KEY
+-- Grammar rule: backupMasterKeyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/backup-master-key-transact-sql
+
+-- From TSql170.g:
+backupMasterKeyStatement:
+    backupMasterKeyBody
+    ;
+
+backupMasterKeyBody:
+    Identifier /* MASTER */ Key To File EqualsSign stringLiteral
+    Identifier /* ENCRYPTION */ By Identifier /* PASSWORD */ EqualsSign stringLiteral
+    ;
+
+-- Note: The leading BACKUP keyword is consumed by the parent backupStatements rule.
+
+-- From Microsoft docs:
+-- BACKUP MASTER KEY TO
+--   {
+--     FILE = 'path_to_file'
+--   | URL = 'Azure Blob storage URL'
+--   }
+--     ENCRYPTION BY PASSWORD = 'password'

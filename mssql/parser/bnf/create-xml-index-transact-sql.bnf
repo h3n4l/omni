@@ -1,0 +1,60 @@
+-- Statement: CREATE PRIMARY XML INDEX / CREATE XML INDEX
+-- Grammar rules: createPrimaryXmlIndexStatement, createXmlIndexStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-xml-index-transact-sql
+
+-- From TSql170.g:
+createPrimaryXmlIndexStatement:
+    CREATE PRIMARY XML
+    createXmlIndexStatement[true]
+    ;
+
+createXmlIndexStatement[bool vPrimary]:
+    INDEX identifier ON schemaObjectThreePartName
+    LeftParenthesis identifier RightParenthesis         -- (xml_column)
+    (
+        {vPrimary}?
+        /* empty - primary XML index */
+    |
+        USING XML INDEX identifier                      -- secondary: USING XML INDEX name
+        (
+            secondaryXmlIndexStatementBody              -- FOR { VALUE | PATH | PROPERTY }
+        |   secondarySelectiveXmlIndex                  -- FOR ( path_name )
+        )
+    )
+    (
+        WITH indexOptionList
+    )?
+    ;
+
+secondaryXmlIndexStatementBody:
+    FOR identifier                                      -- VALUE | PATH | PROPERTY
+    ;
+
+secondarySelectiveXmlIndex:
+    FOR LeftParenthesis identifier RightParenthesis      -- FOR ( path_name )
+    ;
+
+-- From Microsoft docs:
+CREATE [ PRIMARY ] XML INDEX index_name
+    ON <object> ( xml_column_name )
+    [ USING XML INDEX xml_index_name
+        [ FOR { VALUE | PATH | PROPERTY } ] ]
+    [ WITH ( <xml_index_option> [ ,...n ] ) ]
+[ ; ]
+
+<object> ::=
+{ database_name.schema_name.table_name | schema_name.table_name | table_name }
+
+<xml_index_option> ::=
+{
+    PAD_INDEX  = { ON | OFF }
+  | FILLFACTOR = fillfactor
+  | SORT_IN_TEMPDB = { ON | OFF }
+  | IGNORE_DUP_KEY = OFF
+  | DROP_EXISTING = { ON | OFF }
+  | ONLINE = OFF
+  | ALLOW_ROW_LOCKS = { ON | OFF }
+  | ALLOW_PAGE_LOCKS = { ON | OFF }
+  | MAXDOP = max_degree_of_parallelism
+  | XML_COMPRESSION = { ON | OFF }
+}

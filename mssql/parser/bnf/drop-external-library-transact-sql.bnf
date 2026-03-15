@@ -1,0 +1,25 @@
+-- Statement: DROP EXTERNAL LIBRARY
+-- Grammar rule: dropExternalLibraryStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-external-library-transact-sql
+
+-- From TSql170.g:
+dropExternalLibraryStatement:
+    tLibrary:Identifier vIdentifier=identifier
+    authorizationOpt[vResult]
+    ;
+    -- Note: Called within DROP EXTERNAL context. tLibrary must match "Library".
+    -- identifier = library_name
+
+-- Sub-rules:
+
+authorizationOpt [IAuthorization vParent]:
+    (authorization[vParent])?
+    ;
+
+authorization [IAuthorization vParent]:
+    Authorization vOwner = identifier
+    ;
+
+-- From Microsoft docs:
+DROP EXTERNAL LIBRARY library_name
+[ AUTHORIZATION owner_name ];

@@ -1,0 +1,49 @@
+-- Statement: SET COMMAND
+-- Grammar rule: setCommandStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/set-statements-transact-sql
+
+-- From TSql170.g:
+setCommandStatement:
+    setCommand (Comma setCommand)*
+    ;
+
+-- Sub-rules:
+
+setCommand:
+    Identifier fipsFlaggerLevel          -- when identifier is 'FIPS_FLAGGER'
+    | Identifier possibleNegativeConstantOrIdentifier  -- general SET option = value
+    ;
+
+fipsFlaggerLevel:
+    Off
+    | stringLiteral    -- e.g., 'ENTRY', 'FULL', 'INTERMEDIATE'
+    ;
+
+-- Note: General SET commands use GeneralSetCommandTypeHelper to parse the option name.
+-- This covers SET commands like:
+--   SET LANGUAGE <language>
+--   SET DATEFORMAT <format>
+--   SET DATEFIRST <number>
+--   SET DEADLOCK_PRIORITY <priority>
+--   SET LOCK_TIMEOUT <timeout_period>
+--   SET QUERY_GOVERNOR_COST_LIMIT <value>
+--   SET CONTEXT_INFO <binary_value>
+--   SET FIPS_FLAGGER { OFF | 'ENTRY' | 'FULL' | 'INTERMEDIATE' }
+
+-- From Microsoft docs (index page):
+-- The SET statements are grouped into categories:
+--   Date and time: SET DATEFIRST, SET DATEFORMAT
+--   Locking: SET DEADLOCK_PRIORITY, SET LOCK_TIMEOUT
+--   Miscellaneous: SET CONCAT_NULL_YIELDS_NULL, SET CURSOR_CLOSE_ON_COMMIT,
+--     SET FIPS_FLAGGER, SET IDENTITY_INSERT, SET LANGUAGE, SET OFFSETS,
+--     SET QUOTED_IDENTIFIER
+--   Query Execution: SET ARITHABORT, SET ARITHIGNORE, SET FMTONLY,
+--     SET NOCOUNT, SET NOEXEC, SET NUMERIC_ROUNDABORT, SET PARSEONLY,
+--     SET QUERY_GOVERNOR_COST_LIMIT, SET ROWCOUNT, SET TEXTSIZE
+--   ISO Settings: SET ANSI_DEFAULTS, SET ANSI_NULL_DFLT_OFF,
+--     SET ANSI_NULL_DFLT_ON, SET ANSI_NULLS, SET ANSI_PADDING, SET ANSI_WARNINGS
+--   Statistics: SET FORCEPLAN, SET SHOWPLAN_ALL, SET SHOWPLAN_TEXT,
+--     SET SHOWPLAN_XML, SET STATISTICS IO, SET STATISTICS XML,
+--     SET STATISTICS PROFILE, SET STATISTICS TIME
+--   Transactions: SET IMPLICIT_TRANSACTIONS, SET REMOTE_PROC_TRANSACTIONS,
+--     SET TRANSACTION ISOLATION LEVEL, SET XACT_ABORT

@@ -1,0 +1,22 @@
+-- Statement: DROP USER
+-- Grammar rule: dropUserStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-user-transact-sql
+
+-- From TSql170.g:
+dropUserStatement:
+    User
+    (If Exists)?
+    identifier
+    ;
+
+identifier:
+      Identifier
+    | QuotedIdentifier
+    ;
+
+-- From Microsoft docs:
+-- Syntax for SQL Server and Azure SQL Database
+DROP USER [ IF EXISTS ] user_name
+
+-- Syntax for Azure Synapse Analytics and Parallel Data Warehouse
+DROP USER user_name

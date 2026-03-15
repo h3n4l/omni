@@ -1,0 +1,27 @@
+-- Statement: ROLLBACK TRANSACTION
+-- Grammar rule: rollbackTransactionStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/rollback-transaction-transact-sql
+
+-- From TSql170.g:
+rollbackTransactionStatement:
+    Rollback
+    (
+        (Identifier /* WORK */)?
+    |
+        (
+            (Tran | Transaction)
+            (transactionName)?
+        )
+    )?
+    ;
+
+transactionName:
+    identifierOrVariable
+    | weirdTransactionName  /* e.g., -123:something */
+    ;
+
+-- From Microsoft docs:
+ROLLBACK { TRAN | TRANSACTION }
+    [ transaction_name | @tran_name_variable
+    | savepoint_name | @savepoint_variable ]
+[ ; ]

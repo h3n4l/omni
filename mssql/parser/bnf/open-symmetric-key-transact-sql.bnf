@@ -1,0 +1,35 @@
+-- Statement: OPEN SYMMETRIC KEY
+-- Grammar rule: openSymmetricKeyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/open-symmetric-key-transact-sql
+
+-- From TSql170.g:
+openSymmetricKeyStatement:
+    SYMMETRIC KEY identifier DECRYPTION BY decryptionMechanism
+    ;
+
+decryptionMechanism:
+    passwordCrypto
+    | certificateCrypto ( WITH decryptionMechanismPassword )?
+    | keyCrypto ( WITH decryptionMechanismPassword )?  -- only for asymmetric key, not symmetric key
+    ;
+
+decryptionMechanismPassword:
+    PASSWORD EqualsSign stringLiteral
+    ;
+
+-- Note: The OPEN keyword is consumed by the parent dispatcher rule (openStatements).
+-- passwordCrypto = PASSWORD EqualsSign stringLiteral
+-- certificateCrypto = CERTIFICATE identifier
+-- keyCrypto = ASYMMETRIC KEY identifier | SYMMETRIC KEY identifier
+
+-- From Microsoft docs:
+OPEN SYMMETRIC KEY Key_name DECRYPTION BY <decryption_mechanism>
+
+<decryption_mechanism> ::=
+    CERTIFICATE certificate_name [ WITH PASSWORD = 'password' ]
+    |
+    ASYMMETRIC KEY asym_key_name [ WITH PASSWORD = 'password' ]
+    |
+    SYMMETRIC KEY decrypting_Key_name
+    |
+    PASSWORD = 'decryption_password'

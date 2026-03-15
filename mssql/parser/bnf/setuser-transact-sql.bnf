@@ -1,0 +1,17 @@
+-- Statement: SETUSER
+-- Grammar rule: setUserStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/setuser-transact-sql
+
+-- From TSql170.g:
+setUserStatement:
+    SetUser
+    (
+        stringOrVariable       -- username
+        (
+            With Identifier    /* NORESET */
+        )?
+    )?
+    ;
+
+-- From Microsoft docs:
+SETUSER [ 'username' [ WITH NORESET ] ]

@@ -1,0 +1,48 @@
+-- Statement: CREATE COLUMN MASTER KEY
+-- Grammar rule: createColumnMasterKeyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-column-master-key-transact-sql
+
+-- From TSql170.g:
+createColumnMasterKeyStatement:
+    tMaster:Identifier tKey:Key vCMKName=identifier
+    tWith:With tLeftParens:LeftParenthesis
+    vParameter = columnMasterkeyParameter
+    Comma vParameter = columnMasterkeyParameter
+    (Comma vParameter = columnMasterkeyParameter)*
+    tRightParens:RightParenthesis
+    ;
+
+columnMasterkeyParameter:
+    {NextTokenMatches(CodeGenerationSupporter.KeyStoreProviderName)}?
+    columnMasterKeyStoreProviderNameParameter
+    | {NextTokenMatches(CodeGenerationSupporter.KeyPath)}?
+    columnMasterKeyPathParameter
+    | {NextTokenMatches(CodeGenerationSupporter.EnclaveComputations)}?
+    columnMasterKeyEnclaveComputationsParameter
+    ;
+
+columnMasterKeyStoreProviderNameParameter:
+    tKeyStoreProviderName:Identifier tEquals1:EqualsSign vKeyStoreProviderName=stringLiteral
+    -- KEY_STORE_PROVIDER_NAME = 'provider_name'
+    ;
+
+columnMasterKeyPathParameter:
+    tKeyPath:Identifier tEquals2:EqualsSign vKeyPath=stringLiteral
+    -- KEY_PATH = 'key_path'
+    ;
+
+columnMasterKeyEnclaveComputationsParameter:
+    tEnclaveComputations:Identifier tLeftParens:LeftParenthesis
+    tSignature:Identifier tEquals3:EqualsSign vSignature=binary
+    tRightParens:RightParenthesis
+    -- ENCLAVE_COMPUTATIONS (SIGNATURE = 0x...)
+    ;
+
+-- From Microsoft docs:
+CREATE COLUMN MASTER KEY key_name
+    WITH (
+        KEY_STORE_PROVIDER_NAME = 'key_store_provider_name',
+        KEY_PATH = 'key_path'
+        [,ENCLAVE_COMPUTATIONS (SIGNATURE = signature)]
+         )
+[;]

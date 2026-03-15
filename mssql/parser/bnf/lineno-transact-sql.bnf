@@ -1,0 +1,25 @@
+-- Statement: LINENO
+-- Grammar rule: lineNoStatement (TSql170.g)
+-- Doc: none (no Microsoft documentation available)
+
+-- From TSql170.g:
+lineNoStatement returns [LineNoStatement vResult = this.FragmentFactory.CreateFragment<LineNoStatement>()]
+{
+    IntegerLiteral vLiteral;
+}
+    :
+        tLineNo:LineNo vLiteral=integer
+        {
+            UpdateTokenInfo(vResult,tLineNo);
+            vResult.LineNo = vLiteral;
+        }
+    ;
+
+-- Sub-rule: integer
+integer returns [IntegerLiteral vResult = this.FragmentFactory.CreateFragment<IntegerLiteral>()]
+    : tInt:Integer
+        {
+            UpdateTokenInfo(vResult,tInt);
+            vResult.Value = tInt.getText();
+        }
+    ;

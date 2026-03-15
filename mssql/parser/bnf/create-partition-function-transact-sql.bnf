@@ -1,0 +1,37 @@
+-- Statement: CREATE PARTITION FUNCTION
+-- Grammar rule: createPartitionFunction (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-partition-function-transact-sql
+
+-- From TSql170.g:
+createPartitionFunction:
+    Function vIdentifier=identifier
+        LeftParenthesis
+        vParamType=partitionParameterType
+        RightParenthesis As partitionFunctionTypes[vResult]
+    ;
+
+partitionParameterType:
+    vDataType=scalarDataType
+        collationOpt[vResult]
+    ;
+
+partitionFunctionTypes [CreatePartitionFunctionStatement vParent]:
+    tRange:Identifier partitionFunctionRange[vParent] For Values LeftParenthesis
+        -- Match(tRange, "Range")
+        (vExpression=expression
+            (Comma vExpression=expression)*
+        )?
+        RightParenthesis
+    ;
+
+partitionFunctionRange [CreatePartitionFunctionStatement vParent]:
+      /* empty */
+    | Left
+    | Right
+    ;
+
+-- From Microsoft docs:
+CREATE PARTITION FUNCTION partition_function_name ( input_parameter_type )
+AS RANGE [ LEFT | RIGHT ]
+FOR VALUES ( [ boundary_value [ ,...n ] ] )
+[ ; ]

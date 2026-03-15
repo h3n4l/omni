@@ -1,0 +1,16 @@
+-- Statement: READTEXT
+-- Grammar rule: readTextStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/queries/readtext-transact-sql
+
+-- From TSql170.g:
+readTextStatement:
+    ReadText
+    column               /* table.column */
+    binaryOrVariable     /* text_ptr */
+    integerOrVariable    /* offset */
+    integerOrVariable    /* size */
+    (HoldLock)?
+    ;
+
+-- From Microsoft docs:
+READTEXT { table.column text_ptr offset size } [ HOLDLOCK ]

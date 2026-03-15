@@ -1,0 +1,28 @@
+-- Statement: BEGIN TRANSACTION
+-- Grammar rule: beginTransactionStatement (TSql170.g:15990)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/begin-transaction-transact-sql
+
+-- From TSql170.g:
+beginTransactionStatement:
+    Begin
+    (Distributed)?
+    (Tran | Transaction)
+    (transactionName)?
+    (With Identifier /* MARK */ (stringOrVariable)?)?
+    ;
+
+transactionName:
+    identifierOrVariable
+    | weirdTransactionName
+    ;
+
+-- From Microsoft docs:
+-- BEGIN { TRAN | TRANSACTION }
+--     [ { transaction_name | @tran_name_variable }
+--       [ WITH MARK [ 'description' ] ]
+--     ]
+-- [ ; ]
+--
+-- Synapse/PDW syntax:
+-- BEGIN { TRAN | TRANSACTION }
+-- [ ; ]

@@ -1,0 +1,32 @@
+-- Statement: COMMIT TRANSACTION
+-- Grammar rule: commitTransactionStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/commit-transaction-transact-sql
+
+-- From TSql170.g:
+commitTransactionStatement:
+    Commit
+    (
+        (Identifier /* WORK */)?
+    |
+        (
+            (Tran | Transaction)
+            (transactionName)?
+        )
+    )?
+    (
+        With LeftParenthesis
+        Identifier /* DELAYED_DURABILITY */ EqualsSign optionOnOff
+        RightParenthesis
+    )?
+    ;
+
+transactionName:
+    identifierOrVariable
+    | weirdTransactionName  /* e.g., -123:something */
+    ;
+
+-- From Microsoft docs:
+COMMIT [ { TRAN | TRANSACTION }
+    [ transaction_name | @tran_name_variable ] ]
+    [ WITH ( DELAYED_DURABILITY = { OFF | ON } ) ]
+[ ; ]

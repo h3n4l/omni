@@ -1,0 +1,24 @@
+-- Statement: DROP ASSEMBLY
+-- Grammar rule: dropAssemblyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-assembly-transact-sql
+
+-- From TSql170.g:
+dropAssemblyStatement:
+    Assembly
+    ( If Exists )?
+    dropObjectList
+    ( With No Dependents )?
+    ;
+
+dropObjectList:
+    dropObject ( Comma dropObject )*
+    ;
+
+dropObject:
+    schemaObjectThreePartName
+    ;
+
+-- From Microsoft docs:
+DROP ASSEMBLY [ IF EXISTS ] assembly_name [ , ...n ]
+[ WITH NO DEPENDENTS ]
+[ ; ]

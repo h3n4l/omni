@@ -1,0 +1,22 @@
+-- Statement: RAISERROR
+-- Grammar rule: raiseErrorStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/raiserror-transact-sql
+
+-- From TSql170.g:
+raiseErrorStatement:
+    Raiserror LeftParenthesis
+    signedIntegerOrStringOrVariable   /* msg_id | msg_str | @local_variable */
+    Comma signedIntegerOrVariable     /* severity */
+    Comma signedIntegerOrVariable     /* state */
+    (Comma possibleNegativeConstant)* /* optional arguments */
+    RightParenthesis
+    (With Identifier /* LOG | NOWAIT | SETERROR */
+        (Comma Identifier)*
+    )?
+    ;
+
+-- From Microsoft docs:
+RAISERROR ( { msg_id | msg_str | @local_variable }
+    { , severity , state }
+    [ , argument [ , ...n ] ] )
+    [ WITH option [ , ...n ] ]

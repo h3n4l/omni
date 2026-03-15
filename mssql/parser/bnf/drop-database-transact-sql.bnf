@@ -1,0 +1,22 @@
+-- Statement: DROP DATABASE
+-- Grammar rule: dropDatabaseStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-database-transact-sql
+
+-- From TSql170.g:
+dropDatabaseStatements:
+    Database
+        ( dropDatabaseAuditSpecificationStatement
+        | dropDatabaseScopedCredentialStatement
+        | dropDatabaseEncryptionKeyStatement
+        | dropDatabaseStatement
+        )
+    ;
+
+dropDatabaseStatement:
+    (If Exists)?
+    identifier (Comma identifier)*
+    ;
+
+-- From Microsoft docs:
+DROP DATABASE [ IF EXISTS ] { database_name | database_snapshot_name } [ ,...n ]
+[ ; ]

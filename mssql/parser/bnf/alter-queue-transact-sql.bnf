@@ -1,0 +1,77 @@
+-- Statement: ALTER QUEUE
+-- Grammar rule: alterQueueStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-queue-transact-sql
+
+-- From TSql170.g:
+alterQueueStatement:
+    Identifier /* QUEUE */ schemaObjectThreePartName
+    queueOptionList[vDropAccepted=true]
+    ;
+
+queueOptionList:
+    With queueOption ( Comma queueOption )*
+    ;
+
+queueOption:
+      stateQueueOption
+    | queueActivationOption
+    | queuePoisonMessageHandlingOption
+    ;
+
+stateQueueOption:
+    Identifier /* STATUS | RETENTION */ EqualsSign optionOnOff
+    ;
+
+queueActivationOption:
+    Identifier /* ACTIVATION */ LeftParenthesis
+    activationQueueOptionArgument ( Comma activationQueueOptionArgument )*
+    RightParenthesis
+    ;
+
+activationQueueOptionArgument:
+      Identifier EqualsSign
+      (
+          statusQueueOptionArgument
+        | procedureNameQueueOptionArgument
+        | maxQueueReadersQueueOptionArgument
+      )
+    | dropQueueOptionArgument
+    | executeAsQueueOptionArgument
+    ;
+
+-- From Microsoft docs:
+ALTER QUEUE <object>
+   queue_settings
+   | queue_action
+[ ; ]
+
+<object> ::=
+{ database_name.schema_name.queue_name | schema_name.queue_name | queue_name }
+
+<queue_settings> ::=
+WITH
+   [ STATUS = { ON | OFF } [ , ] ]
+   [ RETENTION = { ON | OFF } [ , ] ]
+   [ ACTIVATION (
+       { [ STATUS = { ON | OFF } [ , ] ]
+         [ PROCEDURE_NAME = <procedure> [ , ] ]
+         [ MAX_QUEUE_READERS = max_readers [ , ] ]
+         [ EXECUTE AS { SELF | 'user_name'  | OWNER } ]
+       |  DROP }
+          ) [ , ]]
+         [ POISON_MESSAGE_HANDLING (
+          STATUS = { ON | OFF } )
+         ]
+
+<queue_action> ::=
+   REBUILD [ WITH <query_rebuild_options> ]
+   | REORGANIZE [ WITH (LOB_COMPACTION = { ON | OFF } ) ]
+   | MOVE TO { file_group | "default" }
+
+<procedure> ::=
+{ database_name.schema_name.stored_procedure_name | schema_name.stored_procedure_name | stored_procedure_name }
+
+<queue_rebuild_options> ::=
+{
+   ( MAXDOP = max_degree_of_parallelism )
+}

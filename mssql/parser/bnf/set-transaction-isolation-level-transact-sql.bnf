@@ -1,0 +1,25 @@
+-- Statement: SET TRANSACTION ISOLATION LEVEL
+-- Grammar rule: setTransactionIsolationLevelStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/set-transaction-isolation-level-transact-sql
+
+-- From TSql170.g:
+setTransactionIsolationLevelStatement:
+    (Transaction | Tran) Identifier/*Isolation*/ Identifier/*Level*/ isolationLevel
+    ;
+
+-- Sub-rules:
+
+isolationLevel:
+    Read Identifier       -- 'COMMITTED' or 'UNCOMMITTED'
+    | Identifier Read     -- 'REPEATABLE' READ
+    | Identifier          -- 'SERIALIZABLE' or 'SNAPSHOT'
+    ;
+
+-- From Microsoft docs:
+-- SET TRANSACTION ISOLATION LEVEL
+--     { READ UNCOMMITTED
+--     | READ COMMITTED
+--     | REPEATABLE READ
+--     | SNAPSHOT
+--     | SERIALIZABLE
+--     }

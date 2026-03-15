@@ -1,0 +1,22 @@
+-- Statement: IF
+-- Grammar rule: ifStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/if-else-transact-sql
+
+-- From TSql170.g:
+ifStatement:
+    If booleanExpression
+    statementOptSemi
+    (
+        Else statementOptSemi
+    )?
+    ;
+
+-- Sub-rules referenced:
+-- booleanExpression: (defined elsewhere - complex boolean expression grammar)
+-- statementOptSemi: a single T-SQL statement with optional semicolon
+
+-- From Microsoft docs:
+-- IF boolean_expression
+--     { sql_statement | statement_block }
+-- [ ELSE
+--     { sql_statement | statement_block } ]

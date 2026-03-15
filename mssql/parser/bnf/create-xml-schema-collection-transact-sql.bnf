@@ -1,0 +1,12 @@
+-- Statement: CREATE XML SCHEMA COLLECTION
+-- Grammar rule: createXmlSchemaCollectionStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-xml-schema-collection-transact-sql
+
+-- From TSql170.g:
+createXmlSchemaCollectionStatement:
+    CREATE XML SCHEMA COLLECTION schemaObjectNonEmptyTwoPartName
+    AS expression
+    ;
+
+-- From Microsoft docs:
+CREATE XML SCHEMA COLLECTION [ <relational_schema>. ] sql_identifier AS Expression

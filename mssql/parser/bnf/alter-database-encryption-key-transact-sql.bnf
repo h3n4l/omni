@@ -1,0 +1,45 @@
+-- Statement: ALTER DATABASE ENCRYPTION KEY
+-- Grammar rule: alterDatabaseEncryptionKey (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-encryption-key-transact-sql
+
+-- From TSql170.g:
+
+alterDatabaseEncryptionKey:
+    ENCRYPTION KEY
+    ( REGENERATE WITH ALGORITHM EqualsSign Identifier   -- AES_128 | AES_192 | AES_256 | TRIPLE_DES_3KEY
+        ( ENCRYPTION BY dekEncryptor )?
+    | ENCRYPTION BY dekEncryptor
+    )
+    ;
+
+dekEncryptor:
+    SERVER
+    ( CERTIFICATE identifier
+    | ASYMMETRIC KEY identifier
+    )
+    ;
+
+-- From Microsoft docs:
+
+-- Syntax for SQL Server
+ALTER DATABASE ENCRYPTION KEY
+      REGENERATE WITH ALGORITHM = { AES_128 | AES_192 | AES_256 | TRIPLE_DES_3KEY }
+   |
+   ENCRYPTION BY SERVER
+    {
+        CERTIFICATE Encryptor_Name |
+        ASYMMETRIC KEY Encryptor_Name
+    }
+[ ; ]
+
+-- Syntax for Parallel Data Warehouse
+ALTER DATABASE ENCRYPTION KEY
+    {
+      {
+        REGENERATE WITH ALGORITHM = { AES_128 | AES_192 | AES_256 | TRIPLE_DES_3KEY }
+        [ ENCRYPTION BY SERVER CERTIFICATE Encryptor_Name ]
+      }
+      |
+      ENCRYPTION BY SERVER   CERTIFICATE Encryptor_Name
+    }
+[ ; ]

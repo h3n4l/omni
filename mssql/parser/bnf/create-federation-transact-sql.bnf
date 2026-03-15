@@ -1,0 +1,89 @@
+-- Statement: CREATE FEDERATION
+-- Grammar rule: createFederationStatement (TSql170.g)
+-- Doc: none (no Microsoft documentation available)
+
+-- From TSql170.g:
+createFederationStatement returns [CreateFederationStatement vResult = FragmentFactory.CreateFragment<CreateFederationStatement>()]
+{
+    Identifier vName;
+    Identifier vDistributionName;
+    DataTypeReference vDataType;
+}
+    :   tFederation:Identifier vName = identifier
+        {
+            Match(tFederation, CodeGenerationSupporter.Federation);
+            vResult.Name = vName;
+        }
+        LeftParenthesis
+        vDistributionName = identifier
+        {
+            vResult.DistributionName = vDistributionName;
+        }
+        vDataType = scalarDataType
+        {
+            vResult.DataType = vDataType;
+        }
+        tRange : Identifier
+        {
+            Match(tRange, CodeGenerationSupporter.Range);
+        }
+        tRParen:RightParenthesis
+        {
+            UpdateTokenInfo(vResult, tRParen);
+        }
+    ;
+
+-- Sub-rule: identifier
+identifier returns [Identifier vResult = this.FragmentFactory.CreateFragment<Identifier>()]
+    :
+        tId:Identifier
+        {
+            UpdateTokenInfo(vResult,tId);
+            vResult.SetUnquotedIdentifier(tId.getText());
+            CheckIdentifierLength(vResult);
+        }
+    |
+        tId2:QuotedIdentifier
+        {
+            UpdateTokenInfo(vResult,tId2);
+            vResult.SetIdentifier(tId2.getText());
+            CheckIdentifierLength(vResult);
+        }
+    ;
+
+-- Sub-rule: scalarDataType
+scalarDataType returns [DataTypeReference vResult = null]
+{
+    SchemaObjectName vName;
+    SqlDataTypeOption typeOption = SqlDataTypeOption.None;
+    bool isXmlDataType = false;
+}
+    :
+        (
+            vName=dataTypeSchemaObjectName
+            {
+                if (vName.SchemaIdentifier == null ||
+                    (vName.SchemaIdentifier != null && IsSys(vName.SchemaIdentifier)))
+                {
+                    typeOption = ParseDataType160(vName.BaseIdentifier.Value);
+                    isXmlDataType = IsXml(vName.BaseIdentifier);
+                }
+            }
+            (
+                {isXmlDataType}?
+                vResult = xmlDataType[vName]
+            |
+                {typeOption == SqlDataTypeOption.Vector}?
+                vResult = vectorDataType[vName]
+            |
+                {typeOption != SqlDataTypeOption.None}?
+                vResult = sqlDataTypeWithoutNational[vName, typeOption]
+            |
+                vResult = userDataType[vName]
+            )
+        )
+    |
+        vResult = doubleDataType
+    |
+        vResult = sqlDataTypeWithNational
+    ;

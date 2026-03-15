@@ -109,6 +109,38 @@ func (p *Parser) parseIdentExpr() nodes.ExprNode {
 		return p.parseFuncCall(name, loc)
 	}
 
+	// Static method call: type::Method(args)
+	if p.cur.Type == tokCOLONCOLON {
+		p.advance() // consume ::
+		method := ""
+		if p.isIdentLike() {
+			method = p.cur.Str
+			p.advance()
+		}
+		mc := &nodes.MethodCallExpr{
+			Type:   &nodes.DataType{Name: name, Loc: nodes.Loc{Start: loc}},
+			Method: method,
+			Loc:    nodes.Loc{Start: loc},
+		}
+		if p.cur.Type == '(' {
+			p.advance() // consume (
+			var args []nodes.Node
+			if p.cur.Type != ')' {
+				for {
+					arg := p.parseExpr()
+					args = append(args, arg)
+					if _, ok := p.match(','); !ok {
+						break
+					}
+				}
+			}
+			mc.Args = &nodes.List{Items: args}
+			_, _ = p.expect(')')
+		}
+		mc.Loc.End = p.pos()
+		return mc
+	}
+
 	// Qualified name: ident.ident[.ident[.ident]] or ident.*
 	if p.cur.Type == '.' {
 		return p.parseQualifiedRef(name, loc)
@@ -157,6 +189,42 @@ func (p *Parser) parseQualifiedRef(first string, loc int) nodes.ExprNode {
 					schema = parts[0]
 				}
 				return p.parseFuncCallWithSchema(schema, partName, loc)
+			}
+
+			// Check for :: static method call: schema.type::Method(args)
+			if p.cur.Type == tokCOLONCOLON {
+				p.advance() // consume ::
+				method := ""
+				if p.isIdentLike() {
+					method = p.cur.Str
+					p.advance()
+				}
+				dt := &nodes.DataType{Name: partName, Loc: nodes.Loc{Start: loc}}
+				if len(parts) > 0 {
+					dt.Schema = parts[0]
+				}
+				mc := &nodes.MethodCallExpr{
+					Type:   dt,
+					Method: method,
+					Loc:    nodes.Loc{Start: loc},
+				}
+				if p.cur.Type == '(' {
+					p.advance() // consume (
+					var args []nodes.Node
+					if p.cur.Type != ')' {
+						for {
+							arg := p.parseExpr()
+							args = append(args, arg)
+							if _, ok := p.match(','); !ok {
+								break
+							}
+						}
+					}
+					mc.Args = &nodes.List{Items: args}
+					_, _ = p.expect(')')
+				}
+				mc.Loc.End = p.pos()
+				return mc
 			}
 
 			parts = append(parts, partName)

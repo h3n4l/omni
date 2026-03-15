@@ -1,0 +1,80 @@
+-- Statement: DROP INDEX
+-- Grammar rule: dropIndexStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-index-transact-sql
+
+-- From TSql170.g:
+dropIndexStatement:
+    Index (If Exists)?
+    dropIndexClause (Comma dropIndexClause)*
+    ;
+
+dropIndexClause:
+      indexDropObject
+    | indexDropObjectNewNameFormat
+    ;
+
+indexDropObjectNewNameFormat:
+    identifier On schemaObjectThreePartName
+    (dropClusteredIndexOptions)?
+    ;
+
+dropClusteredIndexOptions:
+    With LeftParenthesis
+    dropClusteredIndexOption (Comma dropClusteredIndexOption)*
+    RightParenthesis
+    ;
+
+dropClusteredIndexOption:
+      maxDopOption
+    | onlineIndexOption
+    | dropIndexMoveToOption
+    | dropIndexFileStreamOnOption
+    | dataCompressionOption
+    | xmlCompressionOption
+    | waitAtLowPriorityOption
+    ;
+
+dropIndexMoveToOption:
+    Move To filegroupOrPartitionScheme
+    ;
+
+dropIndexFileStreamOnOption:
+    fileStreamOn
+    ;
+
+indexDropObject:
+    childObjectNameWithThreePrefixes
+    ;
+
+childObjectNameWithThreePrefixes:
+    identifierList[4]
+    ;
+
+-- From Microsoft docs:
+DROP INDEX [ IF EXISTS ]
+{ <drop_relational_or_xml_or_spatial_index> [ , ...n ]
+| <drop_backward_compatible_index> [ , ...n ]
+}
+
+<drop_relational_or_xml_or_spatial_index> ::=
+    index_name ON <object>
+    [ WITH ( <drop_clustered_index_option> [ , ...n ] ) ]
+
+<drop_backward_compatible_index> ::=
+    [ owner_name. ] table_or_view_name.index_name
+
+<object> ::=
+{ database_name.schema_name.table_or_view_name | schema_name.table_or_view_name | table_or_view_name }
+
+<drop_clustered_index_option> ::=
+{
+    MAXDOP = max_degree_of_parallelism
+  | ONLINE = { ON | OFF }
+  | MOVE TO { partition_scheme_name ( column_name )
+            | filegroup_name
+            | "default"
+            }
+  [ FILESTREAM_ON { partition_scheme_name
+            | filestream_filegroup_name
+            | "default" } ]
+}

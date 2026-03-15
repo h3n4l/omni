@@ -1,0 +1,12 @@
+-- Statement: BREAK
+-- Grammar rule: breakStatement (TSql170.g:16348)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/break-transact-sql
+
+-- From TSql170.g:
+breakStatement:
+    Break
+    ;
+
+-- From Microsoft docs:
+-- BREAK
+-- (Exits the current WHILE loop)

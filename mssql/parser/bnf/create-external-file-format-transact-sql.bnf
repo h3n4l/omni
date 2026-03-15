@@ -1,0 +1,111 @@
+-- Statement: CREATE EXTERNAL FILE FORMAT
+-- Grammar rule: createExternalFileFormatStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-file-format-transact-sql
+
+-- From TSql170.g:
+createExternalFileFormatStatement:
+    File FORMAT identifier
+    With LeftParenthesis
+    FORMAT_TYPE EqualsSign
+    ( DELIMITEDTEXT | RCFILE | ORC | PARQUET | JSON | DELTA )
+    (
+        Comma
+        externalFileFormatOptions
+    )?
+    RightParenthesis
+    ;
+
+externalFileFormatOptions:
+    (
+        externalFormatingOption            -- FORMAT_OPTIONS = ( ... )
+    |
+        externalFileFormatLiteralOptions   -- SERDE_METHOD | DATA_COMPRESSION
+    )
+    (
+        Comma
+        (
+            externalFormatingOption
+        |
+            externalFileFormatLiteralOptions
+        )
+    )*
+    ;
+
+externalFormatingContainerOption:
+    FORMAT_OPTIONS EqualsSign LeftParenthesis
+    externalFileFormatLiteralOption
+    (Comma externalFileFormatLiteralOption)*
+    RightParenthesis
+    ;
+
+externalFileFormatLiteralOption:
+    optionName EqualsSign stringLiteral
+    -- Options: FIELD_TERMINATOR, STRING_DELIMITER, DATE_FORMAT, USE_TYPE_DEFAULT, ENCODING,
+    --          FIRST_ROW, PARSER_VERSION, SERDE_METHOD, DATA_COMPRESSION
+    ;
+
+-- From Microsoft docs:
+-- Delimited text:
+CREATE EXTERNAL FILE FORMAT file_format_name
+WITH (
+        FORMAT_TYPE = DELIMITEDTEXT
+    [ , FORMAT_OPTIONS ( <format_options> [ ,...n  ] ) ]
+    [ , DATA_COMPRESSION = {
+           'org.apache.hadoop.io.compress.GzipCodec'
+        }
+     ]);
+
+<format_options> ::=
+{
+    FIELD_TERMINATOR = field_terminator
+    | STRING_DELIMITER = string_delimiter
+    | FIRST_ROW = integer
+    | DATE_FORMAT = datetime_format
+    | USE_TYPE_DEFAULT = { TRUE | FALSE }
+    | ENCODING = {'UTF8' | 'UTF16'}
+    | PARSER_VERSION = {'parser_version'}
+}
+
+-- RC:
+CREATE EXTERNAL FILE FORMAT file_format_name
+WITH (
+    FORMAT_TYPE = RCFILE,
+    SERDE_METHOD = {
+        'org.apache.hadoop.hive.serde2.columnar.LazyBinaryColumnarSerDe'
+      | 'org.apache.hadoop.hive.serde2.columnar.ColumnarSerDe'
+    }
+    [ , DATA_COMPRESSION = 'org.apache.hadoop.io.compress.DefaultCodec' ]);
+
+-- ORC:
+CREATE EXTERNAL FILE FORMAT file_format_name
+WITH (
+         FORMAT_TYPE = ORC
+     [ , DATA_COMPRESSION = {
+        'org.apache.hadoop.io.compress.SnappyCodec'
+      | 'org.apache.hadoop.io.compress.DefaultCodec' }
+    ]);
+
+-- Parquet:
+CREATE EXTERNAL FILE FORMAT file_format_name
+WITH (
+         FORMAT_TYPE = PARQUET
+     [ , DATA_COMPRESSION = {
+        'org.apache.hadoop.io.compress.SnappyCodec'
+      | 'org.apache.hadoop.io.compress.GzipCodec' }
+    ]);
+
+-- JSON:
+CREATE EXTERNAL FILE FORMAT file_format_name
+WITH (
+    FORMAT_TYPE = JSON
+     [ , DATA_COMPRESSION = {
+        'org.apache.hadoop.io.compress.SnappyCodec'
+      | 'org.apache.hadoop.io.compress.GzipCodec'
+      | 'org.apache.hadoop.io.compress.DefaultCodec' }
+    ]);
+
+-- Delta:
+CREATE EXTERNAL FILE FORMAT file_format_name
+WITH (
+         FORMAT_TYPE = DELTA
+      );

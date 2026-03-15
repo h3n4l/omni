@@ -1,0 +1,169 @@
+-- Statement: CREATE TABLE
+-- Grammar rule: createTableStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-table-transact-sql
+
+-- From TSql170.g:
+createTableStatement:
+    Create Table schemaObjectThreePartName
+    (
+        // CTAS with column list
+        ctasCreateTableStatement
+    |
+        LeftParenthesis tableDefinitionCreateTable RightParenthesis
+        (graphAsNodeOrEdge)?
+    |
+        ctasCreateTableStatement
+    |
+        As Identifier  /* FileTable or GraphEdge */
+    |
+        As selectStatement
+    )
+    (On filegroupOrPartitionScheme)?
+    (federatedOn)?
+    largeDataOnOpt
+    (withTableOptions)?
+    ;
+
+graphAsNodeOrEdge:
+    As Identifier  /* GraphEdge | GraphNode */
+    ;
+
+tableDefinitionCreateTable:
+    tableElement (Comma tableElement)* (Comma)?
+    ;
+
+ctasCreateTableStatement:
+    /* CREATE TABLE ... AS SELECT (CTAS) or column list variant */
+    (LeftParenthesis identifier (Comma identifier)* RightParenthesis)?
+    (withCtasTableOptions)?
+    As selectStatement
+    ;
+
+-- From Microsoft docs:
+
+-- Disk-Based Syntax:
+CREATE TABLE
+    { database_name.schema_name.table_name | schema_name.table_name | table_name }
+    [ AS FileTable ]
+    ( { <column_definition>
+        | <computed_column_definition>
+        | <column_set_definition>
+        | [ <table_constraint> ] [ ,...n ]
+        | [ <table_index> ] }
+          [ ,...n ]
+          [ PERIOD FOR SYSTEM_TIME ( system_start_time_column_name
+             , system_end_time_column_name ) ]
+      )
+    [ ON { partition_scheme_name ( partition_column_name )
+           | filegroup
+           | "default" } ]
+    [ TEXTIMAGE_ON { filegroup | "default" } ]
+    [ FILESTREAM_ON { partition_scheme_name
+           | filegroup
+           | "default" } ]
+    [ WITH ( <table_option> [ ,...n ] ) ]
+[ ; ]
+
+<column_definition> ::=
+column_name <data_type>
+    [ FILESTREAM ]
+    [ COLLATE collation_name ]
+    [ SPARSE ]
+    [ MASKED WITH ( FUNCTION = 'mask_function' ) ]
+    [ [ CONSTRAINT constraint_name ] DEFAULT constant_expression ]
+    [ IDENTITY [ ( seed , increment ) ] ]
+    [ NOT FOR REPLICATION ]
+    [ GENERATED ALWAYS AS { ROW | TRANSACTION_ID | SEQUENCE_NUMBER } { START | END } [ HIDDEN ] ]
+    [ [ CONSTRAINT constraint_name ] {NULL | NOT NULL} ]
+    [ ROWGUIDCOL ]
+    [ ENCRYPTED WITH
+        ( COLUMN_ENCRYPTION_KEY = key_name ,
+          ENCRYPTION_TYPE = { DETERMINISTIC | RANDOMIZED } ,
+          ALGORITHM = 'AEAD_AES_256_CBC_HMAC_SHA_256'
+        ) ]
+    [ <column_constraint> [ ,...n ] ]
+    [ <column_index> ]
+
+<data_type> ::=
+[ type_schema_name. ] type_name
+    [ ( precision [ , scale ] | max |
+        [ { CONTENT | DOCUMENT } ] xml_schema_collection ) ]
+
+<column_constraint> ::=
+[ CONSTRAINT constraint_name ]
+{
+   { PRIMARY KEY | UNIQUE }
+        [ CLUSTERED | NONCLUSTERED ]
+        [ WITH FILLFACTOR = fillfactor | WITH ( <index_option> [ ,...n ] ) ]
+        [ ON { partition_scheme_name ( partition_column_name )
+            | filegroup | "default" } ]
+  | [ FOREIGN KEY ]
+        REFERENCES [ schema_name. ] referenced_table_name [ ( ref_column ) ]
+        [ ON DELETE { NO ACTION | CASCADE | SET NULL | SET DEFAULT } ]
+        [ ON UPDATE { NO ACTION | CASCADE | SET NULL | SET DEFAULT } ]
+        [ NOT FOR REPLICATION ]
+  | CHECK [ NOT FOR REPLICATION ] ( logical_expression )
+}
+
+<computed_column_definition> ::=
+column_name AS computed_column_expression
+[ PERSISTED [ NOT NULL ] ]
+[ <column_constraint> ]
+
+<column_set_definition> ::=
+column_set_name XML COLUMN_SET FOR ALL_SPARSE_COLUMNS
+
+<table_constraint> ::=
+[ CONSTRAINT constraint_name ]
+{
+    { PRIMARY KEY | UNIQUE }
+        [ CLUSTERED | NONCLUSTERED ]
+        ( column_name [ ASC | DESC ] [ ,...n ] )
+        [ WITH FILLFACTOR = fillfactor | WITH ( <index_option> [ ,...n ] ) ]
+        [ ON { partition_scheme_name (partition_column_name)
+            | filegroup | "default" } ]
+    | FOREIGN KEY
+        ( column_name [ ,...n ] )
+        REFERENCES referenced_table_name [ ( ref_column [ ,...n ] ) ]
+        [ ON DELETE { NO ACTION | CASCADE | SET NULL | SET DEFAULT } ]
+        [ ON UPDATE { NO ACTION | CASCADE | SET NULL | SET DEFAULT } ]
+        [ NOT FOR REPLICATION ]
+    | CHECK [ NOT FOR REPLICATION ] ( logical_expression )
+}
+
+<table_index> ::=
+{
+    INDEX index_name [ UNIQUE ] [ CLUSTERED | NONCLUSTERED ]
+         ( column_name [ ASC | DESC ] [ ,...n ] )
+    | INDEX index_name CLUSTERED COLUMNSTORE [ ORDER (column_name [ ,...n ] ) ]
+    | INDEX index_name [ NONCLUSTERED ] COLUMNSTORE ( column_name [ ,...n ] )
+    [ INCLUDE ( column_name [ ,...n ] ) ]
+    [ WHERE <filter_predicate> ]
+    [ WITH ( <index_option> [ ,...n ] ) ]
+    [ ON { partition_scheme_name ( column_name )
+         | filegroup_name | default } ]
+    [ FILESTREAM_ON { filestream_filegroup_name | partition_scheme_name | "NULL" } ]
+}
+
+<table_option> ::=
+{
+    DATA_COMPRESSION = { NONE | ROW | PAGE }
+      [ ON PARTITIONS ( { <partition_number_expression> | <range> } [ ,...n ] ) ]
+  | XML_COMPRESSION = { ON | OFF }
+      [ ON PARTITIONS ( { <partition_number_expression> | <range> } [ ,...n ] ) ]
+  | FILETABLE_DIRECTORY = <directory_name>
+  | FILETABLE_COLLATE_FILENAME = { <collation_name> | database_default }
+  | FILETABLE_PRIMARY_KEY_CONSTRAINT_NAME = <constraint_name>
+  | FILETABLE_STREAMID_UNIQUE_CONSTRAINT_NAME = <constraint_name>
+  | FILETABLE_FULLPATH_UNIQUE_CONSTRAINT_NAME = <constraint_name>
+  | SYSTEM_VERSIONING = ON
+      [ ( HISTORY_TABLE = schema_name.history_table_name
+        [ , DATA_CONSISTENCY_CHECK = { ON | OFF } ] ) ]
+  | REMOTE_DATA_ARCHIVE = { ON [ ( <table_stretch_options> [ ,...n] ) ]
+      | OFF ( MIGRATION_STATE = PAUSED ) }
+  | DATA_DELETION = ON
+      { ( FILTER_COLUMN = column_name,
+          RETENTION_PERIOD = { INFINITE | number { DAY | DAYS | WEEK | WEEKS
+                            | MONTH | MONTHS | YEAR | YEARS } } ) }
+  | LEDGER = ON [ ( <ledger_option> [ ,...n ] ) ] | OFF
+}

@@ -1,0 +1,50 @@
+-- Statement: ALTER SYMMETRIC KEY
+-- Grammar rule: alterSymmetricKeyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-symmetric-key-transact-sql
+
+-- From TSql170.g:
+alterSymmetricKeyStatement:
+    Identifier /* SYMMETRIC */ Key identifier
+    (Add | Drop)
+    encryptorListWithNoPassword
+    ;
+
+encryptorListWithNoPassword:
+    Identifier /* ENCRYPTION */ By cryptoWithNoPasswordOrJustPassword
+    (Comma cryptoWithNoPasswordOrJustPassword)*
+    ;
+
+cryptoWithNoPasswordOrJustPassword:
+      certificateCrypto
+    | keyCrypto
+    | passwordCrypto
+    ;
+
+certificateCrypto:
+    Identifier /* CERTIFICATE */ identifier
+    ;
+
+keyCrypto:
+    Identifier /* SYMMETRIC | ASYMMETRIC */ Key identifier
+    ;
+
+passwordCrypto:
+    Identifier /* PASSWORD */ EqualsSign stringLiteral
+    ;
+
+-- From Microsoft docs:
+ALTER SYMMETRIC KEY Key_name <alter_option>
+
+<alter_option> ::=
+   ADD ENCRYPTION BY <encrypting_mechanism> [ , ... n ]
+   |
+   DROP ENCRYPTION BY <encrypting_mechanism> [ , ... n ]
+
+<encrypting_mechanism> ::=
+   CERTIFICATE certificate_name
+   |
+   PASSWORD = 'password'
+   |
+   SYMMETRIC KEY Symmetric_Key_Name
+   |
+   ASYMMETRIC KEY Asym_Key_Name

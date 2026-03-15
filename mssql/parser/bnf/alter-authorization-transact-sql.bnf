@@ -1,0 +1,50 @@
+-- Statement: ALTER AUTHORIZATION
+-- Grammar rule: alterAuthorizationStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-authorization-transact-sql
+
+-- From TSql170.g:
+alterAuthorizationStatement:
+    Authorization authorizationTargetObject
+    To
+    (
+        Schema tOwner:Identifier  -- 'SCHEMA OWNER'
+      | identifier                -- principal_name
+    )
+    ;
+
+-- Sub-rule: authorizationTargetObject
+authorizationTargetObject:
+    securityTargetObjectCommon[vResult]
+    ;
+
+-- Sub-rule: securityTargetObjectCommon
+securityTargetObjectCommon:
+    On
+    (
+        (securityStatementPermission+ DoubleColon) =>
+        (
+            securityStatementPermission DoubleColon          -- single-word class: e.g. OBJECT::
+          | securityStatementPermission securityStatementPermission DoubleColon  -- two-word class: e.g. ASYMMETRIC KEY::
+          | securityStatementPermission securityStatementPermission securityStatementPermission DoubleColon  -- three-word class
+        )
+    )?
+    multiPartIdentifier  -- entity_name
+    ;
+
+-- Note: The parent ALTER statement provides: ALTER
+-- So the full parse is: ALTER AUTHORIZATION ON [class_type::] entity_name TO { principal_name | SCHEMA OWNER }
+
+-- From Microsoft docs:
+-- ALTER AUTHORIZATION
+--     ON [ <class_type>:: ] entity_name
+--     TO { principal_name | SCHEMA OWNER }
+-- [;]
+--
+-- <class_type> ::=
+--      {
+--       OBJECT | ASSEMBLY | ASYMMETRIC KEY | AVAILABILITY GROUP | CERTIFICATE
+--     | CONTRACT | TYPE | DATABASE | ENDPOINT | FULLTEXT CATALOG
+--     | FULLTEXT STOPLIST | MESSAGE TYPE | REMOTE SERVICE BINDING
+--     | ROLE | ROUTE | SCHEMA | SEARCH PROPERTY LIST | SERVER ROLE
+--     | SERVICE | SYMMETRIC KEY | XML SCHEMA COLLECTION
+--      }

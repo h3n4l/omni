@@ -1,0 +1,33 @@
+-- Statement: SET OFFSETS
+-- Grammar rule: setOffsetsStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/set-offsets-transact-sql
+
+-- From TSql170.g:
+setOffsetsStatement:
+    Offsets offsetItem (Comma offsetItem)*
+    setOnOff
+    ;
+
+-- Sub-rules:
+
+offsetItem:
+    Select
+    | From
+    | Order
+    | Compute
+    | Table
+    | ( Procedure | Proc )
+    | ( Execute | Exec )
+    | Identifier   -- 'STATEMENT' or 'PARAM'
+    ;
+
+setOnOff:
+    On
+    | Off
+    ;
+
+-- From Microsoft docs:
+-- SET OFFSETS keyword_list { ON | OFF }
+--
+-- keyword_list is a comma-separated list of Transact-SQL constructs including
+-- SELECT, FROM, ORDER, TABLE, PROCEDURE, STATEMENT, PARAM, and EXECUTE.

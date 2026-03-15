@@ -1,0 +1,13 @@
+-- Statement: CLOSE MASTER KEY
+-- Grammar rule: closeMasterKeyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/close-master-key-transact-sql
+
+-- From TSql170.g:
+closeMasterKeyStatement:
+    MASTER KEY
+    ;
+
+-- Note: The CLOSE keyword is consumed by the parent dispatcher rule (closeStatements).
+
+-- From Microsoft docs:
+CLOSE MASTER KEY

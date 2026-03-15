@@ -1,0 +1,14 @@
+-- Statement: CLOSE SYMMETRIC KEY
+-- Grammar rule: closeSymmetricKeyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/close-symmetric-key-transact-sql
+
+-- From TSql170.g:
+closeSymmetricKeyStatement:
+    ( SYMMETRIC KEY identifier )
+    | ( ALL SYMMETRIC KEYS )
+    ;
+
+-- Note: The CLOSE keyword is consumed by the parent dispatcher rule (closeStatements).
+
+-- From Microsoft docs:
+CLOSE { SYMMETRIC KEY key_name | ALL SYMMETRIC KEYS }

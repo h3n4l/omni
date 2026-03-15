@@ -1,0 +1,88 @@
+-- Statement: CREATE USER
+-- Grammar rule: createUserStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-user-transact-sql
+
+-- From TSql170.g:
+createUserStatement:
+    User vIdentifier = identifier
+    (userLoginOption)?
+    (
+        With createUserOption
+        (Comma createUserOption)*
+    )?
+    ;
+
+userLoginOption:
+        (For | From)
+        (
+            (
+                (Asymmetric Key | tOption:Identifier)  -- LOGIN | CERTIFICATE | ASYMMETRIC KEY
+                vIdentifier=identifier
+            )
+        |   External tProvider:Identifier              -- EXTERNAL PROVIDER
+        )
+    |   tWithout:Identifier tLogin:Identifier          -- WITHOUT LOGIN
+    ;
+
+createUserOption:
+    tOption:Identifier EqualsSign
+    (
+        identifierCreateUserOption         -- DEFAULT_SCHEMA, DEFAULT_LANGUAGE, TYPE
+    |   literalCreateUserOption            -- SID, PASSWORD, OBJECT_ID, DEFAULT_SCHEMA=NULL, DEFAULT_LANGUAGE=lcid
+    )
+    ;
+
+identifierCreateUserOption:
+    vIdentifier=identifier                 -- schema_name | language_name | type_name
+    ;
+
+literalCreateUserOption:
+        vLiteral=binary                    -- SID = 0x...
+    |   vLiteral=stringLiteral             -- PASSWORD = 'pwd' | OBJECT_ID = 'id'
+    |   vLiteral=integer                   -- DEFAULT_LANGUAGE = lcid
+    |   vLiteral=nullLiteral               -- DEFAULT_SCHEMA = NULL
+    ;
+
+-- From Microsoft docs:
+-- Users based on logins in master
+CREATE USER user_name
+    [ { FOR | FROM } LOGIN login_name ]
+    [ WITH <limited_options_list> [ ,... ] ]
+[ ; ]
+
+-- Users that authenticate at the database
+CREATE USER
+    {
+      windows_principal [ WITH <options_list> [ ,... ] ]
+    | user_name WITH PASSWORD = 'password' [ , <options_list> [ ,... ]
+    | Microsoft_Entra_principal FROM EXTERNAL PROVIDER [WITH OBJECT_ID = 'objectid']
+    }
+ [ ; ]
+
+-- Users based on Windows principals that connect through Windows group logins
+CREATE USER
+    {
+          windows_principal [ { FOR | FROM } LOGIN windows_principal ]
+        | user_name { FOR | FROM } LOGIN windows_principal
+    }
+    [ WITH <limited_options_list> [ ,... ] ]
+[ ; ]
+
+-- Users that cannot authenticate
+CREATE USER user_name
+    {
+         WITHOUT LOGIN [ WITH <limited_options_list> [ ,... ] ]
+       | { FOR | FROM } CERTIFICATE cert_name
+       | { FOR | FROM } ASYMMETRIC KEY asym_key_name
+    }
+ [ ; ]
+
+<options_list> ::=
+      DEFAULT_SCHEMA = schema_name
+    | DEFAULT_LANGUAGE = { NONE | lcid | language name | language alias }
+    | SID = sid
+    | ALLOW_ENCRYPTED_VALUE_MODIFICATIONS = [ ON | OFF ] ]
+
+<limited_options_list> ::=
+      DEFAULT_SCHEMA = schema_name ]
+    | ALLOW_ENCRYPTED_VALUE_MODIFICATIONS = [ ON | OFF ] ]

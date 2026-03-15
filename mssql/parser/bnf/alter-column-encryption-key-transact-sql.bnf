@@ -1,0 +1,57 @@
+-- Statement: ALTER COLUMN ENCRYPTION KEY
+-- Grammar rule: alterColumnEncryptionKeyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-column-encryption-key-transact-sql
+
+-- From TSql170.g:
+alterColumnEncryptionKeyStatement:
+    -- Context: ALTER already consumed
+    COLUMN ENCRYPTION KEY vName = identifier
+    (
+        alterColumnEncryptionKeyAddStatement
+    |   alterColumnEncryptionKeyDropStatement
+    )
+    ;
+
+alterColumnEncryptionKeyAddStatement:
+    ADD VALUE
+    createColumnEncryptionKeyValue
+    ;
+
+alterColumnEncryptionKeyDropStatement:
+    DROP VALUE
+    LeftParenthesis columnMasterKeyNameParameter RightParenthesis
+    ;
+
+createColumnEncryptionKeyValue:
+    LeftParenthesis
+        columnEncryptionKeyValueParameter
+        Comma columnEncryptionKeyValueParameter
+        Comma columnEncryptionKeyValueParameter
+    RightParenthesis
+    ;
+
+columnEncryptionKeyValueParameter:
+      columnMasterKeyNameParameter
+    | columnEncryptionAlgorithmNameParameter
+    | encryptedValueParameter
+    ;
+
+columnMasterKeyNameParameter:
+    COLUMN_MASTER_KEY EqualsSign identifier
+    ;
+
+columnEncryptionAlgorithmNameParameter:
+    ALGORITHM EqualsSign stringLiteral
+    ;
+
+encryptedValueParameter:
+    ENCRYPTED_VALUE EqualsSign binary
+    ;
+
+-- From Microsoft docs:
+-- ALTER COLUMN ENCRYPTION KEY key_name
+--     [ ADD | DROP ] VALUE
+--     (
+--         COLUMN_MASTER_KEY = column_master_key_name
+--         [, ALGORITHM = 'algorithm_name' , ENCRYPTED_VALUE = varbinary_literal ]
+--     ) [;]

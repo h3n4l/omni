@@ -1,0 +1,19 @@
+-- Statement: CLOSE CURSOR
+-- Grammar rule: closeCursorStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/close-transact-sql
+
+-- From TSql170.g:
+closeCursorStatement:
+    cursorId
+    ;
+
+cursorId:
+    ( GLOBAL identifier )
+    | identifierOrVariable
+    ;
+
+-- Note: The CLOSE keyword is consumed by the parent dispatcher rule (closeStatements),
+-- which routes to closeCursorStatement, closeMasterKeyStatement, or closeSymmetricKeyStatement.
+
+-- From Microsoft docs:
+CLOSE { { [ GLOBAL ] cursor_name } | cursor_variable_name }

@@ -1,0 +1,23 @@
+-- Statement: DROP EVENT NOTIFICATION
+-- Grammar rule: dropEventNotificationStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-event-notification-transact-sql
+
+-- From TSql170.g:
+-- Parent: dropStatement handles DROP keyword, dropEventStatement handles EVENT keyword
+dropEventNotificationStatement:
+    NOTIFICATION identifier ( Comma identifier )*
+    eventNotificationObjectScope
+    ;
+
+eventNotificationObjectScope:
+    ON (
+          DATABASE
+        | QUEUE schemaObjectThreePartName
+        | SERVER
+    )
+    ;
+
+-- From Microsoft docs:
+DROP EVENT NOTIFICATION notification_name [ ,...n ]
+ON { SERVER | DATABASE | QUEUE queue_name }
+[ ; ]

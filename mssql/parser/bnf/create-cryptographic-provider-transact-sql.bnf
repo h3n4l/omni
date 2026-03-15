@@ -1,0 +1,17 @@
+-- Statement: CREATE CRYPTOGRAPHIC PROVIDER
+-- Grammar rule: createCryptographicProviderStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-cryptographic-provider-transact-sql
+
+-- From TSql170.g:
+createCryptographicProviderStatement
+    : tCryptographic:Identifier tProvider:Identifier vIdentifier=identifier
+        vFileName=cryptographicProviderFile
+    ;
+
+cryptographicProviderFile
+    : From File EqualsSign vFile=stringLiteral
+    ;
+
+-- From Microsoft docs:
+CREATE CRYPTOGRAPHIC PROVIDER provider_name
+    FROM FILE = path_of_DLL

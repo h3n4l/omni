@@ -1,0 +1,16 @@
+-- Statement: DEALLOCATE CURSOR
+-- Grammar rule: deallocateCursorStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/deallocate-transact-sql
+
+-- From TSql170.g:
+deallocateCursorStatement:
+    DEALLOCATE cursorId
+    ;
+
+cursorId:
+    ( GLOBAL identifier )
+    | identifierOrVariable
+    ;
+
+-- From Microsoft docs:
+DEALLOCATE { { [ GLOBAL ] cursor_name } | @cursor_variable_name }

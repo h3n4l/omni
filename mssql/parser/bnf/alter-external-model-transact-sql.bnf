@@ -1,0 +1,48 @@
+-- Statement: ALTER EXTERNAL MODEL
+-- Grammar rule: alterExternalModelStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-external-model-transact-sql
+
+-- From TSql170.g:
+alterExternalModelStatement:
+    ALTER EXTERNAL MODEL identifier
+    SET LeftParenthesis
+    (
+        externalModelLocation           -- LOCATION = '...'
+    |
+        externalModelApiFormat          -- API_FORMAT = '...'
+    |
+        externalModelModelType          -- MODEL_TYPE = EMBEDDINGS
+    |
+        externalModelModelName          -- MODEL = '...'
+    |
+        externalModelCredential         -- CREDENTIAL = credential_name
+    |
+        externalModelLocalRuntimePath   -- LOCAL_RUNTIME_PATH = '...'
+    |
+        externalModelParameters         -- PARAMETERS = '...'
+    )
+    (
+        Comma
+        (
+            externalModelLocation
+        |   externalModelApiFormat
+        |   externalModelModelType
+        |   externalModelModelName
+        |   externalModelCredential
+        |   externalModelLocalRuntimePath
+        |   externalModelParameters
+        )
+    )*
+    RightParenthesis
+    ;
+
+-- From Microsoft docs:
+-- ALTER EXTERNAL MODEL external_model_object_name
+-- SET
+--   (   LOCATION = '<prefix>://<path> [ :<port> ] '
+--     , API_FORMAT = '<OpenAI , Azure OpenAI , etc>'
+--     , MODEL_TYPE = EMBEDDINGS
+--     , MODEL = 'text-embedding-ada-002'
+--     [ , CREDENTIAL = <credential_name> ]
+--     [ , PARAMETERS = ' { "valid":"JSON" } ' ]
+--   );

@@ -143,6 +143,17 @@ func (p *Parser) parseComparison() nodes.ExprNode {
 		if _, err := p.expect('('); err != nil {
 			return left
 		}
+		// Check for subquery: IN (SELECT ...)
+		if p.cur.Type == kwSELECT || p.cur.Type == kwWITH {
+			sub := p.parseSelectStmt()
+			_, _ = p.expect(')')
+			return &nodes.InExpr{
+				Expr:     left,
+				Subquery: &nodes.SubqueryExpr{Query: sub, Loc: nodes.Loc{Start: loc}},
+				Not:      not,
+				Loc:      nodes.Loc{Start: loc},
+			}
+		}
 		var items []nodes.Node
 		for p.cur.Type != ')' && p.cur.Type != tokEOF {
 			expr := p.parseExpr()
@@ -478,6 +489,15 @@ func (p *Parser) parsePrimary() nodes.ExprNode {
 	case '(':
 		loc := p.pos()
 		p.advance()
+		// Scalar subquery: (SELECT ...)
+		if p.cur.Type == kwSELECT || p.cur.Type == kwWITH {
+			sub := p.parseSelectStmt()
+			_, _ = p.expect(')')
+			return &nodes.SubqueryExpr{
+				Query: sub,
+				Loc:   nodes.Loc{Start: loc},
+			}
+		}
 		expr := p.parseExpr()
 		_, _ = p.expect(')')
 		return &nodes.ParenExpr{

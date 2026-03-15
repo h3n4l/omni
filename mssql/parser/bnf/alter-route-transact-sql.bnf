@@ -1,0 +1,28 @@
+-- Statement: ALTER ROUTE
+-- Grammar rule: alterRouteStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-route-transact-sql
+
+-- From TSql170.g:
+alterRouteStatement:
+    Identifier /* ROUTE */ identifier
+    routeOptionList
+    ;
+
+routeOptionList:
+    With routeOption (Comma routeOption)*
+    ;
+
+routeOption:
+      Identifier /* LIFETIME */ EqualsSign integer
+    | Identifier /* SERVICE_NAME | BROKER_INSTANCE | ADDRESS | MIRROR_ADDRESS */ EqualsSign stringLiteral
+    ;
+
+-- From Microsoft docs:
+ALTER ROUTE route_name
+WITH
+  [ SERVICE_NAME = 'service_name' [ , ] ]
+  [ BROKER_INSTANCE = 'broker_instance' [ , ] ]
+  [ LIFETIME = route_lifetime [ , ] ]
+  [ ADDRESS =  'next_hop_address' [ , ] ]
+  [ MIRROR_ADDRESS = 'next_hop_mirror_address' ]
+[ ; ]

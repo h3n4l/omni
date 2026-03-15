@@ -1,0 +1,23 @@
+-- Statement: DROP SEQUENCE
+-- Grammar rule: dropSequenceStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-sequence-transact-sql
+
+-- From TSql170.g:
+dropSequenceStatement:
+    Sequence
+    ( If Exists )?
+    dropObjectList[onlyTwoPartNames=true]
+    ;
+
+-- Sub-rules:
+dropObjectList:
+    dropObject ( Comma dropObject )*
+    ;
+
+dropObject:
+    schemaObjectThreePartName
+    ;
+
+-- From Microsoft docs:
+DROP SEQUENCE [ IF EXISTS ] { database_name.schema_name.sequence_name | schema_name.sequence_name | sequence_name } [ ,...n ]
+[ ; ]

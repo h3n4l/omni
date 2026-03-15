@@ -1,0 +1,78 @@
+-- Statement: COPY
+-- Grammar rule: copyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/copy-into-transact-sql
+
+-- From TSql170.g:
+copyStatement:
+    Identifier /* COPY */ Into schemaObjectThreePartName
+    (copyColumnList)?
+    From nonEmptyString (Comma nonEmptyString)*
+    (copyWithClause)?
+    (optimizerHints)?
+    ;
+
+copyColumnList:
+    LeftParenthesis copyColumnOption (Comma copyColumnOption)* RightParenthesis
+    ;
+
+copyColumnOption:
+    identifier
+    (Default defaultValueLiteral)?
+    (integer)?
+    ;
+
+copyWithClause:
+    With LeftParenthesis copyOption (Comma copyOption)* RightParenthesis
+    ;
+
+copyOption:
+    (Identifier | IdentityInsert | Credential)
+    EqualsSign copyOptionValue
+    ;
+
+-- From Microsoft docs:
+
+-- Azure Synapse Analytics Syntax:
+COPY INTO [ schema. ] table_name
+[ (Column_list) ]
+FROM '<external_location>' [ , ...n ]
+WITH
+ (
+ [ FILE_TYPE = { 'CSV' | 'PARQUET' | 'ORC' } ]
+ [ , FILE_FORMAT = EXTERNAL FILE FORMAT OBJECT ]
+ [ , CREDENTIAL = (AZURE CREDENTIAL) ]
+ [ , ERRORFILE = '[http(s)://storageaccount/container]/errorfile_directory[/]' ]
+ [ , ERRORFILE_CREDENTIAL = (AZURE CREDENTIAL) ]
+ [ , MAXERRORS = max_errors ]
+ [ , COMPRESSION = { 'Gzip' | 'DefaultCodec' | 'Snappy' } ]
+ [ , FIELDQUOTE = 'string_delimiter' ]
+ [ , FIELDTERMINATOR = 'field_terminator' ]
+ [ , ROWTERMINATOR = 'row_terminator' ]
+ [ , FIRSTROW = first_row ]
+ [ , DATEFORMAT = 'date_format' ]
+ [ , ENCODING = { 'UTF8' | 'UTF16' } ]
+ [ , IDENTITY_INSERT = { 'ON' | 'OFF' } ]
+ [ , AUTO_CREATE_TABLE = { 'ON' | 'OFF' } ]
+)
+
+-- Fabric Warehouse Syntax:
+COPY INTO [ warehouse_name. ] [ schema_name. ] table_name
+[ (Column_list) ]
+FROM '<external_location>' [ , ...n ]
+WITH
+ (
+ [ FILE_TYPE = { 'CSV' | 'PARQUET' } ]
+ [ , CREDENTIAL = (AZURE CREDENTIAL) ]
+ [ , ERRORFILE = '[http(s)://storageaccount/container]/errorfile_directory[/]' ]
+ [ , ERRORFILE_CREDENTIAL = (AZURE CREDENTIAL) ]
+ [ , MAXERRORS = max_errors ]
+ [ , COMPRESSION = { 'Gzip' | 'Snappy' } ]
+ [ , FIELDQUOTE = 'string_delimiter' ]
+ [ , FIELDTERMINATOR = 'field_terminator' ]
+ [ , ROWTERMINATOR = 'row_terminator' ]
+ [ , FIRSTROW = first_row ]
+ [ , DATEFORMAT = 'date_format' ]
+ [ , ENCODING = { 'UTF8' | 'UTF16' } ]
+ [ , PARSER_VERSION = { '1.0' | '2.0' } ]
+ [ , MATCH_COLUMN_COUNT = { 'ON' | 'OFF' } ]
+)

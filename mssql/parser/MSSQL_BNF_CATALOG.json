@@ -1,0 +1,2030 @@
+{
+  "engine": "mssql",
+  "grammar_file": "mssql/parser/bnf/TSql170.g",
+  "doc_base_url": "https://learn.microsoft.com/en-us/sql/t-sql/statements",
+  "description": "Complete T-SQL statement catalog. Primary source: TSql170.g from microsoft/sqlscriptdom",
+  "statements": [
+    {
+      "name": "CREATE TABLE",
+      "rule": "createTableStatement",
+      "slug": "create-table-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-table-transact-sql"
+    },
+    {
+      "name": "ALTER TABLE",
+      "rule": "alterTableStatement",
+      "slug": "alter-table-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-table-transact-sql"
+    },
+    {
+      "name": "CREATE INDEX",
+      "rule": "createIndexStatement",
+      "slug": "create-index-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-index-transact-sql"
+    },
+    {
+      "name": "COPY",
+      "rule": "copyStatement",
+      "slug": "copy-into-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/copy-into-transact-sql"
+    },
+    {
+      "name": "DECLARE VARIABLE",
+      "rule": "declareVariableStatement",
+      "slug": "declare-local-variable-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/declare-local-variable-transact-sql"
+    },
+    {
+      "name": "DECLARE TABLE VARIABLE",
+      "rule": "declareTableBody",
+      "slug": "declare-table-variable-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/declare-local-variable-transact-sql"
+    },
+    {
+      "name": "DECLARE CURSOR",
+      "rule": "declareCursorStatement",
+      "slug": "declare-cursor-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/declare-cursor-transact-sql"
+    },
+    {
+      "name": "SET VARIABLE",
+      "rule": "setVariableStatement",
+      "slug": "set-local-variable-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/set-local-variable-transact-sql"
+    },
+    {
+      "name": "SET STATISTICS",
+      "rule": "setStatisticsStatement",
+      "slug": "set-statistics-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/set-statistics-io-transact-sql"
+    },
+    {
+      "name": "SET ROWCOUNT",
+      "rule": "setRowcountStatement",
+      "slug": "set-rowcount-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/set-rowcount-transact-sql"
+    },
+    {
+      "name": "SET OFFSETS",
+      "rule": "setOffsetsStatement",
+      "slug": "set-offsets-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/set-offsets-transact-sql"
+    },
+    {
+      "name": "SET (predicate options)",
+      "rule": "predicateSetStatement",
+      "slug": "set-ansi-defaults-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/set-ansi-defaults-transact-sql"
+    },
+    {
+      "name": "SET COMMAND",
+      "rule": "setCommandStatement",
+      "slug": "set-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/set-statements-transact-sql"
+    },
+    {
+      "name": "SET TRANSACTION ISOLATION LEVEL",
+      "rule": "setTransactionIsolationLevelStatement",
+      "slug": "set-transaction-isolation-level-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/set-transaction-isolation-level-transact-sql"
+    },
+    {
+      "name": "SET TEXTSIZE",
+      "rule": "setTextSizeStatement",
+      "slug": "set-textsize-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/set-textsize-transact-sql"
+    },
+    {
+      "name": "SET IDENTITY_INSERT",
+      "rule": "setIdentityInsertStatement",
+      "slug": "set-identity-insert-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/set-identity-insert-transact-sql"
+    },
+    {
+      "name": "SET ERRLVL",
+      "rule": "setErrorLevelStatement",
+      "slug": "set-errlvl-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/set-statements-transact-sql"
+    },
+    {
+      "name": "BEGIN TRANSACTION",
+      "rule": "beginTransactionStatement",
+      "slug": "begin-transaction-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/begin-transaction-transact-sql"
+    },
+    {
+      "name": "BEGIN...END",
+      "rule": "beginEndBlockStatement",
+      "slug": "begin-end-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/begin-end-transact-sql"
+    },
+    {
+      "name": "TRY...CATCH",
+      "rule": "tryCatchStatement",
+      "slug": "try-catch-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/try-catch-transact-sql"
+    },
+    {
+      "name": "BEGIN CONVERSATION TIMER",
+      "rule": "beginConversationTimerStatement",
+      "slug": "begin-conversation-timer-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/begin-conversation-timer-transact-sql"
+    },
+    {
+      "name": "BEGIN DIALOG",
+      "rule": "beginDialogStatement",
+      "slug": "begin-dialog-conversation-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/begin-dialog-conversation-transact-sql"
+    },
+    {
+      "name": "BREAK",
+      "rule": "breakStatement",
+      "slug": "break-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/break-transact-sql"
+    },
+    {
+      "name": "CONTINUE",
+      "rule": "continueStatement",
+      "slug": "continue-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/continue-transact-sql"
+    },
+    {
+      "name": "IF",
+      "rule": "ifStatement",
+      "slug": "if-else-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/if-else-transact-sql"
+    },
+    {
+      "name": "WHILE",
+      "rule": "whileStatement",
+      "slug": "while-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/while-transact-sql"
+    },
+    {
+      "name": "LABEL",
+      "rule": "labelStatement",
+      "slug": "goto-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/goto-transact-sql"
+    },
+    {
+      "name": "GOTO",
+      "rule": "gotoStatement",
+      "slug": "goto-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/goto-transact-sql"
+    },
+    {
+      "name": "BACKUP DATABASE",
+      "rule": "backupStatement",
+      "slug": "backup-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/backup-transact-sql"
+    },
+    {
+      "name": "BACKUP CERTIFICATE",
+      "rule": "backupCertificateStatement",
+      "slug": "backup-certificate-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/backup-certificate-transact-sql"
+    },
+    {
+      "name": "BACKUP SERVICE MASTER KEY",
+      "rule": "backupServiceMasterKeyStatement",
+      "slug": "backup-service-master-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/backup-service-master-key-transact-sql"
+    },
+    {
+      "name": "BACKUP MASTER KEY",
+      "rule": "backupMasterKeyStatement",
+      "slug": "backup-master-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/backup-master-key-transact-sql"
+    },
+    {
+      "name": "RESTORE",
+      "rule": "restoreStatement",
+      "slug": "restore-statements-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/restore-statements-transact-sql"
+    },
+    {
+      "name": "RESTORE SERVICE MASTER KEY",
+      "rule": "restoreServiceMasterKeyStatement",
+      "slug": "restore-service-master-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/restore-service-master-key-transact-sql"
+    },
+    {
+      "name": "RESTORE MASTER KEY",
+      "rule": "restoreMasterKeyStatement",
+      "slug": "restore-master-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/restore-master-key-transact-sql"
+    },
+    {
+      "name": "SAVE TRANSACTION",
+      "rule": "saveTransactionStatement",
+      "slug": "save-transaction-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/save-transaction-transact-sql"
+    },
+    {
+      "name": "ROLLBACK TRANSACTION",
+      "rule": "rollbackTransactionStatement",
+      "slug": "rollback-transaction-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/rollback-transaction-transact-sql"
+    },
+    {
+      "name": "COMMIT TRANSACTION",
+      "rule": "commitTransactionStatement",
+      "slug": "commit-transaction-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/commit-transaction-transact-sql"
+    },
+    {
+      "name": "CREATE STATISTICS",
+      "rule": "createStatisticsStatement",
+      "slug": "create-statistics-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-statistics-transact-sql"
+    },
+    {
+      "name": "UPDATE STATISTICS",
+      "rule": "updateStatisticsStatement",
+      "slug": "update-statistics-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/update-statistics-transact-sql"
+    },
+    {
+      "name": "ALTER DATABASE",
+      "rule": "alterDatabase",
+      "slug": "alter-database-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-transact-sql"
+    },
+    {
+      "name": "ALTER DATABASE AUDIT SPECIFICATION",
+      "rule": "alterDatabaseAuditSpecification",
+      "slug": "alter-database-audit-specification-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-audit-specification-transact-sql"
+    },
+    {
+      "name": "ALTER DATABASE SCOPED CREDENTIAL",
+      "rule": "alterDatabaseScopedCredentialStatement",
+      "slug": "alter-database-scoped-credential-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-scoped-credential-transact-sql"
+    },
+    {
+      "name": "ALTER DATABASE SCOPED CONFIGURATION",
+      "rule": "alterDatabaseScopedConfigurationStatement",
+      "slug": "alter-database-scoped-configuration-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-scoped-configuration-transact-sql"
+    },
+    {
+      "name": "ALTER DATABASE ENCRYPTION KEY",
+      "rule": "alterDatabaseEncryptionKey",
+      "slug": "alter-database-encryption-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-encryption-key-transact-sql"
+    },
+    {
+      "name": "EXECUTE",
+      "rule": "executeStatement",
+      "slug": "execute-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/execute-transact-sql"
+    },
+    {
+      "name": "SELECT",
+      "rule": "select",
+      "slug": "select-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/queries/select-transact-sql"
+    },
+    {
+      "name": "DELETE",
+      "rule": "deleteStatement",
+      "slug": "delete-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/delete-transact-sql"
+    },
+    {
+      "name": "INSERT",
+      "rule": "insertStatement",
+      "slug": "insert-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/insert-transact-sql"
+    },
+    {
+      "name": "UPDATE",
+      "rule": "updateStatement",
+      "slug": "update-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/queries/update-transact-sql"
+    },
+    {
+      "name": "MERGE",
+      "rule": "mergeStatement",
+      "slug": "merge-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/merge-transact-sql"
+    },
+    {
+      "name": "RAISERROR",
+      "rule": "raiseErrorStatement",
+      "slug": "raiserror-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/raiserror-transact-sql"
+    },
+    {
+      "name": "PRINT",
+      "rule": "printStatement",
+      "slug": "print-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/print-transact-sql"
+    },
+    {
+      "name": "WAITFOR",
+      "rule": "waitForStatement",
+      "slug": "waitfor-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/waitfor-transact-sql"
+    },
+    {
+      "name": "READTEXT",
+      "rule": "readTextStatement",
+      "slug": "readtext-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/queries/readtext-transact-sql"
+    },
+    {
+      "name": "UPDATETEXT",
+      "rule": "updateTextStatement",
+      "slug": "updatetext-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/queries/updatetext-transact-sql"
+    },
+    {
+      "name": "WRITETEXT",
+      "rule": "writeTextStatement",
+      "slug": "writetext-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/queries/writetext-transact-sql"
+    },
+    {
+      "name": "LINENO",
+      "rule": "lineNoStatement",
+      "slug": "lineno-transact-sql",
+      "status": "bnf_done",
+      "url": "",
+      "http_status": 404
+    },
+    {
+      "name": "USE",
+      "rule": "useStatement",
+      "slug": "use-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/use-transact-sql"
+    },
+    {
+      "name": "KILL",
+      "rule": "killStatement",
+      "slug": "kill-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/kill-transact-sql"
+    },
+    {
+      "name": "KILL QUERY NOTIFICATION SUBSCRIPTION",
+      "rule": "killQueryNotificationSubscriptionStatement",
+      "slug": "kill-query-notification-subscription-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/kill-query-notification-subscription-transact-sql"
+    },
+    {
+      "name": "KILL STATS JOB",
+      "rule": "killStatsJobStatement",
+      "slug": "kill-stats-job-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/kill-stats-job-transact-sql"
+    },
+    {
+      "name": "BULK INSERT",
+      "rule": "bulkInsertStatement",
+      "slug": "bulk-insert-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/bulk-insert-transact-sql"
+    },
+    {
+      "name": "INSERT BULK",
+      "rule": "insertBulkStatement",
+      "slug": "insert-bulk-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/bulk-insert-transact-sql"
+    },
+    {
+      "name": "CHECKPOINT",
+      "rule": "checkpointStatement",
+      "slug": "checkpoint-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/checkpoint-transact-sql"
+    },
+    {
+      "name": "RECONFIGURE",
+      "rule": "reconfigureStatement",
+      "slug": "reconfigure-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/reconfigure-transact-sql"
+    },
+    {
+      "name": "SHUTDOWN",
+      "rule": "shutdownStatement",
+      "slug": "shutdown-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/shutdown-transact-sql"
+    },
+    {
+      "name": "SETUSER",
+      "rule": "setUserStatement",
+      "slug": "setuser-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/setuser-transact-sql"
+    },
+    {
+      "name": "TRUNCATE TABLE",
+      "rule": "truncateTableStatement",
+      "slug": "truncate-table-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/truncate-table-transact-sql"
+    },
+    {
+      "name": "GRANT",
+      "rule": "grantStatement90",
+      "slug": "grant-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/grant-transact-sql"
+    },
+    {
+      "name": "DENY",
+      "rule": "denyStatement90",
+      "slug": "deny-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/deny-transact-sql"
+    },
+    {
+      "name": "REVOKE",
+      "rule": "revokeStatement90",
+      "slug": "revoke-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/revoke-transact-sql"
+    },
+    {
+      "name": "RETURN",
+      "rule": "returnStatement",
+      "slug": "return-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/return-transact-sql"
+    },
+    {
+      "name": "OPEN CURSOR",
+      "rule": "openCursorStatement",
+      "slug": "open-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/open-transact-sql"
+    },
+    {
+      "name": "OPEN MASTER KEY",
+      "rule": "openMasterKeyStatement",
+      "slug": "open-master-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/open-master-key-transact-sql"
+    },
+    {
+      "name": "OPEN SYMMETRIC KEY",
+      "rule": "openSymmetricKeyStatement",
+      "slug": "open-symmetric-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/open-symmetric-key-transact-sql"
+    },
+    {
+      "name": "CLOSE CURSOR",
+      "rule": "closeCursorStatement",
+      "slug": "close-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/close-transact-sql"
+    },
+    {
+      "name": "CLOSE MASTER KEY",
+      "rule": "closeMasterKeyStatement",
+      "slug": "close-master-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/close-master-key-transact-sql"
+    },
+    {
+      "name": "CLOSE SYMMETRIC KEY",
+      "rule": "closeSymmetricKeyStatement",
+      "slug": "close-symmetric-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/close-symmetric-key-transact-sql"
+    },
+    {
+      "name": "DEALLOCATE CURSOR",
+      "rule": "deallocateCursorStatement",
+      "slug": "deallocate-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/deallocate-transact-sql"
+    },
+    {
+      "name": "FETCH CURSOR",
+      "rule": "fetchCursorStatement",
+      "slug": "fetch-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/fetch-transact-sql"
+    },
+    {
+      "name": "DBCC",
+      "rule": "dbccStatement",
+      "slug": "dbcc-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/database-console-commands/dbcc-transact-sql"
+    },
+    {
+      "name": "REVERT",
+      "rule": "revertStatement",
+      "slug": "revert-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/revert-transact-sql"
+    },
+    {
+      "name": "EXECUTE AS",
+      "rule": "executeAsStatement",
+      "slug": "execute-as-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/execute-as-transact-sql"
+    },
+    {
+      "name": "END CONVERSATION",
+      "rule": "endConversationStatement",
+      "slug": "end-conversation-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/end-conversation-transact-sql"
+    },
+    {
+      "name": "DISABLE TRIGGER",
+      "rule": "disableTriggerStatement",
+      "slug": "disable-trigger-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/disable-trigger-transact-sql"
+    },
+    {
+      "name": "ENABLE TRIGGER",
+      "rule": "enableTriggerStatement",
+      "slug": "enable-trigger-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/enable-trigger-transact-sql"
+    },
+    {
+      "name": "MOVE CONVERSATION",
+      "rule": "moveConversationStatement",
+      "slug": "move-conversation-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/move-conversation-transact-sql"
+    },
+    {
+      "name": "GET CONVERSATION GROUP",
+      "rule": "getConversationGroupStatement",
+      "slug": "get-conversation-group-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/get-conversation-group-transact-sql"
+    },
+    {
+      "name": "RECEIVE",
+      "rule": "receiveStatement",
+      "slug": "receive-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/receive-transact-sql"
+    },
+    {
+      "name": "SEND",
+      "rule": "sendStatement",
+      "slug": "send-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/send-transact-sql"
+    },
+    {
+      "name": "THROW",
+      "rule": "throwStatement",
+      "slug": "throw-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/throw-transact-sql"
+    },
+    {
+      "name": "RENAME",
+      "rule": "renameEntityStatement",
+      "slug": "rename-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/rename-transact-sql"
+    },
+    {
+      "name": "ADD SENSITIVITY CLASSIFICATION",
+      "rule": "addSensitivityClassificationStatement",
+      "slug": "add-sensitivity-classification-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/add-sensitivity-classification-transact-sql"
+    },
+    {
+      "name": "ADD SIGNATURE",
+      "rule": "addSignatureStatement",
+      "slug": "add-signature-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/add-signature-transact-sql"
+    },
+    {
+      "name": "CREATE PROCEDURE",
+      "rule": "createProcedureStatement",
+      "slug": "create-procedure-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-procedure-transact-sql"
+    },
+    {
+      "name": "ALTER PROCEDURE",
+      "rule": "alterProcedureStatement",
+      "slug": "alter-procedure-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-procedure-transact-sql"
+    },
+    {
+      "name": "CREATE TRIGGER",
+      "rule": "createTriggerStatement",
+      "slug": "create-trigger-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-trigger-transact-sql"
+    },
+    {
+      "name": "ALTER TRIGGER",
+      "rule": "alterTriggerStatement",
+      "slug": "alter-trigger-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-trigger-transact-sql"
+    },
+    {
+      "name": "CREATE DEFAULT",
+      "rule": "createDefaultStatement",
+      "slug": "create-default-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-default-transact-sql"
+    },
+    {
+      "name": "CREATE RULE",
+      "rule": "createRuleStatement",
+      "slug": "create-rule-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-rule-transact-sql"
+    },
+    {
+      "name": "CREATE VIEW",
+      "rule": "createViewStatement",
+      "slug": "create-view-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-view-transact-sql"
+    },
+    {
+      "name": "ALTER VIEW",
+      "rule": "alterViewStatement",
+      "slug": "alter-view-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-view-transact-sql"
+    },
+    {
+      "name": "CREATE FUNCTION",
+      "rule": "createFunctionStatement",
+      "slug": "create-function-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-function-transact-sql"
+    },
+    {
+      "name": "ALTER FUNCTION",
+      "rule": "alterFunctionStatement",
+      "slug": "alter-function-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-function-transact-sql"
+    },
+    {
+      "name": "CREATE SCHEMA",
+      "rule": "createSchemaStatement",
+      "slug": "create-schema-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-schema-transact-sql"
+    },
+    {
+      "name": "CREATE MATERIALIZED VIEW",
+      "rule": "createMaterializedViewStatement",
+      "slug": "create-materialized-view-as-select-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-materialized-view-as-select-transact-sql"
+    },
+    {
+      "name": "ALTER MATERIALIZED VIEW",
+      "rule": "alterMaterializedViewStatement",
+      "slug": "alter-materialized-view-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-materialized-view-transact-sql"
+    },
+    {
+      "name": "CREATE FEDERATION",
+      "rule": "createFederationStatement",
+      "slug": "create-federation-transact-sql",
+      "status": "bnf_done",
+      "url": "",
+      "http_status": 404
+    },
+    {
+      "name": "ALTER FEDERATION",
+      "rule": "alterFederationStatement",
+      "slug": "alter-federation-transact-sql",
+      "status": "bnf_done",
+      "url": "",
+      "http_status": 404
+    },
+    {
+      "name": "USE FEDERATION",
+      "rule": "useFederationStatement",
+      "slug": "use-federation-transact-sql",
+      "status": "bnf_done",
+      "url": "",
+      "http_status": 404
+    },
+    {
+      "name": "CREATE OR ALTER FUNCTION",
+      "rule": "createOrAlterFunctionStatement",
+      "slug": "create-function-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-function-transact-sql"
+    },
+    {
+      "name": "CREATE OR ALTER PROCEDURE",
+      "rule": "createOrAlterProcedureStatement",
+      "slug": "create-procedure-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-procedure-transact-sql"
+    },
+    {
+      "name": "CREATE OR ALTER TRIGGER",
+      "rule": "createOrAlterTriggerStatement",
+      "slug": "create-trigger-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-trigger-transact-sql"
+    },
+    {
+      "name": "CREATE OR ALTER VIEW",
+      "rule": "createOrAlterViewStatement",
+      "slug": "create-view-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-view-transact-sql"
+    },
+    {
+      "name": "CREATE AGGREGATE",
+      "rule": "createAggregateStatement",
+      "slug": "create-aggregate-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-aggregate-transact-sql"
+    },
+    {
+      "name": "CREATE APPLICATION ROLE",
+      "rule": "createApplicationRoleStatement",
+      "slug": "create-application-role-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-application-role-transact-sql"
+    },
+    {
+      "name": "CREATE ASSEMBLY",
+      "rule": "createAssemblyStatement",
+      "slug": "create-assembly-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-assembly-transact-sql"
+    },
+    {
+      "name": "CREATE ASYMMETRIC KEY",
+      "rule": "createAsymmetricKeyStatement",
+      "slug": "create-asymmetric-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-asymmetric-key-transact-sql"
+    },
+    {
+      "name": "CREATE AVAILABILITY GROUP",
+      "rule": "createAvailabilityGroupStatement",
+      "slug": "create-availability-group-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-availability-group-transact-sql"
+    },
+    {
+      "name": "CREATE BROKER PRIORITY",
+      "rule": "createBrokerPriorityStatement",
+      "slug": "create-broker-priority-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-broker-priority-transact-sql"
+    },
+    {
+      "name": "CREATE CERTIFICATE",
+      "rule": "createCertificateStatement",
+      "slug": "create-certificate-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-certificate-transact-sql"
+    },
+    {
+      "name": "CREATE COLUMN MASTER KEY",
+      "rule": "createColumnMasterKeyStatement",
+      "slug": "create-column-master-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-column-master-key-transact-sql"
+    },
+    {
+      "name": "CREATE COLUMN ENCRYPTION KEY",
+      "rule": "createColumnEncryptionKeyStatement",
+      "slug": "create-column-encryption-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-column-encryption-key-transact-sql"
+    },
+    {
+      "name": "CREATE COLUMNSTORE INDEX",
+      "rule": "createColumnStoreIndexStatement",
+      "slug": "create-columnstore-index-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-columnstore-index-transact-sql"
+    },
+    {
+      "name": "CREATE JSON INDEX",
+      "rule": "createJsonIndexStatement",
+      "slug": "create-json-index-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-json-index-transact-sql"
+    },
+    {
+      "name": "CREATE VECTOR INDEX",
+      "rule": "createVectorIndexStatement",
+      "slug": "create-vector-index-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql"
+    },
+    {
+      "name": "CREATE CONTRACT",
+      "rule": "createContractStatement",
+      "slug": "create-contract-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-contract-transact-sql"
+    },
+    {
+      "name": "CREATE CREDENTIAL",
+      "rule": "createCredentialStatement",
+      "slug": "create-credential-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-credential-transact-sql"
+    },
+    {
+      "name": "CREATE CRYPTOGRAPHIC PROVIDER",
+      "rule": "createCryptographicProviderStatement",
+      "slug": "create-cryptographic-provider-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-cryptographic-provider-transact-sql"
+    },
+    {
+      "name": "CREATE ENDPOINT",
+      "rule": "createEndpointStatement",
+      "slug": "create-endpoint-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-endpoint-transact-sql"
+    },
+    {
+      "name": "CREATE EVENT NOTIFICATION",
+      "rule": "createEventNotificationStatement",
+      "slug": "create-event-notification-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-event-notification-transact-sql"
+    },
+    {
+      "name": "CREATE EVENT SESSION",
+      "rule": "createEventSessionStatement",
+      "slug": "create-event-session-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-event-session-transact-sql"
+    },
+    {
+      "name": "CREATE EXTERNAL TABLE",
+      "rule": "createExternalTableStatement",
+      "slug": "create-external-table-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-table-transact-sql"
+    },
+    {
+      "name": "CREATE EXTERNAL DATA SOURCE",
+      "rule": "createExternalDataSourceStatement",
+      "slug": "create-external-data-source-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-data-source-transact-sql"
+    },
+    {
+      "name": "CREATE EXTERNAL FILE FORMAT",
+      "rule": "createExternalFileFormatStatement",
+      "slug": "create-external-file-format-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-file-format-transact-sql"
+    },
+    {
+      "name": "CREATE EXTERNAL RESOURCE POOL",
+      "rule": "createExternalResourcePoolStatement",
+      "slug": "create-external-resource-pool-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-resource-pool-transact-sql"
+    },
+    {
+      "name": "CREATE EXTERNAL LIBRARY",
+      "rule": "createExternalLibraryStatement",
+      "slug": "create-external-library-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-library-transact-sql"
+    },
+    {
+      "name": "CREATE EXTERNAL LANGUAGE",
+      "rule": "createExternalLanguageStatement",
+      "slug": "create-external-language-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-language-transact-sql"
+    },
+    {
+      "name": "CREATE EXTERNAL STREAM",
+      "rule": "createExternalStreamStatement",
+      "slug": "create-external-stream-transact-sql",
+      "status": "bnf_done",
+      "url": "",
+      "http_status": 404
+    },
+    {
+      "name": "CREATE EXTERNAL MODEL",
+      "rule": "createExternalModelStatement",
+      "slug": "create-external-model-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"
+    },
+    {
+      "name": "CREATE FULLTEXT CATALOG",
+      "rule": "createFulltextCatalogStatement",
+      "slug": "create-fulltext-catalog-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-fulltext-catalog-transact-sql"
+    },
+    {
+      "name": "CREATE FULLTEXT INDEX",
+      "rule": "createFulltextIndexStatement",
+      "slug": "create-fulltext-index-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-fulltext-index-transact-sql"
+    },
+    {
+      "name": "CREATE FULLTEXT STOPLIST",
+      "rule": "createFulltextStoplistStatement",
+      "slug": "create-fulltext-stoplist-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-fulltext-stoplist-transact-sql"
+    },
+    {
+      "name": "CREATE PRIMARY XML INDEX",
+      "rule": "createPrimaryXmlIndexStatement",
+      "slug": "create-xml-index-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-xml-index-transact-sql"
+    },
+    {
+      "name": "CREATE SELECTIVE XML INDEX",
+      "rule": "createSelectiveXmlIndexStatement",
+      "slug": "create-selective-xml-index-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-selective-xml-index-transact-sql"
+    },
+    {
+      "name": "CREATE XML INDEX",
+      "rule": "createXmlIndexStatement",
+      "slug": "create-xml-index-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-xml-index-transact-sql"
+    },
+    {
+      "name": "CREATE XML SCHEMA COLLECTION",
+      "rule": "createXmlSchemaCollectionStatement",
+      "slug": "create-xml-schema-collection-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-xml-schema-collection-transact-sql"
+    },
+    {
+      "name": "CREATE LOGIN",
+      "rule": "createLoginStatement",
+      "slug": "create-login-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-login-transact-sql"
+    },
+    {
+      "name": "CREATE MESSAGE TYPE",
+      "rule": "createMessageTypeStatement",
+      "slug": "create-message-type-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-message-type-transact-sql"
+    },
+    {
+      "name": "CREATE MASTER KEY",
+      "rule": "createMasterKeyStatement",
+      "slug": "create-master-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-master-key-transact-sql"
+    },
+    {
+      "name": "CREATE PARTITION FUNCTION",
+      "rule": "createPartitionFunction",
+      "slug": "create-partition-function-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-partition-function-transact-sql"
+    },
+    {
+      "name": "CREATE PARTITION SCHEME",
+      "rule": "createPartitionScheme",
+      "slug": "create-partition-scheme-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-partition-scheme-transact-sql"
+    },
+    {
+      "name": "CREATE QUEUE",
+      "rule": "createQueueStatement",
+      "slug": "create-queue-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-queue-transact-sql"
+    },
+    {
+      "name": "CREATE REMOTE SERVICE BINDING",
+      "rule": "createRemoteServiceBindingStatement",
+      "slug": "create-remote-service-binding-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-remote-service-binding-transact-sql"
+    },
+    {
+      "name": "CREATE RESOURCE POOL",
+      "rule": "createResourcePoolStatement",
+      "slug": "create-resource-pool-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-resource-pool-transact-sql"
+    },
+    {
+      "name": "CREATE ROLE",
+      "rule": "createRoleStatement",
+      "slug": "create-role-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-role-transact-sql"
+    },
+    {
+      "name": "CREATE ROUTE",
+      "rule": "createRouteStatement",
+      "slug": "create-route-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-route-transact-sql"
+    },
+    {
+      "name": "CREATE SEARCH PROPERTY LIST",
+      "rule": "createSearchPropertyListStatement",
+      "slug": "create-search-property-list-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-search-property-list-transact-sql"
+    },
+    {
+      "name": "CREATE SERVICE",
+      "rule": "createServiceStatement",
+      "slug": "create-service-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-service-transact-sql"
+    },
+    {
+      "name": "CREATE SPATIAL INDEX",
+      "rule": "createSpatialIndexStatement",
+      "slug": "create-spatial-index-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-spatial-index-transact-sql"
+    },
+    {
+      "name": "CREATE SYMMETRIC KEY",
+      "rule": "createSymmetricKeyStatement",
+      "slug": "create-symmetric-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-symmetric-key-transact-sql"
+    },
+    {
+      "name": "CREATE SYNONYM",
+      "rule": "createSynonymStatement",
+      "slug": "create-synonym-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-synonym-transact-sql"
+    },
+    {
+      "name": "CREATE TYPE",
+      "rule": "createTypeStatement",
+      "slug": "create-type-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-type-transact-sql"
+    },
+    {
+      "name": "CREATE SERVER AUDIT",
+      "rule": "createServerAuditStatement",
+      "slug": "create-server-audit-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-server-audit-transact-sql"
+    },
+    {
+      "name": "CREATE SERVER AUDIT SPECIFICATION",
+      "rule": "createServerAuditSpecificationStatement",
+      "slug": "create-server-audit-specification-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-server-audit-specification-transact-sql"
+    },
+    {
+      "name": "CREATE SERVER ROLE",
+      "rule": "createServerRoleStatement",
+      "slug": "create-server-role-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-server-role-transact-sql"
+    },
+    {
+      "name": "CREATE WORKLOAD GROUP",
+      "rule": "createWorkloadGroupStatement",
+      "slug": "create-workload-group-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-workload-group-transact-sql"
+    },
+    {
+      "name": "CREATE WORKLOAD CLASSIFIER",
+      "rule": "createWorkloadClassifierStatement",
+      "slug": "create-workload-classifier-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-workload-classifier-transact-sql"
+    },
+    {
+      "name": "CREATE SEQUENCE",
+      "rule": "createSequenceStatement",
+      "slug": "create-sequence-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-sequence-transact-sql"
+    },
+    {
+      "name": "CREATE SECURITY POLICY",
+      "rule": "createSecurityPolicyStatement",
+      "slug": "create-security-policy-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-security-policy-transact-sql"
+    },
+    {
+      "name": "CREATE USER",
+      "rule": "createUserStatement",
+      "slug": "create-user-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-user-transact-sql"
+    },
+    {
+      "name": "CREATE DATABASE",
+      "rule": "createDatabase",
+      "slug": "create-database-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-database-transact-sql"
+    },
+    {
+      "name": "CREATE DATABASE AUDIT SPECIFICATION",
+      "rule": "createDatabaseAuditSpecification",
+      "slug": "create-database-audit-specification-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-database-audit-specification-transact-sql"
+    },
+    {
+      "name": "CREATE DATABASE SCOPED CREDENTIAL",
+      "rule": "createDatabaseScopedCredentialStatement",
+      "slug": "create-database-scoped-credential-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-database-scoped-credential-transact-sql"
+    },
+    {
+      "name": "CREATE DATABASE ENCRYPTION KEY",
+      "rule": "createDatabaseEncryptionKey",
+      "slug": "create-database-encryption-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-database-encryption-key-transact-sql"
+    },
+    {
+      "name": "ALTER APPLICATION ROLE",
+      "rule": "alterApplicationRoleStatement",
+      "slug": "alter-application-role-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-application-role-transact-sql"
+    },
+    {
+      "name": "ALTER ASSEMBLY",
+      "rule": "alterAssemblyStatement",
+      "slug": "alter-assembly-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-assembly-transact-sql"
+    },
+    {
+      "name": "ALTER ASYMMETRIC KEY",
+      "rule": "alterAsymmetricKeyStatement",
+      "slug": "alter-asymmetric-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-asymmetric-key-transact-sql"
+    },
+    {
+      "name": "ALTER AUTHORIZATION",
+      "rule": "alterAuthorizationStatement",
+      "slug": "alter-authorization-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-authorization-transact-sql"
+    },
+    {
+      "name": "ALTER AVAILABILITY GROUP",
+      "rule": "alterAvailabilityGroupStatement",
+      "slug": "alter-availability-group-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-availability-group-transact-sql"
+    },
+    {
+      "name": "ALTER BROKER PRIORITY",
+      "rule": "alterBrokerPriorityStatement",
+      "slug": "alter-broker-priority-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-broker-priority-transact-sql"
+    },
+    {
+      "name": "ALTER CRYPTOGRAPHIC PROVIDER",
+      "rule": "alterCryptographicProviderStatement",
+      "slug": "alter-cryptographic-provider-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-cryptographic-provider-transact-sql"
+    },
+    {
+      "name": "ALTER EVENT SESSION",
+      "rule": "alterEventSessionStatement",
+      "slug": "alter-event-session-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-event-session-transact-sql"
+    },
+    {
+      "name": "ALTER EXTERNAL DATA SOURCE",
+      "rule": "alterExternalDataSourceStatement",
+      "slug": "alter-external-data-source-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-external-data-source-transact-sql"
+    },
+    {
+      "name": "ALTER EXTERNAL RESOURCE POOL",
+      "rule": "alterExternalResourcePoolStatement",
+      "slug": "alter-external-resource-pool-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-external-resource-pool-transact-sql"
+    },
+    {
+      "name": "ALTER EXTERNAL LIBRARY",
+      "rule": "alterExternalLibraryStatement",
+      "slug": "alter-external-library-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-external-library-transact-sql"
+    },
+    {
+      "name": "ALTER EXTERNAL LANGUAGE",
+      "rule": "alterExternalLanguageStatement",
+      "slug": "alter-external-language-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-external-language-transact-sql"
+    },
+    {
+      "name": "ALTER EXTERNAL MODEL",
+      "rule": "alterExternalModelStatement",
+      "slug": "alter-external-model-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-external-model-transact-sql"
+    },
+    {
+      "name": "ALTER REMOTE SERVICE BINDING",
+      "rule": "alterRemoteServiceBindingStatement",
+      "slug": "alter-remote-service-binding-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-remote-service-binding-transact-sql"
+    },
+    {
+      "name": "ALTER RESOURCE POOL",
+      "rule": "alterResourcePoolStatement",
+      "slug": "alter-resource-pool-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-resource-pool-transact-sql"
+    },
+    {
+      "name": "ALTER RESOURCE GOVERNOR",
+      "rule": "alterResourceGovernorStatement",
+      "slug": "alter-resource-governor-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-resource-governor-transact-sql"
+    },
+    {
+      "name": "ALTER WORKLOAD GROUP",
+      "rule": "alterWorkloadGroupStatement",
+      "slug": "alter-workload-group-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-workload-group-transact-sql"
+    },
+    {
+      "name": "ALTER CERTIFICATE",
+      "rule": "alterCertificateStatement",
+      "slug": "alter-certificate-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-certificate-transact-sql"
+    },
+    {
+      "name": "ALTER CREDENTIAL",
+      "rule": "alterCredentialStatement",
+      "slug": "alter-credential-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-credential-transact-sql"
+    },
+    {
+      "name": "ALTER ENDPOINT",
+      "rule": "alterEndpointStatement",
+      "slug": "alter-endpoint-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-endpoint-transact-sql"
+    },
+    {
+      "name": "ALTER FULLTEXT CATALOG",
+      "rule": "alterFulltextCatalogStatement",
+      "slug": "alter-fulltext-catalog-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-fulltext-catalog-transact-sql"
+    },
+    {
+      "name": "ALTER FULLTEXT INDEX",
+      "rule": "alterFulltextIndexStatement",
+      "slug": "alter-fulltext-index-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-fulltext-index-transact-sql"
+    },
+    {
+      "name": "ALTER FULLTEXT STOPLIST",
+      "rule": "alterFulltextStoplistStatement",
+      "slug": "alter-fulltext-stoplist-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-fulltext-stoplist-transact-sql"
+    },
+    {
+      "name": "ALTER INDEX",
+      "rule": "alterIndexStatement",
+      "slug": "alter-index-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-index-transact-sql"
+    },
+    {
+      "name": "ALTER LOGIN",
+      "rule": "alterLoginStatement",
+      "slug": "alter-login-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-login-transact-sql"
+    },
+    {
+      "name": "ALTER MASTER KEY",
+      "rule": "alterMasterKeyStatement",
+      "slug": "alter-master-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-master-key-transact-sql"
+    },
+    {
+      "name": "ALTER MESSAGE TYPE",
+      "rule": "alterMessageTypeStatement",
+      "slug": "alter-message-type-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-message-type-transact-sql"
+    },
+    {
+      "name": "ALTER PARTITION FUNCTION",
+      "rule": "alterPartitionFunctionStatement",
+      "slug": "alter-partition-function-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-partition-function-transact-sql"
+    },
+    {
+      "name": "ALTER PARTITION SCHEME",
+      "rule": "alterPartitionSchemeStatement",
+      "slug": "alter-partition-scheme-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-partition-scheme-transact-sql"
+    },
+    {
+      "name": "ALTER QUEUE",
+      "rule": "alterQueueStatement",
+      "slug": "alter-queue-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-queue-transact-sql"
+    },
+    {
+      "name": "ALTER ROLE",
+      "rule": "alterRoleStatement",
+      "slug": "alter-role-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-role-transact-sql"
+    },
+    {
+      "name": "ALTER ROUTE",
+      "rule": "alterRouteStatement",
+      "slug": "alter-route-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-route-transact-sql"
+    },
+    {
+      "name": "ALTER SEARCH PROPERTY LIST",
+      "rule": "alterSearchPropertyListStatement",
+      "slug": "alter-search-property-list-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-search-property-list-transact-sql"
+    },
+    {
+      "name": "ALTER SCHEMA",
+      "rule": "alterSchemaStatement",
+      "slug": "alter-schema-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-schema-transact-sql"
+    },
+    {
+      "name": "ALTER SEQUENCE",
+      "rule": "alterSequenceStatement",
+      "slug": "alter-sequence-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-sequence-transact-sql"
+    },
+    {
+      "name": "ALTER SERVICE MASTER KEY",
+      "rule": "alterServiceMasterKeyStatement",
+      "slug": "alter-service-master-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-service-master-key-transact-sql"
+    },
+    {
+      "name": "ALTER SERVICE",
+      "rule": "alterServiceStatement",
+      "slug": "alter-service-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-service-transact-sql"
+    },
+    {
+      "name": "ALTER SYMMETRIC KEY",
+      "rule": "alterSymmetricKeyStatement",
+      "slug": "alter-symmetric-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-symmetric-key-transact-sql"
+    },
+    {
+      "name": "ALTER SERVER AUDIT",
+      "rule": "alterServerAuditStatement",
+      "slug": "alter-server-audit-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-server-audit-transact-sql"
+    },
+    {
+      "name": "ALTER SERVER AUDIT SPECIFICATION",
+      "rule": "alterServerAuditSpecificationStatement",
+      "slug": "alter-server-audit-specification-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-server-audit-specification-transact-sql"
+    },
+    {
+      "name": "ALTER SERVER CONFIGURATION",
+      "rule": "alterServerConfigurationStatement",
+      "slug": "alter-server-configuration-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-server-configuration-transact-sql"
+    },
+    {
+      "name": "ALTER SERVER ROLE",
+      "rule": "alterServerRoleStatement",
+      "slug": "alter-server-role-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-server-role-transact-sql"
+    },
+    {
+      "name": "ALTER USER",
+      "rule": "alterUserStatement",
+      "slug": "alter-user-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-user-transact-sql"
+    },
+    {
+      "name": "ALTER XML SCHEMA COLLECTION",
+      "rule": "alterXmlSchemaCollectionStatement",
+      "slug": "alter-xml-schema-collection-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-xml-schema-collection-transact-sql"
+    },
+    {
+      "name": "ALTER SECURITY POLICY",
+      "rule": "alterSecurityPolicyStatement",
+      "slug": "alter-security-policy-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-security-policy-transact-sql"
+    },
+    {
+      "name": "ALTER COLUMN ENCRYPTION KEY",
+      "rule": "alterColumnEncryptionKeyStatement",
+      "slug": "alter-column-encryption-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-column-encryption-key-transact-sql"
+    },
+    {
+      "name": "DROP DATABASE",
+      "rule": "dropDatabaseStatement",
+      "slug": "drop-database-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-database-transact-sql"
+    },
+    {
+      "name": "DROP DATABASE AUDIT SPECIFICATION",
+      "rule": "dropDatabaseAuditSpecificationStatement",
+      "slug": "drop-database-audit-specification-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-database-audit-specification-transact-sql"
+    },
+    {
+      "name": "DROP DATABASE SCOPED CREDENTIAL",
+      "rule": "dropDatabaseScopedCredentialStatement",
+      "slug": "drop-database-scoped-credential-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-database-scoped-credential-transact-sql"
+    },
+    {
+      "name": "DROP DATABASE ENCRYPTION KEY",
+      "rule": "dropDatabaseEncryptionKeyStatement",
+      "slug": "drop-database-encryption-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-database-encryption-key-transact-sql"
+    },
+    {
+      "name": "DROP INDEX",
+      "rule": "dropIndexStatement",
+      "slug": "drop-index-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-index-transact-sql"
+    },
+    {
+      "name": "DROP STATISTICS",
+      "rule": "dropStatisticsStatement",
+      "slug": "drop-statistics-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-statistics-transact-sql"
+    },
+    {
+      "name": "DROP TABLE",
+      "rule": "dropTableStatement",
+      "slug": "drop-table-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-table-transact-sql"
+    },
+    {
+      "name": "DROP PROCEDURE",
+      "rule": "dropProcedureStatement",
+      "slug": "drop-procedure-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-procedure-transact-sql"
+    },
+    {
+      "name": "DROP FUNCTION",
+      "rule": "dropFunctionStatement",
+      "slug": "drop-function-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-function-transact-sql"
+    },
+    {
+      "name": "DROP VIEW",
+      "rule": "dropViewStatement",
+      "slug": "drop-view-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-view-transact-sql"
+    },
+    {
+      "name": "DROP DEFAULT",
+      "rule": "dropDefaultStatement",
+      "slug": "drop-default-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-default-transact-sql"
+    },
+    {
+      "name": "DROP RULE",
+      "rule": "dropRuleStatement",
+      "slug": "drop-rule-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-rule-transact-sql"
+    },
+    {
+      "name": "DROP TRIGGER",
+      "rule": "dropTriggerStatement",
+      "slug": "drop-trigger-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-trigger-transact-sql"
+    },
+    {
+      "name": "DROP SCHEMA",
+      "rule": "dropSchemaStatement",
+      "slug": "drop-schema-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-schema-transact-sql"
+    },
+    {
+      "name": "DROP AGGREGATE",
+      "rule": "dropAggregateStatement",
+      "slug": "drop-aggregate-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-aggregate-transact-sql"
+    },
+    {
+      "name": "DROP ASSEMBLY",
+      "rule": "dropAssemblyStatement",
+      "slug": "drop-assembly-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-assembly-transact-sql"
+    },
+    {
+      "name": "DROP AVAILABILITY GROUP",
+      "rule": "dropAvailabilityGroupStatement",
+      "slug": "drop-availability-group-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-availability-group-transact-sql"
+    },
+    {
+      "name": "DROP PARTITION FUNCTION",
+      "rule": "dropPartitionFunctionStatement",
+      "slug": "drop-partition-function-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-partition-function-transact-sql"
+    },
+    {
+      "name": "DROP PARTITION SCHEME",
+      "rule": "dropPartitionSchemeStatement",
+      "slug": "drop-partition-scheme-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-partition-scheme-transact-sql"
+    },
+    {
+      "name": "DROP SYNONYM",
+      "rule": "dropSynonymStatement",
+      "slug": "drop-synonym-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-synonym-transact-sql"
+    },
+    {
+      "name": "DROP APPLICATION ROLE",
+      "rule": "dropApplicationRoleStatement",
+      "slug": "drop-application-role-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-application-role-transact-sql"
+    },
+    {
+      "name": "DROP BROKER PRIORITY",
+      "rule": "dropBrokerPriorityStatement",
+      "slug": "drop-broker-priority-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-broker-priority-transact-sql"
+    },
+    {
+      "name": "DROP CRYPTOGRAPHIC PROVIDER",
+      "rule": "dropCryptographicProviderStatement",
+      "slug": "drop-cryptographic-provider-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-cryptographic-provider-transact-sql"
+    },
+    {
+      "name": "DROP FULLTEXT CATALOG",
+      "rule": "dropFulltextCatalogStatement",
+      "slug": "drop-fulltext-catalog-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-fulltext-catalog-transact-sql"
+    },
+    {
+      "name": "DROP FULLTEXT INDEX",
+      "rule": "dropFulltextIndexStatement",
+      "slug": "drop-fulltext-index-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-fulltext-index-transact-sql"
+    },
+    {
+      "name": "DROP FULLTEXT STOPLIST",
+      "rule": "dropFulltextStoplistStatement",
+      "slug": "drop-fulltext-stoplist-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-fulltext-stoplist-transact-sql"
+    },
+    {
+      "name": "DROP LOGIN",
+      "rule": "dropLoginStatement",
+      "slug": "drop-login-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-login-transact-sql"
+    },
+    {
+      "name": "DROP RESOURCE POOL",
+      "rule": "dropResourcePoolStatement",
+      "slug": "drop-resource-pool-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-resource-pool-transact-sql"
+    },
+    {
+      "name": "DROP WORKLOAD GROUP",
+      "rule": "dropWorkloadGroupStatement",
+      "slug": "drop-workload-group-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-workload-group-transact-sql"
+    },
+    {
+      "name": "DROP WORKLOAD CLASSIFIER",
+      "rule": "dropWorkloadClassifierStatement",
+      "slug": "drop-workload-classifier-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-workload-classifier-transact-sql"
+    },
+    {
+      "name": "DROP ROLE",
+      "rule": "dropRoleStatement",
+      "slug": "drop-role-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-role-transact-sql"
+    },
+    {
+      "name": "DROP MASTER KEY",
+      "rule": "dropMasterKeyStatement",
+      "slug": "drop-master-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-master-key-transact-sql"
+    },
+    {
+      "name": "DROP SYMMETRIC KEY",
+      "rule": "dropSymmetricKeyStatement",
+      "slug": "drop-symmetric-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-symmetric-key-transact-sql"
+    },
+    {
+      "name": "DROP ASYMMETRIC KEY",
+      "rule": "dropAsymmetricKeyStatement",
+      "slug": "drop-asymmetric-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-asymmetric-key-transact-sql"
+    },
+    {
+      "name": "DROP CERTIFICATE",
+      "rule": "dropCertificateStatement",
+      "slug": "drop-certificate-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-certificate-transact-sql"
+    },
+    {
+      "name": "DROP CREDENTIAL",
+      "rule": "dropCredentialStatement",
+      "slug": "drop-credential-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-credential-transact-sql"
+    },
+    {
+      "name": "DROP TYPE",
+      "rule": "dropTypeStatement",
+      "slug": "drop-type-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-type-transact-sql"
+    },
+    {
+      "name": "DROP XML SCHEMA COLLECTION",
+      "rule": "dropXmlSchemaCollectionStatement",
+      "slug": "drop-xml-schema-collection-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-xml-schema-collection-transact-sql"
+    },
+    {
+      "name": "DROP CONTRACT",
+      "rule": "dropContractStatement",
+      "slug": "drop-contract-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-contract-transact-sql"
+    },
+    {
+      "name": "DROP QUEUE",
+      "rule": "dropQueueStatement",
+      "slug": "drop-queue-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-queue-transact-sql"
+    },
+    {
+      "name": "DROP SERVICE",
+      "rule": "dropServiceStatement",
+      "slug": "drop-service-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-service-transact-sql"
+    },
+    {
+      "name": "DROP ROUTE",
+      "rule": "dropRouteStatement",
+      "slug": "drop-route-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-route-transact-sql"
+    },
+    {
+      "name": "DROP MESSAGE TYPE",
+      "rule": "dropMessageTypeStatement",
+      "slug": "drop-message-type-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-message-type-transact-sql"
+    },
+    {
+      "name": "DROP REMOTE SERVICE BINDING",
+      "rule": "dropRemoteServiceBindingStatement",
+      "slug": "drop-remote-service-binding-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-remote-service-binding-transact-sql"
+    },
+    {
+      "name": "DROP ENDPOINT",
+      "rule": "dropEndpointStatement",
+      "slug": "drop-endpoint-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-endpoint-transact-sql"
+    },
+    {
+      "name": "DROP SIGNATURE",
+      "rule": "dropSignatureStatement",
+      "slug": "drop-signature-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-signature-transact-sql"
+    },
+    {
+      "name": "DROP EVENT NOTIFICATION",
+      "rule": "dropEventNotificationStatement",
+      "slug": "drop-event-notification-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-event-notification-transact-sql"
+    },
+    {
+      "name": "DROP EVENT SESSION",
+      "rule": "dropEventSessionStatement",
+      "slug": "drop-event-session-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-event-session-transact-sql"
+    },
+    {
+      "name": "DROP SEARCH PROPERTY LIST",
+      "rule": "dropSearchPropertyListStatement",
+      "slug": "drop-search-property-list-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-search-property-list-transact-sql"
+    },
+    {
+      "name": "DROP SEQUENCE",
+      "rule": "dropSequenceStatement",
+      "slug": "drop-sequence-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-sequence-transact-sql"
+    },
+    {
+      "name": "DROP FEDERATION",
+      "rule": "dropFederationStatement",
+      "slug": "drop-federation-transact-sql",
+      "status": "bnf_done",
+      "url": "",
+      "http_status": 404
+    },
+    {
+      "name": "DROP SECURITY POLICY",
+      "rule": "dropSecurityPolicyStatement",
+      "slug": "drop-security-policy-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-security-policy-transact-sql"
+    },
+    {
+      "name": "DROP COLUMN MASTER KEY",
+      "rule": "dropColumnMasterKeyStatement",
+      "slug": "drop-column-master-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-column-master-key-transact-sql"
+    },
+    {
+      "name": "DROP COLUMN ENCRYPTION KEY",
+      "rule": "dropColumnEncryptionKeyStatement",
+      "slug": "drop-column-encryption-key-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-column-encryption-key-transact-sql"
+    },
+    {
+      "name": "DROP EXTERNAL TABLE",
+      "rule": "dropExternalTableStatement",
+      "slug": "drop-external-table-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-external-table-transact-sql"
+    },
+    {
+      "name": "DROP EXTERNAL DATA SOURCE",
+      "rule": "dropExternalDataSourceStatement",
+      "slug": "drop-external-data-source-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-external-data-source-transact-sql"
+    },
+    {
+      "name": "DROP EXTERNAL FILE FORMAT",
+      "rule": "dropExternalFileFormatStatement",
+      "slug": "drop-external-file-format-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-external-file-format-transact-sql"
+    },
+    {
+      "name": "DROP EXTERNAL LIBRARY",
+      "rule": "dropExternalLibraryStatement",
+      "slug": "drop-external-library-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-external-library-transact-sql"
+    },
+    {
+      "name": "DROP EXTERNAL LANGUAGE",
+      "rule": "dropExternalLanguageStatement",
+      "slug": "drop-external-language-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-external-language-transact-sql"
+    },
+    {
+      "name": "DROP EXTERNAL RESOURCE POOL",
+      "rule": "dropExternalResourcePoolStatement",
+      "slug": "drop-external-resource-pool-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-external-resource-pool-transact-sql"
+    },
+    {
+      "name": "DROP EXTERNAL MODEL",
+      "rule": "dropExternalModelStatement",
+      "slug": "drop-external-model-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-external-model-transact-sql"
+    },
+    {
+      "name": "DROP SENSITIVITY CLASSIFICATION",
+      "rule": "dropSensitivityClassificationStatement",
+      "slug": "drop-sensitivity-classification-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-sensitivity-classification-transact-sql"
+    },
+    {
+      "name": "DROP SERVER AUDIT",
+      "rule": "dropServerAuditStatement",
+      "slug": "drop-server-audit-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-server-audit-transact-sql"
+    },
+    {
+      "name": "DROP SERVER AUDIT SPECIFICATION",
+      "rule": "dropServerAuditSpecificationStatement",
+      "slug": "drop-server-audit-specification-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-server-audit-specification-transact-sql"
+    },
+    {
+      "name": "DROP SERVER ROLE",
+      "rule": "dropServerRoleStatement",
+      "slug": "drop-server-role-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-server-role-transact-sql"
+    },
+    {
+      "name": "DROP USER",
+      "rule": "dropUserStatement",
+      "slug": "drop-user-transact-sql",
+      "status": "bnf_done",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-user-transact-sql"
+    }
+  ]
+}

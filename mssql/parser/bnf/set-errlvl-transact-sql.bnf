@@ -1,0 +1,18 @@
+-- Statement: SET ERRLVL
+-- Grammar rule: setErrorLevelStatement (TSql170.g:16690)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/set-statements-transact-sql
+
+-- From TSql170.g:
+setErrorLevelStatement:
+    Errlvl signedInteger
+    ;
+
+-- Referenced sub-rules:
+
+signedInteger:
+    (Plus | Minus)? Integer
+    ;
+
+-- From Microsoft docs:
+-- (No dedicated BNF for SET ERRLVL; the docs page lists SET statement categories only)
+-- Usage: SET ERRLVL <integer>

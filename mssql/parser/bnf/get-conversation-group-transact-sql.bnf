@@ -1,0 +1,19 @@
+-- Statement: GET CONVERSATION GROUP
+-- Grammar rule: getConversationGroupStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/get-conversation-group-transact-sql
+
+-- From TSql170.g:
+getConversationGroupStatement:
+    Identifier/*Get*/ Identifier/*Conversation*/ Group
+    variable From schemaObjectThreePartName
+    ;
+
+-- From Microsoft docs:
+[ WAITFOR ( ]
+   GET CONVERSATION GROUP @conversation_group_id
+      FROM <queue>
+[ ) ] [ , TIMEOUT timeout ]
+[ ; ]
+
+<queue> ::=
+{ database_name.schema_name.queue_name | schema_name.queue_name | queue_name }

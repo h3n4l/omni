@@ -1,0 +1,139 @@
+-- Statement: CREATE EVENT SESSION
+-- Grammar rule: createEventSessionStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-event-session-transact-sql
+
+-- From TSql170.g:
+createEventSessionStatement:
+    SESSION identifier
+    eventSessionScope
+    eventDeclarationList
+    (targetDeclarationList)?
+    optSessionOptionList
+    ;
+
+eventSessionScope:
+    ON (DATABASE | SERVER)
+    ;
+
+eventDeclarationList:
+    ADD EVENT eventDeclaration
+    (Comma ADD EVENT eventDeclaration)*
+    ;
+
+eventDeclaration:
+    eventSessionNonEmptyThreePartObjectName
+    (
+        LeftParenthesis
+        (eventDeclarationSetParameters)?
+        (eventDeclarationActionParameters)?
+        (WHERE eventBooleanExpression)?
+        RightParenthesis
+    )?
+    ;
+
+eventDeclarationSetParameters:
+    SET eventDeclarationSetParameter
+    (Comma eventDeclarationSetParameter)*
+    ;
+
+eventDeclarationActionParameters:
+    ACTION LeftParenthesis
+    eventSessionNonEmptyThreePartObjectName
+    (Comma eventSessionNonEmptyThreePartObjectName)*
+    RightParenthesis
+    ;
+
+targetDeclarationList:
+    ADD TARGET targetDeclaration
+    (Comma ADD TARGET targetDeclaration)*
+    ;
+
+targetDeclaration:
+    eventSessionNonEmptyThreePartObjectName
+    (
+        LeftParenthesis
+        SET eventDeclarationSetParameter
+        (Comma eventDeclarationSetParameter)*
+        RightParenthesis
+    )?
+    ;
+
+optSessionOptionList:
+    (sessionOptionList)?
+    ;
+
+sessionOption:
+      maxMemorySessionOption
+    | maxEventSizeSessionOption
+    | trackCausalitySessionOption
+    | startupStateSessionOption
+    | eventRetentionSessionOption
+    | memoryPartitionSessionOption
+    | maxDispatchLatencySessionOption
+    ;
+
+-- From Microsoft docs:
+CREATE EVENT SESSION event_session_name
+ON { SERVER | DATABASE }
+{
+    <event_definition> [ , ...n ]
+    [ <event_target_definition> [ , ...n ] ]
+    [ WITH ( <event_session_options> [ , ...n ] ) ]
+}
+;
+
+<event_definition>::=
+{
+    ADD EVENT [event_module_guid].event_package_name.event_name
+         [ ( {
+                 [ SET { event_customizable_attribute = <value> [ , ...n ] } ]
+                 [ ACTION ( { [event_module_guid].event_package_name.action_name [ , ...n ] } ) ]
+                 [ WHERE <predicate_expression> ]
+        } ) ]
+}
+
+<predicate_expression> ::=
+{
+    [ NOT ] <predicate_factor> | { ( <predicate_expression> ) }
+    [ { AND | OR } [ NOT ] { <predicate_factor> | ( <predicate_expression> ) } ]
+    [ , ...n ]
+}
+
+<predicate_factor>::=
+{
+    <predicate_leaf> | ( <predicate_expression> )
+}
+
+<predicate_leaf>::=
+{
+      <predicate_source_declaration> { = | < > | != | > | >= | < | <= } <value>
+    | [event_module_guid].event_package_name.predicate_compare_name ( <predicate_source_declaration> , <value> )
+}
+
+<predicate_source_declaration>::=
+{
+    event_field_name | ( [event_module_guid].event_package_name.predicate_source_name )
+}
+
+<value>::=
+{
+    number | 'string'
+}
+
+<event_target_definition>::=
+{
+    ADD TARGET [event_module_guid].event_package_name.target_name
+        [ ( SET { target_parameter_name = <value> [ , ...n ] } ) ]
+}
+
+<event_session_options>::=
+{
+    [       MAX_MEMORY = size [ KB | MB ] ]
+    [ [ , ] EVENT_RETENTION_MODE = { ALLOW_SINGLE_EVENT_LOSS | ALLOW_MULTIPLE_EVENT_LOSS | NO_EVENT_LOSS } ]
+    [ [ , ] MAX_DISPATCH_LATENCY = { seconds SECONDS | INFINITE } ]
+    [ [ , ] MAX_EVENT_SIZE = size [ KB | MB ] ]
+    [ [ , ] MEMORY_PARTITION_MODE = { NONE | PER_NODE | PER_CPU } ]
+    [ [ , ] TRACK_CAUSALITY = { ON | OFF } ]
+    [ [ , ] STARTUP_STATE = { ON | OFF } ]
+    [ [ , ] MAX_DURATION = { <time duration> { SECONDS | MINUTES | HOURS | DAYS } | UNLIMITED } ]
+}

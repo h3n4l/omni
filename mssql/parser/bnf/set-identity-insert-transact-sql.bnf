@@ -1,0 +1,23 @@
+-- Statement: SET IDENTITY_INSERT
+-- Grammar rule: setIdentityInsertStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/set-identity-insert-transact-sql
+
+-- From TSql170.g:
+setIdentityInsertStatement:
+    IdentityInsert schemaObjectThreePartName
+    setOnOff
+    ;
+
+-- Sub-rules:
+
+schemaObjectThreePartName:
+    (serverIdentifier Dot)? (databaseIdentifier Dot)? (schemaIdentifier Dot)? objectIdentifier
+    ;
+
+setOnOff:
+    On
+    | Off
+    ;
+
+-- From Microsoft docs:
+-- SET IDENTITY_INSERT [ [ database_name . ] schema_name . ] table_name { ON | OFF }

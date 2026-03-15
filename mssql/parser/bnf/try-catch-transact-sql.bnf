@@ -1,0 +1,32 @@
+-- Statement: TRY...CATCH
+-- Grammar rule: tryCatchStatement (TSql170.g:16095)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/try-catch-transact-sql
+
+-- From TSql170.g:
+tryCatchStatement:
+    Begin Identifier /* TRY */
+    tryStatementList
+    End Identifier /* TRY */
+    Begin Identifier /* CATCH */
+    catchStatementList
+    End Identifier /* CATCH */
+    ;
+
+tryStatementList:
+    (Semicolon)*
+    (statementOptSemi)+
+    ;
+
+catchStatementList:
+    (Semicolon)*
+    (statementOptSemi)*   -- can be empty
+    ;
+
+-- From Microsoft docs:
+-- BEGIN TRY
+--     { sql_statement | statement_block }
+-- END TRY
+-- BEGIN CATCH
+--     [ { sql_statement | statement_block } ]
+-- END CATCH
+-- [ ; ]

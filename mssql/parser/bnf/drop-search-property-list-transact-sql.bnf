@@ -1,0 +1,16 @@
+-- Statement: DROP SEARCH PROPERTY LIST
+-- Grammar rule: dropSearchPropertyListStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-search-property-list-transact-sql
+
+-- From TSql170.g:
+dropSearchPropertyListStatement:
+    Search Property List identifier
+    requiredSemicolon
+    ;
+
+-- Sub-rules:
+-- (none beyond identifier and requiredSemicolon)
+
+-- From Microsoft docs:
+DROP SEARCH PROPERTY LIST property_list_name
+;

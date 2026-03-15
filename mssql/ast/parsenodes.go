@@ -2472,6 +2472,32 @@ type AlterAssemblyStmt struct {
 func (n *AlterAssemblyStmt) nodeTag()  {}
 func (n *AlterAssemblyStmt) stmtNode() {}
 
+// AssemblyAction represents a typed action in an ALTER ASSEMBLY statement.
+// Replaces nodes.String concatenations for FROM, PERMISSION_SET, DROP FILE, ADD FILE.
+//
+// Examples:
+//   - Name="FROM", Value="C:\\path\\to\\assembly.dll"
+//   - Name="PERMISSION_SET", Value="SAFE"
+//   - Name="VISIBILITY", Value="ON"
+//   - Name="DROP FILE"
+//   - Name="ADD FILE"
+type AssemblyAction struct {
+	Name  string // action name: "FROM", "PERMISSION_SET", "VISIBILITY", "DROP FILE", "ADD FILE"
+	Value string // action value (may be empty)
+	Loc   Loc
+}
+
+func (n *AssemblyAction) nodeTag() {}
+
+// AssemblyFile represents a file path in a CREATE ASSEMBLY FROM clause.
+// Replaces nodes.String for file paths.
+type AssemblyFile struct {
+	Path string // file path
+	Loc  Loc
+}
+
+func (n *AssemblyFile) nodeTag() {}
+
 // ---------- Batch 46: SERVICE BROKER ----------
 
 // ServiceBrokerStmt is a generic Service Broker statement node.

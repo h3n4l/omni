@@ -1,0 +1,16 @@
+-- Statement: DROP EXTERNAL DATA SOURCE
+-- Grammar rule: dropExternalDataSourceStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-external-data-source-transact-sql
+
+-- From TSql170.g:
+dropExternalDataSourceStatement:
+    -- Note: DROP EXTERNAL is parsed by the dispatcher; this rule handles DATA SOURCE <name>
+    Data Source identifier
+    ;
+
+-- Sub-rules:
+-- (none beyond identifier)
+
+-- From Microsoft docs:
+DROP EXTERNAL DATA SOURCE external_data_source_name
+[;]

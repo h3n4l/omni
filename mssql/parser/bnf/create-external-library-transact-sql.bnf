@@ -1,0 +1,56 @@
+-- Statement: CREATE EXTERNAL LIBRARY
+-- Grammar rule: createExternalLibraryStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-library-transact-sql
+
+-- From TSql170.g:
+createExternalLibraryStatement:
+    LIBRARY identifier
+    authorizationOpt
+    From createExternalLibraryFileOption
+    (Comma createExternalLibraryFileOption)*
+    With LeftParenthesis LANGUAGE EqualsSign nonEmptyString RightParenthesis
+    ;
+
+createExternalLibraryFileOption:
+    LeftParenthesis
+    CONTENT EqualsSign (binary | stringLiteral)
+    (Comma PLATFORM EqualsSign identifier)*
+    RightParenthesis
+    ;
+
+-- From Microsoft docs (SQL Server 2019+):
+CREATE EXTERNAL LIBRARY library_name
+[ AUTHORIZATION owner_name ]
+FROM <file_spec> [ ,...2 ]
+WITH ( LANGUAGE = <language> )
+[ ; ]
+
+<file_spec> ::=
+{
+    (CONTENT = { <client_library_specifier> | <library_bits> }
+    [, PLATFORM = <platform> ])
+}
+
+<client_library_specifier> :: =
+{
+    '[file_path\]manifest_file_name'
+}
+
+<library_bits> :: =
+{
+      varbinary_literal
+    | varbinary_expression
+}
+
+<platform> :: =
+{
+      WINDOWS
+    | LINUX
+}
+
+<language> :: =
+{
+      'R'
+    | 'Python'
+    | <external_language>
+}

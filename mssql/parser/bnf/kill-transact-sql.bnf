@@ -1,0 +1,21 @@
+-- Statement: KILL
+-- Grammar rule: killStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/kill-transact-sql
+
+-- From TSql170.g:
+killStatements:
+    Kill
+    ( killStatement
+    | killQueryNotificationSubscriptionStatement
+    | killStatsJobStatement
+    )
+    ;
+
+killStatement:
+    (signedInteger | stringLiteral)
+    (With 'STATUSONLY')?
+    ;
+
+-- From Microsoft docs:
+KILL { session_id [ WITH STATUSONLY ] | UOW [ WITH STATUSONLY | COMMIT | ROLLBACK ] }
+[ ; ]

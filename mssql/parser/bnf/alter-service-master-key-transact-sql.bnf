@@ -1,0 +1,28 @@
+-- Statement: ALTER SERVICE MASTER KEY
+-- Grammar rule: alterServiceMasterKeyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-service-master-key-transact-sql
+
+-- From TSql170.g:
+alterServiceMasterKeyStatement:
+    Identifier /* MASTER */ Key
+    (
+        Identifier /* FORCE */ Identifier /* REGENERATE */
+    |
+        Identifier /* REGENERATE */
+    |
+        With Identifier /* OLD_ACCOUNT | NEW_ACCOUNT */ EqualsSign stringLiteral
+        Comma Identifier /* OLD_PASSWORD | NEW_PASSWORD */ EqualsSign stringLiteral
+    )
+    ;
+
+-- From Microsoft docs:
+ALTER SERVICE MASTER KEY
+    [ { <regenerate_option> | <recover_option> } ] [;]
+
+<regenerate_option> ::=
+    [ FORCE ] REGENERATE
+
+<recover_option> ::=
+    { WITH OLD_ACCOUNT = 'account_name' , OLD_PASSWORD = 'password' }
+    |
+    { WITH NEW_ACCOUNT = 'account_name' , NEW_PASSWORD = 'password' }

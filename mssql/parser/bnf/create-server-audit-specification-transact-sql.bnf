@@ -1,0 +1,34 @@
+-- Statement: CREATE SERVER AUDIT SPECIFICATION
+-- Grammar rule: createServerAuditSpecificationStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-server-audit-specification-transact-sql
+
+-- From TSql170.g:
+createServerAuditSpecificationStatement:
+    -- (entered via createServerAuditStatements: AUDIT SPECIFICATION identifier)
+    SPECIFICATION identifier  -- specification name
+    auditSpecificationForClause
+    (createAuditSpecificationDetail (Comma createAuditSpecificationDetail)*)?
+    auditSpecificationStateOpt
+    ;
+
+auditSpecificationForClause:
+    FOR SERVER AUDIT identifier
+    ;
+
+createAuditSpecificationDetail:
+    ADD LeftParenthesis serverAuditActionGroup RightParenthesis
+    ;
+
+auditSpecificationStateOpt:
+    (WITH LeftParenthesis STATE EqualsSign (ON | OFF) RightParenthesis)?
+    ;
+
+-- From Microsoft docs:
+CREATE SERVER AUDIT SPECIFICATION audit_specification_name
+FOR SERVER AUDIT audit_name
+{
+    { ADD ( { audit_action_group_name } )
+    } [, ...n]
+    [ WITH ( STATE = { ON | OFF } ) ]
+}
+[ ; ]

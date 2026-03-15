@@ -1,0 +1,42 @@
+-- Statement: ALTER EXTERNAL RESOURCE POOL
+-- Grammar rule: alterExternalResourcePoolStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-external-resource-pool-transact-sql
+
+-- From TSql170.g:
+alterExternalResourcePoolStatement:
+    ALTER EXTERNAL RESOURCE POOL identifier
+    externalResourcePoolStatementBody
+    ;
+
+externalResourcePoolStatementBody:
+    (
+        WITH LeftParenthesis
+        externalResourcePoolParameter
+        ( Comma externalResourcePoolParameter )*
+        RightParenthesis
+    )?
+    ;
+
+externalResourcePoolParameter:
+    externalResourcePoolAffinitySpecification   -- AFFINITY CPU = ...
+    |
+    identifier EqualsSign literal               -- MAX_CPU_PERCENT, MAX_MEMORY_PERCENT, MAX_PROCESSES
+    ;
+
+-- From Microsoft docs:
+-- ALTER EXTERNAL RESOURCE POOL { pool_name | "default" }
+-- [ WITH (
+--     [ MAX_CPU_PERCENT = value ]
+--     [ [ , ] MAX_MEMORY_PERCENT = value ]
+--     [ [ , ] MAX_PROCESSES = value ]
+--     )
+-- ]
+-- [ ; ]
+--
+-- (SQL Server 2016/2017 also supports:)
+-- [ [ , ] AFFINITY CPU =
+--         {
+--             AUTO
+--           | ( <cpu_range_spec> )
+--           | NUMANODE = (( <NUMA_node_id> )
+--         } ]

@@ -1,0 +1,39 @@
+-- Statement: CREATE EVENT NOTIFICATION
+-- Grammar rule: createEventNotificationStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-event-notification-transact-sql
+
+-- From TSql170.g:
+createEventNotificationStatement
+    : tNotification:Identifier vIdentifier=identifier
+        vScope=eventNotificationObjectScope
+        (
+            With tFanIn:Identifier  -- FAN_IN
+        )?
+        For vEventTypeGroup=eventTypeGroupContainer
+        (
+            Comma vEventTypeGroup=eventTypeGroupContainer
+        )*
+        To tService:Identifier  -- SERVICE
+        vLiteral=stringLiteral       -- broker_service
+        Comma vLiteral=stringLiteral -- broker_instance_specifier
+    ;
+
+eventNotificationObjectScope
+    : On
+        ( Database
+        | tQueue:Identifier vQueueName=schemaObjectThreePartName  -- QUEUE queue_name
+        | tServer:Identifier  -- SERVER
+        )
+    ;
+
+eventTypeGroupContainer
+    : tIdentifier:Identifier  -- event_type or event_group name
+    ;
+
+-- From Microsoft docs:
+CREATE EVENT NOTIFICATION event_notification_name
+ON { SERVER | DATABASE | QUEUE queue_name }
+[ WITH FAN_IN ]
+FOR { event_type | event_group } [ , ...n ]
+TO SERVICE 'broker_service' , { 'broker_instance_specifier' | 'current database' }
+[ ; ]

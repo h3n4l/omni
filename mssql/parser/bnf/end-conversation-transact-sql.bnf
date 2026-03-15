@@ -1,0 +1,25 @@
+-- Statement: END CONVERSATION
+-- Grammar rule: endConversationStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/end-conversation-transact-sql
+
+-- From TSql170.g:
+endConversationStatement:
+    End Identifier/*Conversation*/ expression
+    endConversationArgumentsOpt
+    ;
+
+endConversationArgumentsOpt:
+    ( With Identifier/*Error or Cleanup*/
+        ( /* empty - matches 'Cleanup' */
+        | EqualsSign integerOrVariable
+          Identifier/*Description*/ EqualsSign stringOrVariable
+        )
+    )?
+    ;
+
+-- From Microsoft docs:
+END CONVERSATION conversation_handle
+   [   [ WITH ERROR = failure_code DESCRIPTION = 'failure_text' ]
+     | [ WITH CLEANUP ]
+    ]
+[ ; ]

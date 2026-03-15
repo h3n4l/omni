@@ -1,0 +1,17 @@
+-- Statement: WHILE
+-- Grammar rule: whileStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/while-transact-sql
+
+-- From TSql170.g:
+whileStatement:
+    While booleanExpression
+    statementOptSemi
+    ;
+
+-- Sub-rules referenced:
+-- booleanExpression: (defined elsewhere - complex boolean expression grammar)
+-- statementOptSemi: a single T-SQL statement with optional semicolon
+
+-- From Microsoft docs:
+-- WHILE boolean_expression
+--     { sql_statement | statement_block | BREAK | CONTINUE }

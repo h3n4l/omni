@@ -1,0 +1,97 @@
+-- Statement: CREATE EXTERNAL TABLE
+-- Grammar rule: createExternalTableStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-table-transact-sql
+
+-- From TSql170.g:
+createExternalTableStatement:
+    Table schemaObjectThreePartName
+    (
+        (
+            LeftParenthesis
+            externalTableColumnElement (Comma externalTableColumnElement)*
+            RightParenthesis
+            withExternalTableOptions
+        )
+    |
+        ctasCreateExternalTableStatement
+    )
+    ;
+
+externalTableColumnElement:
+    columnDefinitionCreateExternalTable
+    ;
+
+columnDefinitionCreateExternalTable:
+    columnDefinitionBasic
+    (nullableConstraint)?
+    ;
+
+withExternalTableOptions:
+    With LeftParenthesis
+    (
+        externalTableDataSource
+    |
+        createExternalTableOption
+    )
+    (
+        Comma
+        (
+            externalTableDataSource
+        |
+            createExternalTableOption
+        )
+    )*
+    RightParenthesis
+    ;
+
+externalTableDataSource:
+    DATA_SOURCE EqualsSign identifier
+    ;
+
+createExternalTableOption:
+      externalTableRejectTypeOption
+    | externalTableDistributionOption
+    | externalTableNumericLiteralOption       -- REJECT_SAMPLE_VALUE | REJECT_VALUE
+    | externalTableLiteralOrIdentifierOption  -- LOCATION, FILE_FORMAT, SCHEMA_NAME, OBJECT_NAME, etc.
+    ;
+
+ctasCreateExternalTableStatement:
+    withExternalTableOptions
+    As selectStatement
+    ;
+
+-- From Microsoft docs:
+CREATE EXTERNAL TABLE { database_name.schema_name.table_name | schema_name.table_name | table_name }
+    ( <column_definition> [ , ...n ] )
+    WITH (
+        LOCATION = 'folder_or_filepath' ,
+        DATA_SOURCE = external_data_source_name ,
+        [ FILE_FORMAT = external_file_format_name ]
+        [ , <reject_options> [ , ...n ] ]
+    )
+[ ; ]
+
+<reject_options> ::=
+{
+    | REJECT_TYPE = { value | percentage }
+    | REJECT_VALUE = reject_value
+    | REJECT_SAMPLE_VALUE = reject_sample_value
+    | REJECTED_ROW_LOCATION = '/REJECT_Directory'
+}
+
+<column_definition> ::=
+column_name <data_type>
+    [ COLLATE collation_name ]
+    [ NULL | NOT NULL ]
+
+-- Elastic Query variant (Azure SQL Database):
+CREATE EXTERNAL TABLE { database_name.schema_name.table_name | schema_name.table_name | table_name }
+    ( <column_definition> [ , ...n ] )
+    WITH ( <sharded_external_table_options> )
+[ ; ]
+
+<sharded_external_table_options> ::=
+    DATA_SOURCE = external_data_source_name ,
+    SCHEMA_NAME = N'nonescaped_schema_name' ,
+    OBJECT_NAME = N'nonescaped_object_name' ,
+    [ DISTRIBUTION = SHARDED(sharding_column_name) | REPLICATED | ROUND_ROBIN ]

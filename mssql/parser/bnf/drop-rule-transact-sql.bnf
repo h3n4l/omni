@@ -1,0 +1,22 @@
+-- Statement: DROP RULE
+-- Grammar rule: dropRuleStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-rule-transact-sql
+
+-- From TSql170.g:
+dropRuleStatement:
+    Rule
+    ( If Exists )?
+    dropObjectList
+    ;
+
+dropObjectList:
+    dropObject ( Comma dropObject )*
+    ;
+
+dropObject:
+    schemaObjectThreePartName
+    ;
+
+-- From Microsoft docs:
+DROP RULE [ IF EXISTS ] { [ schema_name . ] rule_name } [ , ...n ]
+[ ; ]

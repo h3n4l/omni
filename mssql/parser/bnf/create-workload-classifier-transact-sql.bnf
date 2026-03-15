@@ -1,0 +1,57 @@
+-- Statement: CREATE WORKLOAD CLASSIFIER
+-- Grammar rule: createWorkloadClassifierStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-workload-classifier-transact-sql
+
+-- From TSql170.g:
+createWorkloadClassifierStatement:
+    workloadClassifierStatementBody[vResult]
+    ;
+
+workloadClassifierStatementBody:
+    tWorkload:Identifier tClassifier:Identifier vClassifierName=identifier
+    withClassifierOptions[vParent]
+    ;
+
+withClassifierOptions:
+    With LeftParenthesis workloadClassifierOption
+    (Comma workloadClassifierOption)*
+    RightParenthesis
+    ;
+
+workloadClassifierOption:
+        classifierWorkloadGroupOption       -- WORKLOAD_GROUP = 'name'
+    |   classifierMemberNameOption           -- MEMBERNAME = 'name'
+    |   classifierWlmLabelOption             -- WLM_LABEL = 'label'
+    |   classifierWlmContextOption           -- WLM_CONTEXT = 'context'
+    |   classifierImportanceOption           -- IMPORTANCE = { LOW | ... | HIGH }
+    |   classifierStartTimeOption            -- START_TIME = 'HH:MM'
+    |   classifierEndTimeOption              -- END_TIME = 'HH:MM'
+    ;
+
+classifierWorkloadGroupOption:
+    tWorkloadgroup:Identifier EqualsSign vWorkloadGroupName=stringLiteral
+    ;
+
+classifierMemberNameOption:
+    tMemberName:Identifier EqualsSign vMemberName=stringLiteral
+    ;
+
+classifierWlmLabelOption:
+    tWlmLabel:Identifier EqualsSign vWlmLabel=stringLiteral
+    ;
+
+classifierWlmContextOption:
+    tWlmContext:Identifier EqualsSign vWlmContext=stringLiteral
+    ;
+
+-- From Microsoft docs:
+CREATE WORKLOAD CLASSIFIER classifier_name
+WITH
+    ( WORKLOAD_GROUP = 'name'
+    , MEMBERNAME = 'security_account'
+    [ [ , ] WLM_LABEL = 'label' ]
+    [ [ , ] WLM_CONTEXT = 'context' ]
+    [ [ , ] START_TIME = 'HH:MM' ]
+    [ [ , ] END_TIME = 'HH:MM' ]
+    [ [ , ] IMPORTANCE = { LOW | BELOW_NORMAL | NORMAL | ABOVE_NORMAL | HIGH } ] )
+[ ; ]

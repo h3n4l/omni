@@ -1,0 +1,27 @@
+-- Statement: CREATE FULLTEXT STOPLIST
+-- Grammar rule: createFulltextStoplistStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-fulltext-stoplist-transact-sql
+
+-- From TSql170.g:
+createFulltextStoplistStatement:
+    CREATE FULLTEXT STOPLIST identifier
+    (
+        FROM
+        (
+            ( identifier Dot )? identifier              -- [database.]source_stoplist
+        |   SYSTEM STOPLIST                              -- system stoplist
+        )
+    )?
+    authorizationOpt
+    Semicolon
+    ;
+
+authorizationOpt:
+    ( AUTHORIZATION identifier )?
+    ;
+
+-- From Microsoft docs:
+CREATE FULLTEXT STOPLIST stoplist_name
+[ FROM { [ database_name.]source_stoplist_name } | SYSTEM STOPLIST ]
+[ AUTHORIZATION owner_name ]
+;

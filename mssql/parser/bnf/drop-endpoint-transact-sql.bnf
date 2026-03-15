@@ -1,0 +1,12 @@
+-- Statement: DROP ENDPOINT
+-- Grammar rule: dropEndpointStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-endpoint-transact-sql
+
+-- From TSql170.g:
+-- Parent: dropStatement handles DROP keyword
+dropEndpointStatement:
+    ENDPOINT identifier
+    ;
+
+-- From Microsoft docs:
+DROP ENDPOINT endPointName

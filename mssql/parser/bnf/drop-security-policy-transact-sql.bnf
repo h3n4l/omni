@@ -1,0 +1,23 @@
+-- Statement: DROP SECURITY POLICY
+-- Grammar rule: dropSecurityPolicyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-security-policy-transact-sql
+
+-- From TSql170.g:
+dropSecurityPolicyStatement:
+    Security Policy
+    ( If Exists )?
+    dropObjectList[onlyTwoPartNames=true]
+    ;
+
+-- Sub-rules:
+dropObjectList:
+    dropObject ( Comma dropObject )*
+    ;
+
+dropObject:
+    schemaObjectThreePartName
+    ;
+
+-- From Microsoft docs:
+DROP SECURITY POLICY [ IF EXISTS ] [schema_name. ] security_policy_name
+[;]

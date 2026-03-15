@@ -1,806 +1,519 @@
 {
   "version": 1,
   "target": "Complete T-SQL recursive descent parser",
-  "status": "complete",
+  "status": "in_progress",
+  "audit_round": 19,
   "batches": [
+    {"id": 0, "name": "infrastructure", "status": "done", "file": "parser.go"},
+    {"id": 1, "name": "names", "status": "done", "file": "name.go"},
+    {"id": 2, "name": "types", "status": "done", "file": "type.go"},
+    {"id": 3, "name": "expressions", "status": "done", "file": "expr.go"},
+    {"id": 4, "name": "select", "status": "done", "file": "select.go"},
+    {"id": 5, "name": "insert", "status": "done", "file": "insert.go"},
+    {"id": 6, "name": "update_delete", "status": "done", "file": "update_delete.go"},
+    {"id": 7, "name": "merge", "status": "done", "file": "merge.go"},
+    {"id": 8, "name": "create_table", "status": "done", "file": "create_table.go"},
+    {"id": 9, "name": "alter_table", "status": "done", "file": "alter_table.go"},
+    {"id": 10, "name": "create_index", "status": "done", "file": "create_index.go"},
+    {"id": 11, "name": "create_view", "status": "done", "file": "create_view.go"},
+    {"id": 12, "name": "create_proc", "status": "done", "file": "create_proc.go"},
+    {"id": 13, "name": "create_database", "status": "done", "file": "create_database.go"},
+    {"id": 14, "name": "drop", "status": "done", "file": "drop.go"},
+    {"id": 15, "name": "control_flow", "status": "done", "file": "control_flow.go"},
+    {"id": 16, "name": "declare_set", "status": "done", "file": "declare_set.go"},
+    {"id": 17, "name": "transaction", "status": "done", "file": "transaction.go"},
+    {"id": 18, "name": "execute", "status": "done", "file": "execute.go"},
+    {"id": 19, "name": "grant", "status": "done", "file": "grant.go"},
+    {"id": 20, "name": "utility", "status": "done", "file": "utility.go"},
+    {"id": 21, "name": "go_batch", "status": "done", "file": "go_batch.go"},
+    {"id": 22, "name": "stmt_dispatch", "status": "done", "file": "parser.go"},
+    {"id": 23, "name": "cursor_operations", "status": "done", "file": "cursor.go"},
+    {"id": 24, "name": "create_trigger", "status": "done", "file": "create_trigger.go"},
+    {"id": 25, "name": "create_schema", "status": "done", "file": "create_schema.go"},
+    {"id": 26, "name": "create_type", "status": "done", "file": "create_type.go"},
+    {"id": 27, "name": "create_sequence", "status": "done", "file": "create_sequence.go"},
+    {"id": 28, "name": "create_synonym", "status": "done", "file": "create_synonym.go"},
+    {"id": 29, "name": "alter_objects", "status": "done", "file": "alter_objects.go"},
+    {"id": 30, "name": "security_principals", "status": "done", "file": "security_principals.go"},
+    {"id": 31, "name": "security_keys_certs", "status": "done", "file": "security_keys.go"},
+    {"id": 32, "name": "dbcc", "status": "done", "file": "dbcc.go"},
+    {"id": 33, "name": "bulk_insert", "status": "done", "file": "bulk_insert.go"},
+    {"id": 34, "name": "backup_restore", "status": "done", "file": "backup_restore.go"},
+    {"id": 35, "name": "pivot_unpivot", "status": "done", "file": "select.go"},
+    {"id": 36, "name": "tablesample", "status": "done", "file": "select.go"},
+    {"id": 37, "name": "rowset_functions", "status": "done", "file": "rowset_functions.go"},
+    {"id": 38, "name": "grouping_sets", "status": "done", "file": "select.go"},
+    {"id": 39, "name": "begin_distributed_transaction", "status": "done", "file": "transaction.go"},
+    {"id": 40, "name": "create_statistics", "status": "done", "file": "create_statistics.go"},
+    {"id": 41, "name": "set_options", "status": "done", "file": "declare_set.go"},
+    {"id": 42, "name": "partition", "status": "done", "file": "partition.go"},
+    {"id": 43, "name": "fulltext", "status": "done", "file": "fulltext.go"},
+    {"id": 44, "name": "xml_schema_collection", "status": "done", "file": "xml_schema.go"},
+    {"id": 45, "name": "assembly", "status": "done", "file": "assembly.go"},
+    {"id": 46, "name": "service_broker", "status": "done", "file": "service_broker.go"},
+    {"id": 47, "name": "misc_utility", "status": "done", "file": "utility.go"},
+    {"id": 48, "name": "drop_extended", "status": "done", "file": "drop.go"},
+    {"id": 49, "name": "stmt_dispatch_phase2", "status": "done", "file": "parser.go"},
+    {"id": 50, "name": "service_broker_missing", "status": "done", "file": "service_broker.go"},
+    {"id": 51, "name": "alter_trigger_enable_disable", "status": "done", "file": "utility.go"},
+    {"id": 52, "name": "service_broker_alter_drop", "status": "done", "file": "service_broker.go"},
+    {"id": 53, "name": "security_context", "status": "done", "file": "security_principals.go"},
+    {"id": 54, "name": "server_audit", "status": "done", "file": "security_audit.go"},
+    {"id": 55, "name": "endpoint", "status": "done", "file": "endpoint.go"},
+    {"id": 56, "name": "event_notification_session", "status": "done", "file": "event.go"},
+    {"id": 57, "name": "external_objects", "status": "done", "file": "external.go"},
+    {"id": 58, "name": "encryption_keys", "status": "done", "file": "security_keys.go"},
+    {"id": 59, "name": "resource_governor", "status": "done", "file": "resource_governor.go"},
+    {"id": 60, "name": "server_level_objects", "status": "done", "file": "server.go"},
+    {"id": 61, "name": "fulltext_stoplist_search", "status": "done", "file": "fulltext.go"},
+    {"id": 62, "name": "security_policy_classification", "status": "done", "file": "security_misc.go"},
+    {"id": 63, "name": "specialized_indexes", "status": "done", "file": "create_index.go"},
+    {"id": 64, "name": "restore_extended_master_key", "status": "done", "file": "backup_restore.go"},
+    {"id": 65, "name": "external_runtime", "status": "done", "file": "external.go"},
+    {"id": 66, "name": "availability_group", "status": "done", "file": "availability.go"},
+    {"id": 67, "name": "deprecated_misc", "status": "done", "file": "utility.go"},
+    {"id": 68, "name": "stmt_dispatch_phase3", "status": "done", "file": "parser.go"},
+    {"id": 69, "name": "create_table_depth", "status": "done", "file": "create_table.go"},
+    {"id": 70, "name": "alter_table_depth", "status": "done", "file": "alter_table.go"},
+    {"id": 71, "name": "routine_options_depth", "status": "done", "file": "create_proc.go"},
+    {"id": 72, "name": "service_broker_depth", "status": "done", "file": "service_broker.go"},
+    {"id": 73, "name": "window_frame", "status": "done", "file": "expr.go"},
+    {"id": 74, "name": "for_xml_json_options", "status": "done", "file": "select.go"},
+    {"id": 75, "name": "compound_assignment", "status": "done", "file": "update_delete.go"},
+    {"id": 76, "name": "create_database_depth", "status": "done", "file": "create_database.go"},
+    {"id": 77, "name": "alter_database_depth", "status": "done", "file": "alter_objects.go"},
+    {"id": 78, "name": "grant_depth", "status": "done", "file": "grant.go"},
+    {"id": 79, "name": "subquery_comparison", "status": "done", "file": "expr.go"},
+    {"id": 80, "name": "workload_classifier", "status": "done", "file": "resource_governor.go"},
+    {"id": 81, "name": "create_type_index", "status": "done", "file": "create_type.go"},
+    {"id": 82, "name": "alter_table_filetable", "status": "done", "file": "alter_table.go"},
+    {"id": 83, "name": "table_hints", "status": "done", "file": "select.go"},
+    {"id": 84, "name": "collate_expression", "status": "done", "file": "expr.go"},
+    {"id": 85, "name": "at_time_zone", "status": "done", "file": "expr.go"},
+    {"id": 86, "name": "create_table_inline_index", "status": "done", "file": "create_table.go"},
+    {"id": 87, "name": "graph_tables", "status": "done", "file": "create_table.go"},
+    {"id": 88, "name": "alter_table_add_period", "status": "done", "file": "alter_table.go"},
+    {"id": 89, "name": "trigger_with_options", "status": "done", "file": "trigger.go"},
+    {"id": 90, "name": "security_key_options_depth", "status": "done", "file": "security_keys.go"},
+    {"id": 91, "name": "choose_string_agg", "status": "done", "file": "expr.go"},
+    {"id": 92, "name": "option_query_hints", "status": "done", "file": "select.go"},
+    {"id": 93, "name": "setuser_statement", "status": "done", "file": "utility.go"},
+    {"id": 94, "name": "begin_conversation_timer", "status": "done", "file": "service_broker.go"},
+    {"id": 95, "name": "alter_index_options_depth", "status": "done", "file": "alter_objects.go"},
+    {"id": 96, "name": "server_audit_options_depth", "status": "done", "file": "security_audit.go"},
+    {"id": 97, "name": "query_hint_table_hint_depth", "status": "done", "file": "select.go"},
+    {"id": 98, "name": "security_key_structured_options", "status": "done", "file": "security_keys.go"},
+    {"id": 99, "name": "endpoint_options_depth", "status": "done", "file": "endpoint.go"},
+    {"id": 100, "name": "service_broker_alter_options_depth", "status": "done", "file": "service_broker.go"},
+    {"id": 101, "name": "event_session_specs_depth", "status": "done", "file": "event.go"},
+    {"id": 102, "name": "resource_governor_options_depth", "status": "done", "file": "resource_governor.go"},
+    {"id": 103, "name": "drop_security_keys_dispatch", "status": "done", "file": "drop.go"},
+    {"id": 104, "name": "drop_external_library_language_dispatch", "status": "done", "file": "parser.go"},
+    {"id": 105, "name": "backup_restore_symmetric_key", "status": "done", "file": "security_keys.go"},
+    {"id": 106, "name": "get_transmission_status", "status": "done", "file": "service_broker.go"},
+    {"id": 107, "name": "endpoint_unknown_protocol_depth", "status": "done", "file": "endpoint.go"},
+    {"id": 108, "name": "external_model", "status": "done", "file": "external.go"},
+    {"id": 109, "name": "json_vector_index", "status": "done", "file": "create_index.go"},
+    {"id": 110, "name": "materialized_view", "status": "done", "file": "create_view.go"},
+    {"id": 111, "name": "copy_into", "status": "done", "file": "utility.go"},
+    {"id": 112, "name": "rename_cetas", "status": "done", "file": "utility.go"},
+    {"id": 113, "name": "stmt_dispatch_phase4", "status": "done", "file": "parser.go"},
+    {"id": 114, "name": "server_config_options_depth", "status": "done", "file": "server.go"},
+    {"id": 115, "name": "availability_group_options_depth", "status": "done", "file": "availability.go"},
+    {"id": 116, "name": "endpoint_unknown_protocol_skip", "status": "done", "file": "endpoint.go"},
+    {"id": 117, "name": "alter_database_unknown_action", "status": "done", "file": "alter_objects.go"},
+    {"id": 118, "name": "predict_statement", "status": "done", "file": "utility.go"},
+    {"id": 119, "name": "edge_constraint", "status": "done", "file": "create_table.go"},
+    {"id": 120, "name": "backup_restore_options_depth", "status": "done", "file": "backup_restore.go"},
+    {"id": 121, "name": "create_database_options_depth", "status": "done", "file": "create_database.go"},
+    {"id": 122, "name": "security_principal_options_depth", "status": "done", "file": "security_principals.go"},
+    {"id": 123, "name": "dbcc_with_options_depth", "status": "done", "file": "dbcc.go"},
+    {"id": 124, "name": "external_nested_parens_depth", "status": "done", "file": "external.go"},
+    {"id": 125, "name": "availability_remaining_depth", "status": "done", "file": "availability.go"},
+    {"id": 126, "name": "server_config_remaining_depth", "status": "done", "file": "server.go"},
+    {"id": 127, "name": "select_query_hint_remaining_depth", "status": "done", "file": "select.go"},
+    {"id": 128, "name": "security_keys_remaining_depth", "status": "done", "file": "security_keys.go"},
+    {"id": 129, "name": "fulltext_alter_depth", "status": "done", "file": "fulltext.go"},
+    {"id": 130, "name": "security_misc_remaining_depth", "status": "done", "file": "security_misc.go"},
+    {"id": 131, "name": "utility_cetas_dbscoped_depth", "status": "done", "file": "utility.go"},
+    {"id": 132, "name": "alter_database_unknown_depth", "status": "done", "file": "alter_objects.go"},
+    {"id": 133, "name": "endpoint_remaining_depth", "status": "done", "file": "endpoint.go"},
+    {"id": 134, "name": "declare_set_isolation_depth", "status": "done", "file": "declare_set.go"},
+    {"id": 135, "name": "misc_unknown_skip_depth", "status": "done", "file": "create_table.go"},
+    {"id": 136, "name": "alter_authorization_entity_depth", "status": "done", "file": "security_principals.go"},
+    {"id": 137, "name": "ctas_synapse", "status": "done", "file": "create_table.go"},
+    {"id": 138, "name": "audit_spec_actions_where_depth", "status": "done", "file": "security_audit.go"},
+    {"id": 139, "name": "event_notification_options_depth", "status": "done", "file": "event.go"},
+    {"id": 140, "name": "resource_governor_outer_depth", "status": "done", "file": "resource_governor.go"},
+    {"id": 141, "name": "external_cleanup_depth", "status": "done", "file": "external.go"},
+    {"id": 142, "name": "availability_skip_cleanup_depth", "status": "done", "file": "availability.go"},
+    {"id": 143, "name": "create_remote_table_as_select", "status": "done", "file": "utility.go"},
+    {"id": 144, "name": "copy_into_column_depth", "status": "done", "file": "utility.go"},
+    {"id": 145, "name": "receive_column_list_depth", "status": "done", "file": "service_broker.go"},
+    {"id": 146, "name": "kill_query_notification", "status": "done", "file": "utility.go"},
+    {"id": 147, "name": "size_value_structured", "status": "done", "file": "create_database.go"},
+    {"id": 148, "name": "service_broker_options_strings_depth", "status": "done", "file": "service_broker.go"},
+    {"id": 149, "name": "availability_options_strings_depth", "status": "done", "file": "availability.go"},
+    {"id": 150, "name": "server_config_strings_depth", "status": "done", "file": "server.go"},
+    {"id": 151, "name": "endpoint_options_strings_depth", "status": "done", "file": "endpoint.go"},
+    {"id": 152, "name": "alter_table_column_options_strings_depth", "status": "done", "file": "alter_table.go"},
+    {"id": 153, "name": "trigger_event_options_strings_depth", "status": "done", "file": "create_trigger.go"},
     {
-      "id": 0,
-      "name": "infrastructure",
+      "id": 154,
+      "name": "bnf_review_infrastructure",
       "file": "parser.go",
       "status": "done",
-      "description": "Parser struct, Parse(), advance/peek/match/expect/pos helpers, mapTokenType, ParseError",
-      "rules": [],
+      "description": "BNF-first review of lexer, parser helpers, expression parser, shared clause helpers. Establish baseline for BNF-first review. Verify token constants, keyword mappings, operator precedence, and helper functions match the T-SQL grammar.",
+      "rules": [
+        "lexer_tokens",
+        "keyword_map",
+        "operator_precedence",
+        "parse_helpers",
+        "expr_parser"
+      ],
       "depends_on": [],
-      "tests": []
-    },
-    {
-      "id": 1,
-      "name": "names",
-      "file": "name.go",
-      "status": "done",
-      "description": "Identifiers, [bracketed identifiers], @variables, qualified names (server.db.schema.object)",
-      "rules": [
-        "identifier",
-        "bracketed_identifier",
-        "quoted_identifier",
-        "variable_ref",
-        "system_variable_ref",
-        "qualified_name",
-        "column_ref",
-        "table_ref"
-      ],
-      "depends_on": [
-        0
-      ],
       "tests": [
-        "names"
-      ]
+        "infrastructure_bnf_review"
+      ],
+      "bnf_files": [],
+      "review_files": ["parser.go", "lexer.go", "expr.go", "type.go", "name.go"]
     },
     {
-      "id": 2,
-      "name": "types",
-      "file": "type.go",
-      "status": "done",
-      "description": "Data types: INT, BIGINT, VARCHAR, NVARCHAR, DECIMAL, DATETIME2, UNIQUEIDENTIFIER, XML, etc.",
-      "rules": [
-        "data_type",
-        "type_length",
-        "type_precision_scale",
-        "type_max"
-      ],
-      "depends_on": [
-        1
-      ],
-      "tests": [
-        "types"
-      ]
-    },
-    {
-      "id": 3,
-      "name": "expressions",
-      "file": "expr.go",
-      "status": "done",
-      "description": "All expression types: operators, CASE, BETWEEN, IN, LIKE, IS, IIF, COALESCE, NULLIF, CONVERT, CAST, TRY_CAST",
-      "rules": [
-        "expr",
-        "or_expr",
-        "and_expr",
-        "not_expr",
-        "comparison_expr",
-        "addition_expr",
-        "multiplication_expr",
-        "unary_expr",
-        "primary_expr",
-        "case_expr",
-        "between_expr",
-        "in_expr",
-        "like_expr",
-        "is_expr",
-        "cast_expr",
-        "convert_expr",
-        "coalesce_expr",
-        "nullif_expr",
-        "iif_expr",
-        "exists_expr",
-        "func_call_expr"
-      ],
-      "depends_on": [
-        1,
-        2
-      ],
-      "tests": [
-        "expressions",
-        "case",
-        "cast",
-        "convert"
-      ]
-    },
-    {
-      "id": 4,
-      "name": "select",
+      "id": 155,
+      "name": "bnf_review_select",
       "file": "select.go",
-      "status": "done",
-      "description": "SELECT with TOP, INTO, FOR XML/JSON, OPTION, CROSS/OUTER APPLY, CTE",
+      "status": "pending",
+      "description": "Full BNF review of SELECT. CTE/WITH, TOP, INTO, FROM, JOIN, APPLY, WHERE, GROUP BY, HAVING, ORDER BY, OFFSET/FETCH, FOR XML/JSON, OPTION hints, UNION/INTERSECT/EXCEPT.",
       "rules": [
         "select_stmt",
+        "with_clause",
         "top_clause",
-        "into_clause",
         "from_clause",
+        "join_clause",
+        "apply_clause",
         "where_clause",
         "group_by_clause",
         "having_clause",
         "order_by_clause",
         "offset_fetch_clause",
-        "for_clause",
+        "for_xml_json_clause",
         "option_clause",
-        "with_clause",
-        "common_table_expr",
-        "table_source",
-        "joined_table",
-        "apply_clause",
         "union_intersect_except"
       ],
-      "depends_on": [
-        3
-      ],
+      "depends_on": [154],
       "tests": [
-        "select",
-        "top",
-        "cte",
-        "join",
-        "apply",
-        "for_xml",
-        "for_json",
-        "union"
-      ]
+        "select_bnf_review"
+      ],
+      "bnf_files": ["select-transact-sql.bnf"],
+      "review_files": ["select.go"]
     },
     {
-      "id": 5,
-      "name": "insert",
+      "id": 156,
+      "name": "bnf_review_dml",
       "file": "insert.go",
-      "status": "done",
-      "description": "INSERT, OUTPUT clause, INSERT...EXEC",
+      "status": "pending",
+      "description": "BNF review of all DML statements. INSERT with OUTPUT, INSERT...EXEC, UPDATE with FROM, DELETE with FROM, OUTPUT on all, MERGE with WHEN MATCHED/NOT MATCHED/BY SOURCE, COPY INTO.",
       "rules": [
         "insert_stmt",
-        "insert_values",
-        "insert_select",
-        "insert_exec",
-        "output_clause",
-        "default_values"
-      ],
-      "depends_on": [
-        4
-      ],
-      "tests": [
-        "insert",
-        "output"
-      ]
-    },
-    {
-      "id": 6,
-      "name": "update_delete",
-      "file": "update_delete.go",
-      "status": "done",
-      "description": "UPDATE with FROM, DELETE with FROM, OUTPUT, TOP",
-      "rules": [
         "update_stmt",
         "delete_stmt",
-        "set_clause",
-        "set_clause_list"
-      ],
-      "depends_on": [
-        4
-      ],
-      "tests": [
-        "update",
-        "delete"
-      ]
-    },
-    {
-      "id": 7,
-      "name": "merge",
-      "file": "merge.go",
-      "status": "done",
-      "description": "MERGE statement with WHEN MATCHED/NOT MATCHED",
-      "rules": [
         "merge_stmt",
-        "merge_when_clause",
-        "merge_matched",
-        "merge_not_matched",
-        "merge_update_action",
-        "merge_delete_action",
-        "merge_insert_action"
+        "output_clause",
+        "copy_into_stmt"
       ],
-      "depends_on": [
-        4,
-        5,
-        6
-      ],
+      "depends_on": [154],
       "tests": [
-        "merge"
-      ]
+        "dml_bnf_review"
+      ],
+      "bnf_files": ["insert-transact-sql.bnf", "update-transact-sql.bnf", "delete-transact-sql.bnf", "merge-transact-sql.bnf", "copy-into-transact-sql.bnf"],
+      "review_files": ["insert.go", "update_delete.go", "merge.go", "bulk_insert.go"]
     },
     {
-      "id": 8,
-      "name": "create_table",
+      "id": 157,
+      "name": "bnf_review_create_table",
       "file": "create_table.go",
-      "status": "done",
-      "description": "CREATE TABLE, constraints, IDENTITY, computed columns, temporal tables",
+      "status": "pending",
+      "description": "Full BNF review of CREATE TABLE. Column definitions, computed columns, constraints, filegroup, partition, memory-optimized, temporal tables (SYSTEM_VERSIONING), graph tables (AS NODE/AS EDGE), ledger tables.",
       "rules": [
         "create_table_stmt",
-        "column_def",
-        "column_constraint",
-        "table_constraint",
-        "identity_spec",
+        "column_definition",
         "computed_column",
-        "primary_key",
-        "foreign_key",
-        "unique_constraint",
-        "check_constraint",
-        "default_constraint"
+        "table_constraint",
+        "column_constraint",
+        "system_versioning",
+        "graph_table",
+        "ledger_table",
+        "memory_optimized_table"
       ],
-      "depends_on": [
-        2,
-        3
-      ],
+      "depends_on": [154],
       "tests": [
-        "create_table",
-        "constraints",
-        "identity"
-      ]
+        "create_table_bnf_review"
+      ],
+      "bnf_files": ["create-table-transact-sql.bnf"],
+      "review_files": ["create_table.go"]
     },
     {
-      "id": 9,
-      "name": "alter_table",
+      "id": 158,
+      "name": "bnf_review_alter_table",
       "file": "alter_table.go",
-      "status": "done",
-      "description": "ALTER TABLE, ADD/DROP/ALTER COLUMN",
+      "status": "pending",
+      "description": "Full BNF review of ALTER TABLE. ALTER COLUMN, ADD/DROP column, ADD/DROP CONSTRAINT, CHECK/NOCHECK CONSTRAINT, ENABLE/DISABLE TRIGGER, SWITCH PARTITION, SET, REBUILD, table options.",
       "rules": [
         "alter_table_stmt",
-        "alter_table_action",
+        "alter_column",
         "add_column",
         "drop_column",
-        "alter_column",
         "add_constraint",
-        "drop_constraint"
+        "drop_constraint",
+        "check_nocheck_constraint",
+        "enable_disable_trigger",
+        "switch_partition",
+        "rebuild",
+        "table_option"
       ],
-      "depends_on": [
-        8
-      ],
+      "depends_on": [157],
       "tests": [
-        "alter_table"
-      ]
+        "alter_table_bnf_review"
+      ],
+      "bnf_files": ["alter-table-transact-sql.bnf"],
+      "review_files": ["alter_table.go"]
     },
     {
-      "id": 10,
-      "name": "create_index",
+      "id": 159,
+      "name": "bnf_review_index",
       "file": "create_index.go",
-      "status": "done",
-      "description": "CREATE INDEX, CLUSTERED/NONCLUSTERED, INCLUDE, WHERE, COLUMNSTORE",
+      "status": "pending",
+      "description": "BNF review of all index types. CREATE/ALTER/DROP INDEX, CREATE/ALTER COLUMNSTORE INDEX, CREATE/ALTER SPATIAL INDEX, CREATE XML INDEX, CREATE/ALTER FULLTEXT INDEX, CREATE/ALTER FULLTEXT CATALOG.",
       "rules": [
         "create_index_stmt",
-        "index_column_list",
-        "include_clause",
-        "index_options",
-        "clustered_spec"
+        "alter_index_stmt",
+        "create_columnstore_index",
+        "create_spatial_index",
+        "create_xml_index",
+        "create_fulltext_index",
+        "create_fulltext_catalog",
+        "alter_fulltext_index",
+        "alter_fulltext_catalog",
+        "index_options"
       ],
-      "depends_on": [
-        3
-      ],
+      "depends_on": [154],
       "tests": [
-        "create_index"
-      ]
+        "index_bnf_review"
+      ],
+      "bnf_files": ["create-index-transact-sql.bnf", "alter-index-transact-sql.bnf", "drop-index-transact-sql.bnf", "create-columnstore-index-transact-sql.bnf", "create-spatial-index-transact-sql.bnf", "create-xml-index-transact-sql.bnf", "create-fulltext-index-transact-sql.bnf", "alter-fulltext-index-transact-sql.bnf", "create-fulltext-catalog-transact-sql.bnf", "alter-fulltext-catalog-transact-sql.bnf", "create-fulltext-stoplist-transact-sql.bnf", "alter-fulltext-stoplist-transact-sql.bnf"],
+      "review_files": ["create_index.go", "fulltext.go"]
     },
     {
-      "id": 11,
-      "name": "create_view",
+      "id": 160,
+      "name": "bnf_review_view_trigger",
       "file": "create_view.go",
-      "status": "done",
-      "description": "CREATE/ALTER VIEW, WITH SCHEMABINDING",
+      "status": "pending",
+      "description": "BNF review of CREATE/ALTER/DROP VIEW, CREATE/ALTER/DROP TRIGGER (DML + DDL + LOGON triggers), ENABLE/DISABLE TRIGGER.",
       "rules": [
         "create_view_stmt",
-        "view_options"
+        "alter_view_stmt",
+        "create_trigger_stmt",
+        "alter_trigger_stmt",
+        "drop_trigger_stmt",
+        "enable_disable_trigger"
       ],
-      "depends_on": [
-        4
-      ],
+      "depends_on": [154],
       "tests": [
-        "create_view"
-      ]
+        "view_trigger_bnf_review"
+      ],
+      "bnf_files": ["create-view-transact-sql.bnf", "alter-view-transact-sql.bnf", "drop-view-transact-sql.bnf", "create-trigger-transact-sql.bnf", "alter-trigger-transact-sql.bnf", "drop-trigger-transact-sql.bnf"],
+      "review_files": ["create_view.go", "create_trigger.go"]
     },
     {
-      "id": 12,
-      "name": "create_proc",
+      "id": 161,
+      "name": "bnf_review_routines",
       "file": "create_proc.go",
-      "status": "done",
-      "description": "CREATE PROCEDURE/FUNCTION, parameters, RETURNS",
+      "status": "pending",
+      "description": "BNF review of CREATE/ALTER/DROP PROCEDURE, CREATE/ALTER/DROP FUNCTION (scalar, inline table-valued, multi-statement table-valued, CLR), EXECUTE.",
       "rules": [
         "create_procedure_stmt",
+        "alter_procedure_stmt",
         "create_function_stmt",
-        "param_def_list",
-        "param_def",
+        "alter_function_stmt",
+        "execute_stmt",
+        "param_definition",
         "return_type",
-        "returns_table_def",
-        "routine_body"
+        "routine_options"
       ],
-      "depends_on": [
-        2,
-        4
-      ],
+      "depends_on": [154],
       "tests": [
-        "create_proc",
-        "create_func"
-      ]
+        "routines_bnf_review"
+      ],
+      "bnf_files": ["create-procedure-transact-sql.bnf", "alter-procedure-transact-sql.bnf", "create-function-transact-sql.bnf", "alter-function-transact-sql.bnf", "drop-procedure-transact-sql.bnf", "drop-function-transact-sql.bnf", "execute-transact-sql.bnf"],
+      "review_files": ["create_proc.go", "execute.go"]
     },
     {
-      "id": 13,
-      "name": "create_database",
+      "id": 162,
+      "name": "bnf_review_database",
       "file": "create_database.go",
-      "status": "done",
-      "description": "CREATE/ALTER/DROP DATABASE",
+      "status": "pending",
+      "description": "BNF review of CREATE/ALTER/DROP DATABASE, ADD/REMOVE FILE, ADD/REMOVE FILEGROUP, SET options, containment, change tracking.",
       "rules": [
         "create_database_stmt",
         "alter_database_stmt",
-        "drop_database_stmt"
+        "drop_database_stmt",
+        "database_file_spec",
+        "filegroup_spec",
+        "database_set_options",
+        "containment",
+        "change_tracking"
       ],
-      "depends_on": [
-        1
-      ],
+      "depends_on": [154],
       "tests": [
-        "create_database"
-      ]
+        "database_bnf_review"
+      ],
+      "bnf_files": ["create-database-transact-sql.bnf", "alter-database-transact-sql.bnf", "alter-database-set-options-transact-sql.bnf", "alter-database-file-and-filegroup-options-transact-sql.bnf", "alter-database-compatibility-level-transact-sql.bnf", "alter-database-database-mirroring-transact-sql.bnf", "alter-database-scoped-configuration-transact-sql.bnf", "drop-database-transact-sql.bnf", "create-database-scoped-credential-transact-sql.bnf", "alter-database-scoped-credential-transact-sql.bnf", "drop-database-scoped-credential-transact-sql.bnf", "alter-database-audit-specification-transact-sql.bnf", "create-database-audit-specification-transact-sql.bnf"],
+      "review_files": ["create_database.go"]
     },
     {
-      "id": 14,
-      "name": "drop",
-      "file": "drop.go",
-      "status": "done",
-      "description": "DROP TABLE/INDEX/VIEW/PROC/FUNCTION/DATABASE",
+      "id": 163,
+      "name": "bnf_review_security",
+      "file": "security_principals.go",
+      "status": "pending",
+      "description": "BNF review of CREATE/ALTER/DROP USER, CREATE/ALTER/DROP LOGIN, CREATE/ALTER/DROP ROLE, CREATE/ALTER/DROP APPLICATION ROLE, GRANT, DENY, REVOKE, ADD SENSITIVITY CLASSIFICATION, ADD SIGNATURE.",
       "rules": [
-        "drop_stmt",
-        "drop_object_type",
-        "if_exists"
+        "create_user_stmt",
+        "alter_user_stmt",
+        "create_login_stmt",
+        "alter_login_stmt",
+        "create_role_stmt",
+        "alter_role_stmt",
+        "create_app_role_stmt",
+        "grant_stmt",
+        "deny_stmt",
+        "revoke_stmt",
+        "add_sensitivity_classification",
+        "add_signature"
       ],
-      "depends_on": [
-        1
-      ],
+      "depends_on": [154],
       "tests": [
-        "drop"
-      ]
+        "security_bnf_review"
+      ],
+      "bnf_files": ["create-user-transact-sql.bnf", "alter-user-transact-sql.bnf", "drop-user-transact-sql.bnf", "create-login-transact-sql.bnf", "alter-login-transact-sql.bnf", "drop-login-transact-sql.bnf", "create-role-transact-sql.bnf", "alter-role-transact-sql.bnf", "drop-role-transact-sql.bnf", "create-application-role-transact-sql.bnf", "alter-application-role-transact-sql.bnf", "grant-transact-sql.bnf", "deny-transact-sql.bnf", "revoke-transact-sql.bnf", "alter-authorization-transact-sql.bnf", "add-sensitivity-classification-transact-sql.bnf", "add-signature-transact-sql.bnf", "create-server-role-transact-sql.bnf", "alter-server-role-transact-sql.bnf", "drop-server-role-transact-sql.bnf", "execute-as-transact-sql.bnf", "revert-transact-sql.bnf", "create-security-policy-transact-sql.bnf", "alter-security-policy-transact-sql.bnf"],
+      "review_files": ["security_principals.go", "grant.go", "security_misc.go"]
     },
     {
-      "id": 15,
-      "name": "control_flow",
-      "file": "control_flow.go",
-      "status": "done",
-      "description": "IF/ELSE, WHILE, BEGIN/END, TRY/CATCH, GOTO, RETURN, BREAK, CONTINUE, WAITFOR",
+      "id": 164,
+      "name": "bnf_review_crypto",
+      "file": "security_keys.go",
+      "status": "pending",
+      "description": "BNF review of all cryptographic objects. CREATE/ALTER/DROP SYMMETRIC KEY, ASYMMETRIC KEY, CERTIFICATE, MASTER KEY, DATABASE ENCRYPTION KEY, CREDENTIAL, OPEN/CLOSE SYMMETRIC KEY, BACKUP/RESTORE CERTIFICATE, BACKUP/RESTORE MASTER KEY, BACKUP/RESTORE SERVICE MASTER KEY.",
       "rules": [
+        "create_symmetric_key_stmt",
+        "alter_symmetric_key_stmt",
+        "create_asymmetric_key_stmt",
+        "alter_asymmetric_key_stmt",
+        "create_certificate_stmt",
+        "alter_certificate_stmt",
+        "create_master_key_stmt",
+        "alter_master_key_stmt",
+        "create_database_encryption_key_stmt",
+        "alter_database_encryption_key_stmt",
+        "create_credential_stmt",
+        "alter_credential_stmt",
+        "open_close_symmetric_key",
+        "backup_restore_certificate",
+        "backup_restore_master_key",
+        "backup_restore_service_master_key"
+      ],
+      "depends_on": [154],
+      "tests": [
+        "crypto_bnf_review"
+      ],
+      "bnf_files": ["create-symmetric-key-transact-sql.bnf", "alter-symmetric-key-transact-sql.bnf", "drop-symmetric-key-transact-sql.bnf", "create-asymmetric-key-transact-sql.bnf", "alter-asymmetric-key-transact-sql.bnf", "drop-asymmetric-key-transact-sql.bnf", "create-certificate-transact-sql.bnf", "alter-certificate-transact-sql.bnf", "drop-certificate-transact-sql.bnf", "create-master-key-transact-sql.bnf", "alter-master-key-transact-sql.bnf", "drop-master-key-transact-sql.bnf", "create-database-encryption-key-transact-sql.bnf", "alter-database-encryption-key-transact-sql.bnf", "drop-database-encryption-key-transact-sql.bnf", "create-credential-transact-sql.bnf", "alter-credential-transact-sql.bnf", "drop-credential-transact-sql.bnf", "open-symmetric-key-transact-sql.bnf", "close-symmetric-key-transact-sql.bnf", "backup-certificate-transact-sql.bnf", "restore-certificate-transact-sql.bnf", "backup-master-key-transact-sql.bnf", "restore-master-key-transact-sql.bnf", "backup-service-master-key-transact-sql.bnf", "restore-service-master-key-transact-sql.bnf", "create-column-encryption-key-transact-sql.bnf", "create-column-master-key-transact-sql.bnf", "create-database-scoped-credential-transact-sql.bnf"],
+      "review_files": ["security_keys.go"]
+    },
+    {
+      "id": 165,
+      "name": "bnf_review_audit_event",
+      "file": "security_audit.go",
+      "status": "pending",
+      "description": "BNF review of CREATE/ALTER/DROP SERVER AUDIT, CREATE/ALTER/DROP SERVER AUDIT SPECIFICATION, CREATE/ALTER/DROP DATABASE AUDIT SPECIFICATION, CREATE/ALTER/DROP EVENT SESSION.",
+      "rules": [
+        "create_server_audit_stmt",
+        "alter_server_audit_stmt",
+        "drop_server_audit_stmt",
+        "create_server_audit_specification_stmt",
+        "alter_server_audit_specification_stmt",
+        "create_database_audit_specification_stmt",
+        "alter_database_audit_specification_stmt",
+        "create_event_session_stmt",
+        "alter_event_session_stmt",
+        "drop_event_session_stmt"
+      ],
+      "depends_on": [154],
+      "tests": [
+        "audit_event_bnf_review"
+      ],
+      "bnf_files": ["create-server-audit-transact-sql.bnf", "alter-server-audit-transact-sql.bnf", "drop-server-audit-transact-sql.bnf", "create-server-audit-specification-transact-sql.bnf", "alter-server-audit-specification-transact-sql.bnf", "create-database-audit-specification-transact-sql.bnf", "alter-database-audit-specification-transact-sql.bnf", "create-event-session-transact-sql.bnf", "alter-event-session-transact-sql.bnf", "drop-event-session-transact-sql.bnf"],
+      "review_files": ["security_audit.go", "event.go"]
+    },
+    {
+      "id": 166,
+      "name": "bnf_review_variables_cursors_control_flow",
+      "file": "declare_set.go",
+      "status": "pending",
+      "description": "BNF review of DECLARE (variables, cursors, table variables), SET, OPEN/FETCH/CLOSE/DEALLOCATE cursor, IF/ELSE, WHILE, BEGIN...END, TRY...CATCH, GOTO, BREAK, CONTINUE, RETURN, THROW, RAISERROR, PRINT, WAITFOR.",
+      "rules": [
+        "declare_stmt",
+        "set_stmt",
+        "set_option_stmt",
+        "open_cursor_stmt",
+        "fetch_cursor_stmt",
+        "close_cursor_stmt",
+        "deallocate_cursor_stmt",
         "if_stmt",
         "while_stmt",
         "begin_end_stmt",
         "try_catch_stmt",
         "goto_stmt",
-        "label_stmt",
-        "return_stmt",
         "break_stmt",
         "continue_stmt",
+        "return_stmt",
+        "throw_stmt",
+        "raiserror_stmt",
+        "print_stmt",
         "waitfor_stmt"
       ],
-      "depends_on": [
-        3
-      ],
+      "depends_on": [154],
       "tests": [
-        "control_flow",
-        "try_catch"
-      ]
+        "variables_cursors_control_flow_bnf_review"
+      ],
+      "bnf_files": ["declare-transact-sql.bnf", "set-transact-sql.bnf", "set-transaction-isolation-level-transact-sql.bnf", "open-transact-sql.bnf", "fetch-transact-sql.bnf", "close-transact-sql.bnf", "deallocate-transact-sql.bnf", "if-else-transact-sql.bnf", "while-transact-sql.bnf", "begin-end-transact-sql.bnf", "try-catch-transact-sql.bnf", "goto-transact-sql.bnf", "break-transact-sql.bnf", "continue-transact-sql.bnf", "return-transact-sql.bnf", "throw-transact-sql.bnf", "raiserror-transact-sql.bnf", "print-transact-sql.bnf", "waitfor-transact-sql.bnf"],
+      "review_files": ["declare_set.go", "cursor.go", "control_flow.go"]
     },
     {
-      "id": 16,
-      "name": "declare_set",
-      "file": "declare_set.go",
-      "status": "done",
-      "description": "DECLARE, SET, SELECT @var = expr",
-      "rules": [
-        "declare_stmt",
-        "variable_decl",
-        "set_stmt",
-        "select_assign"
-      ],
-      "depends_on": [
-        2,
-        3
-      ],
-      "tests": [
-        "declare",
-        "set"
-      ]
-    },
-    {
-      "id": 17,
-      "name": "transaction",
+      "id": 167,
+      "name": "bnf_review_transaction",
       "file": "transaction.go",
-      "status": "done",
-      "description": "BEGIN TRAN, COMMIT, ROLLBACK, SAVE, @@TRANCOUNT",
+      "status": "pending",
+      "description": "BNF review of BEGIN TRANSACTION, COMMIT, ROLLBACK, SAVE TRANSACTION, BEGIN DISTRIBUTED TRANSACTION, GO batch separator.",
       "rules": [
-        "begin_trans_stmt",
-        "commit_trans_stmt",
-        "rollback_trans_stmt",
-        "save_trans_stmt"
+        "begin_transaction_stmt",
+        "commit_transaction_stmt",
+        "rollback_transaction_stmt",
+        "save_transaction_stmt",
+        "begin_distributed_transaction_stmt",
+        "go_batch_separator"
       ],
-      "depends_on": [
-        1
-      ],
+      "depends_on": [154],
       "tests": [
-        "transaction"
-      ]
+        "transaction_bnf_review"
+      ],
+      "bnf_files": ["begin-transaction-transact-sql.bnf", "commit-transaction-transact-sql.bnf", "rollback-transaction-transact-sql.bnf", "save-transaction-transact-sql.bnf", "begin-distributed-transaction-transact-sql.bnf"],
+      "review_files": ["transaction.go", "go_batch.go"]
     },
     {
-      "id": 18,
-      "name": "execute",
-      "file": "execute.go",
-      "status": "done",
-      "description": "EXEC/EXECUTE, sp_executesql",
-      "rules": [
-        "exec_stmt",
-        "exec_arg_list",
-        "exec_arg"
-      ],
-      "depends_on": [
-        3
-      ],
-      "tests": [
-        "execute"
-      ]
-    },
-    {
-      "id": 19,
-      "name": "grant",
-      "file": "grant.go",
-      "status": "done",
-      "description": "GRANT, REVOKE, DENY, CREATE/ALTER/DROP USER/LOGIN/ROLE",
-      "rules": [
-        "grant_stmt",
-        "revoke_stmt",
-        "deny_stmt",
-        "privilege_list",
-        "grantee_list"
-      ],
-      "depends_on": [
-        1
-      ],
-      "tests": [
-        "grant"
-      ]
-    },
-    {
-      "id": 20,
-      "name": "utility",
-      "file": "utility.go",
-      "status": "done",
-      "description": "USE, PRINT, RAISERROR, THROW, DBCC, BULK INSERT, BACKUP/RESTORE",
-      "rules": [
-        "use_stmt",
-        "print_stmt",
-        "raiserror_stmt",
-        "throw_stmt",
-        "truncate_stmt"
-      ],
-      "depends_on": [
-        3
-      ],
-      "tests": [
-        "utility"
-      ]
-    },
-    {
-      "id": 21,
-      "name": "go_batch",
-      "file": "go_batch.go",
-      "status": "done",
-      "description": "GO batch separator handling",
-      "rules": [
-        "go_stmt",
-        "batch_separator"
-      ],
-      "depends_on": [
-        0
-      ],
-      "tests": [
-        "go_batch"
-      ]
-    },
-    {
-      "id": 22,
-      "name": "stmt_dispatch",
-      "file": "parser.go",
-      "status": "done",
-      "description": "Wire up all statements in parseStmt dispatcher",
-      "rules": [
-        "stmt_dispatch"
-      ],
-      "depends_on": [
-        4,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10,
-        11,
-        12,
-        13,
-        14,
-        15,
-        16,
-        17,
-        18,
-        19,
-        20,
-        21
-      ],
-      "tests": [
-        "integration"
-      ]
-    },
-    {
-      "id": 23,
-      "name": "cursor_operations",
-      "file": "cursor.go",
-      "status": "done",
-      "description": "DECLARE CURSOR (full syntax), OPEN, FETCH, CLOSE, DEALLOCATE cursor statements",
-      "rules": [
-        "declare_cursor_stmt",
-        "open_cursor_stmt",
-        "fetch_cursor_stmt",
-        "close_cursor_stmt",
-        "deallocate_cursor_stmt",
-        "cursor_definition",
-        "cursor_scroll_option",
-        "cursor_type_option",
-        "fetch_orientation"
-      ],
-      "depends_on": [
-        3,
-        16
-      ],
-      "tests": [
-        "cursor_declare",
-        "cursor_open",
-        "cursor_fetch",
-        "cursor_close",
-        "cursor_deallocate"
-      ]
-    },
-    {
-      "id": 24,
-      "name": "create_trigger",
-      "file": "create_trigger.go",
-      "status": "done",
-      "description": "CREATE/ALTER TRIGGER for DML triggers (AFTER/INSTEAD OF INSERT/UPDATE/DELETE) and DDL triggers",
-      "rules": [
-        "create_trigger_stmt",
-        "trigger_type",
-        "trigger_action",
-        "trigger_event_list",
-        "dml_trigger",
-        "ddl_trigger"
-      ],
-      "depends_on": [
-        4,
-        12,
-        15
-      ],
-      "tests": [
-        "create_trigger_dml",
-        "create_trigger_ddl",
-        "create_trigger_instead_of"
-      ]
-    },
-    {
-      "id": 25,
-      "name": "create_schema",
-      "file": "create_schema.go",
-      "status": "done",
-      "description": "CREATE/ALTER SCHEMA, AUTHORIZATION clause, TRANSFER",
-      "rules": [
-        "create_schema_stmt",
-        "alter_schema_stmt",
-        "schema_authorization",
-        "schema_transfer"
-      ],
-      "depends_on": [
-        1
-      ],
-      "tests": [
-        "create_schema",
-        "alter_schema"
-      ]
-    },
-    {
-      "id": 26,
-      "name": "create_type",
-      "file": "create_type.go",
-      "status": "done",
-      "description": "CREATE TYPE (alias types, table types, CLR types)",
-      "rules": [
-        "create_type_stmt",
-        "type_alias_def",
-        "type_table_def",
-        "type_clr_def"
-      ],
-      "depends_on": [
-        2,
-        8
-      ],
-      "tests": [
-        "create_type_alias",
-        "create_type_table"
-      ]
-    },
-    {
-      "id": 27,
-      "name": "create_sequence",
-      "file": "create_sequence.go",
-      "status": "done",
-      "description": "CREATE/ALTER SEQUENCE with START WITH, INCREMENT BY, MINVALUE, MAXVALUE, CYCLE, CACHE options",
-      "rules": [
-        "create_sequence_stmt",
-        "alter_sequence_stmt",
-        "sequence_option_start",
-        "sequence_option_increment",
-        "sequence_option_minvalue",
-        "sequence_option_maxvalue",
-        "sequence_option_cycle",
-        "sequence_option_cache"
-      ],
-      "depends_on": [
-        2
-      ],
-      "tests": [
-        "create_sequence",
-        "alter_sequence"
-      ]
-    },
-    {
-      "id": 28,
-      "name": "create_synonym",
-      "file": "create_synonym.go",
-      "status": "done",
-      "description": "CREATE/DROP SYNONYM FOR target_object",
-      "rules": [
-        "create_synonym_stmt"
-      ],
-      "depends_on": [
-        1
-      ],
-      "tests": [
-        "create_synonym"
-      ]
-    },
-    {
-      "id": 29,
-      "name": "alter_objects",
-      "file": "alter_objects.go",
-      "status": "done",
-      "description": "ALTER DATABASE (SET options, MODIFY FILE, etc.), ALTER INDEX (REBUILD, REORGANIZE, DISABLE), ALTER VIEW, ALTER PROCEDURE, ALTER FUNCTION",
-      "rules": [
-        "alter_database_stmt",
-        "alter_database_set_option",
-        "alter_index_stmt",
-        "alter_index_rebuild",
-        "alter_index_reorganize",
-        "alter_view_stmt",
-        "alter_procedure_stmt",
-        "alter_function_stmt"
-      ],
-      "depends_on": [
-        9,
-        10,
-        11,
-        12,
-        13
-      ],
-      "tests": [
-        "alter_database",
-        "alter_index",
-        "alter_view",
-        "alter_proc",
-        "alter_func"
-      ]
-    },
-    {
-      "id": 30,
-      "name": "security_principals",
-      "file": "security_principals.go",
-      "status": "done",
-      "description": "CREATE/ALTER/DROP USER, LOGIN, ROLE, APPLICATION ROLE. Batch 19 description claimed these but only GRANT/REVOKE/DENY were implemented",
-      "rules": [
-        "create_user_stmt",
-        "alter_user_stmt",
-        "drop_user_stmt",
-        "create_login_stmt",
-        "alter_login_stmt",
-        "drop_login_stmt",
-        "create_role_stmt",
-        "alter_role_stmt",
-        "drop_role_stmt",
-        "create_app_role_stmt",
-        "add_role_member",
-        "drop_role_member"
-      ],
-      "depends_on": [
-        1,
-        19
-      ],
-      "tests": [
-        "create_user",
-        "alter_user",
-        "create_login",
-        "alter_login",
-        "create_role",
-        "alter_role",
-        "app_role"
-      ]
-    },
-    {
-      "id": 31,
-      "name": "security_keys_certs",
-      "file": "security_keys.go",
-      "status": "done",
-      "description": "CREATE/ALTER/DROP CREDENTIAL, CERTIFICATE, SYMMETRIC KEY, ASYMMETRIC KEY, MASTER KEY",
-      "rules": [
-        "create_credential_stmt",
-        "create_certificate_stmt",
-        "create_symmetric_key_stmt",
-        "create_asymmetric_key_stmt",
-        "create_master_key_stmt",
-        "alter_master_key_stmt",
-        "drop_symmetric_key_stmt",
-        "drop_asymmetric_key_stmt",
-        "drop_certificate_stmt",
-        "drop_credential_stmt",
-        "open_symmetric_key_stmt",
-        "close_symmetric_key_stmt",
-        "backup_certificate_stmt"
-      ],
-      "depends_on": [
-        1,
-        3
-      ],
-      "tests": [
-        "master_key",
-        "symmetric_key",
-        "asymmetric_key",
-        "certificate",
-        "credential"
-      ]
-    },
-    {
-      "id": 32,
-      "name": "dbcc",
-      "file": "dbcc.go",
-      "status": "done",
-      "description": "DBCC commands: CHECKDB, CHECKTABLE, SHRINKDATABASE, SHRINKFILE, FREEPROCCACHE, DROPCLEANBUFFERS, SHOW_STATISTICS, INPUTBUFFER, OPENTRAN, etc.",
-      "rules": [
-        "dbcc_stmt",
-        "dbcc_command_name",
-        "dbcc_arg_list",
-        "dbcc_with_options"
-      ],
-      "depends_on": [
-        3
-      ],
-      "tests": [
-        "dbcc_checkdb",
-        "dbcc_shrink",
-        "dbcc_freeproccache",
-        "dbcc_show_statistics"
-      ]
-    },
-    {
-      "id": 33,
-      "name": "bulk_insert",
-      "file": "bulk_insert.go",
-      "status": "done",
-      "description": "BULK INSERT table FROM file WITH options",
-      "rules": [
-        "bulk_insert_stmt",
-        "bulk_insert_options"
-      ],
-      "depends_on": [
-        1,
-        3
-      ],
-      "tests": [
-        "bulk_insert"
-      ]
-    },
-    {
-      "id": 34,
-      "name": "backup_restore",
+      "id": 168,
+      "name": "bnf_review_backup_restore",
       "file": "backup_restore.go",
-      "status": "done",
-      "description": "BACKUP DATABASE/LOG, RESTORE DATABASE/LOG/HEADERONLY/FILELISTONLY with TO DISK/URL, WITH options",
+      "status": "pending",
+      "description": "BNF review of BACKUP DATABASE/LOG, RESTORE DATABASE/LOG/HEADERONLY/FILELISTONLY/VERIFYONLY.",
       "rules": [
         "backup_database_stmt",
         "backup_log_stmt",
@@ -808,2502 +521,174 @@
         "restore_log_stmt",
         "restore_headeronly_stmt",
         "restore_filelistonly_stmt",
-        "backup_to_clause",
-        "restore_from_clause",
-        "backup_with_options",
-        "restore_with_options"
+        "restore_verifyonly_stmt",
+        "backup_options",
+        "restore_options"
       ],
-      "depends_on": [
-        1,
-        3
-      ],
+      "depends_on": [154],
       "tests": [
-        "backup_database",
-        "backup_log",
-        "restore_database",
-        "restore_log",
-        "restore_headeronly"
-      ]
+        "backup_restore_bnf_review"
+      ],
+      "bnf_files": ["backup-transact-sql.bnf", "restore-statements-transact-sql.bnf"],
+      "review_files": ["backup_restore.go"]
     },
     {
-      "id": 35,
-      "name": "pivot_unpivot",
-      "file": "select.go",
-      "status": "done",
-      "description": "PIVOT and UNPIVOT operators in FROM clause table sources",
+      "id": 169,
+      "name": "bnf_review_ha_server",
+      "file": "availability.go",
+      "status": "pending",
+      "description": "BNF review of CREATE/ALTER/DROP AVAILABILITY GROUP, CREATE/ALTER/DROP ENDPOINT, ALTER SERVER CONFIGURATION, CREATE/ALTER/DROP RESOURCE GOVERNOR, RESOURCE POOL, WORKLOAD GROUP.",
       "rules": [
-        "pivot_clause",
-        "unpivot_clause",
-        "pivot_aggregate",
-        "pivot_in_list",
-        "unpivot_column",
-        "unpivot_in_list"
+        "create_availability_group_stmt",
+        "alter_availability_group_stmt",
+        "drop_availability_group_stmt",
+        "create_endpoint_stmt",
+        "alter_endpoint_stmt",
+        "drop_endpoint_stmt",
+        "alter_server_configuration_stmt",
+        "create_resource_pool_stmt",
+        "alter_resource_pool_stmt",
+        "create_workload_group_stmt",
+        "alter_workload_group_stmt",
+        "alter_resource_governor_stmt"
       ],
-      "depends_on": [
-        4
-      ],
+      "depends_on": [154],
       "tests": [
-        "pivot",
-        "unpivot"
-      ]
+        "ha_server_bnf_review"
+      ],
+      "bnf_files": ["create-availability-group-transact-sql.bnf", "alter-availability-group-transact-sql.bnf", "drop-availability-group-transact-sql.bnf", "create-endpoint-transact-sql.bnf", "alter-endpoint-transact-sql.bnf", "drop-endpoint-transact-sql.bnf", "alter-server-configuration-transact-sql.bnf", "create-resource-pool-transact-sql.bnf", "alter-resource-pool-transact-sql.bnf", "create-workload-group-transact-sql.bnf", "alter-workload-group-transact-sql.bnf", "alter-resource-governor-transact-sql.bnf", "create-external-resource-pool-transact-sql.bnf"],
+      "review_files": ["availability.go", "endpoint.go", "resource_governor.go", "server.go"]
     },
     {
-      "id": 36,
-      "name": "tablesample",
-      "file": "select.go",
-      "status": "done",
-      "description": "TABLESAMPLE clause on table references in FROM",
+      "id": 170,
+      "name": "bnf_review_service_broker",
+      "file": "service_broker.go",
+      "status": "pending",
+      "description": "BNF review of CREATE/ALTER/DROP MESSAGE TYPE, CONTRACT, QUEUE, SERVICE, BROKER PRIORITY, BEGIN/END DIALOG CONVERSATION, SEND, RECEIVE, GET CONVERSATION GROUP, BEGIN CONVERSATION TIMER, MOVE CONVERSATION.",
       "rules": [
-        "tablesample_clause",
-        "tablesample_percent",
-        "tablesample_rows",
-        "tablesample_repeatable"
+        "create_message_type_stmt",
+        "alter_message_type_stmt",
+        "create_contract_stmt",
+        "alter_contract_stmt",
+        "create_queue_stmt",
+        "alter_queue_stmt",
+        "create_service_stmt",
+        "alter_service_stmt",
+        "create_broker_priority_stmt",
+        "alter_broker_priority_stmt",
+        "begin_dialog_conversation_stmt",
+        "end_conversation_stmt",
+        "send_stmt",
+        "receive_stmt",
+        "get_conversation_group_stmt",
+        "begin_conversation_timer_stmt",
+        "move_conversation_stmt"
       ],
-      "depends_on": [
-        4
-      ],
+      "depends_on": [154],
       "tests": [
-        "tablesample"
-      ]
+        "service_broker_bnf_review"
+      ],
+      "bnf_files": ["create-message-type-transact-sql.bnf", "alter-message-type-transact-sql.bnf", "create-contract-transact-sql.bnf", "alter-contract-transact-sql.bnf", "create-queue-transact-sql.bnf", "alter-queue-transact-sql.bnf", "create-service-transact-sql.bnf", "alter-service-transact-sql.bnf", "create-broker-priority-transact-sql.bnf", "alter-broker-priority-transact-sql.bnf", "begin-dialog-conversation-transact-sql.bnf", "end-conversation-transact-sql.bnf", "send-transact-sql.bnf", "receive-transact-sql.bnf", "get-conversation-group-transact-sql.bnf", "begin-conversation-timer-transact-sql.bnf", "move-conversation-transact-sql.bnf", "create-event-notification-transact-sql.bnf", "drop-broker-priority-transact-sql.bnf", "drop-contract-transact-sql.bnf", "drop-message-type-transact-sql.bnf", "drop-service-transact-sql.bnf"],
+      "review_files": ["service_broker.go"]
     },
     {
-      "id": 37,
-      "name": "rowset_functions",
-      "file": "rowset_functions.go",
-      "status": "done",
-      "description": "OPENROWSET, OPENQUERY, OPENJSON, OPENDATASOURCE, OPENXML as table sources in FROM clause",
-      "rules": [
-        "openrowset_expr",
-        "openquery_expr",
-        "openjson_expr",
-        "opendatasource_expr",
-        "openxml_expr",
-        "openjson_with_clause",
-        "openxml_with_clause"
-      ],
-      "depends_on": [
-        4
-      ],
-      "tests": [
-        "openrowset",
-        "openquery",
-        "openjson",
-        "opendatasource",
-        "openxml"
-      ]
-    },
-    {
-      "id": 38,
-      "name": "grouping_sets",
-      "file": "select.go",
-      "status": "done",
-      "description": "GROUPING SETS, CUBE, ROLLUP in GROUP BY clause, GROUPING() function",
-      "rules": [
-        "grouping_sets_clause",
-        "cube_clause",
-        "rollup_clause",
-        "grouping_function"
-      ],
-      "depends_on": [
-        4
-      ],
-      "tests": [
-        "grouping_sets",
-        "cube",
-        "rollup"
-      ]
-    },
-    {
-      "id": 39,
-      "name": "begin_distributed_transaction",
-      "file": "transaction.go",
-      "status": "done",
-      "description": "BEGIN DISTRIBUTED TRANSACTION statement",
-      "rules": [
-        "begin_distributed_trans_stmt"
-      ],
-      "depends_on": [
-        17
-      ],
-      "tests": [
-        "distributed_transaction"
-      ]
-    },
-    {
-      "id": 40,
-      "name": "create_statistics",
-      "file": "create_statistics.go",
-      "status": "done",
-      "description": "CREATE/UPDATE/DROP STATISTICS on table columns with options (FULLSCAN, SAMPLE, NORECOMPUTE, INCREMENTAL)",
-      "rules": [
-        "create_statistics_stmt",
-        "update_statistics_stmt",
-        "drop_statistics_stmt",
-        "statistics_column_list",
-        "statistics_with_options"
-      ],
-      "depends_on": [
-        1,
-        3
-      ],
-      "tests": [
-        "create_statistics",
-        "update_statistics",
-        "drop_statistics"
-      ]
-    },
-    {
-      "id": 41,
-      "name": "set_options",
-      "file": "declare_set.go",
-      "status": "done",
-      "description": "SET session options: SET NOCOUNT ON/OFF, SET ANSI_NULLS ON/OFF, SET QUOTED_IDENTIFIER ON/OFF, SET XACT_ABORT ON/OFF, SET IDENTITY_INSERT table ON/OFF, SET TRANSACTION ISOLATION LEVEL, SET LANGUAGE, SET DATEFORMAT, SET DATEFIRST, SET LOCK_TIMEOUT, SET ROWCOUNT, SET TEXTSIZE, SET ARITHABORT",
-      "rules": [
-        "set_option_onoff_stmt",
-        "set_option_value_stmt",
-        "set_isolation_level_stmt",
-        "set_identity_insert_stmt",
-        "set_language_stmt",
-        "set_dateformat_stmt"
-      ],
-      "depends_on": [
-        16
-      ],
-      "tests": [
-        "set_nocount",
-        "set_ansi_nulls",
-        "set_quoted_identifier",
-        "set_xact_abort",
-        "set_identity_insert",
-        "set_isolation_level"
-      ]
-    },
-    {
-      "id": 42,
-      "name": "partition",
-      "file": "partition.go",
-      "status": "done",
-      "description": "CREATE/ALTER/DROP PARTITION FUNCTION, CREATE/ALTER/DROP PARTITION SCHEME",
-      "rules": [
-        "create_partition_function_stmt",
-        "alter_partition_function_stmt",
-        "drop_partition_function_stmt",
-        "create_partition_scheme_stmt",
-        "alter_partition_scheme_stmt",
-        "drop_partition_scheme_stmt",
-        "partition_range",
-        "partition_values"
-      ],
-      "depends_on": [
-        2
-      ],
-      "tests": [
-        "create_partition_function",
-        "create_partition_scheme",
-        "alter_partition_function"
-      ]
-    },
-    {
-      "id": 43,
-      "name": "fulltext",
-      "file": "fulltext.go",
-      "status": "done",
-      "description": "CREATE/ALTER/DROP FULLTEXT INDEX, CREATE/ALTER/DROP FULLTEXT CATALOG, CONTAINS/FREETEXT predicates in WHERE",
-      "rules": [
-        "create_fulltext_index_stmt",
-        "alter_fulltext_index_stmt",
-        "drop_fulltext_index_stmt",
-        "create_fulltext_catalog_stmt",
-        "alter_fulltext_catalog_stmt",
-        "drop_fulltext_catalog_stmt",
-        "contains_predicate",
-        "freetext_predicate"
-      ],
-      "depends_on": [
-        1,
-        3,
-        10
-      ],
-      "tests": [
-        "fulltext_index",
-        "fulltext_catalog",
-        "contains_predicate",
-        "freetext_predicate"
-      ]
-    },
-    {
-      "id": 44,
-      "name": "xml_schema_collection",
-      "file": "xml_schema.go",
-      "status": "done",
-      "description": "CREATE/ALTER/DROP XML SCHEMA COLLECTION",
-      "rules": [
-        "create_xml_schema_collection_stmt",
-        "alter_xml_schema_collection_stmt",
-        "drop_xml_schema_collection_stmt"
-      ],
-      "depends_on": [
-        1
-      ],
-      "tests": [
-        "xml_schema_collection"
-      ]
-    },
-    {
-      "id": 45,
-      "name": "assembly",
+      "id": 171,
+      "name": "bnf_review_clr_external",
       "file": "assembly.go",
-      "status": "done",
-      "description": "CREATE/ALTER/DROP ASSEMBLY for CLR integration",
+      "status": "pending",
+      "description": "BNF review of CREATE/ALTER/DROP ASSEMBLY, AGGREGATE, EXTERNAL TABLE, EXTERNAL DATA SOURCE, EXTERNAL FILE FORMAT, EXTERNAL STREAM, EXTERNAL STREAMING JOB, EXTERNAL LANGUAGE, EXTERNAL LIBRARY, EXTERNAL RESOURCE POOL.",
       "rules": [
         "create_assembly_stmt",
         "alter_assembly_stmt",
         "drop_assembly_stmt",
-        "assembly_permission_set"
+        "create_aggregate_stmt",
+        "create_external_table_stmt",
+        "alter_external_table_stmt",
+        "create_external_data_source_stmt",
+        "alter_external_data_source_stmt",
+        "create_external_file_format_stmt",
+        "create_external_stream_stmt",
+        "create_external_streaming_job_stmt",
+        "create_external_language_stmt",
+        "alter_external_language_stmt",
+        "create_external_library_stmt",
+        "alter_external_library_stmt",
+        "create_external_resource_pool_stmt"
       ],
-      "depends_on": [
-        1
-      ],
+      "depends_on": [154],
       "tests": [
-        "create_assembly",
-        "alter_assembly"
-      ]
+        "clr_external_bnf_review"
+      ],
+      "bnf_files": ["create-assembly-transact-sql.bnf", "alter-assembly-transact-sql.bnf", "drop-assembly-transact-sql.bnf", "create-aggregate-transact-sql.bnf", "create-external-table-transact-sql.bnf", "alter-external-table-transact-sql.bnf", "create-external-data-source-transact-sql.bnf", "alter-external-data-source-transact-sql.bnf", "create-external-file-format-transact-sql.bnf", "create-external-stream-transact-sql.bnf", "create-external-streaming-job-transact-sql.bnf", "create-external-language-transact-sql.bnf", "alter-external-language-transact-sql.bnf", "create-external-library-transact-sql.bnf", "alter-external-library-transact-sql.bnf", "drop-external-table-transact-sql.bnf", "drop-external-data-source-transact-sql.bnf", "drop-external-file-format-transact-sql.bnf", "drop-external-stream-transact-sql.bnf", "drop-external-streaming-job-transact-sql.bnf", "drop-external-language-transact-sql.bnf", "drop-external-library-transact-sql.bnf", "drop-aggregate-transact-sql.bnf"],
+      "review_files": ["assembly.go", "external.go"]
     },
     {
-      "id": 46,
-      "name": "service_broker",
-      "file": "service_broker.go",
-      "status": "done",
-      "description": "Service Broker: CREATE/ALTER/DROP MESSAGE TYPE, CONTRACT, QUEUE, SERVICE, ROUTE, REMOTE SERVICE BINDING; SEND, RECEIVE, BEGIN/END CONVERSATION, GET CONVERSATION GROUP",
+      "id": 172,
+      "name": "bnf_review_schema_objects",
+      "file": "create_type.go",
+      "status": "pending",
+      "description": "BNF review of CREATE/ALTER/DROP TYPE, SEQUENCE, SYNONYM, STATISTICS, SCHEMA, PARTITION FUNCTION, PARTITION SCHEME, XML SCHEMA COLLECTION.",
       "rules": [
-        "create_message_type_stmt",
-        "create_contract_stmt",
-        "create_queue_stmt",
-        "create_service_stmt",
-        "create_route_stmt",
-        "create_remote_service_binding_stmt",
-        "send_stmt",
-        "receive_stmt",
-        "begin_conversation_stmt",
-        "end_conversation_stmt",
-        "get_conversation_group_stmt"
+        "create_type_stmt",
+        "alter_type_stmt",
+        "create_sequence_stmt",
+        "alter_sequence_stmt",
+        "create_synonym_stmt",
+        "create_statistics_stmt",
+        "update_statistics_stmt",
+        "create_schema_stmt",
+        "alter_schema_stmt",
+        "create_partition_function_stmt",
+        "alter_partition_function_stmt",
+        "create_partition_scheme_stmt",
+        "alter_partition_scheme_stmt",
+        "create_xml_schema_collection_stmt",
+        "alter_xml_schema_collection_stmt"
       ],
-      "depends_on": [
-        1,
-        3
-      ],
+      "depends_on": [154],
       "tests": [
-        "message_type",
-        "contract",
-        "queue",
-        "service",
-        "send_receive",
-        "conversation"
-      ]
+        "schema_objects_bnf_review"
+      ],
+      "bnf_files": ["create-type-transact-sql.bnf", "drop-type-transact-sql.bnf", "create-sequence-transact-sql.bnf", "alter-sequence-transact-sql.bnf", "drop-sequence-transact-sql.bnf", "create-synonym-transact-sql.bnf", "drop-synonym-transact-sql.bnf", "create-statistics-transact-sql.bnf", "update-statistics-transact-sql.bnf", "drop-statistics-transact-sql.bnf", "create-schema-transact-sql.bnf", "alter-schema-transact-sql.bnf", "create-partition-function-transact-sql.bnf", "alter-partition-function-transact-sql.bnf", "create-partition-scheme-transact-sql.bnf", "alter-partition-scheme-transact-sql.bnf", "create-xml-schema-collection-transact-sql.bnf", "alter-xml-schema-collection-transact-sql.bnf", "drop-xml-schema-collection-transact-sql.bnf"],
+      "review_files": ["create_type.go", "create_sequence.go", "create_synonym.go", "create_statistics.go", "create_schema.go", "partition.go", "xml_schema.go"]
     },
     {
-      "id": 47,
-      "name": "misc_utility",
+      "id": 173,
+      "name": "bnf_review_utility_admin_drop",
       "file": "utility.go",
-      "status": "done",
-      "description": "CHECKPOINT, RECONFIGURE, SHUTDOWN, KILL, READTEXT, WRITETEXT, UPDATETEXT (filling gaps in batch 20 description)",
+      "status": "pending",
+      "description": "BNF review of DBCC, CHECKPOINT, RECONFIGURE, SHUTDOWN, KILL, BULK INSERT, DROP (all), TRUNCATE TABLE, UPDATE STATISTICS, all remaining statements. Rowset functions (OPENROWSET, OPENQUERY, OPENJSON, OPENXML, OPENDATASOURCE), PIVOT/UNPIVOT.",
       "rules": [
+        "dbcc_stmt",
         "checkpoint_stmt",
         "reconfigure_stmt",
         "shutdown_stmt",
         "kill_stmt",
-        "readtext_stmt",
-        "writetext_stmt",
-        "updatetext_stmt"
-      ],
-      "depends_on": [
-        20
-      ],
-      "tests": [
-        "checkpoint",
-        "reconfigure",
-        "shutdown",
-        "kill",
-        "readtext",
-        "writetext",
-        "updatetext"
-      ]
-    },
-    {
-      "id": 48,
-      "name": "drop_extended",
-      "file": "drop.go",
-      "status": "done",
-      "description": "Extend DROP to support: DROP SEQUENCE, DROP SYNONYM, DROP LOGIN, DROP USER, DROP ROLE, DROP ASSEMBLY, DROP PARTITION FUNCTION, DROP PARTITION SCHEME, DROP STATISTICS, DROP DEFAULT, DROP RULE, DROP XML SCHEMA COLLECTION, DROP FULLTEXT INDEX, DROP FULLTEXT CATALOG",
-      "rules": [
-        "drop_sequence",
-        "drop_synonym",
-        "drop_login",
-        "drop_user",
-        "drop_role",
-        "drop_assembly",
-        "drop_partition_function",
-        "drop_partition_scheme",
-        "drop_statistics_type",
-        "drop_default",
-        "drop_rule",
-        "drop_xml_schema_collection",
-        "drop_fulltext_index",
-        "drop_fulltext_catalog"
-      ],
-      "depends_on": [
-        14
-      ],
-      "tests": [
-        "drop_sequence",
-        "drop_synonym",
-        "drop_login",
-        "drop_user",
-        "drop_role",
-        "drop_assembly"
-      ]
-    },
-    {
-      "id": 49,
-      "name": "stmt_dispatch_phase2",
-      "file": "parser.go",
-      "status": "done",
-      "description": "Wire up all new statement parsers (batches 23-48) into parseStmt and parseCreateStmt/parseAlterStmt dispatchers",
-      "rules": [
-        "stmt_dispatch_phase2"
-      ],
-      "depends_on": [
-        22,
-        23,
-        24,
-        25,
-        26,
-        27,
-        28,
-        29,
-        30,
-        31,
-        32,
-        33,
-        34,
-        35,
-        36,
-        37,
-        38,
-        39,
-        40,
-        41,
-        42,
-        43,
-        44,
-        45,
-        46,
-        47,
-        48
-      ],
-      "tests": [
-        "integration_phase2"
-      ]
-    },
-    {
-      "id": 50,
-      "name": "service_broker_missing",
-      "file": "service_broker.go",
-      "status": "done",
-      "description": "Fix batch 46 gap: Implement missing CREATE ROUTE, CREATE REMOTE SERVICE BINDING, GET CONVERSATION GROUP parsers (rules listed but no functions exist)",
-      "rules": [
-        "parseCreateRouteStmt",
-        "parseCreateRemoteServiceBindingStmt",
-        "parseGetConversationGroupStmt"
-      ],
-      "depends_on": [
-        46
-      ],
-      "tests": [
-        "create_route",
-        "create_remote_service_binding",
-        "get_conversation_group"
-      ]
-    },
-    {
-      "id": 51,
-      "name": "alter_trigger_enable_disable",
-      "file": "utility.go",
-      "status": "done",
-      "description": "Fix batch 24 gap: Wire up ALTER TRIGGER in parseAlterStmt dispatcher + implement DISABLE TRIGGER and ENABLE TRIGGER statements",
-      "rules": [
-        "parseDisableTriggerStmt",
-        "parseEnableTriggerStmt",
-        "alter_trigger_dispatch"
-      ],
-      "depends_on": [
-        24,
-        49
-      ],
-      "tests": [
-        "alter_trigger",
-        "disable_trigger",
-        "enable_trigger"
-      ]
-    },
-    {
-      "id": 52,
-      "name": "service_broker_alter_drop",
-      "file": "service_broker.go",
-      "status": "done",
-      "description": "New: ALTER/DROP for Service Broker objects (MESSAGE TYPE, CONTRACT, QUEUE, SERVICE, ROUTE, REMOTE SERVICE BINDING), CREATE/ALTER/DROP BROKER PRIORITY, MOVE CONVERSATION",
-      "rules": [
-        "parseAlterQueueStmt",
-        "parseAlterServiceStmt",
-        "parseAlterRouteStmt",
-        "parseAlterRemoteServiceBindingStmt",
-        "parseDropServiceBrokerStmt",
-        "parseCreateBrokerPriorityStmt",
-        "parseMoveConversationStmt"
-      ],
-      "depends_on": [
-        50
-      ],
-      "tests": [
-        "alter_queue",
-        "alter_service",
-        "alter_route",
-        "drop_service_broker",
-        "broker_priority",
-        "move_conversation"
-      ]
-    },
-    {
-      "id": 53,
-      "name": "security_context",
-      "file": "security_principals.go",
-      "status": "done",
-      "description": "New: EXECUTE AS (impersonation context switching), REVERT, ALTER AUTHORIZATION (ownership transfer)",
-      "rules": [
-        "parseExecuteAsStmt",
-        "parseRevertStmt",
-        "parseAlterAuthorizationStmt"
-      ],
-      "depends_on": [
-        19,
-        30
-      ],
-      "tests": [
-        "execute_as",
-        "revert",
-        "alter_authorization"
-      ]
-    },
-    {
-      "id": 54,
-      "name": "server_audit",
-      "file": "security_audit.go",
-      "status": "done",
-      "description": "New: CREATE/ALTER/DROP SERVER AUDIT, SERVER AUDIT SPECIFICATION, DATABASE AUDIT SPECIFICATION",
-      "rules": [
-        "parseCreateServerAuditStmt",
-        "parseAlterServerAuditStmt",
-        "parseDropServerAuditStmt",
-        "parseCreateServerAuditSpecStmt",
-        "parseCreateDatabaseAuditSpecStmt"
-      ],
-      "depends_on": [
-        1,
-        3
-      ],
-      "tests": [
-        "server_audit",
-        "server_audit_spec",
-        "database_audit_spec"
-      ]
-    },
-    {
-      "id": 55,
-      "name": "endpoint",
-      "file": "endpoint.go",
-      "status": "done",
-      "description": "New: CREATE/ALTER/DROP ENDPOINT with TCP/HTTP protocol options, SOAP/TSQL/SERVICE_BROKER/DATABASE_MIRRORING payloads",
-      "rules": [
-        "parseCreateEndpointStmt",
-        "parseAlterEndpointStmt",
-        "parseDropEndpointStmt"
-      ],
-      "depends_on": [
-        1
-      ],
-      "tests": [
-        "create_endpoint",
-        "alter_endpoint",
-        "drop_endpoint"
-      ]
-    },
-    {
-      "id": 56,
-      "name": "event_notification_session",
-      "file": "event.go",
-      "status": "done",
-      "description": "New: CREATE/ALTER/DROP EVENT NOTIFICATION, CREATE/ALTER/DROP EVENT SESSION (Extended Events)",
-      "rules": [
-        "parseCreateEventNotificationStmt",
-        "parseDropEventNotificationStmt",
-        "parseCreateEventSessionStmt",
-        "parseAlterEventSessionStmt",
-        "parseDropEventSessionStmt"
-      ],
-      "depends_on": [
-        1,
-        3
-      ],
-      "tests": [
-        "event_notification",
-        "event_session"
-      ]
-    },
-    {
-      "id": 57,
-      "name": "external_objects",
-      "file": "external.go",
-      "status": "done",
-      "description": "New: CREATE/ALTER/DROP EXTERNAL DATA SOURCE, EXTERNAL TABLE, EXTERNAL FILE FORMAT for PolyBase",
-      "rules": [
-        "parseCreateExternalDataSourceStmt",
-        "parseCreateExternalTableStmt",
-        "parseCreateExternalFileFormatStmt",
-        "parseAlterExternalDataSourceStmt",
-        "parseDropExternalStmt"
-      ],
-      "depends_on": [
-        1,
-        2
-      ],
-      "tests": [
-        "external_data_source",
-        "external_table",
-        "external_file_format"
-      ]
-    },
-    {
-      "id": 58,
-      "name": "encryption_keys",
-      "file": "security_keys.go",
-      "status": "done",
-      "description": "New: CREATE/ALTER/DROP COLUMN ENCRYPTION KEY, COLUMN MASTER KEY, DATABASE ENCRYPTION KEY, DATABASE SCOPED CREDENTIAL, CRYPTOGRAPHIC PROVIDER",
-      "rules": [
-        "parseCreateColumnEncryptionKeyStmt",
-        "parseCreateColumnMasterKeyStmt",
-        "parseCreateDatabaseEncryptionKeyStmt",
-        "parseCreateDatabaseScopedCredentialStmt",
-        "parseCreateCryptographicProviderStmt"
-      ],
-      "depends_on": [
-        31
-      ],
-      "tests": [
-        "column_encryption_key",
-        "column_master_key",
-        "database_encryption_key",
-        "database_scoped_credential",
-        "cryptographic_provider"
-      ]
-    },
-    {
-      "id": 59,
-      "name": "resource_governor",
-      "file": "resource_governor.go",
-      "status": "done",
-      "description": "New: CREATE/ALTER/DROP WORKLOAD GROUP, RESOURCE POOL, EXTERNAL RESOURCE POOL, ALTER RESOURCE GOVERNOR",
-      "rules": [
-        "parseCreateWorkloadGroupStmt",
-        "parseCreateResourcePoolStmt",
-        "parseCreateExternalResourcePoolStmt",
-        "parseAlterResourceGovernorStmt"
-      ],
-      "depends_on": [
-        1,
-        3
-      ],
-      "tests": [
-        "workload_group",
-        "resource_pool",
-        "alter_resource_governor"
-      ]
-    },
-    {
-      "id": 60,
-      "name": "server_level_objects",
-      "file": "server.go",
-      "status": "done",
-      "description": "New: CREATE/ALTER/DROP SERVER ROLE, ALTER SERVER CONFIGURATION, ALTER/BACKUP/RESTORE SERVICE MASTER KEY",
-      "rules": [
-        "parseCreateServerRoleStmt",
-        "parseAlterServerRoleStmt",
-        "parseDropServerRoleStmt",
-        "parseAlterServerConfigurationStmt",
-        "parseAlterServiceMasterKeyStmt",
-        "parseBackupServiceMasterKeyStmt",
-        "parseRestoreServiceMasterKeyStmt"
-      ],
-      "depends_on": [
-        1,
-        30
-      ],
-      "tests": [
-        "server_role",
-        "alter_server_configuration",
-        "service_master_key"
-      ]
-    },
-    {
-      "id": 61,
-      "name": "fulltext_stoplist_search",
-      "file": "fulltext.go",
-      "status": "done",
-      "description": "New: CREATE/ALTER/DROP FULLTEXT STOPLIST, CREATE/ALTER/DROP SEARCH PROPERTY LIST",
-      "rules": [
-        "parseCreateFulltextStoplistStmt",
-        "parseAlterFulltextStoplistStmt",
-        "parseDropFulltextStoplistStmt",
-        "parseCreateSearchPropertyListStmt",
-        "parseAlterSearchPropertyListStmt",
-        "parseDropSearchPropertyListStmt"
-      ],
-      "depends_on": [
-        43
-      ],
-      "tests": [
-        "fulltext_stoplist",
-        "search_property_list"
-      ]
-    },
-    {
-      "id": 62,
-      "name": "security_policy_classification",
-      "file": "security_misc.go",
-      "status": "done",
-      "description": "New: CREATE/ALTER/DROP SECURITY POLICY (row-level security), ADD/DROP SENSITIVITY CLASSIFICATION, ADD/DROP SIGNATURE",
-      "rules": [
-        "parseCreateSecurityPolicyStmt",
-        "parseAlterSecurityPolicyStmt",
-        "parseDropSecurityPolicyStmt",
-        "parseAddSensitivityClassificationStmt",
-        "parseDropSensitivityClassificationStmt",
-        "parseAddSignatureStmt",
-        "parseDropSignatureStmt"
-      ],
-      "depends_on": [
-        1,
-        3
-      ],
-      "tests": [
-        "security_policy",
-        "sensitivity_classification",
-        "signature"
-      ]
-    },
-    {
-      "id": 63,
-      "name": "specialized_indexes",
-      "file": "create_index.go",
-      "status": "done",
-      "description": "New: CREATE/ALTER/DROP XML INDEX, SELECTIVE XML INDEX, SPATIAL INDEX; CREATE/ALTER/DROP AGGREGATE (CLR)",
-      "rules": [
-        "parseCreateXmlIndexStmt",
-        "parseCreateSelectiveXmlIndexStmt",
-        "parseCreateSpatialIndexStmt",
-        "parseCreateAggregateStmt",
-        "parseDropAggregateStmt"
-      ],
-      "depends_on": [
-        10
-      ],
-      "tests": [
-        "xml_index",
-        "selective_xml_index",
-        "spatial_index",
-        "aggregate"
-      ]
-    },
-    {
-      "id": 64,
-      "name": "restore_extended_master_key",
-      "file": "backup_restore.go",
-      "status": "done",
-      "description": "New: RESTORE VERIFYONLY, RESTORE LABELONLY, RESTORE REWINDONLY; OPEN/CLOSE MASTER KEY; BACKUP/RESTORE MASTER KEY",
-      "rules": [
-        "parseRestoreVerifyonlyStmt",
-        "parseRestoreLabelonlyStmt",
-        "parseRestoreRewindonlyStmt",
-        "parseOpenMasterKeyStmt",
-        "parseCloseMasterKeyStmt",
-        "parseBackupMasterKeyStmt",
-        "parseRestoreMasterKeyStmt"
-      ],
-      "depends_on": [
-        34,
-        31
-      ],
-      "tests": [
-        "restore_verifyonly",
-        "restore_labelonly",
-        "open_master_key",
-        "close_master_key",
-        "backup_master_key"
-      ]
-    },
-    {
-      "id": 65,
-      "name": "external_runtime",
-      "file": "external.go",
-      "status": "done",
-      "description": "New: CREATE/ALTER/DROP EXTERNAL LIBRARY, CREATE/ALTER/DROP EXTERNAL LANGUAGE",
-      "rules": [
-        "parseCreateExternalLibraryStmt",
-        "parseAlterExternalLibraryStmt",
-        "parseDropExternalLibraryStmt",
-        "parseCreateExternalLanguageStmt",
-        "parseAlterExternalLanguageStmt",
-        "parseDropExternalLanguageStmt"
-      ],
-      "depends_on": [
-        57
-      ],
-      "tests": [
-        "external_library",
-        "external_language"
-      ]
-    },
-    {
-      "id": 66,
-      "name": "availability_group",
-      "file": "availability.go",
-      "status": "done",
-      "description": "New: CREATE/ALTER/DROP AVAILABILITY GROUP for Always On high availability",
-      "rules": [
-        "parseCreateAvailabilityGroupStmt",
-        "parseAlterAvailabilityGroupStmt",
-        "parseDropAvailabilityGroupStmt"
-      ],
-      "depends_on": [
-        1
-      ],
-      "tests": [
-        "create_availability_group",
-        "alter_availability_group"
-      ]
-    },
-    {
-      "id": 67,
-      "name": "deprecated_misc",
-      "file": "utility.go",
-      "status": "done",
-      "description": "New: CREATE DEFAULT, CREATE RULE (deprecated but still valid T-SQL), ALTER DATABASE SCOPED CONFIGURATION",
-      "rules": [
-        "parseCreateDefaultStmt",
-        "parseCreateRuleStmt",
-        "parseAlterDatabaseScopedConfigStmt"
-      ],
-      "depends_on": [
-        1,
-        3
-      ],
-      "tests": [
-        "create_default",
-        "create_rule",
-        "alter_database_scoped_config"
-      ]
-    },
-    {
-      "id": 68,
-      "name": "stmt_dispatch_phase3",
-      "file": "parser.go",
-      "status": "done",
-      "description": "Wire up all new statement parsers (batches 50-67) into parseStmt, parseCreateStmt, parseAlterStmt, and parseDropOrSecurityStmt dispatchers",
-      "rules": [
-        "stmt_dispatch_phase3"
-      ],
-      "depends_on": [
-        49,
-        50,
-        51,
-        52,
-        53,
-        54,
-        55,
-        56,
-        57,
-        58,
-        59,
-        60,
-        61,
-        62,
-        63,
-        64,
-        65,
-        66,
-        67
-      ],
-      "tests": [
-        "integration_phase3"
-      ]
-    },
-    {
-      "id": 69,
-      "name": "create_table_depth",
-      "file": "create_table.go",
-      "status": "done",
-      "description": "Fix batch 8 gap: add temporal table support (PERIOD FOR SYSTEM_TIME, SYSTEM_VERSIONING), advanced column options (SPARSE, FILESTREAM, ROWGUIDCOL, ENCRYPTED WITH, MASKED WITH, HIDDEN, GENERATED ALWAYS AS ROW START/END), table-level storage (ON filegroup, TEXTIMAGE_ON, MEMORY_OPTIMIZED, DURABILITY)",
-      "rules": [
-        "parseTemporalPeriod",
-        "parseColumnOptionSparse",
-        "parseColumnOptionFilestream",
-        "parseColumnOptionRowguidcol",
-        "parseColumnOptionEncrypted",
-        "parseColumnOptionMasked",
-        "parseColumnOptionHidden",
-        "parseColumnOptionGenerated",
-        "parseTableStorageOptions"
-      ],
-      "depends_on": [
-        8
-      ],
-      "tests": [
-        "create_table_temporal",
-        "create_table_sparse",
-        "create_table_masked",
-        "create_table_encrypted",
-        "create_table_memory_optimized"
-      ]
-    },
-    {
-      "id": 70,
-      "name": "alter_table_depth",
-      "file": "alter_table.go",
-      "status": "done",
-      "description": "Fix batch 9 gap: support comma-separated multiple ALTER TABLE actions, add missing action types (SWITCH PARTITION, CHECK/NOCHECK CONSTRAINT, ENABLE/DISABLE CHANGE_TRACKING, REBUILD PARTITION, SET FILESTREAM_ON/LOCK_ESCALATION), ALTER COLUMN depth (COLLATE, ADD/DROP MASKED, ADD/DROP ROWGUIDCOL, ADD/DROP PERSISTED)",
-      "rules": [
-        "parseAlterTableMultipleActions",
-        "parseAlterTableSwitch",
-        "parseAlterTableCheckConstraint",
-        "parseAlterTableRebuild",
-        "parseAlterColumnExtended"
-      ],
-      "depends_on": [
-        9
-      ],
-      "tests": [
-        "alter_table_multiple_actions",
-        "alter_table_switch_partition",
-        "alter_table_check_nocheck",
-        "alter_table_rebuild",
-        "alter_column_collate"
-      ]
-    },
-    {
-      "id": 71,
-      "name": "routine_options_depth",
-      "file": "create_proc.go",
-      "status": "done",
-      "description": "Fix batch 12 gap: parse WITH options for CREATE/ALTER PROCEDURE (RECOMPILE, ENCRYPTION, EXECUTE AS) and CREATE/ALTER FUNCTION (SCHEMABINDING, RETURNS NULL ON NULL INPUT, CALLED ON NULL INPUT, EXECUTE AS, INLINE, NATIVE_COMPILATION). Fix batch 11 gap: parse CREATE VIEW WITH options (SCHEMABINDING, VIEW_METADATA, ENCRYPTION)",
-      "rules": [
-        "parseProcedureWithOptions",
-        "parseFunctionWithOptions",
-        "parseViewWithOptions"
-      ],
-      "depends_on": [
-        11,
-        12
-      ],
-      "tests": [
-        "create_proc_with_options",
-        "create_func_with_options",
-        "create_view_with_options"
-      ]
-    },
-    {
-      "id": 72,
-      "name": "service_broker_depth",
-      "file": "service_broker.go",
-      "status": "done",
-      "description": "Fix batch 46 gap: structurally parse BEGIN CONVERSATION (FROM SERVICE, TO SERVICE, ON CONTRACT, WITH options), RECEIVE column list and INTO clause, contract message type definitions (SENT BY INITIATOR/TARGET/ANY), queue ACTIVATION options, END CONVERSATION WITH options (ERROR/DESCRIPTION)",
-      "rules": [
-        "parseBeginConversationFull",
-        "parseReceiveColumnList",
-        "parseContractMessageTypes",
-        "parseQueueActivationOptions",
-        "parseEndConversationOptions"
-      ],
-      "depends_on": [
-        46,
-        50,
-        52
-      ],
-      "tests": [
-        "begin_conversation_full",
-        "receive_columns",
-        "contract_message_types",
-        "queue_activation",
-        "end_conversation_options"
-      ]
-    },
-    {
-      "id": 73,
-      "name": "window_frame",
-      "file": "expr.go",
-      "status": "done",
-      "description": "Fix batch 3 gap: parse ROWS/RANGE/GROUPS window frame specification in OVER clause (BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW, N PRECEDING/FOLLOWING, etc.)",
-      "rules": [
-        "parseWindowFrame",
-        "parseWindowFrameBound"
-      ],
-      "depends_on": [
-        3
-      ],
-      "tests": [
-        "window_frame_rows",
-        "window_frame_range",
-        "window_frame_groups"
-      ]
-    },
-    {
-      "id": 74,
-      "name": "for_xml_json_options",
-      "file": "select.go",
-      "status": "done",
-      "description": "Fix batch 4 gap: parse FOR XML options (TYPE, ROOT('name'), ELEMENTS XSINIL/ABSENT, XMLDATA, XMLSCHEMA), FOR JSON options (ROOT('name'), INCLUDE_NULL_VALUES, WITHOUT_ARRAY_WRAPPER)",
-      "rules": [
-        "parseForXmlOptions",
-        "parseForJsonOptions"
-      ],
-      "depends_on": [
-        4
-      ],
-      "tests": [
-        "for_xml_type_root",
-        "for_xml_elements",
-        "for_json_root",
-        "for_json_options"
-      ]
-    },
-    {
-      "id": 75,
-      "name": "compound_assignment",
-      "file": "update_delete.go",
-      "status": "done",
-      "description": "Fix batch 6/16 gap: support compound assignment operators (+=, -=, *=, /=, %=, &=, ^=, |=) in UPDATE SET clause and SET @variable statements",
-      "rules": [
-        "parseCompoundAssignment",
-        "parseSetVarCompoundAssignment"
-      ],
-      "depends_on": [
-        6,
-        16
-      ],
-      "tests": [
-        "update_compound_assignment",
-        "set_var_compound_assignment"
-      ]
-    },
-    {
-      "id": 76,
-      "name": "create_database_depth",
-      "file": "create_database.go",
-      "status": "done",
-      "description": "Fix batch 13 gap: parse CREATE DATABASE full options (ON PRIMARY filegroup specs, LOG ON, COLLATE, WITH options, FOR ATTACH, AS SNAPSHOT OF, CONTAINMENT)",
-      "rules": [
-        "parseDatabaseFileSpec",
-        "parseDatabaseLogOn",
-        "parseDatabaseCollate",
-        "parseDatabaseWithOptions",
-        "parseDatabaseForAttach",
-        "parseDatabaseAsSnapshot"
-      ],
-      "depends_on": [
-        13
-      ],
-      "tests": [
-        "create_database_filespec",
-        "create_database_log_on",
-        "create_database_collate",
-        "create_database_for_attach",
-        "create_database_snapshot"
-      ]
-    },
-    {
-      "id": 77,
-      "name": "alter_database_depth",
-      "file": "alter_objects.go",
-      "status": "done",
-      "description": "Fix batch 29 gap: replace ALTER DATABASE skip-loop with structured parsing of SET options, MODIFY FILE, ADD FILE/FILEGROUP, COLLATE, MODIFY NAME",
-      "rules": [
-        "parseAlterDatabaseSetOptions",
-        "parseAlterDatabaseModifyFile",
-        "parseAlterDatabaseAddFile"
-      ],
-      "depends_on": [
-        29
-      ],
-      "tests": [
-        "alter_database_set_options",
-        "alter_database_modify_file",
-        "alter_database_add_file"
-      ]
-    },
-    {
-      "id": 78,
-      "name": "grant_depth",
-      "file": "grant.go",
-      "status": "done",
-      "description": "Fix batch 19 gap: parse ON securable_class::name scope resolution syntax (e.g., GRANT SELECT ON SCHEMA::dbo), support REVOKE GRANT OPTION FOR",
-      "rules": [
-        "parseGrantOnSecurableClass",
-        "parseRevokeGrantOptionFor"
-      ],
-      "depends_on": [
-        19
-      ],
-      "tests": [
-        "grant_on_schema",
-        "grant_on_object_type",
-        "revoke_grant_option_for"
-      ]
-    },
-    {
-      "id": 79,
-      "name": "subquery_comparison",
-      "file": "expr.go",
-      "status": "done",
-      "description": "Fix batch 3 gap: parse ANY/SOME/ALL subquery comparison operators (e.g., WHERE x > ALL (SELECT ...))",
-      "rules": [
-        "parseAnySomeAll"
-      ],
-      "depends_on": [
-        3
-      ],
-      "tests": [
-        "any_subquery",
-        "some_subquery",
-        "all_subquery"
-      ]
-    },
-    {
-      "id": 80,
-      "name": "workload_classifier",
-      "file": "resource_governor.go",
-      "status": "done",
-      "description": "New: CREATE/ALTER/DROP WORKLOAD CLASSIFIER (SQL Server 2019+) with WITH options (MEMBERNAME, WORKLOAD_GROUP, IMPORTANCE, etc.)",
-      "rules": [
-        "parseCreateWorkloadClassifierStmt",
-        "parseAlterWorkloadClassifierStmt",
-        "parseDropWorkloadClassifierStmt"
-      ],
-      "depends_on": [
-        59
-      ],
-      "tests": [
-        "create_workload_classifier",
-        "alter_workload_classifier",
-        "drop_workload_classifier"
-      ]
-    },
-    {
-      "id": 81,
-      "name": "create_type_index",
-      "file": "create_type.go",
-      "status": "done",
-      "description": "Fix batch 26 gap: parse INDEX clause in CREATE TYPE AS TABLE instead of skipping via skipToNextCommaOrParen(). BNF: INDEX index_name [CLUSTERED|NONCLUSTERED] (column [ASC|DESC] [,...n]) [INCLUDE (column,...n)]. Also add test coverage for CREATE TYPE (alias, CLR, table type with INDEX).",
-      "rules": [
-        "parseCreateTypeStmt",
-        "parseTableTypeIndex"
-      ],
-      "depends_on": [
-        26
-      ],
-      "tests": [
-        "create_type_alias",
-        "create_type_external",
-        "create_type_table",
-        "create_type_table_index"
-      ]
-    },
-    {
-      "id": 82,
-      "name": "alter_table_filetable",
-      "file": "alter_table.go",
-      "status": "done",
-      "description": "Fix batch 70 gap: remove parseAlterTableActionLegacy stub, add ENABLE/DISABLE FILETABLE_NAMESPACE and SET FILETABLE_DIRECTORY support in ALTER TABLE ENABLE/DISABLE and SET handlers.",
-      "rules": [
-        "parseAlterTableEnableDisable",
-        "parseAlterTableSet"
-      ],
-      "depends_on": [
-        70
-      ],
-      "tests": [
-        "alter_table_filetable_namespace",
-        "alter_table_set_filetable_directory"
-      ]
-    },
-    {
-      "id": 83,
-      "name": "table_hints",
-      "file": "select.go",
-      "status": "done",
-      "description": "Fix batch 4 gap: parse table hints in FROM clause (WITH (NOLOCK), WITH (ROWLOCK), WITH (UPDLOCK), WITH (HOLDLOCK), WITH (TABLOCK), WITH (PAGLOCK), WITH (INDEX(name)), WITH (FORCESEEK), WITH (SERIALIZABLE), WITH (READUNCOMMITTED), WITH (READCOMMITTED), WITH (REPEATABLEREAD), WITH (READPAST), WITH (XLOCK), WITH (SNAPSHOT)). Table hints appear after table references and optional aliases.",
-      "rules": [
-        "parseTableHints",
-        "parseTableHint"
-      ],
-      "depends_on": [
-        4
-      ],
-      "tests": [
-        "table_hints_nolock",
-        "table_hints_index",
-        "table_hints_multiple"
-      ]
-    },
-    {
-      "id": 84,
-      "name": "collate_expression",
-      "file": "expr.go",
-      "status": "done",
-      "description": "Fix batch 3 gap: parse postfix COLLATE operator on expressions (expr COLLATE collation_name). This is a postfix operator that binds tightly, used in ORDER BY, WHERE, assignments, and column definitions.",
-      "rules": [
-        "parseCollateExpr"
-      ],
-      "depends_on": [
-        3
-      ],
-      "tests": [
-        "collate_order_by",
-        "collate_where",
-        "collate_column_expr"
-      ]
-    },
-    {
-      "id": 85,
-      "name": "at_time_zone",
-      "file": "expr.go",
-      "status": "done",
-      "description": "Fix batch 3 gap: parse AT TIME ZONE postfix expression (datetime_expr AT TIME ZONE 'timezone_name'). Can be chained: expr AT TIME ZONE 'UTC' AT TIME ZONE 'Pacific Standard Time'.",
-      "rules": [
-        "parseAtTimeZone"
-      ],
-      "depends_on": [
-        3
-      ],
-      "tests": [
-        "at_time_zone_literal",
-        "at_time_zone_chained"
-      ]
-    },
-    {
-      "id": 86,
-      "name": "create_table_inline_index",
-      "file": "create_table.go",
-      "status": "done",
-      "description": "Fix batch 8 gap: parse inline INDEX definitions in CREATE TABLE body. BNF: INDEX index_name [UNIQUE] [CLUSTERED|NONCLUSTERED] (column [ASC|DESC] [,...n]) [INCLUDE (...)] [WHERE ...] [WITH (...)]. Currently only CONSTRAINT, PRIMARY, UNIQUE, CHECK, FOREIGN are parsed as table-level elements.",
-      "rules": [
-        "parseInlineTableIndex"
-      ],
-      "depends_on": [
-        8,
-        10
-      ],
-      "tests": [
-        "create_table_inline_index",
-        "create_table_inline_index_include"
-      ]
-    },
-    {
-      "id": 87,
-      "name": "graph_tables",
-      "file": "create_table.go",
-      "status": "done",
-      "description": "Fix batch 8 gap: parse CREATE TABLE ... AS NODE and CREATE TABLE ... AS EDGE for SQL Server graph database tables. Add IsNode/IsEdge flags to CreateTableStmt. Graph edge tables support $from_id, $to_id pseudo-columns.",
-      "rules": [
-        "parseGraphTableType"
-      ],
-      "depends_on": [
-        8
-      ],
-      "tests": [
-        "create_table_as_node",
-        "create_table_as_edge"
-      ]
-    },
-    {
-      "id": 88,
-      "name": "alter_table_add_period",
-      "file": "alter_table.go",
-      "status": "done",
-      "description": "Fix batch 70 gap: parse ALTER TABLE ADD PERIOD FOR SYSTEM_TIME (start_col, end_col) and ALTER TABLE DROP PERIOD FOR SYSTEM_TIME. These modify temporal table configuration.",
-      "rules": [
-        "parseAlterTableAddPeriod",
-        "parseAlterTableDropPeriod"
-      ],
-      "depends_on": [
-        9,
-        70
-      ],
-      "tests": [
-        "alter_table_add_period",
-        "alter_table_drop_period"
-      ]
-    },
-    {
-      "id": 89,
-      "name": "trigger_with_options",
-      "file": "trigger.go",
-      "status": "done",
-      "description": "Fix batch 24 gap: structurally parse CREATE/ALTER TRIGGER WITH options (ENCRYPTION, EXECUTE AS CALLER/SELF/OWNER/'user_name', NATIVE_COMPILATION, SCHEMABINDING) instead of skipping tokens between WITH and FOR/AFTER/INSTEAD.",
-      "rules": [
-        "parseTriggerWithOptions"
-      ],
-      "depends_on": [
-        24
-      ],
-      "tests": [
-        "trigger_with_encryption",
-        "trigger_with_execute_as"
-      ]
-    },
-    {
-      "id": 90,
-      "name": "security_key_options_depth",
-      "file": "security_keys.go",
-      "status": "done",
-      "description": "Fix batch 31 gap: replace skipSecurityKeyOptions() with structured parsing for CREATE/ALTER/DROP SYMMETRIC KEY (KEY_SOURCE, ALGORITHM, IDENTITY_VALUE, PROVIDER_KEY_NAME), ASYMMETRIC KEY (ALGORITHM, FILE, EXECUTABLE_FILE, ASSEMBLY, PROVIDER_KEY_NAME), CERTIFICATE (ENCRYPTION BY, WITH SUBJECT, EXPIRY_DATE, START_DATE), CREDENTIAL (IDENTITY, SECRET).",
-      "rules": [
-        "parseSymmetricKeyOptions",
-        "parseAsymmetricKeyOptions",
-        "parseCertificateOptions",
-        "parseCredentialOptions"
-      ],
-      "depends_on": [
-        31
-      ],
-      "tests": [
-        "create_symmetric_key_options",
-        "create_certificate_options",
-        "create_credential_options"
-      ]
-    },
-    {
-      "id": 91,
-      "name": "choose_string_agg",
-      "file": "expr.go",
-      "status": "done",
-      "description": "Fix batch 3 gap: parse CHOOSE(index, val1, val2, ...) function and STRING_AGG(expr, separator) WITHIN GROUP (ORDER BY ...) clause. WITHIN GROUP is a postfix clause on aggregate functions.",
-      "rules": [
-        "parseChooseExpr",
-        "parseWithinGroupClause"
-      ],
-      "depends_on": [
-        3
-      ],
-      "tests": [
-        "choose_function",
-        "string_agg_within_group"
-      ]
-    },
-    {
-      "id": 92,
-      "name": "option_query_hints",
-      "file": "select.go",
-      "status": "done",
-      "description": "Fix batch 4 gap: structurally parse OPTION clause query hints instead of generic expressions. Supported hints: RECOMPILE, OPTIMIZE FOR (@var = val | UNKNOWN), LOOP/HASH/MERGE JOIN, FORCE ORDER, MAXDOP n, MAXRECURSION n, USE PLAN N'xml', EXPAND VIEWS, FAST n, KEEP PLAN, KEEPFIXED PLAN, PARAMETERIZATION SIMPLE/FORCED, ROBUST PLAN.",
-      "rules": [
-        "parseQueryHint"
-      ],
-      "depends_on": [
-        4
-      ],
-      "tests": [
-        "option_recompile",
-        "option_optimize_for",
-        "option_join_hints",
-        "option_maxdop"
-      ]
-    },
-    {
-      "id": 93,
-      "name": "setuser_statement",
-      "file": "utility.go",
-      "status": "done",
-      "description": "New: SETUSER statement (deprecated but valid T-SQL). Keyword kwSETUSER is defined in the lexer but not dispatched in parseStmt. BNF: SETUSER [ 'username' [ WITH NORESET ] ]",
-      "rules": [
-        "parseSetuserStmt"
-      ],
-      "depends_on": [
-        0
-      ],
-      "tests": [
-        "setuser_basic",
-        "setuser_with_noreset"
-      ]
-    },
-    {
-      "id": 94,
-      "name": "begin_conversation_timer",
-      "file": "service_broker.go",
-      "status": "done",
-      "description": "New: BEGIN CONVERSATION TIMER Service Broker statement. BNF: BEGIN CONVERSATION TIMER ( conversation_handle ) TIMEOUT = timeout_value",
-      "rules": [
-        "parseBeginConversationTimerStmt"
-      ],
-      "depends_on": [
-        46
-      ],
-      "tests": [
-        "begin_conversation_timer"
-      ]
-    },
-    {
-      "id": 95,
-      "name": "alter_index_options_depth",
-      "file": "alter_objects.go",
-      "status": "done",
-      "description": "Fix batch 29 gap: replace skip-loop in parseAlterIndexStmt (line 574) with structured parsing of PARTITION = { n | ALL }, WITH ( option = value [, ...] ) for REBUILD/REORGANIZE actions. Options include FILLFACTOR, PAD_INDEX, SORT_IN_TEMPDB, STATISTICS_NORECOMPUTE, ONLINE, MAXDOP, DATA_COMPRESSION, RESUMABLE, MAX_DURATION.",
-      "rules": [
-        "parseAlterIndexOptions",
-        "parseAlterIndexPartition"
-      ],
-      "depends_on": [
-        29
-      ],
-      "tests": [
-        "alter_index_rebuild_with",
-        "alter_index_rebuild_partition",
-        "alter_index_reorganize_partition"
-      ]
-    },
-    {
-      "id": 96,
-      "name": "server_audit_options_depth",
-      "file": "security_audit.go",
-      "status": "done",
-      "description": "Fix batch 54 gap: replace skip-loop in parseAuditOptions (line 278) with structured parsing. TO clause: { FILE ( FILEPATH = path [, MAXSIZE = n [MB|GB|TB] [, MAX_ROLLOVER_FILES = n] [, RESERVE_DISK_SPACE = ON|OFF] ) | APPLICATION_LOG | SECURITY_LOG | URL | EXTERNAL_MONITOR }. WITH clause: ( QUEUE_DELAY = n [, ON_FAILURE = CONTINUE|SHUTDOWN|FAIL_OPERATION] [, AUDIT_GUID = guid] [, STATE = ON|OFF] ). WHERE clause: event predicates.",
-      "rules": [
-        "parseServerAuditToClause",
-        "parseServerAuditWithOptions",
-        "parseServerAuditWhereClause"
-      ],
-      "depends_on": [
-        54
-      ],
-      "tests": [
-        "server_audit_to_file",
-        "server_audit_with_options",
-        "server_audit_where_clause"
-      ]
-    },
-    {
-      "id": 97,
-      "name": "query_hint_table_hint_depth",
-      "file": "select.go",
-      "status": "done",
-      "description": "Fix batch 92 gap: parse TABLE HINT(exposed_object_name, hint [,...n]) in OPTION clause instead of skip-looping the parenthesized content (line 1484). exposed_object_name is a qualified table name; hints are standard table hints like NOLOCK, INDEX(), FORCESEEK.",
-      "rules": [
-        "parseTableHintQueryOption"
-      ],
-      "depends_on": [
-        92
-      ],
-      "tests": [
-        "option_table_hint"
-      ]
-    },
-    {
-      "id": 98,
-      "name": "security_key_structured_options",
-      "file": "security_keys.go",
-      "status": "done",
-      "description": "Fix batch 90 gap: replaced generic parseSecurityKeyOptions with type-specific parsers for ALTER SYMMETRIC KEY (ADD/DROP ENCRYPTION BY) and ALTER MASTER KEY ([FORCE] REGENERATE, ADD/DROP ENCRYPTION BY). Fixed OPEN SYMMETRIC KEY dispatch (identifier check). Added parseEncryptingMechanism helper for CERTIFICATE/PASSWORD/SYMMETRIC KEY/ASYMMETRIC KEY/SERVICE MASTER KEY mechanisms. Full BNF comments from official docs.",
-      "rules": [
-        "parseSymmetricKeyFullOptions",
-        "parseAsymmetricKeyFullOptions",
-        "parseCertificateFullOptions",
-        "parseCredentialFullOptions",
-        "parseMasterKeyFullOptions"
-      ],
-      "depends_on": [
-        90
-      ],
-      "tests": [
-        "symmetric_key_structured",
-        "asymmetric_key_structured",
-        "certificate_structured",
-        "credential_structured",
-        "master_key_structured"
-      ]
-    },
-    {
-      "id": 99,
-      "name": "endpoint_options_depth",
-      "file": "endpoint.go",
-      "status": "done",
-      "description": "Fix batch 55 gap: replace skip-loop in parseEndpointOptions (line 101) with structured parsing of CREATE/ALTER ENDPOINT options. STATE = STARTED|STOPPED|DISABLED, AUTHORIZATION owner, AS { TCP | HTTP } ( protocol_options ), FOR { TSQL | SERVICE_BROKER | DATABASE_MIRRORING | SOAP } ( payload_options ). TCP options: LISTENER_PORT, LISTENER_IP. HTTP options: PATH, AUTHENTICATION, PORTS, SITE, CLEAR_PORT, SSL_PORT, AUTH_REALM, DEFAULT_LOGON_DOMAIN, COMPRESSION.",
-      "rules": [
-        "parseEndpointProtocolOptions",
-        "parseEndpointPayloadOptions"
-      ],
-      "depends_on": [
-        55
-      ],
-      "tests": [
-        "endpoint_tcp_options",
-        "endpoint_http_options",
-        "endpoint_payload_tsql",
-        "endpoint_payload_service_broker"
-      ]
-    },
-    {
-      "id": 100,
-      "name": "service_broker_alter_options_depth",
-      "file": "service_broker.go",
-      "status": "done",
-      "description": "Fix batch 52 gap: replace skip-loop in parseServiceBrokerOptions WITH clause (line 1024) with structured parsing. ALTER MESSAGE TYPE: VALIDATION = { NONE | EMPTY | WELL_FORMED_XML | VALID_XML WITH SCHEMA COLLECTION name }. ALTER CONTRACT: ADD/DROP MESSAGE TYPE name SENT BY { INITIATOR | TARGET | ANY }. ALTER ROUTE: WITH SERVICE_NAME, BROKER_INSTANCE, LIFETIME, ADDRESS, MIRROR_ADDRESS options. ALTER REMOTE SERVICE BINDING: WITH USER, ANONYMOUS = { ON | OFF } options.",
-      "rules": [
-        "parseServiceBrokerWithOptions"
-      ],
-      "depends_on": [
-        52
-      ],
-      "tests": [
-        "alter_message_type_validation",
-        "alter_contract_message_types",
-        "alter_route_with_options",
-        "alter_remote_binding_with_options"
-      ]
-    },
-    {
-      "id": 101,
-      "name": "event_session_specs_depth",
-      "file": "event.go",
-      "status": "done",
-      "description": "Fix batch 56 gap: replace skip-loops in parseEventSessionEventSpec (line 392) and parseEventSessionTargetSpec (line 421) with structured parsing. Event spec SET: ( SET column = value [,...] ), ACTION: ( package.action [,...] ), WHERE: ( predicate ). Target spec SET: ( SET column = value [,...] ). Values can be quoted strings, integers, or identifiers.",
-      "rules": [
-        "parseEventSpecSetClause",
-        "parseEventSpecActionClause",
-        "parseEventSpecWhereClause",
-        "parseTargetSpecSetClause"
-      ],
-      "depends_on": [
-        56
-      ],
-      "tests": [
-        "event_spec_set",
-        "event_spec_action",
-        "event_spec_where",
-        "target_spec_set"
-      ]
-    },
-    {
-      "id": 102,
-      "name": "resource_governor_options_depth",
-      "file": "resource_governor.go",
-      "status": "done",
-      "description": "Fix batch 59 gap: replace semi-generic skip-loop in parseResourceGovernorOptions (line 325) with structured parsing. Used by 9 callers: CREATE/ALTER WORKLOAD GROUP (REQUEST_MAX_MEMORY_GRANT_PERCENT, REQUEST_MAX_CPU_TIME_SEC, MAX_DOP, GROUP_MAX_REQUESTS, IMPORTANCE), CREATE/ALTER RESOURCE POOL (MIN_CPU_PERCENT, MAX_CPU_PERCENT, CAP_CPU_PERCENT, MIN_MEMORY_PERCENT, MAX_MEMORY_PERCENT, MIN_IOPS_PER_VOLUME, MAX_IOPS_PER_VOLUME, AFFINITY), CREATE/ALTER EXTERNAL RESOURCE POOL, ALTER RESOURCE GOVERNOR (RECONFIGURE, DISABLE, RESET STATISTICS, CLASSIFIER_FUNCTION), CREATE/ALTER/DROP WORKLOAD CLASSIFIER (MEMBERNAME, WORKLOAD_GROUP, IMPORTANCE, START_TIME, END_TIME, LABEL, CONTEXT).",
-      "rules": [
-        "parseResourceGovernorStructuredOptions"
-      ],
-      "depends_on": [
-        59
-      ],
-      "tests": [
-        "workload_group_structured_options",
-        "resource_pool_structured_options",
-        "alter_resource_governor_structured",
-        "workload_classifier_structured_options"
-      ]
-    },
-    {
-      "id": 103,
-      "name": "drop_security_keys_dispatch",
-      "file": "drop.go",
-      "status": "done",
-      "description": "Fix batch 31 gap: add DROP MASTER KEY, DROP CREDENTIAL, DROP CERTIFICATE, DROP ASYMMETRIC KEY, DROP SYMMETRIC KEY to parseDropOrSecurityStmt dispatcher and implement parsers. These objects have CREATE/ALTER support but missing DROP dispatch.",
-      "rules": [
-        "parseDropMasterKeyStmt",
-        "parseDropCredentialStmt",
-        "parseDropCertificateStmt",
-        "parseDropAsymmetricKeyStmt",
-        "parseDropSymmetricKeyStmt"
-      ],
-      "depends_on": [
-        31,
-        48
-      ],
-      "tests": [
-        "drop_master_key",
-        "drop_credential",
-        "drop_certificate",
-        "drop_asymmetric_key",
-        "drop_symmetric_key"
-      ]
-    },
-    {
-      "id": 104,
-      "name": "drop_external_library_language_dispatch",
-      "file": "parser.go",
-      "status": "done",
-      "description": "Fix batch 65 gap: wire DROP EXTERNAL LIBRARY and DROP EXTERNAL LANGUAGE to their existing parseDropExternalLibraryStmt/parseDropExternalLanguageStmt parsers in parseDropOrSecurityStmt dispatcher. Parsers exist but are unreachable from the dispatcher.",
-      "rules": [
-        "drop_external_library_dispatch",
-        "drop_external_language_dispatch"
-      ],
-      "depends_on": [
-        65,
-        68
-      ],
-      "tests": [
-        "drop_external_library",
-        "drop_external_language"
-      ]
-    },
-    {
-      "id": 105,
-      "name": "backup_restore_symmetric_key",
-      "file": "security_keys.go",
-      "status": "done",
-      "description": "New: BACKUP SYMMETRIC KEY and RESTORE SYMMETRIC KEY statements. BNF: BACKUP SYMMETRIC KEY key_name TO FILE = 'path' ENCRYPTION BY PASSWORD = 'password'; RESTORE SYMMETRIC KEY key_name FROM FILE = 'path' DECRYPTION BY PASSWORD = 'password'.",
-      "rules": [
-        "parseBackupSymmetricKeyStmt",
-        "parseRestoreSymmetricKeyStmt"
-      ],
-      "depends_on": [
-        31,
-        34
-      ],
-      "tests": [
-        "backup_symmetric_key",
-        "restore_symmetric_key"
-      ]
-    },
-    {
-      "id": 106,
-      "name": "get_transmission_status",
-      "file": "service_broker.go",
-      "status": "done",
-      "description": "New: GET TRANSMISSION STATUS Service Broker statement. BNF: GET TRANSMISSION STATUS ( conversation_handle )",
-      "rules": [
-        "parseGetTransmissionStatusStmt"
-      ],
-      "depends_on": [
-        46
-      ],
-      "tests": [
-        "get_transmission_status"
-      ]
-    },
-    {
-      "id": 107,
-      "name": "endpoint_unknown_protocol_depth",
-      "file": "endpoint.go",
-      "status": "done",
-      "description": "Fix batch 99 gap: replace skipParenthesized() call at line 179 for non-TCP protocols with structured parsing. HTTP protocol options (PATH, AUTHENTICATION, PORTS, SITE, CLEAR_PORT, SSL_PORT, AUTH_REALM, DEFAULT_LOGON_DOMAIN, COMPRESSION) should be parsed structurally.",
-      "rules": [
-        "parseEndpointProtocolHTTPOptions"
-      ],
-      "depends_on": [
-        99
-      ],
-      "tests": [
-        "endpoint_http_structured_options"
-      ]
-    },
-    {
-      "id": 108,
-      "name": "external_model",
-      "file": "external.go",
-      "status": "done",
-      "description": "New: CREATE/ALTER/DROP EXTERNAL MODEL for machine learning model management (SQL Server 2022+). BNF: CREATE EXTERNAL MODEL model_name WITH ( LOCATION = 'path', DATA_SOURCE = source, FORMAT = 'ONNX' )",
-      "rules": [
-        "parseCreateExternalModelStmt",
-        "parseAlterExternalModelStmt",
-        "parseDropExternalModelStmt"
-      ],
-      "depends_on": [
-        57
-      ],
-      "tests": [
-        "create_external_model",
-        "alter_external_model",
-        "drop_external_model"
-      ]
-    },
-    {
-      "id": 109,
-      "name": "json_vector_index",
-      "file": "create_index.go",
-      "status": "done",
-      "description": "New: CREATE JSON INDEX and CREATE VECTOR INDEX (SQL Server 2025+). JSON INDEX indexes JSON documents; VECTOR INDEX supports approximate nearest neighbor search with options (TYPE = DISKANN, DISTANCE = COSINE/DOT/L2)",
-      "rules": [
-        "parseCreateJsonIndexStmt",
-        "parseCreateVectorIndexStmt"
-      ],
-      "depends_on": [
-        10
-      ],
-      "tests": [
-        "create_json_index",
-        "create_vector_index"
-      ]
-    },
-    {
-      "id": 110,
-      "name": "materialized_view",
-      "file": "create_view.go",
-      "status": "done",
-      "description": "New: CREATE MATERIALIZED VIEW AS SELECT, ALTER MATERIALIZED VIEW (REBUILD/DISABLE), DROP MATERIALIZED VIEW (Azure Synapse/Fabric). WITH (DISTRIBUTION = HASH/ROUND_ROBIN) option",
-      "rules": [
-        "parseCreateMaterializedViewStmt",
-        "parseAlterMaterializedViewStmt",
-        "parseDropMaterializedViewStmt"
-      ],
-      "depends_on": [
-        11,
-        4
-      ],
-      "tests": [
-        "create_materialized_view",
-        "alter_materialized_view"
-      ]
-    },
-    {
-      "id": 111,
-      "name": "copy_into",
-      "file": "utility.go",
-      "status": "done",
-      "description": "New: COPY INTO statement for bulk data loading (Azure Synapse/Fabric). BNF: COPY INTO table_name [ (column_list) ] FROM 'external_location' [,...n] WITH ( option = value [,...n] )",
-      "rules": [
-        "parseCopyIntoStmt"
-      ],
-      "depends_on": [
-        1,
-        3
-      ],
-      "tests": [
-        "copy_into_basic",
-        "copy_into_with_options"
-      ]
-    },
-    {
-      "id": 112,
-      "name": "rename_cetas",
-      "file": "utility.go",
-      "status": "done",
-      "description": "New: RENAME statement (Azure Synapse/Fabric), CREATE EXTERNAL TABLE AS SELECT (CETAS), CREATE TABLE AS CLONE OF (Azure). RENAME OBJECT :: schema.old_name TO new_name",
-      "rules": [
-        "parseRenameStmt",
-        "parseCreateExternalTableAsSelectStmt",
-        "parseCreateTableAsCloneOfStmt"
-      ],
-      "depends_on": [
-        1,
-        4,
-        57
-      ],
-      "tests": [
-        "rename_object",
-        "cetas",
-        "create_table_clone"
-      ]
-    },
-    {
-      "id": 113,
-      "name": "stmt_dispatch_phase4",
-      "file": "parser.go",
-      "status": "done",
-      "description": "Wire up all new statement parsers (batches 108-112) into parseStmt, parseCreateStmt, parseAlterStmt, and parseDropOrSecurityStmt dispatchers",
-      "rules": [
-        "stmt_dispatch_phase4"
-      ],
-      "depends_on": [
-        68,
-        108,
-        109,
-        110,
-        111,
-        112
-      ],
-      "tests": [
-        "integration_phase4"
-      ]
-    },
-    {
-      "id": 114,
-      "name": "server_config_options_depth",
-      "file": "server.go",
-      "status": "done",
-      "description": "Fix batch 60 gap: replace consumeServerConfigOptions() generic token-to-string loop (line 255) with structured parsing. ALTER SERVER CONFIGURATION SET options: PROCESS AFFINITY (CPU/NUMANODE ranges), DIAGNOSTICS LOG (ON/OFF/PATH/MAX_SIZE/MAX_FILES), HADR CLUSTER CONTEXT, BUFFER POOL EXTENSION (ON/OFF/FILENAME/SIZE), SOFTNUMA (ON/OFF), EXTERNAL_SCRIPT (ON/OFF), FAILOVER CLUSTER PROPERTY. Each option type has distinct sub-syntax.",
-      "rules": [
-        "parseServerConfigProcessAffinity",
-        "parseServerConfigDiagnosticsLog",
-        "parseServerConfigHadrCluster",
-        "parseServerConfigBufferPoolExtension",
-        "parseServerConfigSoftNuma"
-      ],
-      "depends_on": [
-        60
-      ],
-      "tests": [
-        "server_config_process_affinity",
-        "server_config_diagnostics_log",
-        "server_config_buffer_pool_extension",
-        "server_config_softnuma"
-      ]
-    },
-    {
-      "id": 115,
-      "name": "availability_group_options_depth",
-      "file": "availability.go",
-      "status": "done",
-      "description": "Fix batch 66 gap: replace generic string collection in parseAvailabilityGroupOptions() (line 218) with structured parsing. REPLICA ON: 'server' WITH (ENDPOINT_URL, AVAILABILITY_MODE, FAILOVER_MODE, SEEDING_MODE, SECONDARY_ROLE, PRIMARY_ROLE, SESSION_TIMEOUT, BACKUP_PRIORITY). LISTENER: 'name' WITH (DHCP/IP addresses, PORT). parseNestedParens() calls at lines 225, 400 should be replaced with typed option nodes.",
-      "rules": [
-        "parseAvailabilityGroupReplicaOn",
-        "parseAvailabilityGroupListener",
-        "parseAvailabilityGroupReplicaOptions"
-      ],
-      "depends_on": [
-        66
-      ],
-      "tests": [
-        "ag_replica_on_structured",
-        "ag_listener_structured",
-        "ag_replica_options_structured"
-      ]
-    },
-    {
-      "id": 116,
-      "name": "endpoint_unknown_protocol_skip",
-      "file": "endpoint.go",
-      "status": "done",
-      "description": "Fix batch 107 gap: remaining skipParenthesized() call at line 183 in parseEndpointOptions() for non-TCP/non-HTTP protocols. Should parse the parenthesized options structurally as key=value pairs or raise a parse error for truly unknown protocols.",
-      "rules": [
-        "parseEndpointGenericProtocolOptions"
-      ],
-      "depends_on": [
-        107
-      ],
-      "tests": [
-        "endpoint_unknown_protocol_options"
-      ]
-    },
-    {
-      "id": 117,
-      "name": "alter_database_unknown_action",
-      "file": "alter_objects.go",
-      "status": "done",
-      "description": "Fix batch 77 gap: replace token skip-loop at line 134 in parseAlterDatabaseStmt() default case with structured parsing. Missing ALTER DATABASE actions: REMOVE FILE/FILEGROUP, SET PARTNER (mirroring), SET WITNESS, SET HADR. Also fix ALTER INDEX unknown token skip at line 707 in parseAlterIndexOptions().",
-      "rules": [
-        "parseAlterDatabaseRemoveFile",
-        "parseAlterDatabaseSetPartner",
-        "parseAlterIndexUnknownOption"
-      ],
-      "depends_on": [
-        77,
-        95
-      ],
-      "tests": [
-        "alter_database_remove_file",
-        "alter_database_set_partner",
-        "alter_index_unknown_option_handled"
-      ]
-    },
-    {
-      "id": 118,
-      "name": "predict_statement",
-      "file": "utility.go",
-      "status": "done",
-      "description": "New: PREDICT statement (SQL Server 2022+). BNF: PREDICT ( MODEL = @model | 'literal' , DATA = table_source [ , RUNTIME = ONNX ] ) WITH ( column_def [,...n] ). Used for native ML model scoring.",
-      "rules": [
-        "parsePredictStmt"
-      ],
-      "depends_on": [
-        0
-      ],
-      "tests": [
-        "predict_basic",
-        "predict_with_runtime"
-      ]
-    },
-    {
-      "id": 119,
-      "name": "edge_constraint",
-      "file": "create_table.go",
-      "status": "done",
-      "description": "New: CREATE/ALTER/DROP EDGE CONSTRAINT for SQL Server graph tables. BNF: CONSTRAINT constraint_name EDGE CONSTRAINT ( { node_table TO node_table | CONNECTION ( node_table TO node_table [,...n] ) } ). ALTER TABLE ADD/DROP CONSTRAINT for edge constraints. Graph tables (AS EDGE) support EDGE CONSTRAINT but parser only has AS NODE/AS EDGE flags.",
-      "rules": [
-        "parseEdgeConstraint",
-        "parseEdgeConstraintConnection"
-      ],
-      "depends_on": [
-        8,
-        87
-      ],
-      "tests": [
-        "create_table_edge_constraint",
-        "alter_table_edge_constraint"
-      ]
-    },
-    {
-      "id": 120,
-      "name": "backup_restore_options_depth",
-      "file": "backup_restore.go",
-      "status": "done",
-      "description": "Fix batch 34 gap: replace generic string-accumulation loop in parseBackupRestoreOptions() with structured parsing. BACKUP options: COMPRESSION, NO_COMPRESSION, ENCRYPTION (ALGORITHM, SERVER CERTIFICATE/ASYMMETRIC KEY), DIFFERENTIAL, COPY_ONLY, DESCRIPTION, NAME, EXPIREDATE, RETAINDAYS, INIT/NOINIT, NOSKIP/SKIP, FORMAT/NOFORMAT, MEDIADESCRIPTION, MEDIANAME, BLOCKSIZE, BUFFERCOUNT, MAXTRANSFERSIZE, NO_CHECKSUM/CHECKSUM, STOP_ON_ERROR/CONTINUE_AFTER_ERROR, STATS, RESTART. RESTORE options: MOVE 'logical' TO 'physical', REPLACE, RECOVERY/NORECOVERY/STANDBY, STOPAT, STOPATMARK, STOPBEFOREMARK, FILE, MEDIANAME, MEDIAPASSWORD, ENABLE_BROKER, NEW_BROKER, ERROR_BROKER_CONVERSATIONS.",
-      "rules": [
-        "parseBackupOptions",
-        "parseRestoreOptions",
-        "parseBackupEncryptionOption",
-        "parseRestoreMoveOption"
-      ],
-      "depends_on": [
-        34
-      ],
-      "tests": [
-        "backup_options_structured",
-        "restore_options_structured",
-        "backup_encryption_option",
-        "restore_move_option"
-      ]
-    },
-    {
-      "id": 121,
-      "name": "create_database_options_depth",
-      "file": "create_database.go",
-      "status": "done",
-      "description": "Fix batch 76 gap: replace generic string-building loops in parseDatabaseWithOptions() and parseDatabaseAttachOptions() with structured parsing. WITH options: DB_CHAINING ON/OFF, TRUSTWORTHY ON/OFF, DEFAULT_FULLTEXT_LANGUAGE, DEFAULT_LANGUAGE, NESTED_TRIGGERS, TRANSFORM_NOISE_WORDS, TWO_DIGIT_YEAR_CUTOFF, CATALOG_COLLATION, LEDGER = ON/OFF, PERSISTENT_LOG_BUFFER = ON. FILESTREAM sub-options: NON_TRANSACTED_ACCESS = OFF/READ_ONLY/FULL, DIRECTORY_NAME = 'name'. Attach options: ENABLE_BROKER, NEW_BROKER, ERROR_BROKER_CONVERSATIONS, RESTRICTED_USER.",
-      "rules": [
-        "parseDatabaseWithOptionsStructured",
-        "parseDatabaseFilestreamOptions",
-        "parseDatabaseAttachOptionsStructured"
-      ],
-      "depends_on": [
-        76
-      ],
-      "tests": [
-        "database_with_options_structured",
-        "database_filestream_options",
-        "database_attach_options_structured"
-      ]
-    },
-    {
-      "id": 122,
-      "name": "security_principal_options_depth",
-      "file": "security_principals.go",
-      "status": "done",
-      "description": "Fix batch 30 gap: replace generic key=value loop in parseSecurityPrincipalWithOptions() with type-specific structured parsing. CREATE USER: WITH PASSWORD, DEFAULT_SCHEMA, DEFAULT_LANGUAGE, ALLOW_ENCRYPTED_VALUE_MODIFICATIONS, SID. CREATE LOGIN: WITH PASSWORD (MUST_CHANGE, HASHED), DEFAULT_DATABASE, DEFAULT_LANGUAGE, CHECK_EXPIRATION, CHECK_POLICY, CREDENTIAL, SID, FROM WINDOWS/CERTIFICATE/ASYMMETRIC KEY/EXTERNAL PROVIDER. CREATE ROLE: AUTHORIZATION. CREATE APPLICATION ROLE: WITH PASSWORD, DEFAULT_SCHEMA.",
-      "rules": [
-        "parseCreateUserWithOptions",
-        "parseCreateLoginWithOptions",
-        "parseAlterLoginWithOptions",
-        "parseCreateAppRoleWithOptions"
-      ],
-      "depends_on": [
-        30
-      ],
-      "tests": [
-        "create_user_structured_options",
-        "create_login_structured_options",
-        "alter_login_structured_options",
-        "create_app_role_structured_options"
-      ]
-    },
-    {
-      "id": 123,
-      "name": "dbcc_with_options_depth",
-      "file": "dbcc.go",
-      "status": "done",
-      "description": "Fix batch 32 gap: replace generic identifier loop in DBCC WITH options parsing with structured parsing. Common DBCC WITH options: NO_INFOMSGS, ALL_ERRORMSGS, PHYSICAL_ONLY, EXTENDED_LOGICAL_CHECKS, DATA_PURITY, TABLOCK, ESTIMATEONLY, COUNT_ROWS. The DBCC arguments themselves (inside parentheses) are already parsed as expressions, but the WITH clause options are just collected as string identifiers.",
-      "rules": [
-        "parseDbccWithOptions"
-      ],
-      "depends_on": [
-        32
-      ],
-      "tests": [
-        "dbcc_with_options_structured"
-      ]
-    },
-    {
-      "id": 124,
-      "name": "external_nested_parens_depth",
-      "file": "external.go",
-      "status": "done",
-      "description": "Fix batch 57/65 gap: replace 7 parseNestedParens() calls in external library/language/option parsing with structured parsing. Lines 400, 457, 514, 520, 578 (library/language FROM/SET/ADD clause file specs with CONTENT/FILENAME/PATH sub-options), line 715 (FORMAT_OPTIONS parenthesized list), line 761 (SHARDED function syntax). Also replace string builder in CREATE EXTERNAL TABLE column parsing at lines 222-245 with structured column definition nodes.",
-      "rules": [
-        "parseExternalLibraryFromClause",
-        "parseExternalLanguageFromClause",
-        "parseExternalFormatOptionsStructured",
-        "parseExternalColumnDefsStructured"
-      ],
-      "depends_on": [
-        57,
-        65
-      ],
-      "tests": [
-        "external_library_from_structured",
-        "external_language_from_structured",
-        "external_format_options_structured",
-        "external_table_columns_structured"
-      ]
-    },
-    {
-      "id": 125,
-      "name": "availability_remaining_depth",
-      "file": "availability.go",
-      "status": "done",
-      "description": "Fix batch 115 gap: replace 2 parseNestedParens() calls at lines 483, 503 in parseParenthesizedAGOptions() with structured IP address tuple and key=value list parsing. Replace manual string concatenation for LISTENER/ADD LISTENER/REMOVE LISTENER/MODIFY LISTENER/RESTART LISTENER options at lines 268-346, 408-413 with structured AST nodes. Fix GRANT/DENY CREATE ANY DATABASE token skip at lines 380-390.",
-      "rules": [
-        "parseParenthesizedAGOptionsStructured",
-        "parseAGListenerOptionsStructured",
-        "parseAGGrantDenyCreateDatabase"
-      ],
-      "depends_on": [
-        115
-      ],
-      "tests": [
-        "ag_nested_parens_structured",
-        "ag_listener_string_structured",
-        "ag_grant_deny_database"
-      ]
-    },
-    {
-      "id": 126,
-      "name": "server_config_remaining_depth",
-      "file": "server.go",
-      "status": "done",
-      "description": "Fix batch 114 gap: replace consumeServerConfigOptions() generic token-to-String fallback at lines 689-727 (called from line 254) with structured option parsing per config type. Fix buffer pool extension non-identifier token skip at lines 483-519. Fix SUSPEND_FOR_SNAPSHOT_BACKUP database list string accumulation at lines 648-654 and unknown token skip at line 667.",
-      "rules": [
-        "parseServerConfigRemainingOptions",
-        "parseBufferPoolExtensionStructured",
-        "parseSuspendForSnapshotStructured"
-      ],
-      "depends_on": [
-        114
-      ],
-      "tests": [
-        "server_config_remaining_structured",
-        "buffer_pool_extension_structured",
-        "suspend_snapshot_structured"
-      ]
-    },
-    {
-      "id": 127,
-      "name": "select_query_hint_remaining_depth",
-      "file": "select.go",
-      "status": "done",
-      "description": "Fix batch 92/97 gap: replace strings.Builder in parseQueryHint() at lines 1268-1591 with structured QueryHint AST nodes (typed hint kind + typed parameters). Replace manual parenthesis depth tracking at lines 1522-1545 for TABLE HINT args with parseTableHint() reuse. Fix fallback expression parsing at lines 1565-1585 for unknown hints with proper error or structured unknown hint node.",
-      "rules": [
-        "parseQueryHintStructured"
-      ],
-      "depends_on": [
-        92,
-        97
-      ],
-      "tests": [
-        "query_hint_structured_recompile",
-        "query_hint_structured_optimize_for",
-        "query_hint_structured_table_hint",
-        "query_hint_structured_unknown"
-      ]
-    },
-    {
-      "id": 128,
-      "name": "security_keys_remaining_depth",
-      "file": "security_keys.go",
-      "status": "done",
-      "description": "Fix batch 98 gap: replace strings.Builder in parseSecurityKeyStmtColumn() at lines 353-376 with structured ADD/DROP VALUE AST nodes. Replace parseSecurityKeyOptions() string accumulation at lines 675-702 and unstructured for-loop at lines 645-753 with structured ENCRYPTION BY / DECRYPTION BY mechanism nodes reusing parseEncryptingMechanism().",
-      "rules": [
-        "parseSecurityKeyStmtColumnStructured",
-        "parseSecurityKeyOptionsRemaining"
-      ],
-      "depends_on": [
-        98
-      ],
-      "tests": [
-        "security_key_column_structured",
-        "security_key_options_remaining_structured"
-      ]
-    },
-    {
-      "id": 129,
-      "name": "fulltext_alter_depth",
-      "file": "fulltext.go",
-      "status": "done",
-      "description": "Fix batch 43 gap: replace strings.Builder action accumulation in parseAlterFulltextIndexStmt() at lines 165-178 with structured action type enum (ADD, DROP, SET, START/STOP, ENABLE/DISABLE, etc.). Fix batch 61 gap: replace unknown option skip in parseAlterSearchPropertyListStmt() WITH clause at lines 567-572 with structured property option parsing.",
-      "rules": [
-        "parseAlterFulltextIndexActionStructured",
-        "parseSearchPropertyListOptionStructured"
-      ],
-      "depends_on": [
-        43,
-        61
-      ],
-      "tests": [
-        "alter_fulltext_index_action_structured",
-        "search_property_list_option_structured"
-      ]
-    },
-    {
-      "id": 130,
-      "name": "security_misc_remaining_depth",
-      "file": "security_misc.go",
-      "status": "done",
-      "description": "Fix batch 62 gap: replace strings.Builder in parseSignatureCryptoItem() at lines 511-560 with structured CryptoItem AST node (mechanism type, name, optional password/signature). Fix token loop in parseAddSensitivityClassificationStmt() at lines 349-369 with structured label/information_type/rank option parsing.",
-      "rules": [
-        "parseSignatureCryptoItemStructured",
-        "parseSensitivityClassificationOptions"
-      ],
-      "depends_on": [
-        62
-      ],
-      "tests": [
-        "signature_crypto_item_structured",
-        "sensitivity_classification_options_structured"
-      ]
-    },
-    {
-      "id": 131,
-      "name": "utility_cetas_dbscoped_depth",
-      "file": "utility.go",
-      "status": "done",
-      "description": "Fix batch 112 gap: replace strings.Builder with manual depth tracking in parseCreateExternalTableAsSelectStmt() column parsing at lines 1077-1104 with structured column definition list. Fix batch 67 gap: replace string accumulation in parseAlterDatabaseScopedConfigStmt() at lines 622-679 with structured SET option = value nodes.",
-      "rules": [
-        "parseCETASColumnDefsStructured",
-        "parseAlterDbScopedConfigStructured"
-      ],
-      "depends_on": [
-        112,
-        67
-      ],
-      "tests": [
-        "cetas_column_defs_structured",
-        "alter_db_scoped_config_structured"
-      ]
-    },
-    {
-      "id": 132,
-      "name": "alter_database_unknown_depth",
-      "file": "alter_objects.go",
-      "status": "done",
-      "description": "Fix batch 117 gap: replace parseNestedParens() call at line 140 and mixed skip-loop at lines 137-146 in parseAlterDatabaseStmt() unknown action handler with structured parsing or explicit error for unsupported actions. Replace string concatenation in parseAlterDatabaseSubOptions() at lines 448-476 and parseAlterDatabaseTermination() at lines 498-508 with structured AST nodes.",
-      "rules": [
-        "parseAlterDatabaseUnknownActionStructured",
-        "parseAlterDatabaseSubOptionsStructured",
-        "parseAlterDatabaseTerminationStructured"
-      ],
-      "depends_on": [
-        117
-      ],
-      "tests": [
-        "alter_database_unknown_structured",
-        "alter_database_sub_options_structured",
-        "alter_database_termination_structured"
-      ]
-    },
-    {
-      "id": 133,
-      "name": "endpoint_remaining_depth",
-      "file": "endpoint.go",
-      "status": "done",
-      "description": "Fix batch 116 gap: replace parseNestedParens() call at line 299 in parseEndpointGenericProtocolOptions() with structured key=value pair parsing. Remove skipParenthesized() function (lines 602-620) and replace its usage. Fix generic p.advance() skips for unknown tokens at lines 212-213 in parseEndpointOptions() and line 490 in parseEndpointPayloadOptions().",
-      "rules": [
-        "parseEndpointGenericValueStructured",
-        "removeSkipParenthesized"
-      ],
-      "depends_on": [
-        116
-      ],
-      "tests": [
-        "endpoint_generic_value_structured",
-        "endpoint_no_skip_parens"
-      ]
-    },
-    {
-      "id": 134,
-      "name": "declare_set_isolation_depth",
-      "file": "declare_set.go",
-      "status": "done",
-      "description": "Fix batch 41 gap: replace strings.Builder in SET TRANSACTION ISOLATION LEVEL parsing at lines 173-180 with structured isolation level enum node (READ UNCOMMITTED, READ COMMITTED, REPEATABLE READ, SERIALIZABLE, SNAPSHOT) instead of raw string accumulation.",
-      "rules": [
-        "parseSetIsolationLevelStructured"
-      ],
-      "depends_on": [
-        41
-      ],
-      "tests": [
-        "set_isolation_level_structured"
-      ]
-    },
-    {
-      "id": 135,
-      "name": "misc_unknown_skip_depth",
-      "file": "create_table.go",
-      "status": "done",
-      "description": "Fix remaining shallow unknown-token-skip patterns across multiple files: create_table.go:280-281 (SYSTEM_VERSIONING sub-option value consumed without validation), alter_table.go:447-449 (ALTER COLUMN unknown option consumed as string), event.go:145 (event notification unknown token p.advance()), backup_restore.go:381 (unknown backup/restore option treated as flag).",
-      "rules": [
-        "parseSystemVersioningSubOptionStructured",
-        "parseAlterColumnOptionStructured",
-        "parseEventNotificationOptionStructured",
-        "parseBackupRestoreUnknownOptionStructured"
-      ],
-      "depends_on": [
-        8,
-        9,
-        56,
-        34
-      ],
-      "tests": [
-        "system_versioning_sub_option",
-        "alter_column_option_structured",
-        "event_notification_option_structured",
-        "backup_restore_unknown_option"
-      ]
-    },
-    {
-      "id": 136,
-      "name": "alter_authorization_entity_depth",
-      "file": "security_principals.go",
-      "status": "done",
-      "description": "Fix batch 53 gap: replace token accumulation loop in parseAlterAuthorizationStmt() at lines 593-609 with structured entity type parsing. BNF: ALTER AUTHORIZATION ON [ entity_type :: ] entity_name TO { principal_name | SCHEMA OWNER }. Entity types: OBJECT, SCHEMA, DATABASE, ASSEMBLY, ROLE, TYPE, XML SCHEMA COLLECTION, etc.",
-      "rules": [
-        "parseAlterAuthorizationEntityStructured"
-      ],
-      "depends_on": [
-        53
-      ],
-      "tests": [
-        "alter_authorization_entity_structured",
-        "alter_authorization_to_schema_owner"
-      ]
-    },
-    {
-      "id": 137,
-      "name": "ctas_synapse",
-      "file": "create_table.go",
-      "status": "done",
-      "description": "New: CREATE TABLE AS SELECT (CTAS) for Azure Synapse Analytics. BNF: CREATE TABLE table_name [ WITH ( DISTRIBUTION = { HASH(col) | ROUND_ROBIN | REPLICATE }, [ CLUSTERED COLUMNSTORE INDEX | CLUSTERED INDEX (col,...) | HEAP ] [, PARTITION (col RANGE ...)] ) ] AS select_stmt",
-      "rules": [
-        "parseCreateTableAsSelectStmt"
-      ],
-      "depends_on": [
-        8,
-        4
-      ],
-      "tests": [
-        "ctas_basic",
-        "ctas_with_distribution",
-        "ctas_with_partition"
-      ]
-    },
-    {
-      "id": 138,
-      "name": "audit_spec_actions_where_depth",
-      "file": "security_audit.go",
-      "status": "done",
-      "description": "Fix batch 96 gap: replace raw token string collection in WHERE clause predicate (line 440) with parsed expression using p.parseExpr(). Replace manual parenthesis depth tracking in ADD/DROP audit spec actions (lines 481-539) with structured AuditSpecAction AST nodes containing action type and group list instead of string concatenation.",
-      "rules": [
-        "parseAuditSpecWhereExpr",
-        "parseAuditSpecActionsStructured"
-      ],
-      "depends_on": [
-        96
-      ],
-      "tests": [
-        "audit_spec_where_expr",
-        "audit_spec_add_drop_structured"
-      ]
-    },
-    {
-      "id": 139,
-      "name": "event_notification_options_depth",
-      "file": "event.go",
-      "status": "done",
-      "description": "Fix batch 135 gap: replace nodes.String formatting in parseEventNotificationOptions() (lines 75-155) with structured EventNotificationOption AST nodes (scope type, event group list, target service/broker instance) instead of manual ON=SERVER/FOR=xxx/SERVICE=xxx string formatting.",
-      "rules": [
-        "parseEventNotificationOptionsStructured"
-      ],
-      "depends_on": [
-        56,
-        135
-      ],
-      "tests": [
-        "event_notification_structured_scope",
-        "event_notification_structured_events"
-      ]
-    },
-    {
-      "id": 140,
-      "name": "resource_governor_outer_depth",
-      "file": "resource_governor.go",
-      "status": "done",
-      "description": "Fix batch 102 gap: replace nodes.String key=value string concatenation in parseResourceGovernorOptions() outer loop (lines 351-390) with structured ResourceGovernorOption AST nodes. The WITH clause inner parsing is structured but outer USING pool_name, RECONFIGURE, DISABLE, qualified name options still use string nodes.",
-      "rules": [
-        "parseResourceGovernorOuterOptionsStructured"
-      ],
-      "depends_on": [
-        102
-      ],
-      "tests": [
-        "resource_governor_outer_options_structured"
-      ]
-    },
-    {
-      "id": 141,
-      "name": "external_cleanup_depth",
-      "file": "external.go",
-      "status": "done",
-      "description": "Fix batch 124 gap: remove dead parseNestedParens() function (lines 971-1020, defined but never called). Replace nodes.String formatting in parseExternalSetOptions() (lines 665-690) with structured ExternalOption AST nodes (key, value) instead of key=value string concatenation.",
-      "rules": [
-        "removeDeadParseNestedParens",
-        "parseExternalSetOptionsStructured"
-      ],
-      "depends_on": [
-        124
-      ],
-      "tests": [
-        "external_set_options_structured"
-      ]
-    },
-    {
-      "id": 142,
-      "name": "availability_skip_cleanup_depth",
-      "file": "availability.go",
-      "status": "done",
-      "description": "Fix batch 125 gap: replace p.advance() // skip unexpected tokens at lines 433, 502, 567 with structured error handling or explicit unknown-token error recovery. These default-case token skips silently consume malformed input without raising parse errors.",
-      "rules": [
-        "parseAvailabilityGroupOptionDefault"
-      ],
-      "depends_on": [
-        125
-      ],
-      "tests": [
-        "availability_group_unexpected_token_error"
-      ]
-    },
-    {
-      "id": 143,
-      "name": "create_remote_table_as_select",
-      "file": "utility.go",
-      "status": "done",
-      "description": "New: CREATE REMOTE TABLE AS SELECT (CRTAS) for Azure Synapse Analytics / Analytics Platform System. BNF: CREATE REMOTE TABLE [ database_name . [ schema_name ] . | schema_name . ] table_name AT ( 'connection_string' ) [ WITH ( option = value [,...n] ) ] AS select_stmt",
-      "rules": [
-        "parseCreateRemoteTableAsSelectStmt"
-      ],
-      "depends_on": [
-        4,
-        112
-      ],
-      "tests": [
-        "crtas_basic",
-        "crtas_with_options"
-      ]
-    },
-    {
-      "id": 144,
-      "name": "copy_into_column_depth",
-      "file": "utility.go",
-      "status": "done",
-      "description": "Fix batch 111 gap: replace string concatenation and p.advance() // skip unexpected in COPY INTO column list parsing (lines 840-888) with structured CopyIntoColumn AST nodes containing column name, optional DEFAULT value, and optional field_number. The skip unexpected at line 877 silently drops malformed tokens instead of raising a parse error.",
-      "rules": [
-        "parseCopyIntoColumnListStructured"
-      ],
-      "depends_on": [
-        111
-      ],
-      "tests": [
-        "copy_into_column_structured",
-        "copy_into_column_default",
-        "copy_into_column_error"
-      ]
-    },
-    {
-      "id": 145,
-      "name": "receive_column_list_depth",
-      "file": "service_broker.go",
-      "status": "done",
-      "description": "Fix batch 72 gap: replace string concatenation for RECEIVE column list (lines 450-496) with structured ReceiveColumn AST nodes containing expression, optional alias, and optional INTO. Currently builds COLUMNS=col1 AS alias,col2 as a flat string, losing AST structure. Also replace FROM=, INTO=, TOP= string formatting with typed ReceiveOption nodes.",
-      "rules": [
-        "parseReceiveColumnListStructured"
-      ],
-      "depends_on": [
-        72
-      ],
-      "tests": [
-        "receive_column_structured",
-        "receive_column_alias_structured"
-      ]
-    },
-    {
-      "id": 146,
-      "name": "kill_query_notification",
-      "file": "utility.go",
-      "status": "done",
-      "description": "New: KILL QUERY NOTIFICATION SUBSCRIPTION statement. BNF: KILL QUERY NOTIFICATION SUBSCRIPTION { ALL | subscription_id }. Current parseKillStmt() uses parseExpr() for session_id which misparses multi-keyword variants. Add explicit dispatch for QUERY NOTIFICATION SUBSCRIPTION before falling through to parseExpr().",
-      "rules": [
-        "parseKillQueryNotificationStmt"
-      ],
-      "depends_on": [
-        47
-      ],
-      "tests": [
-        "kill_query_notification_all",
-        "kill_query_notification_id"
-      ]
-    },
-    {
-      "id": 147,
-      "name": "size_value_structured",
-      "file": "create_database.go",
-      "status": "done",
-      "description": "Fix batch 76 gap: replace parseSizeValue() strings.Builder (line 312) with structured SizeValue AST node containing numeric value and unit (KB/MB/GB/TB/%). Currently returns plain string like '10MB'. This is the last non-lexer strings.Builder usage in the parser.",
-      "rules": [
-        "parseSizeValueStructured"
-      ],
-      "depends_on": [
-        76
-      ],
-      "tests": [
-        "size_value_mb",
-        "size_value_percent",
-        "size_value_unlimited"
-      ]
-    },
-    {
-      "id": 148,
-      "name": "service_broker_options_strings_depth",
-      "file": "service_broker.go",
-      "status": "done",
-      "description": "Fix batch 72/100 gap: replace 41 remaining nodes.String key=value concatenations in service_broker.go with typed AST nodes. Major areas: BEGIN CONVERSATION options (FROM SERVICE=, TO SERVICE=, ON CONTRACT=, RELATED_CONVERSATION=, LIFETIME=, ENCRYPTION= at lines 563-636), END CONVERSATION options (ERROR=, DESCRIPTION=, CLEANUP at lines 699-715), CREATE QUEUE options (STATUS=, RETENTION=, POISON_MESSAGE_HANDLING=, ACTIVATION: at lines 189-327), ALTER route/binding/service WITH options (lines 786-1018).",
-      "rules": [
-        "parseServiceBrokerOptionsStructuredFinal"
-      ],
-      "depends_on": [
-        72,
-        100,
-        145
-      ],
-      "tests": [
-        "begin_conversation_opts_final",
-        "end_conversation_opts_final",
-        "create_queue_opts_final"
-      ]
-    },
-    {
-      "id": 149,
-      "name": "availability_options_strings_depth",
-      "file": "availability.go",
-      "status": "done",
-      "description": "Fix batch 125/142 gap: replace 40 remaining nodes.String concatenations in availability.go with typed AST nodes. Major areas: ALTER AG action types (WITH, FOR DATABASE, REPLICA ON, ADD/REMOVE/MODIFY DATABASE/REPLICA/LISTENER at lines 239-399), key=value option pairs (lines 424-429), IP address tuple strings (lines 497-504), nested option key=value pairs (lines 523-540). Many were partially structured in batches 115/125/142 but still emit nodes.String.",
-      "rules": [
-        "parseAvailabilityGroupOptionsStructuredFinal"
-      ],
-      "depends_on": [
-        115,
-        125,
-        142
-      ],
-      "tests": [
-        "ag_alter_actions_final",
-        "ag_key_value_opts_final",
-        "ag_ip_tuples_final"
-      ]
-    },
-    {
-      "id": 150,
-      "name": "server_config_strings_depth",
-      "file": "server.go",
-      "status": "done",
-      "description": "Fix batch 126 gap: replace 32 remaining nodes.String key=value concatenations in server.go with typed AST nodes. Major areas: CREATE/ALTER SERVER ROLE options (AUTHORIZATION=, ADD MEMBER=, DROP MEMBER= at lines 35-100), ALTER SERVER CONFIGURATION options (key=AUTO, key=val, ON/OFF, FILENAME=, SIZE=, CONTEXT= at lines 296-664). These were partially structured in batches 114/126 but still use nodes.String for option values.",
-      "rules": [
-        "parseServerOptionsStructuredFinal"
-      ],
-      "depends_on": [
-        60,
-        114,
-        126
-      ],
-      "tests": [
-        "server_role_opts_final",
-        "server_config_opts_final"
-      ]
-    },
-    {
-      "id": 151,
-      "name": "endpoint_options_strings_depth",
-      "file": "endpoint.go",
-      "status": "done",
-      "description": "Fix batch 133 gap: replace 28 remaining nodes.String key=value concatenations in endpoint.go with typed AST nodes. Major areas: SERVICE_BROKER payload options (MESSAGE_FORWARD_SIZE=, ROLE= at lines 514-547), DATABASE_MIRRORING payload options (key=value at lines 543-547). These options were partially structured in batches 99/107/116/133 but payload-specific options still use nodes.String.",
-      "rules": [
-        "parseEndpointPayloadOptionsStructuredFinal"
-      ],
-      "depends_on": [
-        99,
-        133
-      ],
-      "tests": [
-        "endpoint_service_broker_payload_final",
-        "endpoint_mirroring_payload_final"
-      ]
-    },
-    {
-      "id": 152,
-      "name": "alter_table_column_options_strings_depth",
-      "file": "alter_table.go",
-      "status": "done",
-      "description": "Fix batch 70 gap: replace 16 remaining nodes.String values in alter_table.go with typed AST nodes. ALTER COLUMN extended options (ADD/DROP ROWGUIDCOL, PERSISTED, SPARSE, HIDDEN, MASKED, NOT FOR REPLICATION at lines 406-448) use nodes.String for action type and option name instead of typed AlterColumnOption enum nodes.",
-      "rules": [
-        "parseAlterColumnOptionsTyped"
-      ],
-      "depends_on": [
-        70,
-        82
-      ],
-      "tests": [
-        "alter_column_options_typed",
-        "alter_column_not_for_replication_typed"
-      ]
-    },
-    {
-      "id": 153,
-      "name": "trigger_event_options_strings_depth",
-      "file": "create_trigger.go",
-      "status": "done",
-      "description": "Fix batch 89 gap: replace 9 remaining nodes.String values in create_trigger.go with typed AST nodes. Trigger event list (INSERT, UPDATE, DELETE, LOGON at lines 106-118) uses nodes.String instead of typed TriggerEvent enum. WITH options (ENCRYPTION, EXECUTE AS, NATIVE_COMPILATION, SCHEMABINDING at lines 184-205) use nodes.String instead of typed TriggerOption nodes.",
-      "rules": [
-        "parseTriggerEventsTyped",
-        "parseTriggerOptionsTyped"
-      ],
-      "depends_on": [
-        24,
-        89
-      ],
-      "tests": [
-        "trigger_events_typed",
-        "trigger_options_typed"
-      ]
-    },
-    {
-      "id": 154,
-      "name": "assembly_actions_strings_depth",
-      "file": "assembly.go",
-      "status": "pending",
-      "description": "Fix batch 45 gap: replace 5 remaining nodes.String values in assembly.go with typed AST nodes. ALTER ASSEMBLY actions (FROM=path, permission_set, DROP FILE, ADD FILE at lines 110-155) use nodes.String for action type and value instead of typed AssemblyAction nodes. CREATE ASSEMBLY file list (line 47) uses nodes.String for file paths.",
-      "rules": [
-        "parseAssemblyActionsTyped"
-      ],
-      "depends_on": [
-        45
-      ],
-      "tests": [
-        "assembly_actions_typed",
-        "assembly_files_typed"
-      ]
+        "bulk_insert_stmt",
+        "drop_stmt",
+        "truncate_table_stmt",
+        "update_statistics_stmt",
+        "openrowset_expr",
+        "openquery_expr",
+        "openjson_expr",
+        "openxml_expr",
+        "opendatasource_expr",
+        "pivot_clause",
+        "unpivot_clause"
+      ],
+      "depends_on": [154],
+      "tests": [
+        "utility_admin_drop_bnf_review"
+      ],
+      "bnf_files": ["dbcc-transact-sql.bnf", "checkpoint-transact-sql.bnf", "reconfigure-transact-sql.bnf", "shutdown-transact-sql.bnf", "kill-transact-sql.bnf", "bulk-insert-transact-sql.bnf", "drop-table-transact-sql.bnf", "drop-index-transact-sql.bnf", "drop-view-transact-sql.bnf", "truncate-table-transact-sql.bnf", "update-statistics-transact-sql.bnf", "openrowset-transact-sql.bnf", "openquery-transact-sql.bnf", "openjson-transact-sql.bnf", "openxml-transact-sql.bnf", "opendatasource-transact-sql.bnf"],
+      "review_files": ["dbcc.go", "utility.go", "drop.go", "rowset_functions.go", "alter_objects.go"]
     }
   ],
-  "audit_round": 18
+  "stats": {
+    "total": 174,
+    "done": 154,
+    "pending": 20,
+    "failed": 0,
+    "in_progress": 0
+  }
 }

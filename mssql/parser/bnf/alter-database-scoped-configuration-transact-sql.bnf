@@ -1,0 +1,85 @@
+-- Statement: ALTER DATABASE SCOPED CONFIGURATION
+-- Grammar rule: alterDatabaseScopedConfigurationStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-scoped-configuration-transact-sql
+
+-- From TSql170.g:
+
+alterDatabaseScopedConfigurationStatement:
+    SCOPED CONFIGURATION
+    ( FOR SECONDARY )?
+    ( alterDatabaseScopedConfigSet
+    | alterDatabaseScopedConfigClear
+    )
+    ;
+
+alterDatabaseScopedConfigClear:
+    CLEAR databaseConfigurationClearOption
+    ;
+
+databaseConfigurationClearOption:
+    Identifier   -- e.g., PROCEDURE_CACHE
+    ( binary )?  -- optional plan_handle
+    ;
+
+alterDatabaseScopedConfigSet:
+    SET
+    ( alterDatabaseScopedMaxDopOption
+    | alterDatabaseScopedOnOffPrimaryOption   -- QUERY_OPTIMIZER_HOTFIXES, PARAMETER_SNIFFING, LEGACY_CARDINALITY_ESTIMATION
+    | alterDatabaseScopedGenericOption
+    )
+    ;
+
+-- From Microsoft docs:
+
+ALTER DATABASE SCOPED CONFIGURATION
+{
+    { [ FOR SECONDARY ] SET <set_options> }
+}
+| CLEAR PROCEDURE_CACHE [plan_handle]
+| SET < set_options >
+[;]
+
+< set_options > ::=
+{
+      ACCELERATED_PLAN_FORCING = { ON | OFF }
+    | ALLOW_STALE_VECTOR_INDEX = { ON | OFF }
+    | ASYNC_STATS_UPDATE_WAIT_AT_LOW_PRIORITY = { ON | OFF }
+    | BATCH_MODE_ADAPTIVE_JOINS = { ON | OFF }
+    | BATCH_MODE_MEMORY_GRANT_FEEDBACK = { ON | OFF }
+    | BATCH_MODE_ON_ROWSTORE = { ON | OFF }
+    | CE_FEEDBACK = { ON | OFF }
+    | DEFERRED_COMPILATION_TV = { ON | OFF }
+    | DOP_FEEDBACK = { ON | OFF }
+    | ELEVATE_ONLINE = { OFF | WHEN_SUPPORTED | FAIL_UNSUPPORTED }
+    | ELEVATE_RESUMABLE = { OFF | WHEN_SUPPORTED | FAIL_UNSUPPORTED }
+    | EXEC_QUERY_STATS_FOR_SCALAR_FUNCTIONS = { ON | OFF }
+    | FORCE_SHOWPLAN_RUNTIME_PARAMETER_COLLECTION = { ON | OFF }
+    | FULLTEXT_INDEX_VERSION = <version>
+    | IDENTITY_CACHE = { ON | OFF }
+    | INTERLEAVED_EXECUTION_TVF = { ON | OFF }
+    | ISOLATE_SECURITY_POLICY_CARDINALITY  = { ON | OFF }
+    | GLOBAL_TEMPORARY_TABLE_AUTO_DROP = { ON | OFF }
+    | LAST_QUERY_PLAN_STATS = { ON | OFF }
+    | LEDGER_DIGEST_STORAGE_ENDPOINT = { <endpoint URL string> | OFF }
+    | LEGACY_CARDINALITY_ESTIMATION = { ON | OFF | PRIMARY }
+    | LIGHTWEIGHT_QUERY_PROFILING = { ON | OFF }
+    | MAXDOP = { <value> | PRIMARY }
+    | MEMORY_GRANT_FEEDBACK_PERCENTILE_GRANT = { ON | OFF }
+    | MEMORY_GRANT_FEEDBACK_PERSISTENCE = { ON | OFF }
+    | OPTIMIZE_FOR_AD_HOC_WORKLOADS = { ON | OFF }
+    | OPTIMIZED_PLAN_FORCING = { ON | OFF }
+    | OPTIMIZED_SP_EXECUTESQL = { ON | OFF }
+    | OPTIONAL_PARAMETER_OPTIMIZATION = { ON | OFF }
+    | PARAMETER_SENSITIVE_PLAN_OPTIMIZATION = { ON | OFF }
+    | PARAMETER_SNIFFING = { ON | OFF | PRIMARY }
+    | PAUSED_RESUMABLE_INDEX_ABORT_DURATION_MINUTES = <time>
+    | PREVIEW_FEATURES = { ON | OFF }
+    | QUERY_OPTIMIZER_HOTFIXES = { ON | OFF | PRIMARY }
+    | READABLE_SECONDARY_TEMPORARY_STATS_AUTO_CREATE = { ON | OFF | PRIMARY }
+    | READABLE_SECONDARY_TEMPORARY_STATS_AUTO_UPDATE = { ON | OFF | PRIMARY }
+    | ROW_MODE_MEMORY_GRANT_FEEDBACK = { ON | OFF }
+    | TSQL_SCALAR_UDF_INLINING = { ON | OFF }
+    | VERBOSE_TRUNCATION_WARNINGS = { ON | OFF }
+    | XTP_PROCEDURE_EXECUTION_STATISTICS = { ON | OFF }
+    | XTP_QUERY_EXECUTION_STATISTICS = { ON | OFF }
+}

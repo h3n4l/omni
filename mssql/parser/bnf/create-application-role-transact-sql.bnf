@@ -1,0 +1,29 @@
+-- Statement: CREATE APPLICATION ROLE
+-- Grammar rule: createApplicationRoleStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-application-role-transact-sql
+
+-- From TSql170.g:
+createApplicationRoleStatement:
+    applicationRoleStatement[vResult, true]
+    ;
+
+applicationRoleStatement[ApplicationRoleStatement vParent, bool defaultSchemaAndPasswordOnly]:
+    tApplication:Identifier tRole:Identifier vIdentifier=identifier
+    With vApplicationRoleOption=applicationRoleOption[defaultSchemaAndPasswordOnly]
+    (
+        Comma vApplicationRoleOption=applicationRoleOption[defaultSchemaAndPasswordOnly]
+    )*
+    ;
+
+applicationRoleOption[bool defaultSchemaAndPasswordOnly]:
+    // PASSWORD = 'password'
+    {NextTokenMatches(CodeGenerationSupporter.Password)}?
+    Identifier EqualsSign vLiteral=stringLiteral
+    |
+    // DEFAULT_SCHEMA = schema_name | NAME = new_name
+    tOption:Identifier EqualsSign vIdentifier=identifier
+    ;
+
+-- From Microsoft docs:
+CREATE APPLICATION ROLE application_role_name
+    WITH PASSWORD = 'password' [ , DEFAULT_SCHEMA = schema_name ]

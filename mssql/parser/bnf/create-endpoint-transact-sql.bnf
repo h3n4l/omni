@@ -1,0 +1,115 @@
+-- Statement: CREATE ENDPOINT
+-- Grammar rule: createEndpointStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-endpoint-transact-sql
+
+-- From TSql170.g:
+createEndpointStatement
+    : tEndpoint:Identifier vIdentifier=identifier
+        authorizationOpt[vResult]
+        (endpointOptions[vResult])? protocolInfo[vResult] payloadInfo[vResult]
+    ;
+
+endpointOptions [AlterCreateEndpointStatementBase vParent]
+    : endpointOption[vParent] (Comma endpointOption[vParent])*
+    ;
+
+endpointOption [AlterCreateEndpointStatementBase vParent]
+    : endpointState[vParent]       -- STATE = { STARTED | STOPPED | DISABLED }
+    | endpointAffinity[vParent]    -- AFFINITY = { NONE | ADMIN | integer }
+    ;
+
+protocolInfo [AlterCreateEndpointStatementBase vParent]
+    : As tProtocol:Identifier       -- TCP | HTTP
+        LeftParenthesis
+        protocolOptionsItem (Comma protocolOptionsItem)*
+        RightParenthesis
+    ;
+
+protocolOptionsItem
+    : listenerIpProtocolOption      -- LISTENER_IP = ...
+    | listenerPortProtocolOption    -- LISTENER_PORT = integer
+    | pathProtocolOption            -- PATH = string
+    | siteProtocolOption            -- SITE = string
+    | clearPortProtocolOption       -- CLEAR_PORT = integer
+    | sslPortProtocolOption         -- SSL_PORT = integer
+    | authenticationProtocolOption  -- AUTHENTICATION = (...)
+    | portsProtocolOption           -- PORTS = (...)
+    | authenticationRealmProtocolOption  -- AUTH_REALM = string
+    | defaultLogonDomainProtocolOption  -- DEFAULT_LOGON_DOMAIN = string
+    | compressionProtocolOption    -- COMPRESSION = { ENABLED | DISABLED }
+    ;
+
+payloadInfo [AlterCreateEndpointStatementBase vParent]
+    : For tEndpointType:Identifier  -- TSQL | SERVICE_BROKER | DATABASE_MIRRORING | SOAP
+        LeftParenthesis
+        (payloadOption (Comma payloadOption)*)?
+        RightParenthesis
+    ;
+
+payloadOption
+    : soapMethod                    -- ADD WEBMETHOD ...
+    | batchesPayloadOption          -- BATCHES = { ENABLED | DISABLED }
+    | wsdlPayloadOption             -- WSDL = { NONE | DEFAULT | string }
+    | sessionsPayloadOption         -- SESSIONS = { ENABLED | DISABLED }
+    | loginTypePayloadOption        -- LOGIN_TYPE = { WINDOWS | MIXED }
+    | sessionTimeoutPayloadOption   -- SESSION_TIMEOUT = integer | NEVER
+    | databasePayloadOption         -- DATABASE = identifier | DEFAULT
+    | namespacePayloadOption        -- NAMESPACE = string | DEFAULT
+    | schemaPayloadOption           -- SCHEMA = { NONE | STANDARD | DEFAULT }
+    | characterSetPayloadOption     -- CHARACTER_SET = { SQL | XML }
+    | headerLimitPayloadOption      -- HEADER_LIMIT = integer
+    | authenticationPayloadOption   -- AUTHENTICATION = (...)
+    | encryptionPayloadOption       -- ENCRYPTION = { DISABLED | SUPPORTED | REQUIRED } [ ALGORITHM {...} ]
+    | messageForwardingPayloadOption -- MESSAGE_FORWARDING = { ENABLED | DISABLED }
+    | messageForwardSizePayloadOption -- MESSAGE_FORWARD_SIZE = integer
+    | rolePayloadOption             -- ROLE = { WITNESS | PARTNER | ALL }
+    ;
+
+-- From Microsoft docs:
+CREATE ENDPOINT endPointName [ AUTHORIZATION login ]
+[ STATE = { STARTED | STOPPED | DISABLED } ]
+AS { TCP } (
+   <protocol_specific_arguments>
+        )
+FOR { TSQL | SERVICE_BROKER | DATABASE_MIRRORING } (
+   <language_specific_arguments>
+        )
+
+<AS TCP_protocol_specific_arguments> ::=
+AS TCP (
+  LISTENER_PORT = listenerPort
+  [ [ , ] LISTENER_IP = ALL | ( xx.xx.xx.xx IPv4 address ) | ( '__:__1' IPv6 address ) ]
+)
+
+<FOR TSQL_language_specific_arguments> ::=
+FOR TSQL (
+   [ ENCRYPTION = { NEGOTIATED | STRICT } ]
+)
+
+<FOR SERVICE_BROKER_language_specific_arguments> ::=
+FOR SERVICE_BROKER (
+   [ AUTHENTICATION = {
+            WINDOWS [ { NTLM | KERBEROS | NEGOTIATE } ]
+      | CERTIFICATE certificate_name
+      | WINDOWS [ { NTLM | KERBEROS | NEGOTIATE } ] CERTIFICATE certificate_name
+      | CERTIFICATE certificate_name WINDOWS [ { NTLM | KERBEROS | NEGOTIATE } ]
+    } ]
+   [ [ , ] ENCRYPTION = { DISABLED | { { SUPPORTED | REQUIRED }
+       [ ALGORITHM { AES | RC4 | AES RC4 | RC4 AES } ] }
+   ]
+   [ [ , ] MESSAGE_FORWARDING = { ENABLED | DISABLED } ]
+   [ [ , ] MESSAGE_FORWARD_SIZE = forward_size ]
+)
+
+<FOR DATABASE_MIRRORING_language_specific_arguments> ::=
+FOR DATABASE_MIRRORING (
+   [ AUTHENTICATION = {
+            WINDOWS [ { NTLM | KERBEROS | NEGOTIATE } ]
+      | CERTIFICATE certificate_name
+      | WINDOWS [ { NTLM | KERBEROS | NEGOTIATE } ] CERTIFICATE certificate_name
+      | CERTIFICATE certificate_name WINDOWS [ { NTLM | KERBEROS | NEGOTIATE } ]
+   [ [ [ , ] ] ENCRYPTION = { DISABLED | { { SUPPORTED | REQUIRED }
+       [ ALGORITHM { AES | RC4 | AES RC4 | RC4 AES } ] }
+    ]
+   [ , ] ROLE = { WITNESS | PARTNER | ALL }
+)

@@ -1,0 +1,59 @@
+-- Statement: ALTER WORKLOAD GROUP
+-- Grammar rule: alterWorkloadGroupStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-workload-group-transact-sql
+
+-- From TSql170.g:
+alterWorkloadGroupStatement:
+    workloadGroupStatementBody[vResult]
+    ;
+
+workloadGroupStatementBody[WorkloadGroupStatement vParent]:
+    tWorkload:Identifier Group identifier  // WORKLOAD GROUP group_name
+    (
+        options {greedy = true; } :
+        With LeftParenthesis workloadGroupParameter
+        (Comma workloadGroupParameter)*
+        RightParenthesis
+    )?
+    (
+        {NextTokenMatches(CodeGenerationSupporter.Using)}?
+        tUsing:Identifier workloadGroupUsingOption  // USING
+        (Comma workloadGroupUsingOption)*
+    )?
+    ;
+
+workloadGroupUsingOption[WorkloadGroupStatement vParent]:
+        {NextTokenMatches(CodeGenerationSupporter.External)}?
+        External identifier  // EXTERNAL pool_name
+    |
+        identifier  // pool_name
+    ;
+
+workloadGroupParameter:
+        tParameter:Identifier EqualsSign
+        (
+            tImpValue:Identifier  // IMPORTANCE = { LOW | MEDIUM | HIGH }
+        |
+            integerOrRealOrNumeric
+            // REQUEST_MAX_MEMORY_GRANT_PERCENT | REQUEST_MAX_CPU_TIME_SEC
+            // | REQUEST_MEMORY_GRANT_TIMEOUT_SEC | MAX_DOP
+            // | GROUP_MAX_REQUESTS | GROUP_MIN_MEMORY_PERCENT
+            // | MIN_PERCENTAGE_RESOURCE | CAP_PERCENTAGE_RESOURCE
+            // | GROUP_MAX_TEMPDB_DATA_MB | GROUP_MAX_TEMPDB_DATA_PERCENT
+        )
+    ;
+
+-- From Microsoft docs:
+-- ALTER WORKLOAD GROUP { group_name | [ default ] }
+-- [ WITH
+--     ( [ IMPORTANCE = { LOW | MEDIUM | HIGH } ]
+--       [ [ , ] REQUEST_MAX_MEMORY_GRANT_PERCENT = value ]
+--       [ [ , ] REQUEST_MAX_CPU_TIME_SEC = value ]
+--       [ [ , ] REQUEST_MEMORY_GRANT_TIMEOUT_SEC = value ]
+--       [ [ , ] MAX_DOP = value ]
+--       [ [ , ] GROUP_MAX_REQUESTS = value ]
+--       [ [ , ] GROUP_MAX_TEMPDB_DATA_MB = value ]
+--       [ [ , ] GROUP_MAX_TEMPDB_DATA_PERCENT = value ] )
+-- ]
+-- [ USING { pool_name | [default] } ]
+-- [ ; ]

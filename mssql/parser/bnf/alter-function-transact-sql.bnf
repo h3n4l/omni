@@ -1,0 +1,140 @@
+-- Statement: ALTER FUNCTION
+-- Grammar rule: alterFunctionStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-function-transact-sql
+
+-- From TSql170.g:
+
+alterFunctionStatement:
+    Alter functionStatementBody
+    ;
+
+functionStatementBody:
+    Function schemaObjectThreePartName
+        LeftParenthesis (functionParameterList)? RightParenthesis
+        Identifier /* RETURNS */
+        functionReturnTypeAndBody
+    ;
+
+functionParameterList:
+    functionParameter (Comma functionParameter)*
+    ;
+
+functionParameter:
+    identifierVariable (As)?
+        scalarProcedureParameter
+    ;
+
+functionReturnTypeAndBody:
+      -- Scalar functions or CLR function with scalar return type
+      scalarDataType
+        (functionAttributes)? (As)?
+        (
+            beginEndBlockStatement       -- T-SQL scalar function body
+        |   methodSpecifier              -- CLR scalar function
+        )
+    | -- Inline table-valued functions
+      Table (functionAttributesNoExecuteAs)? (As)?
+        Return functionReturnClauseRelational
+    | -- Multistatement table-valued functions
+      declareTableBody
+        (functionAttributes)? (As)?
+        beginEndBlockStatement
+    | -- CLR table-valued functions
+      Table declareTableBodyMain
+        (functionAttributes)?
+        (clrTableValuedFunctionOrderHint)?
+        (As)? methodSpecifier
+    ;
+
+functionAttributes:
+    With functionAttribute (Comma functionAttribute)*
+    ;
+
+functionAttribute:
+      functionAttributeNoExecuteAs
+    | functionExecuteAsOption
+    ;
+
+functionAttributeNoExecuteAs:
+      Identifier   -- ENCRYPTION, SCHEMABINDING, NATIVE_COMPILATION, etc.
+    | Identifier /* RETURNS */ Null On Null Identifier /* INPUT */
+    | Identifier /* CALLED */ On Null Identifier /* INPUT */
+    | inlineFunctionOption   -- INLINE = ON | OFF
+    ;
+
+functionExecuteAsOption:
+    executeAsClause
+    ;
+
+inlineFunctionOption:
+    Identifier /* INLINE */ EqualsSign ( On | Off )
+    ;
+
+-- From Microsoft docs:
+
+-- Scalar Function:
+ALTER FUNCTION [ schema_name. ] function_name
+( [ { @parameter_name [ AS ][ type_schema_name. ] parameter_data_type
+    [ = default ] }
+    [ ,...n ]
+  ]
+)
+RETURNS return_data_type
+    [ WITH <function_option> [ ,...n ] ]
+    [ AS ]
+    BEGIN
+        function_body
+        RETURN scalar_expression
+    END
+[ ; ]
+
+-- Inline Table-Valued Function:
+ALTER FUNCTION [ schema_name. ] function_name
+( [ { @parameter_name [ AS ] [ type_schema_name. ] parameter_data_type
+    [ = default ] }
+    [ ,...n ]
+  ]
+)
+RETURNS TABLE
+    [ WITH <function_option> [ ,...n ] ]
+    [ AS ]
+    RETURN [ ( ] select_stmt [ ) ]
+[ ; ]
+
+-- Multi-Statement Table-Valued Function:
+ALTER FUNCTION [ schema_name. ] function_name
+( [ { @parameter_name [ AS ] [ type_schema_name. ] parameter_data_type
+    [ = default ] }
+    [ ,...n ]
+  ]
+)
+RETURNS @return_variable TABLE <table_type_definition>
+    [ WITH <function_option> [ ,...n ] ]
+    [ AS ]
+    BEGIN
+        function_body
+        RETURN
+    END
+[ ; ]
+
+<function_option> ::=
+{
+    [ ENCRYPTION ]
+  | [ SCHEMABINDING ]
+  | [ RETURNS NULL ON NULL INPUT | CALLED ON NULL INPUT ]
+  | [ EXECUTE_AS_Clause ]
+}
+
+-- CLR Function:
+ALTER FUNCTION [ schema_name. ] function_name
+( { @parameter_name [AS] [ type_schema_name. ] parameter_data_type
+    [ = default ] }
+    [ ,...n ]
+)
+RETURNS { return_data_type | TABLE <clr_table_type_definition> }
+    [ WITH <clr_function_option> [ ,...n ] ]
+    [ AS ] EXTERNAL NAME <method_specifier>
+[ ; ]
+
+<method_specifier> ::=
+    assembly_name.class_name.method_name

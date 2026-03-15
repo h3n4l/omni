@@ -1,0 +1,21 @@
+-- Statement: SEND
+-- Grammar rule: sendStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/send-transact-sql
+
+-- From TSql170.g:
+sendStatement:
+    SEND ON CONVERSATION
+    (
+        LeftParenthesis expression (Comma expression)* RightParenthesis
+      | expression
+    )
+    (MESSAGE TYPE identifierOrVariable)?
+    (LeftParenthesis expression RightParenthesis)?
+    ;
+
+-- From Microsoft docs:
+SEND
+   ON CONVERSATION [(]conversation_handle [,.. @conversation_handle_n][)]
+   [ MESSAGE TYPE message_type_name ]
+   [ ( message_body_expression ) ]
+[ ; ]

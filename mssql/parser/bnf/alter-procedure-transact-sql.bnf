@@ -1,0 +1,61 @@
+-- Statement: ALTER PROCEDURE
+-- Grammar rule: alterProcedureStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-procedure-transact-sql
+
+-- From TSql170.g:
+alterProcedureStatement:
+    ALTER procedureStatementBody
+    ;
+
+procedureStatementBody:
+    (PROC | PROCEDURE)
+    procedureReference
+    (
+        LeftParenthesis procedureParameterList RightParenthesis
+      | (procedureParameterList)?
+    )
+    (procedureOptions)?
+    (FOR REPLICATION)?
+    AS
+    (
+        optSemicolons (statementList)?
+      | methodSpecifier optSemicolons
+    )
+    ;
+
+procedureReference:
+    schemaObjectFourPartName procNumOpt
+    ;
+
+procedureOptions:
+    WITH procedureOption (Comma procedureOption)*
+    ;
+
+procedureOption:
+      Identifier     -- ENCRYPTION | RECOMPILE | NATIVE_COMPILATION | SCHEMABINDING | INLINE
+    | executeAsClause
+    ;
+
+-- From Microsoft docs:
+ALTER { PROC | PROCEDURE } [schema_name.] procedure_name [ ; number ]
+    [ { @parameter_name [ type_schema_name. ] data_type }
+        [ VARYING ] [ = default ] [ OUT | OUTPUT ] [READONLY]
+    ] [ ,...n ]
+[ WITH <procedure_option> [ ,...n ] ]
+[ FOR REPLICATION ]
+AS { [ BEGIN ] sql_statement [;] [ ...n ] [ END ] }
+[;]
+
+<procedure_option> ::=
+    [ ENCRYPTION ]
+    [ RECOMPILE ]
+    [ EXECUTE AS Clause ]
+
+-- CLR syntax:
+ALTER { PROC | PROCEDURE } [schema_name.] procedure_name [ ; number ]
+    [ { @parameter_name [ type_schema_name. ] data_type }
+        [ = default ] [ OUT | OUTPUT ] [READONLY]
+    ] [ ,...n ]
+[ WITH EXECUTE AS Clause ]
+AS { EXTERNAL NAME assembly_name.class_name.method_name }
+[;]

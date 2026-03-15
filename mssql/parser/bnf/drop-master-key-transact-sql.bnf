@@ -1,0 +1,13 @@
+-- Statement: DROP MASTER KEY
+-- Grammar rule: dropMasterKeyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-master-key-transact-sql
+
+-- From TSql170.g:
+-- (dispatched from DROP statement after matching MASTER keyword)
+
+dropMasterKeyStatement:
+    Master Key
+    ;
+
+-- From Microsoft docs:
+DROP MASTER KEY

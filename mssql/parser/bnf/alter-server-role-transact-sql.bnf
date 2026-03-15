@@ -1,0 +1,37 @@
+-- Statement: ALTER SERVER ROLE
+-- Grammar rule: alterServerRoleStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-server-role-transact-sql
+
+-- From TSql170.g:
+alterServerRoleStatement:
+    -- Context: ALTER SERVER already consumed
+    ROLE vIdentifier = identifier
+    alterRoleAction
+    ;
+
+alterRoleAction:
+      addMemberAlterRoleAction
+    | dropMemberAlterRoleAction
+    | renameAlterRoleAction
+    ;
+
+addMemberAlterRoleAction:
+    ADD MEMBER identifier
+    ;
+
+dropMemberAlterRoleAction:
+    DROP MEMBER identifier
+    ;
+
+renameAlterRoleAction:
+    WITH NAME EqualsSign identifier
+    ;
+
+-- From Microsoft docs:
+-- ALTER SERVER ROLE server_role_name
+-- {
+--     [ ADD MEMBER server_principal ]
+--   | [ DROP MEMBER server_principal ]
+--   | [ WITH NAME = new_server_role_name ]
+-- }
+-- [ ; ]

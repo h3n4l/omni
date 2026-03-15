@@ -1,0 +1,17 @@
+-- Statement: DROP PARTITION FUNCTION
+-- Grammar rule: dropPartitionFunctionStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-partition-function-transact-sql
+
+-- From TSql170.g:
+-- Parent: DROP PARTITION dispatches to either dropPartitionFunctionStatement or dropPartitionSchemeStatement
+
+dropPartitionFunctionStatement:
+    /* DROP PARTITION */ FUNCTION identifier
+    ;
+
+-- Note: The rule is invoked after DROP PARTITION has already been consumed.
+-- 'Function' is a keyword token.
+-- identifier is the partition function name.
+
+-- From Microsoft docs:
+-- DROP PARTITION FUNCTION partition_function_name [ ; ]

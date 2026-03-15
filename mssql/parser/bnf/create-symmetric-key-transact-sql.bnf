@@ -1,0 +1,80 @@
+-- Statement: CREATE SYMMETRIC KEY
+-- Grammar rule: createSymmetricKeyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-symmetric-key-transact-sql
+
+-- From TSql170.g:
+createSymmetricKeyStatement:
+    SYMMETRIC KEY identifier
+    authorizationOpt
+    (
+        (WITH keySpecList encryptorListWithNoPassword)
+    |
+        (FROM PROVIDER identifier providerKeySourceOptionsOpt
+            (encryptorListWithNoPassword)?
+        )
+    )
+    ;
+
+keySpecList:
+    keySpec (Comma keySpec)*
+    ;
+
+keySpec:
+    keySourceKeySpec
+    | algorithmKeySpec
+    | identityValueKeySpec
+    ;
+
+keySourceKeySpec:
+    KEY_SOURCE EqualsSign stringLiteral
+    ;
+
+algorithmKeySpec:
+    ALGORITHM EqualsSign identifier  -- DES | TRIPLE_DES | etc.
+    ;
+
+identityValueKeySpec:
+    IDENTITY_VALUE EqualsSign stringLiteral
+    ;
+
+encryptorListWithNoPassword:
+    ENCRYPTION BY cryptoWithNoPasswordOrJustPassword
+    (Comma cryptoWithNoPasswordOrJustPassword)*
+    ;
+
+cryptoWithNoPasswordOrJustPassword:
+    certificateCrypto      -- CERTIFICATE identifier
+    | keyCrypto            -- SYMMETRIC KEY identifier | ASYMMETRIC KEY identifier
+    | passwordCrypto       -- PASSWORD EqualsSign stringLiteral
+    ;
+
+authorizationOpt:
+    (AUTHORIZATION identifier)?
+    ;
+
+-- From Microsoft docs:
+CREATE SYMMETRIC KEY key_name
+    [ AUTHORIZATION owner_name ]
+    [ FROM PROVIDER provider_name ]
+    WITH
+        [
+            <key_options> [ , ... n ]
+            | ENCRYPTION BY <encrypting_mechanism> [ , ... n ]
+        ]
+
+<key_options> ::=
+    KEY_SOURCE = 'pass_phrase'
+    | ALGORITHM = <algorithm>
+    | IDENTITY_VALUE = 'identity_phrase'
+    | PROVIDER_KEY_NAME = 'key_name_in_provider'
+    | CREATION_DISPOSITION = { CREATE_NEW | OPEN_EXISTING }
+
+<algorithm> ::=
+    DES | TRIPLE_DES | TRIPLE_DES_3KEY | RC2 | RC4 | RC4_128
+    | DESX | AES_128 | AES_192 | AES_256
+
+<encrypting_mechanism> ::=
+    CERTIFICATE certificate_name
+    | PASSWORD = 'password'
+    | SYMMETRIC KEY symmetric_key_name
+    | ASYMMETRIC KEY asym_key_name

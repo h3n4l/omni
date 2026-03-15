@@ -1,0 +1,16 @@
+-- Statement: DROP EXTERNAL FILE FORMAT
+-- Grammar rule: dropExternalFileFormatStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-external-file-format-transact-sql
+
+-- From TSql170.g:
+dropExternalFileFormatStatement:
+    -- Note: DROP EXTERNAL is parsed by the dispatcher; this rule handles FILE FORMAT <name>
+    File Format identifier
+    ;
+
+-- Sub-rules:
+-- (none beyond identifier)
+
+-- From Microsoft docs:
+DROP EXTERNAL FILE FORMAT external_file_format_name
+[;]

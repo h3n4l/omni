@@ -1,0 +1,98 @@
+-- Statement: CREATE LOGIN
+-- Grammar rule: createLoginStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-login-transact-sql
+
+-- From TSql170.g:
+createLoginStatement:
+    CREATE LOGIN identifier
+    (
+        passwordLoginSource                              -- WITH PASSWORD = ...
+    |   FROM
+        (
+            windowsLoginSource                           -- FROM WINDOWS
+        |   externalLoginSource                          -- FROM EXTERNAL PROVIDER
+        |   certificateLoginSource                       -- FROM CERTIFICATE
+        |   asymmetricKeyLoginSource                     -- FROM ASYMMETRIC KEY
+        )
+    )
+    ;
+
+passwordLoginSource:
+    WITH PASSWORD EqualsSign loginPassword               -- password or binary
+    ( HASHED | MUST_CHANGE )*                            -- optional flags
+    ( Comma createLoginParam )*                          -- additional options
+    ;
+
+loginPassword:
+    binary | stringLiteral
+    ;
+
+createLoginPasswordOption:
+    HASHED | MUST_CHANGE
+    ;
+
+createLoginParam:
+    identifier EqualsSign
+    (
+        onOffPrincipalOption                             -- ON | OFF options
+    |   binary                                           -- SID = 0x...
+    |   identifier                                       -- e.g. DEFAULT_DATABASE = name
+    )
+    ;
+
+onOffPrincipalOption:
+    optionOnOff                                          -- ON | OFF
+    ;
+
+windowsLoginSource:
+    WINDOWS
+    (
+        WITH createLoginParamWin
+        ( Comma createLoginParamWin )*
+    )?
+    ;
+
+createLoginParamWin:
+    identifier EqualsSign identifier                     -- DEFAULT_DATABASE = db, etc.
+    ;
+
+externalLoginSource:
+    EXTERNAL PROVIDER
+    (
+        WITH createLoginParamExt
+        ( Comma createLoginParamExt )*
+    )?
+    ;
+
+certificateLoginSource:
+    CERTIFICATE identifier                               -- cert name
+    ;
+
+asymmetricKeyLoginSource:
+    ASYMMETRIC KEY identifier                            -- key name
+    ;
+
+-- From Microsoft docs (SQL Server):
+CREATE LOGIN login_name { WITH <option_list1> | FROM <sources> }
+
+<option_list1> ::=
+    PASSWORD = { 'password' | hashed_password HASHED } [ MUST_CHANGE ]
+    [ , <option_list2> [ ,... ] ]
+
+<option_list2> ::=
+    SID = sid
+    | DEFAULT_DATABASE = database
+    | DEFAULT_LANGUAGE = language
+    | CHECK_EXPIRATION = { ON | OFF}
+    | CHECK_POLICY = { ON | OFF}
+    | CREDENTIAL = credential_name
+
+<sources> ::=
+    WINDOWS [ WITH <windows_options>[ ,... ] ]
+    | EXTERNAL PROVIDER [WITH OBJECT_ID = 'objectid']
+    | CERTIFICATE certname
+    | ASYMMETRIC KEY asym_key_name
+
+<windows_options> ::=
+    DEFAULT_DATABASE = database
+    | DEFAULT_LANGUAGE = language

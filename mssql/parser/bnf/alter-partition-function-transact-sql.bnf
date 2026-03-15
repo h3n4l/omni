@@ -1,0 +1,28 @@
+-- Statement: ALTER PARTITION FUNCTION
+-- Grammar rule: alterPartitionFunctionStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-partition-function-transact-sql
+
+-- From TSql170.g:
+alterPartitionFunctionStatement:
+    Function identifier LeftParenthesis RightParenthesis
+    (
+        Identifier /* SPLIT */
+      | Merge
+    )
+    (
+        Identifier /* RANGE */ LeftParenthesis expression RightParenthesis
+    )?
+    ;
+
+-- Note: reached via alterPartitionStatement:
+-- alterPartitionStatement:
+--     Identifier /* PARTITION */
+--     ( alterPartitionFunctionStatement | alterPartitionSchemeStatement )
+--     ;
+
+-- From Microsoft docs:
+ALTER PARTITION FUNCTION partition_function_name()
+{
+    SPLIT RANGE ( boundary_value )
+  | MERGE RANGE ( boundary_value )
+} [ ; ]

@@ -1,0 +1,30 @@
+-- Statement: CREATE AGGREGATE
+-- Grammar rule: createAggregateStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-aggregate-transact-sql
+
+-- From TSql170.g:
+createAggregateStatement:
+    Aggregate schemaObjectThreePartName
+    LeftParenthesis aggregateParameter ( Comma aggregateParameter )*
+    RightParenthesis
+    Returns scalarDataType
+    External assemblyName
+    ;
+
+aggregateParameter:
+    identifierVariable ( As )? scalarDataType
+    ( nullableConstraint )?
+    ;
+
+-- From Microsoft docs:
+CREATE AGGREGATE [ schema_name . ] aggregate_name
+        (@param_name <input_sqltype>
+        [ ,...n ] )
+RETURNS <return_sqltype>
+EXTERNAL NAME assembly_name [ .class_name ]
+
+<input_sqltype> ::=
+        system_scalar_type | { [ udt_schema_name. ] udt_type_name }
+
+<return_sqltype> ::=
+        system_scalar_type | { [ udt_schema_name. ] udt_type_name }

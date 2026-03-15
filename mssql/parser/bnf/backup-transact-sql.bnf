@@ -1,0 +1,148 @@
+-- Statement: BACKUP DATABASE / BACKUP LOG
+-- Grammar rule: backupStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/backup-transact-sql
+
+-- From TSql170.g:
+backupStatement:
+    backupMain
+    ( backupDevices )?
+    ( backupOptions )?
+    ;
+
+backupMain:
+    backupDatabase
+    | backupTransactionLog
+    ;
+
+backupDatabase:
+    Database identifierOrVariable
+    backupFileListOpt
+    ;
+
+backupTransactionLog:
+    Identifier /* LOG */ identifierOrVariable
+    ;
+
+backupFileListOpt:
+    ( backupRestoreFile ( Comma backupRestoreFile )* )?
+    ;
+
+backupRestoreFile:
+    File EqualsSign ( stringOrVariable | backupRestoreFileNameList )
+    | Identifier /* FILEGROUP | PAGE */ EqualsSign ( stringOrVariable | backupRestoreFileNameList )
+    | Identifier /* READ_WRITE_FILEGROUPS */
+    ;
+
+backupRestoreFileNameList:
+    LeftParenthesis stringOrVariable ( Comma stringOrVariable )* RightParenthesis
+    ;
+
+backupDevices:
+    To devList ( mirrorTo )*
+    ;
+
+mirrorTo:
+    Identifier /* MIRROR */ To devList
+    ;
+
+devList:
+    deviceInfo ( Comma deviceInfo )*
+    ;
+
+deviceInfo:
+    identifierOrVariable                                    -- logical device name
+    | Identifier /* DISK | TAPE | URL */ EqualsSign stringOrVariable  -- physical device
+    ;
+
+backupOptions:
+    With backupOption ( Comma backupOption )*
+    ;
+
+backupOption:
+    backupEncryptionOption
+    | Identifier                                            -- simple options (COPY_ONLY, DIFFERENTIAL, etc.)
+    | Identifier EqualsSign ( signedIntegerOrVariable | stringLiteral )  -- options with value
+    ;
+
+backupEncryptionOption:
+    Identifier /* ENCRYPTION */ LeftParenthesis
+        Identifier /* ALGORITHM */ EqualsSign Identifier /* algorithm kind */
+        Comma backupEncryptor
+    RightParenthesis
+    ;
+
+backupEncryptor:
+    dekEncryptorType EqualsSign identifier
+    ;
+
+-- From Microsoft docs:
+-- BACKUP DATABASE { database_name | @database_name_var }
+--   TO <backup_device> [ , ...n ]
+--   [ <MIRROR TO clause> ] [ next-mirror-to ]
+--   [ WITH { DIFFERENTIAL
+--            | <general_WITH_options> [ , ...n ] } ]
+-- [ ; ]
+--
+-- BACKUP DATABASE { database_name | @database_name_var }
+--  <file_or_filegroup> [ , ...n ]
+--   TO <backup_device> [ , ...n ]
+--   [ <MIRROR TO clause> ] [ next-mirror-to ]
+--   [ WITH { DIFFERENTIAL | <general_WITH_options> [ , ...n ] } ]
+-- [ ; ]
+--
+-- BACKUP LOG
+--   { database_name | @database_name_var }
+--   TO <backup_device> [ , ...n ]
+--   [ <MIRROR TO clause> ] [ next-mirror-to ]
+--   [ WITH { <general_WITH_options> | <log_specific_options> } [ , ...n ] ]
+-- [ ; ]
+--
+-- <backup_device>::=
+--  {
+--   { logical_device_name | @logical_device_name_var }
+--  | {   DISK
+--      | TAPE
+--      | URL } =
+--      { 'physical_device_name' | @physical_device_name_var | 'NUL' }
+--  }
+--
+-- <MIRROR TO clause>::=
+--  MIRROR TO <backup_device> [ , ...n ]
+--
+-- <file_or_filegroup>::=
+--  {
+--    FILE = { logical_file_name | @logical_file_name_var }
+--  | FILEGROUP = { logical_filegroup_name | @logical_filegroup_name_var }
+--  }
+--
+-- <general_WITH_options> [ , ...n ] ::=
+--    COPY_ONLY
+--  | [ COMPRESSION | NO_COMPRESSION ]
+--  | DESCRIPTION = { 'text' | @text_variable }
+--  | NAME = { backup_set_name | @backup_set_name_var }
+--  | CREDENTIAL
+--  | ENCRYPTION
+--  | FILE_SNAPSHOT
+--  | { EXPIREDATE = { 'date' | @date_var }
+--         | RETAINDAYS = { days | @days_var } }
+--  | { METADATA_ONLY | SNAPSHOT }
+--  | { NOINIT | INIT }
+--  | { NOSKIP | SKIP }
+--  | { NOFORMAT | FORMAT }
+--  | MEDIADESCRIPTION = { 'text' | @text_variable }
+--  | MEDIANAME = { media_name | @media_name_variable }
+--  | BLOCKSIZE = { blocksize | @blocksize_variable }
+--  | BUFFERCOUNT = { buffercount | @buffercount_variable }
+--  | MAXTRANSFERSIZE = { maxtransfersize | @maxtransfersize_variable }
+--  | { NO_CHECKSUM | CHECKSUM }
+--  | { STOP_ON_ERROR | CONTINUE_AFTER_ERROR }
+--  | RESTART
+--  | STATS [ = percentage ]
+--  | { REWIND | NOREWIND }
+--  | { UNLOAD | NOUNLOAD }
+--  | ENCRYPTION (ALGORITHM = { AES_128 | AES_192 | AES_256 | TRIPLE_DES_3KEY } ,
+--      SERVER CERTIFICATE = Encryptor_Name | SERVER ASYMMETRIC KEY = Encryptor_Name )
+--
+-- <log_specific_options> [ , ...n ] ::=
+--    { NORECOVERY | STANDBY = undo_file_name }
+--  | NO_TRUNCATE

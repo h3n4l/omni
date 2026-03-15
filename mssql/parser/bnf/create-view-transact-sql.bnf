@@ -1,0 +1,36 @@
+-- Statement: CREATE VIEW
+-- Grammar rule: createViewStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-view-transact-sql
+
+-- From TSql170.g:
+
+createViewStatement:
+    Create viewStatementBody
+    ;
+
+viewStatementBody:
+    View schemaObjectTwoPartName
+        (columnNameList)?
+        ( With viewOption (Comma viewOption)* )?
+        As subqueryExpressionWithOptionalCTE
+        ( With Check Option )?
+    ;
+
+viewOption:
+    Identifier   -- ENCRYPTION, SCHEMABINDING, VIEW_METADATA
+    ;
+
+-- From Microsoft docs:
+
+CREATE [ OR ALTER ] VIEW [ schema_name . ] view_name [ (column [ ,...n ] ) ]
+[ WITH <view_attribute> [ ,...n ] ]
+AS select_statement
+[ WITH CHECK OPTION ]
+[ ; ]
+
+<view_attribute> ::=
+{
+    [ ENCRYPTION ]
+    [ SCHEMABINDING ]
+    [ VIEW_METADATA ]
+}

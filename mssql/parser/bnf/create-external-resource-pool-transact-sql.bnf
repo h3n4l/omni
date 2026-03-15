@@ -1,0 +1,66 @@
+-- Statement: CREATE EXTERNAL RESOURCE POOL
+-- Grammar rule: createExternalResourcePoolStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-resource-pool-transact-sql
+
+-- From TSql170.g:
+createExternalResourcePoolStatement:
+    RESOURCE POOL identifier
+    externalResourcePoolStatementBody
+    ;
+
+externalResourcePoolStatementBody:
+    (
+        With LeftParenthesis
+        externalResourcePoolParameter
+        (Comma externalResourcePoolParameter)*
+        RightParenthesis
+    )?
+    ;
+
+externalResourcePoolParameter:
+      externalResourcePoolAffinitySpecification   -- AFFINITY CPU = AUTO | (range) | NUMANODE = (range)
+    | parameterName EqualsSign integer             -- MAX_CPU_PERCENT | MAX_MEMORY_PERCENT | MAX_PROCESSES
+    ;
+
+externalResourcePoolAffinitySpecification:
+    AFFINITY affinityType EqualsSign
+    (
+        AUTO
+    |
+        LeftParenthesis externalPoolAffinityRange (Comma externalPoolAffinityRange)* RightParenthesis
+    )
+    ;
+    -- affinityType: CPU | NUMANODE
+
+externalPoolAffinityRange:
+    integer (TO integer)?
+    ;
+
+-- From Microsoft docs (SQL Server 2019+):
+CREATE EXTERNAL RESOURCE POOL pool_name
+[ WITH (
+    [ MAX_CPU_PERCENT = value ]
+    [ [ , ] MAX_MEMORY_PERCENT = value ]
+    [ [ , ] MAX_PROCESSES = value ]
+    )
+]
+[ ; ]
+
+-- SQL Server 2016/2017 (with AFFINITY):
+CREATE EXTERNAL RESOURCE POOL pool_name
+[ WITH (
+    [ MAX_CPU_PERCENT = value ]
+    [ [ , ] AFFINITY CPU =
+            {
+                AUTO
+              | ( <cpu_range_spec> )
+              | NUMANODE = ( <NUMA_node_id> )
+            } ]
+    [ [ , ] MAX_MEMORY_PERCENT = value ]
+    [ [ , ] MAX_PROCESSES = value ]
+    )
+]
+[ ; ]
+
+<CPU_range_spec> ::=
+{ CPU_ID | CPU_ID  TO CPU_ID } [ ,...n ]

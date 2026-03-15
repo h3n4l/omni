@@ -1,0 +1,83 @@
+-- Statement: ALTER ASSEMBLY
+-- Grammar rule: alterAssemblyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-assembly-transact-sql
+
+-- From TSql170.g:
+alterAssemblyStatement:
+    tAssembly:Identifier identifier  -- 'ASSEMBLY' assembly_name
+    (alterAssemblyFromClause)?
+    (alterAssemblyWith[vResult])?
+    ((Drop File) => alterAssemblyDropFile[vResult])?
+    (alterAssemblyAddFile[vResult])?
+    ;
+    -- At least one of the optional clauses must be present.
+
+-- Sub-rule: alterAssemblyFromClause
+alterAssemblyFromClause:
+    From expression
+    ;
+
+-- Sub-rule: alterAssemblyWith
+alterAssemblyWith:
+    With alterAssemblyWithItem (Comma alterAssemblyWithItem)*
+    ;
+
+-- Sub-rule: alterAssemblyWithItem
+alterAssemblyWithItem:
+      assemblyPermissionSetOrVisibilityOption
+    | assemblyUncheckedDataOption
+    ;
+
+-- Sub-rule: assemblyPermissionSetOrVisibilityOption
+assemblyPermissionSetOrVisibilityOption:
+    tPermissionSetVisibility:Identifier EqualsSign
+    (
+        assemblyPermissionSetOption    -- PERMISSION_SET = { SAFE | EXTERNAL_ACCESS | UNSAFE }
+      | assemblyVisibilityOption       -- VISIBILITY = { ON | OFF }
+    )
+    ;
+
+-- Sub-rule: assemblyUncheckedDataOption
+assemblyUncheckedDataOption:
+    tUnchecked:Identifier tData:Identifier  -- 'UNCHECKED' 'DATA'
+    ;
+
+-- Sub-rule: alterAssemblyDropFile
+alterAssemblyDropFile:
+    Drop File
+    (
+        All
+      | stringLiteral (Comma stringLiteral)*
+    )
+    ;
+
+-- Sub-rule: alterAssemblyAddFile
+alterAssemblyAddFile:
+    Add File From alterAssemblyAddFileSpec
+    (Comma alterAssemblyAddFileSpec)*
+    ;
+
+-- Sub-rule: alterAssemblyAddFileSpec
+alterAssemblyAddFileSpec:
+    expression (As stringLiteral)?
+    ;
+
+-- Note: The parent ALTER statement provides: ALTER
+-- So the full parse is: ALTER ASSEMBLY assembly_name [FROM ...] [WITH ...] [DROP FILE ...] [ADD FILE FROM ...]
+
+-- From Microsoft docs:
+-- ALTER ASSEMBLY assembly_name
+--     [ FROM <client_assembly_specifier> | <assembly_bits> ]
+--     [ WITH <assembly_option> [ , ...n ] ]
+--     [ DROP FILE { file_name [ , ...n ] | ALL } ]
+--     [ ADD FILE FROM
+--     {
+--         client_file_specifier [ AS file_name ]
+--       | file_bits AS file_name
+--     } [ , ...n ]
+--     ] [ ; ]
+--
+-- <assembly_option> ::=
+--     PERMISSION_SET = { SAFE | EXTERNAL_ACCESS | UNSAFE }
+--   | VISIBILITY = { ON | OFF }
+--   | UNCHECKED DATA

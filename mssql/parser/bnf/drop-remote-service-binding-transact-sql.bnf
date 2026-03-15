@@ -1,0 +1,13 @@
+-- Statement: DROP REMOTE SERVICE BINDING
+-- Grammar rule: dropRemoteServiceBindingStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-remote-service-binding-transact-sql
+
+-- From TSql170.g:
+-- Parent: dropStatement handles DROP keyword
+dropRemoteServiceBindingStatement:
+    REMOTE SERVICE BINDING identifier
+    ;
+
+-- From Microsoft docs:
+DROP REMOTE SERVICE BINDING binding_name
+[ ; ]

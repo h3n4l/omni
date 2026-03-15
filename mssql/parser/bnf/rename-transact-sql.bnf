@@ -1,0 +1,29 @@
+-- Statement: RENAME
+-- Grammar rule: renameEntityStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/rename-transact-sql
+
+-- From TSql170.g:
+renameEntityStatement:
+    RENAME securityStatementPermission
+    (DoubleColon)?
+    schemaObjectThreePartName
+    TO identifier
+    ;
+
+-- Note: In the grammar, securityStatementPermission resolves the entity type
+-- (currently only OBJECT is supported). DoubleColon is the optional '::' separator.
+
+-- From Microsoft docs:
+-- Syntax for Azure Synapse Analytics:
+RENAME OBJECT [::] [ [ database_name . [schema_name ] ] . ] | [schema_name . ] ] table_name TO new_table_name
+[;]
+
+-- Syntax for Analytics Platform System (PDW):
+RENAME OBJECT [::] [ [ database_name . [ schema_name ] . ] | [ schema_name . ] ] table_name TO new_table_name
+[;]
+
+RENAME DATABASE [::] database_name TO new_database_name
+[;]
+
+RENAME OBJECT [::] [ [ database_name . [schema_name ] ] . ] | [schema_name . ] ] table_name COLUMN column_name TO new_column_name
+[;]

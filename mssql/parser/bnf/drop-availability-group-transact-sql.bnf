@@ -1,0 +1,19 @@
+-- Statement: DROP AVAILABILITY GROUP
+-- Grammar rule: dropAvailabilityGroupStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-availability-group-transact-sql
+
+-- From TSql170.g:
+-- Parent: DROP dispatches via {NextTokenMatches(CodeGenerationSupporter.Availability)}?
+
+dropAvailabilityGroupStatement:
+    /* DROP */ AVAILABILITY GROUP identifier
+    ;
+
+-- Note: The rule is invoked after DROP has already been consumed by the parent rule.
+-- 'Availability' is matched via Match(tAvailability, CodeGenerationSupporter.Availability)
+-- 'Group' is a keyword token.
+-- identifier is the availability group name.
+
+-- From Microsoft docs:
+-- DROP AVAILABILITY GROUP group_name
+-- [ ; ]

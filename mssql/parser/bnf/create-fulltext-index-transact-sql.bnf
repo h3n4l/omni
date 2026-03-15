@@ -1,0 +1,113 @@
+-- Statement: CREATE FULLTEXT INDEX
+-- Grammar rule: createFulltextIndexStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-fulltext-index-transact-sql
+
+-- From TSql170.g:
+createFulltextIndexStatement:
+    CREATE FULLTEXT INDEX ON schemaObjectFourPartName
+    (
+        LeftParenthesis fulltextIndexColumn
+        ( Comma fulltextIndexColumn )*
+        RightParenthesis
+    )?
+    KEY INDEX identifier
+    ( fullTextCatalogAndFileGroup )?
+    createFulltextOptions
+    ;
+
+fulltextIndexColumn:
+    identifier                                          -- column name
+    ( TYPE COLUMN identifier )?                         -- type column
+    ( LANGUAGE languageTerm )?                          -- language term
+    ( STATISTICAL_SEMANTICS )?                          -- statistical semantics
+    ;
+
+languageTerm:
+    LANGUAGE ( identifier | stringLiteral | integer )
+    ;
+
+fullTextCatalogAndFileGroup:
+    ON
+    (
+        identifier                                      -- catalog name
+    |   LeftParenthesis
+        (
+            identifier ( Comma FILEGROUP identifier )?  -- catalog, filegroup
+        |   FILEGROUP identifier ( Comma identifier )?  -- filegroup, catalog
+        )
+        RightParenthesis
+    )
+    ;
+
+createFulltextOptions:
+    (
+        WITH
+        (
+            createFulltextOptionsList
+        |   LeftParenthesis createFulltextOptionsList RightParenthesis
+        )
+    )?
+    ;
+
+createFulltextOptionsList:
+    fullTextIndexOption ( Comma fullTextIndexOption )*
+    ;
+
+fullTextIndexOption:
+    changeTrackingFulltextIndexOption
+    | stoplistFulltextIndexOption
+    | searchPropertyListFullTextIndexOption
+    ;
+
+changeTrackingFulltextIndexOption:
+    CHANGE_TRACKING (EqualsSign)?
+    (
+        OFF ( Comma NO POPULATION )?
+    |   MANUAL
+    |   AUTO
+    )
+    ;
+
+stoplistFulltextIndexOption:
+    STOPLIST (EqualsSign)?
+    (
+        identifier                                      -- stoplist name
+    |   OFF
+    )
+    ;
+
+searchPropertyListFullTextIndexOption:
+    SEARCH PROPERTY LIST (EqualsSign)?
+    (
+        identifier                                      -- property list name
+    |   OFF
+    )
+    ;
+
+-- From Microsoft docs:
+CREATE FULLTEXT INDEX ON table_name
+   [ ( { column_name
+             [ TYPE COLUMN type_column_name ]
+             [ LANGUAGE language_term ]
+             [ STATISTICAL_SEMANTICS ]
+        } [ , ...n ]
+      ) ]
+    KEY INDEX index_name
+    [ ON <catalog_filegroup_option> ]
+    [ WITH ( <with_option> [ , ...n ] ) ]
+[;]
+
+<catalog_filegroup_option>::=
+ {
+    fulltext_catalog_name
+ | ( fulltext_catalog_name , FILEGROUP filegroup_name )
+ | ( FILEGROUP filegroup_name , fulltext_catalog_name )
+ | ( FILEGROUP filegroup_name )
+ }
+
+<with_option>::=
+ {
+   CHANGE_TRACKING [ = ] { MANUAL | AUTO | OFF [ , NO POPULATION ] }
+ | STOPLIST [ = ] { OFF | SYSTEM | stoplist_name }
+ | SEARCH PROPERTY LIST [ = ] property_list_name
+ }

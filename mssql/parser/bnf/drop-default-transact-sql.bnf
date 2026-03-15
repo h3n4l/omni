@@ -1,0 +1,21 @@
+-- Statement: DROP DEFAULT
+-- Grammar rule: dropDefaultStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-default-transact-sql
+
+-- From TSql170.g:
+dropDefaultStatement:
+    Default
+    ( If Exists )?
+    dropObjectList
+    ;
+
+dropObjectList:
+    dropObject ( Comma dropObject )*
+    ;
+
+dropObject:
+    schemaObjectThreePartName
+    ;
+
+-- From Microsoft docs:
+DROP DEFAULT [ IF EXISTS ] { [ schema_name . ] default_name } [ ,...n ] [ ; ]

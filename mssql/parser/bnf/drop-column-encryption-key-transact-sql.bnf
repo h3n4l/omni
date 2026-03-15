@@ -1,0 +1,15 @@
+-- Statement: DROP COLUMN ENCRYPTION KEY
+-- Grammar rule: dropColumnEncryptionKeyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-column-encryption-key-transact-sql
+
+-- From TSql170.g:
+dropColumnEncryptionKeyStatement:
+    -- Note: DROP COLUMN is parsed by the dispatcher; this rule handles ENCRYPTION KEY <name>
+    Encryption Key identifier
+    ;
+
+-- Sub-rules:
+-- (none beyond identifier)
+
+-- From Microsoft docs:
+DROP COLUMN ENCRYPTION KEY key_name [;]

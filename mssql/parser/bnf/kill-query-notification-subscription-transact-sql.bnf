@@ -1,0 +1,14 @@
+-- Statement: KILL QUERY NOTIFICATION SUBSCRIPTION
+-- Grammar rule: killQueryNotificationSubscriptionStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/kill-query-notification-subscription-transact-sql
+
+-- From TSql170.g:
+killQueryNotificationSubscriptionStatement:
+    -- Note: KILL keyword is consumed by parent killStatements rule
+    'QUERY' 'NOTIFICATION' 'SUBSCRIPTION'
+    ( All | integer )
+    ;
+
+-- From Microsoft docs:
+KILL QUERY NOTIFICATION SUBSCRIPTION
+   { ALL | subscription_id }

@@ -1,0 +1,35 @@
+-- Statement: ALTER VIEW
+-- Grammar rule: alterViewStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-view-transact-sql
+
+-- From TSql170.g:
+
+alterViewStatement:
+    Alter viewStatementBody
+    ;
+
+viewStatementBody:
+    View schemaObjectTwoPartName
+        (columnNameList)?
+        ( With viewOption (Comma viewOption)* )?
+        As subqueryExpressionWithOptionalCTE
+        ( With Check Option )?
+    ;
+
+viewOption:
+    Identifier   -- ENCRYPTION, SCHEMABINDING, VIEW_METADATA
+    ;
+
+-- From Microsoft docs:
+
+ALTER VIEW [ schema_name . ] view_name [ ( column [ ,...n ] ) ]
+[ WITH <view_attribute> [ ,...n ] ]
+AS select_statement
+[ WITH CHECK OPTION ] [ ; ]
+
+<view_attribute> ::=
+{
+    [ ENCRYPTION ]
+    [ SCHEMABINDING ]
+    [ VIEW_METADATA ]
+}

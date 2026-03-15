@@ -1,0 +1,33 @@
+-- Statement: ALTER REMOTE SERVICE BINDING
+-- Grammar rule: alterRemoteServiceBindingStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-remote-service-binding-transact-sql
+
+-- From TSql170.g:
+alterRemoteServiceBindingStatement:
+    ALTER REMOTE SERVICE BINDING identifier
+    WITH
+    (
+        (
+            bindingUserOption
+            ( Comma bindingAnonymousOption )?
+        )
+    |
+        (
+            bindingAnonymousOption
+            ( Comma bindingUserOption )?
+        )
+    )
+    ;
+
+bindingUserOption:
+    USER EqualsSign identifier
+    ;
+
+bindingAnonymousOption:
+    ANONYMOUS EqualsSign ( ON | OFF )
+    ;
+
+-- From Microsoft docs:
+-- ALTER REMOTE SERVICE BINDING binding_name
+--    WITH [ USER = <user_name> ] [ , ANONYMOUS = { ON | OFF } ]
+-- [ ; ]

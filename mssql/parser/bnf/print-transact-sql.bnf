@@ -1,0 +1,11 @@
+-- Statement: PRINT
+-- Grammar rule: printStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/print-transact-sql
+
+-- From TSql170.g:
+printStatement:
+    Print expression
+    ;
+
+-- From Microsoft docs:
+PRINT msg_str | @local_variable | string_expr

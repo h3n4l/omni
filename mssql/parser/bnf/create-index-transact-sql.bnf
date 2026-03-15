@@ -1,0 +1,113 @@
+-- Statement: CREATE INDEX
+-- Grammar rule: createIndexStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-index-transact-sql
+
+-- From TSql170.g:
+createIndexStatement:
+    Create
+    (Unique)?
+    (
+        (Clustered | NonClustered)
+        (
+            createRelationalIndexStatement
+        |   createColumnStoreIndexStatement
+        |   createJsonIndexStatement
+        |   createVectorIndexStatement
+        )
+    |
+        createRelationalIndexStatement
+    )
+    ;
+
+createRelationalIndexStatement:
+    Index identifier On schemaObjectThreePartName
+    LeftParenthesis indexKeyColumnList RightParenthesis
+    (Identifier /* Include */ identifierColumnList)?
+    (filterClause)?
+    (With (indexLegacyOptionList | indexOptionList))?
+    (On filegroupOrPartitionScheme)?
+    fileStreamOnOpt
+    ;
+
+createColumnStoreIndexStatement:
+    Identifier /* ColumnStore */ Index identifier
+    On schemaObjectFourPartName
+    (LeftParenthesis columnstoreIndexKeyColumnList RightParenthesis)?
+    (With indexOptionList)?
+    (orderClause)?
+    (On filegroupOrPartitionScheme)?
+    fileStreamOnOpt
+    ;
+
+-- From Microsoft docs:
+
+-- SQL Server / Azure SQL Database Syntax:
+CREATE [ UNIQUE ] [ CLUSTERED | NONCLUSTERED ] INDEX index_name
+    ON <object> ( column [ ASC | DESC ] [ ,...n ] )
+    [ INCLUDE ( column_name [ ,...n ] ) ]
+    [ WHERE <filter_predicate> ]
+    [ WITH ( <relational_index_option> [ ,...n ] ) ]
+    [ ON { partition_scheme_name ( column_name )
+         | filegroup_name
+         | default
+         }
+    ]
+    [ FILESTREAM_ON { filestream_filegroup_name | partition_scheme_name | "NULL" } ]
+[ ; ]
+
+<object> ::=
+{ database_name.schema_name.table_or_view_name | schema_name.table_or_view_name | table_or_view_name }
+
+<relational_index_option> ::=
+{
+    PAD_INDEX = { ON | OFF }
+  | FILLFACTOR = fillfactor
+  | SORT_IN_TEMPDB = { ON | OFF }
+  | IGNORE_DUP_KEY = { ON | OFF }
+  | STATISTICS_NORECOMPUTE = { ON | OFF }
+  | STATISTICS_INCREMENTAL = { ON | OFF }
+  | DROP_EXISTING = { ON | OFF }
+  | ONLINE = { ON [ ( <low_priority_lock_wait> ) ] | OFF }
+  | RESUMABLE = { ON | OFF }
+  | MAX_DURATION = <time> [MINUTES]
+  | ALLOW_ROW_LOCKS = { ON | OFF }
+  | ALLOW_PAGE_LOCKS = { ON | OFF }
+  | OPTIMIZE_FOR_SEQUENTIAL_KEY = { ON | OFF }
+  | MAXDOP = max_degree_of_parallelism
+  | DATA_COMPRESSION = { NONE | ROW | PAGE }
+     [ ON PARTITIONS ( { <partition_number_expression> | <range> } [ ,...n ] ) ]
+  | XML_COMPRESSION = { ON | OFF }
+     [ ON PARTITIONS ( { <partition_number_expression> | <range> } [ ,...n ] ) ]
+}
+
+<filter_predicate> ::=
+    <conjunct> [ AND ] [ ...n ]
+
+<conjunct> ::=
+    <disjunct> | <comparison>
+
+<disjunct> ::=
+    column_name IN (constant ,...n)
+
+<comparison> ::=
+    column_name <comparison_op> constant
+
+<comparison_op> ::=
+    { IS | IS NOT | = | <> | != | > | >= | !> | < | <= | !< }
+
+<low_priority_lock_wait> ::=
+    WAIT_AT_LOW_PRIORITY ( MAX_DURATION = <time> [ MINUTES ],
+        ABORT_AFTER_WAIT = { NONE | SELF | BLOCKERS } )
+
+-- Azure Synapse / PDW Syntax:
+CREATE CLUSTERED COLUMNSTORE INDEX index_name
+    ON [ database_name . [ schema ] . | schema . ] table_name
+    [ORDER (column[,...n])]
+    [WITH ( DROP_EXISTING = { ON | OFF } )]
+[;]
+
+CREATE [ CLUSTERED | NONCLUSTERED ] INDEX index_name
+    ON [ database_name . [ schema ] . | schema . ] table_name
+        ( { column [ ASC | DESC ] } [ ,...n ] )
+    WITH ( DROP_EXISTING = { ON | OFF } )
+[;]

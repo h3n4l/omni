@@ -1,0 +1,131 @@
+-- Statement: CREATE DATABASE
+-- Grammar rule: createDatabase (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-database-transact-sql
+
+-- From TSql170.g:
+createDatabase:
+    vIdentifier=identifier
+    (
+        (azureAsCopyOf)?
+        (azureOptions)?
+        (dbContainmentOption)?
+        recoveryUnitList
+        collationOpt
+        (dbAddendums)?
+        (withCreateDbOptions)?
+    )
+    ;
+
+-- Sub-rules:
+
+azureAsCopyOf:
+    As tCopy:Identifier Of vSourceDatabase=multiPartIdentifier[2]
+    ;
+
+azureOptions:
+    LeftParenthesis azureOption (Comma azureOption)* RightParenthesis
+    ;
+
+azureOption:
+        azureMaxSizeDatabaseOption             -- MAXSIZE = value { GB | MB }
+    |   azureEditionDatabaseOption             -- EDITION = 'edition'
+    |   azureElasticPoolServiceObjectiveDatabaseOption  -- SERVICE_OBJECTIVE = ELASTIC_POOL(NAME = name)
+    |   azureServiceObjectiveDatabaseOption    -- SERVICE_OBJECTIVE = 'objective'
+    ;
+
+dbContainmentOption:
+    tContainment:Identifier EqualsSign tContainmentKind:Identifier
+    ;
+
+recoveryUnitList:
+    (onDisk)?
+    (tLog:Identifier On fileDeclBodyList)?     -- LOG ON filespec [, ...]
+    ;
+
+onDisk:
+    On fileDecl[false]
+    (Comma (fileDecl[false] | fileGroupDecl))*
+    ;
+
+fileDecl:
+        Primary fileDeclBody                   -- PRIMARY filespec
+    |   fileDeclBody
+    ;
+
+fileGroupDecl:
+    tFileGroup:Identifier vIdentifier=identifier
+    (Contains tFileStreamOrMemoryOptimizedData:Identifier)?
+    (Default)?
+    fileDeclBody
+    ;
+
+fileDeclBody:
+    LeftParenthesis fileOption (Comma fileOption)* RightParenthesis
+    ;
+
+fileOption:
+        nameFileOption                         -- NAME = logical_name
+    |   fileNameFileOption                     -- FILENAME = 'os_file_name'
+    |   sizeFileOption                         -- SIZE = size
+    |   maxSizeFileOption                      -- MAXSIZE = { max_size | UNLIMITED }
+    |   fileGrowthFileOption                   -- FILEGROWTH = growth_increment
+    |   newNameFileOption                      -- NEWNAME = 'new_name' (ALTER only)
+    |   offlineFileOption                      -- OFFLINE
+    ;
+
+collationOpt:
+    /* empty */
+    | Collate vIdentifier = nonQuotedIdentifier
+    ;
+
+dbAddendums:
+        For tAttach:Identifier                 -- FOR { ATTACH | ATTACH_REBUILD_LOG | LOAD }
+    |   As tSnapshot:Identifier Of identifier  -- AS SNAPSHOT OF database_name
+    ;
+
+withCreateDbOptions:
+    With createAlterDbOption (Comma createAlterDbOption)*
+    ;
+
+-- From Microsoft docs:
+CREATE DATABASE database_name
+[ CONTAINMENT = { NONE | PARTIAL } ]
+[ ON
+      [ PRIMARY ] <filespec> [ , ...n ]
+      [ , <filegroup> [ , ...n ] ]
+      [ LOG ON <filespec> [ , ...n ] ]
+]
+[ COLLATE collation_name ]
+[ WITH <option> [ , ...n ] ]
+[ ; ]
+
+<option> ::=
+{
+      FILESTREAM ( <filestream_option> [ , ...n ] )
+    | DEFAULT_FULLTEXT_LANGUAGE = { lcid | language_name | language_alias }
+    | DEFAULT_LANGUAGE = { lcid | language_name | language_alias }
+    | NESTED_TRIGGERS = { OFF | ON }
+    | TRANSFORM_NOISE_WORDS = { OFF | ON }
+    | TWO_DIGIT_YEAR_CUTOFF = <two_digit_year_cutoff>
+    | DB_CHAINING { OFF | ON }
+    | TRUSTWORTHY { OFF | ON }
+    | PERSISTENT_LOG_BUFFER = ON ( DIRECTORY_NAME = 'path' )
+    | LEDGER = { ON | OFF }
+}
+
+<filespec> ::=
+{
+(
+    NAME = logical_file_name ,
+    FILENAME = { 'os_file_name' | 'filestream_path' }
+    [ , SIZE = size [ KB | MB | GB | TB ] ]
+    [ , MAXSIZE = { max_size [ KB | MB | GB | TB ] | UNLIMITED } ]
+    [ , FILEGROWTH = growth_increment [ KB | MB | GB | TB | % ] ]
+)
+}
+
+<filegroup> ::=
+{
+    FILEGROUP filegroup_name [ CONTAINS FILESTREAM ] [ DEFAULT ]
+    <filespec> [ , ...n ]
+}

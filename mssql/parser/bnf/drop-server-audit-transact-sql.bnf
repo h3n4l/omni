@@ -1,0 +1,14 @@
+-- Statement: DROP SERVER AUDIT
+-- Grammar rule: dropServerAuditStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-server-audit-transact-sql
+
+-- From TSql170.g:
+dropServerAuditStatement:
+    vName = identifier
+    ;
+    -- Note: Called within DROP SERVER AUDIT context (after "DROP SERVER" dispatch
+    -- matches "Audit" keyword). identifier = audit_name
+
+-- From Microsoft docs:
+DROP SERVER AUDIT audit_name
+[ ; ]

@@ -1,0 +1,80 @@
+-- Statement: CREATE EXTERNAL DATA SOURCE
+-- Grammar rule: createExternalDataSourceStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-data-source-transact-sql
+
+-- From TSql170.g:
+createExternalDataSourceStatement:
+    DATA SOURCE identifier
+    With LeftParenthesis
+    (
+        externalDataSourceType           -- TYPE = { HADOOP | RDBMS | SHARD_MAP_MANAGER | BLOB_STORAGE | EXTERNAL_GENERICS }
+    |
+        externalDataSourceLocation       -- LOCATION = 'string'
+    |
+        externalDataSourcePushdownOption  -- PUSHDOWN = { ON | OFF }
+    |
+        externalDataSourceLiteralOrIdentifierOption  -- CREDENTIAL, RESOURCE_MANAGER_LOCATION, CONNECTION_OPTIONS, etc.
+    )
+    (
+        Comma
+        (
+            externalDataSourceType
+        |
+            externalDataSourceLocation
+        |
+            externalDataSourcePushdownOption
+        |
+            externalDataSourceLiteralOrIdentifierOption
+        )
+    )*
+    RightParenthesis
+    ;
+
+externalDataSourceType:
+    TYPE EqualsSign ( HADOOP | RDBMS | SHARD_MAP_MANAGER | BLOB_STORAGE | EXTERNAL_GENERICS )
+    ;
+
+externalDataSourceLocation:
+    LOCATION EqualsSign stringLiteral
+    ;
+
+externalDataSourcePushdownOption:
+    PUSHDOWN EqualsSign ( ON | OFF )
+    ;
+
+externalDataSourceLiteralOrIdentifierOption:
+    optionName EqualsSign (stringLiteral | identifier)
+    -- Options: CREDENTIAL, RESOURCE_MANAGER_LOCATION, DATABASE_NAME, SHARD_MAP_NAME, CONNECTION_OPTIONS
+    ;
+
+-- From Microsoft docs (SQL Server 2022+):
+CREATE EXTERNAL DATA SOURCE <data_source_name>
+WITH
+  ( [ LOCATION = '<prefix>://<path>[:<port>]' ]
+    [ [ , ] CONNECTION_OPTIONS = '<key_value_pairs>'[,...]]
+    [ [ , ] CREDENTIAL = <credential_name> ]
+    [ [ , ] PUSHDOWN = { ON | OFF } ]
+  )
+[ ; ]
+
+-- SQL Server 2019:
+CREATE EXTERNAL DATA SOURCE <data_source_name>
+WITH
+  ( [ LOCATION = '<prefix>://<path>[:<port>]' ]
+    [ [ , ] CONNECTION_OPTIONS = '<key_value_pairs>'[,...]]
+    [ [ , ] CREDENTIAL = <credential_name> ]
+    [ [ , ] PUSHDOWN = { ON | OFF } ]
+    [ [ , ] TYPE = { HADOOP | BLOB_STORAGE } ]
+    [ [ , ] RESOURCE_MANAGER_LOCATION = '<resource_manager>[:<port>]' ]
+  )
+[ ; ]
+
+-- SQL Server 2016/2017:
+CREATE EXTERNAL DATA SOURCE <data_source_name>
+WITH
+  ( [ LOCATION = '<prefix>://<path>[:<port>]' ]
+    [ [ , ] CREDENTIAL = <credential_name> ]
+    [ [ , ] TYPE = { HADOOP | BLOB_STORAGE } ]
+    [ [ , ] RESOURCE_MANAGER_LOCATION = '<resource_manager>[:<port>]' ]
+  )
+[ ; ]

@@ -1,0 +1,36 @@
+-- Statement: SET (predicate options)
+-- Grammar rule: predicateSetStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/set-ansi-defaults-transact-sql
+
+-- From TSql170.g:
+predicateSetStatement:
+    tOption:Identifier (Comma tOption2:Identifier)*
+    setOnOff
+    ;
+
+-- Sub-rules:
+
+setOnOff:
+    On
+    | Off
+    ;
+
+-- Note: Options are parsed via PredicateSetOptionsHelper.
+-- Valid options include: ANSI_DEFAULTS, ANSI_NULLS, ANSI_PADDING, ANSI_WARNINGS,
+-- ANSI_NULL_DFLT_ON, ANSI_NULL_DFLT_OFF, CONCAT_NULL_YIELDS_NULL,
+-- CURSOR_CLOSE_ON_COMMIT, QUOTED_IDENTIFIER, IMPLICIT_TRANSACTIONS,
+-- FMTONLY, NOCOUNT, NOEXEC, NUMERIC_ROUNDABORT, PARSEONLY,
+-- ARITHABORT, ARITHIGNORE, FORCEPLAN, SHOWPLAN_ALL, SHOWPLAN_TEXT,
+-- SHOWPLAN_XML, XACT_ABORT, REMOTE_PROC_TRANSACTIONS
+
+-- From Microsoft docs:
+-- SET ANSI_DEFAULTS { ON | OFF }
+--
+-- When enabled (ON), this option enables the following ISO settings:
+--   SET ANSI_NULLS
+--   SET CURSOR_CLOSE_ON_COMMIT
+--   SET ANSI_NULL_DFLT_ON
+--   SET IMPLICIT_TRANSACTIONS
+--   SET ANSI_PADDING
+--   SET QUOTED_IDENTIFIER
+--   SET ANSI_WARNINGS

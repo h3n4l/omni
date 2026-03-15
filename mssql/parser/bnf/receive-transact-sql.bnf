@@ -1,0 +1,42 @@
+-- Statement: RECEIVE
+-- Grammar rule: receiveStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/receive-transact-sql
+
+-- From TSql170.g:
+receiveStatement:
+    RECEIVE
+    (TOP LeftParenthesis expression RightParenthesis)?
+    receiveSelectExpression (Comma receiveSelectExpression)*
+    FROM schemaObjectThreePartName
+    (INTO variableDmlTarget)?
+    (WHERE (ConversationGroupId | ConversationHandle) EqualsSign stringOrVariable)?
+    ;
+
+receiveSelectExpression:
+      selectSetVariable
+    | selectStarExpression
+    | receiveColumnSelectExpression
+    ;
+
+receiveColumnSelectExpression:
+    expression ((As)? stringOrIdentifier)?
+    ;
+
+-- From Microsoft docs:
+[ WAITFOR ( ]
+    RECEIVE [ TOP ( n ) ]
+        <column_specifier> [ ,...n ]
+        FROM <queue>
+        [ INTO table_variable ]
+        [ WHERE {  conversation_handle = conversation_handle
+                 | conversation_group_id = conversation_group_id } ]
+[ ) ] [ , TIMEOUT timeout ]
+[ ; ]
+
+<column_specifier> ::=
+{    *
+  |  { column_name | [ ] expression } [ [ AS ] column_alias ]
+}     [ ,...n ]
+
+<queue> ::=
+{ database_name.schema_name.queue_name | schema_name.queue_name | queue_name }

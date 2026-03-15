@@ -1,0 +1,12 @@
+-- Statement: RETURN
+-- Grammar rule: returnStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/return-transact-sql
+
+-- From TSql170.g:
+returnStatement:
+    Return
+    ( expression )?
+    ;
+
+-- From Microsoft docs:
+RETURN [ integer_expression ]

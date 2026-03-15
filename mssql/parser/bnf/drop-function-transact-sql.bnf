@@ -1,0 +1,27 @@
+-- Statement: DROP FUNCTION
+-- Grammar rule: dropFunctionStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-function-transact-sql
+
+-- From TSql170.g:
+dropFunctionStatement:
+    Function
+    ( If Exists )?
+    dropObjectList
+    ;
+
+dropObjectList:
+    dropObject ( Comma dropObject )*
+    ;
+
+dropObject:
+    schemaObjectThreePartName
+    ;
+
+-- From Microsoft docs:
+-- Syntax for SQL Server, Azure SQL Database
+DROP FUNCTION [ IF EXISTS ] { [ schema_name. ] function_name } [ ,...n ]
+[;]
+
+-- Syntax for Azure Synapse Analytics, Parallel Data Warehouse, Microsoft Fabric
+DROP FUNCTION [IF EXISTS] [ schema_name. ] function_name
+[;]

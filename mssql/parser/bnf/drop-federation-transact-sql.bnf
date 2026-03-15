@@ -1,0 +1,33 @@
+-- Statement: DROP FEDERATION
+-- Grammar rule: dropFederationStatement (TSql170.g)
+-- Doc: none (no Microsoft documentation available)
+
+-- From TSql170.g:
+dropFederationStatement returns [DropFederationStatement vResult = FragmentFactory.CreateFragment<DropFederationStatement>()]
+{
+    Identifier vIdentifier;
+}
+    : tFederation:Identifier vIdentifier=identifier
+        {
+            Match(tFederation, CodeGenerationSupporter.Federation);
+            vResult.Name = vIdentifier;
+        }
+    ;
+
+-- Sub-rule: identifier
+identifier returns [Identifier vResult = this.FragmentFactory.CreateFragment<Identifier>()]
+    :
+        tId:Identifier
+        {
+            UpdateTokenInfo(vResult,tId);
+            vResult.SetUnquotedIdentifier(tId.getText());
+            CheckIdentifierLength(vResult);
+        }
+    |
+        tId2:QuotedIdentifier
+        {
+            UpdateTokenInfo(vResult,tId2);
+            vResult.SetIdentifier(tId2.getText());
+            CheckIdentifierLength(vResult);
+        }
+    ;

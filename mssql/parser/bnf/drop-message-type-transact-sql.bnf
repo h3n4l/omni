@@ -1,0 +1,13 @@
+-- Statement: DROP MESSAGE TYPE
+-- Grammar rule: dropMessageTypeStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-message-type-transact-sql
+
+-- From TSql170.g:
+-- Parent: dropStatement handles DROP keyword
+dropMessageTypeStatement:
+    MESSAGE TYPE identifier
+    ;
+
+-- From Microsoft docs:
+DROP MESSAGE TYPE message_type_name
+[ ; ]

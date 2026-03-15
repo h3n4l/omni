@@ -1,0 +1,85 @@
+-- Statement: CREATE EXTERNAL MODEL
+-- Grammar rule: createExternalModelStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql
+
+-- From TSql170.g:
+createExternalModelStatement:
+    MODEL identifier
+    authorizationOpt
+    With LeftParenthesis
+    (
+        externalModelLocation          -- LOCATION = 'string'
+    |
+        externalModelApiFormat         -- API_FORMAT = 'string'
+    |
+        externalModelModelType         -- MODEL_TYPE = EMBEDDINGS
+    |
+        externalModelModelName         -- MODEL = 'string'
+    |
+        externalModelCredential        -- CREDENTIAL = identifier
+    |
+        externalModelLocalRuntimePath  -- LOCAL_RUNTIME_PATH = 'string'
+    |
+        externalModelParameters        -- PARAMETERS = 'string'
+    )
+    (
+        Comma
+        (
+            externalModelLocation
+        |
+            externalModelApiFormat
+        |
+            externalModelModelType
+        |
+            externalModelModelName
+        |
+            externalModelCredential
+        |
+            externalModelLocalRuntimePath
+        |
+            externalModelParameters
+        )
+    )*
+    RightParenthesis
+    ;
+
+externalModelLocation:
+    LOCATION EqualsSign stringLiteral
+    ;
+
+externalModelApiFormat:
+    API_FORMAT EqualsSign stringLiteral
+    ;
+
+externalModelModelType:
+    MODEL_TYPE EqualsSign EMBEDDINGS
+    ;
+
+externalModelModelName:
+    MODEL EqualsSign stringLiteral
+    ;
+
+externalModelCredential:
+    CREDENTIAL EqualsSign identifier
+    ;
+
+externalModelLocalRuntimePath:
+    LOCAL_RUNTIME_PATH EqualsSign stringLiteral
+    ;
+
+externalModelParameters:
+    PARAMETERS EqualsSign stringLiteral
+    ;
+
+-- From Microsoft docs:
+CREATE EXTERNAL MODEL external_model_object_name
+[ AUTHORIZATION owner_name ]
+WITH
+  ( LOCATION = '<prefix>://<path>[:<port>]'
+    , API_FORMAT = '<OpenAI, Azure OpenAI, etc>'
+    , MODEL_TYPE = EMBEDDINGS
+    , MODEL = 'text-embedding-model-name'
+    [ , CREDENTIAL = <credential_name> ]
+    [ , PARAMETERS = '{"valid":"JSON"}' ]
+    [ , LOCAL_RUNTIME_PATH = 'path to the ONNX Runtime files' ]
+  );

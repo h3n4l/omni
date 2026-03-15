@@ -1,0 +1,12 @@
+-- Statement: SHUTDOWN
+-- Grammar rule: shutdownStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/shutdown-transact-sql
+
+-- From TSql170.g:
+shutdownStatement:
+    Shutdown
+    ( With Identifier /* NOWAIT */ )?
+    ;
+
+-- From Microsoft docs:
+SHUTDOWN [ WITH NOWAIT ]

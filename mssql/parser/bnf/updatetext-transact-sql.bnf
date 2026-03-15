@@ -1,0 +1,35 @@
+-- Statement: UPDATETEXT
+-- Grammar rule: updateTextStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/queries/updatetext-transact-sql
+
+-- From TSql170.g:
+updateTextStatement:
+    UpdateText
+    modificationTextStatement     /* [BULK] table.column text_ptr [TIMESTAMP = ts] */
+    signedIntegerOrVariableOrNull /* insert_offset */
+    signedIntegerOrVariableOrNull /* delete_length */
+    (With Identifier /* LOG */)?
+    (
+        column binaryOrVariable   /* source_column source_text_ptr */
+    |   writeString               /* inserted_data */
+    )?
+    ;
+
+modificationTextStatement:
+    (Bulk)?
+    column                       /* table.column */
+    (binaryOrVariable | integer) /* text_ptr */
+    (Identifier /* TIMESTAMP */ EqualsSign binary)?
+    ;
+
+modificationTextStatementWithLog:
+    With Identifier /* LOG */
+    ;
+
+-- From Microsoft docs:
+UPDATETEXT [BULK] { table_name.dest_column_name dest_text_ptr }
+  { NULL | insert_offset }
+     { NULL | delete_length }
+     [ WITH LOG ]
+     [ inserted_data
+    | { table_name.src_column_name src_text_ptr } ]

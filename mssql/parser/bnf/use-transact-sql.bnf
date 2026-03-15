@@ -1,0 +1,12 @@
+-- Statement: USE
+-- Grammar rule: useStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/use-transact-sql
+
+-- From TSql170.g:
+useStatement:
+    Use identifier
+    ;
+
+-- From Microsoft docs:
+USE { database_name }
+[ ; ]

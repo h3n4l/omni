@@ -1,0 +1,37 @@
+-- Statement: ALTER EXTERNAL LIBRARY
+-- Grammar rule: alterExternalLibraryStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-external-library-transact-sql
+
+-- From TSql170.g:
+alterExternalLibraryStatement:
+    ALTER EXTERNAL LIBRARY identifier
+    authorizationOpt
+    SET alterExternalLibraryFileOption
+    WITH LeftParenthesis LANGUAGE EqualsSign nonEmptyString RightParenthesis
+    ;
+
+alterExternalLibraryFileOption:
+    LeftParenthesis CONTENT EqualsSign binaryOrString
+    ( Comma PLATFORM EqualsSign identifier )*
+    RightParenthesis
+    ;
+
+binaryOrString:
+    binary | stringLiteral
+    ;
+
+-- From Microsoft docs:
+-- ALTER EXTERNAL LIBRARY library_name
+-- [ AUTHORIZATION owner_name ]
+-- SET <file_spec>
+-- WITH ( LANGUAGE = <language> )
+-- [ ; ]
+--
+-- <file_spec> ::=
+-- {
+--     (CONTENT = { <client_library_specifier> | <library_bits> | NONE}
+--     [, PLATFORM = <platform> )
+-- }
+--
+-- <platform> :: = { WINDOWS | LINUX }
+-- <language> :: = { 'R' | 'Python' | <external_language> }

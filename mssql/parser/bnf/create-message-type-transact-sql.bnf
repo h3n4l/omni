@@ -1,0 +1,32 @@
+-- Statement: CREATE MESSAGE TYPE
+-- Grammar rule: createMessageTypeStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-message-type-transact-sql
+
+-- From TSql170.g:
+createMessageTypeStatement:
+    tMessage:Identifier tType:Identifier vIdentifier=identifier
+        -- Match(tMessage, "Message"); Match(tType, "Type")
+        authorizationOpt[vResult]
+        (messageTypeValidation[vResult])?
+    ;
+
+messageTypeValidation [MessageTypeStatementBase vParent]:
+    tValidation:Identifier EqualsSign tOption:Identifier
+        -- Match(tValidation, "Validation")
+        -- tOption: NONE | EMPTY | WELL_FORMED_XML | VALID_XML
+        (
+            With Schema tCollection:Identifier vSchemaObjectName=schemaObjectNonEmptyTwoPartName
+            -- Only valid when ValidationMethod == ValidXml
+            -- Match(tCollection, "Collection")
+        )?
+    ;
+
+-- From Microsoft docs:
+CREATE MESSAGE TYPE message_type_name
+    [ AUTHORIZATION owner_name ]
+    [ VALIDATION = {  NONE
+                    | EMPTY
+                    | WELL_FORMED_XML
+                    | VALID_XML WITH SCHEMA COLLECTION schema_collection_name
+                   } ]
+[ ; ]

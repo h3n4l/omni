@@ -1,0 +1,28 @@
+-- Statement: DROP VIEW
+-- Grammar rule: dropViewStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-view-transact-sql
+
+-- From TSql170.g:
+dropViewStatement:
+    View
+    ( If Exists )?
+    dropObjectList
+    ;
+
+dropObjectList:
+    dropObject ( Comma dropObject )*
+    ;
+
+dropObject:
+    schemaObjectThreePartName
+    ;
+
+-- From Microsoft docs:
+-- Syntax for SQL Server and Azure SQL Database
+DROP VIEW [ IF EXISTS ] [ schema_name . ] view_name [ ...,n ] [ ; ]
+
+-- Syntax for Azure Synapse Analytics and Microsoft Fabric
+DROP VIEW [ IF EXISTS ] [ schema_name . ] view_name [ ; ]
+
+-- Syntax for Parallel Data Warehouse
+DROP VIEW [ schema_name . ] view_name [ ; ]

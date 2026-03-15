@@ -1,0 +1,44 @@
+-- Statement: ALTER FULLTEXT STOPLIST
+-- Grammar rule: alterFulltextStoplistStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-fulltext-stoplist-transact-sql
+
+-- From TSql170.g:
+alterFulltextStoplistStatement:
+    StopList identifier
+    fulltextStoplistAction
+    requiredSemicolon
+    ;
+
+fulltextStoplistAction:
+      addFulltextStoplistAction
+    | dropFulltextStoplistAction
+    ;
+
+addFulltextStoplistAction:
+    Add stringLiteral languageTerm
+    ;
+
+dropFulltextStoplistAction:
+    Drop
+    (
+        stringLiteral languageTerm
+      | All languageTerm?
+    )
+    ;
+
+languageTerm:
+    Identifier /* LANGUAGE */
+    ( stringLiteral | integer | identifier | binary )
+    ;
+
+-- From Microsoft docs:
+ALTER FULLTEXT STOPLIST stoplist_name
+{
+        ADD [N] 'stopword' LANGUAGE language_term
+  | DROP
+    {
+        'stopword' LANGUAGE language_term
+      | ALL LANGUAGE language_term
+      | ALL
+     }
+;

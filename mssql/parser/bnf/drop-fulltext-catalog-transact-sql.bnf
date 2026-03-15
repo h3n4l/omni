@@ -1,0 +1,17 @@
+-- Statement: DROP FULLTEXT CATALOG
+-- Grammar rule: dropFulltextCatalogStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-fulltext-catalog-transact-sql
+
+-- From TSql170.g:
+-- Parent: DROP FULLTEXT dispatches to dropFulltextCatalogStatement, dropFulltextIndexStatement, or dropFulltextStoplistStatement
+
+dropFulltextCatalogStatement:
+    /* DROP FULLTEXT */ CATALOG identifier
+    ;
+
+-- Note: The rule is invoked after DROP FULLTEXT has already been consumed.
+-- 'Catalog' is matched via Match(tCatalog, CodeGenerationSupporter.Catalog).
+-- identifier is the fulltext catalog name.
+
+-- From Microsoft docs:
+-- DROP FULLTEXT CATALOG catalog_name

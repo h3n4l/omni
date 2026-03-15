@@ -1,0 +1,32 @@
+-- Statement: ENABLE TRIGGER
+-- Grammar rule: enableTriggerStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/enable-trigger-transact-sql
+
+-- From TSql170.g:
+enableTriggerStatement:
+    Identifier/*Enable*/
+    enableDisableTriggerBody
+    ;
+
+enableDisableTriggerBody:
+    Trigger
+    (
+        schemaObjectThreePartName ( Comma schemaObjectThreePartName )*
+    |   All
+    )
+    On triggerObject
+    ;
+
+triggerObject:
+    schemaObjectThreePartName
+    | triggerScope
+    ;
+
+triggerScope:
+    Database
+    | All Identifier/*Server*/
+    ;
+
+-- From Microsoft docs:
+ENABLE TRIGGER { [ schema_name . ] trigger_name [ ,...n ] | ALL }
+ON { object_name | DATABASE | ALL SERVER } [ ; ]

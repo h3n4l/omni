@@ -1,0 +1,56 @@
+-- Statement: CREATE SECURITY POLICY
+-- Grammar rule: createSecurityPolicyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-security-policy-transact-sql
+
+-- From TSql170.g:
+createSecurityPolicyStatement:
+    tSecurity:Identifier tPolicy:Identifier vName=schemaObjectThreePartName
+    (
+        createSecurityPredicateListElement
+        (Comma createSecurityPredicateListElement)*
+    )?
+    (
+        With LeftParenthesis securityPolicyOptionsList RightParenthesis
+    )?
+    (
+        Not For Replication
+    )?
+    ;
+
+createSecurityPredicateListElement:
+    Add createOrAltersecurityPredicateListElement
+    ;
+
+createOrAltersecurityPredicateListElement:
+    tPredicateType:Identifier tPredicate:Identifier   -- { FILTER | BLOCK } PREDICATE
+    vSchemaObjectName = schemaObjectThreePartName
+    vFunctionCall=userFunctionCall[vSchemaObjectName]
+    On vTargetObjectName=schemaObjectTwoPartName
+    (securityPredicateOperation)?
+    ;
+
+securityPredicateOperation:
+    tBeforeAfter:Identifier tUpdate:Update             -- { BEFORE | AFTER } { UPDATE | DELETE | INSERT }
+    ;
+
+securityPolicyOptionsList:
+    securityPolicyOptionListElement
+    (Comma securityPolicyOptionListElement)*
+    ;
+
+securityPolicyOptionListElement:
+    tOption:Identifier EqualsSign optionOnOff           -- STATE = { ON | OFF }, SCHEMABINDING = { ON | OFF }
+    ;
+
+-- From Microsoft docs:
+CREATE SECURITY POLICY [schema_name. ] security_policy_name
+    { ADD [ FILTER | BLOCK ] } PREDICATE tvf_schema_name.security_predicate_function_name
+      ( { column_name | expression } [ , ...n] ) ON table_schema_name. table_name
+      [ <block_dml_operation> ] , [ , ...n]
+    [ WITH ( STATE = { ON | OFF }  [,] [ SCHEMABINDING = { ON | OFF } ] ) ]
+    [ NOT FOR REPLICATION ]
+[;]
+
+<block_dml_operation>
+    [ { AFTER { INSERT | UPDATE } }
+    | { BEFORE { UPDATE | DELETE } } ]

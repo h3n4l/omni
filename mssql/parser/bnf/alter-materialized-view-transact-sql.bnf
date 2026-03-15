@@ -1,0 +1,20 @@
+-- Statement: ALTER MATERIALIZED VIEW
+-- Grammar rule: alterMaterializedViewStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-materialized-view-transact-sql
+
+-- From TSql170.g:
+alterMaterializedViewStatement:
+    Materialized View schemaObjectTwoPartName
+    (
+        Rebuild
+    |
+        Disable
+    )
+    ;
+
+-- From Microsoft docs:
+ALTER MATERIALIZED VIEW [ schema_name . ] view_name
+{
+      REBUILD | DISABLE
+}
+[;]

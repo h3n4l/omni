@@ -1,0 +1,12 @@
+-- Statement: DROP DATABASE ENCRYPTION KEY
+-- Grammar rule: dropDatabaseEncryptionKeyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-database-encryption-key-transact-sql
+
+-- From TSql170.g:
+dropDatabaseEncryptionKeyStatement:
+    -- preceded by DROP DATABASE (handled by dropDatabaseStatements)
+    Encryption Key
+    ;
+
+-- From Microsoft docs:
+DROP DATABASE ENCRYPTION KEY

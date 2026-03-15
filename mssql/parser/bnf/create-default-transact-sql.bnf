@@ -1,0 +1,15 @@
+-- Statement: CREATE DEFAULT
+-- Grammar rule: createDefaultStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-default-transact-sql
+
+-- From TSql170.g:
+
+createDefaultStatement:
+    Create Default schemaObjectThreePartName
+        As expression
+    ;
+
+-- From Microsoft docs:
+
+CREATE DEFAULT [ schema_name . ] default_name
+AS constant_expression [ ; ]

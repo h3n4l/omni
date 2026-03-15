@@ -1,0 +1,114 @@
+-- Statement: CREATE CERTIFICATE
+-- Grammar rule: createCertificateStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-certificate-transact-sql
+
+-- From TSql170.g:
+createCertificateStatement:
+    tCertificate:Identifier vIdentifier=identifier
+    authorizationOpt[vResult]
+    createCertificateParams[vResult]
+    (
+        options {greedy = true; } :
+        createCertificateActivityFlag[vResult]
+    )?
+    ;
+
+createCertificateParams[CreateCertificateStatement vParent]:
+    From certificateSource[vParent]
+    | (
+        (vPassword = encryptClause)?
+        With vOption = certificateOption[encounteredOptions]
+        (Comma vOption = certificateOption[encounteredOptions])*
+      )
+    ;
+
+certificateSource[CreateCertificateStatement vParent]:
+    (
+        vCertificateSource=fileEncryptionSource
+        (
+            options {greedy = true; } :
+            With privateKeySpec[vParent]
+        )?
+    |
+        vCertificateSource = assemblyEncryptionSource
+    )
+    ;
+
+certificateOption[CertificateOptionKinds encountered]:
+    tOption:Identifier EqualsSign vValue = stringLiteral
+    -- SUBJECT, START_DATE, EXPIRY_DATE
+    ;
+
+createCertificateActivityFlag[CertificateStatementBase vParent]:
+    tActive:Identifier For tBeginDialog:Identifier EqualsSign vOptionState = optionOnOff[vParent]
+    -- ACTIVE FOR BEGIN_DIALOG = { ON | OFF }
+    ;
+
+privateKeySpec[CertificateStatementBase vParent]:
+    tPrivate:Identifier Key LeftParenthesis
+    certificatePrivateKeySpec[vParent]
+    (Comma certificatePrivateKeySpec[vParent])*
+    tRParen:RightParenthesis
+    ;
+
+certificatePrivateKeySpec[CertificateStatementBase vParent]:
+    passwordChangeOption[vParent]
+    | tFile:File EqualsSign vFilePath = stringLiteral
+    ;
+
+passwordChangeOption[IPasswordChangeOption vParent]:
+    tEncryptionDecryption:Identifier By tPassword:Identifier EqualsSign vPassword = stringLiteral
+    -- ENCRYPTION BY PASSWORD = 'password' | DECRYPTION BY PASSWORD = 'password'
+    ;
+
+encryptClause:
+    tEncryption:Identifier By tPassword:Identifier EqualsSign vResult = stringLiteral
+    -- ENCRYPTION BY PASSWORD = 'password'
+    ;
+
+fileEncryptionSource:
+    (tExecutable:Identifier)?  -- EXECUTABLE
+    File EqualsSign vFile = stringLiteral
+    ;
+
+assemblyEncryptionSource:
+    tAssembly:Identifier vAssembly = identifier
+    ;
+
+-- From Microsoft docs:
+CREATE CERTIFICATE certificate_name [ AUTHORIZATION user_name ]
+    { FROM <existing_keys> | <generate_new_keys> }
+    [ ACTIVE FOR BEGIN_DIALOG = { ON | OFF } ]
+
+<existing_keys> ::=
+    ASSEMBLY assembly_name
+    | {
+        [ EXECUTABLE ] FILE = 'path_to_file'
+        [ WITH [FORMAT = 'PFX',]
+          PRIVATE KEY ( <private_key_options> ) ]
+      }
+    | {
+        BINARY = asn_encoded_certificate
+        [ WITH PRIVATE KEY ( <private_key_options> ) ]
+      }
+
+<generate_new_keys> ::=
+    [ ENCRYPTION BY PASSWORD = 'password' ]
+    WITH SUBJECT = 'certificate_subject_name'
+    [ , <date_options> [ ,...n ] ]
+
+<private_key_options> ::=
+      {
+        FILE = 'path_to_private_key'
+         [ , DECRYPTION BY PASSWORD = 'password' ]
+         [ , ENCRYPTION BY PASSWORD = 'password' ]
+      }
+    |
+      {
+        BINARY = private_key_bits
+         [ , DECRYPTION BY PASSWORD = 'password' ]
+         [ , ENCRYPTION BY PASSWORD = 'password' ]
+      }
+
+<date_options> ::=
+    START_DATE = 'datetime' | EXPIRY_DATE = 'datetime'

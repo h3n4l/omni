@@ -1,0 +1,60 @@
+-- Statement: CREATE COLUMN ENCRYPTION KEY
+-- Grammar rule: createColumnEncryptionKeyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-column-encryption-key-transact-sql
+
+-- From TSql170.g:
+createColumnEncryptionKeyStatement:
+    tEncryption:Identifier tKey:Key vName = identifier
+    tWith:With tValues:Values
+    vCEKValue = createColumnEncryptionKeyValue
+    (
+        Comma vCEKValue = createColumnEncryptionKeyValue
+    )?
+    ;
+
+createColumnEncryptionKeyValue:
+    tLeftParens:LeftParenthesis
+    vParameter = columnEncryptionKeyValueParameter
+    Comma vParameter = columnEncryptionKeyValueParameter
+    Comma vParameter = columnEncryptionKeyValueParameter
+    tRightParens:RightParenthesis
+    ;
+
+columnEncryptionKeyValueParameter:
+    {NextTokenMatches(CodeGenerationSupporter.ColumnMasterKey)}?
+    columnMasterKeyNameParameter
+    | {NextTokenMatches(CodeGenerationSupporter.Algorithm)}?
+    columnEncryptionAlgorithmNameParameter
+    | {NextTokenMatches(CodeGenerationSupporter.EncryptedValue)}?
+    encryptedValueParameter
+    ;
+
+columnMasterKeyNameParameter:
+    tColumnMasterKey:Identifier EqualsSign vColumnMasterKeyName = identifier
+    -- COLUMN_MASTER_KEY = column_master_key_name
+    ;
+
+columnEncryptionAlgorithmNameParameter:
+    tAlgorithm:Identifier EqualsSign vAlgorithm = stringLiteral
+    -- ALGORITHM = 'algorithm_name'
+    ;
+
+encryptedValueParameter:
+    tEncryptedValue:Identifier EqualsSign vEncryptedValue = binary
+    -- ENCRYPTED_VALUE = 0x...
+    ;
+
+-- From Microsoft docs:
+CREATE COLUMN ENCRYPTION KEY key_name
+WITH VALUES
+  (
+    COLUMN_MASTER_KEY = column_master_key_name,
+    ALGORITHM = 'algorithm_name',
+    ENCRYPTED_VALUE = varbinary_literal
+  )
+[, (
+    COLUMN_MASTER_KEY = column_master_key_name,
+    ALGORITHM = 'algorithm_name',
+    ENCRYPTED_VALUE = varbinary_literal
+  ) ]
+[;]

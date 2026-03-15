@@ -1,0 +1,30 @@
+-- Statement: CREATE SERVICE
+-- Grammar rule: createServiceStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-service-transact-sql
+
+-- From TSql170.g:
+createServiceStatement:
+    SERVICE identifier
+    authorizationOpt
+    onQueueClause
+    (LeftParenthesis serviceContract (Comma serviceContract)* RightParenthesis)?
+    ;
+
+onQueueClause:
+    ON QUEUE schemaObjectThreePartName
+    ;
+
+serviceContract:
+    identifier
+    ;
+
+authorizationOpt:
+    (AUTHORIZATION identifier)?
+    ;
+
+-- From Microsoft docs:
+CREATE SERVICE service_name
+   [ AUTHORIZATION owner_name ]
+   ON QUEUE [ schema_name. ]queue_name
+   [ ( contract_name | [DEFAULT][ ,...n ] ) ]
+[ ; ]

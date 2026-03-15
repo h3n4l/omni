@@ -1,0 +1,42 @@
+-- Statement: ALTER SERVER AUDIT SPECIFICATION
+-- Grammar rule: alterServerAuditSpecificationStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-server-audit-specification-transact-sql
+
+-- From TSql170.g:
+alterServerAuditSpecificationStatement:
+    -- Context: ALTER SERVER AUDIT SPECIFICATION already consumed
+    vAuditSpecName = identifier
+    (auditSpecificationForClause)?
+    (
+        -- Conflicts with Add SIGNATURE and Drop statements
+        ((Add|Drop) LeftParenthesis) =>
+        auditSpecificationDetail (Comma auditSpecificationDetail)*
+    )?
+    auditSpecificationStateOpt
+    ;
+
+auditSpecificationForClause:
+    FOR SERVER AUDIT vAuditName = identifier
+    ;
+
+auditSpecificationDetail:
+    (Add | Drop)
+    LeftParenthesis serverAuditActionGroup RightParenthesis
+    ;
+
+serverAuditActionGroup:
+    tServerAuditActionGroup = Identifier   -- e.g. FAILED_LOGIN_GROUP, DATABASE_OBJECT_ACCESS_GROUP
+    ;
+
+auditSpecificationStateOpt:
+    (WITH LeftParenthesis STATE EqualsSign (ON | OFF) RightParenthesis)?
+    ;
+
+-- From Microsoft docs:
+-- ALTER SERVER AUDIT SPECIFICATION audit_specification_name
+-- {
+--     [ FOR SERVER AUDIT audit_name ]
+--     [ { { ADD | DROP } ( audit_action_group_name ) } [, ...n] ]
+--     [ WITH ( STATE = { ON | OFF } ) ]
+-- }
+-- [ ; ]

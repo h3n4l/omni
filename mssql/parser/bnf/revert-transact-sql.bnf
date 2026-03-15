@@ -1,0 +1,13 @@
+-- Statement: REVERT
+-- Grammar rule: revertStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/revert-transact-sql
+
+-- From TSql170.g:
+revertStatement:
+    Revert
+    ( With Identifier/*Cookie*/ EqualsSign expression )?
+    ;
+
+-- From Microsoft docs:
+REVERT
+    [ WITH COOKIE = @varbinary_variable ]

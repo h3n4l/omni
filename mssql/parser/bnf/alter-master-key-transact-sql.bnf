@@ -1,0 +1,36 @@
+-- Statement: ALTER MASTER KEY
+-- Grammar rule: alterMasterKeyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-master-key-transact-sql
+
+-- From TSql170.g:
+alterMasterKeyStatement:
+    Identifier /* MASTER */ Key
+    (
+        Identifier /* REGENERATE */ With Identifier /* ENCRYPTION */ By Identifier /* PASSWORD */ EqualsSign stringLiteral
+      | Identifier /* FORCE */ Identifier /* REGENERATE */ With Identifier /* ENCRYPTION */ By Identifier /* PASSWORD */ EqualsSign stringLiteral
+      | Add Identifier /* ENCRYPTION */ By
+        (
+            Identifier /* SERVICE */ Identifier /* MASTER */ Key
+          | Identifier /* PASSWORD */ EqualsSign stringLiteral
+        )
+      | Drop Identifier /* ENCRYPTION */ By
+        (
+            Identifier /* SERVICE */ Identifier /* MASTER */ Key
+          | Identifier /* PASSWORD */ EqualsSign stringLiteral
+        )
+    )
+    ;
+
+-- From Microsoft docs:
+ALTER MASTER KEY <alter_option>
+
+<alter_option> ::=
+    <regenerate_option> | <encryption_option>
+
+<regenerate_option> ::=
+    [ FORCE ] REGENERATE WITH ENCRYPTION BY PASSWORD = 'password'
+
+<encryption_option> ::=
+    ADD ENCRYPTION BY { SERVICE MASTER KEY | PASSWORD = 'password' }
+    |
+    DROP ENCRYPTION BY { SERVICE MASTER KEY | PASSWORD = 'password' }

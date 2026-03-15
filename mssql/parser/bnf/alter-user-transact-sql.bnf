@@ -1,0 +1,46 @@
+-- Statement: ALTER USER
+-- Grammar rule: alterUserStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-user-transact-sql
+
+-- From TSql170.g:
+alterUserStatement:
+    -- Context: ALTER already consumed
+    USER vIdentifier = identifier
+    WITH alterUserOption (Comma alterUserOption)*
+    ;
+
+alterUserOption:
+    tOption EqualsSign
+    (
+        passwordAlterUserOption           -- PASSWORD = 'newpassword' [OLD_PASSWORD = 'oldpassword']
+    |   identifierAlterUserOption         -- NAME, DEFAULT_SCHEMA, LOGIN, DEFAULT_LANGUAGE (identifier)
+    |   literalAlterUserOption            -- DEFAULT_LANGUAGE (integer), DEFAULT_SCHEMA (NULL)
+    )
+    ;
+
+passwordAlterUserOption:
+    loginPassword
+    (OLD_PASSWORD EqualsSign stringLiteral)?
+    ;
+
+identifierAlterUserOption:
+    identifier                            -- Resolved via UserOptionHelper
+    ;
+
+literalAlterUserOption:
+    integer                               -- DEFAULT_LANGUAGE = lcid
+    | nullLiteral                          -- DEFAULT_SCHEMA = NULL
+    ;
+
+-- From Microsoft docs:
+-- ALTER USER userName
+--   WITH <set_item> [ ,...n ]
+-- [;]
+--
+-- <set_item> ::=
+--     NAME = newUserName
+--   | DEFAULT_SCHEMA = { schemaName | NULL }
+--   | LOGIN = loginName
+--   | PASSWORD = 'password' [ OLD_PASSWORD = 'oldpassword' ]
+--   | DEFAULT_LANGUAGE = { NONE | <lcid> | <language name> | <language alias> }
+--   | ALLOW_ENCRYPTED_VALUE_MODIFICATIONS = [ ON | OFF ]

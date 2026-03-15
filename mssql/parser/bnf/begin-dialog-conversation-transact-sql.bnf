@@ -1,0 +1,46 @@
+-- Statement: BEGIN DIALOG
+-- Grammar rule: beginDialogStatement (TSql170.g:26242)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/begin-dialog-conversation-transact-sql
+
+-- From TSql170.g:
+beginDialogStatement:
+    Begin Identifier /* DIALOG */
+    (Identifier /* CONVERSATION */)?
+    variable
+    From Identifier /* SERVICE */ identifierOrVariable
+    To Identifier /* SERVICE */ stringOrVariable
+    (Comma stringOrVariable)?       -- instance spec
+    (On Identifier /* CONTRACT */ identifierOrVariable)?
+    (With beginConversationArgument (Comma beginConversationArgument)*)?
+    ;
+
+beginConversationArgument:
+    Identifier EqualsSign
+    (
+        scalarExpressionBeginDialogConversationArgument
+        | onOffBeginDialogConversationArgument
+    )
+    ;
+
+scalarExpressionBeginDialogConversationArgument:
+    expression
+    -- Options: RELATED_CONVERSATION, RELATED_CONVERSATION_GROUP, LIFETIME
+    ;
+
+onOffBeginDialogConversationArgument:
+    (On | Off)
+    -- Option: ENCRYPTION
+    ;
+
+-- From Microsoft docs:
+-- BEGIN DIALOG [ CONVERSATION ] @dialog_handle
+--    FROM SERVICE initiator_service_name
+--    TO SERVICE 'target_service_name'
+--        [ , { 'service_broker_guid' | 'CURRENT DATABASE' } ]
+--    [ ON CONTRACT contract_name ]
+--    [ WITH
+--    [  { RELATED_CONVERSATION = related_conversation_handle
+--       | RELATED_CONVERSATION_GROUP = related_conversation_group_id } ]
+--    [ [ , ] LIFETIME = dialog_lifetime ]
+--    [ [ , ] ENCRYPTION = { ON | OFF } ] ]
+-- [ ; ]

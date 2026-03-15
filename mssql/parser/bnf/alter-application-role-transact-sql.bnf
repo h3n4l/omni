@@ -1,0 +1,33 @@
+-- Statement: ALTER APPLICATION ROLE
+-- Grammar rule: alterApplicationRoleStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-application-role-transact-sql
+
+-- From TSql170.g:
+alterApplicationRoleStatement:
+    applicationRoleStatement[vResult, false]
+    ;
+
+-- Sub-rule: applicationRoleStatement
+applicationRoleStatement[ApplicationRoleStatement vParent, bool defaultSchemaAndPasswordOnly]:
+    tApplication:Identifier tRole:Identifier identifier  -- 'APPLICATION' 'ROLE' role_name
+    With applicationRoleOption[defaultSchemaAndPasswordOnly]
+    (Comma applicationRoleOption[defaultSchemaAndPasswordOnly])*
+    ;
+
+-- applicationRoleOption can be:
+--   NAME = new_name
+--   PASSWORD = 'password'
+--   DEFAULT_SCHEMA = schema_name
+
+-- Note: The parent ALTER statement provides: ALTER
+-- So the full parse is: ALTER APPLICATION ROLE role_name
+--   WITH option [, option ...]
+
+-- From Microsoft docs:
+-- ALTER APPLICATION ROLE application_role_name
+--     WITH <set_item> [ , ...n ]
+--
+-- <set_item> ::=
+--     NAME = new_application_role_name
+--     | PASSWORD = 'password'
+--     | DEFAULT_SCHEMA = schema_name

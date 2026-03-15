@@ -1,0 +1,49 @@
+-- Statement: CREATE SCHEMA
+-- Grammar rule: createSchemaStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-schema-transact-sql
+
+-- From TSql170.g:
+createSchemaStatement:
+    Create Schema
+    (
+        identifier authorizationOpt
+    |
+        authorization
+    )
+    createSchemaElementList
+    ;
+
+createSchemaElementList:
+    ( createSchemaElement )*
+    ;
+
+createSchemaElement:
+    (
+        createViewStatement
+    |
+        createTableStatement
+    |
+        grantStatement90
+    |
+        denyStatement90
+    |
+        revokeStatement90
+    )
+    optSemicolons
+    ;
+
+-- From Microsoft docs:
+CREATE SCHEMA schema_name_clause [ <schema_element> [ ...n ] ]
+
+<schema_name_clause> ::=
+    {
+    schema_name
+    | AUTHORIZATION owner_name
+    | schema_name AUTHORIZATION owner_name
+    }
+
+<schema_element> ::=
+    {
+        table_definition | view_definition | grant_statement |
+        revoke_statement | deny_statement
+    }

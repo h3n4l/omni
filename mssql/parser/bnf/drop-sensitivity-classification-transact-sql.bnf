@@ -1,0 +1,23 @@
+-- Statement: DROP SENSITIVITY CLASSIFICATION
+-- Grammar rule: dropSensitivityClassificationStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-sensitivity-classification-transact-sql
+
+-- From TSql170.g:
+dropSensitivityClassificationStatement:
+    tSensitivity:Identifier tClassification:Identifier tFrom:From
+    (vColumn = column
+        (Comma vColumn = column)*
+    )
+    ;
+    -- Note: Called within DROP context. tSensitivity must match "Sensitivity",
+    -- tClassification must match "Classification".
+    -- column = ColumnReferenceExpression (multi-part name: schema.table.column)
+
+-- From Microsoft docs:
+DROP SENSITIVITY CLASSIFICATION FROM
+    <object_name> [, ...n ]
+
+<object_name> ::=
+{
+    [schema_name.]table_name.column_name
+}

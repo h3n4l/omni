@@ -1,0 +1,34 @@
+-- Statement: WRITETEXT
+-- Grammar rule: writeTextStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/queries/writetext-transact-sql
+
+-- From TSql170.g:
+writeTextStatement:
+    WriteText
+    modificationTextStatement
+    (modificationTextStatementWithLog)?
+    writeString
+    ;
+
+modificationTextStatementWithLog:
+    With 'LOG'
+    ;
+
+modificationTextStatement:
+    (Bulk)?
+    column
+    (binaryOrVariable | integer)
+    ('TIMESTAMP' EqualsSign binary)?
+    ;
+
+writeString:
+      nullLiteral
+    | stringLiteral
+    | binary
+    | variable
+    ;
+
+-- From Microsoft docs:
+WRITETEXT [BULK]
+  { table.column text_ptr }
+  [ WITH LOG ] { data }

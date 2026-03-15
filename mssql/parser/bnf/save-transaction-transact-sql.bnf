@@ -1,0 +1,17 @@
+-- Statement: SAVE TRANSACTION
+-- Grammar rule: saveTransactionStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/save-transaction-transact-sql
+
+-- From TSql170.g:
+saveTransactionStatement:
+    Save (Tran | Transaction) transactionName
+    ;
+
+transactionName:
+    identifierOrVariable
+    | weirdTransactionName  /* e.g., -123:something */
+    ;
+
+-- From Microsoft docs:
+SAVE { TRAN | TRANSACTION } { savepoint_name | @savepoint_variable }
+[ ; ]

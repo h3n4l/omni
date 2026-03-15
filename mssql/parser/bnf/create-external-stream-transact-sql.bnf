@@ -1,0 +1,170 @@
+-- Statement: CREATE EXTERNAL STREAM
+-- Grammar rule: createExternalStreamStatement (TSql170.g)
+-- Doc: none (no Microsoft documentation available)
+
+-- From TSql170.g:
+createExternalStreamStatement returns [CreateExternalStreamStatement vResult = FragmentFactory.CreateFragment<CreateExternalStreamStatement>()]
+{
+    Identifier vName;
+    ExternalStreamOption vExternalStreamOption;
+    long encounteredOptions = 0;
+}
+    :   tStream:Identifier vName = identifier
+        {
+            Match(tStream, CodeGenerationSupporter.Stream);
+            vResult.Name = vName;
+            ThrowPartialAstIfPhaseOne(vResult);
+        }
+
+        tWith:With LeftParenthesis
+        (
+            {NextTokenMatches(CodeGenerationSupporter.Location)}?
+            externalStreamLocation[vResult]
+        |
+            {NextTokenMatches(CodeGenerationSupporter.InputOptions)}?
+            externalStreamInputOptions[vResult]
+        |
+            {NextTokenMatches(CodeGenerationSupporter.OutputOptions)}?
+            externalStreamOutputOptions[vResult]
+        |
+            vExternalStreamOption = externalStreamLiteralOrIdentifierOption
+            {
+                CheckOptionDuplication(ref encounteredOptions, (int)vExternalStreamOption.OptionKind, vExternalStreamOption);
+                AddAndUpdateTokenInfo(vResult, vResult.ExternalStreamOptions, vExternalStreamOption);
+            }
+        )
+
+        (
+            tComma:Comma
+            (
+                {NextTokenMatches(CodeGenerationSupporter.Location)}?
+                externalStreamLocation[vResult]
+            |
+                {NextTokenMatches(CodeGenerationSupporter.InputOptions)}?
+                externalStreamInputOptions[vResult]
+            |
+               {NextTokenMatches(CodeGenerationSupporter.OutputOptions)}?
+               externalStreamOutputOptions[vResult]
+            |
+                vExternalStreamOption = externalStreamLiteralOrIdentifierOption
+                {
+                    CheckOptionDuplication(ref encounteredOptions, (int)vExternalStreamOption.OptionKind, vExternalStreamOption);
+                    AddAndUpdateTokenInfo(vResult, vResult.ExternalStreamOptions, vExternalStreamOption);
+                }
+            )
+        )*
+
+        tRParen:RightParenthesis
+        {
+            UpdateTokenInfo(vResult,tRParen);
+        }
+    ;
+
+-- Sub-rule: identifier
+identifier returns [Identifier vResult = this.FragmentFactory.CreateFragment<Identifier>()]
+    :
+        tId:Identifier
+        {
+            UpdateTokenInfo(vResult,tId);
+            vResult.SetUnquotedIdentifier(tId.getText());
+            CheckIdentifierLength(vResult);
+        }
+    |
+        tId2:QuotedIdentifier
+        {
+            UpdateTokenInfo(vResult,tId2);
+            vResult.SetIdentifier(tId2.getText());
+            CheckIdentifierLength(vResult);
+        }
+    ;
+
+-- Sub-rule: externalStreamLocation
+externalStreamLocation[ExternalStreamStatement vParent]
+{
+    Literal vLocation;
+}
+    :
+        tLocation:Identifier EqualsSign vLocation = stringLiteral
+        {
+            Match(tLocation, CodeGenerationSupporter.Location);
+            vParent.Location = vLocation;
+        }
+    ;
+
+-- Sub-rule: externalStreamInputOptions
+externalStreamInputOptions[ExternalStreamStatement vParent]
+{
+    Literal vInputOptions;
+}
+    :
+        tLocation:Identifier EqualsSign vInputOptions = stringLiteral
+        {
+            Match(tLocation, CodeGenerationSupporter.InputOptions);
+            vParent.InputOptions = vInputOptions;
+        }
+    ;
+
+-- Sub-rule: externalStreamOutputOptions
+externalStreamOutputOptions[ExternalStreamStatement vParent]
+{
+    Literal vOutputOptions;
+}
+    :
+        tLocation:Identifier EqualsSign vOutputOptions = stringLiteral
+        {
+            Match(tLocation, CodeGenerationSupporter.OutputOptions);
+            vParent.OutputOptions = vOutputOptions;
+        }
+    ;
+
+-- Sub-rule: externalStreamLiteralOrIdentifierOption
+externalStreamLiteralOrIdentifierOption returns [ExternalStreamLiteralOrIdentifierOption vResult = this.FragmentFactory.CreateFragment<ExternalStreamLiteralOrIdentifierOption>()]
+{
+    Literal vLiteral;
+    Identifier vIdentifier;
+}
+    :
+        tOption:Identifier
+        {
+            vResult.OptionKind = ExternalStreamOptionHelper.Instance.ParseOption(tOption);
+        }
+        EqualsSign
+        (
+            vIdentifier = identifier
+            {
+                if (vResult.OptionKind != ExternalStreamOptionKind.DataSource &&
+                vResult.OptionKind != ExternalStreamOptionKind.FileFormat)
+                {
+                    throw GetUnexpectedTokenErrorException(tOption);
+                }
+                vResult.Value = IdentifierOrValueExpression(vIdentifier);
+            }
+        |
+            vLiteral = stringLiteral
+            {
+                if (vResult.OptionKind != ExternalStreamOptionKind.DataSource &&
+                vResult.OptionKind != ExternalStreamOptionKind.FileFormat)
+                {
+                    throw GetUnexpectedTokenErrorException(tOption);
+                }
+                vResult.Value = IdentifierOrValueExpression(vLiteral);
+            }
+        )
+    ;
+
+-- Sub-rule: stringLiteral
+stringLiteral returns [StringLiteral vResult = this.FragmentFactory.CreateFragment<StringLiteral>()]
+    : tAsciiStringLiteral:AsciiStringLiteral
+        {
+            UpdateTokenInfo(vResult,tAsciiStringLiteral);
+            vResult.Value = DecodeAsciiStringLiteral(tAsciiStringLiteral.getText());
+            vResult.IsLargeObject=IsAsciiStringLob(vResult.Value);
+        }
+    | tUnicodeStringLiteral:UnicodeStringLiteral
+        {
+            UpdateTokenInfo(vResult,tUnicodeStringLiteral);
+            vResult.IsNational = true;
+            vResult.Value = DecodeUnicodeStringLiteral(tUnicodeStringLiteral.getText());
+            vResult.IsLargeObject=IsUnicodeStringLob(vResult.Value);
+        }
+    ;

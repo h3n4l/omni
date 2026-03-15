@@ -1,0 +1,13 @@
+-- Statement: DROP EXTERNAL RESOURCE POOL
+-- Grammar rule: dropExternalResourcePoolStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-external-resource-pool-transact-sql
+
+-- From TSql170.g:
+dropExternalResourcePoolStatement:
+    tResource:Identifier tPool:Identifier vIdentifier=identifier
+    ;
+    -- Note: Called within DROP EXTERNAL context. tResource must match "Resource", tPool must match "Pool".
+    -- identifier = pool_name
+
+-- From Microsoft docs:
+DROP EXTERNAL RESOURCE POOL pool_name

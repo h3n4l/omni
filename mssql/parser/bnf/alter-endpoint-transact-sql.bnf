@@ -1,0 +1,85 @@
+-- Statement: ALTER ENDPOINT
+-- Grammar rule: alterEndpointStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-endpoint-transact-sql
+
+-- From TSql170.g:
+alterEndpointStatement:
+    tEndpoint:Identifier identifier  // ENDPOINT endpoint_name
+    (endpointOptions)?
+    (protocolInfo)?
+    (payloadInfo)?
+    ;
+
+endpointOptions[AlterCreateEndpointStatementBase vParent]:
+    endpointOption (Comma endpointOption)*
+    ;
+
+endpointOption[AlterCreateEndpointStatementBase vParent]:
+        {NextTokenMatches(CodeGenerationSupporter.State)}?
+        endpointState
+    |   endpointAffinity
+    ;
+
+endpointState:
+    tState:Identifier EqualsSign tValue:Identifier
+    // STATE = { STARTED | STOPPED | DISABLED }
+    ;
+
+endpointAffinity:
+    tAffinity:Identifier EqualsSign  // AFFINITY =
+    (
+        tNoneAdmin:Identifier  // NONE | ADMIN
+    |
+        integer
+    )
+    ;
+
+-- Sub-rules (referenced but not expanded):
+-- protocolInfo: AS { TCP | HTTP } ( <protocol_specific_items> )
+-- payloadInfo: FOR { TSQL | SERVICE_BROKER | DATABASE_MIRRORING } ( <language_specific_items> )
+
+-- From Microsoft docs:
+-- ALTER ENDPOINT endPointName [ AUTHORIZATION login ]
+-- [ STATE = { STARTED | STOPPED | DISABLED } ]
+-- [ AS { TCP } ( <protocol_specific_items> ) ]
+-- [ FOR { TSQL | SERVICE_BROKER | DATABASE_MIRRORING } (
+--    <language_specific_items>
+--         ) ]
+--
+-- <AS TCP_protocol_specific_arguments> ::=
+-- AS TCP (
+--   LISTENER_PORT = listenerPort
+--   [ [ , ] LISTENER_IP = ALL | ( 4-part-ip ) | ( "ip_address_v6" ) ]
+-- )
+-- <FOR SERVICE_BROKER_language_specific_arguments> ::=
+-- FOR SERVICE_BROKER (
+--    [ AUTHENTICATION = {
+--       WINDOWS [ { NTLM | KERBEROS | NEGOTIATE } ]
+--       | CERTIFICATE certificate_name
+--       | WINDOWS [ { NTLM | KERBEROS | NEGOTIATE } ] CERTIFICATE certificate_name
+--       | CERTIFICATE certificate_name WINDOWS [ { NTLM | KERBEROS | NEGOTIATE } ]
+--     } ]
+--    [ , ENCRYPTION = { DISABLED
+--        |
+--          {{SUPPORTED | REQUIRED }
+--        [ ALGORITHM { RC4 | AES | AES RC4 | RC4 AES } ] }
+--    ]
+--   [ , MESSAGE_FORWARDING = {ENABLED | DISABLED} ]
+--   [ , MESSAGE_FORWARD_SIZE = forwardSize ]
+-- )
+--
+-- <FOR DATABASE_MIRRORING_language_specific_arguments> ::=
+-- FOR DATABASE_MIRRORING (
+--    [ AUTHENTICATION = {
+--       WINDOWS [ { NTLM | KERBEROS | NEGOTIATE } ]
+--       | CERTIFICATE certificate_name
+--       | WINDOWS [ { NTLM | KERBEROS | NEGOTIATE } ] CERTIFICATE certificate_name
+--       | CERTIFICATE certificate_name WINDOWS [ { NTLM | KERBEROS | NEGOTIATE } ]
+--     } ]
+--    [ , ENCRYPTION = { DISABLED
+--        |
+--          {{SUPPORTED | REQUIRED }
+--        [ ALGORITHM { RC4 | AES | AES RC4 | RC4 AES } ] }
+--     ]
+--    [ , ] ROLE = { WITNESS | PARTNER | ALL }
+-- )

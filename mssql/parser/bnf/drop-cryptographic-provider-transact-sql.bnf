@@ -1,0 +1,18 @@
+-- Statement: DROP CRYPTOGRAPHIC PROVIDER
+-- Grammar rule: dropCryptographicProviderStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-cryptographic-provider-transact-sql
+
+-- From TSql170.g:
+-- Parent: DROP dispatches via {NextTokenMatches(CodeGenerationSupporter.Cryptographic)}?
+
+dropCryptographicProviderStatement:
+    /* DROP */ CRYPTOGRAPHIC PROVIDER identifier
+    ;
+
+-- Note: The rule is invoked after DROP has already been consumed.
+-- 'Cryptographic' is matched via Match(tCryptographic, CodeGenerationSupporter.Cryptographic).
+-- 'Provider' is matched via Match(tProvider, CodeGenerationSupporter.Provider).
+-- identifier is the cryptographic provider name.
+
+-- From Microsoft docs:
+-- DROP CRYPTOGRAPHIC PROVIDER provider_name

@@ -1,0 +1,18 @@
+-- Statement: DROP APPLICATION ROLE
+-- Grammar rule: dropApplicationRoleStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-application-role-transact-sql
+
+-- From TSql170.g:
+-- Parent: DROP dispatches via {NextTokenMatches(CodeGenerationSupporter.Application)}?
+
+dropApplicationRoleStatement:
+    /* DROP */ APPLICATION ROLE identifier
+    ;
+
+-- Note: The rule is invoked after DROP has already been consumed.
+-- 'Application' is matched via Match(tApplication, CodeGenerationSupporter.Application).
+-- 'Role' is matched via Match(tRole, CodeGenerationSupporter.Role).
+-- identifier is the application role name.
+
+-- From Microsoft docs:
+-- DROP APPLICATION ROLE rolename

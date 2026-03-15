@@ -1,0 +1,13 @@
+-- Statement: CREATE ROLE
+-- Grammar rule: createRoleStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-role-transact-sql
+
+-- From TSql170.g:
+createRoleStatement:
+    tRole:Identifier vIdentifier=identifier
+        -- Match(tRole, "Role")
+        authorizationOpt[vResult]
+    ;
+
+-- From Microsoft docs:
+CREATE ROLE role_name [ AUTHORIZATION owner_name ]

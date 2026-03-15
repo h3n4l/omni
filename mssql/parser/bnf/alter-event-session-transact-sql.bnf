@@ -1,0 +1,93 @@
+-- Statement: ALTER EVENT SESSION
+-- Grammar rule: alterEventSessionStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-event-session-transact-sql
+
+-- From TSql170.g:
+alterEventSessionStatement:
+    ALTER EVENT SESSION identifier
+    eventSessionScope
+    (
+        (
+            (
+                eventDeclarationList       -- ADD EVENT ...
+            |
+                targetDeclarationList      -- ADD TARGET ...
+            )
+            optSessionOptionList
+        )
+    |
+        (
+            (
+                dropEventDeclarationList   -- DROP EVENT ...
+            |
+                dropTargetDeclarationList  -- DROP TARGET ...
+            )
+            optSessionOptionList
+        )
+    |
+        sessionOptionList                  -- WITH ( ... )
+    |
+        (
+            STATE EqualsSign (START | STOP)
+        )
+    )
+    ;
+
+eventSessionScope:
+    ON ( DATABASE | SERVER )
+    ;
+
+eventDeclarationList:
+    ADD EVENT eventDeclaration
+    ( Comma ADD EVENT eventDeclaration )*
+    ;
+
+targetDeclarationList:
+    ADD TARGET targetDeclaration
+    ( Comma ADD TARGET targetDeclaration )*
+    ;
+
+sessionOptionList:
+    WITH LeftParenthesis sessionOption ( Comma sessionOption )* RightParenthesis
+    ;
+
+-- From Microsoft docs:
+-- ALTER EVENT SESSION event_session_name
+-- ON { SERVER | DATABASE }
+-- {
+--     [ [ {  <add_drop_event> [ , ...n ] }
+--        | { <add_drop_event_target> [ , ...n ] } ]
+--     [ WITH ( <event_session_options> [ , ...n ] ) ]
+--     ]
+--     | [ STATE = { START | STOP } ]
+-- }
+--
+-- <add_drop_event>::=
+-- {
+--     [ ADD EVENT <event_specifier>
+--          [ ( {
+--                  [ SET { event_customizable_attribute = <value> [ , ...n ] } ]
+--                  [ ACTION ( { [event_module_guid].event_package_name.action_name [ , ...n ] } ) ]
+--                  [ WHERE <predicate_expression> ]
+--         } ) ]
+--    ]
+--    | DROP EVENT <event_specifier> }
+--
+-- <add_drop_event_target>::=
+-- {
+--     ADD TARGET <event_target_specifier>
+--         [ ( SET { target_parameter_name = <value> [ , ...n ] } ) ]
+--     | DROP TARGET <event_target_specifier>
+-- }
+--
+-- <event_session_options>::=
+-- {
+--     [       MAX_MEMORY = size [ KB | MB ] ]
+--     [ [ , ] EVENT_RETENTION_MODE = { ALLOW_SINGLE_EVENT_LOSS | ALLOW_MULTIPLE_EVENT_LOSS | NO_EVENT_LOSS } ]
+--     [ [ , ] MAX_DISPATCH_LATENCY = { seconds SECONDS | INFINITE } ]
+--     [ [ , ] MAX_EVENT_SIZE = size [ KB | MB ] ]
+--     [ [ , ] MEMORY_PARTITION_MODE = { NONE | PER_NODE | PER_CPU } ]
+--     [ [ , ] TRACK_CAUSALITY = { ON | OFF } ]
+--     [ [ , ] STARTUP_STATE = { ON | OFF } ]
+--     [ [ , ] MAX_DURATION = { <time duration> { SECONDS | MINUTES | HOURS | DAYS } | UNLIMITED } ]
+-- }

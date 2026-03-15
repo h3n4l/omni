@@ -1,0 +1,35 @@
+-- Statement: ALTER RESOURCE GOVERNOR
+-- Grammar rule: alterResourceGovernorStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-resource-governor-transact-sql
+
+-- From TSql170.g:
+alterResourceGovernorStatement:
+    tGovernor:Identifier  // GOVERNOR
+    (
+        tDisable:Identifier  // DISABLE
+    |
+        Reconfigure
+    |
+        With LeftParenthesis tClassifierFunction:Identifier EqualsSign  // CLASSIFIER_FUNCTION
+        (
+            schemaObjectNonEmptyTwoPartName  // schema_name.function_name
+        |
+            Null
+        )
+        RightParenthesis
+    |
+        tReset:Identifier Statistics  // RESET STATISTICS
+    )
+    ;
+
+-- From Microsoft docs:
+-- ALTER RESOURCE GOVERNOR
+--     { RECONFIGURE
+--       | DISABLE
+--       | RESET STATISTICS
+--       | WITH
+--               ( [ CLASSIFIER_FUNCTION = { schema_name.function_name | NULL } ]
+--                 [ [ , ] MAX_OUTSTANDING_IO_PER_VOLUME = value ]
+--               )
+--     }
+-- [ ; ]

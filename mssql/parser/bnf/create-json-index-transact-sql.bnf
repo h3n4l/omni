@@ -1,0 +1,47 @@
+-- Statement: CREATE JSON INDEX
+-- Grammar rule: createJsonIndexStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-json-index-transact-sql
+
+-- From TSql170.g:
+createJsonIndexStatement [IToken tUnique, bool? isClustered]
+    : tJson:Identifier tIndex:Index vIdentifier=identifier
+        On vSchemaObjectName=schemaObjectThreePartName
+        LeftParenthesis vJsonColumn=identifier RightParenthesis
+        (
+            For LeftParenthesis
+            vPath=stringLiteral
+            (
+                Comma vPath=stringLiteral
+            )*
+            RightParenthesis
+        )?
+        (
+            With
+            indexOptionList[IndexAffectingStatement.CreateIndex, vResult.IndexOptions, vResult]
+        )?
+    ;
+
+-- From Microsoft docs:
+CREATE JSON INDEX name ON table_name (json_column_name)
+  [ FOR ( sql_json_path [ , ...n ] ) ]
+  [ WITH ( <json_index_option> [ , ...n ] ) ]
+  [ ON { filegroup_name | "default" } ]
+[ ; ]
+
+<object> ::=
+    { database_name.schema_name.table_name | schema_name.table_name | table_name }
+
+<sql_json_path> ::=
+    { character_string_literal }
+
+<json_index_option> ::=
+{
+    OPTIMIZE_FOR_ARRAY_SEARCH = { ON | OFF }
+  | FILLFACTOR = fillfactor
+  | DROP_EXISTING = { ON | OFF }
+  | ONLINE = OFF
+  | ALLOW_ROW_LOCKS = { ON | OFF }
+  | ALLOW_PAGE_LOCKS = { ON | OFF }
+  | MAXDOP = max_degree_of_parallelism
+  | DATA_COMPRESSION = { NONE | ROW | PAGE }
+}

@@ -1,0 +1,47 @@
+-- Statement: ALTER CERTIFICATE
+-- Grammar rule: alterCertificateStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-certificate-transact-sql
+
+-- From TSql170.g:
+alterCertificateStatement:
+    tCertificate:Identifier identifier  // CERTIFICATE certificate_name
+    (
+        tRemove:Identifier  // REMOVE
+        (
+            tPrivate:Identifier Key  // PRIVATE KEY
+        |
+            tAttested:Identifier Option  // ATTESTED OPTION
+        )
+    |
+        With
+        (
+            privateKeySpec  // WITH PRIVATE KEY (...)
+        |
+            createCertificateActivityFlag  // WITH ACTIVE FOR BEGIN_DIALOG = ON|OFF
+        )
+    |
+        tAttested2:Identifier By stringLiteral  // ATTESTED BY 'string'
+    )
+    ;
+
+-- Sub-rules (referenced):
+-- privateKeySpec: handles FILE = 'path' | BINARY = bits, DECRYPTION BY PASSWORD, ENCRYPTION BY PASSWORD
+-- createCertificateActivityFlag: handles ACTIVE FOR BEGIN_DIALOG = { ON | OFF }
+
+-- From Microsoft docs:
+-- ALTER CERTIFICATE certificate_name
+--       REMOVE PRIVATE KEY
+--     | WITH PRIVATE KEY ( <private_key_spec> )
+--     | WITH ACTIVE FOR BEGIN_DIALOG = { ON | OFF }
+--
+-- <private_key_spec> ::=
+--       {
+--         { FILE = 'path_to_private_key' | BINARY = private_key_bits }
+--          [ , DECRYPTION BY PASSWORD = 'current_password' ]
+--          [ , ENCRYPTION BY PASSWORD = 'new_password' ]
+--       }
+--     |
+--       {
+--          [ DECRYPTION BY PASSWORD = 'current_password' ]
+--          [ [ , ] ENCRYPTION BY PASSWORD = 'new_password' ]
+--       }

@@ -1,0 +1,35 @@
+-- Statement: ALTER EXTERNAL DATA SOURCE
+-- Grammar rule: alterExternalDataSourceStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-external-data-source-transact-sql
+
+-- From TSql170.g:
+alterExternalDataSourceStatement:
+    ALTER EXTERNAL DATA SOURCE identifier
+    SET
+    (
+        externalDataSourceLocation          -- LOCATION = '...'
+    |
+        externalDataSourcePushdownOption     -- PUSHDOWN = ON|OFF
+    |
+        externalDataSourceLiteralOrIdentifierOption  -- RESOURCE_MANAGER_LOCATION, CREDENTIAL, etc.
+    )
+    (
+        Comma
+        (
+            externalDataSourceLocation
+        |
+            externalDataSourcePushdownOption
+        |
+            externalDataSourceLiteralOrIdentifierOption
+        )
+    )*
+    ;
+
+-- From Microsoft docs:
+-- ALTER EXTERNAL DATA SOURCE data_source_name SET
+--     {
+--         LOCATION = '<prefix>://<path>[:<port>]' [,] |
+--         RESOURCE_MANAGER_LOCATION = <'IP address;Port'> [,] |
+--         CREDENTIAL = credential_name
+--     }
+--     [;]

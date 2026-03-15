@@ -1,0 +1,66 @@
+-- Statement: CREATE SEQUENCE
+-- Grammar rule: createSequenceStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-sequence-transact-sql
+
+-- From TSql170.g:
+createSequenceStatement:
+    tSequence:Identifier vName = schemaObjectTwoPartName
+    (createSequenceOptionList)?
+    ;
+
+createSequenceOptionList:
+    (createSequenceOptionListElement)+
+    ;
+
+createSequenceOptionListElement:
+        sequenceDatatypeOptionListElement       -- AS data_type
+    |   sequenceStartOptionListElement          -- START WITH value
+    |   commonSequenceOptionListElement
+    ;
+
+commonSequenceOptionListElement:
+        sequenceCacheOptionListElement           -- CACHE [value]
+    |   sequenceCycleOptionListElement           -- CYCLE
+    |   sequenceIncrementOptionListElement       -- INCREMENT BY value
+    |   sequenceNoOptionListElement              -- NO MINVALUE | NO MAXVALUE | NO CYCLE | NO CACHE
+    |   sequenceMinMaxOptionListElement          -- MINVALUE value | MAXVALUE value
+    ;
+
+sequenceDatatypeOptionListElement:
+    As vDataType=scalarDataType
+    ;
+
+sequenceStartOptionListElement:
+    tStart:Identifier With vExpression=seedIncrement
+    ;
+
+sequenceCacheOptionListElement:
+    tCache:Identifier (vExpression=seedIncrement)?
+    ;
+
+sequenceCycleOptionListElement:
+    tCycle:Identifier
+    ;
+
+sequenceIncrementOptionListElement:
+    tIncrement:Identifier By vExpression=seedIncrement
+    ;
+
+sequenceNoOptionListElement:
+    tNo:Identifier tNoOption:Identifier          -- NO { MINVALUE | MAXVALUE | CYCLE | CACHE }
+    ;
+
+sequenceMinMaxOptionListElement:
+    tMinMax:Identifier vExpression=seedIncrement  -- MINVALUE value | MAXVALUE value
+    ;
+
+-- From Microsoft docs:
+CREATE SEQUENCE [ schema_name . ] sequence_name
+    [ AS [ built_in_integer_type | user-defined_integer_type ] ]
+    [ START WITH <constant> ]
+    [ INCREMENT BY <constant> ]
+    [ { MINVALUE [ <constant> ] } | { NO MINVALUE } ]
+    [ { MAXVALUE [ <constant> ] } | { NO MAXVALUE } ]
+    [ CYCLE | { NO CYCLE } ]
+    [ { CACHE [ <constant> ] } | { NO CACHE } ]
+    [ ; ]

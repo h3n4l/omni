@@ -1,0 +1,13 @@
+-- Statement: DROP ROUTE
+-- Grammar rule: dropRouteStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-route-transact-sql
+
+-- From TSql170.g:
+-- Parent: dropStatement handles DROP keyword
+dropRouteStatement:
+    ROUTE identifier
+    ;
+
+-- From Microsoft docs:
+DROP ROUTE route_name
+[ ; ]

@@ -1,0 +1,90 @@
+-- Statement: UPDATE STATISTICS
+-- Grammar rule: updateStatisticsStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/update-statistics-transact-sql
+
+-- From TSql170.g:
+updateStatisticsStatement:
+    Update Statistics
+    schemaObjectThreePartName
+    (
+        columnNameList       /* (col1, col2, ...) */
+    |   identifier           /* single statistics/index name */
+    )?
+    (
+        With updateStatisticsStatementWithOption
+        (Comma updateStatisticsStatementWithOption)*
+    )?
+    ;
+
+updateStatisticsStatementWithOption:
+    resampleStatisticsOption
+    | incrementalStatisticsOption
+    | autoDropStatisticsOption
+    | sampleStatisticsOption
+    | statsStreamStatisticsOption
+    | updateStatisticsLiteralOption
+    | updateStatisticsSimpleOption
+    ;
+
+resampleStatisticsOption:
+    Identifier /* RESAMPLE */
+    (On Identifier /* PARTITIONS */ LeftParenthesis statisticsPartitionRange (Comma statisticsPartitionRange)* RightParenthesis)?
+    ;
+
+statisticsPartitionRange:
+    integer (To integer)?
+    ;
+
+sampleStatisticsOption:
+    Identifier /* SAMPLE */ integer (Identifier /* ROWS */ | Percent)
+    ;
+
+statsStreamStatisticsOption:
+    Identifier /* STATS_STREAM */ EqualsSign binary
+    ;
+
+incrementalStatisticsOption:
+    Identifier /* INCREMENTAL */ EqualsSign optionOnOff
+    ;
+
+autoDropStatisticsOption:
+    Identifier /* AUTO_DROP */ EqualsSign optionOnOff
+    ;
+
+updateStatisticsLiteralOption:
+    Identifier /* PAGECOUNT | ROWCOUNT */ EqualsSign integerOrRealOrNumeric
+    ;
+
+updateStatisticsSimpleOption:
+    Identifier /* FULLSCAN | NORECOMPUTE | ALL | COLUMNS | INDEX */
+    ;
+
+-- From Microsoft docs:
+UPDATE STATISTICS table_or_indexed_view_name
+    [
+        {
+            { index_or_statistics__name }
+          | ( { index_or_statistics_name } [ , ...n ] )
+                }
+    ]
+    [ WITH
+        [
+            FULLSCAN
+              [ [ , ] PERSIST_SAMPLE_PERCENT = { ON | OFF } ]
+            | SAMPLE number { PERCENT | ROWS }
+              [ [ , ] PERSIST_SAMPLE_PERCENT = { ON | OFF } ]
+            | RESAMPLE
+              [ ON PARTITIONS ( { <partition_number> | <range> } [ , ...n ] ) ]
+            | <update_stats_stream_option> [ , ...n ]
+        ]
+        [ [ , ] [ ALL | COLUMNS | INDEX ]
+        [ [ , ] NORECOMPUTE ]
+        [ [ , ] INCREMENTAL = { ON | OFF } ]
+        [ [ , ] MAXDOP = max_degree_of_parallelism ]
+        [ [ , ] AUTO_DROP = { ON | OFF } ]
+    ] ;
+
+<update_stats_stream_option> ::=
+    [ STATS_STREAM = stats_stream ]
+    [ ROWCOUNT = numeric_constant ]
+    [ PAGECOUNT = numeric_constant ]

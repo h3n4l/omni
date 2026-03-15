@@ -1,0 +1,37 @@
+-- Statement: ALTER SERVICE
+-- Grammar rule: alterServiceStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-service-transact-sql
+
+-- From TSql170.g:
+alterServiceStatement:
+    identifier
+    (
+        (onQueueClause
+            (addDropServiceContractList)?
+        )
+    |
+        addDropServiceContractList
+    )
+    ;
+
+onQueueClause:
+    On Identifier /* QUEUE */ schemaObjectThreePartName
+    ;
+
+addDropServiceContractList:
+    LeftParenthesis addDropServiceContract (Comma addDropServiceContract)* RightParenthesis
+    ;
+
+addDropServiceContract:
+    (Drop | Add)
+    Identifier /* CONTRACT */ identifier
+    ;
+
+-- From Microsoft docs:
+ALTER SERVICE service_name
+   [ ON QUEUE [ schema_name . ]queue_name ]
+   [ ( < opt_arg > [ , ...n ] ) ]
+[ ; ]
+
+<opt_arg> ::=
+   ADD CONTRACT contract_name | DROP CONTRACT contract_name

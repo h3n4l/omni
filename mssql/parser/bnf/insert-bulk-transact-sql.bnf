@@ -1,0 +1,42 @@
+-- Statement: INSERT BULK
+-- Grammar rule: insertBulkStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/bulk-insert-transact-sql
+
+-- From TSql170.g:
+insertBulkStatement:
+    Insert Bulk schemaObjectThreePartName
+    (coldefList)?
+    (insertBulkOptions)?
+    ;
+
+coldefList:
+    LeftParenthesis
+    coldefItem (Comma coldefItem)*
+    RightParenthesis
+    ;
+
+coldefItem:
+    columnDefinitionEx
+    (nullNotNull)?
+    ;
+
+insertBulkOptions:
+    With LeftParenthesis
+    insertBulkOption (Comma insertBulkOption)*
+    RightParenthesis
+    ;
+
+insertBulkOption:
+      bulkInsertSortOrderOption
+    | simpleInsertBulkOption
+    ;
+
+simpleInsertBulkOption:
+    Identifier
+    (EqualsSign integerOrNumeric)?
+    ;
+
+-- From Microsoft docs:
+-- INSERT BULK is an internal TDS-level command used by client tools (bcp, SqlBulkCopy).
+-- It shares the BULK INSERT documentation page but has a different grammar structure:
+-- INSERT BULK accepts column definitions and a subset of BULK INSERT options.

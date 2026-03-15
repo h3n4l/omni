@@ -1,0 +1,76 @@
+-- Statement: CREATE RESOURCE POOL
+-- Grammar rule: createResourcePoolStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-resource-pool-transact-sql
+
+-- From TSql170.g:
+createResourcePoolStatement:
+    tResource:Identifier tPool:Identifier vIdentifier=identifier
+        -- Match(tResource, "Resource"); Match(tPool, "Pool")
+        resourcePoolStatementBody[vResult]
+    ;
+
+resourcePoolStatementBody [ResourcePoolStatement vParent]:
+    (
+        With LeftParenthesis vResourcePoolParameter=resourcePoolParameter
+            (Comma vResourcePoolParameter=resourcePoolParameter)*
+            RightParenthesis
+    )?
+    ;
+
+resourcePoolParameter:
+      -- AFFINITY specification
+      vAffinitySpec=resourcePoolAffinitySpecification
+        -- NextTokenMatches("Affinity")
+    | -- Percent-based parameters
+      tPercent:Identifier EqualsSign vPercent=integer
+        -- tPercent: MIN_CPU_PERCENT | MAX_CPU_PERCENT | CAP_CPU_PERCENT
+        --           | MIN_MEMORY_PERCENT | MAX_MEMORY_PERCENT | TARGET_MEMORY_PERCENT
+        --           | MIN_IOPS_PER_VOLUME | MAX_IOPS_PER_VOLUME
+        --           | MIN_IO_PERCENT | MAX_IO_PERCENT | CAP_IO_PERCENT
+    ;
+
+resourcePoolAffinitySpecification:
+    tAffinity:Identifier
+        -- Match(tAffinity, "Affinity")
+        tAffinityType:Identifier EqualsSign
+        -- tAffinityType: SCHEDULER | NUMANODE
+        (
+            tAuto:Identifier
+            -- Match(tAuto, "Auto") -- only valid for SCHEDULER
+        |
+            LeftParenthesis poolAffinityRange
+                (Comma poolAffinityRange)*
+                RightParenthesis
+        )
+    ;
+
+poolAffinityRange:
+    vFrom=integer
+        (To vTo=integer)?
+    ;
+
+-- From Microsoft docs:
+CREATE RESOURCE POOL pool_name
+[ WITH
+    (
+        [ MIN_CPU_PERCENT = value ]
+        [ [ , ] MAX_CPU_PERCENT = value ]
+        [ [ , ] CAP_CPU_PERCENT = value ]
+        [ [ , ] AFFINITY {SCHEDULER =
+                  AUTO
+                | ( <scheduler_range_spec> )
+                | NUMANODE = ( <NUMA_node_range_spec> )
+                } ]
+        [ [ , ] MIN_MEMORY_PERCENT = value ]
+        [ [ , ] MAX_MEMORY_PERCENT = value ]
+        [ [ , ] MIN_IOPS_PER_VOLUME = value ]
+        [ [ , ] MAX_IOPS_PER_VOLUME = value ]
+    )
+]
+[;]
+
+<scheduler_range_spec> ::=
+{ SCHED_ID | SCHED_ID TO SCHED_ID }[,...n]
+
+<NUMA_node_range_spec> ::=
+{ NUMA_node_ID | NUMA_node_ID TO NUMA_node_ID }[,...n]

@@ -17504,3 +17504,128 @@ func TestParseServerConfigStringsDepth(t *testing.T) {
 		}
 	})
 }
+
+// TestParseInfrastructureBnfReview tests batch 154: BNF-first infrastructure review.
+func TestParseInfrastructureBnfReview(t *testing.T) {
+	t.Run("static_method_call", func(t *testing.T) {
+		// type::Method(args) syntax
+		tests := []string{
+			"SELECT geometry::Point(1, 2, 0)",
+			"SELECT geography::STGeomFromText('POINT(0 0)', 4326)",
+			"SELECT hierarchyid::Parse('/1/2/')",
+			"SELECT geometry::Point(1, 2, 0) AS geom",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				result := ParseAndCheck(t, sql)
+				stmt := result.Items[0].(*ast.SelectStmt)
+				target := stmt.TargetList.Items[0].(*ast.ResTarget)
+				mc, ok := target.Val.(*ast.MethodCallExpr)
+				if !ok {
+					t.Fatalf("expected *MethodCallExpr, got %T", target.Val)
+				}
+				if mc.Type == nil {
+					t.Fatal("expected non-nil Type")
+				}
+				if mc.Method == "" {
+					t.Error("expected non-empty Method")
+				}
+			})
+		}
+	})
+
+	t.Run("schema_qualified_static_method", func(t *testing.T) {
+		// schema.type::Method(args)
+		sql := "SELECT dbo.geometry::Point(1, 2, 0)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		target := stmt.TargetList.Items[0].(*ast.ResTarget)
+		mc, ok := target.Val.(*ast.MethodCallExpr)
+		if !ok {
+			t.Fatalf("expected *MethodCallExpr, got %T", target.Val)
+		}
+		if mc.Type.Schema != "dbo" {
+			t.Errorf("expected Schema=dbo, got %q", mc.Type.Schema)
+		}
+	})
+
+	t.Run("scalar_subquery", func(t *testing.T) {
+		tests := []string{
+			"SELECT (SELECT 1)",
+			"SELECT (SELECT MAX(id) FROM t)",
+			"SELECT (SELECT COUNT(*) FROM t) AS cnt",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				result := ParseAndCheck(t, sql)
+				stmt := result.Items[0].(*ast.SelectStmt)
+				target := stmt.TargetList.Items[0].(*ast.ResTarget)
+				sub, ok := target.Val.(*ast.SubqueryExpr)
+				if !ok {
+					t.Fatalf("expected *SubqueryExpr, got %T", target.Val)
+				}
+				if sub.Query == nil {
+					t.Fatal("expected non-nil Query")
+				}
+			})
+		}
+	})
+
+	t.Run("in_subquery", func(t *testing.T) {
+		tests := []string{
+			"SELECT * FROM t WHERE id IN (SELECT id FROM t2)",
+			"SELECT * FROM t WHERE id NOT IN (SELECT id FROM t2)",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				result := ParseAndCheck(t, sql)
+				stmt := result.Items[0].(*ast.SelectStmt)
+				if stmt.WhereClause == nil {
+					t.Fatal("expected non-nil WhereClause")
+				}
+				var inExpr *ast.InExpr
+				switch e := stmt.WhereClause.(type) {
+				case *ast.InExpr:
+					inExpr = e
+				default:
+					t.Fatalf("expected *InExpr, got %T", stmt.WhereClause)
+				}
+				if inExpr.Subquery == nil {
+					t.Fatal("expected non-nil Subquery on InExpr")
+				}
+				if inExpr.List != nil {
+					t.Error("expected nil List when using subquery")
+				}
+			})
+		}
+	})
+
+	t.Run("in_value_list_still_works", func(t *testing.T) {
+		// Ensure regular IN (value_list) still works
+		sql := "SELECT * FROM t WHERE id IN (1, 2, 3)"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		inExpr := stmt.WhereClause.(*ast.InExpr)
+		if inExpr.List == nil {
+			t.Fatal("expected non-nil List for value-list IN")
+		}
+		if inExpr.Subquery != nil {
+			t.Error("expected nil Subquery for value-list IN")
+		}
+	})
+
+	t.Run("static_method_no_args", func(t *testing.T) {
+		// type::Method without args (e.g., geometry::STGeomCollFromWKB)
+		sql := "SELECT hierarchyid::GetRoot()"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SelectStmt)
+		target := stmt.TargetList.Items[0].(*ast.ResTarget)
+		mc, ok := target.Val.(*ast.MethodCallExpr)
+		if !ok {
+			t.Fatalf("expected *MethodCallExpr, got %T", target.Val)
+		}
+		if mc.Method != "GetRoot" {
+			t.Errorf("expected Method=GetRoot, got %q", mc.Method)
+		}
+	})
+}

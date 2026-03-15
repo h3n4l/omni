@@ -1,0 +1,69 @@
+-- Statement: ALTER FULLTEXT INDEX
+-- Grammar rule: alterFulltextIndexStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-fulltext-index-transact-sql
+
+-- From TSql170.g:
+alterFulltextIndexStatement:
+    Index On schemaObjectThreePartName  // ON table_name
+    alterFulltextIndexAction
+    ;
+
+alterFulltextIndexAction:
+        {NextTokenMatches(CodeGenerationSupporter.Enable) || NextTokenMatches(CodeGenerationSupporter.Disable)}?
+        enableDisableAlterFulltextIndexAction  // ENABLE | DISABLE
+    |   addAlterFulltextIndexAction  // ADD (column_name [...], ...)
+    |   dropAlterFulltextIndexAction  // DROP (column_name, ...)
+    |   {NextTokenMatches(CodeGenerationSupporter.Start)}?
+        startPopulationAlterFulltextIndexAction  // START { FULL | INCREMENTAL | UPDATE } POPULATION
+    |   otherPopulationAlterFulltextIndexAction  // { STOP | PAUSE | RESUME } POPULATION
+    |   setAlterFullTextIndexAction  // SET ...
+    |   alterColumnAlterFullTextIndexAction  // ALTER COLUMN ...
+    ;
+
+setAlterFullTextIndexAction:
+    Set
+    (
+        setStoplistAlterFulltextIndexAction  // SET STOPLIST = { OFF | SYSTEM | stoplist_name }
+    |   {NextTokenMatches(CodeGenerationSupporter.ChangeTracking)}?
+        setChangeTrackingAlterFulltextIndexAction  // SET CHANGE_TRACKING = { MANUAL | AUTO | OFF }
+    |   {NextTokenMatches(CodeGenerationSupporter.Search)}?
+        setSearchPropertyListAlterFullTextIndexAction  // SET SEARCH PROPERTY LIST = { OFF | property_list_name }
+    )
+    ;
+
+-- Sub-rules (referenced):
+-- enableDisableAlterFulltextIndexAction: ENABLE | DISABLE
+-- addAlterFulltextIndexAction: ADD (column_name [TYPE COLUMN type_col] [LANGUAGE lang] [STATISTICAL_SEMANTICS], ...) [WITH NO POPULATION]
+-- dropAlterFulltextIndexAction: DROP (column_name, ...) [WITH NO POPULATION]
+-- startPopulationAlterFulltextIndexAction: START { FULL | INCREMENTAL | UPDATE } POPULATION
+-- otherPopulationAlterFulltextIndexAction: { STOP | PAUSE | RESUME } POPULATION
+-- alterColumnAlterFullTextIndexAction: ALTER COLUMN column_name { ADD | DROP } STATISTICAL_SEMANTICS [WITH NO POPULATION]
+-- setStoplistAlterFulltextIndexAction: STOPLIST = { OFF | SYSTEM | stoplist_name } [WITH NO POPULATION]
+-- setChangeTrackingAlterFulltextIndexAction: CHANGE_TRACKING = { MANUAL | AUTO | OFF }
+-- setSearchPropertyListAlterFullTextIndexAction: SEARCH PROPERTY LIST = { OFF | property_list_name } [WITH NO POPULATION]
+
+-- From Microsoft docs:
+-- ALTER FULLTEXT INDEX ON table_name
+--    { ENABLE
+--    | DISABLE
+--    | SET CHANGE_TRACKING [ = ] { MANUAL | AUTO | OFF }
+--    | ADD ( column_name
+--            [ TYPE COLUMN type_column_name ]
+--            [ LANGUAGE language_term ]
+--            [ STATISTICAL_SEMANTICS ]
+--            [ , ...n ]
+--          )
+--      [ WITH NO POPULATION ]
+--    | ALTER COLUMN column_name
+--      { ADD | DROP } STATISTICAL_SEMANTICS
+--      [ WITH NO POPULATION ]
+--    | DROP ( column_name [ , ...n ] )
+--      [ WITH NO POPULATION ]
+--    | START { FULL | INCREMENTAL | UPDATE } POPULATION
+--    | { STOP | PAUSE | RESUME } POPULATION
+--    | SET STOPLIST [ = ] { OFF | SYSTEM | stoplist_name }
+--      [ WITH NO POPULATION ]
+--    | SET SEARCH PROPERTY LIST [ = ] { OFF | property_list_name }
+--      [ WITH NO POPULATION ]
+--    }
+-- [ ; ]

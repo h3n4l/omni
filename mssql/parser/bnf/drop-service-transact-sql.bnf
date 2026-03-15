@@ -1,0 +1,13 @@
+-- Statement: DROP SERVICE
+-- Grammar rule: dropServiceStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-service-transact-sql
+
+-- From TSql170.g:
+-- Parent: dropStatement handles DROP keyword
+dropServiceStatement:
+    SERVICE identifier
+    ;
+
+-- From Microsoft docs:
+DROP SERVICE service_name
+[ ; ]

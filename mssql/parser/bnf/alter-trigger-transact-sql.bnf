@@ -1,0 +1,112 @@
+-- Statement: ALTER TRIGGER
+-- Grammar rule: alterTriggerStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-trigger-transact-sql
+
+-- From TSql170.g:
+
+alterTriggerStatement:
+    Alter triggerStatementBody
+    ;
+
+triggerStatementBody:
+    Trigger schemaObjectThreePartName
+        On triggerObject
+        ( With triggerOption (Comma triggerOption)* )?
+        (
+            ddlTriggerMidSection    -- if DDL trigger
+        |   dmlTriggerMidSection    -- if DML trigger
+        )
+        As
+        (
+            statementList
+        |   methodSpecifier
+        )
+    ;
+
+triggerObject:
+      schemaObjectThreePartName                -- normal DML trigger on table/view
+    | Database                                 -- database-scoped DDL trigger
+    | All Identifier /* Server */              -- server-scoped DDL/logon trigger
+    ;
+
+triggerOption:
+      Identifier   -- ENCRYPTION, NATIVE_COMPILATION, SCHEMABINDING
+    | executeAsClause
+    ;
+
+dmlTriggerMidSection:
+    ( For | Identifier /* AFTER */ | Identifier /* INSTEAD */ Of )
+        dmlTriggerAction (Comma dmlTriggerAction)*
+        ( Not For Replication )?
+    ;
+
+dmlTriggerAction:
+      Insert
+    | Update
+    | Delete
+    ;
+
+ddlTriggerMidSection:
+    ( For | Identifier /* AFTER */ )
+        (
+            ddlTriggerAction (Comma ddlTriggerAction)*
+        |   Identifier /* LOGON */
+        )
+    ;
+
+ddlTriggerAction:
+    Identifier   -- event_type or event_group
+    ;
+
+-- From Microsoft docs:
+
+-- DML Trigger:
+ALTER TRIGGER schema_name.trigger_name
+ON  ( table | view )
+[ WITH <dml_trigger_option> [ ,...n ] ]
+ ( FOR | AFTER | INSTEAD OF )
+{ [ DELETE ] [ , ] [ INSERT ] [ , ] [ UPDATE ] }
+[ NOT FOR REPLICATION ]
+AS { sql_statement [ ; ] [ ...n ] | EXTERNAL NAME <method specifier>  [ ; ] }
+
+<dml_trigger_option> ::=
+    [ ENCRYPTION ]
+    [ <EXECUTE AS Clause> ]
+
+<method_specifier> ::=
+    assembly_name.class_name.method_name
+
+-- DML Trigger on memory-optimized tables:
+ALTER TRIGGER schema_name.trigger_name
+ON  ( table  )
+[ WITH <dml_trigger_option> [ ,...n ] ]
+ ( FOR | AFTER )
+{ [ DELETE ] [ , ] [ INSERT ] [ , ] [ UPDATE ] }
+AS { sql_statement [ ; ] [ ...n ] }
+
+<dml_trigger_option> ::=
+    [ NATIVE_COMPILATION ]
+    [ SCHEMABINDING ]
+    [ <EXECUTE AS Clause> ]
+
+-- DDL Trigger:
+ALTER TRIGGER trigger_name
+ON { DATABASE | ALL SERVER }
+[ WITH <ddl_trigger_option> [ ,...n ] ]
+{ FOR | AFTER } { event_type [ ,...n ] | event_group }
+AS { sql_statement [ ; ] | EXTERNAL NAME <method specifier>  [ ; ] }
+
+<ddl_trigger_option> ::=
+    [ ENCRYPTION ]
+    [ <EXECUTE AS Clause> ]
+
+-- Logon Trigger:
+ALTER TRIGGER trigger_name
+ON ALL SERVER
+[ WITH <logon_trigger_option> [ ,...n ] ]
+{ FOR| AFTER } LOGON
+AS { sql_statement  [ ; ] [ ,...n ] | EXTERNAL NAME < method specifier >  [ ; ] }
+
+<logon_trigger_option> ::=
+    [ ENCRYPTION ]
+    [ EXECUTE AS Clause ]

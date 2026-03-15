@@ -1,0 +1,21 @@
+-- Statement: LABEL / GOTO
+-- Grammar rules: labelStatement, gotoStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/goto-transact-sql
+
+-- From TSql170.g:
+labelStatement:
+    Label       -- a token matching identifier followed by colon (e.g. "my_label:")
+    ;
+
+gotoStatement:
+    GoTo nonQuotedIdentifier
+    ;
+
+-- Sub-rules referenced:
+-- nonQuotedIdentifier: an unquoted identifier (label name)
+
+-- From Microsoft docs:
+-- Define the label:
+--   label:
+-- Alter the execution:
+--   GOTO label

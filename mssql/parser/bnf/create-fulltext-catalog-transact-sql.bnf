@@ -1,0 +1,32 @@
+-- Statement: CREATE FULLTEXT CATALOG
+-- Grammar rule: createFulltextCatalogStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-fulltext-catalog-transact-sql
+
+-- From TSql170.g:
+createFulltextCatalogStatement:
+    CREATE FULLTEXT CATALOG identifier
+    ( ON FILEGROUP identifier )?
+    ( IN PATH stringLiteral )?
+    ( WITH accentSensitivity )?
+    ( AS DEFAULT )?
+    authorizationOpt
+    ;
+
+accentSensitivity:
+    ACCENT_SENSITIVITY EqualsSign optionOnOff   -- ON | OFF
+    ;
+
+authorizationOpt:
+    ( AUTHORIZATION identifier )?
+    ;
+
+-- From Microsoft docs:
+CREATE FULLTEXT CATALOG catalog_name
+     [ON FILEGROUP filegroup ]
+     [IN PATH 'rootpath']
+     [WITH <catalog_option>]
+     [AS DEFAULT]
+     [AUTHORIZATION owner_name ]
+
+<catalog_option>::=
+     ACCENT_SENSITIVITY = {ON|OFF}

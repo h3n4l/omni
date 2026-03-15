@@ -1,0 +1,35 @@
+-- Statement: CREATE ROUTE
+-- Grammar rule: createRouteStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-route-transact-sql
+
+-- From TSql170.g:
+createRouteStatement:
+    tRoute:Identifier vIdentifier=identifier
+        -- Match(tRoute, "Route")
+        authorizationOpt[vResult]
+        routeOptionList[vResult]
+    ;
+
+routeOptionList [RouteStatement vParent]:
+    With vRouteOption=routeOption
+        (Comma vRouteOption=routeOption)*
+    ;
+
+routeOption:
+      -- LIFETIME option (integer value)
+      tLifeTime:Identifier EqualsSign vLiteral=integer
+        -- NextTokenMatches("LifeTime")
+    | -- String options: SERVICE_NAME, BROKER_INSTANCE, ADDRESS, MIRROR_ADDRESS
+      tOption:Identifier EqualsSign vLiteral=stringLiteral
+    ;
+
+-- From Microsoft docs:
+CREATE ROUTE route_name
+[ AUTHORIZATION owner_name ]
+WITH
+   [ SERVICE_NAME = 'service_name', ]
+   [ BROKER_INSTANCE = 'broker_instance_identifier' , ]
+   [ LIFETIME = route_lifetime , ]
+   ADDRESS =  'next_hop_address'
+   [ , MIRROR_ADDRESS = 'next_hop_mirror_address' ]
+[ ; ]

@@ -1,0 +1,21 @@
+-- Statement: CREATE PARTITION SCHEME
+-- Grammar rule: createPartitionScheme (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-partition-scheme-transact-sql
+
+-- From TSql170.g:
+createPartitionScheme:
+    tScheme:Identifier vIdentifier=identifier
+        -- Match(tScheme, "Scheme")
+        As tPartition:Identifier vIdentifier=identifier
+        -- Match(tPartition, "Partition")
+        (All)?
+        To LeftParenthesis vFileGroup=stringOrIdentifier
+        (Comma vFileGroup=stringOrIdentifier)*
+        RightParenthesis
+    ;
+
+-- From Microsoft docs:
+CREATE PARTITION SCHEME partition_scheme_name
+AS PARTITION partition_function_name
+[ ALL ] TO ( { file_group_name | [ PRIMARY ] } [ , ...n ] )
+[ ; ]

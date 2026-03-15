@@ -1,0 +1,25 @@
+-- Statement: ALTER SCHEMA
+-- Grammar rule: alterSchemaStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-schema-transact-sql
+
+-- From TSql170.g:
+alterSchemaStatement:
+    Schema identifier
+    Identifier /* TRANSFER */
+    (
+        Identifier /* OBJECT | TYPE */ DoubleColon
+    |
+        Identifier /* XML */ Schema Identifier /* COLLECTION */ DoubleColon
+    )?
+    schemaObjectTwoPartName
+    ;
+
+-- From Microsoft docs:
+ALTER SCHEMA schema_name
+   TRANSFER [ <entity_type> :: ] securable_name
+[;]
+
+<entity_type> ::=
+    {
+    Object | Type | XML Schema Collection
+    }

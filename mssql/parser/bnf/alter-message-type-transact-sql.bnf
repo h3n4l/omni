@@ -1,0 +1,25 @@
+-- Statement: ALTER MESSAGE TYPE
+-- Grammar rule: alterMessageTypeStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-message-type-transact-sql
+
+-- From TSql170.g:
+alterMessageTypeStatement:
+    Identifier /* MESSAGE */ Identifier /* TYPE */ identifier
+    messageTypeValidation
+    ;
+
+messageTypeValidation:
+    Identifier /* VALIDATION */ EqualsSign Identifier /* NONE | EMPTY | WELL_FORMED_XML | VALID_XML */
+    (
+        With Schema Identifier /* COLLECTION */ schemaObjectNonEmptyTwoPartName
+    )?
+    ;
+
+-- From Microsoft docs:
+ALTER MESSAGE TYPE message_type_name
+   VALIDATION =
+    {  NONE
+     | EMPTY
+     | WELL_FORMED_XML
+     | VALID_XML WITH SCHEMA COLLECTION schema_collection_name }
+[ ; ]

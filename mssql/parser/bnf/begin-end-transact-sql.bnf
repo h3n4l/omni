@@ -1,0 +1,21 @@
+-- Statement: BEGIN...END
+-- Grammar rule: beginEndBlockStatement (TSql170.g:16175)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/begin-end-transact-sql
+
+-- From TSql170.g:
+beginEndBlockStatement:
+    Begin
+    (beginEndAtomicBlock)?
+    (Semicolon)*
+    (statementOptSemi)+
+    End
+    ;
+
+beginEndAtomicBlock:
+    Identifier /* ATOMIC */ atomicBlockOptions
+    ;
+
+-- From Microsoft docs:
+-- BEGIN [ ; ]
+--     { sql_statement | statement_block }
+-- END [ ; ]

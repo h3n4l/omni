@@ -1,0 +1,12 @@
+-- Statement: DROP CONTRACT
+-- Grammar rule: dropContractStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-contract-transact-sql
+
+-- From TSql170.g:
+dropContractStatement:
+    DROP CONTRACT contract_name
+    ;
+
+-- From Microsoft docs:
+DROP CONTRACT contract_name
+[ ; ]

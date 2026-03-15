@@ -1,0 +1,38 @@
+-- Statement: BACKUP CERTIFICATE
+-- Grammar rule: backupCertificateStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/backup-certificate-transact-sql
+
+-- From TSql170.g:
+backupCertificateStatement:
+    Identifier /* CERTIFICATE */ identifier To File EqualsSign stringLiteral
+    ( With privateKeySpec )?
+    ;
+
+privateKeySpec:
+    Identifier /* PRIVATE */ Key LeftParenthesis
+        certificatePrivateKeySpec ( Comma certificatePrivateKeySpec )*
+    RightParenthesis
+    ;
+
+certificatePrivateKeySpec:
+    passwordChangeOption
+    | File EqualsSign stringLiteral
+    ;
+
+passwordChangeOption:
+    Identifier /* ENCRYPTION | DECRYPTION */ By Identifier /* PASSWORD */ EqualsSign stringLiteral
+    ;
+
+-- Note: The leading BACKUP keyword is consumed by the parent backupStatements rule.
+
+-- From Microsoft docs:
+-- BACKUP CERTIFICATE certname TO FILE = 'path_to_file'
+--     [ WITH
+--       [FORMAT = 'PFX',]
+--       PRIVATE KEY
+--       (
+--         FILE = 'path_to_private_key_file' ,
+--         ENCRYPTION BY PASSWORD = 'encryption_password'
+--         [ , DECRYPTION BY PASSWORD = 'decryption_password' ]
+--       )
+--     ]

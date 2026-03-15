@@ -1,0 +1,14 @@
+-- Statement: MOVE CONVERSATION
+-- Grammar rule: moveConversationStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/move-conversation-transact-sql
+
+-- From TSql170.g:
+moveConversationStatement:
+    Identifier/*Move*/ Identifier/*Conversation*/ expression
+    To expression
+    ;
+
+-- From Microsoft docs:
+MOVE CONVERSATION conversation_handle
+   TO conversation_group_id
+[ ; ]

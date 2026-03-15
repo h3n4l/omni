@@ -1,0 +1,138 @@
+-- Statement: EXECUTE
+-- Grammar rule: executeStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/execute-transact-sql
+
+-- From TSql170.g:
+
+executeStatement:
+    executeSpecification
+    ( WITH executeOption ( Comma executeOption )* )?
+    ;
+
+executeSpecification:
+    execStart
+    execTypes
+    ;
+
+execTypes:
+      LeftParenthesis execStrTypes RightParenthesis
+        ( execStrExecCtxt )?
+        ( linkedServer )?
+    | execProcEx
+    | variable EqualsSign execProcEx
+    ;
+
+execStrExecCtxt:
+    AS execCtxtStmt
+    ;
+
+execCtxtStmt:
+    execCtxtStmtType
+    ( EqualsSign stringLiteral )?
+    ;
+
+execStrTypes:
+    execSqlList ( Comma setParamList )?
+    ;
+
+execProcEx:
+      execProc
+    | adhocDataSourceExecproc
+    ;
+
+execProc:
+    ( procObjectReference | varObjectReference )
+    ( setParamList )?
+    ;
+
+adhocDataSourceExecproc:
+    adhocDataSource Dot procObjectReference
+    ( setParamList )?
+    ;
+
+executeOption:
+      executeOptionRecompile       -- RECOMPILE
+    | executeOptionResultSets      -- RESULT SETS ...
+    ;
+
+executeOptionRecompile:
+    RECOMPILE
+    ;
+
+executeOptionResultSets:
+    RESULT SETS
+    ( UNDEFINED | NONE
+    | LeftParenthesis
+        resultSetDefinition ( Comma resultSetDefinition )*
+      RightParenthesis
+    )
+    ;
+
+resultSetDefinition:
+      inlineResultSetDefinition
+    | asForXmlResultSetDefinition
+    | asSchemaObjectResultSetDefinition
+    ;
+
+inlineResultSetDefinition:
+    LeftParenthesis
+        resultColumnDefinition ( Comma resultColumnDefinition )*
+    RightParenthesis
+    ;
+
+-- From Microsoft docs:
+
+-- Execute a stored procedure or function
+[ { EXEC | EXECUTE } ]
+    {
+      [ @return_status = ]
+      { module_name [ ;number ] | @module_name_var }
+        [ [ @parameter = ] { value
+                           | @variable [ OUTPUT ]
+                           | [ DEFAULT ]
+                           }
+        ]
+      [ ,...n ]
+      [ WITH <execute_option> [ ,...n ] ]
+    }
+[ ; ]
+
+-- Execute a character string
+{ EXEC | EXECUTE }
+    ( { @string_variable | [ N ]'tsql_string' } [ + ...n ] )
+    [ AS { LOGIN | USER } = ' name ' ]
+[ ; ]
+
+-- Execute a pass-through command against a linked server
+{ EXEC | EXECUTE }
+    ( { @string_variable | [ N ] 'command_string [ ? ]' } [ + ...n ]
+        [ { , { value | @variable [ OUTPUT ] } } [ ...n ] ]
+    )
+    [ AS { LOGIN | USER } = ' name ' ]
+    [ AT linked_server_name ]
+    [ AT DATA_SOURCE data_source_name ]
+[ ; ]
+
+<execute_option>::=
+{
+        RECOMPILE
+    | { RESULT SETS UNDEFINED }
+    | { RESULT SETS NONE }
+    | { RESULT SETS ( <result_sets_definition> [,...n ] ) }
+}
+
+<result_sets_definition> ::=
+{
+    (
+         { column_name
+           data_type
+         [ COLLATE collation_name ]
+         [ NULL | NOT NULL ] }
+         [,...n ]
+    )
+    | AS OBJECT
+        [ db_name . [ schema_name ] . | schema_name . ]
+        {table_name | view_name | table_valued_function_name }
+    | AS TYPE [ schema_name.]table_type_name
+    | AS FOR XML
+}

@@ -1,0 +1,37 @@
+-- Statement: FETCH CURSOR
+-- Grammar rule: fetchCursorStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/fetch-transact-sql
+
+-- From TSql170.g:
+fetchCursorStatement:
+    FETCH rowSelector
+    ( INTO variable ( Comma variable )* )?
+    ;
+
+rowSelector:
+    cursorId
+    | fetchType FROM cursorId
+    | FROM cursorId
+    ;
+
+fetchType:
+    fetchOrientation ( signedInteger | variable )?
+    ;
+
+-- fetchOrientation: NEXT | PRIOR | FIRST | LAST | ABSOLUTE | RELATIVE
+
+cursorId:
+    ( GLOBAL identifier )
+    | identifierOrVariable
+    ;
+
+-- From Microsoft docs:
+FETCH
+      [ [ NEXT | PRIOR | FIRST | LAST
+                | ABSOLUTE { n | @nvar }
+                | RELATIVE { n | @nvar }
+           ]
+           FROM
+      ]
+{ { [ GLOBAL ] cursor_name } | @cursor_variable_name }
+[ INTO @variable_name [ ,...n ] ]

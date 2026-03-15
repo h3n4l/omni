@@ -1,0 +1,37 @@
+-- Statement: DROP TRIGGER
+-- Grammar rule: dropTriggerStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-trigger-transact-sql
+
+-- From TSql170.g:
+dropTriggerStatement:
+    Trigger
+    ( If Exists )?
+    dropObjectList
+    ( On triggerScope )?
+    ;
+
+dropObjectList:
+    dropObject ( Comma dropObject )*
+    ;
+
+dropObject:
+    schemaObjectThreePartName
+    ;
+
+triggerScope:
+      Database
+    | All Server
+    ;
+
+-- From Microsoft docs:
+-- Trigger on an INSERT, UPDATE, or DELETE statement to a table or view (DML Trigger)
+DROP TRIGGER [ IF EXISTS ] [schema_name.]trigger_name [ ,...n ] [ ; ]
+
+-- Trigger on a CREATE, ALTER, DROP, GRANT, DENY, REVOKE or UPDATE statement (DDL Trigger)
+DROP TRIGGER [ IF EXISTS ] trigger_name [ ,...n ]
+ON { DATABASE | ALL SERVER }
+[ ; ]
+
+-- Trigger on a LOGON event (Logon Trigger)
+DROP TRIGGER [ IF EXISTS ] trigger_name [ ,...n ]
+ON ALL SERVER

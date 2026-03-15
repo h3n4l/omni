@@ -1,0 +1,21 @@
+-- Statement: DROP TABLE
+-- Grammar rule: dropTableStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-table-transact-sql
+
+-- From TSql170.g:
+dropTableStatement:
+    Table (If Exists)?
+    dropObjectList
+    ;
+
+dropObjectList:
+    dropObject (Comma dropObject)*
+    ;
+
+dropObject:
+    schemaObjectThreePartName
+    ;
+
+-- From Microsoft docs:
+DROP TABLE [ IF EXISTS ] { database_name.schema_name.table_name | schema_name.table_name | table_name } [ ,...n ]
+[ ; ]

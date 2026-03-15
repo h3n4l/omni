@@ -1,0 +1,20 @@
+-- Statement: CREATE MASTER KEY
+-- Grammar rule: createMasterKeyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-master-key-transact-sql
+
+-- From TSql170.g:
+createMasterKeyStatement:
+    tMaster:Identifier tKey:Key
+        -- Match(tMaster, "Master")
+        (
+            tEncryption:Identifier
+            -- Match(tEncryption, "Encryption")
+            By tPassword:Identifier
+            -- Match(tPassword, "Password")
+            EqualsSign vLiteral=stringLiteral
+        )?
+    ;
+
+-- From Microsoft docs:
+CREATE MASTER KEY [ ENCRYPTION BY PASSWORD = 'password' ]
+[ ; ]

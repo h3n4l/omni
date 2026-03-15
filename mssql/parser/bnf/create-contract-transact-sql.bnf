@@ -1,0 +1,27 @@
+-- Statement: CREATE CONTRACT
+-- Grammar rule: createContractStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-contract-transact-sql
+
+-- From TSql170.g:
+createContractStatement
+    : tContract:Identifier vIdentifier=identifier
+        authorizationOpt[vResult]
+        LeftParenthesis vMessage=contractMessage
+        (Comma vMessage=contractMessage)*
+        RightParenthesis
+    ;
+
+contractMessage
+    : vMessageName=identifier tSent:Identifier By
+        ( Any
+        | tInitiatorTarget:Identifier  -- INITIATOR | TARGET
+        )
+    ;
+
+-- From Microsoft docs:
+CREATE CONTRACT contract_name
+   [ AUTHORIZATION owner_name ]
+      (  {   { message_type_name | [ DEFAULT ] }
+          SENT BY { INITIATOR | TARGET | ANY }
+       } [ ,...n] )
+[ ; ]

@@ -1,0 +1,80 @@
+-- Statement: CREATE STATISTICS
+-- Grammar rule: createStatisticsStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-statistics-transact-sql
+
+-- From TSql170.g:
+createStatisticsStatement:
+    Create Statistics identifier
+    On schemaObjectThreePartName
+    identifierColumnList
+    (filterClause)?
+    (
+        With createStatisticsStatementWithOption
+        (Comma createStatisticsStatementWithOption)*
+    )?
+    ;
+
+createStatisticsStatementWithOption:
+    incrementalStatisticsOption
+    | autoDropStatisticsOption
+    | sampleStatisticsOption
+    | statsStreamStatisticsOption
+    | simpleStatisticsOption
+    ;
+
+sampleStatisticsOption:
+    Identifier /* SAMPLE */ integer (Identifier /* ROWS */ | Percent)
+    ;
+
+statsStreamStatisticsOption:
+    Identifier /* STATS_STREAM */ EqualsSign binary
+    ;
+
+simpleStatisticsOption:
+    Identifier /* FULLSCAN | NORECOMPUTE | ... */
+    ;
+
+incrementalStatisticsOption:
+    Identifier /* INCREMENTAL */ EqualsSign optionOnOff
+    ;
+
+autoDropStatisticsOption:
+    Identifier /* AUTO_DROP */ EqualsSign optionOnOff
+    ;
+
+-- From Microsoft docs:
+CREATE STATISTICS statistics_name
+ON { table_or_indexed_view_name } ( column [ , ...n ] )
+    [ WHERE <filter_predicate> ]
+    [ WITH
+        [ FULLSCAN
+            [ [ , ] PERSIST_SAMPLE_PERCENT = { ON | OFF } ]
+          | SAMPLE number { PERCENT | ROWS }
+            [ [ , ] PERSIST_SAMPLE_PERCENT = { ON | OFF } ]
+          | <update_stats_stream_option> [ , ...n ]
+        [ [ , ] NORECOMPUTE ]
+        [ [ , ] INCREMENTAL = { ON | OFF } ]
+        [ [ , ] MAXDOP = max_degree_of_parallelism ]
+        [ [ , ] AUTO_DROP = { ON | OFF } ]
+        ]
+    ] ;
+
+<filter_predicate> ::=
+    <conjunct> [ AND <conjunct> ]
+
+<conjunct> ::=
+    <disjunct> | <comparison>
+
+<disjunct> ::=
+        column_name IN (constant , ...)
+
+<comparison> ::=
+        column_name <comparison_op> constant
+
+<comparison_op> ::=
+    IS | IS NOT | = | <> | != | > | >= | !> | < | <= | !<
+
+<update_stats_stream_option> ::=
+    [ STATS_STREAM = stats_stream ]
+    [ ROWCOUNT = numeric_constant ]
+    [ PAGECOUNT = numeric_constant ]

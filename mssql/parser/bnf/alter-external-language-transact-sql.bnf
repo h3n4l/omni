@@ -1,0 +1,55 @@
+-- Statement: ALTER EXTERNAL LANGUAGE
+-- Grammar rule: alterExternalLanguageStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-external-language-transact-sql
+
+-- From TSql170.g:
+alterExternalLanguageStatement:
+    ALTER EXTERNAL LANGUAGE identifier
+    (
+        authorizationOpt
+        (
+            SET externalLanguageFileOption
+        |
+            ADD externalLanguageFileOption
+        |
+            REMOVE PLATFORM identifier   -- platform name
+        )
+    )
+    ;
+
+externalLanguageFileOption:
+    LeftParenthesis CONTENT EqualsSign binaryOrString
+    Comma FILE_NAME EqualsSign nonEmptyString
+    (
+        Comma
+        (
+            PLATFORM EqualsSign identifier
+        |
+            PARAMETERS EqualsSign nonEmptyString
+        |
+            ENVIRONMENT_VARIABLES EqualsSign nonEmptyString
+        )
+    )*
+    RightParenthesis
+    ;
+
+-- From Microsoft docs:
+-- ALTER EXTERNAL LANGUAGE language_name
+-- [ AUTHORIZATION owner_name ]
+-- {
+--     SET <file_spec>
+--     | ADD <file_spec>
+--     | REMOVE PLATFORM <platform>
+-- }
+-- [ ; ]
+--
+-- <file_spec> ::=
+-- {
+--     ( CONTENT = {<external_lang_specifier> | <content_bits>,
+--     FILE_NAME = <external_lang_file_name>
+--     [, PLATFORM = <platform> ]
+--     [, PARAMETERS = <external_lang_parameters> ]
+--     [, ENVIRONMENT_VARIABLES = <external_lang_env_variables> ] )
+-- }
+--
+-- <platform> :: = { WINDOWS | LINUX }

@@ -1,21 +1,23 @@
-# Recursive Descent Parser Implementation Skill - T-SQL
+# BNF-First Parser Review Skill - T-SQL (MSSQL)
 
-You are implementing a recursive descent T-SQL (SQL Server) parser.
+You are reviewing a recursive descent T-SQL (SQL Server) parser against BNF specifications.
 
 **Working directory:** `/Users/rebeliceyang/Github/omni`
 **Parser source:** `mssql/parser/`
+**BNF files:** `mssql/parser/bnf/`
+**BNF catalog:** `mssql/parser/MSSQL_BNF_CATALOG.json`
 **Reference:** Microsoft T-SQL documentation (https://learn.microsoft.com/en-us/sql/t-sql/)
 **AST definitions:** `mssql/ast/`
 **Tests:** `mssql/parser/compare_test.go`
 
 ## Your Task
 
-1. Read `mssql/parser/PROGRESS_SUMMARY.json` (lightweight version — done batches are compressed, only pending/failed/in_progress have full detail)
+1. Read `mssql/parser/PROGRESS_SUMMARY.json` (lightweight version -- done batches are compressed, only pending/failed/in_progress have full detail)
 2. Pick the next batch to work on:
    - If any batch has `"status": "in_progress"`, **resume that batch** (it was interrupted mid-work -- read the existing code in its target file and continue from where it left off)
    - Otherwise, find the first batch with `"status": "pending"` whose dependencies (by id) are all `"done"`
    - If any batch has `"status": "failed"`, **retry it** (reset to `"in_progress"` and try again)
-3. Implement that batch following the steps below
+3. Execute the BNF-first review for that batch following the steps below
 4. Update `mssql/parser/PROGRESS.json` (the full file, NOT the summary):
    - Set `"in_progress"` before starting work
    - Set `"done"` only after `go build` and `go test` pass
@@ -25,13 +27,14 @@ If all batches are `"done"`, output `ALL_BATCHES_COMPLETE` and stop.
 
 ## Progress Logging (MANDATORY)
 
-You MUST print progress markers to stdout at each step. This is how the pipeline operator monitors your work. Use this exact format:
+You MUST print progress markers to stdout at each step:
 
 ```
 [BATCH N] STARTED - batch_name
-[BATCH N] STEP reading_refs - Reading BNF and AST definitions
-[BATCH N] STEP writing_tests - Writing test cases
-[BATCH N] STEP writing_code - Implementing parse functions
+[BATCH N] STEP reading_bnf - Reading BNF files for this batch
+[BATCH N] STEP comparing - Comparing parser code against BNF
+[BATCH N] STEP fixing - Fixing gaps found in review
+[BATCH N] STEP writing_tests - Adding test cases for gaps
 [BATCH N] STEP build - Running go build
 [BATCH N] STEP test - Running go test (X passed, Y failed)
 [BATCH N] STEP commit - Committing changes
@@ -44,49 +47,164 @@ If a step fails, print:
 [BATCH N] RETRY - what you're fixing
 ```
 
-**Do NOT skip these markers.** They appear in the build log and are essential for debugging pipeline issues.
+**Do NOT skip these markers.**
 
-## Implementation Steps for Each Batch
+## BNF-First Review Workflow
 
-### Step 1: Read Official Documentation (MANDATORY)
+### Step 1: Read BNF Files (MANDATORY FIRST STEP)
 
-**This is the most critical step. Do NOT skip it. Do NOT write BNF from memory.**
+**This is the most critical step. The BNF is the source of truth.**
 
-Documentation has been **pre-fetched** to local files. For every grammar rule in the batch:
+For every statement in the batch:
 
-1. **First check local docs**: Read from `mssql/parser/docs/{statement}.txt` (e.g., `alter-table-transact-sql.txt`, `create-trigger-transact-sql.txt`)
-2. **Only if the local file is missing**, use WebFetch as fallback:
-   - `https://learn.microsoft.com/en-us/sql/t-sql/statements/{statement}-transact-sql`
-   - For queries: `https://learn.microsoft.com/en-us/sql/t-sql/queries/{query}-transact-sql`
-3. **Extract the COMPLETE BNF/syntax diagram** — every branch, every option, every sub-clause
-4. **Do NOT abbreviate** — never write `...` or truncate the BNF
-5. **For sub-clauses that have their own doc page**, check `mssql/parser/docs/` first, then WebFetch if missing
+1. **Read the BNF file**: `mssql/parser/bnf/{statement-name}-transact-sql.bnf`
+2. **Read the BNF catalog**: Check `mssql/parser/MSSQL_BNF_CATALOG.json` for statement metadata and status
+3. These BNF files are the **authoritative ground truth** — do NOT use WebFetch or other sources
+4. **Extract the COMPLETE syntax** -- every branch, every option, every sub-clause
+5. **Do NOT abbreviate** -- never write `...` or truncate the BNF
 
-### Step 2: Read AST and Existing Code
+### Step 2: Compare Parser Against BNF
 
-- Read the AST node definitions from `mssql/ast/parsenodes.go` (and `node.go`)
-- Read the existing parser code in `mssql/parser/` to understand available helpers and already-implemented parse functions
-- If the existing AST types don't cover all BNF branches, add new node types / fields to `parsenodes.go`
+For each BNF rule, systematically check:
 
-### Step 3: Write Tests FIRST (Test-Driven Development)
+1. **Does the parser handle every branch?** Walk the BNF top-to-bottom and verify each alternative is implemented
+2. **Are optional clauses handled?** Every `[ ... ]` in the BNF must have a conditional check
+3. **Are repeating elements handled?** Every `{ ... } [ ,...n ]` must loop
+4. **Is keyword matching correct?** Compare token constants against BNF keywords
+5. **Are AST nodes complete?** Every semantic element in the BNF should be captured in the AST
 
-**TEST-DRIVEN**: Write tests FIRST, then implement.
+Record all gaps found.
 
-**Every branch of the BNF must have at least one test case.** For example, if ALTER TABLE has ADD COLUMN, DROP COLUMN, ALTER COLUMN, ADD CONSTRAINT, DROP CONSTRAINT, ENABLE TRIGGER, DISABLE TRIGGER, SWITCH PARTITION, REBUILD, SET — then you need at least 10 test cases, one per branch.
+### Step 3: Fix Gaps
 
-Add test cases to `compare_test.go` using SQL strings relevant to the batch's grammar rules.
-Add a new `TestParse{BatchName}` function.
+For each gap found:
 
-### Step 4: Write Parse Functions
+1. **Add missing branches** to the parser
+2. **Add missing AST fields** to `mssql/ast/parsenodes.go`
+3. **Add serialization** to `mssql/ast/outfuncs.go` for any new node types
+4. **Ensure BNF comment** on every parse function is complete and matches the official BNF exactly
 
-Create or update the target file (e.g., `mssql/parser/select.go`).
+### Step 4: Write Tests for Gaps
+
+Add test cases to `compare_test.go` covering:
+- Every newly added branch
+- Edge cases for optional clauses
+- Combinations of options
+
+### Step 5: Build and Test
+
+```bash
+# Must compile
+cd /Users/rebeliceyang/Github/omni && go build ./mssql/...
+
+# Run batch-specific tests
+cd /Users/rebeliceyang/Github/omni && go test -v -count=1 ./mssql/parser/ -run "TestParse{BatchName}"
+
+# Run full test suite (no regressions)
+cd /Users/rebeliceyang/Github/omni && go test ./mssql/...
+```
+
+### Step 6: Update Progress
+
+Edit `PROGRESS.json`:
+- **Before starting work**: set `"status"` to `"in_progress"`
+- **After all tests pass**: set `"status"` to `"done"`
+- **If tests fail and you cannot fix**: set `"status"` to `"failed"` and add `"error": "description"`
+- **NEVER mark `"done"` if `go build ./mssql/...` or `go test ./mssql/...` fails**
+
+### Step 7: Git Commit
+
+```bash
+../../scripts/git-commit.sh "mssql/parser: review batch N - name" mssql/
+```
+
+## Key Files Reference
+
+| File | Purpose |
+|------|---------|
+| `mssql/parser/parser.go` | Parser struct, Parse() entry point, helpers |
+| `mssql/parser/lexer.go` | Lexer, Token, keywords, token constants |
+| `mssql/ast/parsenodes.go` | AST node struct definitions |
+| `mssql/ast/node.go` | Node interface, List, String, Integer, etc. |
+| `mssql/ast/outfuncs.go` | NodeToString for AST comparison |
+| `mssql/parser/compare_test.go` | Test infrastructure |
+| `mssql/parser/PROGRESS.json` | Full implementation progress tracking |
+| `mssql/parser/PROGRESS_SUMMARY.json` | Compact progress for batch picker |
+| `mssql/parser/bnf/` | BNF grammar files (282 files) |
+| `mssql/parser/MSSQL_BNF_CATALOG.json` | BNF catalog (288 statements) |
+
+## T-SQL Specific Notes
+
+### Lexer Notes
+- **Bracketed identifiers**: `[column name]` uses square brackets for quoting
+- **Variables**: `@local_var`, `@@global_var`
+- **N-strings**: `N'unicode string'` for nvarchar literals
+- **Comments**: `--` line and `/* */` block (nested), no `#` comments
+- **Not-equal**: Both `!=` and `<>` are valid
+- **Special operators**: `!<` (not less than), `!>` (not greater than)
+- **String concat**: `+` operator (same as addition)
+- **Static methods**: `type::Method()` syntax
+
+### Expression Precedence (highest to lowest)
+1. `()` grouping, function calls
+2. `::` scope resolution
+3. `~` bitwise NOT, unary `+`, unary `-`
+4. `*`, `/`, `%`
+5. `+`, `-` (binary), `&` bitwise AND
+6. `^` bitwise XOR
+7. `|` bitwise OR
+8. `=`, `>`, `<`, `>=`, `<=`, `<>`, `!=`, `!<`, `!>`
+9. `NOT`
+10. `AND`
+11. `OR`
+12. `BETWEEN`, `IN`, `LIKE`, `IS [NOT] NULL`, `EXISTS`, `ANY`, `ALL`, `SOME`
+
+### T-SQL Specific Constructs
+- **GO**: Batch separator (not a SQL statement -- handled specially)
+- **TOP**: Uses parentheses: `TOP (10)` (parentheses optional for literals)
+- **CROSS APPLY / OUTER APPLY**: T-SQL specific join types
+- **OUTPUT clause**: Available on INSERT, UPDATE, DELETE, MERGE
+- **MERGE**: Full MERGE with WHEN MATCHED/NOT MATCHED/NOT MATCHED BY SOURCE
+- **TRY...CATCH**: Error handling blocks
+- **IIF**: Inline IF function
+- **CONVERT**: Type conversion with optional style parameter
+- **CHOOSE**: Returns item at specified index
+- **STRING_AGG**: String aggregation with WITHIN GROUP
+
+## Batch Summary Table
+
+| Batch | Name | Scope | Status |
+|-------|------|-------|--------|
+| 0-153 | *(implementation batches)* | Full T-SQL parser implementation | done |
+| 154 | bnf_review_infrastructure | Lexer, parser helpers, expressions, types, names | pending |
+| 155 | bnf_review_select | SELECT (CTE, TOP, JOIN, APPLY, FOR XML/JSON, OPTION) | pending |
+| 156 | bnf_review_dml | INSERT, UPDATE, DELETE, MERGE, COPY INTO | pending |
+| 157 | bnf_review_create_table | CREATE TABLE (temporal, graph, ledger, memory-optimized) | pending |
+| 158 | bnf_review_alter_table | ALTER TABLE (all action types) | pending |
+| 159 | bnf_review_index | All index types + fulltext | pending |
+| 160 | bnf_review_view_trigger | VIEW + TRIGGER (DML, DDL, LOGON) | pending |
+| 161 | bnf_review_routines | PROCEDURE, FUNCTION, EXECUTE | pending |
+| 162 | bnf_review_database | CREATE/ALTER/DROP DATABASE, filegroups | pending |
+| 163 | bnf_review_security | Users, logins, roles, GRANT/DENY/REVOKE | pending |
+| 164 | bnf_review_crypto | Keys, certificates, credentials | pending |
+| 165 | bnf_review_audit_event | Audit + event session | pending |
+| 166 | bnf_review_variables_cursors_control_flow | DECLARE, SET, cursors, IF/WHILE/TRY | pending |
+| 167 | bnf_review_transaction | Transaction statements + GO | pending |
+| 168 | bnf_review_backup_restore | BACKUP/RESTORE | pending |
+| 169 | bnf_review_ha_server | Availability groups, endpoints, resource governor | pending |
+| 170 | bnf_review_service_broker | All service broker statements | pending |
+| 171 | bnf_review_clr_external | Assembly, CLR, external objects | pending |
+| 172 | bnf_review_schema_objects | Type, sequence, synonym, statistics, schema, partition | pending |
+| 173 | bnf_review_utility_admin_drop | DBCC, admin, DROP, utility, rowset functions | pending |
+
+## Parse Function Requirements
 
 **Every parse function MUST have the COMPLETE BNF in its comment. This is a hard requirement.**
 
 ```go
 // parseAlterTableStmt parses an ALTER TABLE statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-table-transact-sql
+// BNF: mssql/parser/bnf/alter-table-transact-sql.bnf
 //
 //  ALTER TABLE [ database_name . [ schema_name ] . | schema_name . ] table_name
 //  {
@@ -100,20 +218,21 @@ Create or update the target file (e.g., `mssql/parser/select.go`).
 //      }
 //      | [ WITH { CHECK | NOCHECK } ] ADD
 //          { column_definition | computed_column_definition | table_constraint } [ ,...n ]
-//      | DROP { [ CONSTRAINT ] [ IF EXISTS ] constraint_name [ ,...n ] | COLUMN [ IF EXISTS ] column_name [ ,...n ] }
-//      | [ WITH { CHECK | NOCHECK } ] { CHECK | NOCHECK } CONSTRAINT { ALL | constraint_name [ ,...n ] }
+//      | DROP { [ CONSTRAINT ] [ IF EXISTS ] constraint_name [ ,...n ]
+//             | COLUMN [ IF EXISTS ] column_name [ ,...n ] }
+//      | [ WITH { CHECK | NOCHECK } ] { CHECK | NOCHECK } CONSTRAINT
+//          { ALL | constraint_name [ ,...n ] }
 //      | { ENABLE | DISABLE } TRIGGER { ALL | trigger_name [ ,...n ] }
-//      | SWITCH [ PARTITION source_partition_number_expression ] TO target_table
-//          [ PARTITION target_partition_number_expression ] [ WITH ( ... ) ]
+//      | SWITCH [ PARTITION source_partition_number_expression ]
+//          TO target_table [ PARTITION target_partition_number_expression ]
 //      | SET ( FILESTREAM_ON = { partition_scheme_name | filegroup | "default" | "NULL" } )
-//      | REBUILD [ [PARTITION = ALL] [ WITH ( rebuild_index_option [ ,...n ] ) ]
-//               | [ PARTITION = partition_number [ WITH ( single_partition_rebuild_index_option [ ,...n ] ) ] ] ]
-//      | <table_option>
+//      | REBUILD [ [ PARTITION = ALL ] [ WITH ( rebuild_index_option [ ,...n ] ) ]
+//               | [ PARTITION = partition_number [ WITH ( single_partition_rebuild_index_option ) ] ] ]
 //  }
 func (p *Parser) parseAlterTableStmt() *nodes.AlterTableStmt {
 ```
 
-**The comment BNF must match the official docs exactly. No abbreviation, no `...` for omitted branches. Every branch in the BNF must have a corresponding code path in the function.**
+**The comment BNF must match the `.bnf` file exactly. No abbreviation, no `...` for omitted branches. Every branch in the BNF must have a corresponding code path.**
 
 **Return type conventions:**
 - Expression parsers return `ExprNode` (not `Node`)
@@ -122,162 +241,8 @@ func (p *Parser) parseAlterTableStmt() *nodes.AlterTableStmt {
 
 **Rules for parse function implementation:**
 
-1. **Use the existing AST types** from `mssql/ast/` -- do NOT create new node types without updating both parsenodes.go and outfuncs.go
-1a. **When implementing a new batch, you MUST also add serialization to `outfuncs.go` for any new node types used.** Every node type in parsenodes.go must have a corresponding case in `writeNode` and a `writeXxx` function in outfuncs.go.
-1b. **Every branch in the BNF comment MUST have a corresponding implementation.** If the BNF says `{ ADD | DROP | ALTER COLUMN | ENABLE TRIGGER | DISABLE TRIGGER | SWITCH | REBUILD | SET }`, you must handle ALL of them, not just a subset. If a branch requires a new AST node type or field, add it.
-1c. **Sub-clauses must be recursively complete.** If a statement's BNF references `column_definition`, and `column_definition` itself has a full BNF (with DEFAULT, IDENTITY, CONSTRAINT, COLLATE, GENERATED, MASKED, etc.), you must fetch that sub-clause's BNF and implement it completely too.
-2. **Record positions** on EVERY AST node that has a `Loc` field.
-   Set `Loc: nodes.Loc{Start: p.pos()}` at the beginning of parsing a node.
-   Set `node.Loc.End = p.pos()` at the end of parsing a node.
-   **This is a hard requirement.**
+1. **Use the existing AST types** from `mssql/ast/` -- do NOT create new node types without updating both `parsenodes.go` and `outfuncs.go`
+2. **Record positions** on EVERY AST node that has a `Loc` field: `Loc: nodes.Loc{Start: p.pos()}` at start, `node.Loc.End = p.pos()` at end
 3. **Token constants** are in `mssql/parser/lexer.go`
 4. **Keywords are case-insensitive** -- the lexer handles this
-5. **Error recovery**: When encountering unexpected tokens, try to recover by:
-   - Skipping to the next semicolon for statement-level errors
-   - Recording errors but continuing to parse subsequent statements
-
-### Step 4: Test
-
-Run these commands in order:
-
-```bash
-# Must compile
-cd /Users/rebeliceyang/Github/omni && go build ./mssql/...
-
-# Run batch-specific tests
-cd /Users/rebeliceyang/Github/omni && go test -v -count=1 ./mssql/parser/ -run "TestParse{BatchName}"
-
-# Run full test suite (no regressions)
-cd /Users/rebeliceyang/Github/omni && go test ./mssql/...
-```
-
-### Step 5: Update Progress
-
-Edit `PROGRESS.json`:
-- **Before starting work**: set `"status"` to `"in_progress"` so a restart knows this batch was interrupted
-- **After all tests pass**: set `"status"` to `"done"`
-- **If tests fail and you cannot fix**: set `"status"` to `"failed"` and add `"error": "description"`
-- **NEVER mark `"done"` if `go build ./mssql/...` or `go test ./mssql/...` fails**
-
-### Step 6: Git Commit
-
-```bash
-../../scripts/git-commit.sh "mssql/parser: implement batch N - name" mssql/
-```
-
-## Key Files Reference
-
-| File | Purpose |
-|------|---------|
-| `mssql/parser/parser.go` | Parser struct, Parse() entry point, helpers |
-| `mssql/parser/lexer.go` | Lexer, Token, keywords, token constants |
-| `mssql/ast/parsenodes.go` | AST node struct definitions |
-| `mssql/ast/node.go` | Node interface, List, String, Integer, etc. |
-| `mssql/ast/outfuncs.go` | NodeToString for AST comparison |
-| `mssql/parser/compare_test.go` | Test infrastructure |
-| `mssql/parser/PROGRESS.json` | Implementation progress tracking |
-
-## T-SQL Specific Notes
-
-- **Bracketed identifiers**: `[column name]` uses square brackets for quoting
-- **Variables**: `@local_var`, `@@global_var`
-- **N-strings**: `N'unicode string'` for nvarchar literals
-- **Comments**: `--` line and `/* */` block (nested), no `#` comments
-- **Not-equal**: Both `!=` and `<>` are valid
-- **Special operators**: `!<` (not less than), `!>` (not greater than)
-- **String concat**: `+` operator (same as addition)
-- **Static methods**: `type::Method()` syntax
-- **GO**: Batch separator (not actually a SQL statement)
-- **TOP**: Uses parentheses: `TOP (10)` (parentheses optional for literals)
-- **CROSS APPLY / OUTER APPLY**: T-SQL specific join types
-- **OUTPUT clause**: Available on INSERT, UPDATE, DELETE, MERGE
-- **MERGE**: Full MERGE statement with WHEN MATCHED/NOT MATCHED/BY SOURCE
-- **TRY...CATCH**: Error handling blocks
-- **IIF**: T-SQL specific inline IF function
-- **CONVERT**: T-SQL specific type conversion with optional style
-
-## New AST Node Types Required for Phase 2 Batches (23+)
-
-When implementing new batches, you will need to add new AST node types to `mssql/ast/parsenodes.go` and corresponding serialization in `mssql/ast/outfuncs.go`. Below is a guide for each batch area:
-
-### Cursor Operations (batch 23)
-- `OpenCursorStmt` -- OPEN cursor_name
-- `FetchCursorStmt` -- FETCH [NEXT|PRIOR|FIRST|LAST|ABSOLUTE n|RELATIVE n] FROM cursor INTO @vars
-- `CloseCursorStmt` -- CLOSE cursor_name
-- `DeallocateCursorStmt` -- DEALLOCATE cursor_name
-- Extend `VariableDecl.IsCursor` to support full cursor options (SCROLL, STATIC, KEYSET, DYNAMIC, FAST_FORWARD, etc.)
-
-### CREATE TRIGGER (batch 24)
-- `CreateTriggerStmt` -- with OrAlter, Name, Table, TriggerType (AFTER/INSTEAD OF/FOR), Events (INSERT/UPDATE/DELETE), Body
-- For DDL triggers: Events are DDL event types (CREATE_TABLE, ALTER_TABLE, etc.), scope is DATABASE or ALL SERVER
-
-### CREATE SCHEMA (batch 25)
-- `CreateSchemaStmt` -- Name, Authorization, optional contained CREATE TABLE/VIEW/GRANT statements
-- `AlterSchemaStmt` -- TRANSFER entity
-
-### CREATE TYPE (batch 26)
-- `CreateTypeStmt` -- for alias types (FROM base_type), table types (AS TABLE (...)), CLR types (EXTERNAL NAME)
-
-### CREATE SEQUENCE (batch 27)
-- `CreateSequenceStmt` / `AlterSequenceStmt` -- with DataType, StartWith, IncrementBy, MinValue, MaxValue, Cycle, Cache options
-
-### CREATE SYNONYM (batch 28)
-- `CreateSynonymStmt` -- Name, ForName (target object)
-
-### ALTER Objects (batch 29)
-- Extend `parseAlterStmt` dispatcher for DATABASE, INDEX, VIEW, PROCEDURE, FUNCTION
-- `AlterDatabaseStmt` -- SET options, MODIFY NAME/FILE, ADD FILE, etc.
-- `AlterIndexStmt` -- REBUILD, REORGANIZE, DISABLE, SET options
-
-### Security Principals (batch 30)
-- `CreateUserStmt`, `AlterUserStmt` -- WITH PASSWORD, DEFAULT_SCHEMA, LOGIN, etc.
-- `CreateLoginStmt`, `AlterLoginStmt` -- WITH PASSWORD, DEFAULT_DATABASE, CHECK_POLICY, etc.
-- `CreateRoleStmt`, `AlterRoleStmt` -- ADD/DROP MEMBER
-- `CreateAppRoleStmt`
-
-### Security Keys/Certs (batch 31)
-- `CreateMasterKeyStmt`, `CreateSymmetricKeyStmt`, `CreateAsymmetricKeyStmt`, `CreateCertificateStmt`, `CreateCredentialStmt`
-- `OpenSymmetricKeyStmt`, `CloseSymmetricKeyStmt`
-- `BackupCertificateStmt`
-
-### DBCC (batch 32)
-- `DbccStmt` -- Command (string), Args (list of expr), WithOptions
-
-### BULK INSERT (batch 33)
-- `BulkInsertStmt` -- Table, FromFile, WithOptions
-
-### BACKUP/RESTORE (batch 34)
-- `BackupStmt` -- Type (DATABASE/LOG), Database, ToDevices, WithOptions
-- `RestoreStmt` -- Type (DATABASE/LOG/HEADERONLY/FILELISTONLY/etc.), Database, FromDevices, WithOptions
-
-### PIVOT/UNPIVOT (batch 35)
-- `PivotClause` -- AggFunc, ForColumn, InValues, Alias
-- `UnpivotClause` -- ValueColumn, ForColumn, InColumns, Alias
-- These are table sources, so they should implement `tableExpr()`
-
-### Rowset Functions (batch 37)
-- `OpenRowsetExpr`, `OpenQueryExpr`, `OpenJsonExpr`, `OpenDataSourceExpr`, `OpenXmlExpr`
-- These should implement both `tableExpr()` (for FROM) and possibly `exprNode()`
-- OPENJSON and OPENXML support WITH clause for column definitions
-
-### Grouping Sets (batch 38)
-- `GroupingSetsClause`, `CubeClause`, `RollupClause` -- as expression nodes in GROUP BY
-
-### Partition (batch 42)
-- `CreatePartitionFunctionStmt`, `CreatePartitionSchemeStmt`
-- `AlterPartitionFunctionStmt`, `AlterPartitionSchemeStmt`
-
-### Fulltext (batch 43)
-- `CreateFulltextIndexStmt`, `CreateFulltextCatalogStmt`
-- `ContainsPredicate`, `FreetextPredicate` -- as expression nodes in WHERE
-
-### Service Broker (batch 46)
-- `CreateMessageTypeStmt`, `CreateContractStmt`, `CreateQueueStmt`, `CreateServiceStmt`
-- `SendStmt`, `ReceiveStmt`, `BeginConversationStmt`, `EndConversationStmt`
-
-### SET Options (batch 41)
-- Extend existing `SetStmt` or add `SetOptionStmt` for ON/OFF options and special SET forms like SET TRANSACTION ISOLATION LEVEL
-
-### Dispatcher (batch 49)
-- Wire all new keywords into `parseStmt`, `parseCreateStmt`, `parseAlterStmt`
-- Add new keyword constants to `lexer.go` if needed (check existing keywords first -- many are already defined)
+5. **Error recovery**: Skip to next semicolon for statement-level errors, record errors but continue parsing

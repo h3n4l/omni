@@ -1,0 +1,31 @@
+-- Statement: CREATE MATERIALIZED VIEW
+-- Grammar rule: createMaterializedViewStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-materialized-view-as-select-transact-sql
+
+-- From TSql170.g:
+createMaterializedViewStatement:
+    Materialized View schemaObjectTwoPartName
+    With LeftParenthesis createMaterializedViewOption
+    ( Comma createMaterializedViewOption )?
+    RightParenthesis
+    As
+    subqueryExpressionWithOptionalCTE
+    ;
+
+-- From Microsoft docs:
+CREATE MATERIALIZED VIEW [ schema_name. ] materialized_view_name
+    WITH (
+      <distribution_option>
+    )
+    AS <select_statement>
+[;]
+
+<distribution_option> ::=
+    {
+        DISTRIBUTION = HASH ( distribution_column_name )
+      | DISTRIBUTION = HASH ( [distribution_column_name [, ...n]] )
+      | DISTRIBUTION = ROUND_ROBIN
+    }
+
+<select_statement> ::=
+    SELECT select_criteria

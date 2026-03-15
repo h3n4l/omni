@@ -1,0 +1,46 @@
+-- Statement: ALTER BROKER PRIORITY
+-- Grammar rule: alterBrokerPriorityStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-broker-priority-transact-sql
+
+-- From TSql170.g:
+alterBrokerPriorityStatement:
+    brokerPriorityStatementBody[vResult]
+    ;
+
+-- Sub-rule: brokerPriorityStatementBody
+brokerPriorityStatementBody:
+    tBroker:Identifier tPriority:Identifier identifier  -- 'BROKER' 'PRIORITY' priority_name
+    For tForClause:Identifier                           -- FOR 'CONVERSATION'
+    (
+        Set
+        LeftParenthesis brokerPriorityParameter
+        (Comma brokerPriorityParameter)*
+        RightParenthesis
+    )?
+    ;
+
+-- Sub-rule: brokerPriorityParameter
+brokerPriorityParameter:
+    tParameter:Identifier EqualsSign  -- CONTRACT_NAME | LOCAL_SERVICE_NAME | REMOTE_SERVICE_NAME | PRIORITY_LEVEL
+    (
+        identifier        -- for CONTRACT_NAME, LOCAL_SERVICE_NAME (identifier value or ANY)
+      | stringLiteral     -- for REMOTE_SERVICE_NAME (string value)
+      | integer           -- for PRIORITY_LEVEL (1-10)
+      | Default           -- for PRIORITY_LEVEL (DEFAULT)
+    )
+    ;
+
+-- Note: The parent ALTER statement provides: ALTER
+-- So the full parse is: ALTER BROKER PRIORITY priority_name
+--   FOR CONVERSATION [SET (param = value [, ...])]
+
+-- From Microsoft docs:
+-- ALTER BROKER PRIORITY ConversationPriorityName
+-- FOR CONVERSATION
+-- { SET ( [ CONTRACT_NAME = {ContractName | ANY } ]
+--         [ [ , ] LOCAL_SERVICE_NAME = {LocalServiceName | ANY } ]
+--         [ [ , ] REMOTE_SERVICE_NAME = {'RemoteServiceName' | ANY } ]
+--         [ [ , ] PRIORITY_LEVEL = { PriorityValue | DEFAULT } ]
+--               )
+-- }
+-- [;]

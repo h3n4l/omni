@@ -1,0 +1,25 @@
+-- Statement: RESTORE MASTER KEY
+-- Grammar rule: restoreMasterKeyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/restore-master-key-transact-sql
+
+-- From TSql170.g:
+restoreMasterKeyStatement:
+    restoreMasterKeyBody
+    Identifier /* ENCRYPTION */ By Identifier /* PASSWORD */ EqualsSign stringLiteral
+    (Identifier /* FORCE */)?
+    ;
+
+restoreMasterKeyBody:
+    Identifier /* MASTER */ Key From File EqualsSign stringLiteral
+    Identifier /* DECRYPTION */ By Identifier /* PASSWORD */ EqualsSign stringLiteral
+    ;
+
+-- From Microsoft docs:
+RESTORE MASTER KEY FROM
+  {
+    FILE = 'path_to_file'
+  | URL = 'Azure Blob storage URL'
+  }
+    DECRYPTION BY PASSWORD = 'password'
+    ENCRYPTION BY PASSWORD = 'password'
+    [ FORCE ]

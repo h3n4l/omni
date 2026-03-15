@@ -1,0 +1,19 @@
+-- Statement: DROP STATISTICS
+-- Grammar rule: dropStatisticsStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-statistics-transact-sql
+
+-- From TSql170.g:
+dropStatisticsStatement:
+    Statistics statisticsDropObject (Comma statisticsDropObject)*
+    ;
+
+statisticsDropObject:
+    childObjectNameWithThreePrefixes
+    ;
+
+childObjectNameWithThreePrefixes:
+    identifierList[4]
+    ;
+
+-- From Microsoft docs:
+DROP STATISTICS table.statistics_name | view.statistics_name [ ,...n ]

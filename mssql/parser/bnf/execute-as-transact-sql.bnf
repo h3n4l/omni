@@ -1,0 +1,34 @@
+-- Statement: EXECUTE AS
+-- Grammar rule: executeAsStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/execute-as-transact-sql
+
+-- From TSql170.g:
+executeAsStatement:
+    execStart As executeAsStatementContext
+    executeContextStatementOptionsOpt
+    ;
+
+executeAsStatementContext:
+    User EqualsSign expression
+    | Identifier/*Login*/
+        ( /* empty - matches 'Caller' */
+        | EqualsSign expression  -- matches 'Login' = expression
+        )
+    ;
+
+executeContextStatementOptionsOpt:
+    ( With
+        ( Identifier/*No*/ Revert
+        | Identifier/*Cookie*/ Into variable
+        )
+    )?
+    ;
+
+-- From Microsoft docs:
+{ EXEC | EXECUTE } AS <context_specification>
+[ ; ]
+
+<context_specification>::=
+{ LOGIN | USER } = 'name'
+    [ WITH { NO REVERT | COOKIE INTO @varbinary_variable } ]
+| CALLER

@@ -1,0 +1,61 @@
+-- Statement: DECLARE TABLE VARIABLE
+-- Grammar rule: declareTableBody (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/declare-local-variable-transact-sql
+
+-- From TSql170.g:
+declareTableBody:
+    identifierVariable (As)? Table declareTableBodyMain
+    ;
+
+declareTableBodyMain:
+    LeftParenthesis tableDefinition RightParenthesis
+    ;
+
+tableDefinition:
+    tableElement (Comma tableElement)*
+    ;
+
+-- From Microsoft docs:
+
+-- SQL Server / Azure SQL Database Syntax:
+DECLARE @table_variable_name [AS]
+    TABLE ( { <column_definition> | <table_constraint> | <table_index> } [ , ...n ] )
+
+<column_definition> ::=
+    column_name { scalar_data_type | AS computed_column_expression }
+    [ COLLATE collation_name ]
+    [ [ DEFAULT constant_expression ] | IDENTITY [ (seed, increment ) ] ]
+    [ ROWGUIDCOL ]
+    [ <column_constraint> ]
+    [ <column_index> ]
+
+<column_constraint> ::=
+{
+    [ NULL | NOT NULL ]
+    { PRIMARY KEY | UNIQUE }
+      [ CLUSTERED | NONCLUSTERED ]
+      [ WITH FILLFACTOR = fillfactor | WITH ( <index_option> [ ,...n ] ) ]
+      [ ON { filegroup | "default" } ]
+  | [ CHECK ( logical_expression ) ] [ ,...n ]
+}
+
+<table_constraint> ::=
+{
+    { PRIMARY KEY | UNIQUE }
+      [ CLUSTERED | NONCLUSTERED ]
+      ( column_name [ ASC | DESC ] [ ,...n ] )
+      [ WITH FILLFACTOR = fillfactor | WITH ( <index_option> [ ,...n ] ) ]
+  | [ CHECK ( logical_expression ) ] [ ,...n ]
+}
+
+<table_index> ::=
+{
+    INDEX index_name [ UNIQUE ] [ CLUSTERED | NONCLUSTERED ]
+         (column_name [ ASC | DESC ] [ ,...n ] )
+  | INDEX index_name CLUSTERED COLUMNSTORE
+  | INDEX index_name [ NONCLUSTERED ] COLUMNSTORE ( column_name [ ,...n ] )
+    [ WITH ( <index_option> [ ,...n ] ) ]
+    [ ON { partition_scheme_name ( column_name )
+         | filegroup_name | default } ]
+    [ FILESTREAM_ON { filestream_filegroup_name | partition_scheme_name | "NULL" } ]
+}

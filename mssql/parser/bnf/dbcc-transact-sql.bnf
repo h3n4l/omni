@@ -1,0 +1,47 @@
+-- Statement: DBCC
+-- Grammar rule: dbccStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/database-console-commands/dbcc-transact-sql
+
+-- From TSql170.g:
+dbccStatement:
+    Dbcc Identifier
+    ( dbccNamedLiteralList )?
+    ( dbccOptions )?
+    ;
+
+dbccNamedLiteralList:
+    LeftParenthesis
+    (
+        dbccNamedLiteral ( Comma dbccNamedLiteral )*
+    | /* empty - parentheses required */
+    )
+    RightParenthesis
+    ;
+
+dbccNamedLiteral:
+    ( Identifier EqualsSign )?
+    possibleNegativeConstantOrIdentifier
+    ;
+
+dbccOptions:
+    With dbccOptionsList
+    ;
+
+dbccOptionsList:
+    dbccOptionsListItems
+    ;
+
+dbccOptionsListItems:
+    dbccOption ( Comma dbccOption )*
+    ;
+
+dbccOption:
+    Identifier  -- option kind resolved via DbccOptionsHelper
+    ;
+
+-- From Microsoft docs:
+-- (The DBCC overview page does not provide a single unified syntax block.
+--  Individual DBCC commands each have their own syntax. General form:)
+DBCC command_name
+    [ ( argument [ , ...n ] ) ]
+    [ WITH option [ , ...n ] ]

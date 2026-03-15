@@ -1,0 +1,36 @@
+-- Statement: ALTER ROLE
+-- Grammar rule: alterRoleStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-role-transact-sql
+
+-- From TSql170.g:
+alterRoleStatement:
+    Identifier /* ROLE */ identifier
+    alterRoleAction
+    ;
+
+alterRoleAction:
+      addMemberAlterRoleAction
+    | dropMemberAlterRoleAction
+    | renameAlterRoleAction
+    ;
+
+renameAlterRoleAction:
+    With Identifier /* NAME */ EqualsSign identifier
+    ;
+
+addMemberAlterRoleAction:
+    Add Identifier /* MEMBER */ identifier
+    ;
+
+dropMemberAlterRoleAction:
+    Drop Identifier /* MEMBER */ identifier
+    ;
+
+-- From Microsoft docs:
+ALTER ROLE  role_name
+{
+       ADD MEMBER database_principal
+    |  DROP MEMBER database_principal
+    |  WITH NAME = new_name
+}
+[;]

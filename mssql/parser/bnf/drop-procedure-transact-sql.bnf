@@ -1,0 +1,21 @@
+-- Statement: DROP PROCEDURE
+-- Grammar rule: dropProcedureStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-procedure-transact-sql
+
+-- From TSql170.g:
+dropProcedureStatement:
+    (Procedure | Proc)
+    (If Exists)?
+    dropObjectList
+    ;
+
+dropObjectList:
+    dropObject (Comma dropObject)*
+    ;
+
+dropObject:
+    schemaObjectThreePartName
+    ;
+
+-- From Microsoft docs:
+DROP { PROC | PROCEDURE } [ IF EXISTS ] { [ schema_name. ] procedure } [ , ...n ]

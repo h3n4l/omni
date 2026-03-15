@@ -1,0 +1,45 @@
+-- Statement: ALTER ASYMMETRIC KEY
+-- Grammar rule: alterAsymmetricKeyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-asymmetric-key-transact-sql
+
+-- From TSql170.g:
+alterAsymmetricKeyStatement:
+    tAsymmetric:Identifier Key identifier  -- 'ASYMMETRIC' KEY key_name
+    (
+        tRemove:Identifier                 -- 'REMOVE'
+        (
+            tPrivate:Identifier Key        -- 'PRIVATE' KEY  => RemovePrivateKey
+          | tAttested:Identifier Option    -- 'ATTESTED' OPTION  => RemoveAttestedOption
+        )
+      | With tPrivate2:Identifier Key      -- WITH 'PRIVATE' KEY
+        LeftParenthesis passwordChangeOption (Comma passwordChangeOption)* RightParenthesis
+      | tAttested:Identifier By stringLiteral  -- 'ATTESTED' BY 'value' => AttestedBy
+    )
+    ;
+
+-- Sub-rule: passwordChangeOption
+passwordChangeOption:
+    tEncryptionDecryption:Identifier By tPassword:Identifier EqualsSign stringLiteral
+    -- ENCRYPTION BY PASSWORD = 'new_password'
+    -- DECRYPTION BY PASSWORD = 'old_password'
+    ;
+
+-- Note: The parent ALTER statement provides: ALTER
+-- So the full parse is: ALTER ASYMMETRIC KEY key_name
+--   { REMOVE PRIVATE KEY | REMOVE ATTESTED OPTION
+--   | WITH PRIVATE KEY (password_options)
+--   | ATTESTED BY 'value' }
+
+-- From Microsoft docs:
+-- ALTER ASYMMETRIC KEY Asym_Key_Name <alter_option>
+--
+-- <alter_option> ::=
+--       <password_change_option>
+--     | REMOVE PRIVATE KEY
+--
+-- <password_change_option> ::=
+--     WITH PRIVATE KEY ( <password_option> [ , <password_option> ] )
+--
+-- <password_option> ::=
+--       ENCRYPTION BY PASSWORD = 'strongPassword'
+--     | DECRYPTION BY PASSWORD = 'oldPassword'

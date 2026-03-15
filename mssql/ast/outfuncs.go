@@ -354,6 +354,10 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeCreateAssemblyStmt(sb, n)
 	case *AlterAssemblyStmt:
 		writeAlterAssemblyStmt(sb, n)
+	case *AssemblyAction:
+		writeAssemblyAction(sb, n)
+	case *AssemblyFile:
+		writeAssemblyFile(sb, n)
 	case *ServiceBrokerStmt:
 		writeServiceBrokerStmt(sb, n)
 	case *ServiceBrokerOption:
@@ -3240,6 +3244,25 @@ func writeAlterAssemblyStmt(sb *strings.Builder, n *AlterAssemblyStmt) {
 	if n.Actions != nil {
 		sb.WriteString(" :actions ")
 		writeNode(sb, n.Actions)
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeAssemblyAction(sb *strings.Builder, n *AssemblyAction) {
+	sb.WriteString("{ASSEMBLYACTION")
+	if n.Name != "" {
+		fmt.Fprintf(sb, " :name \"%s\"", escapeString(n.Name))
+	}
+	if n.Value != "" {
+		fmt.Fprintf(sb, " :value \"%s\"", escapeString(n.Value))
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeAssemblyFile(sb *strings.Builder, n *AssemblyFile) {
+	sb.WriteString("{ASSEMBLYFILE")
+	if n.Path != "" {
+		fmt.Fprintf(sb, " :path \"%s\"", escapeString(n.Path))
 	}
 	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
 }

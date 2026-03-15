@@ -1,0 +1,13 @@
+-- Statement: DROP DATABASE AUDIT SPECIFICATION
+-- Grammar rule: dropDatabaseAuditSpecificationStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-database-audit-specification-transact-sql
+
+-- From TSql170.g:
+dropDatabaseAuditSpecificationStatement:
+    -- preceded by DROP DATABASE (handled by dropDatabaseStatements)
+    Audit Specification identifier
+    ;
+
+-- From Microsoft docs:
+DROP DATABASE AUDIT SPECIFICATION audit_specification_name
+[ ; ]

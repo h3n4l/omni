@@ -1,0 +1,29 @@
+-- Statement: TRUNCATE TABLE
+-- Grammar rule: truncateTableStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/truncate-table-transact-sql
+
+-- From TSql170.g:
+truncateTableStatement:
+    Truncate Table schemaObjectThreePartName
+    (
+        With LeftParenthesis Identifier /* PARTITIONS */ LeftParenthesis
+            compressionPartitionRange
+            ( Comma compressionPartitionRange )*
+        RightParenthesis RightParenthesis
+    )?
+    ;
+
+compressionPartitionRange:
+    expression
+    ( To expression )?
+    ;
+
+-- From Microsoft docs:
+TRUNCATE TABLE
+    { database_name.schema_name.table_name | schema_name.table_name | table_name }
+    [ WITH ( PARTITIONS ( { <partition_number_expression> | <range> }
+    [ , ...n ] ) ) ]
+[ ; ]
+
+<range> ::=
+<partition_number_expression> TO <partition_number_expression>

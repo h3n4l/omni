@@ -1,0 +1,21 @@
+-- Statement: THROW
+-- Grammar rule: throwStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/throw-transact-sql
+
+-- From TSql170.g:
+throwStatement:
+    THROW
+    (
+        integerOrVariable
+        Comma
+        stringOrVariable
+        Comma
+        integerOrVariable
+    )?
+    ;
+
+-- From Microsoft docs:
+THROW [ { error_number | @local_variable }
+    , { message | @local_variable }
+    , { state | @local_variable } ]
+[ ; ]

@@ -1,0 +1,82 @@
+-- Statement: ALTER SERVER AUDIT
+-- Grammar rule: alterServerAuditStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-server-audit-transact-sql
+
+-- From TSql170.g:
+alterServerAuditStatement:
+    -- Context: ALTER SERVER AUDIT already consumed
+    vAuditName = identifier
+    (
+        MODIFY NAME EqualsSign vNewName = identifier
+    |
+        (auditTargetClause[false])?
+        (auditWithClause)?
+        (Where eventBooleanExpression)?
+    |
+        REMOVE Where
+    )
+    ;
+
+auditTargetClause [bool pathRequired]:
+    TO
+    (
+        (
+            FILE LeftParenthesis auditFileOption (Comma auditFileOption)* RightParenthesis
+        |
+            URL LeftParenthesis auditUrlOption (Comma auditUrlOption)? RightParenthesis
+        )
+    |
+        APPLICATION_LOG | SECURITY_LOG | EXTERNAL_MONITOR
+    )
+    ;
+
+auditWithClause:
+    WITH LeftParenthesis auditOption (Comma auditOption)* RightParenthesis
+    ;
+
+auditOption:
+    tOption EqualsSign
+    (
+        queueDelayAuditOption        -- QUEUE_DELAY = integer
+    |   onFailureAuditOption         -- ON_FAILURE = CONTINUE | SHUTDOWN | FAIL_OPERATION
+    |   operatorAuditOption          -- OPERATOR_AUDIT = ON | OFF
+    |   stateAuditOption             -- STATE = ON | OFF
+    )
+    ;
+
+-- From Microsoft docs:
+-- ALTER SERVER AUDIT audit_name
+-- {
+--     [ TO { { FILE ( <file_options> [ , ...n ] ) } | APPLICATION_LOG | SECURITY_LOG } | URL ]
+--     [ WITH ( <audit_options> [ , ...n ] ) ]
+--     [ WHERE <predicate_expression> ]
+-- }
+-- | REMOVE WHERE
+-- | MODIFY NAME = new_audit_name
+-- [ ; ]
+--
+-- <file_options>::=
+-- {
+--       FILEPATH = 'os_file_path'
+--     | MAXSIZE = { max_size { MB | GB | TB } | UNLIMITED }
+--     | MAX_ROLLOVER_FILES = { integer | UNLIMITED }
+--     | MAX_FILES = integer
+--     | RESERVE_DISK_SPACE = { ON | OFF }
+-- }
+--
+-- <audit_options>::=
+-- {
+--       QUEUE_DELAY = integer
+--     | ON_FAILURE = { CONTINUE | SHUTDOWN | FAIL_OPERATION }
+--     | STATE = { ON | OFF }
+-- }
+--
+-- <predicate_expression>::=
+-- {
+--     [ NOT ] <predicate_factor>
+--     [ { AND | OR } [ NOT ] { <predicate_factor> } ]
+--     [ , ...n ]
+-- }
+--
+-- <predicate_factor>::=
+--     event_field_name { = | < > | != | > | >= | < | <= } { number | 'string' }

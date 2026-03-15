@@ -1,0 +1,64 @@
+-- Statement: CREATE QUEUE
+-- Grammar rule: createQueueStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-queue-transact-sql
+
+-- From TSql170.g:
+createQueueStatement:
+    tQueue:Identifier vQueueName=schemaObjectThreePartName
+        -- Match(tQueue, "Queue")
+        (
+            queueOptionList[vResult, false]
+        )?
+        (
+            On vTSqlFragment=stringOrIdentifier
+        )?
+    ;
+
+queueOptionList [QueueStatement vParent, bool vDropAccepted]:
+    With queueOption[vParent, vDropAccepted]
+        (Comma queueOption[vParent, vDropAccepted])*
+    ;
+
+queueOption [QueueStatement vParent, bool vDropAccepted]:
+      vOption=stateQueueOption
+    | queueActivationOption[vParent, vDropAccepted]
+        -- NextTokenMatches("Activation")
+    | vOption=queuePoisonMessageHandlingOption
+    ;
+
+stateQueueOption:
+    tOption:Identifier EqualsSign vOptionState=optionOnOff[vResult]
+        -- tOption: STATUS | RETENTION
+    ;
+
+queueActivationOption [QueueStatement vParent, bool vDropAccepted]:
+    tActivation:Identifier LeftParenthesis
+        -- Match(tActivation, "Activation")
+        activationQueueOptionArgument[vDropAccepted, ...]
+        (Comma activationQueueOptionArgument[vDropAccepted, ...])*
+        RightParenthesis
+        -- For CREATE: PROCEDURE_NAME, MAX_QUEUE_READERS, and EXECUTE AS are all required
+    ;
+
+-- From Microsoft docs:
+CREATE QUEUE <object>
+   [ WITH
+     [ STATUS = { ON | OFF } [ , ] ]
+     [ RETENTION = { ON | OFF } [ , ] ]
+     [ ACTIVATION (
+         [ STATUS = { ON | OFF } , ]
+           PROCEDURE_NAME = <procedure> ,
+           MAX_QUEUE_READERS = max_readers ,
+           EXECUTE AS { SELF | 'user_name' | OWNER }
+            ) [ , ] ]
+     [ POISON_MESSAGE_HANDLING (
+         [ STATUS = { ON | OFF } ] ) ]
+    ]
+     [ ON { filegroup | [ DEFAULT ] } ]
+[ ; ]
+
+<object> ::=
+{ database_name.schema_name.queue_name | schema_name.queue_name | queue_name }
+
+<procedure> ::=
+{ database_name.schema_name.stored_procedure_name | schema_name.stored_procedure_name | stored_procedure_name }

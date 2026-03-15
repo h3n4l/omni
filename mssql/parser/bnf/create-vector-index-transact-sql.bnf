@@ -1,0 +1,28 @@
+-- Statement: CREATE VECTOR INDEX
+-- Grammar rule: createVectorIndexStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql
+
+-- From TSql170.g:
+createVectorIndexStatement [IToken tUnique, bool? isClustered]
+    : tVector:Identifier tIndex:Index vIdentifier=identifier
+        On vSchemaObjectName=schemaObjectThreePartName
+        LeftParenthesis vVectorColumn=identifier RightParenthesis
+        (
+            With
+            indexOptionList[IndexAffectingStatement.CreateIndex, vResult.IndexOptions, vResult]
+        )?
+        (
+            On vFileGroupOrPartitionScheme=filegroupOrPartitionScheme
+        )?
+    ;
+
+-- From Microsoft docs:
+CREATE VECTOR INDEX index_name
+ON object ( vector_column )
+[ WITH (
+    [ , ] METRIC = { 'cosine' | 'dot' | 'euclidean' }
+    [ [ , ] TYPE = 'DiskANN' ]
+    [ [ , ] MAXDOP = max_degree_of_parallelism ]
+) ]
+[ ON { filegroup_name | "default" } ]
+[;]

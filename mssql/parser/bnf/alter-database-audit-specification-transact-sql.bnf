@@ -1,0 +1,71 @@
+-- Statement: ALTER DATABASE AUDIT SPECIFICATION
+-- Grammar rule: alterDatabaseAuditSpecification (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-audit-specification-transact-sql
+
+-- From TSql170.g:
+
+alterDatabaseAuditSpecification:
+    AUDIT SPECIFICATION identifier
+    ( auditSpecificationForClause )?
+    ( ( ADD | DROP ) LeftParenthesis
+      auditSpecificationDetailDb
+      ( Comma auditSpecificationDetailDb )*
+    )?
+    auditSpecificationStateOpt
+    ;
+
+auditSpecificationForClause:
+    FOR SERVER AUDIT identifier
+    ;
+
+auditSpecificationDetailDb:
+    ( ADD | DROP )
+    LeftParenthesis
+    ( auditActionSpecification
+    | databaseAuditActionGroup
+    )
+    RightParenthesis
+    ;
+
+databaseAuditActionGroup:
+    Identifier   -- e.g., DATABASE_OBJECT_CHANGE_GROUP, etc.
+    ;
+
+auditActionSpecification:
+    actionWithQual ( Comma actionWithQual )*
+    ON securityTargetObject
+    BY principal ( Comma principal )*
+    ;
+
+actionWithQual:
+      SELECT
+    | UPDATE
+    | INSERT
+    | DELETE
+    | EXECUTE
+    | RECEIVE
+    | REFERENCES
+    ;
+
+auditSpecificationStateOpt:
+    ( WITH LeftParenthesis STATE EqualsSign ( ON | OFF ) RightParenthesis )?
+    ;
+
+-- From Microsoft docs:
+
+ALTER DATABASE AUDIT SPECIFICATION audit_specification_name
+{
+    [ FOR SERVER AUDIT audit_name ]
+    [ { { ADD | DROP } (
+           { <audit_action_specification> | audit_action_group_name }
+                )
+      } [, ...n] ]
+    [ WITH ( STATE = { ON | OFF } ) ]
+}
+[ ; ]
+
+<audit_action_specification>::=
+{
+      <action_specification>[ ,...n ] ON [ class :: ] securable
+     BY principal [ ,...n ]
+}

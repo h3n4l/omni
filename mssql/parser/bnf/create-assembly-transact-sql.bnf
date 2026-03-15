@@ -1,0 +1,34 @@
+-- Statement: CREATE ASSEMBLY
+-- Grammar rule: createAssemblyStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-assembly-transact-sql
+
+-- From TSql170.g:
+createAssemblyStatement:
+    tAssembly:Identifier vIdentifier=identifier
+    authorizationOpt[vResult]
+    From expressionList[vResult, vResult.Parameters]
+    (
+        options {greedy = true; } :
+        With tPermissionSet:Identifier EqualsSign
+        vOption=assemblyPermissionSetOption[tPermissionSet]
+    )?
+    ;
+
+assemblyPermissionSetOption:
+    -- PERMISSION_SET = { SAFE | EXTERNAL_ACCESS | UNSAFE }
+    tPermissionSet:Identifier EqualsSign tValue:Identifier
+    ;
+
+-- From Microsoft docs:
+CREATE ASSEMBLY assembly_name
+[ AUTHORIZATION owner_name ]
+FROM { <client_assembly_specifier> | <assembly_bits> [ , ...n ] }
+[ WITH PERMISSION_SET = { SAFE | EXTERNAL_ACCESS | UNSAFE } ]
+[ ; ]
+
+<client_assembly_specifier> ::=
+    '[ \\computer_name\ ] share_name\ [ path\ ] manifest_file_name'
+    | '[ local_path\ ] manifest_file_name'
+
+<assembly_bits> ::=
+{ varbinary_literal | varbinary_expression }

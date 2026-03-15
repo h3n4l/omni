@@ -1,0 +1,79 @@
+-- Statement: ALTER FEDERATION
+-- Grammar rule: alterFederationStatement (TSql170.g)
+-- Doc: none (no Microsoft documentation available)
+
+-- From TSql170.g:
+alterFederationStatement returns [AlterFederationStatement vResult = FragmentFactory.CreateFragment<AlterFederationStatement>()]
+{
+    Identifier vName;
+    Identifier vDistributionName;
+    ScalarExpression vExpression;
+}
+    :   tFederation:Identifier vName = identifier
+        {
+            Match(tFederation, CodeGenerationSupporter.Federation);
+            vResult.Name = vName;
+        }
+        (
+            tSplit:Identifier tSplitAt:Identifier LeftParenthesis
+            {
+                Match(tSplit,CodeGenerationSupporter.Split);
+                Match(tSplitAt,CodeGenerationSupporter.At);
+                vResult.Kind = AlterFederationKind.Split;
+            }
+        |
+            tDrop:Drop tDropAt:Identifier
+            {
+                Match(tDropAt,CodeGenerationSupporter.At);
+            }
+            LeftParenthesis
+            tLowHigh:Identifier
+            {
+                if (TryMatch(tLowHigh,CodeGenerationSupporter.Low))
+                {
+                    vResult.Kind = AlterFederationKind.DropLow;
+                }
+                else
+                {
+                    Match(tLowHigh,CodeGenerationSupporter.High);
+                    vResult.Kind = AlterFederationKind.DropHigh;
+                }
+            }
+        )
+        vDistributionName = identifier
+        {
+            vResult.DistributionName = vDistributionName;
+        }
+        EqualsSign
+        vExpression = expression
+        {
+            vResult.Boundary = vExpression;
+        }
+        tRParen:RightParenthesis
+        {
+            UpdateTokenInfo(vResult, tRParen);
+        }
+    ;
+
+-- Sub-rule: identifier
+identifier returns [Identifier vResult = this.FragmentFactory.CreateFragment<Identifier>()]
+    :
+        tId:Identifier
+        {
+            UpdateTokenInfo(vResult,tId);
+            vResult.SetUnquotedIdentifier(tId.getText());
+            CheckIdentifierLength(vResult);
+        }
+    |
+        tId2:QuotedIdentifier
+        {
+            UpdateTokenInfo(vResult,tId2);
+            vResult.SetIdentifier(tId2.getText());
+            CheckIdentifierLength(vResult);
+        }
+    ;
+
+-- Sub-rule: expression
+expression returns [ScalarExpression vResult = null]
+    : vResult=expressionWithFlags[ExpressionFlags.None]
+    ;

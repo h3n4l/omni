@@ -1,0 +1,22 @@
+-- Statement: ALTER CRYPTOGRAPHIC PROVIDER
+-- Grammar rule: alterCryptographicProviderStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-cryptographic-provider-transact-sql
+
+-- From TSql170.g:
+alterCryptographicProviderStatement:
+    ALTER CRYPTOGRAPHIC PROVIDER identifier
+    (
+        cryptographicProviderFile
+    |
+        enableDisableOption   -- ENABLE | DISABLE
+    )
+    ;
+
+cryptographicProviderFile:
+    FROM FILE EqualsSign stringLiteral
+    ;
+
+-- From Microsoft docs:
+-- ALTER CRYPTOGRAPHIC PROVIDER provider_name
+--     [ FROM FILE = path_of_DLL ]
+--     ENABLE | DISABLE

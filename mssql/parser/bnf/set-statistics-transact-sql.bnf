@@ -1,0 +1,26 @@
+-- Statement: SET STATISTICS
+-- Grammar rule: setStatisticsStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/set-statistics-io-transact-sql
+
+-- From TSql170.g:
+setStatisticsStatement:
+    Statistics tStatOption:Identifier
+    (Comma tStatOption2:Identifier)*
+    setOnOff
+    ;
+
+-- Sub-rules:
+
+setOnOff:
+    On
+    | Off
+    ;
+
+-- Note: Statistics options are parsed via SetStatisticsOptionsHelper.
+-- Valid options include: IO, TIME, PROFILE, XML
+
+-- From Microsoft docs:
+-- SET STATISTICS IO { ON | OFF }
+-- SET STATISTICS TIME { ON | OFF }
+-- SET STATISTICS PROFILE { ON | OFF }
+-- SET STATISTICS XML { ON | OFF }

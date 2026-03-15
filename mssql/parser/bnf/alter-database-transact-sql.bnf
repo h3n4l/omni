@@ -1,0 +1,134 @@
+-- Statement: ALTER DATABASE
+-- Grammar rule: alterDatabase (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-transact-sql
+
+-- From TSql170.g:
+
+alterDatabase:
+    ( identifier | sqlCommandIdentifier | CURRENT )
+    ( alterDbAdd
+    | alterDbRemove
+    | alterDbModify
+    | alterDbSet
+    | alterDbCollate
+    | alterDbRebuild
+    | alterDbPerformCutover
+    )
+    ;
+
+alterDbCollate:
+    collation
+    ;
+
+alterDbRebuild:
+    REBUILD LOG
+    ( ON fileDecl )?
+    ;
+
+alterDbAdd:
+    ADD
+    ( alterDbAddFile
+    | alterDbAddFilegroup
+    )
+    ;
+
+alterDbAddFile:
+    ( LOG )?
+    FILE fileDeclBodyList
+    ( TO FILEGROUP identifier )?
+    ;
+
+alterDbAddFilegroup:
+    FILEGROUP identifier
+    ( CONTAINS ( FILESTREAM | MEMORY_OPTIMIZED_DATA ) )?
+    ;
+
+alterDbRemove:
+    REMOVE
+    ( FILE identifier
+    | FILEGROUP identifier
+    )
+    ;
+
+alterDbModify:
+    MODIFY
+    ( NAME EqualsSign identifier
+    | FILEGROUP alterDbModifyFilegroup
+    | alterDbModifyFile
+    | alterDbModifyAzureOptions
+    )
+    ;
+
+alterDbModifyAzureOptions:
+    azureOptions
+    ( WITH MANUAL_CUTOVER )?
+    ;
+
+alterDbSet:
+    SET dbOptionStateList
+    ( xactTermination )?
+    ;
+
+alterDbPerformCutover:
+    PERFORM_CUTOVER
+    ;
+
+xactTermination:
+    WITH
+    ( ROLLBACK
+        ( AFTER integer ( SECONDS )?
+        | IMMEDIATE
+        )
+    | NO_WAIT
+    )
+    ;
+
+dbOptionStateList:
+    dbOptionStateItem ( Comma dbOptionStateItem )*
+    ;
+
+-- From Microsoft docs:
+
+-- SQL Server Syntax
+ALTER DATABASE { database_name | CURRENT }
+{
+    MODIFY NAME = new_database_name
+  | COLLATE collation_name
+  | <file_and_filegroup_options>
+  | SET <option_spec> [ ,...n ] [ WITH <termination> ]
+}
+[;]
+
+<file_and_filegroup_options>::=
+  <add_or_modify_files>::=
+  <filespec>::=
+  <add_or_modify_filegroups>::=
+  <filegroup_updatability_option>::=
+
+<option_spec>::=
+{
+  | <auto_option>
+  | <change_tracking_option>
+  | <cursor_option>
+  | <database_mirroring_option>
+  | <date_correlation_optimization_option>
+  | <db_encryption_option>
+  | <db_state_option>
+  | <db_update_option>
+  | <db_user_access_option>
+  | <delayed_durability_option>
+  | <external_access_option>
+  | <FILESTREAM_options>
+  | <HADR_options>
+  | <parameterization_option>
+  | <query_store_options>
+  | <recovery_option>
+  | <service_broker_option>
+  | <snapshot_option>
+  | <sql_option>
+  | <termination>
+  | <temporal_history_retention>
+  | <data_retention_policy>
+  | <compatibility_level>
+      { 170 | 160 | 150 | 140 | 130 | 120 | 110 | 100 }
+}

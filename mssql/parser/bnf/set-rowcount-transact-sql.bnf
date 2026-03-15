@@ -1,0 +1,18 @@
+-- Statement: SET ROWCOUNT
+-- Grammar rule: setRowcountStatement (TSql170.g)
+-- Doc: https://learn.microsoft.com/en-us/sql/t-sql/statements/set-rowcount-transact-sql
+
+-- From TSql170.g:
+setRowcountStatement:
+    RowCount integerOrVariable
+    ;
+
+-- Sub-rules:
+
+integerOrVariable:
+    Integer
+    | Variable
+    ;
+
+-- From Microsoft docs:
+-- SET ROWCOUNT { number | @number_var }
