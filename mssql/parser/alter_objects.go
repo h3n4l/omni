@@ -9,9 +9,7 @@ import (
 
 // parseAlterDatabaseStmt parses an ALTER DATABASE statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-transact-sql
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-transact-sql-set-options
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-transact-sql-file-and-filegroup-options
+// BNF: mssql/parser/bnf/alter-database-transact-sql.bnf
 //
 //	ALTER DATABASE { database_name | CURRENT }
 //	{
@@ -25,8 +23,11 @@ import (
 //	  | MODIFY FILEGROUP filegroup_name
 //	      { <filegroup_updatability_option> | DEFAULT | NAME = new_name
 //	        | AUTOGROW_SINGLE_FILE | AUTOGROW_ALL_FILES }
-//	  | COLLATE collation_name
 //	  | MODIFY NAME = new_database_name
+//	  | MODIFY ( <azure_option> [ ,...n ] ) [ WITH MANUAL_CUTOVER ]
+//	  | COLLATE collation_name
+//	  | REBUILD LOG [ ON <filespec> ]
+//	  | PERFORM_CUTOVER
 //	}
 //
 //	<option_spec> ::=
@@ -130,6 +131,24 @@ func (p *Parser) parseAlterDatabaseStmt() *nodes.AlterDatabaseStmt {
 			p.advance() // consume REMOVE
 			stmt.Action = "REMOVE"
 			p.parseAlterDatabaseRemove(stmt)
+		case "REBUILD":
+			// REBUILD LOG [ ON <filespec> ]
+			p.advance() // consume REBUILD
+			stmt.Action = "REBUILD"
+			stmt.SubAction = "LOG"
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LOG") {
+				p.advance() // consume LOG
+			}
+			// Optional ON <filespec>
+			if p.cur.Type == kwON {
+				p.advance() // consume ON
+				if p.cur.Type == '(' {
+					stmt.FileSpecs = &nodes.List{Items: []nodes.Node{p.parseDatabaseFileSpec()}}
+				}
+			}
+		case "PERFORM_CUTOVER":
+			p.advance() // consume PERFORM_CUTOVER
+			stmt.Action = "PERFORM_CUTOVER"
 		default:
 			// Unknown action - record and collect remaining tokens as structured key=value options
 			stmt.Action = action
@@ -447,6 +466,10 @@ func (p *Parser) parseAlterDatabaseSubOptions() string {
 		if p.isIdentLike() {
 			key = strings.ToUpper(p.cur.Str)
 			p.advance()
+		} else if p.cur.Type == tokICONST || p.cur.Type == tokFCONST {
+			// Skip bare numerics that aren't part of a key=value
+			p.advance()
+			continue
 		}
 		// = value
 		if p.cur.Type == '=' {
@@ -464,8 +487,9 @@ func (p *Parser) parseAlterDatabaseSubOptions() string {
 		}
 		if p.cur.Type == ',' {
 			p.advance()
-		} else {
-			break
+		} else if p.cur.Type != ')' && p.cur.Type != tokEOF {
+			// Skip unrecognized tokens (e.g., size units like GB, MB, TB)
+			p.advance()
 		}
 	}
 	p.match(')') // consume )
@@ -670,7 +694,7 @@ func (p *Parser) parseAlterDatabaseAdd(stmt *nodes.AlterDatabaseStmt) {
 	}
 }
 
-// parseAlterDatabaseModify parses MODIFY FILE/NAME/FILEGROUP.
+// parseAlterDatabaseModify parses MODIFY FILE/NAME/FILEGROUP or azure options.
 func (p *Parser) parseAlterDatabaseModify(stmt *nodes.AlterDatabaseStmt) {
 	if p.cur.Type == kwFILE {
 		p.advance() // consume FILE
@@ -696,6 +720,19 @@ func (p *Parser) parseAlterDatabaseModify(stmt *nodes.AlterDatabaseStmt) {
 		}
 		// { <filegroup_updatability_option> | DEFAULT | NAME = new_name | AUTOGROW_SINGLE_FILE | AUTOGROW_ALL_FILES }
 		p.parseAlterDatabaseModifyFilegroupOption(stmt)
+	} else if p.cur.Type == '(' {
+		// Azure options: MODIFY ( option = value [, ...] ) [ WITH MANUAL_CUTOVER ]
+		stmt.SubAction = "AZURE_OPTIONS"
+		subOpts := p.parseAlterDatabaseSubOptions()
+		stmt.Options = &nodes.List{Items: []nodes.Node{&nodes.String{Str: subOpts}}}
+		// [ WITH MANUAL_CUTOVER ]
+		if p.cur.Type == kwWITH {
+			p.advance() // consume WITH
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "MANUAL_CUTOVER") {
+				stmt.Termination = "MANUAL_CUTOVER"
+				p.advance()
+			}
+		}
 	}
 }
 

@@ -9,7 +9,7 @@ import (
 
 // parseCreateDatabaseStmt parses a CREATE DATABASE statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-database-transact-sql
+// BNF: mssql/parser/bnf/create-database-transact-sql.bnf
 //
 //	CREATE DATABASE database_name
 //	[ CONTAINMENT = { NONE | PARTIAL } ]

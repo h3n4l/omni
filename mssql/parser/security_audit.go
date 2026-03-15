@@ -190,7 +190,7 @@ func (p *Parser) parseDropServerAuditSpecStmt() *nodes.SecurityStmt {
 
 // parseCreateDatabaseAuditSpecStmt parses CREATE DATABASE AUDIT SPECIFICATION.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-database-audit-specification-transact-sql
+// BNF: mssql/parser/bnf/create-database-audit-specification-transact-sql.bnf
 //
 //	CREATE DATABASE AUDIT SPECIFICATION audit_specification_name
 //	    FOR SERVER AUDIT audit_name

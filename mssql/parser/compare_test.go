@@ -19889,3 +19889,253 @@ func TestParseRoutinesBnfReview(t *testing.T) {
 		}
 	})
 }
+
+// TestParseDatabaseBnfReview tests batch 162: BNF review of CREATE/ALTER/DROP DATABASE,
+// database scoped configuration, database audit specification, and database scoped credential.
+func TestParseDatabaseBnfReview(t *testing.T) {
+	t.Run("create_database_full_bnf", func(t *testing.T) {
+		sqls := []string{
+			// Basic
+			"CREATE DATABASE mydb",
+			// With containment
+			"CREATE DATABASE mydb CONTAINMENT = PARTIAL",
+			// With ON PRIMARY filespec
+			"CREATE DATABASE mydb ON PRIMARY (NAME = mydb_dat, FILENAME = '/data/mydb.mdf', SIZE = 10 MB, MAXSIZE = 50 MB, FILEGROWTH = 5 MB)",
+			// With LOG ON
+			"CREATE DATABASE mydb ON (NAME = mydb_dat, FILENAME = '/data/mydb.mdf') LOG ON (NAME = mydb_log, FILENAME = '/log/mydb.ldf', SIZE = 5 MB)",
+			// With filegroup
+			"CREATE DATABASE mydb ON PRIMARY (NAME = mydb_dat, FILENAME = '/data/mydb.mdf'), FILEGROUP fg1 (NAME = fg1_dat, FILENAME = '/data/fg1.ndf')",
+			// FILEGROUP with CONTAINS FILESTREAM
+			"CREATE DATABASE mydb ON PRIMARY (NAME = mydb_dat, FILENAME = '/data/mydb.mdf'), FILEGROUP fg1 CONTAINS FILESTREAM (NAME = fs_dat, FILENAME = '/data/fs')",
+			// FILEGROUP with CONTAINS MEMORY_OPTIMIZED_DATA
+			"CREATE DATABASE mydb ON PRIMARY (NAME = mydb_dat, FILENAME = '/data/mydb.mdf'), FILEGROUP fg1 CONTAINS MEMORY_OPTIMIZED_DATA (NAME = mo_dat, FILENAME = '/data/mo')",
+			// FILEGROUP DEFAULT
+			"CREATE DATABASE mydb ON PRIMARY (NAME = mydb_dat, FILENAME = '/data/mydb.mdf'), FILEGROUP fg1 DEFAULT (NAME = fg1_dat, FILENAME = '/data/fg1.ndf')",
+			// COLLATE
+			"CREATE DATABASE mydb COLLATE Latin1_General_CS_AS",
+			// WITH options
+			"CREATE DATABASE mydb WITH DB_CHAINING ON, TRUSTWORTHY OFF",
+			"CREATE DATABASE mydb WITH LEDGER = ON",
+			"CREATE DATABASE mydb WITH DEFAULT_FULLTEXT_LANGUAGE = 1033",
+			"CREATE DATABASE mydb WITH NESTED_TRIGGERS = OFF, TRANSFORM_NOISE_WORDS = ON",
+			"CREATE DATABASE mydb WITH TWO_DIGIT_YEAR_CUTOFF = 2050",
+			"CREATE DATABASE mydb WITH PERSISTENT_LOG_BUFFER = ON (DIRECTORY_NAME = '/dax/plb')",
+			// WITH FILESTREAM option
+			"CREATE DATABASE mydb WITH FILESTREAM (NON_TRANSACTED_ACCESS = FULL, DIRECTORY_NAME = 'mydir')",
+			// FOR ATTACH
+			"CREATE DATABASE mydb ON (NAME = mydb_dat, FILENAME = '/data/mydb.mdf') FOR ATTACH",
+			// FOR ATTACH WITH options
+			"CREATE DATABASE mydb ON (NAME = mydb_dat, FILENAME = '/data/mydb.mdf') FOR ATTACH WITH ENABLE_BROKER, RESTRICTED_USER",
+			"CREATE DATABASE mydb ON (NAME = mydb_dat, FILENAME = '/data/mydb.mdf') FOR ATTACH WITH FILESTREAM (DIRECTORY_NAME = 'mydir')",
+			// FOR ATTACH_REBUILD_LOG
+			"CREATE DATABASE mydb ON (NAME = mydb_dat, FILENAME = '/data/mydb.mdf') FOR ATTACH_REBUILD_LOG",
+			// AS SNAPSHOT OF
+			"CREATE DATABASE mydb_snap ON (NAME = mydb_dat, FILENAME = '/data/mydb_snap.ss') AS SNAPSHOT OF mydb",
+			// CATALOG_COLLATION option
+			"CREATE DATABASE mydb WITH CATALOG_COLLATION = DATABASE_DEFAULT",
+			// MAXSIZE UNLIMITED
+			"CREATE DATABASE mydb ON (NAME = mydb_dat, FILENAME = '/data/mydb.mdf', MAXSIZE = UNLIMITED)",
+			// Multiple filespecs on primary
+			"CREATE DATABASE mydb ON PRIMARY (NAME = d1, FILENAME = '/d1.mdf'), (NAME = d2, FILENAME = '/d2.ndf')",
+		}
+		for _, sql := range sqls {
+			ParseAndCheck(t, sql)
+		}
+	})
+
+	t.Run("alter_database_rebuild_log", func(t *testing.T) {
+		sqls := []string{
+			"ALTER DATABASE mydb REBUILD LOG",
+			"ALTER DATABASE mydb REBUILD LOG ON (NAME = mydb_log, FILENAME = '/log/mydb.ldf')",
+		}
+		for _, sql := range sqls {
+			result := ParseAndCheck(t, sql)
+			stmt := result.Items[0].(*ast.AlterDatabaseStmt)
+			if stmt.Action != "REBUILD" {
+				t.Errorf("Parse(%q): expected Action=REBUILD, got %q", sql, stmt.Action)
+			}
+			if stmt.SubAction != "LOG" {
+				t.Errorf("Parse(%q): expected SubAction=LOG, got %q", sql, stmt.SubAction)
+			}
+		}
+	})
+
+	t.Run("alter_database_perform_cutover", func(t *testing.T) {
+		sql := "ALTER DATABASE mydb PERFORM_CUTOVER"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.AlterDatabaseStmt)
+		if stmt.Action != "PERFORM_CUTOVER" {
+			t.Errorf("Parse(%q): expected Action=PERFORM_CUTOVER, got %q", sql, stmt.Action)
+		}
+	})
+
+	t.Run("alter_database_modify_azure_options", func(t *testing.T) {
+		sqls := []string{
+			"ALTER DATABASE mydb MODIFY (MAXSIZE = 250 GB)",
+			"ALTER DATABASE mydb MODIFY (EDITION = 'standard', SERVICE_OBJECTIVE = 'S0')",
+			"ALTER DATABASE mydb MODIFY (MAXSIZE = 1 TB) WITH MANUAL_CUTOVER",
+		}
+		for _, sql := range sqls {
+			result := ParseAndCheck(t, sql)
+			stmt := result.Items[0].(*ast.AlterDatabaseStmt)
+			if stmt.Action != "MODIFY" {
+				t.Errorf("Parse(%q): expected Action=MODIFY, got %q", sql, stmt.Action)
+			}
+			if stmt.SubAction != "AZURE_OPTIONS" {
+				t.Errorf("Parse(%q): expected SubAction=AZURE_OPTIONS, got %q", sql, stmt.SubAction)
+			}
+		}
+		// Test WITH MANUAL_CUTOVER
+		sql := "ALTER DATABASE mydb MODIFY (MAXSIZE = 1 TB) WITH MANUAL_CUTOVER"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.AlterDatabaseStmt)
+		if stmt.Termination != "MANUAL_CUTOVER" {
+			t.Errorf("Parse(%q): expected Termination=MANUAL_CUTOVER, got %q", sql, stmt.Termination)
+		}
+	})
+
+	t.Run("alter_database_set_options", func(t *testing.T) {
+		sqls := []string{
+			"ALTER DATABASE mydb SET ONLINE",
+			"ALTER DATABASE mydb SET OFFLINE",
+			"ALTER DATABASE mydb SET EMERGENCY",
+			"ALTER DATABASE mydb SET SINGLE_USER",
+			"ALTER DATABASE mydb SET MULTI_USER",
+			"ALTER DATABASE mydb SET RESTRICTED_USER",
+			"ALTER DATABASE mydb SET READ_ONLY",
+			"ALTER DATABASE mydb SET READ_WRITE",
+			"ALTER DATABASE mydb SET RECOVERY FULL",
+			"ALTER DATABASE mydb SET RECOVERY SIMPLE",
+			"ALTER DATABASE mydb SET AUTO_CLOSE ON",
+			"ALTER DATABASE mydb SET AUTO_SHRINK OFF",
+			"ALTER DATABASE mydb SET ANSI_NULLS ON",
+			"ALTER DATABASE mydb SET COMPATIBILITY_LEVEL = 150",
+			"ALTER DATABASE mydb SET CHANGE_TRACKING = ON (AUTO_CLEANUP = ON, CHANGE_RETENTION = 7 DAYS)",
+			"ALTER DATABASE mydb SET CHANGE_TRACKING = OFF",
+			"ALTER DATABASE mydb SET QUERY_STORE = ON (MAX_STORAGE_SIZE_MB = 1000)",
+			"ALTER DATABASE mydb SET QUERY_STORE = OFF",
+			"ALTER DATABASE mydb SET QUERY_STORE CLEAR ALL",
+			"ALTER DATABASE mydb SET ENABLE_BROKER",
+			"ALTER DATABASE mydb SET DISABLE_BROKER",
+			"ALTER DATABASE mydb SET ENCRYPTION ON",
+			"ALTER DATABASE mydb SET DELAYED_DURABILITY = ALLOWED",
+			"ALTER DATABASE mydb SET TARGET_RECOVERY_TIME = 60 SECONDS",
+			"ALTER DATABASE mydb SET ACCELERATED_DATABASE_RECOVERY = ON",
+			"ALTER DATABASE mydb SET PARAMETERIZATION FORCED",
+			"ALTER DATABASE mydb SET CONTAINMENT = PARTIAL",
+			"ALTER DATABASE mydb SET READ_COMMITTED_SNAPSHOT ON",
+			"ALTER DATABASE mydb SET ALLOW_SNAPSHOT_ISOLATION ON",
+			"ALTER DATABASE mydb SET DATE_CORRELATION_OPTIMIZATION ON",
+			"ALTER DATABASE mydb SET TEMPORAL_HISTORY_RETENTION ON",
+			"ALTER DATABASE mydb SET FILESTREAM (NON_TRANSACTED_ACCESS = FULL)",
+			// WITH termination
+			"ALTER DATABASE mydb SET SINGLE_USER WITH ROLLBACK IMMEDIATE",
+			"ALTER DATABASE mydb SET SINGLE_USER WITH ROLLBACK AFTER 10 SECONDS",
+			"ALTER DATABASE mydb SET READ_ONLY WITH NO_WAIT",
+			// Database mirroring
+			"ALTER DATABASE mydb SET PARTNER = 'TCP://partner:5022'",
+			"ALTER DATABASE mydb SET PARTNER FAILOVER",
+			"ALTER DATABASE mydb SET PARTNER OFF",
+			"ALTER DATABASE mydb SET PARTNER SAFETY FULL",
+			"ALTER DATABASE mydb SET WITNESS = 'TCP://witness:5022'",
+			"ALTER DATABASE mydb SET WITNESS OFF",
+			// HADR
+			"ALTER DATABASE mydb SET HADR AVAILABILITY GROUP = myag",
+			"ALTER DATABASE mydb SET HADR OFF",
+			"ALTER DATABASE mydb SET HADR SUSPEND",
+			"ALTER DATABASE mydb SET HADR RESUME",
+		}
+		for _, sql := range sqls {
+			ParseAndCheck(t, sql)
+		}
+	})
+
+	t.Run("alter_database_file_operations", func(t *testing.T) {
+		sqls := []string{
+			"ALTER DATABASE mydb ADD FILE (NAME = mydb_dat2, FILENAME = '/data/mydb2.ndf', SIZE = 10 MB)",
+			"ALTER DATABASE mydb ADD FILE (NAME = mydb_dat2, FILENAME = '/data/mydb2.ndf') TO FILEGROUP fg1",
+			"ALTER DATABASE mydb ADD LOG FILE (NAME = mydb_log2, FILENAME = '/log/mydb2.ldf')",
+			"ALTER DATABASE mydb ADD FILEGROUP fg1",
+			"ALTER DATABASE mydb ADD FILEGROUP fg1 CONTAINS FILESTREAM",
+			"ALTER DATABASE mydb ADD FILEGROUP fg1 CONTAINS MEMORY_OPTIMIZED_DATA",
+			"ALTER DATABASE mydb REMOVE FILE mydb_dat2",
+			"ALTER DATABASE mydb REMOVE FILEGROUP fg1",
+			"ALTER DATABASE mydb MODIFY FILE (NAME = mydb_dat, SIZE = 20 MB)",
+			"ALTER DATABASE mydb MODIFY FILE (NAME = mydb_dat, NEWNAME = mydb_data, MAXSIZE = 100 MB)",
+			"ALTER DATABASE mydb MODIFY FILE (NAME = mydb_dat, FILEGROWTH = 10 %)",
+			"ALTER DATABASE mydb MODIFY NAME = mydb_new",
+			"ALTER DATABASE mydb MODIFY FILEGROUP fg1 DEFAULT",
+			"ALTER DATABASE mydb MODIFY FILEGROUP fg1 NAME = fg_new",
+			"ALTER DATABASE mydb MODIFY FILEGROUP fg1 READ_ONLY",
+			"ALTER DATABASE mydb MODIFY FILEGROUP fg1 READ_WRITE",
+			"ALTER DATABASE mydb MODIFY FILEGROUP fg1 READONLY",
+			"ALTER DATABASE mydb MODIFY FILEGROUP fg1 READWRITE",
+			"ALTER DATABASE mydb MODIFY FILEGROUP fg1 AUTOGROW_SINGLE_FILE",
+			"ALTER DATABASE mydb MODIFY FILEGROUP fg1 AUTOGROW_ALL_FILES",
+			"ALTER DATABASE mydb COLLATE Latin1_General_CI_AS",
+			"ALTER DATABASE CURRENT SET ANSI_NULLS ON",
+		}
+		for _, sql := range sqls {
+			ParseAndCheck(t, sql)
+		}
+	})
+
+	t.Run("alter_database_scoped_config_bnf", func(t *testing.T) {
+		sqls := []string{
+			"ALTER DATABASE SCOPED CONFIGURATION SET MAXDOP = 4",
+			"ALTER DATABASE SCOPED CONFIGURATION SET LEGACY_CARDINALITY_ESTIMATION = ON",
+			"ALTER DATABASE SCOPED CONFIGURATION SET LEGACY_CARDINALITY_ESTIMATION = PRIMARY",
+			"ALTER DATABASE SCOPED CONFIGURATION SET PARAMETER_SNIFFING = OFF",
+			"ALTER DATABASE SCOPED CONFIGURATION SET QUERY_OPTIMIZER_HOTFIXES = ON",
+			"ALTER DATABASE SCOPED CONFIGURATION FOR SECONDARY SET MAXDOP = PRIMARY",
+			"ALTER DATABASE SCOPED CONFIGURATION CLEAR PROCEDURE_CACHE",
+			"ALTER DATABASE SCOPED CONFIGURATION SET IDENTITY_CACHE = OFF",
+			"ALTER DATABASE SCOPED CONFIGURATION SET OPTIMIZE_FOR_AD_HOC_WORKLOADS = ON",
+			"ALTER DATABASE SCOPED CONFIGURATION SET ELEVATE_ONLINE = WHEN_SUPPORTED",
+			"ALTER DATABASE SCOPED CONFIGURATION SET ELEVATE_RESUMABLE = FAIL_UNSUPPORTED",
+			"ALTER DATABASE SCOPED CONFIGURATION SET BATCH_MODE_ON_ROWSTORE = ON",
+		}
+		for _, sql := range sqls {
+			ParseAndCheck(t, sql)
+		}
+	})
+
+	t.Run("drop_database_bnf", func(t *testing.T) {
+		sqls := []string{
+			"DROP DATABASE mydb",
+			"DROP DATABASE IF EXISTS mydb",
+			"DROP DATABASE mydb1, mydb2",
+			"DROP DATABASE IF EXISTS mydb1, mydb2, mydb3",
+		}
+		for _, sql := range sqls {
+			ParseAndCheck(t, sql)
+		}
+	})
+
+	t.Run("database_audit_specification_bnf", func(t *testing.T) {
+		sqls := []string{
+			"CREATE DATABASE AUDIT SPECIFICATION myspec FOR SERVER AUDIT myaudit",
+			"CREATE DATABASE AUDIT SPECIFICATION myspec FOR SERVER AUDIT myaudit ADD (SELECT, INSERT ON OBJECT::dbo.mytable BY dbo)",
+			"CREATE DATABASE AUDIT SPECIFICATION myspec FOR SERVER AUDIT myaudit ADD (DATABASE_OBJECT_CHANGE_GROUP) WITH (STATE = ON)",
+			"ALTER DATABASE AUDIT SPECIFICATION myspec FOR SERVER AUDIT myaudit ADD (DELETE ON OBJECT::dbo.mytable BY dbo) WITH (STATE = ON)",
+			"ALTER DATABASE AUDIT SPECIFICATION myspec DROP (SELECT ON OBJECT::dbo.mytable BY dbo)",
+			"DROP DATABASE AUDIT SPECIFICATION myspec",
+		}
+		for _, sql := range sqls {
+			ParseAndCheck(t, sql)
+		}
+	})
+
+	t.Run("database_scoped_credential_bnf", func(t *testing.T) {
+		sqls := []string{
+			"CREATE DATABASE SCOPED CREDENTIAL mycred WITH IDENTITY = 'myidentity'",
+			"CREATE DATABASE SCOPED CREDENTIAL mycred WITH IDENTITY = 'myidentity', SECRET = 'mysecret'",
+			"ALTER DATABASE SCOPED CREDENTIAL mycred WITH IDENTITY = 'newidentity'",
+			"ALTER DATABASE SCOPED CREDENTIAL mycred WITH IDENTITY = 'newidentity', SECRET = 'newsecret'",
+			"DROP DATABASE SCOPED CREDENTIAL mycred",
+		}
+		for _, sql := range sqls {
+			ParseAndCheck(t, sql)
+		}
+	})
+}

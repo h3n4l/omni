@@ -595,7 +595,7 @@ func (p *Parser) parseCreateRuleStmt() *nodes.SecurityStmt {
 // parseAlterDatabaseScopedConfigStmt parses ALTER DATABASE SCOPED CONFIGURATION.
 // Caller has consumed ALTER DATABASE SCOPED CONFIGURATION.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-scoped-configuration-transact-sql
+// BNF: mssql/parser/bnf/alter-database-scoped-configuration-transact-sql.bnf
 //
 //	ALTER DATABASE SCOPED CONFIGURATION
 //	{
@@ -608,6 +608,7 @@ func (p *Parser) parseCreateRuleStmt() *nodes.SecurityStmt {
 //	< set_options > ::=
 //	{
 //	      ACCELERATED_PLAN_FORCING = { ON | OFF }
+//	    | ALLOW_STALE_VECTOR_INDEX = { ON | OFF }
 //	    | ASYNC_STATS_UPDATE_WAIT_AT_LOW_PRIORITY = { ON | OFF }
 //	    | BATCH_MODE_ADAPTIVE_JOINS = { ON | OFF }
 //	    | BATCH_MODE_MEMORY_GRANT_FEEDBACK = { ON | OFF }
@@ -638,7 +639,10 @@ func (p *Parser) parseCreateRuleStmt() *nodes.SecurityStmt {
 //	    | PARAMETER_SENSITIVE_PLAN_OPTIMIZATION = { ON | OFF }
 //	    | PARAMETER_SNIFFING = { ON | OFF | PRIMARY }
 //	    | PAUSED_RESUMABLE_INDEX_ABORT_DURATION_MINUTES = <time>
+//	    | PREVIEW_FEATURES = { ON | OFF }
 //	    | QUERY_OPTIMIZER_HOTFIXES = { ON | OFF | PRIMARY }
+//	    | READABLE_SECONDARY_TEMPORARY_STATS_AUTO_CREATE = { ON | OFF | PRIMARY }
+//	    | READABLE_SECONDARY_TEMPORARY_STATS_AUTO_UPDATE = { ON | OFF | PRIMARY }
 //	    | ROW_MODE_MEMORY_GRANT_FEEDBACK = { ON | OFF }
 //	    | TSQL_SCALAR_UDF_INLINING = { ON | OFF }
 //	    | VERBOSE_TRUNCATION_WARNINGS = { ON | OFF }

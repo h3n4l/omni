@@ -351,7 +351,7 @@
       "id": 162,
       "name": "bnf_review_database",
       "file": "create_database.go",
-      "status": "pending",
+      "status": "done",
       "description": "BNF review of CREATE/ALTER/DROP DATABASE, ADD/REMOVE FILE, ADD/REMOVE FILEGROUP, SET options, containment, change tracking.",
       "rules": [
         "create_database_stmt",
