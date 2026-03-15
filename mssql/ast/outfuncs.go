@@ -1554,6 +1554,9 @@ func writeSecurityPrincipalOption(sb *strings.Builder, n *SecurityPrincipalOptio
 	if n.Hashed {
 		sb.WriteString(" :hashed true")
 	}
+	if n.Unlock {
+		sb.WriteString(" :unlock true")
+	}
 	if n.OldPassword != "" {
 		fmt.Fprintf(sb, " :oldPassword \"%s\"", escapeString(n.OldPassword))
 	}

@@ -1342,8 +1342,9 @@ type SecurityPrincipalOption struct {
 	Value string // option value (may be empty for flags)
 
 	// PASSWORD sub-options
-	MustChange  bool // MUST_CHANGE
-	Hashed      bool // HASHED
+	MustChange  bool   // MUST_CHANGE
+	Hashed      bool   // HASHED
+	Unlock      bool   // UNLOCK (ALTER LOGIN)
 	OldPassword string // OLD_PASSWORD = 'old' (ALTER LOGIN)
 
 	Loc Loc

@@ -458,33 +458,40 @@ func (p *Parser) parseSignatureStmt(action string) *nodes.SignatureStmt {
 	}
 
 	// module_class::module_name  or just module_name
-	// module_class is OBJECT (default), ASSEMBLY, etc.
+	// module_class is OBJECT (default), ASSEMBLY, DATABASE, etc.
 	if p.isIdentLike() {
 		name1 := p.cur.Str
-		p.advance()
-		// Check for :: (double colon separator)
-		if p.cur.Type == ':' {
-			p.advance() // first :
-			if p.cur.Type == ':' {
-				p.advance() // second :
-			}
+		next := p.peekNext()
+		if next.Type == tokCOLONCOLON {
+			// Single-word class:: pattern
 			stmt.ModuleClass = strings.ToUpper(name1)
+			p.advance() // consume class word
+			p.advance() // consume ::
 			stmt.ModuleName = p.parseTableRef()
 		} else {
-			// No :: — it could be a dotted name
-			// Reconstruct: we consumed name1, check for dots
-			ref := &nodes.TableRef{Object: name1}
-			for p.cur.Type == '.' {
-				p.advance()
-				if p.isIdentLike() {
-					ref = &nodes.TableRef{
-						Schema: ref.Object,
-						Object: p.cur.Str,
-					}
+			// Could be a dotted name or multi-word class (e.g., ASYMMETRIC KEY::)
+			p.advance() // consume name1
+			// Check if next is another word followed by ::
+			if p.isIdentLike() && p.peekNext().Type == tokCOLONCOLON {
+				stmt.ModuleClass = strings.ToUpper(name1) + " " + strings.ToUpper(p.cur.Str)
+				p.advance() // consume second word
+				p.advance() // consume ::
+				stmt.ModuleName = p.parseTableRef()
+			} else {
+				// No :: — reconstruct as dotted name
+				ref := &nodes.TableRef{Object: name1}
+				for p.cur.Type == '.' {
 					p.advance()
+					if p.isIdentLike() {
+						ref = &nodes.TableRef{
+							Schema: ref.Object,
+							Object: p.cur.Str,
+						}
+						p.advance()
+					}
 				}
+				stmt.ModuleName = ref
 			}
-			stmt.ModuleName = ref
 		}
 	}
 

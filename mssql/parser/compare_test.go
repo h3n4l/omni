@@ -20139,3 +20139,255 @@ func TestParseDatabaseBnfReview(t *testing.T) {
 		}
 	})
 }
+
+// TestParseSecurityBnfReview tests batch 163: BNF review of security statements.
+func TestParseSecurityBnfReview(t *testing.T) {
+	// CREATE USER - FOR/FROM CERTIFICATE
+	t.Run("create_user_certificate", func(t *testing.T) {
+		sqls := []string{
+			"CREATE USER certUser FOR CERTIFICATE myCert",
+			"CREATE USER certUser FROM CERTIFICATE myCert",
+		}
+		for _, sql := range sqls {
+			result := ParseAndCheck(t, sql)
+			if len(result.Items) != 1 {
+				t.Fatalf("expected 1 stmt, got %d", len(result.Items))
+			}
+			stmt, ok := result.Items[0].(*ast.SecurityStmt)
+			if !ok {
+				t.Fatalf("expected SecurityStmt, got %T", result.Items[0])
+			}
+			if stmt.Action != "CREATE" || stmt.ObjectType != "USER" {
+				t.Errorf("expected CREATE USER, got %s %s", stmt.Action, stmt.ObjectType)
+			}
+			if stmt.Options == nil || len(stmt.Options.Items) == 0 {
+				t.Fatal("expected options")
+			}
+			opt := stmt.Options.Items[0].(*ast.SecurityPrincipalOption)
+			if opt.Name != "CERTIFICATE" || opt.Value != "myCert" {
+				t.Errorf("expected CERTIFICATE=myCert, got %s=%s", opt.Name, opt.Value)
+			}
+		}
+	})
+
+	// CREATE USER - FOR/FROM ASYMMETRIC KEY
+	t.Run("create_user_asymmetric_key", func(t *testing.T) {
+		sql := "CREATE USER keyUser FOR ASYMMETRIC KEY myAsymKey"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		if stmt.Options == nil || len(stmt.Options.Items) == 0 {
+			t.Fatal("expected options")
+		}
+		opt := stmt.Options.Items[0].(*ast.SecurityPrincipalOption)
+		if opt.Name != "ASYMMETRIC KEY" || opt.Value != "myAsymKey" {
+			t.Errorf("expected ASYMMETRIC KEY=myAsymKey, got %s=%s", opt.Name, opt.Value)
+		}
+	})
+
+	// CREATE USER - WITHOUT LOGIN
+	t.Run("create_user_without_login", func(t *testing.T) {
+		sql := "CREATE USER noLoginUser WITHOUT LOGIN"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		if stmt.Options == nil || len(stmt.Options.Items) == 0 {
+			t.Fatal("expected options")
+		}
+		opt := stmt.Options.Items[0].(*ast.SecurityPrincipalOption)
+		if opt.Name != "WITHOUT LOGIN" {
+			t.Errorf("expected WITHOUT LOGIN, got %s", opt.Name)
+		}
+	})
+
+	// CREATE USER - WITHOUT LOGIN WITH DEFAULT_SCHEMA
+	t.Run("create_user_without_login_with_schema", func(t *testing.T) {
+		sql := "CREATE USER noLoginUser WITHOUT LOGIN WITH DEFAULT_SCHEMA = dbo"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		if stmt.Options == nil || len(stmt.Options.Items) < 2 {
+			t.Fatalf("expected >= 2 options, got %v", stmt.Options)
+		}
+		opt0 := stmt.Options.Items[0].(*ast.SecurityPrincipalOption)
+		if opt0.Name != "WITHOUT LOGIN" {
+			t.Errorf("expected WITHOUT LOGIN, got %s", opt0.Name)
+		}
+		opt1 := stmt.Options.Items[1].(*ast.SecurityPrincipalOption)
+		if opt1.Name != "DEFAULT_SCHEMA" || opt1.Value != "dbo" {
+			t.Errorf("expected DEFAULT_SCHEMA=dbo, got %s=%s", opt1.Name, opt1.Value)
+		}
+	})
+
+	// CREATE USER - FROM EXTERNAL PROVIDER
+	t.Run("create_user_external_provider", func(t *testing.T) {
+		sql := "CREATE USER [bob@contoso.com] FROM EXTERNAL PROVIDER"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		if stmt.Options == nil || len(stmt.Options.Items) == 0 {
+			t.Fatal("expected options")
+		}
+		opt := stmt.Options.Items[0].(*ast.SecurityPrincipalOption)
+		if opt.Name != "EXTERNAL PROVIDER" {
+			t.Errorf("expected EXTERNAL PROVIDER, got %s", opt.Name)
+		}
+	})
+
+	// ALTER LOGIN - ADD CREDENTIAL
+	t.Run("alter_login_add_credential", func(t *testing.T) {
+		sql := "ALTER LOGIN myLogin ADD CREDENTIAL myCred"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		if stmt.Action != "ALTER" || stmt.ObjectType != "LOGIN" {
+			t.Errorf("expected ALTER LOGIN, got %s %s", stmt.Action, stmt.ObjectType)
+		}
+		if stmt.Options == nil || len(stmt.Options.Items) == 0 {
+			t.Fatal("expected options")
+		}
+		opt := stmt.Options.Items[0].(*ast.SecurityPrincipalOption)
+		if opt.Name != "ADD CREDENTIAL" || opt.Value != "myCred" {
+			t.Errorf("expected ADD CREDENTIAL=myCred, got %s=%s", opt.Name, opt.Value)
+		}
+	})
+
+	// ALTER LOGIN - DROP CREDENTIAL
+	t.Run("alter_login_drop_credential", func(t *testing.T) {
+		sql := "ALTER LOGIN myLogin DROP CREDENTIAL myCred"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		if stmt.Options == nil || len(stmt.Options.Items) == 0 {
+			t.Fatal("expected options")
+		}
+		opt := stmt.Options.Items[0].(*ast.SecurityPrincipalOption)
+		if opt.Name != "DROP CREDENTIAL" || opt.Value != "myCred" {
+			t.Errorf("expected DROP CREDENTIAL=myCred, got %s=%s", opt.Name, opt.Value)
+		}
+	})
+
+	// ALTER LOGIN - PASSWORD with UNLOCK
+	t.Run("alter_login_password_unlock", func(t *testing.T) {
+		sql := "ALTER LOGIN myLogin WITH PASSWORD = 'newpwd' UNLOCK"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		if stmt.Options == nil || len(stmt.Options.Items) == 0 {
+			t.Fatal("expected options")
+		}
+		opt := stmt.Options.Items[0].(*ast.SecurityPrincipalOption)
+		if opt.Name != "PASSWORD" {
+			t.Errorf("expected PASSWORD, got %s", opt.Name)
+		}
+		if !opt.Unlock {
+			t.Error("expected Unlock=true")
+		}
+	})
+
+	// ALTER LOGIN - PASSWORD with MUST_CHANGE and UNLOCK
+	t.Run("alter_login_password_must_change_unlock", func(t *testing.T) {
+		sql := "ALTER LOGIN myLogin WITH PASSWORD = 'newpwd' MUST_CHANGE UNLOCK"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		opt := stmt.Options.Items[0].(*ast.SecurityPrincipalOption)
+		if !opt.MustChange || !opt.Unlock {
+			t.Errorf("expected MustChange=true Unlock=true, got MustChange=%v Unlock=%v", opt.MustChange, opt.Unlock)
+		}
+	})
+
+	// ALTER LOGIN - NO CREDENTIAL
+	t.Run("alter_login_no_credential", func(t *testing.T) {
+		sql := "ALTER LOGIN myLogin WITH NO CREDENTIAL"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.SecurityStmt)
+		if stmt.Options == nil || len(stmt.Options.Items) == 0 {
+			t.Fatal("expected options")
+		}
+		opt := stmt.Options.Items[0].(*ast.SecurityPrincipalOption)
+		if opt.Name != "NO CREDENTIAL" {
+			t.Errorf("expected NO CREDENTIAL, got %s", opt.Name)
+		}
+	})
+
+	// ADD SIGNATURE with tokCOLONCOLON
+	t.Run("add_signature_coloncolon", func(t *testing.T) {
+		sqls := []string{
+			"ADD SIGNATURE TO OBJECT::dbo.myProc BY CERTIFICATE myCert",
+			"ADD COUNTER SIGNATURE TO OBJECT::dbo.myProc BY CERTIFICATE myCert WITH PASSWORD = 'pwd'",
+			"ADD SIGNATURE TO ASSEMBLY::myAssembly BY ASYMMETRIC KEY myKey",
+			"ADD SIGNATURE TO DATABASE::myDB BY CERTIFICATE myCert",
+		}
+		for _, sql := range sqls {
+			ParseAndCheck(t, sql)
+		}
+	})
+
+	// Roundtrip parse check for all reviewed statements
+	t.Run("roundtrip_all", func(t *testing.T) {
+		sqls := []string{
+			// CREATE/ALTER/DROP USER
+			"CREATE USER bob FOR LOGIN bobLogin",
+			"CREATE USER bob WITH DEFAULT_SCHEMA = dbo",
+			"CREATE USER bob WITH PASSWORD = 'secret'",
+			"ALTER USER bob WITH NAME = robert",
+			"ALTER USER bob WITH DEFAULT_SCHEMA = sales, LOGIN = newLogin",
+			"DROP USER IF EXISTS bob",
+			// CREATE/ALTER/DROP LOGIN
+			"CREATE LOGIN testLogin WITH PASSWORD = 'pass123'",
+			"CREATE LOGIN testLogin WITH PASSWORD = 'pass123' HASHED",
+			"CREATE LOGIN testLogin WITH PASSWORD = 'pass123' MUST_CHANGE, CHECK_POLICY = ON",
+			"CREATE LOGIN testLogin FROM WINDOWS WITH DEFAULT_DATABASE = master",
+			"CREATE LOGIN testLogin FROM CERTIFICATE myCert",
+			"CREATE LOGIN testLogin FROM ASYMMETRIC KEY myKey",
+			"CREATE LOGIN testLogin FROM EXTERNAL PROVIDER",
+			"ALTER LOGIN testLogin ENABLE",
+			"ALTER LOGIN testLogin DISABLE",
+			"ALTER LOGIN testLogin WITH PASSWORD = 'newpwd' OLD_PASSWORD = 'oldpwd'",
+			"DROP LOGIN testLogin",
+			// CREATE/ALTER/DROP ROLE
+			"CREATE ROLE myRole",
+			"CREATE ROLE myRole AUTHORIZATION dbo",
+			"ALTER ROLE myRole ADD MEMBER bob",
+			"ALTER ROLE myRole DROP MEMBER bob",
+			"ALTER ROLE myRole WITH NAME = newRole",
+			"DROP ROLE IF EXISTS myRole",
+			// APPLICATION ROLE
+			"CREATE APPLICATION ROLE myAppRole WITH PASSWORD = 'secret', DEFAULT_SCHEMA = dbo",
+			"ALTER APPLICATION ROLE myAppRole WITH NAME = newAppRole, PASSWORD = 'newpwd'",
+			"DROP APPLICATION ROLE myAppRole",
+			// GRANT/DENY/REVOKE
+			"GRANT SELECT ON dbo.myTable TO bob",
+			"GRANT ALL PRIVILEGES TO bob",
+			"GRANT SELECT, INSERT ON SCHEMA::dbo TO bob WITH GRANT OPTION",
+			"GRANT EXECUTE ON OBJECT::dbo.myProc TO bob AS dbo",
+			"DENY INSERT ON dbo.myTable TO bob CASCADE",
+			"REVOKE GRANT OPTION FOR SELECT ON dbo.myTable FROM bob CASCADE",
+			"REVOKE SELECT ON dbo.myTable TO bob",
+			// ALTER AUTHORIZATION
+			"ALTER AUTHORIZATION ON dbo.myTable TO newOwner",
+			"ALTER AUTHORIZATION ON SCHEMA::dbo TO newOwner",
+			"ALTER AUTHORIZATION ON OBJECT::dbo.myTable TO SCHEMA OWNER",
+			// EXECUTE AS / REVERT
+			"EXECUTE AS LOGIN = 'myLogin'",
+			"EXECUTE AS USER = 'myUser' WITH NO REVERT",
+			"EXECUTE AS CALLER",
+			"REVERT",
+			"REVERT WITH COOKIE = @cookieVar",
+			// SECURITY POLICY
+			"CREATE SECURITY POLICY dbo.myPolicy ADD FILTER PREDICATE dbo.fn_filter(col1) ON dbo.myTable WITH (STATE = ON)",
+			"ALTER SECURITY POLICY dbo.myPolicy ALTER FILTER PREDICATE dbo.fn_new(col1) ON dbo.myTable",
+			"ALTER SECURITY POLICY dbo.myPolicy DROP FILTER PREDICATE ON dbo.myTable",
+			"DROP SECURITY POLICY IF EXISTS dbo.myPolicy",
+			// SENSITIVITY CLASSIFICATION
+			"ADD SENSITIVITY CLASSIFICATION TO dbo.myTable.col1 WITH (LABEL = 'Confidential', INFORMATION_TYPE = 'Financial')",
+			"DROP SENSITIVITY CLASSIFICATION FROM dbo.myTable.col1",
+			// SIGNATURE
+			"ADD SIGNATURE TO OBJECT::dbo.myProc BY CERTIFICATE myCert",
+			"DROP SIGNATURE FROM OBJECT::dbo.myProc BY CERTIFICATE myCert",
+			// SERVER ROLE
+			"CREATE SERVER ROLE myServerRole",
+			"CREATE SERVER ROLE myServerRole AUTHORIZATION sysadmin",
+			"ALTER SERVER ROLE myServerRole ADD MEMBER testLogin",
+			"ALTER SERVER ROLE myServerRole DROP MEMBER testLogin",
+			"ALTER SERVER ROLE myServerRole WITH NAME = newServerRole",
+			"DROP SERVER ROLE myServerRole",
+		}
+		for _, sql := range sqls {
+			ParseAndCheck(t, sql)
+		}
+	})
+}

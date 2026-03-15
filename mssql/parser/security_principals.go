@@ -11,17 +11,23 @@ import (
 
 // parseSecurityUserStmt parses CREATE/ALTER/DROP USER.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-user-transact-sql
+// BNF: mssql/parser/bnf/create-user-transact-sql.bnf
 //
 //	CREATE USER user_name
 //	    [ { FOR | FROM } LOGIN login_name ]
 //	    [ WITH <option_list> [ ,... ] ]
+//	CREATE USER user_name
+//	    { FOR | FROM } CERTIFICATE cert_name
+//	CREATE USER user_name
+//	    { FOR | FROM } ASYMMETRIC KEY asym_key_name
+//	CREATE USER user_name WITHOUT LOGIN [ WITH <limited_options_list> ]
+//	CREATE USER user_name FROM EXTERNAL PROVIDER [ WITH OBJECT_ID = 'objectid' ]
 //	ALTER USER user_name WITH <option_list> [ ,... ]
 //	DROP USER [ IF EXISTS ] user_name
 //
 //	<option_list> ::=
 //	    PASSWORD = 'password' [ OLD_PASSWORD = 'oldpassword' ]
-//	  | DEFAULT_SCHEMA = schema_name
+//	  | DEFAULT_SCHEMA = { schema_name | NULL }
 //	  | DEFAULT_LANGUAGE = { NONE | lcid | language_name | language_alias }
 //	  | ALLOW_ENCRYPTED_VALUE_MODIFICATIONS = { ON | OFF }
 //	  | NAME = new_user_name
@@ -51,22 +57,65 @@ func (p *Parser) parseSecurityUserStmt(action string) *nodes.SecurityStmt {
 		stmt.Name = name
 	}
 
-	// FOR/FROM LOGIN login_name  (CREATE)
+	// FOR/FROM or WITHOUT LOGIN (CREATE)
 	var opts []nodes.Node
 	if action == "CREATE" {
 		if p.cur.Type == kwFOR || p.cur.Type == kwFROM {
 			optLoc := p.pos()
 			p.advance() // consume FOR / FROM
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CERTIFICATE") {
+				p.advance() // consume CERTIFICATE
+				if name, ok := p.parseIdentifier(); ok {
+					opts = append(opts, &nodes.SecurityPrincipalOption{
+						Name:  "CERTIFICATE",
+						Value: name,
+						Loc:   nodes.Loc{Start: optLoc, End: p.pos()},
+					})
+				}
+			} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "ASYMMETRIC") {
+				p.advance() // consume ASYMMETRIC
+				if p.cur.Type == kwKEY {
+					p.advance() // consume KEY
+				}
+				if name, ok := p.parseIdentifier(); ok {
+					opts = append(opts, &nodes.SecurityPrincipalOption{
+						Name:  "ASYMMETRIC KEY",
+						Value: name,
+						Loc:   nodes.Loc{Start: optLoc, End: p.pos()},
+					})
+				}
+			} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "EXTERNAL") {
+				p.advance() // consume EXTERNAL
+				if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "PROVIDER") {
+					p.advance() // consume PROVIDER
+				}
+				opts = append(opts, &nodes.SecurityPrincipalOption{
+					Name: "EXTERNAL PROVIDER",
+					Loc:  nodes.Loc{Start: optLoc, End: p.pos()},
+				})
+			} else {
+				// LOGIN (explicit or implicit)
+				if p.isIdentLike() && (matchesKeywordCI(p.cur.Str, "LOGIN") || p.cur.Type == kwLOGIN) {
+					p.advance() // consume LOGIN
+				}
+				if name, ok := p.parseIdentifier(); ok {
+					opts = append(opts, &nodes.SecurityPrincipalOption{
+						Name:  "LOGIN",
+						Value: name,
+						Loc:   nodes.Loc{Start: optLoc, End: p.pos()},
+					})
+				}
+			}
+		} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "WITHOUT") {
+			optLoc := p.pos()
+			p.advance() // consume WITHOUT
 			if p.isIdentLike() && (matchesKeywordCI(p.cur.Str, "LOGIN") || p.cur.Type == kwLOGIN) {
 				p.advance() // consume LOGIN
 			}
-			if name, ok := p.parseIdentifier(); ok {
-				opts = append(opts, &nodes.SecurityPrincipalOption{
-					Name:  "LOGIN",
-					Value: name,
-					Loc:   nodes.Loc{Start: optLoc, End: p.pos()},
-				})
-			}
+			opts = append(opts, &nodes.SecurityPrincipalOption{
+				Name: "WITHOUT LOGIN",
+				Loc:  nodes.Loc{Start: optLoc, End: p.pos()},
+			})
 		}
 	}
 
@@ -86,10 +135,12 @@ func (p *Parser) parseSecurityUserStmt(action string) *nodes.SecurityStmt {
 
 // parseSecurityLoginStmt parses CREATE/ALTER/DROP LOGIN.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-login-transact-sql
+// BNF: mssql/parser/bnf/create-login-transact-sql.bnf
+// BNF: mssql/parser/bnf/alter-login-transact-sql.bnf
+// BNF: mssql/parser/bnf/drop-login-transact-sql.bnf
 //
 //	CREATE LOGIN login_name
-//	    { WITH PASSWORD = 'password' [ HASHED ] [ MUST_CHANGE ]
+//	    { WITH PASSWORD = { 'password' | hashed_password HASHED } [ MUST_CHANGE ]
 //	        [ , DEFAULT_DATABASE = database ]
 //	        [ , DEFAULT_LANGUAGE = language ]
 //	        [ , CHECK_EXPIRATION = { ON | OFF } ]
@@ -99,12 +150,18 @@ func (p *Parser) parseSecurityUserStmt(action string) *nodes.SecurityStmt {
 //	    | FROM WINDOWS [ WITH DEFAULT_DATABASE = database [, DEFAULT_LANGUAGE = language ] ]
 //	    | FROM CERTIFICATE certname
 //	    | FROM ASYMMETRIC KEY asym_key_name
-//	    | FROM EXTERNAL PROVIDER
+//	    | FROM EXTERNAL PROVIDER [ WITH OBJECT_ID = 'objectid' ]
 //	    }
 //	ALTER LOGIN login_name
 //	    { ENABLE | DISABLE
-//	    | WITH PASSWORD = 'password' [ OLD_PASSWORD = 'old' ] [ HASHED ] [ MUST_CHANGE ] [ , ... ]
-//	    | WITH DEFAULT_DATABASE = database [, ...] }
+//	    | WITH PASSWORD = 'password' [ OLD_PASSWORD = 'old' | { MUST_CHANGE | UNLOCK } [...] ]
+//	        [ , DEFAULT_DATABASE = database ] [ , DEFAULT_LANGUAGE = language ]
+//	        [ , NAME = login_name ] [ , CHECK_POLICY = { ON | OFF } ]
+//	        [ , CHECK_EXPIRATION = { ON | OFF } ] [ , CREDENTIAL = credential_name ]
+//	        [ , NO CREDENTIAL ]
+//	    | ADD CREDENTIAL credential_name
+//	    | DROP CREDENTIAL credential_name
+//	    }
 //	DROP LOGIN login_name
 func (p *Parser) parseSecurityLoginStmt(action string) *nodes.SecurityStmt {
 	loc := p.pos()
@@ -121,7 +178,7 @@ func (p *Parser) parseSecurityLoginStmt(action string) *nodes.SecurityStmt {
 
 	var opts []nodes.Node
 
-	// ENABLE / DISABLE (ALTER LOGIN)
+	// ENABLE / DISABLE / ADD CREDENTIAL / DROP CREDENTIAL (ALTER LOGIN)
 	if action == "ALTER" {
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "ENABLE") {
 			optLoc := p.pos()
@@ -137,6 +194,32 @@ func (p *Parser) parseSecurityLoginStmt(action string) *nodes.SecurityStmt {
 				Name: "DISABLE",
 				Loc:  nodes.Loc{Start: optLoc, End: p.pos()},
 			})
+		} else if p.cur.Type == kwADD {
+			optLoc := p.pos()
+			p.advance() // consume ADD
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CREDENTIAL") {
+				p.advance() // consume CREDENTIAL
+				if name, ok := p.parseIdentifier(); ok {
+					opts = append(opts, &nodes.SecurityPrincipalOption{
+						Name:  "ADD CREDENTIAL",
+						Value: name,
+						Loc:   nodes.Loc{Start: optLoc, End: p.pos()},
+					})
+				}
+			}
+		} else if p.cur.Type == kwDROP {
+			optLoc := p.pos()
+			p.advance() // consume DROP
+			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CREDENTIAL") {
+				p.advance() // consume CREDENTIAL
+				if name, ok := p.parseIdentifier(); ok {
+					opts = append(opts, &nodes.SecurityPrincipalOption{
+						Name:  "DROP CREDENTIAL",
+						Value: name,
+						Loc:   nodes.Loc{Start: optLoc, End: p.pos()},
+					})
+				}
+			}
 		}
 	}
 
@@ -411,7 +494,7 @@ func (p *Parser) parseSecurityPrincipalWithOptions() []nodes.Node {
 			}
 		}
 
-		// PASSWORD sub-options: HASHED, MUST_CHANGE, OLD_PASSWORD
+		// PASSWORD sub-options: HASHED, MUST_CHANGE, UNLOCK, OLD_PASSWORD
 		if key == "PASSWORD" {
 			for {
 				if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "HASHED") {
@@ -419,6 +502,9 @@ func (p *Parser) parseSecurityPrincipalWithOptions() []nodes.Node {
 					p.advance()
 				} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "MUST_CHANGE") {
 					opt.MustChange = true
+					p.advance()
+				} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "UNLOCK") {
+					opt.Unlock = true
 					p.advance()
 				} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "OLD_PASSWORD") {
 					p.advance() // consume OLD_PASSWORD
@@ -433,6 +519,12 @@ func (p *Parser) parseSecurityPrincipalWithOptions() []nodes.Node {
 					break
 				}
 			}
+		}
+
+		// Handle NO CREDENTIAL (two-word option in ALTER LOGIN WITH)
+		if key == "NO" && p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CREDENTIAL") {
+			opt.Name = "NO CREDENTIAL"
+			p.advance() // consume CREDENTIAL
 		}
 
 		opt.Loc.End = p.pos()
