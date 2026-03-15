@@ -2054,6 +2054,8 @@ func unaryOpStr(op UnaryOp) string {
 		return "NOT"
 	case UnaryBitNot:
 		return "~"
+	case UnaryBinary:
+		return "BINARY"
 	default:
 		return fmt.Sprintf("?%d", op)
 	}

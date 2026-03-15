@@ -591,10 +591,11 @@ func (e *BinaryExpr) exprNode() {}
 type UnaryOp int
 
 const (
-	UnaryMinus UnaryOp = iota
+	UnaryMinus  UnaryOp = iota
 	UnaryPlus
 	UnaryNot
 	UnaryBitNot
+	UnaryBinary // BINARY expr (cast to binary string)
 )
 
 // UnaryExpr represents a unary expression (op expr).

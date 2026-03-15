@@ -11033,3 +11033,20 @@ func TestReviewBatch111_ChecksumTableExtended(t *testing.T) {
 func TestReviewBatch111_Shutdown(t *testing.T) {
 	ParseAndCheck(t, "SHUTDOWN")
 }
+
+// ============================================================================
+// Batch 116: Expression deep review
+// ============================================================================
+
+func TestReviewBatch116_BinaryPrefix(t *testing.T) {
+	tests := []string{
+		"SELECT BINARY 'hello'",
+		"SELECT BINARY col FROM t",
+		"SELECT BINARY col = 'abc' FROM t",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}

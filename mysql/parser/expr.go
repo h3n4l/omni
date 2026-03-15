@@ -255,6 +255,8 @@ func (p *Parser) parsePrefixExpr() (nodes.ExprNode, error) {
 		return p.parseIntervalExpr()
 	case kwMATCH:
 		return p.parseMatchExpr()
+	case kwBINARY:
+		return p.parseUnaryExpr(nodes.UnaryBinary)
 	default:
 		return p.parsePrimaryExpr()
 	}

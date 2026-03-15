@@ -2849,7 +2849,7 @@
       "id": 116,
       "name": "review_expression_deep",
       "file": "expr.go",
-      "status": "pending",
+      "status": "done",
       "description": "BNF review: Full expression parser review. Operator precedence, CASE, BETWEEN, IN, LIKE, IS, CAST/CONVERT, JSON operators (-> ->>), MATCH AGAINST, GROUP_CONCAT, window functions (OVER), subquery expressions, ROW constructor, DEFAULT/VALUES, MEMBER OF, SOUNDS LIKE. Cross-cutting across all BNF files.",
       "effort": "review",
       "bnf_files": [],
