@@ -1814,6 +1814,9 @@ func writeColumnDef(sb *strings.Builder, n *ColumnDef) {
 	if n.Encrypt != "" {
 		sb.WriteString(fmt.Sprintf(" :encrypt %q", n.Encrypt))
 	}
+	if n.DropIdentity {
+		sb.WriteString(" :dropIdentity true")
+	}
 	if n.Constraints != nil {
 		sb.WriteString(" :constraints ")
 		writeNode(sb, n.Constraints)
@@ -1977,6 +1980,10 @@ func writeAlterTableCmd(sb *strings.Builder, n *AlterTableCmd) {
 		sb.WriteString(" :columnDef ")
 		writeNode(sb, n.ColumnDef)
 	}
+	if n.ColumnDefs != nil {
+		sb.WriteString(" :columnDefs ")
+		writeNode(sb, n.ColumnDefs)
+	}
 	if n.ColumnName != "" {
 		sb.WriteString(fmt.Sprintf(" :columnName %q", n.ColumnName))
 	}
@@ -1986,6 +1993,9 @@ func writeAlterTableCmd(sb *strings.Builder, n *AlterTableCmd) {
 	if n.Constraint != nil {
 		sb.WriteString(" :constraint ")
 		writeNode(sb, n.Constraint)
+	}
+	if n.Subtype != "" {
+		sb.WriteString(fmt.Sprintf(" :subtype %q", n.Subtype))
 	}
 	sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

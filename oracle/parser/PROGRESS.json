@@ -631,7 +631,7 @@
       "id": 91,
       "name": "alter_table_full",
       "file": "alter_table.go",
-      "status": "pending",
+      "status": "done",
       "description": "Review ALTER TABLE against 877-line BNF. ADD/MODIFY/DROP column, constraints, MOVE, SPLIT/MERGE/EXCHANGE/COALESCE PARTITION, ENABLE/DISABLE, SHRINK SPACE, flashback archive, supplemental log, inmemory, ILM policy, read only/read write. Also ALTER TABLESPACE and ALTER TABLESPACE SET.",
       "bnf_files": ["ALTER-TABLE.bnf", "ALTER-TABLESPACE.bnf", "ALTER-TABLESPACE-SET.bnf"],
       "bnf_lines": 1010,

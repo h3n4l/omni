@@ -560,8 +560,19 @@ func (p *Parser) parseColumnProperties(col *nodes.ColumnDef) {
 				col.Constraints.Items = append(col.Constraints.Items, cc)
 			}
 
+		case kwDROP:
+			// DROP IDENTITY (for ALTER TABLE MODIFY column)
+			next := p.peekNext()
+			if next.Type == kwIDENTITY {
+				p.advance() // consume DROP
+				p.advance() // consume IDENTITY
+				col.DropIdentity = true
+			} else {
+				return
+			}
+
 		default:
-			// Handle SORT, VISIBLE, ENCRYPT, COLLATE as identifier-like keywords
+			// Handle SORT, VISIBLE, ENCRYPT, DECRYPT, COLLATE as identifier-like keywords
 			if p.isIdentLike() {
 				switch p.cur.Str {
 				case "SORT":
@@ -575,6 +586,9 @@ func (p *Parser) parseColumnProperties(col *nodes.ColumnDef) {
 					col.Encrypt = "ENCRYPT"
 					// encryption_spec: USING 'algo' IDENTIFIED BY pw SALT|NO SALT
 					p.parseEncryptionSpec(col)
+				case "DECRYPT":
+					p.advance() // consume DECRYPT
+					col.Encrypt = "DECRYPT"
 				case "COLLATE":
 					p.advance() // consume COLLATE
 					col.Collation = p.parseIdentifier()

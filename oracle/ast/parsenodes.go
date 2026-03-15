@@ -241,6 +241,41 @@ const (
 	AT_DROP_PARTITION
 	AT_TRUNCATE_PARTITION
 	AT_RENAME
+	AT_RENAME_CONSTRAINT
+	AT_ENABLE_DISABLE           // ENABLE/DISABLE constraint
+	AT_ENABLE_DISABLE_TABLE_LOCK // ENABLE/DISABLE TABLE LOCK
+	AT_ENABLE_DISABLE_TRIGGERS  // ENABLE/DISABLE ALL TRIGGERS
+	AT_SET_UNUSED               // SET UNUSED COLUMN
+	AT_DROP_UNUSED_COLUMNS      // DROP UNUSED COLUMNS / COLUMNS CONTINUE
+	AT_MOVE                     // MOVE [ONLINE]
+	AT_SPLIT_PARTITION          // SPLIT PARTITION
+	AT_SPLIT_SUBPARTITION       // SPLIT SUBPARTITION
+	AT_MERGE_PARTITIONS         // MERGE PARTITIONS
+	AT_MERGE_SUBPARTITIONS      // MERGE SUBPARTITIONS
+	AT_EXCHANGE_PARTITION       // EXCHANGE PARTITION/SUBPARTITION
+	AT_COALESCE_PARTITION       // COALESCE PARTITION
+	AT_COALESCE_SUBPARTITION    // COALESCE SUBPARTITION
+	AT_MODIFY_PARTITION         // MODIFY PARTITION
+	AT_MODIFY_SUBPARTITION      // MODIFY SUBPARTITION
+	AT_MODIFY_DEFAULT_ATTRS     // MODIFY DEFAULT ATTRIBUTES
+	AT_DROP_SUBPARTITION        // DROP SUBPARTITION
+	AT_RENAME_PARTITION         // RENAME PARTITION/SUBPARTITION
+	AT_SET_INTERVAL             // SET INTERVAL
+	AT_SET_PARTITIONING         // SET PARTITIONING
+	AT_SET_SUBPARTITION_TEMPLATE // SET SUBPARTITION TEMPLATE
+	AT_SHRINK_SPACE             // SHRINK SPACE
+	AT_ALTER_PROPERTY           // generic alter property (LOGGING, COMPRESS, etc.)
+	AT_ADD_PERIOD               // ADD PERIOD FOR
+	AT_DROP_PERIOD              // DROP PERIOD FOR
+	AT_MODIFY_LOB               // MODIFY LOB
+	AT_MODIFY_VARRAY            // MODIFY VARRAY
+	AT_MODIFY_NESTED_TABLE      // MODIFY NESTED TABLE
+	AT_MODIFY_OPAQUE_TYPE       // MODIFY OPAQUE TYPE
+	AT_MODIFY_TO_PARTITIONED    // MODIFY ... partitioning
+	AT_IMMUTABLE_TABLE          // NO DROP / NO DELETE
+	AT_BLOCKCHAIN_TABLE         // blockchain clauses
+	AT_DUPLICATED_REFRESH       // REFRESH / NO REFRESH
+	AT_MODIFY_PARTITIONSET      // MODIFY PARTITIONSET
 )
 
 // PLSQLLoopType represents PL/SQL loop types.
@@ -1431,7 +1466,8 @@ type ColumnDef struct {
 	Invisible              bool            // INVISIBLE
 	NotNull                bool            // NOT NULL
 	Null                   bool            // NULL (explicit)
-	Encrypt                string          // ENCRYPT encryption_spec
+	Encrypt                string          // ENCRYPT encryption_spec / DECRYPT
+	DropIdentity           bool            // DROP IDENTITY (ALTER TABLE MODIFY)
 	Constraints            *List           // column constraints (list of *ColumnConstraint)
 	Collation              string          // COLLATE
 	Loc                    Loc             // start location
@@ -1535,9 +1571,11 @@ func (n *AlterTableStmt) stmtNode() {}
 type AlterTableCmd struct {
 	Action     AlterTableAction // action type
 	ColumnDef  *ColumnDef       // for ADD/MODIFY COLUMN
-	ColumnName string           // for DROP/RENAME COLUMN
-	NewName    string           // for RENAME
+	ColumnDefs *List            // for ADD/MODIFY multiple columns
+	ColumnName string           // for DROP/RENAME COLUMN, partition name, property name
+	NewName    string           // for RENAME, property value
 	Constraint *TableConstraint // for ADD/DROP CONSTRAINT
+	Subtype    string           // sub-action qualifier (e.g. "ENABLE"/"DISABLE", "PARTITION"/"SUBPARTITION", property name)
 	Loc        Loc              // start location
 }
 
