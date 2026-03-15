@@ -328,7 +328,7 @@
       "id": 161,
       "name": "bnf_review_routines",
       "file": "create_proc.go",
-      "status": "pending",
+      "status": "done",
       "description": "BNF review of CREATE/ALTER/DROP PROCEDURE, CREATE/ALTER/DROP FUNCTION (scalar, inline table-valued, multi-statement table-valued, CLR), EXECUTE.",
       "rules": [
         "create_procedure_stmt",

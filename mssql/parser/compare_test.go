@@ -19659,3 +19659,233 @@ func TestParseViewTriggerBnfReview(t *testing.T) {
 		}
 	})
 }
+
+// TestParseRoutinesBnfReview tests BNF review batch 161: routines.
+func TestParseRoutinesBnfReview(t *testing.T) {
+	// CREATE PROCEDURE with procedure number
+	t.Run("proc with number", func(t *testing.T) {
+		sql := "CREATE PROCEDURE dbo.sp_test;1 @p1 int AS SELECT 1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateProcedureStmt)
+		if stmt.Number != 1 {
+			t.Errorf("expected number 1, got %d", stmt.Number)
+		}
+	})
+
+	// CREATE PROCEDURE with FOR REPLICATION
+	t.Run("proc for replication", func(t *testing.T) {
+		sql := "CREATE PROCEDURE dbo.sp_test AS SELECT 1"
+		ParseAndCheck(t, sql)
+	})
+
+	// CREATE PROCEDURE with FOR REPLICATION
+	t.Run("proc for replication explicit", func(t *testing.T) {
+		sql := "CREATE PROCEDURE dbo.sp_test FOR REPLICATION AS SELECT 1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateProcedureStmt)
+		if !stmt.ForReplication {
+			t.Errorf("expected ForReplication true")
+		}
+	})
+
+	// CREATE PROCEDURE with EXTERNAL NAME (CLR)
+	t.Run("proc clr external name", func(t *testing.T) {
+		sql := "CREATE PROCEDURE dbo.sp_test WITH EXECUTE AS OWNER AS EXTERNAL NAME MyAssembly.MyClass.MyMethod"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateProcedureStmt)
+		if stmt.ExternalName != "MyAssembly.MyClass.MyMethod" {
+			t.Errorf("expected external name MyAssembly.MyClass.MyMethod, got %s", stmt.ExternalName)
+		}
+	})
+
+	// CREATE PROCEDURE with parenthesized params
+	t.Run("proc parenthesized params", func(t *testing.T) {
+		sql := "CREATE PROCEDURE dbo.sp_test (@p1 int, @p2 varchar(50)) AS SELECT @p1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateProcedureStmt)
+		if stmt.Params == nil || stmt.Params.Len() != 2 {
+			t.Errorf("expected 2 params, got %v", stmt.Params)
+		}
+	})
+
+	// Parameter with VARYING keyword
+	t.Run("param varying", func(t *testing.T) {
+		sql := "CREATE PROCEDURE dbo.sp_test @p1 cursor VARYING OUTPUT AS SELECT 1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateProcedureStmt)
+		if stmt.Params == nil || stmt.Params.Len() != 1 {
+			t.Fatalf("expected 1 param")
+		}
+		param := stmt.Params.Items[0].(*ast.ParamDef)
+		if !param.Varying {
+			t.Errorf("expected VARYING true")
+		}
+		if !param.Output {
+			t.Errorf("expected OUTPUT true")
+		}
+	})
+
+	// Parameter with NULL keyword
+	t.Run("param null", func(t *testing.T) {
+		sql := "CREATE PROCEDURE dbo.sp_test @p1 int NULL = 0 AS SELECT @p1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateProcedureStmt)
+		param := stmt.Params.Items[0].(*ast.ParamDef)
+		if !param.Null {
+			t.Errorf("expected NULL true")
+		}
+		if param.Default == nil {
+			t.Errorf("expected default value")
+		}
+	})
+
+	// CREATE FUNCTION with AS on parameters
+	t.Run("func param with AS", func(t *testing.T) {
+		sql := "CREATE FUNCTION dbo.fn_test (@p1 AS int) RETURNS int AS BEGIN RETURN @p1 END"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateFunctionStmt)
+		if stmt.Params == nil || stmt.Params.Len() != 1 {
+			t.Fatalf("expected 1 param")
+		}
+	})
+
+	// CREATE FUNCTION with CLR EXTERNAL NAME
+	t.Run("func clr scalar", func(t *testing.T) {
+		sql := "CREATE FUNCTION dbo.fn_test (@p1 int) RETURNS int AS EXTERNAL NAME MyAssembly.MyClass.MyMethod"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.CreateFunctionStmt)
+		if stmt.ExternalName != "MyAssembly.MyClass.MyMethod" {
+			t.Errorf("expected external name MyAssembly.MyClass.MyMethod, got %s", stmt.ExternalName)
+		}
+	})
+
+	// CREATE FUNCTION inline TVF with parenthesized RETURN
+	t.Run("func inline tvf paren return", func(t *testing.T) {
+		sql := "CREATE FUNCTION dbo.fn_test (@id int) RETURNS TABLE AS RETURN (SELECT * FROM t WHERE id = @id)"
+		ParseAndCheck(t, sql)
+	})
+
+	// OR ALTER variants
+	t.Run("or alter proc", func(t *testing.T) {
+		sqls := []string{
+			"CREATE OR ALTER PROCEDURE dbo.sp_test AS SELECT 1",
+			"CREATE OR ALTER FUNCTION dbo.fn_test () RETURNS int AS BEGIN RETURN 1 END",
+		}
+		for _, sql := range sqls {
+			ParseAndCheck(t, sql)
+		}
+	})
+
+	// EXEC with string execution
+	t.Run("exec string", func(t *testing.T) {
+		sql := "EXEC ('SELECT 1')"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.ExecStmt)
+		if stmt.ExecString == nil {
+			t.Errorf("expected exec string")
+		}
+	})
+
+	// EXEC with string + AS LOGIN
+	t.Run("exec string as login", func(t *testing.T) {
+		sql := "EXEC ('SELECT 1') AS LOGIN = 'TestLogin'"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.ExecStmt)
+		if stmt.AsLogin != "TestLogin" {
+			t.Errorf("expected AsLogin='TestLogin', got %s", stmt.AsLogin)
+		}
+	})
+
+	// EXEC with string + AS USER
+	t.Run("exec string as user", func(t *testing.T) {
+		sql := "EXEC ('SELECT 1') AS USER = 'TestUser'"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.ExecStmt)
+		if stmt.AsUser != "TestUser" {
+			t.Errorf("expected AsUser='TestUser', got %s", stmt.AsUser)
+		}
+	})
+
+	// EXEC with string + AT linked server
+	t.Run("exec string at linked server", func(t *testing.T) {
+		sql := "EXEC ('SELECT 1') AT LinkedServer1"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.ExecStmt)
+		if stmt.AtServer != "LinkedServer1" {
+			t.Errorf("expected AtServer='LinkedServer1', got %s", stmt.AtServer)
+		}
+	})
+
+	// EXEC with DEFAULT argument
+	t.Run("exec default arg", func(t *testing.T) {
+		sql := "EXEC sp_test DEFAULT, @p2 = DEFAULT"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.ExecStmt)
+		if stmt.Args == nil || stmt.Args.Len() != 2 {
+			t.Fatalf("expected 2 args, got %v", stmt.Args)
+		}
+		arg0 := stmt.Args.Items[0].(*ast.ExecArg)
+		if !arg0.IsDefault {
+			t.Errorf("expected arg 0 IsDefault true")
+		}
+		arg1 := stmt.Args.Items[1].(*ast.ExecArg)
+		if !arg1.IsDefault {
+			t.Errorf("expected arg 1 IsDefault true")
+		}
+	})
+
+	// EXEC with WITH RECOMPILE
+	t.Run("exec with recompile", func(t *testing.T) {
+		sql := "EXEC sp_test @p1 = 1 WITH RECOMPILE"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.ExecStmt)
+		if stmt.WithOptions == nil || stmt.WithOptions.Len() != 1 {
+			t.Fatalf("expected 1 with option")
+		}
+		opt := stmt.WithOptions.Items[0].(*ast.String)
+		if opt.Str != "RECOMPILE" {
+			t.Errorf("expected RECOMPILE option, got %s", opt.Str)
+		}
+	})
+
+	// EXEC with RESULT SETS NONE
+	t.Run("exec result sets none", func(t *testing.T) {
+		sql := "EXEC sp_test WITH RESULT SETS NONE"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.ExecStmt)
+		if stmt.WithOptions == nil || stmt.WithOptions.Len() != 1 {
+			t.Fatalf("expected 1 with option")
+		}
+		opt := stmt.WithOptions.Items[0].(*ast.String)
+		if opt.Str != "RESULT SETS NONE" {
+			t.Errorf("expected 'RESULT SETS NONE', got %s", opt.Str)
+		}
+	})
+
+	// EXEC with RESULT SETS UNDEFINED
+	t.Run("exec result sets undefined", func(t *testing.T) {
+		sql := "EXEC sp_test WITH RESULT SETS UNDEFINED"
+		result := ParseAndCheck(t, sql)
+		stmt := result.Items[0].(*ast.ExecStmt)
+		opt := stmt.WithOptions.Items[0].(*ast.String)
+		if opt.Str != "RESULT SETS UNDEFINED" {
+			t.Errorf("expected 'RESULT SETS UNDEFINED', got %s", opt.Str)
+		}
+	})
+
+	// Multiple statements: basic coverage
+	t.Run("basic coverage", func(t *testing.T) {
+		sqls := []string{
+			"CREATE PROCEDURE sp1 @p1 int, @p2 varchar(50) = 'hello' OUTPUT AS SELECT 1",
+			"CREATE PROC sp1 @p1 int READONLY AS SELECT 1",
+			"CREATE FUNCTION fn1 (@p1 int) RETURNS TABLE AS RETURN SELECT * FROM t",
+			"CREATE FUNCTION fn1 (@p1 int) RETURNS @t TABLE (id int, name varchar(50)) AS BEGIN RETURN END",
+			"EXEC sp1 1, 'hello', @p3 = 42 OUTPUT",
+			"EXECUTE @result = dbo.sp1 @p1 = 1",
+			"EXEC ('SELECT * FROM ' + @tableName)",
+		}
+		for _, sql := range sqls {
+			ParseAndCheck(t, sql)
+		}
+	})
+}

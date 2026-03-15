@@ -1022,6 +1022,13 @@ func writeCreateFunctionStmt(sb *strings.Builder, n *CreateFunctionStmt) {
 		sb.WriteString(" :options ")
 		writeNode(sb, n.Options)
 	}
+	if n.ExternalName != "" {
+		sb.WriteString(fmt.Sprintf(" :externalName \"%s\"", escapeString(n.ExternalName)))
+	}
+	if n.OrderClause != nil {
+		sb.WriteString(" :orderClause ")
+		writeNode(sb, n.OrderClause)
+	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
 }
@@ -1032,6 +1039,9 @@ func writeCreateProcedureStmt(sb *strings.Builder, n *CreateProcedureStmt) {
 	if n.Name != nil {
 		sb.WriteString(" :name ")
 		writeNode(sb, n.Name)
+	}
+	if n.Number > 0 {
+		sb.WriteString(fmt.Sprintf(" :number %d", n.Number))
 	}
 	if n.Params != nil {
 		sb.WriteString(" :params ")
@@ -1044,6 +1054,12 @@ func writeCreateProcedureStmt(sb *strings.Builder, n *CreateProcedureStmt) {
 	if n.Options != nil {
 		sb.WriteString(" :options ")
 		writeNode(sb, n.Options)
+	}
+	if n.ForReplication {
+		sb.WriteString(" :forReplication true")
+	}
+	if n.ExternalName != "" {
+		sb.WriteString(fmt.Sprintf(" :externalName \"%s\"", escapeString(n.ExternalName)))
 	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
@@ -1274,6 +1290,26 @@ func writeExecStmt(sb *strings.Builder, n *ExecStmt) {
 	}
 	if n.ReturnVar != "" {
 		sb.WriteString(fmt.Sprintf(" :returnVar \"%s\"", escapeString(n.ReturnVar)))
+	}
+	if n.ExecString != nil {
+		sb.WriteString(" :execString ")
+		writeNode(sb, n.ExecString)
+	}
+	if n.AsLogin != "" {
+		sb.WriteString(fmt.Sprintf(" :asLogin \"%s\"", escapeString(n.AsLogin)))
+	}
+	if n.AsUser != "" {
+		sb.WriteString(fmt.Sprintf(" :asUser \"%s\"", escapeString(n.AsUser)))
+	}
+	if n.AtServer != "" {
+		sb.WriteString(fmt.Sprintf(" :atServer \"%s\"", escapeString(n.AtServer)))
+	}
+	if n.AtDataSource != "" {
+		sb.WriteString(fmt.Sprintf(" :atDataSource \"%s\"", escapeString(n.AtDataSource)))
+	}
+	if n.WithOptions != nil {
+		sb.WriteString(" :withOptions ")
+		writeNode(sb, n.WithOptions)
 	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
@@ -2643,6 +2679,12 @@ func writeParamDef(sb *strings.Builder, n *ParamDef) {
 		sb.WriteString(" :dataType ")
 		writeNode(sb, n.DataType)
 	}
+	if n.Varying {
+		sb.WriteString(" :varying true")
+	}
+	if n.Null {
+		sb.WriteString(" :null true")
+	}
 	if n.Default != nil {
 		sb.WriteString(" :default ")
 		writeNode(sb, n.Default)
@@ -2880,6 +2922,9 @@ func writeExecArg(sb *strings.Builder, n *ExecArg) {
 	}
 	if n.Output {
 		sb.WriteString(" :output true")
+	}
+	if n.IsDefault {
+		sb.WriteString(" :isDefault true")
 	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")

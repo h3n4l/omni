@@ -2,6 +2,7 @@
 package parser
 
 import (
+	"strconv"
 	"strings"
 
 	nodes "github.com/bytebase/omni/mssql/ast"
@@ -9,15 +10,27 @@ import (
 
 // parseCreateProcedureStmt parses a CREATE [OR ALTER] PROCEDURE statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-procedure-transact-sql
+// BNF: mssql/parser/bnf/create-procedure-transact-sql.bnf
 //
-//	CREATE [ OR ALTER ] { PROC | PROCEDURE } [ schema_name. ] procedure_name
-//	    [ { @parameter [ type_schema_name. ] data_type }
-//	      [ VARYING ] [ = default ] [ OUT | OUTPUT | READONLY ]
+//	CREATE [ OR ALTER ] { PROC | PROCEDURE }
+//	    [ schema_name. ] procedure_name [ ; number ]
+//	    [ { @parameter_name [ type_schema_name. ] data_type }
+//	      [ VARYING ] [ NULL ] [ = default ] [ OUT | OUTPUT | READONLY ]
 //	    ] [ ,...n ]
 //	[ WITH <procedure_option> [ ,...n ] ]
 //	[ FOR REPLICATION ]
 //	AS { [ BEGIN ] sql_statement [;] [ ...n ] [ END ] }
+//	[;]
+//
+//	-- CLR syntax:
+//	CREATE [ OR ALTER ] { PROC | PROCEDURE }
+//	    [ schema_name. ] procedure_name [ ; number ]
+//	    [ { @parameter_name [ type_schema_name. ] data_type }
+//	      [ = default ] [ OUT | OUTPUT ] [ READONLY ]
+//	    ] [ ,...n ]
+//	[ WITH EXECUTE AS Clause ]
+//	AS { EXTERNAL NAME assembly_name.class_name.method_name }
+//	[;]
 //
 //	<procedure_option> ::=
 //	    [ ENCRYPTION ]
@@ -36,8 +49,26 @@ func (p *Parser) parseCreateProcedureStmt(orAlter bool) *nodes.CreateProcedureSt
 	// Procedure name
 	stmt.Name = p.parseTableRef()
 
-	// Parameters
-	if p.cur.Type == tokVARIABLE {
+	// Optional procedure number: ; number
+	if p.cur.Type == ';' {
+		next := p.peekNext()
+		if next.Type == tokICONST {
+			p.advance() // consume ;
+			if n, err := strconv.Atoi(p.cur.Str); err == nil {
+				stmt.Number = n
+			}
+			p.advance() // consume number
+		}
+	}
+
+	// Parameters (may or may not be in parentheses per BNF)
+	if p.cur.Type == '(' {
+		p.advance()
+		if p.cur.Type != ')' {
+			stmt.Params = p.parseParamDefList()
+		}
+		_, _ = p.expect(')')
+	} else if p.cur.Type == tokVARIABLE {
 		stmt.Params = p.parseParamDefList()
 	}
 
@@ -50,48 +81,132 @@ func (p *Parser) parseCreateProcedureStmt(orAlter bool) *nodes.CreateProcedureSt
 		}
 	}
 
+	// FOR REPLICATION
+	if p.cur.Type == kwFOR {
+		next := p.peekNext()
+		if next.Type == kwREPLICATION {
+			p.advance() // consume FOR
+			p.advance() // consume REPLICATION
+			stmt.ForReplication = true
+		}
+	}
+
 	// AS
 	p.match(kwAS)
 
-	// Body (BEGIN...END block or single statement)
-	stmt.Body = p.parseStmt()
+	// EXTERNAL NAME assembly.class.method (CLR)
+	if p.cur.Type == kwEXTERNAL {
+		p.advance() // consume EXTERNAL
+		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "NAME") {
+			p.advance() // consume NAME
+		}
+		stmt.ExternalName = p.parseMethodSpecifier()
+	} else {
+		// Body (BEGIN...END block or single statement)
+		stmt.Body = p.parseStmt()
+	}
 
 	stmt.Loc.End = p.pos()
 	return stmt
 }
 
+// parseMethodSpecifier parses assembly_name.class_name.method_name.
+func (p *Parser) parseMethodSpecifier() string {
+	var parts []string
+	for {
+		if p.isIdentLike() || p.cur.Type == tokIDENT {
+			parts = append(parts, p.cur.Str)
+			p.advance()
+		} else {
+			break
+		}
+		if p.cur.Type != '.' {
+			break
+		}
+		p.advance() // consume dot
+	}
+	return strings.Join(parts, ".")
+}
+
 // parseCreateFunctionStmt parses a CREATE [OR ALTER] FUNCTION statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-function-transact-sql
+// BNF: mssql/parser/bnf/create-function-transact-sql.bnf
 //
+//	-- Scalar Function:
 //	CREATE [ OR ALTER ] FUNCTION [ schema_name. ] function_name
-//	    ( [ { @parameter_name [ AS ] [ type_schema_name. ] parameter_data_type
-//	        [ = default_value ] [ READONLY ] } [ ,...n ] ] )
+//	( [ { @parameter_name [ AS ] [ type_schema_name. ] parameter_data_type [ NULL ]
+//	    [ = default ] [ READONLY ] }
+//	    [ , ...n ]
+//	  ] )
 //	RETURNS return_data_type
-//	    [ WITH <function_option> [ ,...n ] ]
+//	    [ WITH <function_option> [ , ...n ] ]
 //	    [ AS ]
 //	    BEGIN
 //	        function_body
 //	        RETURN scalar_expression
 //	    END
+//	[ ; ]
 //
+//	-- Inline Table-Valued Function:
+//	CREATE [ OR ALTER ] FUNCTION [ schema_name. ] function_name
+//	( [ { @parameter_name [ AS ] [ type_schema_name. ] parameter_data_type [ NULL ]
+//	    [ = default ] [ READONLY ] }
+//	    [ , ...n ]
+//	  ] )
 //	RETURNS TABLE
-//	    [ WITH <function_option> [ ,...n ] ]
+//	    [ WITH <function_option> [ , ...n ] ]
 //	    [ AS ]
-//	    RETURN ( select_stmt )
+//	    RETURN [ ( ] select_stmt [ ) ]
+//	[ ; ]
 //
+//	-- Multi-Statement Table-Valued Function:
+//	CREATE [ OR ALTER ] FUNCTION [ schema_name. ] function_name
+//	( [ { @parameter_name [ AS ] [ type_schema_name. ] parameter_data_type [ NULL ]
+//	    [ = default ] [ READONLY ] }
+//	    [ , ...n ]
+//	  ] )
 //	RETURNS @return_variable TABLE <table_type_definition>
-//	    [ WITH <function_option> [ ,...n ] ]
+//	    [ WITH <function_option> [ , ...n ] ]
 //	    [ AS ]
 //	    BEGIN
 //	        function_body
 //	        RETURN
 //	    END
+//	[ ; ]
+//
+//	-- CLR Scalar Function:
+//	CREATE [ OR ALTER ] FUNCTION [ schema_name. ] function_name
+//	( { @parameter_name [ AS ] [ type_schema_name. ] parameter_data_type [ NULL ]
+//	    [ = default ] }
+//	    [ , ...n ]
+//	)
+//	RETURNS { return_data_type }
+//	    [ WITH <clr_function_option> [ , ...n ] ]
+//	    [ AS ] EXTERNAL NAME <method_specifier>
+//	[ ; ]
+//
+//	-- CLR Table-Valued Function:
+//	CREATE [ OR ALTER ] FUNCTION [ schema_name. ] function_name
+//	( { @parameter_name [ AS ] [ type_schema_name. ] parameter_data_type [ NULL ]
+//	    [ = default ] }
+//	    [ , ...n ]
+//	)
+//	RETURNS TABLE <clr_table_type_definition>
+//	    [ WITH <clr_function_option> [ , ...n ] ]
+//	    [ ORDER ( <order_clause> ) ]
+//	    [ AS ] EXTERNAL NAME <method_specifier>
+//	[ ; ]
 //
 //	<function_option> ::=
-//	    { ENCRYPTION | SCHEMABINDING | RETURNS NULL ON NULL INPUT
-//	      | CALLED ON NULL INPUT | EXECUTE AS Clause
-//	      | INLINE = { ON | OFF } | NATIVE_COMPILATION }
+//	{
+//	    [ ENCRYPTION ]
+//	  | [ SCHEMABINDING ]
+//	  | [ RETURNS NULL ON NULL INPUT | CALLED ON NULL INPUT ]
+//	  | [ EXECUTE_AS_Clause ]
+//	  | [ INLINE = { ON | OFF } ]
+//	}
+//
+//	<method_specifier> ::= assembly_name.class_name.method_name
 func (p *Parser) parseCreateFunctionStmt(orAlter bool) *nodes.CreateFunctionStmt {
 	loc := p.pos()
 
@@ -119,7 +234,7 @@ func (p *Parser) parseCreateFunctionStmt(orAlter bool) *nodes.CreateFunctionStmt
 			stmt.ReturnsTable = &nodes.ReturnsTableDef{
 				Loc: nodes.Loc{Start: p.pos()},
 			}
-			// Check for table definition (multi-statement TVF)
+			// Check for table definition (CLR or multi-statement TVF)
 			if p.cur.Type == '(' {
 				p.advance()
 				var cols []nodes.Node
@@ -177,15 +292,39 @@ func (p *Parser) parseCreateFunctionStmt(orAlter bool) *nodes.CreateFunctionStmt
 		}
 	}
 
+	// ORDER ( column ASC|DESC [,...n] ) for CLR table-valued functions
+	if p.cur.Type == kwORDER {
+		p.advance() // consume ORDER
+		if p.cur.Type == '(' {
+			p.advance()
+			stmt.OrderClause = p.parseOrderByList()
+			_, _ = p.expect(')')
+		}
+	}
+
 	// AS
 	p.match(kwAS)
 
-	// Body: BEGIN...END or RETURN SELECT...
-	if p.cur.Type == kwRETURN {
-		// Inline table-valued function: RETURN SELECT ...
+	// EXTERNAL NAME assembly.class.method (CLR)
+	if p.cur.Type == kwEXTERNAL {
+		p.advance() // consume EXTERNAL
+		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "NAME") {
+			p.advance() // consume NAME
+		}
+		stmt.ExternalName = p.parseMethodSpecifier()
+	} else if p.cur.Type == kwRETURN {
+		// Inline table-valued function: RETURN [ ( ] select_stmt [ ) ]
 		retLoc := p.pos()
 		p.advance() // consume RETURN
+		hasParen := false
+		if p.cur.Type == '(' {
+			hasParen = true
+			p.advance()
+		}
 		selectStmt := p.parseSelectStmt()
+		if hasParen {
+			p.match(')')
+		}
 		stmt.Body = &nodes.ReturnStmt{
 			Value: &nodes.SubqueryExpr{Query: selectStmt, Loc: nodes.Loc{Start: retLoc}},
 			Loc:   nodes.Loc{Start: retLoc},
@@ -201,7 +340,7 @@ func (p *Parser) parseCreateFunctionStmt(orAlter bool) *nodes.CreateFunctionStmt
 // parseParamDefList parses a comma-separated list of parameter definitions.
 //
 //	param_def_list = param_def { ',' param_def }
-//	param_def = @name type [= default] [OUTPUT|READONLY]
+//	param_def = @name [AS] type [VARYING] [NULL] [= default] [OUT|OUTPUT|READONLY]
 func (p *Parser) parseParamDefList() *nodes.List {
 	var params []nodes.Node
 	for {
@@ -218,6 +357,9 @@ func (p *Parser) parseParamDefList() *nodes.List {
 }
 
 // parseParamDef parses a single parameter definition.
+//
+//	@parameter_name [ AS ] [ type_schema_name. ] data_type
+//	    [ VARYING ] [ NULL ] [ = default ] [ OUT | OUTPUT | READONLY ]
 func (p *Parser) parseParamDef() *nodes.ParamDef {
 	if p.cur.Type != tokVARIABLE {
 		return nil
@@ -230,8 +372,23 @@ func (p *Parser) parseParamDef() *nodes.ParamDef {
 	}
 	p.advance() // consume @param
 
+	// Optional AS keyword (for function parameters)
+	p.match(kwAS)
+
 	// Data type
 	param.DataType = p.parseDataType()
+
+	// VARYING (for cursor parameters)
+	if p.cur.Type == kwVARYING {
+		param.Varying = true
+		p.advance()
+	}
+
+	// NULL
+	if p.cur.Type == kwNULL {
+		param.Null = true
+		p.advance()
+	}
 
 	// Default value
 	if p.cur.Type == '=' {
@@ -239,7 +396,7 @@ func (p *Parser) parseParamDef() *nodes.ParamDef {
 		param.Default = p.parseExpr()
 	}
 
-	// OUTPUT
+	// OUTPUT / OUT
 	if p.cur.Type == kwOUTPUT || (p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "out")) {
 		param.Output = true
 		p.advance()

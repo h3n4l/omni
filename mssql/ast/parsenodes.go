@@ -784,8 +784,10 @@ type CreateFunctionStmt struct {
 	Params       *List // list of ParamDef
 	ReturnType   *DataType
 	ReturnsTable *ReturnsTableDef
-	Body         Node // BeginEndStmt or single expression
-	Options      *List
+	Body         Node   // BeginEndStmt or single expression
+	Options      *List  // WITH options
+	ExternalName string // EXTERNAL NAME assembly.class.method (CLR)
+	OrderClause  *List  // ORDER (...) for CLR table-valued functions
 	Loc          Loc
 }
 
@@ -805,9 +807,11 @@ func (n *ReturnsTableDef) nodeTag() {}
 type ParamDef struct {
 	Name     string // @param
 	DataType *DataType
-	Default  ExprNode
-	Output   bool // OUTPUT keyword
-	ReadOnly bool // READONLY keyword
+	Varying  bool     // VARYING keyword (for cursor parameters)
+	Null     bool     // NULL keyword
+	Default  ExprNode // = default_value
+	Output   bool     // OUTPUT keyword
+	ReadOnly bool     // READONLY keyword
 	Loc      Loc
 }
 
@@ -816,12 +820,15 @@ func (n *ParamDef) nodeTag() {}
 // CreateProcedureStmt represents a CREATE PROCEDURE statement.
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-procedure-transact-sql
 type CreateProcedureStmt struct {
-	OrAlter bool
-	Name    *TableRef
-	Params  *List // list of ParamDef
-	Body    Node  // BeginEndStmt
-	Options *List
-	Loc     Loc
+	OrAlter        bool
+	Name           *TableRef
+	Number         int    // procedure number (;number)
+	Params         *List  // list of ParamDef
+	Body           Node   // BeginEndStmt or EXTERNAL NAME
+	Options        *List  // WITH options
+	ForReplication bool   // FOR REPLICATION
+	ExternalName   string // EXTERNAL NAME assembly.class.method (CLR)
+	Loc            Loc
 }
 
 func (n *CreateProcedureStmt) nodeTag()  {}
@@ -1122,10 +1129,16 @@ func (n *WaitForStmt) stmtNode() {}
 // ExecStmt represents an EXEC/EXECUTE statement.
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/execute-transact-sql
 type ExecStmt struct {
-	Name      *TableRef
-	Args      *List  // list of ExecArg
-	ReturnVar string // @var = EXEC ...
-	Loc       Loc
+	Name         *TableRef
+	Args         *List    // list of ExecArg
+	ReturnVar    string   // @var = EXEC ...
+	ExecString   ExprNode // EXEC ('string') dynamic SQL
+	AsLogin      string   // AS LOGIN = 'name'
+	AsUser       string   // AS USER = 'name'
+	AtServer     string   // AT linked_server_name
+	AtDataSource string   // AT DATA_SOURCE data_source_name
+	WithOptions  *List    // WITH RECOMPILE, RESULT SETS ...
+	Loc          Loc
 }
 
 func (n *ExecStmt) nodeTag()  {}
@@ -1133,10 +1146,11 @@ func (n *ExecStmt) stmtNode() {}
 
 // ExecArg represents an argument in EXEC.
 type ExecArg struct {
-	Name   string // @param = value (named) or empty (positional)
-	Value  ExprNode
-	Output bool // OUTPUT keyword
-	Loc    Loc
+	Name      string // @param = value (named) or empty (positional)
+	Value     ExprNode
+	Output    bool // OUTPUT keyword
+	IsDefault bool // DEFAULT keyword
+	Loc       Loc
 }
 
 func (n *ExecArg) nodeTag() {}
