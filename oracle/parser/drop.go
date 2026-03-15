@@ -55,7 +55,7 @@ func (p *Parser) parseDropStmt() nodes.StmtNode {
 			// Check for MATERIALIZED VIEW LOG
 			if p.cur.Type == kwLOG {
 				p.advance() // consume LOG
-				return p.parseAdminDDLStmt("DROP", nodes.OBJECT_MATERIALIZED_VIEW_LOG, start)
+				return p.parseDropMaterializedViewLogStmt(start)
 			}
 		}
 		stmt.ObjectType = nodes.OBJECT_MATERIALIZED_VIEW
@@ -133,7 +133,7 @@ func (p *Parser) parseDropStmt() nodes.StmtNode {
 		if p.cur.Type == kwVIEW {
 			p.advance() // consume VIEW
 		}
-		return p.parseAdminDDLStmt("DROP", nodes.OBJECT_JSON_DUALITY_VIEW, start)
+		return p.parseDropSimpleStmt(nodes.OBJECT_JSON_DUALITY_VIEW, start)
 	case kwUSER, kwROLE, kwPROFILE,
 		kwTABLESPACE, kwDIRECTORY, kwCONTEXT,
 		kwCLUSTER, kwJAVA, kwLIBRARY:
@@ -238,6 +238,42 @@ func (p *Parser) parseDropSimpleStmt(objType nodes.ObjectType, start int) *nodes
 		p.advance()
 		stmt.Force = true
 	}
+
+	stmt.Loc.End = p.pos()
+	return stmt
+}
+
+// parseDropMaterializedViewLogStmt parses a DROP MATERIALIZED VIEW LOG statement.
+// Called after DROP MATERIALIZED VIEW LOG has been consumed.
+//
+// BNF: oracle/parser/bnf/DROP-MATERIALIZED-VIEW-LOG.bnf
+//
+//	DROP MATERIALIZED VIEW LOG [ IF EXISTS ] ON [ schema. ] table_name ;
+func (p *Parser) parseDropMaterializedViewLogStmt(start int) *nodes.DropStmt {
+	stmt := &nodes.DropStmt{
+		ObjectType: nodes.OBJECT_MATERIALIZED_VIEW_LOG,
+		Names:      &nodes.List{},
+		Loc:        nodes.Loc{Start: start},
+	}
+
+	// Optional IF EXISTS
+	if p.cur.Type == kwIF {
+		next := p.peekNext()
+		if next.Type == kwEXISTS {
+			p.advance() // consume IF
+			p.advance() // consume EXISTS
+			stmt.IfExists = true
+		}
+	}
+
+	// ON keyword
+	if p.cur.Type == kwON {
+		p.advance() // consume ON
+	}
+
+	// Parse table name
+	name := p.parseObjectName()
+	stmt.Names.Items = append(stmt.Names.Items, name)
 
 	stmt.Loc.End = p.pos()
 	return stmt

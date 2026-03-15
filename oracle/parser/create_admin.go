@@ -390,7 +390,7 @@ func (p *Parser) parseDropAdminObject(start int) nodes.StmtNode {
 				if p.cur.Type == kwVIEW {
 					p.advance() // consume VIEW
 				}
-				return p.parseAdminDDLStmt("DROP", nodes.OBJECT_ANALYTIC_VIEW, start)
+				return p.parseDropSimpleStmt(nodes.OBJECT_ANALYTIC_VIEW, start)
 			case "ATTRIBUTE":
 				p.advance() // consume ATTRIBUTE
 				if p.isIdentLike() && p.cur.Str == "DIMENSION" {

@@ -1,5 +1,5 @@
 {
-  "audit_round": 5,
+  "audit_round": 6,
   "batches": [
     {
       "id": 0,
@@ -1704,12 +1704,65 @@
       "tests": [
         "TestAnalyze"
       ]
+    },
+    {
+      "id": 119,
+      "name": "drop_admin_ddl_cleanup",
+      "file": "drop.go",
+      "status": "done",
+      "description": "Fix batch 46 gap: DROP MATERIALIZED VIEW LOG (drop.go:58), DROP JSON RELATIONAL DUALITY VIEW (drop.go:136), and DROP ANALYTIC VIEW (create_admin.go:393) all use parseAdminDDLStmt which skips to semicolon without handling IF EXISTS. Replace with parseDropSimpleStmt or dedicated parsing. DROP MVIEW LOG also needs ON keyword handling per BNF.",
+      "bnf_files": [
+        "DROP-MATERIALIZED-VIEW-LOG.bnf",
+        "DROP-ANALYTIC-VIEW.bnf"
+      ],
+      "bnf_lines": 0,
+      "effort": "fix",
+      "rules": [
+        "parseDropStmt",
+        "parseDropAdminObject"
+      ],
+      "depends_on": [
+        46
+      ],
+      "files": [
+        "drop.go",
+        "create_admin.go"
+      ],
+      "tests": [
+        "TestDropMaterializedViewLog",
+        "TestDropAnalyticView",
+        "TestDropJsonDualityView"
+      ]
+    },
+    {
+      "id": 120,
+      "name": "alter_mview_modify_clause",
+      "file": "alter_misc.go",
+      "status": "pending",
+      "description": "Fix batch 83 gap: parseAlterMaterializedViewStmt MODIFY clause (alter_misc.go:1360) skips to semicolon. Must parse modify_mv_column_clause (MODIFY column encryption_spec) and MODIFY scoped_table_ref_constraint per ALTER-MATERIALIZED-VIEW.bnf lines 20,35-36.",
+      "bnf_files": [
+        "ALTER-MATERIALIZED-VIEW.bnf"
+      ],
+      "bnf_lines": 0,
+      "effort": "fix",
+      "rules": [
+        "parseAlterMaterializedViewStmt"
+      ],
+      "depends_on": [
+        83
+      ],
+      "files": [
+        "alter_misc.go"
+      ],
+      "tests": [
+        "TestAlterMaterializedViewModify"
+      ]
     }
   ],
   "stats": {
-    "total": 119,
+    "total": 121,
     "done": 119,
-    "pending": 0,
+    "pending": 2,
     "failed": 0,
     "in_progress": 0
   }

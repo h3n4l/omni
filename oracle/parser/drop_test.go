@@ -204,3 +204,78 @@ func TestParseDropTableCascadePurge(t *testing.T) {
 		t.Error("expected Purge=true")
 	}
 }
+
+func TestDropMaterializedViewLog(t *testing.T) {
+	tests := []struct {
+		name     string
+		sql      string
+		ifExists bool
+	}{
+		{"basic", "DROP MATERIALIZED VIEW LOG ON employees", false},
+		{"with schema", "DROP MATERIALIZED VIEW LOG ON hr.employees", false},
+		{"if exists", "DROP MATERIALIZED VIEW LOG IF EXISTS ON hr.employees", true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tc.sql)
+			raw := result.Items[0].(*ast.RawStmt)
+			drop := raw.Stmt.(*ast.DropStmt)
+			if drop.ObjectType != ast.OBJECT_MATERIALIZED_VIEW_LOG {
+				t.Errorf("expected OBJECT_MATERIALIZED_VIEW_LOG, got %d", drop.ObjectType)
+			}
+			if drop.IfExists != tc.ifExists {
+				t.Errorf("expected IfExists=%v, got %v", tc.ifExists, drop.IfExists)
+			}
+		})
+	}
+}
+
+func TestDropAnalyticView(t *testing.T) {
+	tests := []struct {
+		name     string
+		sql      string
+		ifExists bool
+	}{
+		{"basic", "DROP ANALYTIC VIEW sales_av", false},
+		{"with schema", "DROP ANALYTIC VIEW sh.sales_av", false},
+		{"if exists", "DROP ANALYTIC VIEW IF EXISTS sh.sales_av", true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tc.sql)
+			raw := result.Items[0].(*ast.RawStmt)
+			drop := raw.Stmt.(*ast.DropStmt)
+			if drop.ObjectType != ast.OBJECT_ANALYTIC_VIEW {
+				t.Errorf("expected OBJECT_ANALYTIC_VIEW, got %d", drop.ObjectType)
+			}
+			if drop.IfExists != tc.ifExists {
+				t.Errorf("expected IfExists=%v, got %v", tc.ifExists, drop.IfExists)
+			}
+		})
+	}
+}
+
+func TestDropJsonDualityView(t *testing.T) {
+	tests := []struct {
+		name     string
+		sql      string
+		ifExists bool
+	}{
+		{"basic", "DROP JSON RELATIONAL DUALITY VIEW employee_dv", false},
+		{"with schema", "DROP JSON RELATIONAL DUALITY VIEW hr.employee_dv", false},
+		{"if exists", "DROP JSON RELATIONAL DUALITY VIEW IF EXISTS hr.employee_dv", true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := ParseAndCheck(t, tc.sql)
+			raw := result.Items[0].(*ast.RawStmt)
+			drop := raw.Stmt.(*ast.DropStmt)
+			if drop.ObjectType != ast.OBJECT_JSON_DUALITY_VIEW {
+				t.Errorf("expected OBJECT_JSON_DUALITY_VIEW, got %d", drop.ObjectType)
+			}
+			if drop.IfExists != tc.ifExists {
+				t.Errorf("expected IfExists=%v, got %v", tc.ifExists, drop.IfExists)
+			}
+		})
+	}
+}

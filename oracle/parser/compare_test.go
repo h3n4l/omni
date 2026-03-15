@@ -3386,9 +3386,16 @@ func TestBatch66_AnalyticViewHierarchy(t *testing.T) {
 		}
 	})
 
-	// DROP ANALYTIC VIEW still uses AdminDDLStmt
 	t.Run("drop_analytic_view", func(t *testing.T) {
-		adminDDLTest(t, "DROP ANALYTIC VIEW sales_av", "DROP", ast.OBJECT_ANALYTIC_VIEW)
+		result := ParseAndCheck(t, "DROP ANALYTIC VIEW sales_av")
+		raw := result.Items[0].(*ast.RawStmt)
+		drop, ok := raw.Stmt.(*ast.DropStmt)
+		if !ok {
+			t.Fatalf("expected *DropStmt, got %T", raw.Stmt)
+		}
+		if drop.ObjectType != ast.OBJECT_ANALYTIC_VIEW {
+			t.Errorf("expected OBJECT_ANALYTIC_VIEW, got %d", drop.ObjectType)
+		}
 	})
 
 	// ATTRIBUTE DIMENSION / HIERARCHY now use dedicated AST types (upgraded in batch 102)
@@ -3691,7 +3698,15 @@ func TestBatch71_JsonDualityView(t *testing.T) {
 		}
 	})
 	t.Run("drop_json_duality_view", func(t *testing.T) {
-		adminDDLTest(t, "DROP JSON RELATIONAL DUALITY VIEW emp_dv", "DROP", ast.OBJECT_JSON_DUALITY_VIEW)
+		result := ParseAndCheck(t, "DROP JSON RELATIONAL DUALITY VIEW emp_dv")
+		raw := result.Items[0].(*ast.RawStmt)
+		drop, ok := raw.Stmt.(*ast.DropStmt)
+		if !ok {
+			t.Fatalf("expected *DropStmt, got %T", raw.Stmt)
+		}
+		if drop.ObjectType != ast.OBJECT_JSON_DUALITY_VIEW {
+			t.Errorf("expected OBJECT_JSON_DUALITY_VIEW, got %d", drop.ObjectType)
+		}
 	})
 }
 
