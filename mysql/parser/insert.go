@@ -228,9 +228,15 @@ func (p *Parser) parseInsertColumnList() ([]*nodes.ColumnRef, error) {
 }
 
 // parseValuesRows parses one or more value rows: (val_list), (val_list), ...
+// Also accepts ROW(val_list), ROW(val_list) row constructor syntax (MySQL 8.0.19+).
+//
+//	row_constructor_list:
+//	    ROW(value_list)[, ROW(value_list)][, ...]
 func (p *Parser) parseValuesRows() ([][]nodes.ExprNode, error) {
 	var rows [][]nodes.ExprNode
 	for {
+		// Optional ROW keyword before each parenthesized value list
+		p.match(kwROW)
 		if _, err := p.expect('('); err != nil {
 			return nil, err
 		}

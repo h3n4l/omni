@@ -2882,14 +2882,24 @@
       "rules": ["parseAlterUserStmt", "parseUserSpec", "parseUserAuthOption"],
       "depends_on": [61],
       "tests": ["TestAlterUserRegistration", "TestAlterUserFactorAuth"]
+    },
+    {
+      "id": 119,
+      "name": "depth_fix_insert_values_row_constructor",
+      "file": "insert.go",
+      "status": "done",
+      "description": "Fix batch 5 gap: INSERT ... VALUES ROW(val, val), ROW(val, val) row constructor syntax not supported. BNF insert.bnf lines 19-36 specify VALUES row_constructor_list form where row_constructor_list is ROW(value_list)[, ROW(value_list)]. parseValuesRows() at insert.go:234 expects '(' immediately after VALUES but ROW keyword precedes it. Standalone VALUES statement (select.go:1620) correctly requires ROW syntax but INSERT does not.",
+      "rules": ["parseValuesRows"],
+      "depends_on": [5],
+      "tests": ["TestParseInsertValuesRow", "TestParseInsertValuesRowMultiple"]
     }
   ],
   "stats": {
-    "total": 119,
-    "done": 97,
-    "pending": 22,
+    "total": 120,
+    "done": 120,
+    "pending": 0,
     "failed": 0,
     "in_progress": 0
   },
-  "audit_round": 19
+  "audit_round": 20
 }

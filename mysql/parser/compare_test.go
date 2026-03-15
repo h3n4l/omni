@@ -1312,6 +1312,16 @@ func TestParseInsertValues(t *testing.T) {
 	}
 }
 
+// TestParseInsertValuesRow tests INSERT ... VALUES ROW(...) row constructor syntax.
+func TestParseInsertValuesRow(t *testing.T) {
+	ParseAndCheck(t, "INSERT INTO t VALUES ROW(1, 2, 3)")
+}
+
+// TestParseInsertValuesRowMultiple tests multiple ROW constructors in INSERT.
+func TestParseInsertValuesRowMultiple(t *testing.T) {
+	ParseAndCheck(t, "INSERT INTO t VALUES ROW(1, 'a'), ROW(2, 'b'), ROW(3, 'c')")
+}
+
 // TestParseInsertSelect tests INSERT ... SELECT parsing.
 func TestParseInsertSelect(t *testing.T) {
 	cases := []struct {
