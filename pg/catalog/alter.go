@@ -964,7 +964,8 @@ func (c *Catalog) atDropColumn(schema *Schema, rel *Relation, colName string, ca
 		}
 	}
 
-	// Check for dependent views.
+	// Check for dependent views (NORMAL dependencies — require CASCADE).
+	// pg: DEPENDENCY_NORMAL entries are rejected under DROP_RESTRICT.
 	if deps := c.findNormalDependents('r', rel.OID); len(deps) > 0 {
 		if !cascade {
 			return errDependentObjects("column", colName)
@@ -972,8 +973,13 @@ func (c *Catalog) atDropColumn(schema *Schema, rel *Relation, colName string, ca
 		c.dropDependents('r', rel.OID)
 	}
 
-	// Drop indexes that reference this column.
-	// pg: src/backend/commands/tablecmds.c — ATExecDropColumn (dependency cascade)
+	// Drop indexes and constraints that reference this column.
+	//
+	// pg: src/backend/catalog/dependency.c — reportDependentObjects
+	// Indexes and constraints have DEPENDENCY_AUTO on the column.
+	// AUTO dependencies are auto-cascaded even under DROP_RESTRICT
+	// (only DEPENDENCY_NORMAL blocks RESTRICT). So we drop them
+	// unconditionally, matching PG behavior.
 	attNum := col.AttNum
 	var indexesToDrop []*Index
 	for _, ix := range c.indexesByRel[rel.OID] {
@@ -994,7 +1000,8 @@ func (c *Catalog) atDropColumn(schema *Schema, rel *Relation, colName string, ca
 		c.removeIndex(schema, ix.Name, ix)
 	}
 
-	// Drop constraints that reference this column (non-index-backed, e.g. CHECK).
+	// Drop non-index-backed constraints (e.g. CHECK) that reference this column.
+	// These also have DEPENDENCY_AUTO on the column in pg.
 	var consToDrop []*Constraint
 	for _, con := range c.consByRel[rel.OID] {
 		if con.IndexOID != 0 {
@@ -1017,9 +1024,22 @@ func (c *Catalog) atDropColumn(schema *Schema, rel *Relation, colName string, ca
 	return nil
 }
 
+// atDropConstraint drops a constraint from a relation.
+//
+// pg: src/backend/commands/tablecmds.c — ATExecDropConstraint
+// PG calls performDeletion(&conobj, behavior, 0), which checks
+// DEPENDENCY_NORMAL entries against the constraint. The backing index
+// has DEPENDENCY_INTERNAL and is always auto-cascaded.
 func (c *Catalog) atDropConstraint(schema *Schema, rel *Relation, conName string, cascade, ifExists bool) error {
 	for _, con := range c.consByRel[rel.OID] {
 		if con.Name == conName {
+			// Check for NORMAL dependents (e.g. views) — require CASCADE.
+			if deps := c.findNormalDependents('c', con.OID); len(deps) > 0 {
+				if !cascade {
+					return errDependentObjects("constraint", conName)
+				}
+				c.dropDependents('c', con.OID)
+			}
 			c.removeConstraint(schema, con)
 			return nil
 		}
