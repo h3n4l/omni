@@ -1001,6 +1001,12 @@ func (p *Parser) parseInstallPluginStmt(start int) (*nodes.InstallPluginStmt, er
 // parseInstallComponentStmt parses an INSTALL COMPONENT statement.
 //
 //	INSTALL COMPONENT component_name [, component_name] ...
+//	    [SET variable = expr [, variable = expr] ...]
+//
+//	variable: {
+//	    {GLOBAL | @@GLOBAL.} [component_prefix.]system_var_name
+//	  | {PERSIST | @@PERSIST.} [component_prefix.]system_var_name
+//	}
 func (p *Parser) parseInstallComponentStmt(start int) (*nodes.InstallComponentStmt, error) {
 	p.advance() // consume COMPONENT
 
@@ -1014,6 +1020,22 @@ func (p *Parser) parseInstallComponentStmt(start int) (*nodes.InstallComponentSt
 			break
 		}
 		p.advance()
+	}
+
+	// Optional SET clause
+	if p.cur.Type == kwSET {
+		p.advance() // consume SET
+		for {
+			asgn, err := p.parseSetAssignment()
+			if err != nil {
+				return nil, err
+			}
+			stmt.SetVars = append(stmt.SetVars, asgn)
+			if p.cur.Type != ',' {
+				break
+			}
+			p.advance() // consume ','
+		}
 	}
 
 	stmt.Loc.End = p.pos()

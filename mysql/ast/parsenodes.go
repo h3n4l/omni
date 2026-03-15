@@ -2188,7 +2188,8 @@ func (s *UninstallPluginStmt) stmtNode() {}
 // InstallComponentStmt represents an INSTALL COMPONENT statement.
 type InstallComponentStmt struct {
 	Loc        Loc
-	Components []string // component names (string literals)
+	Components []string      // component names (string literals)
+	SetVars    []*Assignment // optional SET variable = expr list
 }
 
 func (s *InstallComponentStmt) nodeTag()  {}

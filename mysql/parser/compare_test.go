@@ -6562,6 +6562,20 @@ func TestParseInstallComponent(t *testing.T) {
 	}
 }
 
+func TestParseInstallComponentSet(t *testing.T) {
+	// INSTALL COMPONENT with SET clause (MySQL 8.0)
+	tests := []string{
+		"INSTALL COMPONENT 'file://component_validate_password' SET @@GLOBAL.validate_password.length = 10",
+		"INSTALL COMPONENT 'file://component1' SET @@GLOBAL.comp.var1 = 1, @@PERSIST.comp.var2 = 'abc'",
+		"INSTALL COMPONENT 'file://c1', 'file://c2' SET @@GLOBAL.c1.x = 100",
+	}
+	for _, sql := range tests {
+		t.Run(sql, func(t *testing.T) {
+			ParseAndCheck(t, sql)
+		})
+	}
+}
+
 func TestParseUninstallComponent(t *testing.T) {
 	tests := []struct {
 		sql  string

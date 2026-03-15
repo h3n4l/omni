@@ -2751,7 +2751,7 @@
       "id": 112,
       "name": "review_plugin_clone_instance",
       "file": "utility.go",
-      "status": "pending",
+      "status": "done",
       "description": "BNF review: INSTALL/UNINSTALL PLUGIN, INSTALL/UNINSTALL COMPONENT, CLONE, RESTART, ALTER INSTANCE against 52 lines of BNF.",
       "effort": "review",
       "bnf_files": [
@@ -2771,7 +2771,7 @@
       "depends_on": [
         97
       ],
-      "tests": []
+      "tests": ["TestParseInstallComponentSet"]
     },
     {
       "id": 113,
