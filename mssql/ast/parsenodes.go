@@ -1224,8 +1224,10 @@ func (n *GoStmt) stmtNode() {}
 
 // BeginTransStmt represents BEGIN TRANSACTION.
 type BeginTransStmt struct {
-	Name string
-	Loc  Loc
+	Name            string
+	WithMark        bool   // WITH MARK
+	MarkDescription string // optional description after WITH MARK
+	Loc             Loc
 }
 
 func (n *BeginTransStmt) nodeTag()  {}
@@ -1233,8 +1235,9 @@ func (n *BeginTransStmt) stmtNode() {}
 
 // CommitTransStmt represents COMMIT TRANSACTION.
 type CommitTransStmt struct {
-	Name string
-	Loc  Loc
+	Name             string
+	DelayedDurability string // OFF or ON, empty if not specified
+	Loc              Loc
 }
 
 func (n *CommitTransStmt) nodeTag()  {}

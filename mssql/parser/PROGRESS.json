@@ -491,7 +491,7 @@
       "id": 167,
       "name": "bnf_review_transaction",
       "file": "transaction.go",
-      "status": "pending",
+      "status": "done",
       "description": "BNF review of BEGIN TRANSACTION, COMMIT, ROLLBACK, SAVE TRANSACTION, BEGIN DISTRIBUTED TRANSACTION, GO batch separator.",
       "rules": [
         "begin_transaction_stmt",

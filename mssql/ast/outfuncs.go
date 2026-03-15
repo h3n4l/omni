@@ -125,9 +125,9 @@ func writeNode(sb *strings.Builder, node Node) {
 	case *WaitForStmt:
 		writeWaitForStmt(sb, n)
 	case *BeginTransStmt:
-		sb.WriteString(fmt.Sprintf("{BEGINTRANS :name \"%s\" :loc %d %d}", escapeString(n.Name), n.Loc.Start, n.Loc.End))
+		writeBeginTransStmt(sb, n)
 	case *CommitTransStmt:
-		sb.WriteString(fmt.Sprintf("{COMMITTRANS :name \"%s\" :loc %d %d}", escapeString(n.Name), n.Loc.Start, n.Loc.End))
+		writeCommitTransStmt(sb, n)
 	case *RollbackTransStmt:
 		writeRollbackTransStmt(sb, n)
 	case *SaveTransStmt:
@@ -1406,6 +1406,31 @@ func writeWaitForStmt(sb *strings.Builder, n *WaitForStmt) {
 	}
 	sb.WriteString(fmt.Sprintf(" :loc %d %d", n.Loc.Start, n.Loc.End))
 	sb.WriteString("}")
+}
+
+func writeBeginTransStmt(sb *strings.Builder, n *BeginTransStmt) {
+	sb.WriteString("{BEGINTRANS")
+	if n.Name != "" {
+		fmt.Fprintf(sb, " :name \"%s\"", escapeString(n.Name))
+	}
+	if n.WithMark {
+		sb.WriteString(" :withMark true")
+		if n.MarkDescription != "" {
+			fmt.Fprintf(sb, " :markDescription \"%s\"", escapeString(n.MarkDescription))
+		}
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
+}
+
+func writeCommitTransStmt(sb *strings.Builder, n *CommitTransStmt) {
+	sb.WriteString("{COMMITTRANS")
+	if n.Name != "" {
+		fmt.Fprintf(sb, " :name \"%s\"", escapeString(n.Name))
+	}
+	if n.DelayedDurability != "" {
+		fmt.Fprintf(sb, " :delayedDurability \"%s\"", escapeString(n.DelayedDurability))
+	}
+	fmt.Fprintf(sb, " :loc %d %d}", n.Loc.Start, n.Loc.End)
 }
 
 func writeRollbackTransStmt(sb *strings.Builder, n *RollbackTransStmt) {

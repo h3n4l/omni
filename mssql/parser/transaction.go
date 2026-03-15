@@ -2,14 +2,20 @@
 package parser
 
 import (
+	"strings"
+
 	nodes "github.com/bytebase/omni/mssql/ast"
 )
 
 // parseBeginTransStmt parses a BEGIN TRAN/TRANSACTION statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/begin-transaction-transact-sql
+// BNF: mssql/parser/bnf/begin-transaction-transact-sql.bnf
 //
-//	BEGIN TRAN[SACTION] [name]
+//	BEGIN { TRAN | TRANSACTION }
+//	    [ { transaction_name | @tran_name_variable }
+//	      [ WITH MARK [ 'description' ] ]
+//	    ]
+//	[ ; ]
 func (p *Parser) parseBeginTransStmt() *nodes.BeginTransStmt {
 	loc := p.pos()
 	p.advance() // consume BEGIN
@@ -26,6 +32,18 @@ func (p *Parser) parseBeginTransStmt() *nodes.BeginTransStmt {
 	if p.isIdentLike() || p.cur.Type == tokVARIABLE {
 		stmt.Name = p.cur.Str
 		p.advance()
+
+		// Optional WITH MARK ['description']
+		if _, ok := p.match(kwWITH); ok {
+			if p.matchIdentCI("MARK") {
+				stmt.WithMark = true
+				// Optional description string
+				if p.cur.Type == tokSCONST {
+					stmt.MarkDescription = p.cur.Str
+					p.advance()
+				}
+			}
+		}
 	}
 
 	stmt.Loc.End = p.pos()
@@ -34,9 +52,11 @@ func (p *Parser) parseBeginTransStmt() *nodes.BeginTransStmt {
 
 // parseBeginDistributedTransStmt parses a BEGIN DISTRIBUTED TRAN[SACTION] statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/begin-distributed-transaction-transact-sql
+// BNF: mssql/parser/bnf/begin-transaction-transact-sql.bnf
 //
-//	BEGIN DISTRIBUTED TRAN[SACTION] [tran_name | @tran_name_variable]
+//	BEGIN DISTRIBUTED { TRAN | TRANSACTION }
+//	    [ transaction_name | @tran_name_variable ]
+//	[ ; ]
 func (p *Parser) parseBeginDistributedTransStmt() *nodes.BeginDistributedTransStmt {
 	loc := p.pos()
 	p.advance() // consume BEGIN
@@ -62,12 +82,18 @@ func (p *Parser) parseBeginDistributedTransStmt() *nodes.BeginDistributedTransSt
 
 // parseCommitStmt parses a COMMIT [TRAN/TRANSACTION] statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/commit-transaction-transact-sql
+// BNF: mssql/parser/bnf/commit-transaction-transact-sql.bnf
 //
-//	COMMIT [TRAN[SACTION]] [name]
+//	COMMIT [ { TRAN | TRANSACTION }
+//	    [ transaction_name | @tran_name_variable ] ]
+//	    [ WITH ( DELAYED_DURABILITY = { OFF | ON } ) ]
+//	[ ; ]
 func (p *Parser) parseCommitStmt() *nodes.CommitTransStmt {
 	loc := p.pos()
 	p.advance() // consume COMMIT
+
+	// Optional WORK (ignored, just skip)
+	p.matchIdentCI("WORK")
 
 	// Optional TRAN/TRANSACTION
 	p.match(kwTRAN)
@@ -77,10 +103,24 @@ func (p *Parser) parseCommitStmt() *nodes.CommitTransStmt {
 		Loc: nodes.Loc{Start: loc},
 	}
 
-	// Optional name
-	if p.isIdentLike() || p.cur.Type == tokVARIABLE {
+	// Optional name (but not WITH, which starts the delayed durability clause)
+	if (p.isIdentLike() || p.cur.Type == tokVARIABLE) && p.cur.Type != kwWITH {
 		stmt.Name = p.cur.Str
 		p.advance()
+	}
+
+	// Optional WITH ( DELAYED_DURABILITY = { OFF | ON } )
+	if _, ok := p.match(kwWITH); ok {
+		if _, ok2 := p.match('('); ok2 {
+			if p.matchIdentCI("DELAYED_DURABILITY") {
+				p.match('=')
+				if p.isIdentLike() {
+					stmt.DelayedDurability = strings.ToUpper(p.cur.Str)
+					p.advance()
+				}
+			}
+			p.match(')')
+		}
 	}
 
 	stmt.Loc.End = p.pos()
@@ -89,12 +129,18 @@ func (p *Parser) parseCommitStmt() *nodes.CommitTransStmt {
 
 // parseRollbackStmt parses a ROLLBACK [TRAN/TRANSACTION] statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/rollback-transaction-transact-sql
+// BNF: mssql/parser/bnf/rollback-transaction-transact-sql.bnf
 //
-//	ROLLBACK [TRAN[SACTION]] [name|savepoint]
+//	ROLLBACK { TRAN | TRANSACTION }
+//	    [ transaction_name | @tran_name_variable
+//	    | savepoint_name | @savepoint_variable ]
+//	[ ; ]
 func (p *Parser) parseRollbackStmt() *nodes.RollbackTransStmt {
 	loc := p.pos()
 	p.advance() // consume ROLLBACK
+
+	// Optional WORK (ignored, just skip)
+	p.matchIdentCI("WORK")
 
 	// Optional TRAN/TRANSACTION
 	p.match(kwTRAN)
@@ -116,9 +162,10 @@ func (p *Parser) parseRollbackStmt() *nodes.RollbackTransStmt {
 
 // parseSaveTransStmt parses a SAVE TRAN/TRANSACTION statement.
 //
-// Ref: https://learn.microsoft.com/en-us/sql/t-sql/language-elements/save-transaction-transact-sql
+// BNF: mssql/parser/bnf/save-transaction-transact-sql.bnf
 //
-//	SAVE TRAN[SACTION] name
+//	SAVE { TRAN | TRANSACTION } { savepoint_name | @savepoint_variable }
+//	[ ; ]
 func (p *Parser) parseSaveTransStmt() *nodes.SaveTransStmt {
 	loc := p.pos()
 	p.advance() // consume SAVE

@@ -21786,3 +21786,145 @@ func TestParseVariablesCursorsControlFlowBnfReview(t *testing.T) {
 		}
 	})
 }
+
+// TestParseTransactionBnfReview tests transaction BNF review gaps (batch 167).
+func TestParseTransactionBnfReview(t *testing.T) {
+	t.Run("begin transaction with mark", func(t *testing.T) {
+		tests := []struct {
+			sql  string
+			mark bool
+			desc string
+		}{
+			{"BEGIN TRAN T1 WITH MARK", true, ""},
+			{"BEGIN TRANSACTION T1 WITH MARK 'my description'", true, "my description"},
+			{"BEGIN TRAN @v WITH MARK 'test mark'", true, "test mark"},
+			{"BEGIN TRAN T1", false, ""},
+		}
+		for _, tt := range tests {
+			t.Run(tt.sql, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				stmt, ok := result.Items[0].(*ast.BeginTransStmt)
+				if !ok {
+					t.Fatalf("expected *BeginTransStmt, got %T", result.Items[0])
+				}
+				if stmt.WithMark != tt.mark {
+					t.Errorf("WithMark = %v, want %v", stmt.WithMark, tt.mark)
+				}
+				if stmt.MarkDescription != tt.desc {
+					t.Errorf("MarkDescription = %q, want %q", stmt.MarkDescription, tt.desc)
+				}
+			})
+		}
+	})
+
+	t.Run("commit with delayed durability", func(t *testing.T) {
+		tests := []struct {
+			sql string
+			dd  string
+		}{
+			{"COMMIT TRAN T1 WITH ( DELAYED_DURABILITY = ON )", "ON"},
+			{"COMMIT TRANSACTION WITH ( DELAYED_DURABILITY = OFF )", "OFF"},
+			{"COMMIT TRAN", ""},
+			{"COMMIT WORK", ""},
+			{"COMMIT", ""},
+		}
+		for _, tt := range tests {
+			t.Run(tt.sql, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				stmt, ok := result.Items[0].(*ast.CommitTransStmt)
+				if !ok {
+					t.Fatalf("expected *CommitTransStmt, got %T", result.Items[0])
+				}
+				if stmt.DelayedDurability != tt.dd {
+					t.Errorf("DelayedDurability = %q, want %q", stmt.DelayedDurability, tt.dd)
+				}
+			})
+		}
+	})
+
+	t.Run("rollback work", func(t *testing.T) {
+		sql := "ROLLBACK WORK"
+		result := ParseAndCheck(t, sql)
+		_, ok := result.Items[0].(*ast.RollbackTransStmt)
+		if !ok {
+			t.Fatalf("expected *RollbackTransStmt, got %T", result.Items[0])
+		}
+	})
+
+	t.Run("rollback to savepoint", func(t *testing.T) {
+		tests := []string{
+			"ROLLBACK TRAN MySavepoint",
+			"ROLLBACK TRANSACTION @sp_var",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				result := ParseAndCheck(t, sql)
+				stmt, ok := result.Items[0].(*ast.RollbackTransStmt)
+				if !ok {
+					t.Fatalf("expected *RollbackTransStmt, got %T", result.Items[0])
+				}
+				if stmt.Name == "" {
+					t.Error("expected Name to be non-empty")
+				}
+			})
+		}
+	})
+
+	t.Run("save transaction variants", func(t *testing.T) {
+		tests := []string{
+			"SAVE TRAN sp1",
+			"SAVE TRANSACTION @sp_var",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				result := ParseAndCheck(t, sql)
+				stmt, ok := result.Items[0].(*ast.SaveTransStmt)
+				if !ok {
+					t.Fatalf("expected *SaveTransStmt, got %T", result.Items[0])
+				}
+				if stmt.Name == "" {
+					t.Error("expected Name to be non-empty")
+				}
+			})
+		}
+	})
+
+	t.Run("go batch separator", func(t *testing.T) {
+		tests := []struct {
+			sql   string
+			count int
+		}{
+			{"GO", 1},
+			{"GO 5", 5},
+		}
+		for _, tt := range tests {
+			t.Run(tt.sql, func(t *testing.T) {
+				result := ParseAndCheck(t, tt.sql)
+				stmt, ok := result.Items[0].(*ast.GoStmt)
+				if !ok {
+					t.Fatalf("expected *GoStmt, got %T", result.Items[0])
+				}
+				if stmt.Count != tt.count {
+					t.Errorf("Count = %d, want %d", stmt.Count, tt.count)
+				}
+			})
+		}
+	})
+
+	t.Run("begin distributed transaction", func(t *testing.T) {
+		tests := []string{
+			"BEGIN DISTRIBUTED TRAN",
+			"BEGIN DISTRIBUTED TRANSACTION T1",
+			"BEGIN DISTRIBUTED TRAN @v",
+		}
+		for _, sql := range tests {
+			t.Run(sql, func(t *testing.T) {
+				result := ParseAndCheck(t, sql)
+				_, ok := result.Items[0].(*ast.BeginDistributedTransStmt)
+				if !ok {
+					t.Fatalf("expected *BeginDistributedTransStmt, got %T", result.Items[0])
+				}
+			})
+		}
+	})
+}
