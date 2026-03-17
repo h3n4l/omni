@@ -23,6 +23,7 @@ const (
 //	    | select_clause opt_sort_clause select_limit opt_for_locking_clause
 //	    | with_clause select_clause ...
 func (p *Parser) parseSelectNoParens() *nodes.SelectStmt {
+	loc := p.pos()
 	// 1. Optional WITH clause
 	var withClause *nodes.WithClause
 	if p.cur.Type == WITH || p.cur.Type == WITH_LA {
@@ -49,6 +50,7 @@ func (p *Parser) parseSelectNoParens() *nodes.SelectStmt {
 		stmt.WithClause = withClause
 	}
 
+	stmt.Loc = nodes.Loc{Start: loc, End: p.prev.End}
 	return stmt
 }
 
@@ -108,6 +110,7 @@ func (p *Parser) parseSelectClause(minPrec int) *nodes.SelectStmt {
 		if all == nodes.SET_QUANTIFIER_ALL {
 			result.All = true
 		}
+		result.Loc = nodes.Loc{Start: left.Loc.Start, End: p.prev.End}
 		left = result
 	}
 }
@@ -153,6 +156,7 @@ func (p *Parser) parseSimpleSelectLeaf() *nodes.SelectStmt {
 //	    [ HAVING condition ]
 //	    [ WINDOW window_name AS ( window_definition ) [, ...] ]
 func (p *Parser) parseSimpleSelectCore() *nodes.SelectStmt {
+	loc := p.pos()
 	p.advance() // consume SELECT
 	stmt := &nodes.SelectStmt{}
 
@@ -215,6 +219,7 @@ func (p *Parser) parseSimpleSelectCore() *nodes.SelectStmt {
 	// WINDOW clause
 	stmt.WindowClause = p.parseWindowClause()
 
+	stmt.Loc = nodes.Loc{Start: loc, End: p.prev.End}
 	return stmt
 }
 
@@ -223,6 +228,7 @@ func (p *Parser) parseSimpleSelectCore() *nodes.SelectStmt {
 //	values_clause:
 //	    VALUES '(' expr_list ')' [',' '(' expr_list ')' ...]
 func (p *Parser) parseValuesClause() *nodes.SelectStmt {
+	loc := p.pos()
 	p.advance() // consume VALUES
 	stmt := &nodes.SelectStmt{}
 
@@ -239,6 +245,7 @@ func (p *Parser) parseValuesClause() *nodes.SelectStmt {
 		stmt.ValuesLists.Items = append(stmt.ValuesLists.Items, exprs)
 	}
 
+	stmt.Loc = nodes.Loc{Start: loc, End: p.prev.End}
 	return stmt
 }
 
@@ -246,6 +253,7 @@ func (p *Parser) parseValuesClause() *nodes.SelectStmt {
 //
 //	TABLE relation_expr
 func (p *Parser) parseTableCmd() *nodes.SelectStmt {
+	loc := p.pos()
 	p.advance() // consume TABLE
 	rel := p.parseRelationExpr()
 	cr := &nodes.ColumnRef{
@@ -256,10 +264,12 @@ func (p *Parser) parseTableCmd() *nodes.SelectStmt {
 		Val:      cr,
 		Loc: nodes.NoLoc(),
 	}
-	return &nodes.SelectStmt{
+	stmt := &nodes.SelectStmt{
 		TargetList: &nodes.List{Items: []nodes.Node{rt}},
 		FromClause: &nodes.List{Items: []nodes.Node{rel}},
 	}
+	stmt.Loc = nodes.Loc{Start: loc, End: p.prev.End}
+	return stmt
 }
 
 // parseSetQuantifier parses ALL | DISTINCT | EMPTY for set operations.

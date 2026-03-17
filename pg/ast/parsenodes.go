@@ -41,6 +41,8 @@ type SelectStmt struct {
 	All  bool         // ALL specified?
 	Larg *SelectStmt  // left child
 	Rarg *SelectStmt  // right child
+
+	Loc Loc // source location range
 }
 
 func (n *SelectStmt) Tag() NodeTag { return T_SelectStmt }
@@ -54,6 +56,8 @@ type InsertStmt struct {
 	ReturningList    *List             // list of expressions to return
 	WithClause       *WithClause       // WITH clause
 	Override         OverridingKind    // OVERRIDING clause
+
+	Loc Loc // source location range
 }
 
 func (n *InsertStmt) Tag() NodeTag { return T_InsertStmt }
@@ -66,6 +70,8 @@ type UpdateStmt struct {
 	FromClause    *List       // optional from clause for more tables
 	ReturningList *List       // list of expressions to return
 	WithClause    *WithClause // WITH clause
+
+	Loc Loc // source location range
 }
 
 func (n *UpdateStmt) Tag() NodeTag { return T_UpdateStmt }
@@ -77,6 +83,8 @@ type DeleteStmt struct {
 	WhereClause   Node        // qualifications
 	ReturningList *List       // list of expressions to return
 	WithClause    *WithClause // WITH clause
+
+	Loc Loc // source location range
 }
 
 func (n *DeleteStmt) Tag() NodeTag { return T_DeleteStmt }
@@ -905,6 +913,8 @@ type MergeStmt struct {
 	MergeWhenClauses *List       // list of MergeWhenClause
 	ReturningList    *List       // list of expressions to return
 	WithClause       *WithClause // WITH clause
+
+	Loc Loc // source location range
 }
 
 func (n *MergeStmt) Tag() NodeTag { return T_MergeStmt }

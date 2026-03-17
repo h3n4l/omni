@@ -28,6 +28,7 @@ const (
 //	    | '(' insert_column_list ')' OVERRIDING override_kind VALUE SelectStmt
 //	    | DEFAULT VALUES
 func (p *Parser) parseInsertStmt(withClause *nodes.WithClause) *nodes.InsertStmt {
+	loc := p.pos()
 	p.advance() // consume INSERT
 	p.expect(INTO)
 
@@ -59,8 +60,10 @@ func (p *Parser) parseInsertStmt(withClause *nodes.WithClause) *nodes.InsertStmt
 
 	if withClause != nil {
 		stmt.WithClause = withClause
+		loc = withClause.Loc.Start
 	}
 
+	stmt.Loc = nodes.Loc{Start: loc, End: p.prev.End}
 	return stmt
 }
 

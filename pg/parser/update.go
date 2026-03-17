@@ -18,6 +18,7 @@ import (
 //	    [ WHERE condition | WHERE CURRENT OF cursor_name ]
 //	    [ RETURNING * | output_expression [ [ AS ] output_name ] [, ...] ]
 func (p *Parser) parseUpdateStmt(withClause *nodes.WithClause) *nodes.UpdateStmt {
+	loc := p.pos()
 	p.advance() // consume UPDATE
 
 	// relation_expr_opt_alias (SET must not be consumed as alias)
@@ -57,7 +58,9 @@ func (p *Parser) parseUpdateStmt(withClause *nodes.WithClause) *nodes.UpdateStmt
 	}
 	if withClause != nil {
 		stmt.WithClause = withClause
+		loc = withClause.Loc.Start
 	}
+	stmt.Loc = nodes.Loc{Start: loc, End: p.prev.End}
 	return stmt
 }
 
@@ -71,6 +74,7 @@ func (p *Parser) parseUpdateStmt(withClause *nodes.WithClause) *nodes.UpdateStmt
 //	    [ WHERE condition | WHERE CURRENT OF cursor_name ]
 //	    [ RETURNING * | output_expression [ [ AS ] output_name ] [, ...] ]
 func (p *Parser) parseDeleteStmt(withClause *nodes.WithClause) *nodes.DeleteStmt {
+	loc := p.pos()
 	p.advance() // consume DELETE
 	p.expect(FROM)
 
@@ -98,7 +102,9 @@ func (p *Parser) parseDeleteStmt(withClause *nodes.WithClause) *nodes.DeleteStmt
 	}
 	if withClause != nil {
 		stmt.WithClause = withClause
+		loc = withClause.Loc.Start
 	}
+	stmt.Loc = nodes.Loc{Start: loc, End: p.prev.End}
 	return stmt
 }
 
@@ -112,6 +118,7 @@ func (p *Parser) parseDeleteStmt(withClause *nodes.WithClause) *nodes.DeleteStmt
 //	when_clause [...]
 //	[ RETURNING * | output_expression [ [ AS ] output_name ] [, ...] ]
 func (p *Parser) parseMergeStmt(withClause *nodes.WithClause) *nodes.MergeStmt {
+	loc := p.pos()
 	p.advance() // consume MERGE
 	p.expect(INTO)
 
@@ -141,7 +148,9 @@ func (p *Parser) parseMergeStmt(withClause *nodes.WithClause) *nodes.MergeStmt {
 	}
 	if withClause != nil {
 		stmt.WithClause = withClause
+		loc = withClause.Loc.Start
 	}
+	stmt.Loc = nodes.Loc{Start: loc, End: p.prev.End}
 	return stmt
 }
 

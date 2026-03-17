@@ -1,0 +1,178 @@
+package ast
+
+// NodeLoc extracts the Loc from any AST node that carries one.
+// Returns NoLoc() if the node is nil or its type has no Loc field.
+func NodeLoc(n Node) Loc {
+	if n == nil {
+		return NoLoc()
+	}
+	switch v := n.(type) {
+	// Statement nodes
+	case *RawStmt:
+		return v.Loc
+	case *SelectStmt:
+		return v.Loc
+	case *InsertStmt:
+		return v.Loc
+	case *UpdateStmt:
+		return v.Loc
+	case *DeleteStmt:
+		return v.Loc
+	case *MergeStmt:
+		return v.Loc
+	case *TransactionStmt:
+		return v.Loc
+	case *DeallocateStmt:
+		return v.Loc
+
+	// Expression nodes
+	case *A_Expr:
+		return v.Loc
+	case *A_Const:
+		return v.Loc
+	case *A_ArrayExpr:
+		return v.Loc
+	case *BoolExpr:
+		return v.Loc
+	case *NullTest:
+		return v.Loc
+	case *BooleanTest:
+		return v.Loc
+	case *ColumnRef:
+		return v.Loc
+	case *FuncCall:
+		return v.Loc
+	case *TypeCast:
+		return v.Loc
+	case *SubLink:
+		return v.Loc
+	case *ParamRef:
+		return v.Loc
+	case *NamedArgExpr:
+		return v.Loc
+	case *CollateClause:
+		return v.Loc
+	case *CaseExpr:
+		return v.Loc
+	case *CaseWhen:
+		return v.Loc
+	case *CoalesceExpr:
+		return v.Loc
+	case *MinMaxExpr:
+		return v.Loc
+	case *NullIfExpr:
+		return v.Loc
+	case *RowExpr:
+		return v.Loc
+	case *ArrayExpr:
+		return v.Loc
+	case *GroupingFunc:
+		return v.Loc
+	case *GroupingSet:
+		return v.Loc
+	case *SQLValueFunction:
+		return v.Loc
+	case *SetToDefault:
+		return v.Loc
+	case *XmlExpr:
+		return v.Loc
+	case *XmlSerialize:
+		return v.Loc
+
+	// Clause/definition nodes
+	case *RangeVar:
+		return v.Loc
+	case *ResTarget:
+		return v.Loc
+	case *SortBy:
+		return v.Loc
+	case *TypeName:
+		return v.Loc
+	case *ColumnDef:
+		return v.Loc
+	case *Constraint:
+		return v.Loc
+	case *DefElem:
+		return v.Loc
+	case *WindowDef:
+		return v.Loc
+	case *WithClause:
+		return v.Loc
+	case *CommonTableExpr:
+		return v.Loc
+	case *CTESearchClause:
+		return v.Loc
+	case *CTECycleClause:
+		return v.Loc
+	case *RoleSpec:
+		return v.Loc
+	case *OnConflictClause:
+		return v.Loc
+	case *InferClause:
+		return v.Loc
+	case *PartitionSpec:
+		return v.Loc
+	case *PartitionElem:
+		return v.Loc
+	case *PartitionBoundSpec:
+		return v.Loc
+	case *RangeTableSample:
+		return v.Loc
+	case *RangeTableFunc:
+		return v.Loc
+	case *RangeTableFuncCol:
+		return v.Loc
+
+	// JSON nodes
+	case *JsonFormat:
+		return v.Loc
+	case *JsonBehavior:
+		return v.Loc
+	case *JsonFuncExpr:
+		return v.Loc
+	case *JsonTablePathSpec:
+		return v.Loc
+	case *JsonTableColumn:
+		return v.Loc
+	case *JsonTable:
+		return v.Loc
+	case *JsonParseExpr:
+		return v.Loc
+	case *JsonScalarExpr:
+		return v.Loc
+	case *JsonSerializeExpr:
+		return v.Loc
+	case *JsonObjectConstructor:
+		return v.Loc
+	case *JsonArrayConstructor:
+		return v.Loc
+	case *JsonArrayQueryConstructor:
+		return v.Loc
+	case *JsonAggConstructor:
+		return v.Loc
+	case *JsonIsPredicate:
+		return v.Loc
+
+	// Publication
+	case *PublicationObjSpec:
+		return v.Loc
+
+	default:
+		return NoLoc()
+	}
+}
+
+// ListSpan returns the byte range spanning all items in a List.
+// It uses NodeLoc on the first and last items to compute the range.
+// Returns NoLoc() if the list is nil, empty, or items have no Loc.
+func ListSpan(list *List) Loc {
+	if list == nil || len(list.Items) == 0 {
+		return NoLoc()
+	}
+	first := NodeLoc(list.Items[0])
+	last := NodeLoc(list.Items[len(list.Items)-1])
+	if first.Start == -1 || last.End == -1 {
+		return NoLoc()
+	}
+	return Loc{Start: first.Start, End: last.End}
+}
