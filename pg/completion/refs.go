@@ -13,7 +13,18 @@ type TableRef struct {
 }
 
 // extractTableRefs parses the SQL and returns table references visible at cursor.
-func extractTableRefs(sql string, cursorOffset int) []TableRef {
+func extractTableRefs(sql string, cursorOffset int) (refs []TableRef) {
+	// Guard against nil-typed AST nodes that cause panics in Walk.
+	defer func() {
+		if r := recover(); r != nil {
+			// Fall back to lexer-based extraction on AST walk panic.
+			refs = extractTableRefsLexer(sql, cursorOffset)
+		}
+	}()
+	return extractTableRefsInner(sql, cursorOffset)
+}
+
+func extractTableRefsInner(sql string, cursorOffset int) []TableRef {
 	// Try parsing the full SQL.
 	list, err := parser.Parse(sql)
 	if err != nil || list == nil || len(list.Items) == 0 {

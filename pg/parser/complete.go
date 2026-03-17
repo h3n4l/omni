@@ -101,6 +101,12 @@ func Collect(sql string, cursorOffset int) *CandidateSet {
 		p.collecting = true
 	}
 
+	// Recover from panics in the parser — incomplete SQL can trigger nil
+	// dereferences in grammar rules that expect more tokens.
+	defer func() {
+		recover() //nolint:errcheck
+	}()
+
 	p.parseStmt()
 	return cs
 }
