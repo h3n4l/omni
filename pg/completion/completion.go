@@ -36,7 +36,11 @@ type Candidate struct {
 // Complete returns completion candidates for the given SQL at the cursor offset.
 // cat may be nil if no catalog context is available.
 func Complete(sql string, cursorOffset int, cat *catalog.Catalog) []Candidate {
-	return standardComplete(sql, cursorOffset, cat)
+	result := standardComplete(sql, cursorOffset, cat)
+	if len(result) > 0 {
+		return result
+	}
+	return trickyComplete(sql, cursorOffset, cat)
 }
 
 // standardComplete collects parser-level candidates using Collect, then
@@ -47,7 +51,31 @@ func standardComplete(sql string, cursorOffset int, cat *catalog.Catalog) []Cand
 }
 
 // trickyComplete handles edge cases that the standard C3 approach cannot
-// resolve (e.g., partially typed identifiers in ambiguous positions). Stub.
-func trickyComplete(_ string, _ int, _ *catalog.Catalog) []Candidate {
+// resolve (e.g., partially typed identifiers in ambiguous positions).
+// It inserts placeholder tokens to make incomplete SQL parseable, then
+// collects candidates from the patched input.
+func trickyComplete(sql string, cursorOffset int, cat *catalog.Catalog) []Candidate {
+	if cursorOffset > len(sql) {
+		cursorOffset = len(sql)
+	}
+	prefix := sql[:cursorOffset]
+	suffix := ""
+	if cursorOffset < len(sql) {
+		suffix = sql[cursorOffset:]
+	}
+
+	// Try several placeholder strategies to make the SQL parseable.
+	strategies := []string{
+		prefix + " __placeholder__" + suffix,  // add identifier
+		prefix + " __placeholder__ " + suffix, // add identifier with space
+		prefix + " 1" + suffix,                // numeric placeholder
+	}
+
+	for _, patched := range strategies {
+		cs := parser.Collect(patched, cursorOffset)
+		if cs != nil && (len(cs.Tokens) > 0 || len(cs.Rules) > 0) {
+			return resolve(cs, cat, sql, cursorOffset)
+		}
+	}
 	return nil
 }

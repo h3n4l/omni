@@ -173,3 +173,41 @@ func (p *Parser) addKeywordsByCategory(categories ...KeywordCategory) {
 		}
 	}
 }
+
+// snapshot returns a copy of the current candidate set state.
+func (cs *CandidateSet) snapshot() *CandidateSet {
+	s := &CandidateSet{
+		Tokens: make([]int, len(cs.Tokens)),
+		Rules:  make([]RuleCandidate, len(cs.Rules)),
+		seen:   make(map[int]bool, len(cs.seen)),
+		seenR:  make(map[string]bool, len(cs.seenR)),
+	}
+	copy(s.Tokens, cs.Tokens)
+	copy(s.Rules, cs.Rules)
+	for k, v := range cs.seen {
+		s.seen[k] = v
+	}
+	for k, v := range cs.seenR {
+		s.seenR[k] = v
+	}
+	return s
+}
+
+// diff returns candidates in cs that are not in before.
+func (cs *CandidateSet) diff(before *CandidateSet) *CandidateSet {
+	d := newCandidateSet()
+	for _, tok := range cs.Tokens {
+		if !before.seen[tok] {
+			d.addToken(tok)
+		}
+	}
+	for _, rule := range cs.Rules {
+		if !before.seenR[rule.Rule] {
+			d.addRule(rule.Rule)
+		}
+	}
+	if len(d.Tokens) == 0 && len(d.Rules) == 0 {
+		return nil
+	}
+	return d
+}

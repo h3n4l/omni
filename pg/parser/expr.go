@@ -885,30 +885,32 @@ func (p *Parser) parseCExpr() nodes.Node {
 
 func (p *Parser) parseCExprInner() nodes.Node {
 	if p.collectMode() {
-		// Expression-starting tokens.
-		exprTokens := []int{
-			ICONST, FCONST, SCONST, BCONST, XCONST,
-			TRUE_P, FALSE_P, NULL_P, PARAM,
-			'(', EXISTS, ARRAY, CASE, ROW, DEFAULT,
-			CAST, COALESCE, GREATEST, LEAST, NULLIF,
-			EXTRACT, NORMALIZE, OVERLAY, POSITION, SUBSTRING, TRIM,
-			GROUPING, COLLATION, TREAT,
-			JSON, JSON_OBJECT, JSON_ARRAY, JSON_SCALAR, JSON_SERIALIZE,
-			JSON_QUERY, JSON_EXISTS, JSON_VALUE, JSON_OBJECTAGG, JSON_ARRAYAGG,
-			XMLCONCAT, XMLELEMENT, XMLEXISTS, XMLFOREST, XMLPARSE, XMLPI, XMLROOT, XMLSERIALIZE,
-			CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP, LOCALTIME, LOCALTIMESTAMP,
-			CURRENT_ROLE, CURRENT_USER, SESSION_USER, USER, CURRENT_CATALOG, CURRENT_SCHEMA, SYSTEM_USER,
-			NOT, '+', '-',
-		}
-		for _, t := range exprTokens {
-			p.addTokenCandidate(t)
-		}
-		// Identifiers/functions are also valid expression starts.
-		p.addRuleCandidate("columnref")
-		p.addRuleCandidate("func_name")
-		// Unreserved and col_name keywords are valid as identifiers in expressions.
-		p.addTokenCandidate(IDENT)
-		p.addKeywordsByCategory(UnreservedKeyword, ColNameKeyword)
+		p.cachedCollect("parseCExprInner", func() {
+			// Expression-starting tokens.
+			exprTokens := []int{
+				ICONST, FCONST, SCONST, BCONST, XCONST,
+				TRUE_P, FALSE_P, NULL_P, PARAM,
+				'(', EXISTS, ARRAY, CASE, ROW, DEFAULT,
+				CAST, COALESCE, GREATEST, LEAST, NULLIF,
+				EXTRACT, NORMALIZE, OVERLAY, POSITION, SUBSTRING, TRIM,
+				GROUPING, COLLATION, TREAT,
+				JSON, JSON_OBJECT, JSON_ARRAY, JSON_SCALAR, JSON_SERIALIZE,
+				JSON_QUERY, JSON_EXISTS, JSON_VALUE, JSON_OBJECTAGG, JSON_ARRAYAGG,
+				XMLCONCAT, XMLELEMENT, XMLEXISTS, XMLFOREST, XMLPARSE, XMLPI, XMLROOT, XMLSERIALIZE,
+				CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP, LOCALTIME, LOCALTIMESTAMP,
+				CURRENT_ROLE, CURRENT_USER, SESSION_USER, USER, CURRENT_CATALOG, CURRENT_SCHEMA, SYSTEM_USER,
+				NOT, '+', '-',
+			}
+			for _, t := range exprTokens {
+				p.addTokenCandidate(t)
+			}
+			// Identifiers/functions are also valid expression starts.
+			p.addRuleCandidate("columnref")
+			p.addRuleCandidate("func_name")
+			// Unreserved and col_name keywords are valid as identifiers in expressions.
+			p.addTokenCandidate(IDENT)
+			p.addKeywordsByCategory(UnreservedKeyword, ColNameKeyword)
+		})
 		return nil
 	}
 	switch p.cur.Type {

@@ -70,21 +70,23 @@ func Parse(sql string) (*nodes.List, error) {
 // Full dispatch will be implemented in batch 34.
 func (p *Parser) parseStmt() nodes.Node {
 	if p.collectMode() {
-		// In collection mode, add all statement-starting keywords as candidates.
-		stmtTokens := []int{
-			SELECT, VALUES, TABLE, WITH, INSERT, UPDATE, DELETE_P, MERGE,
-			CREATE, COMMENT, SECURITY, ALTER, REFRESH,
-			BEGIN_P, START, COMMIT, END_P, ABORT_P, SAVEPOINT, RELEASE,
-			ROLLBACK, PREPARE, EXECUTE, DEALLOCATE,
-			SET, SHOW, RESET, GRANT, REVOKE, DROP, TRUNCATE,
-			LOCK_P, DECLARE, FETCH, MOVE, CLOSE,
-			VACUUM, ANALYZE, ANALYSE, CLUSTER, REINDEX,
-			COPY, IMPORT_P, EXPLAIN, DO, CHECKPOINT,
-			DISCARD, LISTEN, UNLISTEN, NOTIFY, LOAD, CALL, REASSIGN,
-		}
-		for _, t := range stmtTokens {
-			p.addTokenCandidate(t)
-		}
+		p.cachedCollect("parseStmt", func() {
+			// In collection mode, add all statement-starting keywords as candidates.
+			stmtTokens := []int{
+				SELECT, VALUES, TABLE, WITH, INSERT, UPDATE, DELETE_P, MERGE,
+				CREATE, COMMENT, SECURITY, ALTER, REFRESH,
+				BEGIN_P, START, COMMIT, END_P, ABORT_P, SAVEPOINT, RELEASE,
+				ROLLBACK, PREPARE, EXECUTE, DEALLOCATE,
+				SET, SHOW, RESET, GRANT, REVOKE, DROP, TRUNCATE,
+				LOCK_P, DECLARE, FETCH, MOVE, CLOSE,
+				VACUUM, ANALYZE, ANALYSE, CLUSTER, REINDEX,
+				COPY, IMPORT_P, EXPLAIN, DO, CHECKPOINT,
+				DISCARD, LISTEN, UNLISTEN, NOTIFY, LOAD, CALL, REASSIGN,
+			}
+			for _, t := range stmtTokens {
+				p.addTokenCandidate(t)
+			}
+		})
 		return nil
 	}
 	switch p.cur.Type {

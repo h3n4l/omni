@@ -61,3 +61,21 @@ func TestCompleteKeywords(t *testing.T) {
 		t.Error("expected SELECT keyword candidate")
 	}
 }
+
+func TestTrickyCompletePartialSQL(t *testing.T) {
+	cat := catalog.New()
+	cat.Exec("CREATE TABLE orders (id int, amount numeric);", nil)
+
+	// "SELECT * FROM " — ends abruptly, standard may or may not work
+	// but tricky should handle it
+	candidates := Complete("SELECT * FROM ", 14, cat)
+	found := false
+	for _, c := range candidates {
+		if c.Type == CandidateTable && c.Text == "orders" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected 'orders' table in tricky completion")
+	}
+}
