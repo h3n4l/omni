@@ -808,6 +808,12 @@ func (p *Parser) parseTableRef() nodes.Node {
 //	    | select_with_parens opt_alias_clause
 //	    | '(' joined_table ')' opt_alias_clause
 func (p *Parser) parseTableRefPrimary() nodes.Node {
+	if p.collectMode() {
+		p.addRuleCandidate("relation_expr")
+		p.addTokenCandidate('(')       // subquery
+		p.addTokenCandidate(LATERAL_P) // LATERAL
+		return nil
+	}
 	switch p.cur.Type {
 	case '(':
 		return p.parseParenTableRef()

@@ -103,3 +103,15 @@ func (p *Parser) addRuleCandidate(r string) {
 		p.candidates.addRule(r)
 	}
 }
+
+// addKeywordsByCategory adds all keywords matching the given categories as candidates.
+func (p *Parser) addKeywordsByCategory(categories ...KeywordCategory) {
+	for i := range Keywords {
+		for _, cat := range categories {
+			if Keywords[i].Category == cat {
+				p.addTokenCandidate(Keywords[i].Token)
+				break
+			}
+		}
+	}
+}

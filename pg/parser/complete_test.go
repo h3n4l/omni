@@ -50,3 +50,42 @@ func TestCollectBasic(t *testing.T) {
 		t.Error("expected HasRule(expr) = false")
 	}
 }
+
+func TestCollectAfterSelect(t *testing.T) {
+	// "SELECT " — cursor after SELECT keyword
+	candidates := Collect("SELECT ", 7)
+	if candidates == nil {
+		t.Fatal("expected non-nil candidates")
+	}
+	if !candidates.HasRule("columnref") {
+		t.Error("expected columnref rule candidate in SELECT target list")
+	}
+	if !candidates.HasRule("func_name") {
+		t.Error("expected func_name rule candidate in SELECT target list")
+	}
+	// Should also have expression-starting keywords
+	if !candidates.HasToken(CASE) {
+		t.Error("expected CASE token in expression context")
+	}
+	if !candidates.HasToken(EXISTS) {
+		t.Error("expected EXISTS token in expression context")
+	}
+}
+
+func TestCollectAfterFrom(t *testing.T) {
+	candidates := Collect("SELECT 1 FROM ", 14)
+	if candidates == nil {
+		t.Fatal("expected non-nil candidates")
+	}
+	if !candidates.HasRule("relation_expr") {
+		t.Error("expected relation_expr rule candidate after FROM")
+	}
+}
+
+func TestCollectKeywordCategories(t *testing.T) {
+	candidates := Collect("SELECT ", 7)
+	// Unreserved keywords like NAME should be candidates (valid as identifiers)
+	if !candidates.HasToken(NAME_P) {
+		t.Error("expected unreserved keyword NAME_P as candidate")
+	}
+}
