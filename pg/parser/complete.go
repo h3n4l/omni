@@ -104,6 +104,35 @@ func (p *Parser) addRuleCandidate(r string) {
 	}
 }
 
+// addInfixCandidates adds all a_expr infix/postfix operator tokens
+// with precedence >= minPrec as completion candidates.
+func (p *Parser) addInfixCandidates(minPrec int) {
+	type precTok struct {
+		prec int
+		tok  int
+	}
+	ops := []precTok{
+		{precOr, OR}, {precAnd, AND},
+		{precIs, IS}, {precIs, ISNULL}, {precIs, NOTNULL},
+		{precComparison, '<'}, {precComparison, '>'}, {precComparison, '='},
+		{precComparison, LESS_EQUALS}, {precComparison, GREATER_EQUALS}, {precComparison, NOT_EQUALS},
+		{precIn, BETWEEN}, {precIn, IN_P}, {precIn, LIKE}, {precIn, ILIKE}, {precIn, SIMILAR},
+		{precIn, NOT_LA},
+		{precOp, Op},
+		{precAdd, '+'}, {precAdd, '-'},
+		{precMul, '*'}, {precMul, '/'}, {precMul, '%'},
+		{precExp, '^'},
+		{precAt, AT},
+		{precCollate, COLLATE},
+		{precTypecast, TYPECAST}, {precTypecast, '['},
+	}
+	for _, o := range ops {
+		if o.prec >= minPrec {
+			p.addTokenCandidate(o.tok)
+		}
+	}
+}
+
 // addKeywordsByCategory adds all keywords matching the given categories as candidates.
 func (p *Parser) addKeywordsByCategory(categories ...KeywordCategory) {
 	for i := range Keywords {

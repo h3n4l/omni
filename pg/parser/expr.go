@@ -37,6 +37,11 @@ func (p *Parser) parseAExpr(minPrec int) nodes.Node {
 		return nil
 	}
 	for {
+		if p.collectMode() {
+			// Emit all infix operators with precedence >= minPrec.
+			p.addInfixCandidates(minPrec)
+			return left
+		}
 		prec := p.aExprInfixPrec()
 		if prec < minPrec || prec == precNone {
 			break

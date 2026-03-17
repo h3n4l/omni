@@ -82,6 +82,60 @@ func TestCollectAfterFrom(t *testing.T) {
 	}
 }
 
+func TestCollectInfixOperators(t *testing.T) {
+	// "SELECT 1 FROM t WHERE x " — after expression, should suggest operators
+	candidates := Collect("SELECT 1 FROM t WHERE x ", 24)
+	if candidates == nil {
+		t.Fatal("expected non-nil candidates")
+	}
+	for _, tok := range []int{AND, OR, IS, '<', '>', '=', BETWEEN, IN_P, LIKE} {
+		if !candidates.HasToken(tok) {
+			t.Errorf("missing infix operator token: %d", tok)
+		}
+	}
+}
+
+func TestCollectSelectClauses(t *testing.T) {
+	// "SELECT 1 " — after target list
+	candidates := Collect("SELECT 1 ", 9)
+	if candidates == nil {
+		t.Fatal("expected non-nil candidates")
+	}
+	for _, tok := range []int{FROM, WHERE, GROUP_P, ORDER, LIMIT} {
+		if !candidates.HasToken(tok) {
+			t.Errorf("missing clause keyword after target list: %d", tok)
+		}
+	}
+}
+
+func TestCollectAfterFromClause(t *testing.T) {
+	// "SELECT 1 FROM t " — after FROM clause table
+	candidates := Collect("SELECT 1 FROM t ", 16)
+	if candidates == nil {
+		t.Fatal("expected non-nil candidates")
+	}
+	for _, tok := range []int{WHERE, GROUP_P, ORDER, LIMIT} {
+		if !candidates.HasToken(tok) {
+			t.Errorf("missing clause keyword after FROM: %d", tok)
+		}
+	}
+}
+
+func TestCollectAfterWhere(t *testing.T) {
+	// "SELECT 1 FROM t WHERE x = 1 " — after WHERE predicate
+	candidates := Collect("SELECT 1 FROM t WHERE x = 1 ", 28)
+	if candidates == nil {
+		t.Fatal("expected non-nil candidates")
+	}
+	// Should have AND/OR (expression operators) and clause keywords
+	if !candidates.HasToken(AND) {
+		t.Error("expected AND after WHERE predicate")
+	}
+	if !candidates.HasToken(ORDER) {
+		t.Error("expected ORDER after WHERE predicate")
+	}
+}
+
 func TestCollectKeywordCategories(t *testing.T) {
 	candidates := Collect("SELECT ", 7)
 	// Unreserved keywords like NAME should be candidates (valid as identifiers)
