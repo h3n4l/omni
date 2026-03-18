@@ -37,6 +37,11 @@ func (p *Parser) parseAExpr(minPrec int) nodes.Node {
 		return nil
 	}
 	for {
+		if p.collectMode() {
+			// Emit all infix operators with precedence >= minPrec.
+			p.addInfixCandidates(minPrec)
+			return left
+		}
 		prec := p.aExprInfixPrec()
 		if prec < minPrec || prec == precNone {
 			break
@@ -903,6 +908,35 @@ func (p *Parser) parseCExpr() nodes.Node {
 }
 
 func (p *Parser) parseCExprInner() nodes.Node {
+	if p.collectMode() {
+		p.cachedCollect("parseCExprInner", func() {
+			// Expression-starting tokens.
+			exprTokens := []int{
+				ICONST, FCONST, SCONST, BCONST, XCONST,
+				TRUE_P, FALSE_P, NULL_P, PARAM,
+				'(', EXISTS, ARRAY, CASE, ROW, DEFAULT,
+				CAST, COALESCE, GREATEST, LEAST, NULLIF,
+				EXTRACT, NORMALIZE, OVERLAY, POSITION, SUBSTRING, TRIM,
+				GROUPING, COLLATION, TREAT,
+				JSON, JSON_OBJECT, JSON_ARRAY, JSON_SCALAR, JSON_SERIALIZE,
+				JSON_QUERY, JSON_EXISTS, JSON_VALUE, JSON_OBJECTAGG, JSON_ARRAYAGG,
+				XMLCONCAT, XMLELEMENT, XMLEXISTS, XMLFOREST, XMLPARSE, XMLPI, XMLROOT, XMLSERIALIZE,
+				CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP, LOCALTIME, LOCALTIMESTAMP,
+				CURRENT_ROLE, CURRENT_USER, SESSION_USER, USER, CURRENT_CATALOG, CURRENT_SCHEMA, SYSTEM_USER,
+				NOT, '+', '-',
+			}
+			for _, t := range exprTokens {
+				p.addTokenCandidate(t)
+			}
+			// Identifiers/functions are also valid expression starts.
+			p.addRuleCandidate("columnref")
+			p.addRuleCandidate("func_name")
+			// Unreserved and col_name keywords are valid as identifiers in expressions.
+			p.addTokenCandidate(IDENT)
+			p.addKeywordsByCategory(UnreservedKeyword, ColNameKeyword)
+		})
+		return nil
+	}
 	switch p.cur.Type {
 	// --- Constants ---
 	case ICONST:
@@ -2400,15 +2434,23 @@ func (p *Parser) parseTargetEl() nodes.Node {
 
 	// Optional alias: AS ColLabel | ColId (without AS)
 	if p.cur.Type == AS {
+		aliasLoc := p.pos()
 		p.advance()
 		label, err := p.parseColLabel()
 		if err == nil {
 			rt.Name = label
+			if p.completing {
+				p.addSelectAliasPosition(aliasLoc)
+			}
 		}
 	} else if p.isColId() && !p.isReservedForClause() {
+		aliasLoc := p.pos()
 		label, err := p.parseColId()
 		if err == nil {
 			rt.Name = label
+			if p.completing {
+				p.addSelectAliasPosition(aliasLoc)
+			}
 		}
 	}
 

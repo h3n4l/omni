@@ -10,6 +10,11 @@ import (
 //
 //	ColId: IDENT | unreserved_keyword | col_name_keyword
 func (p *Parser) isColId() bool {
+	if p.collectMode() {
+		p.addTokenCandidate(IDENT)
+		p.addKeywordsByCategory(UnreservedKeyword, ColNameKeyword)
+		return true
+	}
 	if p.cur.Type == IDENT {
 		return true
 	}
@@ -23,6 +28,11 @@ func (p *Parser) isColId() bool {
 //
 //	ColLabel: IDENT | unreserved_keyword | col_name_keyword | type_func_name_keyword | reserved_keyword
 func (p *Parser) isColLabel() bool {
+	if p.collectMode() {
+		p.addTokenCandidate(IDENT)
+		p.addKeywordsByCategory(UnreservedKeyword, ColNameKeyword, TypeFuncNameKeyword, ReservedKeyword)
+		return true
+	}
 	if p.cur.Type == IDENT {
 		return true
 	}
@@ -36,6 +46,11 @@ func (p *Parser) isColLabel() bool {
 //
 //	type_function_name: IDENT | unreserved_keyword | type_func_name_keyword
 func (p *Parser) isTypeFunctionName() bool {
+	if p.collectMode() {
+		p.addTokenCandidate(IDENT)
+		p.addKeywordsByCategory(UnreservedKeyword, TypeFuncNameKeyword)
+		return true
+	}
 	if p.cur.Type == IDENT {
 		return true
 	}
@@ -101,6 +116,10 @@ func (p *Parser) parseTypeFunctionName() (string, error) {
 //	    | ColId '.' attr_name
 //	    | ColId '.' attr_name '.' attr_name
 func (p *Parser) parseQualifiedName() (*nodes.List, error) {
+	if p.collectMode() {
+		p.addRuleCandidate("qualified_name")
+		return nil, errCollecting
+	}
 	id, err := p.parseColId()
 	if err != nil {
 		return nil, err
@@ -233,6 +252,10 @@ func (p *Parser) parseNameList() (*nodes.List, error) {
 //	    ColId
 //	    | ColId indirection
 func (p *Parser) parseColumnRef() (nodes.Node, error) {
+	if p.collectMode() {
+		p.addRuleCandidate("columnref")
+		return nil, errCollecting
+	}
 	id, err := p.parseColId()
 	if err != nil {
 		return nil, err
@@ -431,6 +454,10 @@ func (p *Parser) parseAttrs() (*nodes.List, error) {
 //	    type_function_name
 //	    | ColId indirection
 func (p *Parser) parseFuncName() (*nodes.List, error) {
+	if p.collectMode() {
+		p.addRuleCandidate("func_name")
+		return nil, errCollecting
+	}
 	// If token is a ColId and indirection follows, parse as ColId + indirection
 	if p.isColId() {
 		id, _ := p.parseColId()

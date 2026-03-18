@@ -15,6 +15,14 @@ type Parser struct {
 	prev    Token // previous token (for error reporting)
 	nextBuf Token // buffered next token for 2-token lookahead
 	hasNext bool  // whether nextBuf is valid
+
+	// Completion mode fields.
+	completing   bool          // true when collecting completion candidates
+	cursorOff    int           // byte offset of the cursor in source
+	candidates   *CandidateSet // collected candidates
+	collecting   bool          // true once cursor position is reached
+	collectDepth int           // recursion depth in collect mode
+	maxCollect   int           // max exploration depth
 }
 
 // Parse parses a SQL string into an AST list.
@@ -61,6 +69,26 @@ func Parse(sql string) (*nodes.List, error) {
 // Minimal implementation — SELECT/VALUES/TABLE/WITH/INSERT/UPDATE/DELETE/MERGE/CREATE TABLE/ALTER TABLE are supported.
 // Full dispatch will be implemented in batch 34.
 func (p *Parser) parseStmt() nodes.Node {
+	if p.collectMode() {
+		p.cachedCollect("parseStmt", func() {
+			// In collection mode, add all statement-starting keywords as candidates.
+			stmtTokens := []int{
+				SELECT, VALUES, TABLE, WITH, INSERT, UPDATE, DELETE_P, MERGE,
+				CREATE, COMMENT, SECURITY, ALTER, REFRESH,
+				BEGIN_P, START, COMMIT, END_P, ABORT_P, SAVEPOINT, RELEASE,
+				ROLLBACK, PREPARE, EXECUTE, DEALLOCATE,
+				SET, SHOW, RESET, GRANT, REVOKE, DROP, TRUNCATE,
+				LOCK_P, DECLARE, FETCH, MOVE, CLOSE,
+				VACUUM, ANALYZE, ANALYSE, CLUSTER, REINDEX,
+				COPY, IMPORT_P, EXPLAIN, DO, CHECKPOINT,
+				DISCARD, LISTEN, UNLISTEN, NOTIFY, LOAD, CALL, REASSIGN,
+			}
+			for _, t := range stmtTokens {
+				p.addTokenCandidate(t)
+			}
+		})
+		return nil
+	}
 	switch p.cur.Type {
 	case SELECT, VALUES, TABLE:
 		return p.parseSelectNoParens()
@@ -84,6 +112,20 @@ func (p *Parser) parseStmt() nodes.Node {
 		return p.parseSecLabelStmt()
 	case ALTER:
 		p.advance() // consume ALTER
+		if p.collectMode() {
+			alterTokens := []int{
+				DATABASE, ROLE, USER, SERVER, GROUP_P, POLICY,
+				PUBLICATION, SUBSCRIPTION, STATISTICS, OPERATOR,
+				SCHEMA, DEFAULT, FUNCTION, PROCEDURE, ROUTINE,
+				TYPE_P, DOMAIN_P, COLLATION, CONVERSION_P, EXTENSION,
+				AGGREGATE, TEXT_P, LANGUAGE, PROCEDURAL, LARGE_P,
+				EVENT, SYSTEM_P, TABLESPACE, TRIGGER, RULE, TABLE,
+			}
+			for _, t := range alterTokens {
+				p.addTokenCandidate(t)
+			}
+			return nil
+		}
 		switch p.cur.Type {
 		case DATABASE:
 			return p.parseAlterDatabaseDispatch()
@@ -186,6 +228,22 @@ func (p *Parser) parseStmt() nodes.Node {
 		return p.parseRevokeStmt()
 	case DROP:
 		p.advance() // consume DROP
+		if p.collectMode() {
+			dropTokens := []int{
+				TABLE, VIEW, MATERIALIZED, INDEX, SEQUENCE,
+				FUNCTION, PROCEDURE, ROUTINE, AGGREGATE,
+				OPERATOR, TYPE_P, DOMAIN_P, COLLATION, CONVERSION_P,
+				SCHEMA, DATABASE, ROLE, USER, GROUP_P,
+				POLICY, TRIGGER, RULE, EXTENSION, EVENT,
+				FOREIGN, SERVER, PUBLICATION, SUBSCRIPTION,
+				TABLESPACE, TEXT_P, ACCESS, CAST, TRANSFORM,
+				LANGUAGE, TRUSTED, PROCEDURAL, OWNED,
+			}
+			for _, t := range dropTokens {
+				p.addTokenCandidate(t)
+			}
+			return nil
+		}
 		return p.parseDropStmt()
 	case TRUNCATE:
 		p.advance() // consume TRUNCATE
@@ -252,6 +310,31 @@ func (p *Parser) parseStmt() nodes.Node {
 // The current token is CREATE. We peek at the next token to determine which
 // CREATE sub-statement to parse.
 func (p *Parser) parseCreateDispatch() nodes.Node {
+	// In collect mode, check if the next token is at/past cursor.
+	// We need to peek ahead because CREATE has not been consumed yet.
+	if p.completing && !p.collecting {
+		next := p.peekNext()
+		if next.Loc >= p.cursorOff || next.Type == 0 {
+			p.collecting = true
+		}
+	}
+	if p.collectMode() {
+		createTokens := []int{
+			OR, VIEW, RECURSIVE, MATERIALIZED, TABLE,
+			TEMPORARY, TEMP, LOCAL, UNLOGGED,
+			UNIQUE, INDEX, SEQUENCE, DOMAIN_P, TYPE_P,
+			AGGREGATE, OPERATOR, TEXT_P, COLLATION, STATISTICS,
+			FUNCTION, PROCEDURE, DATABASE, ROLE, USER, GROUP_P,
+			POLICY, TRIGGER, CONSTRAINT, EVENT, FOREIGN, SERVER,
+			LANGUAGE, TRUSTED, PROCEDURAL, GLOBAL,
+			PUBLICATION, SUBSCRIPTION, RULE, EXTENSION, ACCESS,
+			CAST, TRANSFORM, CONVERSION_P, DEFAULT, TABLESPACE, SCHEMA,
+		}
+		for _, t := range createTokens {
+			p.addTokenCandidate(t)
+		}
+		return nil
+	}
 	next := p.peekNext()
 	switch next.Type {
 	case OR:
@@ -903,6 +986,9 @@ func (p *Parser) advance() Token {
 			p.cur.Type = NULLS_LA
 		}
 	}
+	if p.completing && !p.collecting {
+		p.checkCursor()
+	}
 	return p.prev
 }
 
@@ -977,6 +1063,12 @@ func (p *Parser) peek() Token {
 // match checks if the current token type matches any of the given types.
 // If it matches, the token is consumed and returned with ok=true.
 func (p *Parser) match(types ...int) (Token, bool) {
+	if p.collectMode() {
+		for _, t := range types {
+			p.addTokenCandidate(t)
+		}
+		return Token{}, false
+	}
 	for _, t := range types {
 		if p.cur.Type == t {
 			return p.advance(), true
@@ -988,6 +1080,10 @@ func (p *Parser) match(types ...int) (Token, bool) {
 // expect consumes the current token if it matches the expected type.
 // Returns an error if the token does not match.
 func (p *Parser) expect(tokenType int) (Token, error) {
+	if p.collectMode() {
+		p.addTokenCandidate(tokenType)
+		return Token{}, errCollecting
+	}
 	if p.cur.Type == tokenType {
 		return p.advance(), nil
 	}

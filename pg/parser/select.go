@@ -178,6 +178,21 @@ func (p *Parser) parseSimpleSelectCore() *nodes.SelectStmt {
 	// target_list (opt_target_list)
 	stmt.TargetList = p.parseTargetList()
 
+	if p.collectMode() {
+		// After target list, valid continuations:
+		for _, t := range []int{
+			INTO, FROM, WHERE, GROUP_P, HAVING, WINDOW,
+			ORDER, LIMIT, OFFSET, FETCH, FOR,
+			UNION, EXCEPT, INTERSECT, ';',
+		} {
+			p.addTokenCandidate(t)
+		}
+		// Also valid: expression operators (AS for alias, comma for next target)
+		p.addTokenCandidate(',')
+		p.addTokenCandidate(AS)
+		return stmt
+	}
+
 	// INTO clause
 	if p.cur.Type == INTO {
 		stmt.IntoClause = p.parseIntoClause()
@@ -187,12 +202,32 @@ func (p *Parser) parseSimpleSelectCore() *nodes.SelectStmt {
 	if p.cur.Type == FROM {
 		p.advance()
 		stmt.FromClause = p.parseFromListFull()
+		if p.collectMode() {
+			for _, t := range []int{
+				WHERE, GROUP_P, HAVING, WINDOW,
+				ORDER, LIMIT, OFFSET, FETCH, FOR,
+				UNION, EXCEPT, INTERSECT, ';',
+			} {
+				p.addTokenCandidate(t)
+			}
+			return stmt
+		}
 	}
 
 	// WHERE clause
 	if p.cur.Type == WHERE {
 		p.advance()
 		stmt.WhereClause = p.parseAExpr(0)
+		if p.collectMode() {
+			for _, t := range []int{
+				GROUP_P, HAVING, WINDOW,
+				ORDER, LIMIT, OFFSET, FETCH, FOR,
+				UNION, EXCEPT, INTERSECT, ';',
+			} {
+				p.addTokenCandidate(t)
+			}
+			return stmt
+		}
 	}
 
 	// GROUP BY clause
@@ -208,6 +243,15 @@ func (p *Parser) parseSimpleSelectCore() *nodes.SelectStmt {
 			stmt.GroupDistinct = true
 		}
 		stmt.GroupClause = p.parseGroupByList()
+		if p.collectMode() {
+			for _, t := range []int{
+				HAVING, WINDOW, ORDER, LIMIT, OFFSET, FETCH, FOR,
+				UNION, EXCEPT, INTERSECT, ';',
+			} {
+				p.addTokenCandidate(t)
+			}
+			return stmt
+		}
 	}
 
 	// HAVING clause
@@ -293,6 +337,12 @@ func (p *Parser) parseSetQuantifier() nodes.SetQuantifier {
 func (p *Parser) parseSelectOptions(stmt *nodes.SelectStmt) {
 	// Parse LIMIT/OFFSET/FETCH and FOR locking in either order
 	for {
+		if p.collectMode() {
+			for _, t := range []int{LIMIT, OFFSET, FETCH, FOR, ';'} {
+				p.addTokenCandidate(t)
+			}
+			return
+		}
 		if p.cur.Type == LIMIT || p.cur.Type == OFFSET || p.cur.Type == FETCH {
 			p.parseSelectLimit(stmt)
 		} else if p.cur.Type == FOR {
@@ -510,6 +560,10 @@ func (p *Parser) parseForLockingStrength() int64 {
 //	    | WITH RECURSIVE cte_list
 func (p *Parser) parseWithClause() *nodes.WithClause {
 	loc := p.pos()
+	// Record CTE position for completion context (before consuming WITH).
+	if p.completing {
+		p.addCTEPosition(loc)
+	}
 	p.advance() // consume WITH or WITH_LA
 
 	wc := &nodes.WithClause{
@@ -808,6 +862,13 @@ func (p *Parser) parseTableRef() nodes.Node {
 //	    | select_with_parens opt_alias_clause
 //	    | '(' joined_table ')' opt_alias_clause
 func (p *Parser) parseTableRefPrimary() nodes.Node {
+	if p.collectMode() {
+		p.addRuleCandidate("relation_expr")
+		p.addRuleCandidate("qualified_name")
+		p.addTokenCandidate('(')       // subquery
+		p.addTokenCandidate(LATERAL_P) // LATERAL
+		return nil
+	}
 	switch p.cur.Type {
 	case '(':
 		return p.parseParenTableRef()
@@ -1135,6 +1196,14 @@ func (p *Parser) parseRelationExprWithAlias() nodes.Node {
 //	    | ONLY qualified_name
 //	    | ONLY '(' qualified_name ')'
 func (p *Parser) parseRelationExpr() *nodes.RangeVar {
+	if p.collectMode() {
+		p.addRuleCandidate("relation_expr")
+		// Also emit ONLY token since it's a valid prefix
+		p.addTokenCandidate(ONLY)
+		// Emit qualified_name candidates too (identifiers/keywords)
+		p.addRuleCandidate("qualified_name")
+		return nil
+	}
 	loc := p.pos()
 	if p.cur.Type == ONLY {
 		p.advance()
