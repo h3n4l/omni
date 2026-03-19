@@ -88,8 +88,8 @@ The foundation — our output must be byte-for-byte identical to MySQL 8.0.
 ### 1.6 JSON Type
 
 ```
-[ ] JSON
-[ ] JSON DEFAULT NULL — should NOT show DEFAULT NULL (like TEXT/BLOB)
+[x] JSON
+[x] JSON DEFAULT NULL — MySQL 8.0 DOES show DEFAULT NULL for JSON (unlike TEXT/BLOB)
 ```
 
 ### 1.7 Default Values
@@ -108,7 +108,7 @@ The foundation — our output must be byte-for-byte identical to MySQL 8.0.
 [x] SET DEFAULT 'x,y'
 [x] BIT(8) DEFAULT b'00001111'
 [x] BLOB/TEXT — no DEFAULT NULL shown
-[x] JSON — no DEFAULT NULL shown
+[x] JSON — MySQL 8.0 shows DEFAULT NULL (unlike TEXT/BLOB)
 [x] TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 [x] DATETIME DEFAULT CURRENT_TIMESTAMP
 [x] TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP(3)
