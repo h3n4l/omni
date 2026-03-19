@@ -1985,3 +1985,176 @@ func TestOracle_Section_2_5_AlterTableTableLevel(t *testing.T) {
 		})
 	}
 }
+
+func TestOracle_Section_2_6_DropTable(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	t.Run("drop_table_basic", func(t *testing.T) {
+		// Setup: create a table, then drop it. Verify it's gone.
+		oracle.execSQL("DROP TABLE IF EXISTS t_drop1")
+		oracle.execSQL("CREATE TABLE t_drop1 (id INT PRIMARY KEY, name VARCHAR(100))")
+
+		oracleErr := oracle.execSQL("DROP TABLE t_drop1")
+		if oracleErr != nil {
+			t.Fatalf("oracle DROP TABLE error: %v", oracleErr)
+		}
+		_, oracleShowErr := oracle.showCreateTable("t_drop1")
+		if oracleShowErr == nil {
+			t.Fatal("oracle: table still exists after DROP TABLE")
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_drop1 (id INT PRIMARY KEY, name VARCHAR(100))", nil)
+		results, _ := c.Exec("DROP TABLE t_drop1", nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni DROP TABLE error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateTable("test", "t_drop1")
+		if omniDDL != "" {
+			t.Errorf("omni: table still exists after DROP TABLE, got: %s", omniDDL)
+		}
+	})
+
+	t.Run("drop_table_if_exists", func(t *testing.T) {
+		// DROP TABLE IF EXISTS on a nonexistent table should not error.
+		oracle.execSQL("DROP TABLE IF EXISTS t_drop_ine")
+
+		oracleErr := oracle.execSQL("DROP TABLE IF EXISTS t_drop_ine")
+		if oracleErr != nil {
+			t.Fatalf("oracle DROP TABLE IF EXISTS error: %v", oracleErr)
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		results, _ := c.Exec("DROP TABLE IF EXISTS t_drop_ine", nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni DROP TABLE IF EXISTS error: %v", results[0].Error)
+		}
+	})
+
+	t.Run("drop_table_multi", func(t *testing.T) {
+		// DROP TABLE t1, t2, t3 — multi-table drop.
+		oracle.execSQL("DROP TABLE IF EXISTS t_dm1")
+		oracle.execSQL("DROP TABLE IF EXISTS t_dm2")
+		oracle.execSQL("DROP TABLE IF EXISTS t_dm3")
+		oracle.execSQL("CREATE TABLE t_dm1 (id INT)")
+		oracle.execSQL("CREATE TABLE t_dm2 (id INT)")
+		oracle.execSQL("CREATE TABLE t_dm3 (id INT)")
+
+		oracleErr := oracle.execSQL("DROP TABLE t_dm1, t_dm2, t_dm3")
+		if oracleErr != nil {
+			t.Fatalf("oracle DROP TABLE multi error: %v", oracleErr)
+		}
+		for _, tbl := range []string{"t_dm1", "t_dm2", "t_dm3"} {
+			if _, err := oracle.showCreateTable(tbl); err == nil {
+				t.Errorf("oracle: table %s still exists after multi-drop", tbl)
+			}
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_dm1 (id INT)", nil)
+		c.Exec("CREATE TABLE t_dm2 (id INT)", nil)
+		c.Exec("CREATE TABLE t_dm3 (id INT)", nil)
+		results, _ := c.Exec("DROP TABLE t_dm1, t_dm2, t_dm3", nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni DROP TABLE multi error: %v", results[0].Error)
+		}
+		for _, tbl := range []string{"t_dm1", "t_dm2", "t_dm3"} {
+			ddl := c.ShowCreateTable("test", tbl)
+			if ddl != "" {
+				t.Errorf("omni: table %s still exists after multi-drop", tbl)
+			}
+		}
+	})
+
+	t.Run("drop_table_nonexistent_error", func(t *testing.T) {
+		// DROP TABLE on nonexistent table should produce error 1051.
+		oracle.execSQL("DROP TABLE IF EXISTS t_noexist")
+		oracleErr := oracle.execSQL("DROP TABLE t_noexist")
+		if oracleErr == nil {
+			t.Fatal("oracle: expected error for DROP nonexistent table")
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		results, _ := c.Exec("DROP TABLE t_noexist", nil)
+		omniErr := results[0].Error
+		if omniErr == nil {
+			t.Fatal("omni: expected error for DROP nonexistent table")
+		}
+		catErr, ok := omniErr.(*Error)
+		if !ok {
+			t.Fatalf("omni error is not *Error: %T", omniErr)
+		}
+		if catErr.Code != 1051 {
+			t.Errorf("omni error code: want 1051, got %d (message: %s)", catErr.Code, catErr.Message)
+		}
+	})
+
+	t.Run("drop_temporary_table", func(t *testing.T) {
+		// DROP TEMPORARY TABLE should work.
+		oracle.execSQL("DROP TEMPORARY TABLE IF EXISTS t_temp_drop")
+		oracle.execSQL("CREATE TEMPORARY TABLE t_temp_drop (id INT, val VARCHAR(50))")
+		oracleErr := oracle.execSQL("DROP TEMPORARY TABLE t_temp_drop")
+		if oracleErr != nil {
+			t.Fatalf("oracle DROP TEMPORARY TABLE error: %v", oracleErr)
+		}
+		_, oracleShowErr := oracle.showCreateTable("t_temp_drop")
+		if oracleShowErr == nil {
+			t.Fatal("oracle: temp table still exists after DROP TEMPORARY TABLE")
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TEMPORARY TABLE t_temp_drop (id INT, val VARCHAR(50))", nil)
+		results, _ := c.Exec("DROP TEMPORARY TABLE t_temp_drop", nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni DROP TEMPORARY TABLE error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateTable("test", "t_temp_drop")
+		if omniDDL != "" {
+			t.Errorf("omni: temp table still exists after DROP TEMPORARY TABLE")
+		}
+	})
+
+	t.Run("drop_table_fk_referenced", func(t *testing.T) {
+		// DROP TABLE that has FK references should error (with foreign_key_checks=1, the default).
+		oracle.execSQL("DROP TABLE IF EXISTS t_fk_child")
+		oracle.execSQL("DROP TABLE IF EXISTS t_fk_parent")
+		oracle.execSQL("CREATE TABLE t_fk_parent (id INT PRIMARY KEY)")
+		oracle.execSQL("CREATE TABLE t_fk_child (id INT, parent_id INT, FOREIGN KEY (parent_id) REFERENCES t_fk_parent(id))")
+
+		oracleErr := oracle.execSQL("DROP TABLE t_fk_parent")
+		if oracleErr == nil {
+			t.Fatal("oracle: expected error when dropping FK-referenced table")
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_fk_parent (id INT PRIMARY KEY)", nil)
+		c.Exec("CREATE TABLE t_fk_child (id INT, parent_id INT, FOREIGN KEY (parent_id) REFERENCES t_fk_parent(id))", nil)
+		results, _ := c.Exec("DROP TABLE t_fk_parent", nil)
+		omniErr := results[0].Error
+		if omniErr == nil {
+			t.Fatal("omni: expected error when dropping FK-referenced table")
+		}
+
+		// Verify table still exists after failed drop.
+		omniDDL := c.ShowCreateTable("test", "t_fk_parent")
+		if omniDDL == "" {
+			t.Error("omni: parent table was deleted despite FK reference")
+		}
+	})
+}

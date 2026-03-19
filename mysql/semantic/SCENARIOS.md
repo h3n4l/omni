@@ -365,12 +365,12 @@ Beyond output format — the catalog must behave identically to MySQL.
 ### 2.6 DROP TABLE
 
 ```
-[ ] DROP TABLE t1
-[ ] DROP TABLE IF EXISTS t1
-[ ] DROP TABLE t1, t2, t3 — multi-table
-[ ] DROP TABLE nonexistent → error 1051
-[ ] DROP TEMPORARY TABLE
-[ ] DROP TABLE that has FK references → error (without foreign_key_checks=0)
+[x] DROP TABLE t1
+[x] DROP TABLE IF EXISTS t1
+[x] DROP TABLE t1, t2, t3 — multi-table
+[x] DROP TABLE nonexistent → error 1051
+[x] DROP TEMPORARY TABLE
+[x] DROP TABLE that has FK references → error (without foreign_key_checks=0)
 ```
 
 ### 2.7 TRUNCATE TABLE

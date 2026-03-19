@@ -28,6 +28,7 @@ const (
 	ErrFKNoRefTable            = 1824
 	ErrCantDropKey             = 1091
 	ErrCheckConstraintViolated = 3819
+	ErrFKCannotDropParent      = 3730
 )
 
 var sqlStateMap = map[int]string{
@@ -46,6 +47,7 @@ var sqlStateMap = map[int]string{
 	ErrFKNoRefTable:            "HY000",
 	ErrCantDropKey:             "42000",
 	ErrCheckConstraintViolated: "HY000",
+	ErrFKCannotDropParent:      "HY000",
 }
 
 func sqlState(code int) string {
@@ -103,6 +105,11 @@ func errNoSuchColumn(name string) error {
 func errUnknownTable(db, name string) error {
 	return &Error{Code: ErrUnknownTable, SQLState: sqlState(ErrUnknownTable),
 		Message: fmt.Sprintf("Unknown table '%s.%s'", db, name)}
+}
+
+func errFKCannotDropParent(table, fkName, refTable string) error {
+	return &Error{Code: ErrFKCannotDropParent, SQLState: sqlState(ErrFKCannotDropParent),
+		Message: fmt.Sprintf("Cannot drop table '%s' referenced by a foreign key constraint '%s' on table '%s'", table, fkName, refTable)}
 }
 
 func errCantDropKey(name string) error {
