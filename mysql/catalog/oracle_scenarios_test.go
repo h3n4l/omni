@@ -2241,3 +2241,220 @@ func TestOracle_Section_2_7_TruncateTable(t *testing.T) {
 		}
 	})
 }
+
+func TestOracle_Section_2_8_CreateDropIndex(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	// Scenario 1: CREATE INDEX idx ON t (col)
+	t.Run("create_index_basic", func(t *testing.T) {
+		oracle.execSQL("DROP TABLE IF EXISTS t_ci1")
+		oracle.execSQL("CREATE TABLE t_ci1 (id INT PRIMARY KEY, name VARCHAR(100))")
+		if err := oracle.execSQL("CREATE INDEX idx_name ON t_ci1 (name)"); err != nil {
+			t.Fatalf("oracle CREATE INDEX error: %v", err)
+		}
+		oracleDDL, _ := oracle.showCreateTable("t_ci1")
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_ci1 (id INT PRIMARY KEY, name VARCHAR(100))", nil)
+		results, _ := c.Exec("CREATE INDEX idx_name ON t_ci1 (name)", nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni CREATE INDEX error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateTable("test", "t_ci1")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL, omniDDL)
+		}
+	})
+
+	// Scenario 2: CREATE UNIQUE INDEX
+	t.Run("create_unique_index", func(t *testing.T) {
+		oracle.execSQL("DROP TABLE IF EXISTS t_ci2")
+		oracle.execSQL("CREATE TABLE t_ci2 (id INT PRIMARY KEY, email VARCHAR(255))")
+		if err := oracle.execSQL("CREATE UNIQUE INDEX idx_email ON t_ci2 (email)"); err != nil {
+			t.Fatalf("oracle CREATE UNIQUE INDEX error: %v", err)
+		}
+		oracleDDL, _ := oracle.showCreateTable("t_ci2")
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_ci2 (id INT PRIMARY KEY, email VARCHAR(255))", nil)
+		results, _ := c.Exec("CREATE UNIQUE INDEX idx_email ON t_ci2 (email)", nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni CREATE UNIQUE INDEX error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateTable("test", "t_ci2")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL, omniDDL)
+		}
+	})
+
+	// Scenario 3: CREATE FULLTEXT INDEX
+	t.Run("create_fulltext_index", func(t *testing.T) {
+		oracle.execSQL("DROP TABLE IF EXISTS t_ci3")
+		oracle.execSQL("CREATE TABLE t_ci3 (id INT PRIMARY KEY, content TEXT)")
+		if err := oracle.execSQL("CREATE FULLTEXT INDEX idx_ft ON t_ci3 (content)"); err != nil {
+			t.Fatalf("oracle CREATE FULLTEXT INDEX error: %v", err)
+		}
+		oracleDDL, _ := oracle.showCreateTable("t_ci3")
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_ci3 (id INT PRIMARY KEY, content TEXT)", nil)
+		results, _ := c.Exec("CREATE FULLTEXT INDEX idx_ft ON t_ci3 (content)", nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni CREATE FULLTEXT INDEX error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateTable("test", "t_ci3")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL, omniDDL)
+		}
+	})
+
+	// Scenario 4: CREATE SPATIAL INDEX
+	t.Run("create_spatial_index", func(t *testing.T) {
+		oracle.execSQL("DROP TABLE IF EXISTS t_ci4")
+		oracle.execSQL("CREATE TABLE t_ci4 (id INT PRIMARY KEY, geo GEOMETRY NOT NULL)")
+		if err := oracle.execSQL("CREATE SPATIAL INDEX idx_sp ON t_ci4 (geo)"); err != nil {
+			t.Fatalf("oracle CREATE SPATIAL INDEX error: %v", err)
+		}
+		oracleDDL, _ := oracle.showCreateTable("t_ci4")
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_ci4 (id INT PRIMARY KEY, geo GEOMETRY NOT NULL)", nil)
+		results, _ := c.Exec("CREATE SPATIAL INDEX idx_sp ON t_ci4 (geo)", nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni CREATE SPATIAL INDEX error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateTable("test", "t_ci4")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL, omniDDL)
+		}
+	})
+
+	// Scenario 5: CREATE INDEX IF NOT EXISTS
+	// Note: MySQL 8.0 does NOT support IF NOT EXISTS on CREATE INDEX (syntax error).
+	// Our parser accepts it, and the catalog handles it gracefully (no-op on duplicate).
+	// This is marked [~] partial — omni is more permissive than MySQL 8.0 here.
+	t.Run("create_index_if_not_exists", func(t *testing.T) {
+		// Verify MySQL 8.0 rejects this syntax.
+		oracle.execSQL("DROP TABLE IF EXISTS t_ci5")
+		oracle.execSQL("CREATE TABLE t_ci5 (id INT PRIMARY KEY, val INT)")
+		oracle.execSQL("CREATE INDEX idx_val ON t_ci5 (val)")
+		oracleErr := oracle.execSQL("CREATE INDEX IF NOT EXISTS idx_val ON t_ci5 (val)")
+		if oracleErr == nil {
+			t.Fatal("oracle: expected syntax error for CREATE INDEX IF NOT EXISTS in MySQL 8.0")
+		}
+		t.Logf("oracle correctly rejects CREATE INDEX IF NOT EXISTS: %v", oracleErr)
+
+		// Omni accepts IF NOT EXISTS as an extension — verify it doesn't error.
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_ci5 (id INT PRIMARY KEY, val INT)", nil)
+		c.Exec("CREATE INDEX idx_val ON t_ci5 (val)", nil)
+		results, _ := c.Exec("CREATE INDEX IF NOT EXISTS idx_val ON t_ci5 (val)", nil)
+		if results[0].Error != nil {
+			t.Errorf("omni: unexpected error for IF NOT EXISTS: %v", results[0].Error)
+		}
+		// This is a known divergence from MySQL 8.0 behavior.
+	})
+
+	// Scenario 6: CREATE INDEX — duplicate name → error 1061
+	t.Run("create_index_duplicate_error", func(t *testing.T) {
+		oracle.execSQL("DROP TABLE IF EXISTS t_ci6")
+		oracle.execSQL("CREATE TABLE t_ci6 (id INT PRIMARY KEY, a INT, b INT)")
+		oracle.execSQL("CREATE INDEX idx_a ON t_ci6 (a)")
+		oracleErr := oracle.execSQL("CREATE INDEX idx_a ON t_ci6 (b)")
+		if oracleErr == nil {
+			t.Fatal("oracle: expected error for duplicate index name")
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_ci6 (id INT PRIMARY KEY, a INT, b INT)", nil)
+		c.Exec("CREATE INDEX idx_a ON t_ci6 (a)", nil)
+		results, _ := c.Exec("CREATE INDEX idx_a ON t_ci6 (b)", nil)
+		omniErr := results[0].Error
+		if omniErr == nil {
+			t.Fatal("omni: expected error for duplicate index name")
+		}
+		catErr, ok := omniErr.(*Error)
+		if !ok {
+			t.Fatalf("omni error is not *Error: %T", omniErr)
+		}
+		if catErr.Code != 1061 {
+			t.Errorf("omni error code: want 1061, got %d (message: %s)", catErr.Code, catErr.Message)
+		}
+	})
+
+	// Scenario 7: DROP INDEX idx ON t
+	t.Run("drop_index_basic", func(t *testing.T) {
+		oracle.execSQL("DROP TABLE IF EXISTS t_di1")
+		oracle.execSQL("CREATE TABLE t_di1 (id INT PRIMARY KEY, name VARCHAR(100), KEY idx_name (name))")
+		if err := oracle.execSQL("DROP INDEX idx_name ON t_di1"); err != nil {
+			t.Fatalf("oracle DROP INDEX error: %v", err)
+		}
+		oracleDDL, _ := oracle.showCreateTable("t_di1")
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_di1 (id INT PRIMARY KEY, name VARCHAR(100), KEY idx_name (name))", nil)
+		results, _ := c.Exec("DROP INDEX idx_name ON t_di1", nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni DROP INDEX error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateTable("test", "t_di1")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL, omniDDL)
+		}
+	})
+
+	// Scenario 8: DROP INDEX nonexistent → error 1091
+	t.Run("drop_index_nonexistent_error", func(t *testing.T) {
+		oracle.execSQL("DROP TABLE IF EXISTS t_di2")
+		oracle.execSQL("CREATE TABLE t_di2 (id INT PRIMARY KEY)")
+		oracleErr := oracle.execSQL("DROP INDEX idx_noexist ON t_di2")
+		if oracleErr == nil {
+			t.Fatal("oracle: expected error for DROP nonexistent index")
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_di2 (id INT PRIMARY KEY)", nil)
+		results, _ := c.Exec("DROP INDEX idx_noexist ON t_di2", nil)
+		omniErr := results[0].Error
+		if omniErr == nil {
+			t.Fatal("omni: expected error for DROP nonexistent index")
+		}
+		catErr, ok := omniErr.(*Error)
+		if !ok {
+			t.Fatalf("omni error is not *Error: %T", omniErr)
+		}
+		if catErr.Code != 1091 {
+			t.Errorf("omni error code: want 1091, got %d (message: %s)", catErr.Code, catErr.Message)
+		}
+	})
+}

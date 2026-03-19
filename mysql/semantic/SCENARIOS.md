@@ -384,14 +384,14 @@ Beyond output format — the catalog must behave identically to MySQL.
 ### 2.8 CREATE/DROP INDEX (standalone)
 
 ```
-[ ] CREATE INDEX idx ON t (col)
-[ ] CREATE UNIQUE INDEX
-[ ] CREATE FULLTEXT INDEX
-[ ] CREATE SPATIAL INDEX
-[ ] CREATE INDEX IF NOT EXISTS
-[ ] CREATE INDEX — duplicate name → error 1061
-[ ] DROP INDEX idx ON t
-[ ] DROP INDEX nonexistent → error 1091
+[x] CREATE INDEX idx ON t (col)
+[x] CREATE UNIQUE INDEX
+[x] CREATE FULLTEXT INDEX
+[x] CREATE SPATIAL INDEX
+[~] CREATE INDEX IF NOT EXISTS — MySQL 8.0 does not support IF NOT EXISTS on CREATE INDEX (syntax error); omni accepts it as extension
+[x] CREATE INDEX — duplicate name → error 1061
+[x] DROP INDEX idx ON t
+[x] DROP INDEX nonexistent → error 1091
 ```
 
 ### 2.9 RENAME TABLE
