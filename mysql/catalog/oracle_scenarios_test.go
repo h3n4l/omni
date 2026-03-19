@@ -701,3 +701,105 @@ func TestOracle_Section_1_19_TableOptions(t *testing.T) {
 		})
 	}
 }
+
+func TestOracle_Section_1_20_CharsetCollationInheritance(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	cases := []struct {
+		name     string
+		setupSQL string
+		sql      string
+		table    string
+		database string
+	}{
+		{
+			"table_charset_inherited_from_database",
+			"DROP DATABASE IF EXISTS db_latin1; CREATE DATABASE db_latin1 CHARACTER SET latin1; USE db_latin1",
+			"CREATE TABLE t_inherit_db (a VARCHAR(100))",
+			"t_inherit_db",
+			"db_latin1",
+		},
+		{
+			"column_charset_inherited_from_table",
+			"DROP DATABASE IF EXISTS db_utf8mb4_tbl; CREATE DATABASE db_utf8mb4_tbl; USE db_utf8mb4_tbl",
+			"CREATE TABLE t_col_inherit (a VARCHAR(50)) DEFAULT CHARSET=latin1",
+			"t_col_inherit",
+			"db_utf8mb4_tbl",
+		},
+		{
+			"column_charset_overrides_table",
+			"DROP DATABASE IF EXISTS db_override_cs; CREATE DATABASE db_override_cs; USE db_override_cs",
+			"CREATE TABLE t_col_override_cs (a VARCHAR(50) CHARACTER SET latin1) DEFAULT CHARSET=utf8mb4",
+			"t_col_override_cs",
+			"db_override_cs",
+		},
+		{
+			"column_collation_overrides_table",
+			"DROP DATABASE IF EXISTS db_override_coll; CREATE DATABASE db_override_coll; USE db_override_coll",
+			"CREATE TABLE t_col_override_coll (a VARCHAR(50) COLLATE utf8mb4_bin) DEFAULT CHARSET=utf8mb4",
+			"t_col_override_coll",
+			"db_override_coll",
+		},
+		{
+			"column_charset_collation_display_rules",
+			"DROP DATABASE IF EXISTS db_display; CREATE DATABASE db_display CHARACTER SET utf8mb4; USE db_display",
+			"CREATE TABLE t_display_rules (a VARCHAR(50), b VARCHAR(50) CHARACTER SET latin1, c VARCHAR(50) COLLATE utf8mb4_bin, d VARCHAR(50) CHARACTER SET utf8mb3 COLLATE utf8mb3_bin)",
+			"t_display_rules",
+			"db_display",
+		},
+		{
+			"binary_charset_on_column",
+			"DROP DATABASE IF EXISTS db_binary; CREATE DATABASE db_binary; USE db_binary",
+			"CREATE TABLE t_binary_cs (a VARCHAR(50) CHARACTER SET binary)",
+			"t_binary_cs",
+			"db_binary",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.setupSQL != "" {
+				if err := oracle.execSQL(tc.setupSQL); err != nil {
+					t.Fatalf("oracle setup: %v", err)
+				}
+			}
+			if err := oracle.execSQL(tc.sql); err != nil {
+				t.Fatalf("oracle exec: %v", err)
+			}
+			oracleDDL, err := oracle.showCreateTable(tc.table)
+			if err != nil {
+				t.Fatalf("oracle show create: %v", err)
+			}
+
+			c := New()
+			if tc.setupSQL != "" {
+				results, parseErr := c.Exec(tc.setupSQL, nil)
+				if parseErr != nil {
+					t.Fatalf("omni setup parse error: %v", parseErr)
+				}
+				for _, r := range results {
+					if r.Error != nil {
+						t.Fatalf("omni setup exec error: %v", r.Error)
+					}
+				}
+			}
+			results, parseErr := c.Exec(tc.sql, nil)
+			if parseErr != nil {
+				t.Fatalf("omni parse error: %v", parseErr)
+			}
+			if results[0].Error != nil {
+				t.Fatalf("omni exec error: %v", results[0].Error)
+			}
+			omniDDL := c.ShowCreateTable(tc.database, tc.table)
+
+			if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+				t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+					oracleDDL, omniDDL)
+			}
+		})
+	}
+}

@@ -103,22 +103,38 @@ func showColumnWithTable(col *Column, tbl *Table) string {
 				colCharsetDefault = dc
 			}
 		}
-		showCharset := col.Charset != "" && !eqFoldStr(col.Charset, tableCharset)
+		charsetDiffers := col.Charset != "" && !eqFoldStr(col.Charset, tableCharset)
 		// Show COLLATE when the column's collation differs from its charset's default.
-		showCollation := col.Collation != "" && !eqFoldStr(col.Collation, colCharsetDefault)
-		if showCharset {
-			b.WriteString(fmt.Sprintf(" CHARACTER SET %s", col.Charset))
-			// When charset differs from table, MySQL always shows collation too
-			// (even if it's the default collation for that charset).
-			if !showCollation && col.Collation != "" {
-				b.WriteString(fmt.Sprintf(" COLLATE %s", col.Collation))
-			} else if !showCollation {
-				if colCharsetDefault != "" {
-					b.WriteString(fmt.Sprintf(" COLLATE %s", colCharsetDefault))
-				}
-			}
+		collationNonDefault := col.Collation != "" && !eqFoldStr(col.Collation, colCharsetDefault)
+
+		// Determine the table's effective collation for comparison.
+		tableCollation := ""
+		if tbl != nil {
+			tableCollation = tbl.Collation
 		}
-		if showCollation {
+		// Column collation differs from table collation (= explicitly set on column).
+		collationDiffersFromTable := col.Collation != "" && !eqFoldStr(col.Collation, tableCollation)
+
+		if charsetDiffers {
+			// When charset differs from table, show CHARACTER SET and always COLLATE.
+			b.WriteString(fmt.Sprintf(" CHARACTER SET %s", col.Charset))
+			collation := col.Collation
+			if collation == "" {
+				collation = colCharsetDefault
+			}
+			if collation != "" {
+				b.WriteString(fmt.Sprintf(" COLLATE %s", collation))
+			}
+		} else if collationNonDefault && collationDiffersFromTable {
+			// Collation explicitly set on column (differs from both charset default and table).
+			// MySQL shows both CHARACTER SET and COLLATE.
+			if col.Charset != "" {
+				b.WriteString(fmt.Sprintf(" CHARACTER SET %s", col.Charset))
+			}
+			b.WriteString(fmt.Sprintf(" COLLATE %s", col.Collation))
+		} else if collationNonDefault {
+			// Collation inherited from table but non-default for charset.
+			// MySQL shows only COLLATE (no CHARACTER SET).
 			b.WriteString(fmt.Sprintf(" COLLATE %s", col.Collation))
 		}
 	}
@@ -364,7 +380,8 @@ func showTableOptions(tbl *Table) string {
 
 	// MySQL 8.0 shows COLLATE when:
 	// - The collation differs from the charset's default, OR
-	// - The table charset matches the database charset (collation was inherited/explicit)
+	// - The collation was explicitly specified, OR
+	// - The charset is utf8mb4 (MySQL 8.0 always shows collation for utf8mb4)
 	if tbl.Charset != "" {
 		effectiveCollation := tbl.Collation
 		if effectiveCollation == "" {
@@ -372,8 +389,8 @@ func showTableOptions(tbl *Table) string {
 		}
 		defColl := defaultCollationForCharset[toLower(tbl.Charset)]
 		isNonDefaultCollation := effectiveCollation != "" && !eqFoldStr(effectiveCollation, defColl)
-		sameAsDBCharset := tbl.Database != nil && eqFoldStr(tbl.Charset, tbl.Database.Charset)
-		if isNonDefaultCollation || sameAsDBCharset {
+		isUtf8mb4 := eqFoldStr(tbl.Charset, "utf8mb4")
+		if isNonDefaultCollation || isUtf8mb4 {
 			if effectiveCollation != "" {
 				parts = append(parts, fmt.Sprintf("COLLATE=%s", effectiveCollation))
 			}

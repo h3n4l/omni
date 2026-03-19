@@ -43,14 +43,18 @@ func (c *Catalog) createTable(stmt *nodes.CreateTableStmt) error {
 	}
 
 	// Apply table options.
+	tblCharsetExplicit := false
+	tblCollationExplicit := false
 	for _, opt := range stmt.Options {
 		switch toLower(opt.Name) {
 		case "engine":
 			tbl.Engine = opt.Value
 		case "charset", "character set", "default charset", "default character set":
 			tbl.Charset = opt.Value
+			tblCharsetExplicit = true
 		case "collate", "default collate":
 			tbl.Collation = opt.Value
+			tblCollationExplicit = true
 		case "comment":
 			tbl.Comment = opt.Value
 		case "auto_increment":
@@ -61,7 +65,12 @@ func (c *Catalog) createTable(stmt *nodes.CreateTableStmt) error {
 			fmt.Sscanf(opt.Value, "%d", &tbl.KeyBlockSize)
 		}
 	}
-
+	// When charset is specified without explicit collation, derive the default collation.
+	if tblCharsetExplicit && !tblCollationExplicit {
+		if dc, ok := defaultCollationForCharset[toLower(tbl.Charset)]; ok {
+			tbl.Collation = dc
+		}
+	}
 	// Track whether we have a primary key (to detect multiple PKs).
 	hasPK := false
 
@@ -104,6 +113,11 @@ func (c *Catalog) createTable(stmt *nodes.CreateTableStmt) error {
 			}
 			if colDef.TypeName.Collate != "" {
 				col.Collation = colDef.TypeName.Collate
+			}
+
+			// MySQL converts string types with CHARACTER SET binary to binary types.
+			if strings.EqualFold(col.Charset, "binary") && isStringType(col.DataType) {
+				col = convertToBinaryType(col, colDef.TypeName)
 			}
 		}
 
@@ -556,6 +570,39 @@ func isStringType(dt string) bool {
 		return true
 	}
 	return false
+}
+
+// convertToBinaryType converts a string-type column with CHARACTER SET binary
+// to the equivalent binary type (char->binary, varchar->varbinary, text->blob, etc.).
+func convertToBinaryType(col *Column, dt *nodes.DataType) *Column {
+	switch col.DataType {
+	case "char":
+		col.DataType = "binary"
+		length := dt.Length
+		if length == 0 {
+			length = 1
+		}
+		col.ColumnType = fmt.Sprintf("binary(%d)", length)
+	case "varchar":
+		col.DataType = "varbinary"
+		col.ColumnType = fmt.Sprintf("varbinary(%d)", dt.Length)
+	case "tinytext":
+		col.DataType = "tinyblob"
+		col.ColumnType = "tinyblob"
+	case "text":
+		col.DataType = "blob"
+		col.ColumnType = "blob"
+	case "mediumtext":
+		col.DataType = "mediumblob"
+		col.ColumnType = "mediumblob"
+	case "longtext":
+		col.DataType = "longblob"
+		col.ColumnType = "longblob"
+	}
+	// Binary types don't have charset/collation in SHOW CREATE TABLE.
+	col.Charset = ""
+	col.Collation = ""
+	return col
 }
 
 func nodeToSQL(node nodes.ExprNode) string {

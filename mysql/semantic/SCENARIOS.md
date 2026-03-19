@@ -266,12 +266,12 @@ The foundation — our output must be byte-for-byte identical to MySQL 8.0.
 ### 1.20 Charset/Collation Inheritance
 
 ```
-[ ] Table charset inherited from database
-[ ] Column charset inherited from table
-[ ] Column charset overrides table charset
-[ ] Column collation overrides table collation
-[ ] Column charset/collation display rules (when shown vs omitted)
-[ ] Binary charset on column
+[x] Table charset inherited from database
+[x] Column charset inherited from table
+[x] Column charset overrides table charset
+[x] Column collation overrides table collation
+[x] Column charset/collation display rules (when shown vs omitted)
+[x] Binary charset on column
 ```
 
 ---
