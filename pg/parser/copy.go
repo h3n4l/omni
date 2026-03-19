@@ -13,7 +13,7 @@ import (
 //	    copy_from opt_program copy_file_name copy_delimiter copy_opt_with
 //	    copy_options where_clause
 //	| COPY '(' PreparableStmt ')' TO opt_program copy_file_name copy_opt_with copy_options
-func (p *Parser) parseCopyStmt() nodes.Node {
+func (p *Parser) parseCopyStmt() (nodes.Node, error) {
 	if p.cur.Type == '(' {
 		return p.parseCopyQueryStmt()
 	}
@@ -44,15 +44,21 @@ func (p *Parser) parseCopyStmt() nodes.Node {
 	}
 	opts = concatNodeLists(opts, options)
 	stmt.Options = opts
-	return stmt
+	return stmt, nil
 }
 
 // parseCopyQueryStmt parses COPY '(' PreparableStmt ')' TO ...
-func (p *Parser) parseCopyQueryStmt() nodes.Node {
-	p.expect('(')
+func (p *Parser) parseCopyQueryStmt() (nodes.Node, error) {
+	if _, err := p.expect('('); err != nil {
+		return nil, err
+	}
 	query := p.parsePreparableStmt()
-	p.expect(')')
-	p.expect(TO)
+	if _, err := p.expect(')'); err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(TO); err != nil {
+		return nil, err
+	}
 	isProgram := p.parseCopyOptProgram()
 	filename := p.parseCopyFileName()
 	p.parseCopyOptWith()
@@ -63,7 +69,7 @@ func (p *Parser) parseCopyQueryStmt() nodes.Node {
 		IsProgram: isProgram,
 		Filename:  filename,
 		Options:   options,
-	}
+	}, nil
 }
 
 // parsePreparableStmt parses SELECT, INSERT, UPDATE, or DELETE.

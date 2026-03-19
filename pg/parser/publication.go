@@ -15,10 +15,13 @@ import (
 //	    CREATE PUBLICATION name opt_definition
 //	    | CREATE PUBLICATION name FOR ALL TABLES opt_definition
 //	    | CREATE PUBLICATION name FOR pub_obj_list opt_definition
-func (p *Parser) parseCreatePublicationStmt() nodes.Node {
+func (p *Parser) parseCreatePublicationStmt() (nodes.Node, error) {
 	p.advance() // consume PUBLICATION
 
-	name, _ := p.parseName()
+	name, err := p.parseName()
+	if err != nil {
+		return nil, err
+	}
 
 	// Check for FOR
 	if p.cur.Type == FOR {
@@ -27,13 +30,15 @@ func (p *Parser) parseCreatePublicationStmt() nodes.Node {
 		// Check for ALL TABLES
 		if p.cur.Type == ALL {
 			p.advance() // consume ALL
-			p.expect(TABLES)
+			if _, err := p.expect(TABLES); err != nil {
+				return nil, err
+			}
 			options := p.parseOptDefinition()
 			return &nodes.CreatePublicationStmt{
 				Pubname:      name,
 				Options:      options,
 				ForAllTables: true,
-			}
+			}, nil
 		}
 
 		// pub_obj_list
@@ -43,7 +48,7 @@ func (p *Parser) parseCreatePublicationStmt() nodes.Node {
 			Pubname:    name,
 			Options:    options,
 			Pubobjects: pubobjects,
-		}
+		}, nil
 	}
 
 	// Just name with optional definition
@@ -51,7 +56,7 @@ func (p *Parser) parseCreatePublicationStmt() nodes.Node {
 	return &nodes.CreatePublicationStmt{
 		Pubname: name,
 		Options: options,
-	}
+	}, nil
 }
 
 // =============================================================================
@@ -66,30 +71,40 @@ func (p *Parser) parseCreatePublicationStmt() nodes.Node {
 //	    | ALTER PUBLICATION name ADD_P pub_obj_list
 //	    | ALTER PUBLICATION name SET pub_obj_list
 //	    | ALTER PUBLICATION name DROP pub_obj_list
-func (p *Parser) parseAlterPublicationStmt() nodes.Node {
+func (p *Parser) parseAlterPublicationStmt() (nodes.Node, error) {
 	p.advance() // consume PUBLICATION
 
-	name, _ := p.parseName()
+	name, err := p.parseName()
+	if err != nil {
+		return nil, err
+	}
 
 	switch p.cur.Type {
 	case OWNER:
 		p.advance()
-		p.expect(TO)
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
 		roleSpec := p.parseRoleSpec()
 		return &nodes.AlterOwnerStmt{
 			ObjectType: nodes.OBJECT_PUBLICATION,
 			Object:     &nodes.String{Str: name},
 			Newowner:   roleSpec,
-		}
+		}, nil
 	case RENAME:
 		p.advance()
-		p.expect(TO)
-		newname, _ := p.parseName()
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
+		newname, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.RenameStmt{
 			RenameType: nodes.OBJECT_PUBLICATION,
 			Object:     &nodes.String{Str: name},
 			Newname:    newname,
-		}
+		}, nil
 	case SET:
 		// Could be SET definition (SET '(' ...) or SET pub_obj_list
 		next := p.peekNext()
@@ -97,12 +112,17 @@ func (p *Parser) parseAlterPublicationStmt() nodes.Node {
 			// SET definition
 			p.advance() // consume SET
 			p.advance() // consume '('
-			list, _ := p.parseDefList()
-			p.expect(')')
+			list, err := p.parseDefList()
+			if err != nil {
+				return nil, err
+			}
+			if _, err := p.expect(')'); err != nil {
+				return nil, err
+			}
 			return &nodes.AlterPublicationStmt{
 				Pubname: name,
 				Options: list,
-			}
+			}, nil
 		}
 		// SET pub_obj_list
 		p.advance() // consume SET
@@ -111,7 +131,7 @@ func (p *Parser) parseAlterPublicationStmt() nodes.Node {
 			Pubname:    name,
 			Pubobjects: pubobjects,
 			Action:     nodes.DEFELEM_SET,
-		}
+		}, nil
 	case ADD_P:
 		p.advance() // consume ADD
 		pubobjects := p.parsePubObjList()
@@ -119,7 +139,7 @@ func (p *Parser) parseAlterPublicationStmt() nodes.Node {
 			Pubname:    name,
 			Pubobjects: pubobjects,
 			Action:     nodes.DEFELEM_ADD,
-		}
+		}, nil
 	case DROP:
 		p.advance() // consume DROP
 		pubobjects := p.parsePubObjList()
@@ -127,9 +147,9 @@ func (p *Parser) parseAlterPublicationStmt() nodes.Node {
 			Pubname:    name,
 			Pubobjects: pubobjects,
 			Action:     nodes.DEFELEM_DROP,
-		}
+		}, nil
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
@@ -251,15 +271,27 @@ func (p *Parser) parseOptWhereClausePub() nodes.Node {
 //
 //	CreateSubscriptionStmt:
 //	    CREATE SUBSCRIPTION name CONNECTION Sconst PUBLICATION name_list opt_definition
-func (p *Parser) parseCreateSubscriptionStmt() nodes.Node {
+func (p *Parser) parseCreateSubscriptionStmt() (nodes.Node, error) {
 	p.advance() // consume SUBSCRIPTION
 
-	name, _ := p.parseName()
-	p.expect(CONNECTION)
+	name, err := p.parseName()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(CONNECTION); err != nil {
+		return nil, err
+	}
 	conninfo := p.cur.Str
-	p.expect(SCONST)
-	p.expect(PUBLICATION)
-	pubList, _ := p.parseNameList()
+	if _, err := p.expect(SCONST); err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(PUBLICATION); err != nil {
+		return nil, err
+	}
+	pubList, err := p.parseNameList()
+	if err != nil {
+		return nil, err
+	}
 	options := p.parseOptDefinition()
 
 	return &nodes.CreateSubscriptionStmt{
@@ -267,7 +299,7 @@ func (p *Parser) parseCreateSubscriptionStmt() nodes.Node {
 		Conninfo:    conninfo,
 		Publication: pubList,
 		Options:     options,
-	}
+	}, nil
 }
 
 // =============================================================================
@@ -287,50 +319,64 @@ func (p *Parser) parseCreateSubscriptionStmt() nodes.Node {
 //	    | ALTER SUBSCRIPTION name ENABLE_P
 //	    | ALTER SUBSCRIPTION name DISABLE_P
 //	    | ALTER SUBSCRIPTION name SKIP definition
-func (p *Parser) parseAlterSubscriptionStmt() nodes.Node {
+func (p *Parser) parseAlterSubscriptionStmt() (nodes.Node, error) {
 	p.advance() // consume SUBSCRIPTION
 
-	name, _ := p.parseName()
+	name, err := p.parseName()
+	if err != nil {
+		return nil, err
+	}
 
 	switch p.cur.Type {
 	case OWNER:
 		p.advance()
-		p.expect(TO)
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
 		roleSpec := p.parseRoleSpec()
 		return &nodes.AlterOwnerStmt{
 			ObjectType: nodes.OBJECT_SUBSCRIPTION,
 			Object:     &nodes.String{Str: name},
 			Newowner:   roleSpec,
-		}
+		}, nil
 	case RENAME:
 		p.advance()
-		p.expect(TO)
-		newname, _ := p.parseName()
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
+		newname, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.RenameStmt{
 			RenameType: nodes.OBJECT_SUBSCRIPTION,
 			Object:     &nodes.String{Str: name},
 			Newname:    newname,
-		}
+		}, nil
 
 	case CONNECTION:
 		p.advance() // consume CONNECTION
 		conninfo := p.cur.Str
-		p.expect(SCONST)
+		if _, err := p.expect(SCONST); err != nil {
+			return nil, err
+		}
 		return &nodes.AlterSubscriptionStmt{
 			Kind:     nodes.ALTER_SUBSCRIPTION_CONNECTION,
 			Subname:  name,
 			Conninfo: conninfo,
-		}
+		}, nil
 
 	case REFRESH:
 		p.advance() // consume REFRESH
-		p.expect(PUBLICATION)
+		if _, err := p.expect(PUBLICATION); err != nil {
+			return nil, err
+		}
 		options := p.parseOptDefinition()
 		return &nodes.AlterSubscriptionStmt{
 			Kind:    nodes.ALTER_SUBSCRIPTION_REFRESH,
 			Subname: name,
 			Options: options,
-		}
+		}, nil
 
 	case ENABLE_P:
 		p.advance() // consume ENABLE
@@ -340,7 +386,7 @@ func (p *Parser) parseAlterSubscriptionStmt() nodes.Node {
 			Options: &nodes.List{Items: []nodes.Node{
 				makeDefElem("enabled", &nodes.Boolean{Boolval: true}),
 			}},
-		}
+		}, nil
 
 	case DISABLE_P:
 		p.advance() // consume DISABLE
@@ -350,18 +396,25 @@ func (p *Parser) parseAlterSubscriptionStmt() nodes.Node {
 			Options: &nodes.List{Items: []nodes.Node{
 				makeDefElem("enabled", &nodes.Boolean{Boolval: false}),
 			}},
-		}
+		}, nil
 
 	case SKIP:
 		p.advance() // consume SKIP
-		p.expect('(')
-		list, _ := p.parseDefList()
-		p.expect(')')
+		if _, err := p.expect('('); err != nil {
+			return nil, err
+		}
+		list, err := p.parseDefList()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(')'); err != nil {
+			return nil, err
+		}
 		return &nodes.AlterSubscriptionStmt{
 			Kind:    nodes.ALTER_SUBSCRIPTION_SKIP,
 			Subname: name,
 			Options: list,
-		}
+		}, nil
 
 	case SET:
 		// Could be SET definition or SET PUBLICATION
@@ -370,54 +423,72 @@ func (p *Parser) parseAlterSubscriptionStmt() nodes.Node {
 			// SET definition
 			p.advance() // consume SET
 			p.advance() // consume '('
-			list, _ := p.parseDefList()
-			p.expect(')')
+			list, err := p.parseDefList()
+			if err != nil {
+				return nil, err
+			}
+			if _, err := p.expect(')'); err != nil {
+				return nil, err
+			}
 			return &nodes.AlterSubscriptionStmt{
 				Kind:    nodes.ALTER_SUBSCRIPTION_OPTIONS,
 				Subname: name,
 				Options: list,
-			}
+			}, nil
 		}
 		if next.Type == PUBLICATION {
 			p.advance() // consume SET
 			p.advance() // consume PUBLICATION
-			pubList, _ := p.parseNameList()
+			pubList, err := p.parseNameList()
+			if err != nil {
+				return nil, err
+			}
 			options := p.parseOptDefinition()
 			return &nodes.AlterSubscriptionStmt{
 				Kind:        nodes.ALTER_SUBSCRIPTION_SET_PUBLICATION,
 				Subname:     name,
 				Publication: pubList,
 				Options:     options,
-			}
+			}, nil
 		}
-		return nil
+		return nil, nil
 
 	case ADD_P:
 		p.advance() // consume ADD
-		p.expect(PUBLICATION)
-		pubList, _ := p.parseNameList()
+		if _, err := p.expect(PUBLICATION); err != nil {
+			return nil, err
+		}
+		pubList, err := p.parseNameList()
+		if err != nil {
+			return nil, err
+		}
 		options := p.parseOptDefinition()
 		return &nodes.AlterSubscriptionStmt{
 			Kind:        nodes.ALTER_SUBSCRIPTION_ADD_PUBLICATION,
 			Subname:     name,
 			Publication: pubList,
 			Options:     options,
-		}
+		}, nil
 
 	case DROP:
 		p.advance() // consume DROP
-		p.expect(PUBLICATION)
-		pubList, _ := p.parseNameList()
+		if _, err := p.expect(PUBLICATION); err != nil {
+			return nil, err
+		}
+		pubList, err := p.parseNameList()
+		if err != nil {
+			return nil, err
+		}
 		options := p.parseOptDefinition()
 		return &nodes.AlterSubscriptionStmt{
 			Kind:        nodes.ALTER_SUBSCRIPTION_DROP_PUBLICATION,
 			Subname:     name,
 			Publication: pubList,
 			Options:     options,
-		}
+		}, nil
 
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
@@ -433,26 +504,43 @@ func (p *Parser) parseAlterSubscriptionStmt() nodes.Node {
 //	    CREATE opt_or_replace RULE name AS
 //	    ON event TO qualified_name where_clause
 //	    DO opt_instead RuleActionList
-func (p *Parser) parseCreateRuleStmt(replace bool) nodes.Node {
+func (p *Parser) parseCreateRuleStmt(replace bool) (nodes.Node, error) {
 	p.advance() // consume RULE
 
-	name, _ := p.parseName()
-	p.expect(AS)
-	p.expect(ON)
+	name, err := p.parseName()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(AS); err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(ON); err != nil {
+		return nil, err
+	}
 
 	// event: SELECT | UPDATE | DELETE | INSERT
 	event := p.parseRuleEvent()
 
-	p.expect(TO)
+	if _, err := p.expect(TO); err != nil {
+		return nil, err
+	}
 
 	// qualified_name -> RangeVar
-	names, _ := p.parseQualifiedName()
+	names, err := p.parseQualifiedName()
+	if err != nil {
+		return nil, err
+	}
 	rel := makeRangeVarFromAnyName(names)
 
 	// where_clause (optional)
-	whereClause, _ := p.parseWhereClause()
+	whereClause, err := p.parseWhereClause()
+	if err != nil {
+		return nil, err
+	}
 
-	p.expect(DO)
+	if _, err := p.expect(DO); err != nil {
+		return nil, err
+	}
 
 	// opt_instead: INSTEAD | ALSO | /* EMPTY */
 	instead := false
@@ -475,7 +563,7 @@ func (p *Parser) parseCreateRuleStmt(replace bool) nodes.Node {
 		Event:       nodes.CmdType(event),
 		Instead:     instead,
 		Actions:     actions,
-	}
+	}, nil
 }
 
 // parseRuleEvent parses the event keyword for a rule.

@@ -118,10 +118,12 @@ func (p *Parser) parseStmt() nodes.Node {
 		return p.parseCreateDispatch()
 	case COMMENT:
 		p.advance() // consume COMMENT
-		return p.parseCommentStmt()
+		n, _ := p.parseCommentStmt()
+		return n
 	case SECURITY:
 		p.advance() // consume SECURITY
-		return p.parseSecLabelStmt()
+		n, _ := p.parseSecLabelStmt()
+		return n
 	case ALTER:
 		p.advance() // consume ALTER
 		if p.collectMode() {
@@ -140,7 +142,8 @@ func (p *Parser) parseStmt() nodes.Node {
 		}
 		switch p.cur.Type {
 		case DATABASE:
-			return p.parseAlterDatabaseDispatch()
+			n, _ := p.parseAlterDatabaseDispatch()
+			return n
 		case ROLE:
 			n, _ := p.parseAlterRoleStmt()
 			return n
@@ -162,9 +165,11 @@ func (p *Parser) parseStmt() nodes.Node {
 			n, _ := p.parseAlterPolicyStmt()
 			return n
 		case PUBLICATION:
-			return p.parseAlterPublicationStmt()
+			n, _ := p.parseAlterPublicationStmt()
+			return n
 		case SUBSCRIPTION:
-			return p.parseAlterSubscriptionStmt()
+			n, _ := p.parseAlterSubscriptionStmt()
+			return n
 		case STATISTICS:
 			n, _ := p.parseAlterStatisticsStmt()
 			return n
@@ -172,44 +177,59 @@ func (p *Parser) parseStmt() nodes.Node {
 			n, _ := p.parseAlterOperatorStmt()
 			return n
 		case SCHEMA:
-			return p.parseAlterSchemaOwner()
+			n, _ := p.parseAlterSchemaOwner()
+			return n
 		case DEFAULT:
 			n, _ := p.parseAlterDefaultPrivilegesStmt()
 			return n
 		case FUNCTION, PROCEDURE, ROUTINE:
-			return p.parseAlterFunctionStmt()
+			n, _ := p.parseAlterFunctionStmt()
+			return n
 		case TYPE_P:
-			return p.parseAlterTypeStmt()
+			n, _ := p.parseAlterTypeStmt()
+			return n
 		case DOMAIN_P:
-			return p.parseAlterDomainOwnerOrOther()
+			n, _ := p.parseAlterDomainOwnerOrOther()
+			return n
 		case COLLATION:
-			return p.parseAlterCollationStmt()
+			n, _ := p.parseAlterCollationStmt()
+			return n
 		case CONVERSION_P:
-			return p.parseAlterConversionStmt()
+			n, _ := p.parseAlterConversionStmt()
+			return n
 		case EXTENSION:
 			n, _ := p.parseAlterExtensionStmt()
 			return n
 		case AGGREGATE:
-			return p.parseAlterAggregateStmt()
+			n, _ := p.parseAlterAggregateStmt()
+			return n
 		case TEXT_P:
-			return p.parseAlterTextSearchStmt()
+			n, _ := p.parseAlterTextSearchStmt()
+			return n
 		case LANGUAGE:
-			return p.parseAlterLanguageStmt()
+			n, _ := p.parseAlterLanguageStmt()
+			return n
 		case PROCEDURAL:
-			return p.parseAlterLanguageStmt()
+			n, _ := p.parseAlterLanguageStmt()
+			return n
 		case LARGE_P:
-			return p.parseAlterLargeObjectStmt()
+			n, _ := p.parseAlterLargeObjectStmt()
+			return n
 		case EVENT:
-			return p.parseAlterEventTriggerOwner()
+			n, _ := p.parseAlterEventTriggerOwner()
+			return n
 		case SYSTEM_P:
 			n, _ := p.parseAlterSystemStmt()
 			return n
 		case TABLESPACE:
-			return p.parseAlterTablespaceOwner()
+			n, _ := p.parseAlterTablespaceOwner()
+			return n
 		case TRIGGER:
-			return p.parseAlterTriggerDependsOnExtension()
+			n, _ := p.parseAlterTriggerDependsOnExtension()
+			return n
 		case RULE:
-			return p.parseAlterRuleStmt()
+			n, _ := p.parseAlterRuleStmt()
+			return n
 		default:
 			n, _ := p.parseAlterTableStmt()
 			return n
@@ -281,19 +301,24 @@ func (p *Parser) parseStmt() nodes.Node {
 			}
 			return nil
 		}
-		return p.parseDropStmt()
+		n, _ := p.parseDropStmt()
+		return n
 	case TRUNCATE:
 		p.advance() // consume TRUNCATE
-		return p.parseTruncateStmt()
+		n, _ := p.parseTruncateStmt()
+		return n
 	case LOCK_P:
 		n, _ := p.parseLockStmt()
 		return n
 	case DECLARE:
-		return p.parseDeclareCursorStmt()
+		n, _ := p.parseDeclareCursorStmt()
+		return n
 	case FETCH, MOVE:
-		return p.parseFetchStmt()
+		n, _ := p.parseFetchStmt()
+		return n
 	case CLOSE:
-		return p.parseClosePortalStmt()
+		n, _ := p.parseClosePortalStmt()
+		return n
 	case VACUUM:
 		n, _ := p.parseVacuumStmt()
 		return n
@@ -308,41 +333,52 @@ func (p *Parser) parseStmt() nodes.Node {
 		return n
 	case COPY:
 		p.advance() // consume COPY
-		return p.parseCopyStmt()
+		n, _ := p.parseCopyStmt()
+		return n
 	case IMPORT_P:
 		p.advance() // consume IMPORT
 		n, _ := p.parseImportForeignSchemaStmt()
 		return n
 	case EXPLAIN:
 		p.advance() // consume EXPLAIN
-		return p.parseExplainStmt()
+		n, _ := p.parseExplainStmt()
+		return n
 	case DO:
 		p.advance() // consume DO
-		return p.parseDoStmt()
+		n, _ := p.parseDoStmt()
+		return n
 	case CHECKPOINT:
 		p.advance() // consume CHECKPOINT
-		return p.parseCheckPointStmt()
+		n, _ := p.parseCheckPointStmt()
+		return n
 	case DISCARD:
 		p.advance() // consume DISCARD
-		return p.parseDiscardStmt()
+		n, _ := p.parseDiscardStmt()
+		return n
 	case LISTEN:
 		p.advance() // consume LISTEN
-		return p.parseListenStmt()
+		n, _ := p.parseListenStmt()
+		return n
 	case UNLISTEN:
 		p.advance() // consume UNLISTEN
-		return p.parseUnlistenStmt()
+		n, _ := p.parseUnlistenStmt()
+		return n
 	case NOTIFY:
 		p.advance() // consume NOTIFY
-		return p.parseNotifyStmt()
+		n, _ := p.parseNotifyStmt()
+		return n
 	case LOAD:
 		p.advance() // consume LOAD
-		return p.parseLoadStmt()
+		n, _ := p.parseLoadStmt()
+		return n
 	case CALL:
 		p.advance() // consume CALL
-		return p.parseCallStmt()
+		n, _ := p.parseCallStmt()
+		return n
 	case REASSIGN:
 		p.advance() // consume REASSIGN
-		return p.parseReassignOwnedStmt()
+		n, _ := p.parseReassignOwnedStmt()
+		return n
 	default:
 		return nil
 	}
@@ -396,7 +432,8 @@ func (p *Parser) parseCreateDispatch() nodes.Node {
 			n, _ := p.parseCreatePLangStmt(true)
 			return n
 		case RULE:
-			return p.parseCreateRuleStmt(true)
+			n, _ := p.parseCreateRuleStmt(true)
+			return n
 		case AGGREGATE:
 			n, _ := p.parseDefineStmtAggregate(true)
 			return n
@@ -499,7 +536,8 @@ func (p *Parser) parseCreateDispatch() nodes.Node {
 	case DATABASE:
 		// CREATE DATABASE ...
 		p.advance() // consume CREATE
-		return p.parseCreatedbStmt()
+		n, _ := p.parseCreatedbStmt()
+		return n
 	case ROLE:
 		// CREATE ROLE ...
 		p.advance() // consume CREATE
@@ -579,15 +617,18 @@ func (p *Parser) parseCreateDispatch() nodes.Node {
 	case PUBLICATION:
 		// CREATE PUBLICATION ...
 		p.advance() // consume CREATE
-		return p.parseCreatePublicationStmt()
+		n, _ := p.parseCreatePublicationStmt()
+		return n
 	case SUBSCRIPTION:
 		// CREATE SUBSCRIPTION ...
 		p.advance() // consume CREATE
-		return p.parseCreateSubscriptionStmt()
+		n, _ := p.parseCreateSubscriptionStmt()
+		return n
 	case RULE:
 		// CREATE RULE ...
 		p.advance() // consume CREATE
-		return p.parseCreateRuleStmt(false)
+		n, _ := p.parseCreateRuleStmt(false)
+		return n
 	case EXTENSION:
 		// CREATE EXTENSION ...
 		p.advance() // consume CREATE
@@ -622,11 +663,13 @@ func (p *Parser) parseCreateDispatch() nodes.Node {
 	case TABLESPACE:
 		// CREATE TABLESPACE ...
 		p.advance() // consume CREATE
-		return p.parseCreateTableSpaceStmt()
+		n, _ := p.parseCreateTableSpaceStmt()
+		return n
 	case SCHEMA:
 		// CREATE SCHEMA ...
 		p.advance() // consume CREATE
-		return p.parseCreateSchemaStmt()
+		n, _ := p.parseCreateSchemaStmt()
+		return n
 	default:
 		return nil
 	}

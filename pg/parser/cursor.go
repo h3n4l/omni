@@ -10,26 +10,36 @@ import (
 //
 //	DeclareCursorStmt:
 //	    DECLARE cursor_name cursor_options CURSOR opt_hold FOR SelectStmt
-func (p *Parser) parseDeclareCursorStmt() *nodes.DeclareCursorStmt {
+func (p *Parser) parseDeclareCursorStmt() (*nodes.DeclareCursorStmt, error) {
 	p.advance() // consume DECLARE
 
-	name, _ := p.parseCursorName()
+	name, err := p.parseCursorName()
+	if err != nil {
+		return nil, err
+	}
 
 	options := p.parseCursorOptions()
 
-	p.expect(CURSOR)
+	if _, err := p.expect(CURSOR); err != nil {
+		return nil, err
+	}
 
 	hold := p.parseOptHold()
 
-	p.expect(FOR)
+	if _, err := p.expect(FOR); err != nil {
+		return nil, err
+	}
 
-	query, _ := p.parseSelectNoParens()
+	query, err := p.parseSelectNoParens()
+	if err != nil {
+		return nil, err
+	}
 
 	return &nodes.DeclareCursorStmt{
 		Portalname: name,
 		Options:    int(options | hold | nodes.CURSOR_OPT_FAST_PLAN),
 		Query:      query,
-	}
+	}, nil
 }
 
 // parseCursorOptions parses cursor_options.
@@ -94,93 +104,117 @@ func (p *Parser) parseOptHold() int {
 //	FetchStmt:
 //	    FETCH fetch_args
 //	    | MOVE fetch_args
-func (p *Parser) parseFetchStmt() *nodes.FetchStmt {
+func (p *Parser) parseFetchStmt() (*nodes.FetchStmt, error) {
 	ismove := p.cur.Type == MOVE
 	p.advance() // consume FETCH or MOVE
 
-	stmt := p.parseFetchArgs()
+	stmt, err := p.parseFetchArgs()
+	if err != nil {
+		return nil, err
+	}
 	if stmt != nil {
 		stmt.Ismove = ismove
 	}
-	return stmt
+	return stmt, nil
 }
 
 // parseFetchArgs parses fetch_args.
 //
 // Ref: gram.y fetch_args
-func (p *Parser) parseFetchArgs() *nodes.FetchStmt {
+func (p *Parser) parseFetchArgs() (*nodes.FetchStmt, error) {
 	switch p.cur.Type {
 	case NEXT:
 		p.advance() // consume NEXT
 		p.parseOptFromIn()
-		name, _ := p.parseCursorName()
+		name, err := p.parseCursorName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.FetchStmt{
 			Direction:  nodes.FETCH_FORWARD,
 			HowMany:   1,
 			Portalname: name,
-		}
+		}, nil
 
 	case PRIOR:
 		p.advance() // consume PRIOR
 		p.parseOptFromIn()
-		name, _ := p.parseCursorName()
+		name, err := p.parseCursorName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.FetchStmt{
 			Direction:  nodes.FETCH_BACKWARD,
 			HowMany:   1,
 			Portalname: name,
-		}
+		}, nil
 
 	case FIRST_P:
 		p.advance() // consume FIRST
 		p.parseOptFromIn()
-		name, _ := p.parseCursorName()
+		name, err := p.parseCursorName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.FetchStmt{
 			Direction:  nodes.FETCH_ABSOLUTE,
 			HowMany:   1,
 			Portalname: name,
-		}
+		}, nil
 
 	case LAST_P:
 		p.advance() // consume LAST
 		p.parseOptFromIn()
-		name, _ := p.parseCursorName()
+		name, err := p.parseCursorName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.FetchStmt{
 			Direction:  nodes.FETCH_ABSOLUTE,
 			HowMany:   -1,
 			Portalname: name,
-		}
+		}, nil
 
 	case ABSOLUTE_P:
 		p.advance() // consume ABSOLUTE
 		howMany := p.parseSignedIconst()
 		p.parseOptFromIn()
-		name, _ := p.parseCursorName()
+		name, err := p.parseCursorName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.FetchStmt{
 			Direction:  nodes.FETCH_ABSOLUTE,
 			HowMany:   howMany,
 			Portalname: name,
-		}
+		}, nil
 
 	case RELATIVE_P:
 		p.advance() // consume RELATIVE
 		howMany := p.parseSignedIconst()
 		p.parseOptFromIn()
-		name, _ := p.parseCursorName()
+		name, err := p.parseCursorName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.FetchStmt{
 			Direction:  nodes.FETCH_RELATIVE,
 			HowMany:   howMany,
 			Portalname: name,
-		}
+		}, nil
 
 	case ALL:
 		p.advance() // consume ALL
 		p.parseOptFromIn()
-		name, _ := p.parseCursorName()
+		name, err := p.parseCursorName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.FetchStmt{
 			Direction:  nodes.FETCH_FORWARD,
 			HowMany:   nodes.FETCH_ALL,
 			Portalname: name,
-		}
+		}, nil
 
 	case FORWARD:
 		p.advance() // consume FORWARD
@@ -188,31 +222,40 @@ func (p *Parser) parseFetchArgs() *nodes.FetchStmt {
 		if p.cur.Type == ALL {
 			p.advance() // consume ALL
 			p.parseOptFromIn()
-			name, _ := p.parseCursorName()
+			name, err := p.parseCursorName()
+			if err != nil {
+				return nil, err
+			}
 			return &nodes.FetchStmt{
 				Direction:  nodes.FETCH_FORWARD,
 				HowMany:   nodes.FETCH_ALL,
 				Portalname: name,
-			}
+			}, nil
 		}
 		if p.cur.Type == ICONST || p.cur.Type == '+' || p.cur.Type == '-' {
 			howMany := p.parseSignedIconst()
 			p.parseOptFromIn()
-			name, _ := p.parseCursorName()
+			name, err := p.parseCursorName()
+			if err != nil {
+				return nil, err
+			}
 			return &nodes.FetchStmt{
 				Direction:  nodes.FETCH_FORWARD,
 				HowMany:   howMany,
 				Portalname: name,
-			}
+			}, nil
 		}
 		// FORWARD opt_from_in cursor_name
 		p.parseOptFromIn()
-		name, _ := p.parseCursorName()
+		name, err := p.parseCursorName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.FetchStmt{
 			Direction:  nodes.FETCH_FORWARD,
 			HowMany:   1,
 			Portalname: name,
-		}
+		}, nil
 
 	case BACKWARD:
 		p.advance() // consume BACKWARD
@@ -220,61 +263,79 @@ func (p *Parser) parseFetchArgs() *nodes.FetchStmt {
 		if p.cur.Type == ALL {
 			p.advance() // consume ALL
 			p.parseOptFromIn()
-			name, _ := p.parseCursorName()
+			name, err := p.parseCursorName()
+			if err != nil {
+				return nil, err
+			}
 			return &nodes.FetchStmt{
 				Direction:  nodes.FETCH_BACKWARD,
 				HowMany:   nodes.FETCH_ALL,
 				Portalname: name,
-			}
+			}, nil
 		}
 		if p.cur.Type == ICONST || p.cur.Type == '+' || p.cur.Type == '-' {
 			howMany := p.parseSignedIconst()
 			p.parseOptFromIn()
-			name, _ := p.parseCursorName()
+			name, err := p.parseCursorName()
+			if err != nil {
+				return nil, err
+			}
 			return &nodes.FetchStmt{
 				Direction:  nodes.FETCH_BACKWARD,
 				HowMany:   howMany,
 				Portalname: name,
-			}
+			}, nil
 		}
 		// BACKWARD opt_from_in cursor_name
 		p.parseOptFromIn()
-		name, _ := p.parseCursorName()
+		name, err := p.parseCursorName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.FetchStmt{
 			Direction:  nodes.FETCH_BACKWARD,
 			HowMany:   1,
 			Portalname: name,
-		}
+		}, nil
 
 	case FROM, IN_P:
 		// from_in cursor_name
 		p.advance() // consume FROM or IN
-		name, _ := p.parseCursorName()
+		name, err := p.parseCursorName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.FetchStmt{
 			Direction:  nodes.FETCH_FORWARD,
 			HowMany:   1,
 			Portalname: name,
-		}
+		}, nil
 
 	case ICONST, '+', '-':
 		// SignedIconst opt_from_in cursor_name
 		howMany := p.parseSignedIconst()
 		p.parseOptFromIn()
-		name, _ := p.parseCursorName()
+		name, err := p.parseCursorName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.FetchStmt{
 			Direction:  nodes.FETCH_FORWARD,
 			HowMany:   howMany,
 			Portalname: name,
-		}
+		}, nil
 
 	default:
 		// Just cursor_name
-		name, _ := p.parseCursorName()
+		name, err := p.parseCursorName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.FetchStmt{
 			Direction:  nodes.FETCH_FORWARD,
 			HowMany:   1,
 			Portalname: name,
-		}
+		}, nil
 	}
 }
 
@@ -296,14 +357,17 @@ func (p *Parser) parseOptFromIn() {
 //	ClosePortalStmt:
 //	    CLOSE cursor_name
 //	    | CLOSE ALL
-func (p *Parser) parseClosePortalStmt() *nodes.ClosePortalStmt {
+func (p *Parser) parseClosePortalStmt() (*nodes.ClosePortalStmt, error) {
 	p.advance() // consume CLOSE
 
 	if p.cur.Type == ALL {
 		p.advance()
-		return &nodes.ClosePortalStmt{Portalname: ""}
+		return &nodes.ClosePortalStmt{Portalname: ""}, nil
 	}
 
-	name, _ := p.parseCursorName()
-	return &nodes.ClosePortalStmt{Portalname: name}
+	name, err := p.parseCursorName()
+	if err != nil {
+		return nil, err
+	}
+	return &nodes.ClosePortalStmt{Portalname: name}, nil
 }

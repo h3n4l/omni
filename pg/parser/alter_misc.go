@@ -10,7 +10,7 @@ import (
 
 // parseAlterFunctionStmt parses ALTER FUNCTION/PROCEDURE/ROUTINE ...
 // ALTER has already been consumed. Current token is FUNCTION/PROCEDURE/ROUTINE.
-func (p *Parser) parseAlterFunctionStmt() nodes.Node {
+func (p *Parser) parseAlterFunctionStmt() (nodes.Node, error) {
 	var objtype nodes.ObjectType
 	switch p.cur.Type {
 	case FUNCTION:
@@ -22,39 +22,52 @@ func (p *Parser) parseAlterFunctionStmt() nodes.Node {
 	}
 	p.advance() // consume FUNCTION/PROCEDURE/ROUTINE
 
-	fwa, _ := p.parseFunctionWithArgtypes()
+	fwa, err := p.parseFunctionWithArgtypes()
+	if err != nil {
+		return nil, err
+	}
 
 	// Dispatch on the next token to determine which ALTER variant.
 	switch p.cur.Type {
 	case RENAME:
 		p.advance()
-		p.expect(TO)
-		newname, _ := p.parseName()
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
+		newname, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.RenameStmt{
 			RenameType: objtype,
 			Object:     fwa,
 			Newname:    newname,
-		}
+		}, nil
 	case OWNER:
 		p.advance()
-		p.expect(TO)
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
 		roleSpec := p.parseRoleSpec()
 		return &nodes.AlterOwnerStmt{
 			ObjectType: objtype,
 			Object:     fwa,
 			Newowner:   roleSpec,
-		}
+		}, nil
 	case SET:
 		next := p.peekNext()
 		if next.Type == SCHEMA {
 			p.advance() // consume SET
 			p.advance() // consume SCHEMA
-			newschema, _ := p.parseName()
+			newschema, err := p.parseName()
+			if err != nil {
+				return nil, err
+			}
 			return &nodes.AlterObjectSchemaStmt{
 				ObjectType: objtype,
 				Object:     fwa,
 				Newschema:  newschema,
-			}
+			}, nil
 		}
 		// Otherwise it's alterfunc_opt_list (e.g., SET search_path ...)
 		actions := p.parseAlterfuncOptList()
@@ -63,19 +76,28 @@ func (p *Parser) parseAlterFunctionStmt() nodes.Node {
 			Objtype: objtype,
 			Func:    fwa,
 			Actions: actions,
-		}
+		}, nil
 	case NO, DEPENDS:
 		remove := p.parseOptNo()
-		p.expect(DEPENDS)
-		p.expect(ON)
-		p.expect(EXTENSION)
-		extname, _ := p.parseName()
+		if _, err := p.expect(DEPENDS); err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(ON); err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(EXTENSION); err != nil {
+			return nil, err
+		}
+		extname, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.AlterObjectDependsStmt{
 			ObjectType: objtype,
 			Object:     fwa,
 			Extname:    &nodes.String{Str: extname},
 			Remove:     remove,
-		}
+		}, nil
 	default:
 		// alterfunc_opt_list opt_restrict (e.g., IMMUTABLE, STABLE, etc.)
 		actions := p.parseAlterfuncOptList()
@@ -84,7 +106,7 @@ func (p *Parser) parseAlterFunctionStmt() nodes.Node {
 			Objtype: objtype,
 			Func:    fwa,
 			Actions: actions,
-		}
+		}, nil
 	}
 }
 
@@ -127,9 +149,12 @@ func (p *Parser) parseOptNo() bool {
 
 // parseAlterTypeStmt parses ALTER TYPE ...
 // ALTER has already been consumed. Current token is TYPE_P.
-func (p *Parser) parseAlterTypeStmt() nodes.Node {
+func (p *Parser) parseAlterTypeStmt() (nodes.Node, error) {
 	p.advance() // consume TYPE
-	names, _ := p.parseAnyName()
+	names, err := p.parseAnyName()
+	if err != nil {
+		return nil, err
+	}
 
 	switch p.cur.Type {
 	case ADD_P:
@@ -151,77 +176,98 @@ func (p *Parser) parseAlterTypeStmt() nodes.Node {
 		switch p.cur.Type {
 		case TO:
 			p.advance()
-			newname, _ := p.parseName()
+			newname, err := p.parseName()
+			if err != nil {
+				return nil, err
+			}
 			return &nodes.RenameStmt{
 				RenameType: nodes.OBJECT_TYPE,
 				Object:     names,
 				Newname:    newname,
-			}
+			}, nil
 		case VALUE_P:
 			// ALTER TYPE name RENAME VALUE 'old' TO 'new'
 			p.advance() // consume VALUE
 			oldval := p.cur.Str
 			p.advance() // consume Sconst
-			p.expect(TO)
+			if _, err := p.expect(TO); err != nil {
+				return nil, err
+			}
 			newval := p.cur.Str
 			p.advance() // consume Sconst
 			return &nodes.AlterEnumStmt{
 				Typname: names,
 				Oldval:  oldval,
 				Newval:  newval,
-			}
+			}, nil
 		case ATTRIBUTE:
 			// ALTER TYPE name RENAME ATTRIBUTE name TO name opt_drop_behavior
 			return p.parseAlterCompositeTypeRename(names)
 		default:
-			return nil
+			return nil, p.syntaxErrorAtCur()
 		}
 	case OWNER:
 		p.advance()
-		p.expect(TO)
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
 		roleSpec := p.parseRoleSpec()
 		return &nodes.AlterOwnerStmt{
 			ObjectType: nodes.OBJECT_TYPE,
 			Object:     names,
 			Newowner:   roleSpec,
-		}
+		}, nil
 	case SET:
 		next := p.peekNext()
 		if next.Type == SCHEMA {
 			p.advance() // consume SET
 			p.advance() // consume SCHEMA
-			newschema, _ := p.parseName()
+			newschema, err := p.parseName()
+			if err != nil {
+				return nil, err
+			}
 			return &nodes.AlterObjectSchemaStmt{
 				ObjectType: nodes.OBJECT_TYPE,
 				Object:     names,
 				Newschema:  newschema,
-			}
+			}, nil
 		}
 		// ALTER TYPE name SET (operator_def_list) -> AlterTypeStmt
 		p.advance() // consume SET
-		p.expect('(')
-		opts, _ := p.parseOperatorDefList()
-		p.expect(')')
+		if _, err := p.expect('('); err != nil {
+			return nil, err
+		}
+		opts, err := p.parseOperatorDefList()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(')'); err != nil {
+			return nil, err
+		}
 		return &nodes.AlterTypeStmt{
 			TypeName: names,
 			Options:  opts,
-		}
+		}, nil
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
 // parseAlterEnumAddValue parses ALTER TYPE name ADD VALUE ...
 // Current token is ADD.
-func (p *Parser) parseAlterEnumAddValue(typname *nodes.List) *nodes.AlterEnumStmt {
+func (p *Parser) parseAlterEnumAddValue(typname *nodes.List) (*nodes.AlterEnumStmt, error) {
 	p.advance() // consume ADD
 	p.advance() // consume VALUE
 
 	skipIfExists := false
 	if p.cur.Type == IF_P {
 		p.advance()
-		p.expect(NOT)
-		p.expect(EXISTS)
+		if _, err := p.expect(NOT); err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(EXISTS); err != nil {
+			return nil, err
+		}
 		skipIfExists = true
 	}
 
@@ -246,28 +292,39 @@ func (p *Parser) parseAlterEnumAddValue(typname *nodes.List) *nodes.AlterEnumStm
 		stmt.NewvalIsAfter = true
 	}
 
-	return stmt
+	return stmt, nil
 }
 
 // parseAlterCompositeType parses AlterCompositeTypeStmt (ALTER TYPE name alter_type_cmds).
 // Current token is ADD/DROP/ALTER.
-func (p *Parser) parseAlterCompositeType(names *nodes.List) *nodes.AlterTableStmt {
-	cmds := p.parseAlterTypeCmds()
+func (p *Parser) parseAlterCompositeType(names *nodes.List) (*nodes.AlterTableStmt, error) {
+	cmds, err := p.parseAlterTypeCmds()
+	if err != nil {
+		return nil, err
+	}
 	rv := makeRangeVarFromCompositeType(names)
 	return &nodes.AlterTableStmt{
 		Relation: rv,
 		Cmds:     cmds,
 		ObjType:  int(nodes.OBJECT_TYPE),
-	}
+	}, nil
 }
 
 // parseAlterCompositeTypeRename parses ALTER TYPE name RENAME ATTRIBUTE name TO name opt_drop_behavior.
 // RENAME has been consumed. Current token is ATTRIBUTE.
-func (p *Parser) parseAlterCompositeTypeRename(names *nodes.List) *nodes.RenameStmt {
+func (p *Parser) parseAlterCompositeTypeRename(names *nodes.List) (*nodes.RenameStmt, error) {
 	p.advance() // consume ATTRIBUTE
-	subname, _ := p.parseName()
-	p.expect(TO)
-	newname, _ := p.parseName()
+	subname, err := p.parseName()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(TO); err != nil {
+		return nil, err
+	}
+	newname, err := p.parseName()
+	if err != nil {
+		return nil, err
+	}
 	behavior := p.parseOptDropBehavior()
 	return &nodes.RenameStmt{
 		RenameType:   nodes.OBJECT_ATTRIBUTE,
@@ -276,7 +333,7 @@ func (p *Parser) parseAlterCompositeTypeRename(names *nodes.List) *nodes.RenameS
 		Subname:      subname,
 		Newname:      newname,
 		Behavior:     nodes.DropBehavior(behavior),
-	}
+	}, nil
 }
 
 // makeRangeVarFromCompositeType creates a RangeVar from composite type names with Inh=true.
@@ -302,61 +359,95 @@ func makeRangeVarFromCompositeType(names *nodes.List) *nodes.RangeVar {
 }
 
 // parseAlterTypeCmds parses alter_type_cmds: alter_type_cmd (',' alter_type_cmd)*
-func (p *Parser) parseAlterTypeCmds() *nodes.List {
-	cmd := p.parseAlterTypeCmd()
+func (p *Parser) parseAlterTypeCmds() (*nodes.List, error) {
+	cmd, err := p.parseAlterTypeCmd()
+	if err != nil {
+		return nil, err
+	}
 	items := []nodes.Node{cmd}
 	for p.cur.Type == ',' {
 		p.advance()
-		items = append(items, p.parseAlterTypeCmd())
+		cmd, err := p.parseAlterTypeCmd()
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, cmd)
 	}
-	return &nodes.List{Items: items}
+	return &nodes.List{Items: items}, nil
 }
 
 // parseAlterTypeCmd parses alter_type_cmd.
-func (p *Parser) parseAlterTypeCmd() *nodes.AlterTableCmd {
+func (p *Parser) parseAlterTypeCmd() (*nodes.AlterTableCmd, error) {
 	switch p.cur.Type {
 	case ADD_P:
 		p.advance()
-		p.expect(ATTRIBUTE)
-		elem, _ := p.parseTableFuncElement()
+		if _, err := p.expect(ATTRIBUTE); err != nil {
+			return nil, err
+		}
+		elem, err := p.parseTableFuncElement()
+		if err != nil {
+			return nil, err
+		}
 		behavior := p.parseOptDropBehavior()
 		return &nodes.AlterTableCmd{
 			Subtype:  int(nodes.AT_AddColumn),
 			Def:      elem,
 			Behavior: behavior,
-		}
+		}, nil
 	case DROP:
 		p.advance()
-		p.expect(ATTRIBUTE)
+		if _, err := p.expect(ATTRIBUTE); err != nil {
+			return nil, err
+		}
 		missingOk := false
 		if p.cur.Type == IF_P {
 			p.advance()
-			p.expect(EXISTS)
+			if _, err := p.expect(EXISTS); err != nil {
+				return nil, err
+			}
 			missingOk = true
 		}
-		colname, _ := p.parseColId()
+		colname, err := p.parseColId()
+		if err != nil {
+			return nil, err
+		}
 		behavior := p.parseOptDropBehavior()
 		return &nodes.AlterTableCmd{
 			Subtype:    int(nodes.AT_DropColumn),
 			Name:       colname,
 			Behavior:   behavior,
 			Missing_ok: missingOk,
-		}
+		}, nil
 	case ALTER:
 		p.advance()
-		p.expect(ATTRIBUTE)
-		colname, _ := p.parseColId()
+		if _, err := p.expect(ATTRIBUTE); err != nil {
+			return nil, err
+		}
+		colname, err := p.parseColId()
+		if err != nil {
+			return nil, err
+		}
 		// SET DATA TYPE or just TYPE
 		if p.cur.Type == SET {
 			p.advance()
-			p.expect(DATA_P)
+			if _, err := p.expect(DATA_P); err != nil {
+				return nil, err
+			}
 		}
-		p.expect(TYPE_P)
-		typename, _ := p.parseTypename()
+		if _, err := p.expect(TYPE_P); err != nil {
+			return nil, err
+		}
+		typename, err := p.parseTypename()
+		if err != nil {
+			return nil, err
+		}
 		var collClause *nodes.CollateClause
 		if p.cur.Type == COLLATE {
 			p.advance()
-			collname, _ := p.parseAnyName()
+			collname, err := p.parseAnyName()
+			if err != nil {
+				return nil, err
+			}
 			collClause = &nodes.CollateClause{Collname: collname, Loc: nodes.NoLoc()}
 		}
 		behavior := p.parseOptDropBehavior()
@@ -370,9 +461,9 @@ func (p *Parser) parseAlterTypeCmd() *nodes.AlterTableCmd {
 			Name:     colname,
 			Def:      coldef,
 			Behavior: behavior,
-		}
+		}, nil
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
@@ -382,10 +473,13 @@ func (p *Parser) parseAlterTypeCmd() *nodes.AlterTableCmd {
 
 // parseAlterDomainOwnerOrOther parses ALTER DOMAIN ...
 // ALTER has already been consumed. Current token is DOMAIN_P.
-func (p *Parser) parseAlterDomainOwnerOrOther() nodes.Node {
+func (p *Parser) parseAlterDomainOwnerOrOther() (nodes.Node, error) {
 	p.advance() // consume DOMAIN
 
-	names, _ := p.parseAnyName()
+	names, err := p.parseAnyName()
+	if err != nil {
+		return nil, err
+	}
 
 	switch p.cur.Type {
 	case SET:
@@ -393,45 +487,55 @@ func (p *Parser) parseAlterDomainOwnerOrOther() nodes.Node {
 		if next.Type == SCHEMA {
 			p.advance() // consume SET
 			p.advance() // consume SCHEMA
-			newschema, _ := p.parseName()
+			newschema, err := p.parseName()
+			if err != nil {
+				return nil, err
+			}
 			return &nodes.AlterObjectSchemaStmt{
 				ObjectType: nodes.OBJECT_DOMAIN,
 				Object:     names,
 				Newschema:  newschema,
-			}
+			}, nil
 		}
 		if next.Type == NOT {
 			// SET NOT NULL
 			p.advance() // consume SET
 			p.advance() // consume NOT
-			p.expect(NULL_P)
+			if _, err := p.expect(NULL_P); err != nil {
+				return nil, err
+			}
 			return &nodes.AlterDomainStmt{
 				Subtype: 'O',
 				Typname: names,
-			}
+			}, nil
 		}
 		if next.Type == DEFAULT {
 			// SET DEFAULT a_expr
 			p.advance() // consume SET
 			p.advance() // consume DEFAULT
-			expr, _ := p.parseAExpr(0)
+			expr, err := p.parseAExpr(0)
+			if err != nil {
+				return nil, err
+			}
 			return &nodes.AlterDomainStmt{
 				Subtype: 'T',
 				Typname: names,
 				Def:     expr,
-			}
+			}, nil
 		}
-		return nil
+		return nil, p.syntaxErrorAtCur()
 	case DROP:
 		p.advance() // consume DROP
 		if p.cur.Type == NOT {
 			// DROP NOT NULL
 			p.advance()
-			p.expect(NULL_P)
+			if _, err := p.expect(NULL_P); err != nil {
+				return nil, err
+			}
 			return &nodes.AlterDomainStmt{
 				Subtype: 'N',
 				Typname: names,
-			}
+			}, nil
 		}
 		if p.cur.Type == DEFAULT {
 			// DROP DEFAULT
@@ -439,7 +543,7 @@ func (p *Parser) parseAlterDomainOwnerOrOther() nodes.Node {
 			return &nodes.AlterDomainStmt{
 				Subtype: 'T',
 				Typname: names,
-			}
+			}, nil
 		}
 		if p.cur.Type == CONSTRAINT {
 			// DROP CONSTRAINT [IF EXISTS] name opt_drop_behavior
@@ -447,10 +551,15 @@ func (p *Parser) parseAlterDomainOwnerOrOther() nodes.Node {
 			missingOk := false
 			if p.cur.Type == IF_P {
 				p.advance()
-				p.expect(EXISTS)
+				if _, err := p.expect(EXISTS); err != nil {
+					return nil, err
+				}
 				missingOk = true
 			}
-			cname, _ := p.parseName()
+			cname, err := p.parseName()
+			if err != nil {
+				return nil, err
+			}
 			behavior := p.parseOptDropBehavior()
 			return &nodes.AlterDomainStmt{
 				Subtype:   'X',
@@ -458,69 +567,106 @@ func (p *Parser) parseAlterDomainOwnerOrOther() nodes.Node {
 				Name:      cname,
 				Behavior:  nodes.DropBehavior(behavior),
 				MissingOk: missingOk,
-			}
+			}, nil
 		}
-		return nil
+		return nil, p.syntaxErrorAtCur()
 	case ADD_P:
 		// ADD [CONSTRAINT name] CHECK (expr)
 		p.advance() // consume ADD
-		return p.parseDomainConstraintForAlter(names)
+		result, err := p.parseDomainConstraintForAlter(names)
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
 	case VALIDATE:
 		p.advance() // consume VALIDATE
-		p.expect(CONSTRAINT)
-		cname, _ := p.parseName()
+		if _, err := p.expect(CONSTRAINT); err != nil {
+			return nil, err
+		}
+		cname, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.AlterDomainStmt{
 			Subtype: 'V',
 			Typname: names,
 			Name:    cname,
-		}
+		}, nil
 	case OWNER:
 		p.advance()
-		p.expect(TO)
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
 		roleSpec := p.parseRoleSpec()
 		return &nodes.AlterOwnerStmt{
 			ObjectType: nodes.OBJECT_DOMAIN,
 			Object:     names,
 			Newowner:   roleSpec,
-		}
+		}, nil
 	case RENAME:
 		p.advance()
 		if p.cur.Type == CONSTRAINT {
 			p.advance()
-			subname, _ := p.parseName()
-			p.expect(TO)
-			newname, _ := p.parseName()
+			subname, err := p.parseName()
+			if err != nil {
+				return nil, err
+			}
+			if _, err := p.expect(TO); err != nil {
+				return nil, err
+			}
+			newname, err := p.parseName()
+			if err != nil {
+				return nil, err
+			}
 			return &nodes.RenameStmt{
 				RenameType: nodes.OBJECT_DOMCONSTRAINT,
 				Object:     names,
 				Subname:    subname,
 				Newname:    newname,
-			}
+			}, nil
 		}
-		p.expect(TO)
-		newname, _ := p.parseName()
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
+		newname, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.RenameStmt{
 			RenameType: nodes.OBJECT_DOMAIN,
 			Object:     names,
 			Newname:    newname,
-		}
+		}, nil
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
 // parseDomainConstraintForAlter parses DomainConstraint for ALTER DOMAIN ... ADD.
-func (p *Parser) parseDomainConstraintForAlter(typname *nodes.List) *nodes.AlterDomainStmt {
+func (p *Parser) parseDomainConstraintForAlter(typname *nodes.List) (*nodes.AlterDomainStmt, error) {
 	var conname string
 	if p.cur.Type == CONSTRAINT {
 		p.advance()
-		conname, _ = p.parseName()
+		var err error
+		conname, err = p.parseName()
+		if err != nil {
+			return nil, err
+		}
 	}
 	// DomainConstraintElem: CHECK '(' a_expr ')' ConstraintAttributeSpec
-	p.expect(CHECK)
-	p.expect('(')
-	expr, _ := p.parseAExpr(0)
-	p.expect(')')
+	if _, err := p.expect(CHECK); err != nil {
+		return nil, err
+	}
+	if _, err := p.expect('('); err != nil {
+		return nil, err
+	}
+	expr, err := p.parseAExpr(0)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(')'); err != nil {
+		return nil, err
+	}
 	// ConstraintAttributeSpec - parse optional attributes
 	constraint := &nodes.Constraint{
 		Contype:  nodes.CONSTR_CHECK,
@@ -534,7 +680,7 @@ func (p *Parser) parseDomainConstraintForAlter(typname *nodes.List) *nodes.Alter
 		Subtype: 'C',
 		Typname: typname,
 		Def:     constraint,
-	}
+	}, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -543,31 +689,41 @@ func (p *Parser) parseDomainConstraintForAlter(typname *nodes.List) *nodes.Alter
 
 // parseAlterSchemaOwner parses ALTER SCHEMA ...
 // ALTER has already been consumed. Current token is SCHEMA.
-func (p *Parser) parseAlterSchemaOwner() nodes.Node {
+func (p *Parser) parseAlterSchemaOwner() (nodes.Node, error) {
 	p.advance() // consume SCHEMA
-	name, _ := p.parseName()
+	name, err := p.parseName()
+	if err != nil {
+		return nil, err
+	}
 
 	switch p.cur.Type {
 	case OWNER:
 		p.advance()
-		p.expect(TO)
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
 		roleSpec := p.parseRoleSpec()
 		return &nodes.AlterOwnerStmt{
 			ObjectType: nodes.OBJECT_SCHEMA,
 			Object:     &nodes.String{Str: name},
 			Newowner:   roleSpec,
-		}
+		}, nil
 	case RENAME:
 		p.advance()
-		p.expect(TO)
-		newname, _ := p.parseName()
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
+		newname, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.RenameStmt{
 			RenameType: nodes.OBJECT_SCHEMA,
 			Subname:    name,
 			Newname:    newname,
-		}
+		}, nil
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
@@ -577,44 +733,61 @@ func (p *Parser) parseAlterSchemaOwner() nodes.Node {
 
 // parseAlterCollationStmt parses ALTER COLLATION ...
 // ALTER has already been consumed. Current token is COLLATION.
-func (p *Parser) parseAlterCollationStmt() nodes.Node {
+func (p *Parser) parseAlterCollationStmt() (nodes.Node, error) {
 	p.advance() // consume COLLATION
-	names, _ := p.parseAnyName()
+	names, err := p.parseAnyName()
+	if err != nil {
+		return nil, err
+	}
 
 	switch p.cur.Type {
 	case REFRESH:
 		p.advance()
-		p.expect(VERSION_P)
-		return &nodes.AlterCollationStmt{Collname: names}
+		if _, err := p.expect(VERSION_P); err != nil {
+			return nil, err
+		}
+		return &nodes.AlterCollationStmt{Collname: names}, nil
 	case RENAME:
 		p.advance()
-		p.expect(TO)
-		newname, _ := p.parseName()
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
+		newname, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.RenameStmt{
 			RenameType: nodes.OBJECT_COLLATION,
 			Object:     names,
 			Newname:    newname,
-		}
+		}, nil
 	case OWNER:
 		p.advance()
-		p.expect(TO)
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
 		roleSpec := p.parseRoleSpec()
 		return &nodes.AlterOwnerStmt{
 			ObjectType: nodes.OBJECT_COLLATION,
 			Object:     names,
 			Newowner:   roleSpec,
-		}
+		}, nil
 	case SET:
 		p.advance()
-		p.expect(SCHEMA)
-		newschema, _ := p.parseName()
+		if _, err := p.expect(SCHEMA); err != nil {
+			return nil, err
+		}
+		newschema, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.AlterObjectSchemaStmt{
 			ObjectType: nodes.OBJECT_COLLATION,
 			Object:     names,
 			Newschema:  newschema,
-		}
+		}, nil
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
@@ -624,40 +797,55 @@ func (p *Parser) parseAlterCollationStmt() nodes.Node {
 
 // parseAlterConversionStmt parses ALTER CONVERSION ...
 // ALTER has already been consumed. Current token is CONVERSION_P.
-func (p *Parser) parseAlterConversionStmt() nodes.Node {
+func (p *Parser) parseAlterConversionStmt() (nodes.Node, error) {
 	p.advance() // consume CONVERSION
-	names, _ := p.parseAnyName()
+	names, err := p.parseAnyName()
+	if err != nil {
+		return nil, err
+	}
 
 	switch p.cur.Type {
 	case RENAME:
 		p.advance()
-		p.expect(TO)
-		newname, _ := p.parseName()
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
+		newname, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.RenameStmt{
 			RenameType: nodes.OBJECT_CONVERSION,
 			Object:     names,
 			Newname:    newname,
-		}
+		}, nil
 	case OWNER:
 		p.advance()
-		p.expect(TO)
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
 		roleSpec := p.parseRoleSpec()
 		return &nodes.AlterOwnerStmt{
 			ObjectType: nodes.OBJECT_CONVERSION,
 			Object:     names,
 			Newowner:   roleSpec,
-		}
+		}, nil
 	case SET:
 		p.advance()
-		p.expect(SCHEMA)
-		newschema, _ := p.parseName()
+		if _, err := p.expect(SCHEMA); err != nil {
+			return nil, err
+		}
+		newschema, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.AlterObjectSchemaStmt{
 			ObjectType: nodes.OBJECT_CONVERSION,
 			Object:     names,
 			Newschema:  newschema,
-		}
+		}, nil
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
@@ -667,51 +855,72 @@ func (p *Parser) parseAlterConversionStmt() nodes.Node {
 
 // parseAlterAggregateStmt parses ALTER AGGREGATE ...
 // ALTER has already been consumed. Current token is AGGREGATE.
-func (p *Parser) parseAlterAggregateStmt() nodes.Node {
+func (p *Parser) parseAlterAggregateStmt() (nodes.Node, error) {
 	p.advance() // consume AGGREGATE
-	agg := p.parseAggregateWithArgtypesLocal()
+	agg, err := p.parseAggregateWithArgtypesLocal()
+	if err != nil {
+		return nil, err
+	}
 
 	switch p.cur.Type {
 	case RENAME:
 		p.advance()
-		p.expect(TO)
-		newname, _ := p.parseName()
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
+		newname, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.RenameStmt{
 			RenameType: nodes.OBJECT_AGGREGATE,
 			Object:     agg,
 			Newname:    newname,
-		}
+		}, nil
 	case OWNER:
 		p.advance()
-		p.expect(TO)
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
 		roleSpec := p.parseRoleSpec()
 		return &nodes.AlterOwnerStmt{
 			ObjectType: nodes.OBJECT_AGGREGATE,
 			Object:     agg,
 			Newowner:   roleSpec,
-		}
+		}, nil
 	case SET:
 		p.advance()
-		p.expect(SCHEMA)
-		newschema, _ := p.parseName()
+		if _, err := p.expect(SCHEMA); err != nil {
+			return nil, err
+		}
+		newschema, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.AlterObjectSchemaStmt{
 			ObjectType: nodes.OBJECT_AGGREGATE,
 			Object:     agg,
 			Newschema:  newschema,
-		}
+		}, nil
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
 // parseAggregateWithArgtypesLocal parses aggregate_with_argtypes: func_name aggr_args
-func (p *Parser) parseAggregateWithArgtypesLocal() *nodes.ObjectWithArgs {
-	funcname, _ := p.parseFuncName()
-	aggrArgs, _ := p.parseAggrArgs()
+func (p *Parser) parseAggregateWithArgtypesLocal() (*nodes.ObjectWithArgs, error) {
+	funcname, err := p.parseFuncName()
+	if err != nil {
+		return nil, err
+	}
+	aggrArgs, err := p.parseAggrArgs()
+	if err != nil {
+		return nil, err
+	}
 	return &nodes.ObjectWithArgs{
 		Objname: funcname,
 		Objargs: extractAggrArgTypesLocal(aggrArgs),
-	}
+	}, nil
 }
 
 // extractAggrArgTypesLocal extracts types from aggregate args.
@@ -738,9 +947,11 @@ func extractAggrArgTypesLocal(args *nodes.List) *nodes.List {
 
 // parseAlterTextSearchStmt parses ALTER TEXT SEARCH ...
 // ALTER has already been consumed. Current token is TEXT_P.
-func (p *Parser) parseAlterTextSearchStmt() nodes.Node {
+func (p *Parser) parseAlterTextSearchStmt() (nodes.Node, error) {
 	p.advance() // consume TEXT
-	p.expect(SEARCH)
+	if _, err := p.expect(SEARCH); err != nil {
+		return nil, err
+	}
 
 	switch p.cur.Type {
 	case DICTIONARY:
@@ -752,194 +963,289 @@ func (p *Parser) parseAlterTextSearchStmt() nodes.Node {
 	case TEMPLATE:
 		return p.parseAlterTSParserOrTemplate(nodes.OBJECT_TSTEMPLATE)
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
 // parseAlterTSDictionary parses ALTER TEXT SEARCH DICTIONARY ...
-func (p *Parser) parseAlterTSDictionary() nodes.Node {
+func (p *Parser) parseAlterTSDictionary() (nodes.Node, error) {
 	p.advance() // consume DICTIONARY
-	names, _ := p.parseAnyName()
+	names, err := p.parseAnyName()
+	if err != nil {
+		return nil, err
+	}
 
 	switch p.cur.Type {
 	case '(':
 		// ALTER TEXT SEARCH DICTIONARY name definition
-		def, _ := p.parseDefinition()
+		def, err := p.parseDefinition()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.AlterTSDictionaryStmt{
 			Dictname: names,
 			Options:  def,
-		}
+		}, nil
 	case RENAME:
 		p.advance()
-		p.expect(TO)
-		newname, _ := p.parseName()
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
+		newname, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.RenameStmt{
 			RenameType: nodes.OBJECT_TSDICTIONARY,
 			Object:     names,
 			Newname:    newname,
-		}
+		}, nil
 	case OWNER:
 		p.advance()
-		p.expect(TO)
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
 		roleSpec := p.parseRoleSpec()
 		return &nodes.AlterOwnerStmt{
 			ObjectType: nodes.OBJECT_TSDICTIONARY,
 			Object:     names,
 			Newowner:   roleSpec,
-		}
+		}, nil
 	case SET:
 		p.advance()
-		p.expect(SCHEMA)
-		newschema, _ := p.parseName()
+		if _, err := p.expect(SCHEMA); err != nil {
+			return nil, err
+		}
+		newschema, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.AlterObjectSchemaStmt{
 			ObjectType: nodes.OBJECT_TSDICTIONARY,
 			Object:     names,
 			Newschema:  newschema,
-		}
+		}, nil
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
 // parseAlterTSConfiguration parses ALTER TEXT SEARCH CONFIGURATION ...
-func (p *Parser) parseAlterTSConfiguration() nodes.Node {
+func (p *Parser) parseAlterTSConfiguration() (nodes.Node, error) {
 	p.advance() // consume CONFIGURATION
-	cfgname, _ := p.parseAnyName()
+	cfgname, err := p.parseAnyName()
+	if err != nil {
+		return nil, err
+	}
 
 	switch p.cur.Type {
 	case ADD_P:
 		// ADD MAPPING FOR name_list WITH any_name_list
 		p.advance()
-		p.expect(MAPPING)
-		p.expect(FOR)
-		tokentype, _ := p.parseNameList()
-		p.expect(WITH)
-		dicts, _ := p.parseAnyNameList()
+		if _, err := p.expect(MAPPING); err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(FOR); err != nil {
+			return nil, err
+		}
+		tokentype, err := p.parseNameList()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(WITH); err != nil {
+			return nil, err
+		}
+		dicts, err := p.parseAnyNameList()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.AlterTSConfigurationStmt{
 			Kind:      nodes.ALTER_TSCONFIG_ADD_MAPPING,
 			Cfgname:   cfgname,
 			Tokentype: tokentype,
 			Dicts:     dicts,
-		}
+		}, nil
 	case ALTER:
 		// ALTER MAPPING ...
 		p.advance()
-		p.expect(MAPPING)
+		if _, err := p.expect(MAPPING); err != nil {
+			return nil, err
+		}
 		if p.cur.Type == FOR {
 			// ALTER MAPPING FOR name_list WITH/REPLACE ...
 			p.advance()
-			tokentype, _ := p.parseNameList()
+			tokentype, err := p.parseNameList()
+			if err != nil {
+				return nil, err
+			}
 			if p.cur.Type == WITH {
 				p.advance()
-				dicts, _ := p.parseAnyNameList()
+				dicts, err := p.parseAnyNameList()
+				if err != nil {
+					return nil, err
+				}
 				return &nodes.AlterTSConfigurationStmt{
 					Kind:      nodes.ALTER_TSCONFIG_ALTER_MAPPING_FOR_TOKEN,
 					Cfgname:   cfgname,
 					Tokentype: tokentype,
 					Dicts:     dicts,
 					Override:  true,
-				}
+				}, nil
 			}
 			// ALTER MAPPING FOR name_list REPLACE any_name WITH any_name
-			p.expect(REPLACE)
-			oldDict, _ := p.parseAnyName()
-			p.expect(WITH)
-			newDict, _ := p.parseAnyName()
+			if _, err := p.expect(REPLACE); err != nil {
+				return nil, err
+			}
+			oldDict, err := p.parseAnyName()
+			if err != nil {
+				return nil, err
+			}
+			if _, err := p.expect(WITH); err != nil {
+				return nil, err
+			}
+			newDict, err := p.parseAnyName()
+			if err != nil {
+				return nil, err
+			}
 			return &nodes.AlterTSConfigurationStmt{
 				Kind:      nodes.ALTER_TSCONFIG_REPLACE_DICT_FOR_TOKEN,
 				Cfgname:   cfgname,
 				Tokentype: tokentype,
 				Dicts:     &nodes.List{Items: []nodes.Node{oldDict, newDict}},
 				Replace:   true,
-			}
+			}, nil
 		}
 		// ALTER MAPPING REPLACE any_name WITH any_name
-		p.expect(REPLACE)
-		oldDict, _ := p.parseAnyName()
-		p.expect(WITH)
-		newDict, _ := p.parseAnyName()
+		if _, err := p.expect(REPLACE); err != nil {
+			return nil, err
+		}
+		oldDict, err := p.parseAnyName()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(WITH); err != nil {
+			return nil, err
+		}
+		newDict, err := p.parseAnyName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.AlterTSConfigurationStmt{
 			Kind:    nodes.ALTER_TSCONFIG_REPLACE_DICT,
 			Cfgname: cfgname,
 			Dicts:   &nodes.List{Items: []nodes.Node{oldDict, newDict}},
 			Replace: true,
-		}
+		}, nil
 	case DROP:
 		// DROP MAPPING [IF EXISTS] FOR name_list
 		p.advance()
-		p.expect(MAPPING)
+		if _, err := p.expect(MAPPING); err != nil {
+			return nil, err
+		}
 		missingOk := false
 		if p.cur.Type == IF_P {
 			p.advance()
-			p.expect(EXISTS)
+			if _, err := p.expect(EXISTS); err != nil {
+				return nil, err
+			}
 			missingOk = true
 		}
-		p.expect(FOR)
-		tokentype, _ := p.parseNameList()
+		if _, err := p.expect(FOR); err != nil {
+			return nil, err
+		}
+		tokentype, err := p.parseNameList()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.AlterTSConfigurationStmt{
 			Kind:      nodes.ALTER_TSCONFIG_DROP_MAPPING,
 			Cfgname:   cfgname,
 			Tokentype: tokentype,
 			MissingOk: missingOk,
-		}
+		}, nil
 	case RENAME:
 		p.advance()
-		p.expect(TO)
-		newname, _ := p.parseName()
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
+		newname, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.RenameStmt{
 			RenameType: nodes.OBJECT_TSCONFIGURATION,
 			Object:     cfgname,
 			Newname:    newname,
-		}
+		}, nil
 	case OWNER:
 		p.advance()
-		p.expect(TO)
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
 		roleSpec := p.parseRoleSpec()
 		return &nodes.AlterOwnerStmt{
 			ObjectType: nodes.OBJECT_TSCONFIGURATION,
 			Object:     cfgname,
 			Newowner:   roleSpec,
-		}
+		}, nil
 	case SET:
 		p.advance()
-		p.expect(SCHEMA)
-		newschema, _ := p.parseName()
+		if _, err := p.expect(SCHEMA); err != nil {
+			return nil, err
+		}
+		newschema, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.AlterObjectSchemaStmt{
 			ObjectType: nodes.OBJECT_TSCONFIGURATION,
 			Object:     cfgname,
 			Newschema:  newschema,
-		}
+		}, nil
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
 // parseAlterTSParserOrTemplate parses ALTER TEXT SEARCH PARSER/TEMPLATE ...
-func (p *Parser) parseAlterTSParserOrTemplate(objtype nodes.ObjectType) nodes.Node {
+func (p *Parser) parseAlterTSParserOrTemplate(objtype nodes.ObjectType) (nodes.Node, error) {
 	p.advance() // consume PARSER or TEMPLATE
-	names, _ := p.parseAnyName()
+	names, err := p.parseAnyName()
+	if err != nil {
+		return nil, err
+	}
 
 	switch p.cur.Type {
 	case RENAME:
 		p.advance()
-		p.expect(TO)
-		newname, _ := p.parseName()
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
+		newname, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.RenameStmt{
 			RenameType: objtype,
 			Object:     names,
 			Newname:    newname,
-		}
+		}, nil
 	case SET:
 		p.advance()
-		p.expect(SCHEMA)
-		newschema, _ := p.parseName()
+		if _, err := p.expect(SCHEMA); err != nil {
+			return nil, err
+		}
+		newschema, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.AlterObjectSchemaStmt{
 			ObjectType: objtype,
 			Object:     names,
 			Newschema:  newschema,
-		}
+		}, nil
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
@@ -949,34 +1255,44 @@ func (p *Parser) parseAlterTSParserOrTemplate(objtype nodes.ObjectType) nodes.No
 
 // parseAlterLanguageStmt parses ALTER [PROCEDURAL] LANGUAGE ...
 // ALTER has already been consumed. Current token is LANGUAGE or PROCEDURAL.
-func (p *Parser) parseAlterLanguageStmt() nodes.Node {
+func (p *Parser) parseAlterLanguageStmt() (nodes.Node, error) {
 	if p.cur.Type == PROCEDURAL {
 		p.advance() // consume PROCEDURAL
 	}
 	p.advance() // consume LANGUAGE
-	name, _ := p.parseName()
+	name, err := p.parseName()
+	if err != nil {
+		return nil, err
+	}
 
 	switch p.cur.Type {
 	case RENAME:
 		p.advance()
-		p.expect(TO)
-		newname, _ := p.parseName()
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
+		newname, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.RenameStmt{
 			RenameType: nodes.OBJECT_LANGUAGE,
 			Object:     &nodes.String{Str: name},
 			Newname:    newname,
-		}
+		}, nil
 	case OWNER:
 		p.advance()
-		p.expect(TO)
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
 		roleSpec := p.parseRoleSpec()
 		return &nodes.AlterOwnerStmt{
 			ObjectType: nodes.OBJECT_LANGUAGE,
 			Object:     &nodes.String{Str: name},
 			Newowner:   roleSpec,
-		}
+		}, nil
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
@@ -986,18 +1302,24 @@ func (p *Parser) parseAlterLanguageStmt() nodes.Node {
 
 // parseAlterLargeObjectStmt parses ALTER LARGE OBJECT ...
 // ALTER has already been consumed. Current token is LARGE_P.
-func (p *Parser) parseAlterLargeObjectStmt() nodes.Node {
+func (p *Parser) parseAlterLargeObjectStmt() (nodes.Node, error) {
 	p.advance() // consume LARGE
-	p.expect(OBJECT_P)
+	if _, err := p.expect(OBJECT_P); err != nil {
+		return nil, err
+	}
 	numVal := p.parseNumericOnly()
-	p.expect(OWNER)
-	p.expect(TO)
+	if _, err := p.expect(OWNER); err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(TO); err != nil {
+		return nil, err
+	}
 	roleSpec := p.parseRoleSpec()
 	return &nodes.AlterOwnerStmt{
 		ObjectType: nodes.OBJECT_LARGEOBJECT,
 		Object:     numVal,
 		Newowner:   roleSpec,
-	}
+	}, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -1006,30 +1328,42 @@ func (p *Parser) parseAlterLargeObjectStmt() nodes.Node {
 
 // parseAlterEventTriggerOwner parses ALTER EVENT TRIGGER ...
 // ALTER has already been consumed. Current token is EVENT.
-func (p *Parser) parseAlterEventTriggerOwner() nodes.Node {
+func (p *Parser) parseAlterEventTriggerOwner() (nodes.Node, error) {
 	p.advance() // consume EVENT
-	p.expect(TRIGGER)
-	name, _ := p.parseName()
+	if _, err := p.expect(TRIGGER); err != nil {
+		return nil, err
+	}
+	name, err := p.parseName()
+	if err != nil {
+		return nil, err
+	}
 
 	switch p.cur.Type {
 	case OWNER:
 		p.advance()
-		p.expect(TO)
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
 		roleSpec := p.parseRoleSpec()
 		return &nodes.AlterOwnerStmt{
 			ObjectType: nodes.OBJECT_EVENT_TRIGGER,
 			Object:     &nodes.String{Str: name},
 			Newowner:   roleSpec,
-		}
+		}, nil
 	case RENAME:
 		p.advance()
-		p.expect(TO)
-		newname, _ := p.parseName()
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
+		newname, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.RenameStmt{
 			RenameType: nodes.OBJECT_EVENT_TRIGGER,
 			Object:     &nodes.String{Str: name},
 			Newname:    newname,
-		}
+		}, nil
 	case ENABLE_P:
 		p.advance()
 		tgenabled := byte(nodes.TRIGGER_FIRES_ON_ORIGIN)
@@ -1043,15 +1377,15 @@ func (p *Parser) parseAlterEventTriggerOwner() nodes.Node {
 		return &nodes.AlterEventTrigStmt{
 			Trigname:  name,
 			Tgenabled: tgenabled,
-		}
+		}, nil
 	case DISABLE_P:
 		p.advance()
 		return &nodes.AlterEventTrigStmt{
 			Trigname:  name,
 			Tgenabled: 'D',
-		}
+		}, nil
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
@@ -1061,29 +1395,39 @@ func (p *Parser) parseAlterEventTriggerOwner() nodes.Node {
 
 // parseAlterTablespaceOwner parses ALTER TABLESPACE ...
 // ALTER has already been consumed. Current token is TABLESPACE.
-func (p *Parser) parseAlterTablespaceOwner() nodes.Node {
+func (p *Parser) parseAlterTablespaceOwner() (nodes.Node, error) {
 	p.advance() // consume TABLESPACE
-	name, _ := p.parseName()
+	name, err := p.parseName()
+	if err != nil {
+		return nil, err
+	}
 
 	switch p.cur.Type {
 	case OWNER:
 		p.advance()
-		p.expect(TO)
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
 		roleSpec := p.parseRoleSpec()
 		return &nodes.AlterOwnerStmt{
 			ObjectType: nodes.OBJECT_TABLESPACE,
 			Object:     &nodes.String{Str: name},
 			Newowner:   roleSpec,
-		}
+		}, nil
 	case RENAME:
 		p.advance()
-		p.expect(TO)
-		newname, _ := p.parseName()
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
+		newname, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.RenameStmt{
 			RenameType: nodes.OBJECT_TABLESPACE,
 			Subname:    name,
 			Newname:    newname,
-		}
+		}, nil
 	case SET:
 		p.advance()
 		opts := p.parseReloptions()
@@ -1091,7 +1435,7 @@ func (p *Parser) parseAlterTablespaceOwner() nodes.Node {
 			Tablespacename: name,
 			Options:        opts,
 			IsReset:        false,
-		}
+		}, nil
 	case RESET:
 		p.advance()
 		opts := p.parseReloptions()
@@ -1099,9 +1443,9 @@ func (p *Parser) parseAlterTablespaceOwner() nodes.Node {
 			Tablespacename: name,
 			Options:        opts,
 			IsReset:        true,
-		}
+		}, nil
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
@@ -1116,32 +1460,54 @@ func (p *Parser) parseAlterTablespaceOwner() nodes.Node {
 //
 //	ALTER TRIGGER name ON table_name RENAME TO new_name
 //	ALTER TRIGGER name ON table_name [ NO ] DEPENDS ON EXTENSION extension_name
-func (p *Parser) parseAlterTriggerDependsOnExtension() nodes.Node {
+func (p *Parser) parseAlterTriggerDependsOnExtension() (nodes.Node, error) {
 	p.advance() // consume TRIGGER
-	trigname, _ := p.parseName()
-	p.expect(ON)
+	trigname, err := p.parseName()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(ON); err != nil {
+		return nil, err
+	}
 	// qualified_name
-	relname, _ := p.parseAnyName()
+	relname, err := p.parseAnyName()
+	if err != nil {
+		return nil, err
+	}
 	rel := makeRangeVarFromAnyName(relname)
 
 	// Dispatch: RENAME TO vs [NO] DEPENDS ON EXTENSION
 	if p.cur.Type == RENAME {
 		p.advance() // consume RENAME
-		p.expect(TO)
-		newname, _ := p.parseName()
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
+		newname, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.RenameStmt{
 			RenameType: nodes.OBJECT_TRIGGER,
 			Relation:   rel,
 			Subname:    trigname,
 			Newname:    newname,
-		}
+		}, nil
 	}
 
 	remove := p.parseOptNo()
-	p.expect(DEPENDS)
-	p.expect(ON)
-	p.expect(EXTENSION)
-	extname, _ := p.parseName()
+	if _, err := p.expect(DEPENDS); err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(ON); err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(EXTENSION); err != nil {
+		return nil, err
+	}
+	extname, err := p.parseName()
+	if err != nil {
+		return nil, err
+	}
 
 	return &nodes.AlterObjectDependsStmt{
 		ObjectType: nodes.OBJECT_TRIGGER,
@@ -1149,7 +1515,7 @@ func (p *Parser) parseAlterTriggerDependsOnExtension() nodes.Node {
 		Object:     &nodes.List{Items: []nodes.Node{&nodes.String{Str: trigname}}},
 		Extname:    &nodes.String{Str: extname},
 		Remove:     remove,
-	}
+	}, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -1162,19 +1528,34 @@ func (p *Parser) parseAlterTriggerDependsOnExtension() nodes.Node {
 // Ref: https://www.postgresql.org/docs/17/sql-alterrule.html
 //
 //	ALTER RULE name ON table_name RENAME TO new_name
-func (p *Parser) parseAlterRuleStmt() nodes.Node {
+func (p *Parser) parseAlterRuleStmt() (nodes.Node, error) {
 	p.advance() // consume RULE
-	subname, _ := p.parseName()
-	p.expect(ON)
-	names, _ := p.parseQualifiedName()
+	subname, err := p.parseName()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(ON); err != nil {
+		return nil, err
+	}
+	names, err := p.parseQualifiedName()
+	if err != nil {
+		return nil, err
+	}
 	rel := makeRangeVarFromNames(names)
-	p.expect(RENAME)
-	p.expect(TO)
-	newname, _ := p.parseName()
+	if _, err := p.expect(RENAME); err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(TO); err != nil {
+		return nil, err
+	}
+	newname, err := p.parseName()
+	if err != nil {
+		return nil, err
+	}
 	return &nodes.RenameStmt{
 		RenameType: nodes.OBJECT_RULE,
 		Relation:   rel,
 		Subname:    subname,
 		Newname:    newname,
-	}
+	}, nil
 }

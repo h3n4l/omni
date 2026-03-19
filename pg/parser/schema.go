@@ -15,7 +15,7 @@ import (
 //	    | CREATE SCHEMA IF_P NOT EXISTS ColId OptSchemaEltList
 //
 // The CREATE keyword has already been consumed. Current token is SCHEMA.
-func (p *Parser) parseCreateSchemaStmt() nodes.Node {
+func (p *Parser) parseCreateSchemaStmt() (nodes.Node, error) {
 	p.advance() // consume SCHEMA
 
 	stmt := &nodes.CreateSchemaStmt{}
@@ -23,8 +23,12 @@ func (p *Parser) parseCreateSchemaStmt() nodes.Node {
 	// Check for IF NOT EXISTS
 	if p.cur.Type == IF_P {
 		p.advance() // consume IF
-		p.expect(NOT)
-		p.expect(EXISTS)
+		if _, err := p.expect(NOT); err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(EXISTS); err != nil {
+			return nil, err
+		}
 		stmt.IfNotExists = true
 	}
 
@@ -32,10 +36,13 @@ func (p *Parser) parseCreateSchemaStmt() nodes.Node {
 		p.advance() // consume AUTHORIZATION
 		stmt.Authrole = p.parseRoleSpec()
 		stmt.SchemaElts = p.parseOptSchemaEltList()
-		return stmt
+		return stmt, nil
 	}
 
-	name, _ := p.parseColId()
+	name, err := p.parseColId()
+	if err != nil {
+		return nil, err
+	}
 	stmt.Schemaname = name
 
 	if p.cur.Type == AUTHORIZATION {
@@ -44,7 +51,7 @@ func (p *Parser) parseCreateSchemaStmt() nodes.Node {
 	}
 
 	stmt.SchemaElts = p.parseOptSchemaEltList()
-	return stmt
+	return stmt, nil
 }
 
 // parseOptSchemaEltList parses an optional list of schema elements.
@@ -104,9 +111,12 @@ func (p *Parser) parseSchemaStmt() nodes.Node {
 //	    [ OWNER { new_owner | CURRENT_ROLE | CURRENT_USER | SESSION_USER } ]
 //	    LOCATION 'directory'
 //	    [ WITH ( tablespace_option = value [, ... ] ) ]
-func (p *Parser) parseCreateTableSpaceStmt() nodes.Node {
+func (p *Parser) parseCreateTableSpaceStmt() (nodes.Node, error) {
 	p.advance() // consume TABLESPACE
-	name, _ := p.parseName()
+	name, err := p.parseName()
+	if err != nil {
+		return nil, err
+	}
 
 	var owner *nodes.RoleSpec
 	if p.cur.Type == OWNER {
@@ -114,9 +124,13 @@ func (p *Parser) parseCreateTableSpaceStmt() nodes.Node {
 		owner = p.parseRoleSpec()
 	}
 
-	p.expect(LOCATION)
+	if _, err := p.expect(LOCATION); err != nil {
+		return nil, err
+	}
 	loc := p.cur.Str
-	p.expect(SCONST)
+	if _, err := p.expect(SCONST); err != nil {
+		return nil, err
+	}
 
 	var options *nodes.List
 	if p.cur.Type == WITH {
@@ -129,36 +143,15 @@ func (p *Parser) parseCreateTableSpaceStmt() nodes.Node {
 		Owner:          owner,
 		Location:       loc,
 		Options:        options,
-	}
-}
-
-// parseDropTableSpaceStmt parses a DROP TABLESPACE statement.
-// The DROP keyword has already been consumed. Current token is TABLESPACE.
-//
-// Ref: https://www.postgresql.org/docs/17/sql-droptablespace.html
-//
-//	DROP TABLESPACE [ IF EXISTS ] name
-func (p *Parser) parseDropTableSpaceStmt() nodes.Node {
-	p.advance() // consume TABLESPACE
-
-	missingOk := false
-	if p.cur.Type == IF_P {
-		p.advance()
-		p.expect(EXISTS)
-		missingOk = true
-	}
-
-	name, _ := p.parseName()
-	return &nodes.DropTableSpaceStmt{
-		Tablespacename: name,
-		MissingOk:      missingOk,
-	}
+	}, nil
 }
 
 // parseCommentStmt parses a COMMENT ON statement.
 // COMMENT has already been consumed. Current token is ON.
-func (p *Parser) parseCommentStmt() nodes.Node {
-	p.expect(ON)
+func (p *Parser) parseCommentStmt() (nodes.Node, error) {
+	if _, err := p.expect(ON); err != nil {
+		return nil, err
+	}
 
 	stmt := &nodes.CommentStmt{}
 
@@ -166,216 +159,354 @@ func (p *Parser) parseCommentStmt() nodes.Node {
 	case COLUMN:
 		p.advance()
 		stmt.Objtype = nodes.OBJECT_COLUMN
-		name, _ := p.parseAnyName()
+		name, err := p.parseAnyName()
+		if err != nil {
+			return nil, err
+		}
 		stmt.Object = name
-		p.expect(IS)
+		if _, err := p.expect(IS); err != nil {
+			return nil, err
+		}
 		stmt.Comment = p.parseCommentText()
-		return stmt
+		return stmt, nil
 
 	case TYPE_P:
 		p.advance()
 		stmt.Objtype = nodes.OBJECT_TYPE
-		name, _ := p.parseAnyName()
+		name, err := p.parseAnyName()
+		if err != nil {
+			return nil, err
+		}
 		stmt.Object = name
-		p.expect(IS)
+		if _, err := p.expect(IS); err != nil {
+			return nil, err
+		}
 		stmt.Comment = p.parseCommentText()
-		return stmt
+		return stmt, nil
 
 	case DOMAIN_P:
 		p.advance()
 		stmt.Objtype = nodes.OBJECT_DOMAIN
-		name, _ := p.parseAnyName()
+		name, err := p.parseAnyName()
+		if err != nil {
+			return nil, err
+		}
 		stmt.Object = name
-		p.expect(IS)
+		if _, err := p.expect(IS); err != nil {
+			return nil, err
+		}
 		stmt.Comment = p.parseCommentText()
-		return stmt
+		return stmt, nil
 
 	case CONSTRAINT:
 		p.advance()
-		constraintName, _ := p.parseName()
-		p.expect(ON)
+		constraintName, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(ON); err != nil {
+			return nil, err
+		}
 		if p.cur.Type == DOMAIN_P {
 			p.advance()
 			stmt.Objtype = nodes.OBJECT_DOMCONSTRAINT
-			anyName, _ := p.parseAnyName()
+			anyName, err := p.parseAnyName()
+			if err != nil {
+				return nil, err
+			}
 			stmt.Object = &nodes.List{Items: []nodes.Node{makeTypeNameFromNameList(anyName), &nodes.String{Str: constraintName}}}
-			p.expect(IS)
+			if _, err := p.expect(IS); err != nil {
+				return nil, err
+			}
 			stmt.Comment = p.parseCommentText()
-			return stmt
+			return stmt, nil
 		}
 		stmt.Objtype = nodes.OBJECT_TABCONSTRAINT
-		anyName, _ := p.parseAnyName()
+		anyName, err := p.parseAnyName()
+		if err != nil {
+			return nil, err
+		}
 		stmt.Object = appendNodeToList(anyName, &nodes.String{Str: constraintName})
-		p.expect(IS)
+		if _, err := p.expect(IS); err != nil {
+			return nil, err
+		}
 		stmt.Comment = p.parseCommentText()
-		return stmt
+		return stmt, nil
 
 	case LARGE_P:
 		p.advance()
-		p.expect(OBJECT_P)
+		if _, err := p.expect(OBJECT_P); err != nil {
+			return nil, err
+		}
 		stmt.Objtype = nodes.OBJECT_LARGEOBJECT
 		stmt.Object = p.parseNumericOnly()
-		p.expect(IS)
+		if _, err := p.expect(IS); err != nil {
+			return nil, err
+		}
 		stmt.Comment = p.parseCommentText()
-		return stmt
+		return stmt, nil
 
 	case CAST:
 		p.advance()
-		p.expect('(')
-		srcType, _ := p.parseTypename()
-		p.expect(AS)
-		dstType, _ := p.parseTypename()
-		p.expect(')')
+		if _, err := p.expect('('); err != nil {
+			return nil, err
+		}
+		srcType, err := p.parseTypename()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(AS); err != nil {
+			return nil, err
+		}
+		dstType, err := p.parseTypename()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(')'); err != nil {
+			return nil, err
+		}
 		stmt.Objtype = nodes.OBJECT_CAST
 		stmt.Object = &nodes.List{Items: []nodes.Node{srcType, dstType}}
-		p.expect(IS)
+		if _, err := p.expect(IS); err != nil {
+			return nil, err
+		}
 		stmt.Comment = p.parseCommentText()
-		return stmt
+		return stmt, nil
 
 	case EVENT:
 		p.advance()
-		p.expect(TRIGGER)
+		if _, err := p.expect(TRIGGER); err != nil {
+			return nil, err
+		}
 		stmt.Objtype = nodes.OBJECT_EVENT_TRIGGER
-		name, _ := p.parseName()
+		name, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		stmt.Object = &nodes.String{Str: name}
-		p.expect(IS)
+		if _, err := p.expect(IS); err != nil {
+			return nil, err
+		}
 		stmt.Comment = p.parseCommentText()
-		return stmt
+		return stmt, nil
 
 	case TRANSFORM:
 		p.advance()
-		p.expect(FOR)
-		typeName, _ := p.parseTypename()
-		p.expect(LANGUAGE)
-		lang, _ := p.parseName()
+		if _, err := p.expect(FOR); err != nil {
+			return nil, err
+		}
+		typeName, err := p.parseTypename()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(LANGUAGE); err != nil {
+			return nil, err
+		}
+		lang, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		stmt.Objtype = nodes.OBJECT_TRANSFORM
 		stmt.Object = &nodes.List{Items: []nodes.Node{typeName, &nodes.String{Str: lang}}}
-		p.expect(IS)
+		if _, err := p.expect(IS); err != nil {
+			return nil, err
+		}
 		stmt.Comment = p.parseCommentText()
-		return stmt
+		return stmt, nil
 
 	case OPERATOR:
 		p.advance()
 		if p.cur.Type == CLASS {
 			p.advance()
 			stmt.Objtype = nodes.OBJECT_OPCLASS
-			name, _ := p.parseAnyName()
-			p.expect(USING)
-			accessMethod, _ := p.parseName()
+			name, err := p.parseAnyName()
+			if err != nil {
+				return nil, err
+			}
+			if _, err := p.expect(USING); err != nil {
+				return nil, err
+			}
+			accessMethod, err := p.parseName()
+			if err != nil {
+				return nil, err
+			}
 			stmt.Object = prependNodeToList(&nodes.String{Str: accessMethod}, name)
-			p.expect(IS)
+			if _, err := p.expect(IS); err != nil {
+				return nil, err
+			}
 			stmt.Comment = p.parseCommentText()
-			return stmt
+			return stmt, nil
 		}
 		if p.cur.Type == FAMILY {
 			p.advance()
 			stmt.Objtype = nodes.OBJECT_OPFAMILY
-			name, _ := p.parseAnyName()
-			p.expect(USING)
-			accessMethod, _ := p.parseName()
+			name, err := p.parseAnyName()
+			if err != nil {
+				return nil, err
+			}
+			if _, err := p.expect(USING); err != nil {
+				return nil, err
+			}
+			accessMethod, err := p.parseName()
+			if err != nil {
+				return nil, err
+			}
 			stmt.Object = prependNodeToList(&nodes.String{Str: accessMethod}, name)
-			p.expect(IS)
+			if _, err := p.expect(IS); err != nil {
+				return nil, err
+			}
 			stmt.Comment = p.parseCommentText()
-			return stmt
+			return stmt, nil
 		}
 		stmt.Objtype = nodes.OBJECT_OPERATOR
 		stmt.Object = p.parseOperatorWithArgtypesForComment()
-		p.expect(IS)
+		if _, err := p.expect(IS); err != nil {
+			return nil, err
+		}
 		stmt.Comment = p.parseCommentText()
-		return stmt
+		return stmt, nil
 
 	case AGGREGATE:
 		p.advance()
 		stmt.Objtype = nodes.OBJECT_AGGREGATE
 		stmt.Object = p.parseAggregateWithArgtypesForComment()
-		p.expect(IS)
+		if _, err := p.expect(IS); err != nil {
+			return nil, err
+		}
 		stmt.Comment = p.parseCommentText()
-		return stmt
+		return stmt, nil
 
 	case FUNCTION:
 		p.advance()
 		stmt.Objtype = nodes.OBJECT_FUNCTION
 		stmt.Object = p.parseFunctionWithArgtypesForComment()
-		p.expect(IS)
+		if _, err := p.expect(IS); err != nil {
+			return nil, err
+		}
 		stmt.Comment = p.parseCommentText()
-		return stmt
+		return stmt, nil
 
 	case PROCEDURE:
 		p.advance()
 		stmt.Objtype = nodes.OBJECT_PROCEDURE
 		stmt.Object = p.parseFunctionWithArgtypesForComment()
-		p.expect(IS)
+		if _, err := p.expect(IS); err != nil {
+			return nil, err
+		}
 		stmt.Comment = p.parseCommentText()
-		return stmt
+		return stmt, nil
 
 	case ROUTINE:
 		p.advance()
 		stmt.Objtype = nodes.OBJECT_ROUTINE
 		stmt.Object = p.parseFunctionWithArgtypesForComment()
-		p.expect(IS)
+		if _, err := p.expect(IS); err != nil {
+			return nil, err
+		}
 		stmt.Comment = p.parseCommentText()
-		return stmt
+		return stmt, nil
 
 	case FOREIGN:
 		p.advance()
 		if p.cur.Type == DATA_P {
 			p.advance()
-			p.expect(WRAPPER)
+			if _, err := p.expect(WRAPPER); err != nil {
+				return nil, err
+			}
 			stmt.Objtype = nodes.OBJECT_FDW
-			name, _ := p.parseName()
+			name, err := p.parseName()
+			if err != nil {
+				return nil, err
+			}
 			stmt.Object = &nodes.String{Str: name}
-			p.expect(IS)
+			if _, err := p.expect(IS); err != nil {
+				return nil, err
+			}
 			stmt.Comment = p.parseCommentText()
-			return stmt
+			return stmt, nil
 		}
-		p.expect(TABLE)
+		if _, err := p.expect(TABLE); err != nil {
+			return nil, err
+		}
 		stmt.Objtype = nodes.OBJECT_FOREIGN_TABLE
-		name, _ := p.parseAnyName()
+		name, err := p.parseAnyName()
+		if err != nil {
+			return nil, err
+		}
 		stmt.Object = name
-		p.expect(IS)
+		if _, err := p.expect(IS); err != nil {
+			return nil, err
+		}
 		stmt.Comment = p.parseCommentText()
-		return stmt
+		return stmt, nil
 
 	case MATERIALIZED:
 		p.advance()
-		p.expect(VIEW)
+		if _, err := p.expect(VIEW); err != nil {
+			return nil, err
+		}
 		stmt.Objtype = nodes.OBJECT_MATVIEW
-		name, _ := p.parseAnyName()
+		name, err := p.parseAnyName()
+		if err != nil {
+			return nil, err
+		}
 		stmt.Object = name
-		p.expect(IS)
+		if _, err := p.expect(IS); err != nil {
+			return nil, err
+		}
 		stmt.Comment = p.parseCommentText()
-		return stmt
+		return stmt, nil
 
 	default:
 		// Try object_type_name_on_any_name: POLICY | RULE | TRIGGER
 		if objType, ok := p.tryParseObjectTypeNameOnAnyName(); ok {
 			stmt.Objtype = nodes.ObjectType(objType)
-			objName, _ := p.parseName()
-			p.expect(ON)
-			anyName, _ := p.parseAnyName()
+			objName, err := p.parseName()
+			if err != nil {
+				return nil, err
+			}
+			if _, err := p.expect(ON); err != nil {
+				return nil, err
+			}
+			anyName, err := p.parseAnyName()
+			if err != nil {
+				return nil, err
+			}
 			stmt.Object = appendNodeToList(anyName, &nodes.String{Str: objName})
-			p.expect(IS)
+			if _, err := p.expect(IS); err != nil {
+				return nil, err
+			}
 			stmt.Comment = p.parseCommentText()
-			return stmt
+			return stmt, nil
 		}
 
 		// Try object_type_name: SCHEMA | DATABASE | ROLE | TABLESPACE | ...
 		if objType, ok := p.tryParseObjectTypeName(); ok {
 			stmt.Objtype = nodes.ObjectType(objType)
-			name, _ := p.parseName()
+			name, err := p.parseName()
+			if err != nil {
+				return nil, err
+			}
 			stmt.Object = &nodes.String{Str: name}
-			p.expect(IS)
+			if _, err := p.expect(IS); err != nil {
+				return nil, err
+			}
 			stmt.Comment = p.parseCommentText()
-			return stmt
+			return stmt, nil
 		}
 
 		// Remaining object_type_any_name
 		stmt.Objtype = p.parseObjectTypeAnyName()
-		name, _ := p.parseAnyName()
+		name, err := p.parseAnyName()
+		if err != nil {
+			return nil, err
+		}
 		stmt.Object = name
-		p.expect(IS)
+		if _, err := p.expect(IS); err != nil {
+			return nil, err
+		}
 		stmt.Comment = p.parseCommentText()
-		return stmt
+		return stmt, nil
 	}
 }
 
@@ -545,8 +676,10 @@ func (p *Parser) parseOperatorWithArgtypesForComment() nodes.Node {
 
 // parseSecLabelStmt parses a SECURITY LABEL statement.
 // SECURITY has already been consumed. Current token is LABEL.
-func (p *Parser) parseSecLabelStmt() nodes.Node {
-	p.expect(LABEL)
+func (p *Parser) parseSecLabelStmt() (nodes.Node, error) {
+	if _, err := p.expect(LABEL); err != nil {
+		return nil, err
+	}
 
 	provider := ""
 	if p.cur.Type == FOR {
@@ -554,7 +687,9 @@ func (p *Parser) parseSecLabelStmt() nodes.Node {
 		provider = p.parseNonReservedWordOrSconst()
 	}
 
-	p.expect(ON)
+	if _, err := p.expect(ON); err != nil {
+		return nil, err
+	}
 
 	stmt := &nodes.SecLabelStmt{Provider: provider}
 
@@ -562,78 +697,111 @@ func (p *Parser) parseSecLabelStmt() nodes.Node {
 	case COLUMN:
 		p.advance()
 		stmt.Objtype = nodes.OBJECT_COLUMN
-		name, _ := p.parseAnyName()
+		name, err := p.parseAnyName()
+		if err != nil {
+			return nil, err
+		}
 		stmt.Object = name
-		p.expect(IS)
+		if _, err := p.expect(IS); err != nil {
+			return nil, err
+		}
 		stmt.Label = p.parseSecurityLabel()
-		return stmt
+		return stmt, nil
 
 	case TYPE_P:
 		p.advance()
 		stmt.Objtype = nodes.OBJECT_TYPE
-		name, _ := p.parseAnyName()
+		name, err := p.parseAnyName()
+		if err != nil {
+			return nil, err
+		}
 		stmt.Object = name
-		p.expect(IS)
+		if _, err := p.expect(IS); err != nil {
+			return nil, err
+		}
 		stmt.Label = p.parseSecurityLabel()
-		return stmt
+		return stmt, nil
 
 	case DOMAIN_P:
 		p.advance()
 		stmt.Objtype = nodes.OBJECT_DOMAIN
-		name, _ := p.parseAnyName()
+		name, err := p.parseAnyName()
+		if err != nil {
+			return nil, err
+		}
 		stmt.Object = name
-		p.expect(IS)
+		if _, err := p.expect(IS); err != nil {
+			return nil, err
+		}
 		stmt.Label = p.parseSecurityLabel()
-		return stmt
+		return stmt, nil
 
 	case AGGREGATE:
 		p.advance()
 		stmt.Objtype = nodes.OBJECT_AGGREGATE
 		stmt.Object = p.parseAggregateWithArgtypesForComment()
-		p.expect(IS)
+		if _, err := p.expect(IS); err != nil {
+			return nil, err
+		}
 		stmt.Label = p.parseSecurityLabel()
-		return stmt
+		return stmt, nil
 
 	case FUNCTION:
 		p.advance()
 		stmt.Objtype = nodes.OBJECT_FUNCTION
 		stmt.Object = p.parseFunctionWithArgtypesForComment()
-		p.expect(IS)
+		if _, err := p.expect(IS); err != nil {
+			return nil, err
+		}
 		stmt.Label = p.parseSecurityLabel()
-		return stmt
+		return stmt, nil
 
 	case PROCEDURE:
 		p.advance()
 		stmt.Objtype = nodes.OBJECT_PROCEDURE
 		stmt.Object = p.parseFunctionWithArgtypesForComment()
-		p.expect(IS)
+		if _, err := p.expect(IS); err != nil {
+			return nil, err
+		}
 		stmt.Label = p.parseSecurityLabel()
-		return stmt
+		return stmt, nil
 
 	case ROUTINE:
 		p.advance()
 		stmt.Objtype = nodes.OBJECT_ROUTINE
 		stmt.Object = p.parseFunctionWithArgtypesForComment()
-		p.expect(IS)
+		if _, err := p.expect(IS); err != nil {
+			return nil, err
+		}
 		stmt.Label = p.parseSecurityLabel()
-		return stmt
+		return stmt, nil
 
 	default:
 		if objType, ok := p.tryParseObjectTypeName(); ok {
 			stmt.Objtype = nodes.ObjectType(objType)
-			name, _ := p.parseName()
+			name, err := p.parseName()
+			if err != nil {
+				return nil, err
+			}
 			stmt.Object = &nodes.String{Str: name}
-			p.expect(IS)
+			if _, err := p.expect(IS); err != nil {
+				return nil, err
+			}
 			stmt.Label = p.parseSecurityLabel()
-			return stmt
+			return stmt, nil
 		}
 
 		stmt.Objtype = p.parseObjectTypeAnyName()
-		name, _ := p.parseAnyName()
+		name, err := p.parseAnyName()
+		if err != nil {
+			return nil, err
+		}
 		stmt.Object = name
-		p.expect(IS)
+		if _, err := p.expect(IS); err != nil {
+			return nil, err
+		}
 		stmt.Label = p.parseSecurityLabel()
-		return stmt
+		return stmt, nil
 	}
 }
 

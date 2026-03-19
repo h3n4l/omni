@@ -10,10 +10,13 @@ import (
 // Ref: gram.y CreatedbStmt
 //
 //	CREATE DATABASE name opt_with createdb_opt_list
-func (p *Parser) parseCreatedbStmt() nodes.Node {
+func (p *Parser) parseCreatedbStmt() (nodes.Node, error) {
 	p.advance() // consume DATABASE
 
-	name, _ := p.parseName()
+	name, err := p.parseName()
+	if err != nil {
+		return nil, err
+	}
 
 	// opt_with: WITH | EMPTY
 	if p.cur.Type == WITH {
@@ -25,7 +28,7 @@ func (p *Parser) parseCreatedbStmt() nodes.Node {
 	return &nodes.CreatedbStmt{
 		Dbname:  name,
 		Options: options,
-	}
+	}, nil
 }
 
 // parseCreatedbOptList parses createdb_opt_list.
@@ -133,33 +136,43 @@ func (p *Parser) parseCreatedbOptName() string {
 //   - AlterDatabaseStmt (ALTER DATABASE name SET TABLESPACE name)
 //   - AlterDatabaseSetStmt (ALTER DATABASE name SET/RESET ...)
 //   - AlterDatabaseStmt (ALTER DATABASE name CONNECTION LIMIT ...)
-func (p *Parser) parseAlterDatabaseDispatch() nodes.Node {
+func (p *Parser) parseAlterDatabaseDispatch() (nodes.Node, error) {
 	p.advance() // consume DATABASE
 
-	name, _ := p.parseName()
+	name, err := p.parseName()
+	if err != nil {
+		return nil, err
+	}
 
 	switch p.cur.Type {
 	case RENAME:
 		// ALTER DATABASE name RENAME TO name
 		p.advance() // consume RENAME
-		p.expect(TO)
-		newname, _ := p.parseName()
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
+		newname, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.RenameStmt{
 			RenameType: nodes.OBJECT_DATABASE,
 			Subname:    name,
 			Newname:    newname,
-		}
+		}, nil
 
 	case OWNER:
 		// ALTER DATABASE name OWNER TO RoleSpec
 		p.advance() // consume OWNER
-		p.expect(TO)
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
 		roleSpec := p.parseRoleSpec()
 		return &nodes.AlterOwnerStmt{
 			ObjectType: nodes.OBJECT_DATABASE,
 			Object:     &nodes.String{Str: name},
 			Newowner:   roleSpec,
-		}
+		}, nil
 
 	case SET:
 		// Could be SET TABLESPACE or SET variable
@@ -168,18 +181,21 @@ func (p *Parser) parseAlterDatabaseDispatch() nodes.Node {
 			// ALTER DATABASE name SET TABLESPACE name
 			p.advance() // consume SET
 			p.advance() // consume TABLESPACE
-			tbsName, _ := p.parseName()
+			tbsName, err := p.parseName()
+			if err != nil {
+				return nil, err
+			}
 			return &nodes.AlterDatabaseStmt{
 				Dbname:  name,
 				Options: &nodes.List{Items: []nodes.Node{makeDefElem("tablespace", &nodes.String{Str: tbsName})}},
-			}
+			}, nil
 		}
 		// ALTER DATABASE name SET variable = value (SetResetClause)
-		return p.parseAlterDatabaseSetStmt(name)
+		return p.parseAlterDatabaseSetStmt(name), nil
 
 	case RESET:
 		// ALTER DATABASE name RESET ... (SetResetClause)
-		return p.parseAlterDatabaseSetStmt(name)
+		return p.parseAlterDatabaseSetStmt(name), nil
 
 	case WITH:
 		// ALTER DATABASE name WITH createdb_opt_list
@@ -188,7 +204,7 @@ func (p *Parser) parseAlterDatabaseDispatch() nodes.Node {
 		return &nodes.AlterDatabaseStmt{
 			Dbname:  name,
 			Options: options,
-		}
+		}, nil
 
 	case CONNECTION:
 		// ALTER DATABASE name CONNECTION LIMIT connlimit
@@ -196,7 +212,7 @@ func (p *Parser) parseAlterDatabaseDispatch() nodes.Node {
 		return &nodes.AlterDatabaseStmt{
 			Dbname:  name,
 			Options: options,
-		}
+		}, nil
 
 	default:
 		// ALTER DATABASE name createdb_opt_list (empty or options)
@@ -204,7 +220,7 @@ func (p *Parser) parseAlterDatabaseDispatch() nodes.Node {
 		return &nodes.AlterDatabaseStmt{
 			Dbname:  name,
 			Options: options,
-		}
+		}, nil
 	}
 }
 
@@ -299,17 +315,22 @@ func (p *Parser) parseResetRest() nodes.Node {
 //	| DROP DATABASE IF_P EXISTS name
 //	| DROP DATABASE name opt_with '(' drop_option_list ')'
 //	| DROP DATABASE IF_P EXISTS name opt_with '(' drop_option_list ')'
-func (p *Parser) parseDropdbStmt() nodes.Node {
+func (p *Parser) parseDropdbStmt() (nodes.Node, error) {
 	p.advance() // consume DATABASE
 
 	missingOk := false
 	if p.cur.Type == IF_P {
 		p.advance() // consume IF
-		p.expect(EXISTS)
+		if _, err := p.expect(EXISTS); err != nil {
+			return nil, err
+		}
 		missingOk = true
 	}
 
-	name, _ := p.parseName()
+	name, err := p.parseName()
+	if err != nil {
+		return nil, err
+	}
 
 	// Optional: opt_with '(' drop_option_list ')'
 	var options *nodes.List
@@ -319,14 +340,16 @@ func (p *Parser) parseDropdbStmt() nodes.Node {
 	if p.cur.Type == '(' {
 		p.advance() // consume '('
 		options = p.parseDropOptionList()
-		p.expect(')')
+		if _, err := p.expect(')'); err != nil {
+			return nil, err
+		}
 	}
 
 	return &nodes.DropdbStmt{
 		Dbname:    name,
 		MissingOk: missingOk,
 		Options:   options,
-	}
+	}, nil
 }
 
 // parseDropOptionList parses drop_option_list.

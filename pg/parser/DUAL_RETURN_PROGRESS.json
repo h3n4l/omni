@@ -69,7 +69,7 @@
       "name": "alter_grant_ext_fdw",
       "files": ["alter_table.go", "grant.go", "extension.go", "fdw.go"],
       "function_count": 181,
-      "status": "pending",
+      "status": "done",
       "notes": "ALTER, GRANT, extensions, foreign data wrappers (has circular deps)"
     },
     {

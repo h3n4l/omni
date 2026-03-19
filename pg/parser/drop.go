@@ -21,7 +21,7 @@ import (
 //	    | DROP FOREIGN DATA WRAPPER [IF EXISTS] name_list opt_drop_behavior
 //	    | DROP SERVER [IF EXISTS] name_list opt_drop_behavior
 //	    | DROP OWNED BY name_list opt_drop_behavior
-func (p *Parser) parseDropStmt() nodes.Node {
+func (p *Parser) parseDropStmt() (nodes.Node, error) {
 	switch p.cur.Type {
 	case TABLE, SEQUENCE, VIEW, INDEX, COLLATION, CONVERSION_P, STATISTICS:
 		return p.parseDropObjectTypeAnyName()
@@ -79,29 +79,24 @@ func (p *Parser) parseDropStmt() nodes.Node {
 	case DATABASE:
 		return p.parseDropdbStmt()
 	case ROLE, GROUP_P:
-		n, _ := p.parseDropRoleStmt()
-		return n
+		return p.parseDropRoleStmt()
 	case USER:
 		// DROP USER MAPPING or DROP USER (role)
 		next := p.peekNext()
 		if next.Type == MAPPING {
-			n, _ := p.parseDropUserMappingStmt()
-			return n
+			return p.parseDropUserMappingStmt()
 		}
-		n, _ := p.parseDropRoleStmt()
-		return n
+		return p.parseDropRoleStmt()
 	case CAST:
-		n, _ := p.parseDropCastStmt()
-		return n
+		return p.parseDropCastStmt()
 	case TRANSFORM:
-		n, _ := p.parseDropTransformStmt()
-		return n
+		return p.parseDropTransformStmt()
 	case OPERATOR:
 		return p.parseDropOperatorClassOrFamily()
 	case TABLESPACE:
 		return p.parseDropTableSpaceStmt()
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
@@ -113,7 +108,7 @@ func (p *Parser) parseDropStmt() nodes.Node {
 //	    | TEXT_P SEARCH PARSER | TEXT_P SEARCH DICTIONARY
 //	    | TEXT_P SEARCH TEMPLATE | TEXT_P SEARCH CONFIGURATION
 //	    | ACCESS METHOD
-func (p *Parser) parseDropObjectTypeAnyName() nodes.Node {
+func (p *Parser) parseDropObjectTypeAnyName() (nodes.Node, error) {
 	objType := p.parseObjectTypeAnyName()
 
 	// Special case: DROP INDEX CONCURRENTLY
@@ -127,7 +122,7 @@ func (p *Parser) parseDropObjectTypeAnyName() nodes.Node {
 
 	objects, err := p.parseAnyNameList()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	behavior := p.parseOptDropBehavior()
@@ -138,7 +133,7 @@ func (p *Parser) parseDropObjectTypeAnyName() nodes.Node {
 		Behavior:   behavior,
 		Missing_ok: missingOk,
 		Concurrent: concurrent,
-	}
+	}, nil
 }
 
 // parseObjectTypeAnyName parses the object_type_any_name rule and returns the ObjectType.
@@ -211,14 +206,14 @@ func (p *Parser) parseObjectTypeAnyName() nodes.ObjectType {
 //
 //	DROP TYPE_P [IF EXISTS] any_name_list opt_drop_behavior
 //	DROP DOMAIN_P [IF EXISTS] any_name_list opt_drop_behavior
-func (p *Parser) parseDropTypeOrDomain(objType nodes.ObjectType) nodes.Node {
+func (p *Parser) parseDropTypeOrDomain(objType nodes.ObjectType) (nodes.Node, error) {
 	p.advance() // consume TYPE or DOMAIN
 
 	missingOk := p.parseOptIfExists()
 
 	objects, err := p.parseAnyNameList()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	behavior := p.parseOptDropBehavior()
@@ -228,21 +223,21 @@ func (p *Parser) parseDropTypeOrDomain(objType nodes.ObjectType) nodes.Node {
 		RemoveType: int(objType),
 		Behavior:   behavior,
 		Missing_ok: missingOk,
-	}
+	}, nil
 }
 
 // parseDropNameList parses DROP statements that use name_list (simple names, not qualified).
 // Used for SCHEMA, EXTENSION, PUBLICATION, SUBSCRIPTION, SERVER.
 //
 //	DROP SCHEMA|EXTENSION|PUBLICATION|SUBSCRIPTION|SERVER [IF EXISTS] name_list opt_drop_behavior
-func (p *Parser) parseDropNameList(objType nodes.ObjectType) nodes.Node {
+func (p *Parser) parseDropNameList(objType nodes.ObjectType) (nodes.Node, error) {
 	p.advance() // consume the keyword
 
 	missingOk := p.parseOptIfExists()
 
 	nameList, err := p.parseNameList()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	behavior := p.parseOptDropBehavior()
@@ -252,21 +247,21 @@ func (p *Parser) parseDropNameList(objType nodes.ObjectType) nodes.Node {
 		RemoveType: int(objType),
 		Behavior:   behavior,
 		Missing_ok: missingOk,
-	}
+	}, nil
 }
 
 // parseDropAnyNameList parses DROP statements that use any_name_list.
 // Used for FUNCTION, PROCEDURE, ROUTINE, AGGREGATE.
 //
 //	DROP FUNCTION|PROCEDURE|ROUTINE|AGGREGATE [IF EXISTS] any_name_list opt_drop_behavior
-func (p *Parser) parseDropAnyNameList(objType nodes.ObjectType) nodes.Node {
+func (p *Parser) parseDropAnyNameList(objType nodes.ObjectType) (nodes.Node, error) {
 	p.advance() // consume the keyword
 
 	missingOk := p.parseOptIfExists()
 
 	objects, err := p.parseAnyNameList()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	behavior := p.parseOptDropBehavior()
@@ -276,7 +271,7 @@ func (p *Parser) parseDropAnyNameList(objType nodes.ObjectType) nodes.Node {
 		RemoveType: int(objType),
 		Behavior:   behavior,
 		Missing_ok: missingOk,
-	}
+	}, nil
 }
 
 // parseDropOnObject parses DROP TRIGGER|POLICY|RULE name ON any_name statements.
@@ -284,7 +279,7 @@ func (p *Parser) parseDropAnyNameList(objType nodes.ObjectType) nodes.Node {
 //	DROP TRIGGER [IF EXISTS] name ON any_name opt_drop_behavior
 //	DROP POLICY [IF EXISTS] name ON any_name opt_drop_behavior
 //	DROP RULE [IF EXISTS] name ON any_name opt_drop_behavior
-func (p *Parser) parseDropOnObject(objType nodes.ObjectType) nodes.Node {
+func (p *Parser) parseDropOnObject(objType nodes.ObjectType) (nodes.Node, error) {
 	p.advance() // consume TRIGGER/POLICY/RULE
 
 	missingOk := p.parseOptIfExists()
@@ -293,12 +288,14 @@ func (p *Parser) parseDropOnObject(objType nodes.ObjectType) nodes.Node {
 	_, _ = p.parseName()
 
 	// ON
-	p.expect(ON)
+	if _, err := p.expect(ON); err != nil {
+		return nil, err
+	}
 
 	// any_name (the table name)
 	anyName, err := p.parseAnyName()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	behavior := p.parseOptDropBehavior()
@@ -308,19 +305,24 @@ func (p *Parser) parseDropOnObject(objType nodes.ObjectType) nodes.Node {
 		RemoveType: int(objType),
 		Behavior:   behavior,
 		Missing_ok: missingOk,
-	}
+	}, nil
 }
 
 // parseDropEventTrigger parses DROP EVENT TRIGGER statements.
 //
 //	DROP EVENT TRIGGER [IF EXISTS] name opt_drop_behavior
-func (p *Parser) parseDropEventTrigger() nodes.Node {
+func (p *Parser) parseDropEventTrigger() (nodes.Node, error) {
 	p.advance() // consume EVENT
-	p.expect(TRIGGER)
+	if _, err := p.expect(TRIGGER); err != nil {
+		return nil, err
+	}
 
 	missingOk := p.parseOptIfExists()
 
-	name, _ := p.parseName()
+	name, err := p.parseName()
+	if err != nil {
+		return nil, err
+	}
 
 	behavior := p.parseOptDropBehavior()
 
@@ -330,18 +332,21 @@ func (p *Parser) parseDropEventTrigger() nodes.Node {
 		RemoveType: int(nodes.OBJECT_EVENT_TRIGGER),
 		Behavior:   behavior,
 		Missing_ok: missingOk,
-	}
+	}, nil
 }
 
 // parseDropLanguage parses DROP LANGUAGE statements.
 //
 //	DROP LANGUAGE [IF EXISTS] name opt_drop_behavior
-func (p *Parser) parseDropLanguage() nodes.Node {
+func (p *Parser) parseDropLanguage() (nodes.Node, error) {
 	p.advance() // consume LANGUAGE
 
 	missingOk := p.parseOptIfExists()
 
-	name, _ := p.parseName()
+	name, err := p.parseName()
+	if err != nil {
+		return nil, err
+	}
 
 	behavior := p.parseOptDropBehavior()
 
@@ -351,22 +356,26 @@ func (p *Parser) parseDropLanguage() nodes.Node {
 		RemoveType: int(nodes.OBJECT_LANGUAGE),
 		Behavior:   behavior,
 		Missing_ok: missingOk,
-	}
+	}, nil
 }
 
 // parseDropForeignDataWrapper parses DROP FOREIGN DATA WRAPPER statements.
 //
 //	DROP FOREIGN DATA WRAPPER [IF EXISTS] name_list opt_drop_behavior
-func (p *Parser) parseDropForeignDataWrapper() nodes.Node {
+func (p *Parser) parseDropForeignDataWrapper() (nodes.Node, error) {
 	p.advance() // consume FOREIGN
-	p.expect(DATA_P)
-	p.expect(WRAPPER)
+	if _, err := p.expect(DATA_P); err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(WRAPPER); err != nil {
+		return nil, err
+	}
 
 	missingOk := p.parseOptIfExists()
 
 	nameList, err := p.parseNameList()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	behavior := p.parseOptDropBehavior()
@@ -376,16 +385,18 @@ func (p *Parser) parseDropForeignDataWrapper() nodes.Node {
 		RemoveType: int(nodes.OBJECT_FDW),
 		Behavior:   behavior,
 		Missing_ok: missingOk,
-	}
+	}, nil
 }
 
 // parseDropOwned parses DROP OWNED BY statements.
 //
 //	DropOwnedStmt:
 //	    DROP OWNED BY role_list opt_drop_behavior
-func (p *Parser) parseDropOwned() nodes.Node {
+func (p *Parser) parseDropOwned() (nodes.Node, error) {
 	p.advance() // consume OWNED
-	p.expect(BY)
+	if _, err := p.expect(BY); err != nil {
+		return nil, err
+	}
 
 	roles := p.parseRoleList()
 
@@ -394,19 +405,22 @@ func (p *Parser) parseDropOwned() nodes.Node {
 	return &nodes.DropOwnedStmt{
 		Roles:    roles,
 		Behavior: nodes.DropBehavior(behavior),
-	}
+	}, nil
 }
 
 // parseDropSubscription parses DROP SUBSCRIPTION statements.
 //
 //	DropSubscriptionStmt:
 //	    DROP SUBSCRIPTION [IF EXISTS] name opt_drop_behavior
-func (p *Parser) parseDropSubscription() nodes.Node {
+func (p *Parser) parseDropSubscription() (nodes.Node, error) {
 	p.advance() // consume SUBSCRIPTION
 
 	missingOk := p.parseOptIfExists()
 
-	name, _ := p.parseName()
+	name, err := p.parseName()
+	if err != nil {
+		return nil, err
+	}
 
 	behavior := p.parseOptDropBehavior()
 
@@ -414,7 +428,7 @@ func (p *Parser) parseDropSubscription() nodes.Node {
 		Subname:   name,
 		MissingOk: missingOk,
 		Behavior:  nodes.DropBehavior(behavior),
-	}
+	}, nil
 }
 
 // parseOptIfExists parses the optional IF EXISTS clause.
@@ -453,7 +467,7 @@ func makeNameListAsAnyNameList(nameList *nodes.List) *nodes.List {
 //
 //	TruncateStmt:
 //	    TRUNCATE opt_table relation_expr_list opt_restart_seqs opt_drop_behavior
-func (p *Parser) parseTruncateStmt() nodes.Node {
+func (p *Parser) parseTruncateStmt() (nodes.Node, error) {
 	// opt_table
 	if p.cur.Type == TABLE {
 		p.advance()
@@ -472,7 +486,7 @@ func (p *Parser) parseTruncateStmt() nodes.Node {
 		Relations:   relations,
 		RestartSeqs: restartSeqs,
 		Behavior:    nodes.DropBehavior(behavior),
-	}
+	}, nil
 }
 
 // parseRelationExprList parses a comma-separated list of relation_expr.
@@ -521,7 +535,7 @@ func (p *Parser) parseOptRestartSeqs() bool {
 
 // parseDropOperatorClassOrFamily parses DROP OPERATOR CLASS/FAMILY.
 // Current token is OPERATOR (DROP already consumed).
-func (p *Parser) parseDropOperatorClassOrFamily() nodes.Node {
+func (p *Parser) parseDropOperatorClassOrFamily() (nodes.Node, error) {
 	p.advance() // consume OPERATOR
 
 	var removeType nodes.ObjectType
@@ -540,13 +554,23 @@ func (p *Parser) parseDropOperatorClassOrFamily() nodes.Node {
 	missingOk := false
 	if p.cur.Type == IF_P {
 		p.advance() // IF
-		p.expect(EXISTS)
+		if _, err := p.expect(EXISTS); err != nil {
+			return nil, err
+		}
 		missingOk = true
 	}
 
-	names, _ := p.parseAnyName()
-	p.expect(USING)
-	amName, _ := p.parseName()
+	names, err := p.parseAnyName()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(USING); err != nil {
+		return nil, err
+	}
+	amName, err := p.parseName()
+	if err != nil {
+		return nil, err
+	}
 	behavior := p.parseOptDropBehavior()
 
 	// Prepend access method name to the object list (matches yacc grammar)
@@ -560,7 +584,7 @@ func (p *Parser) parseDropOperatorClassOrFamily() nodes.Node {
 		RemoveType: int(removeType),
 		Behavior:   int(behavior),
 		Missing_ok: missingOk,
-	}
+	}, nil
 }
 
 // parseDropOperator parses DROP OPERATOR (RemoveOperStmt).
@@ -570,11 +594,13 @@ func (p *Parser) parseDropOperatorClassOrFamily() nodes.Node {
 //
 //	DROP OPERATOR [ IF EXISTS ] operator_with_argtypes_list [ CASCADE | RESTRICT ]
 //	DROP OPERATOR IF EXISTS operator_with_argtypes_list [ CASCADE | RESTRICT ]
-func (p *Parser) parseDropOperator() nodes.Node {
+func (p *Parser) parseDropOperator() (nodes.Node, error) {
 	missingOk := false
 	if p.cur.Type == IF_P {
 		p.advance()
-		p.expect(EXISTS)
+		if _, err := p.expect(EXISTS); err != nil {
+			return nil, err
+		}
 		missingOk = true
 	}
 
@@ -586,7 +612,7 @@ func (p *Parser) parseDropOperator() nodes.Node {
 		Objects:    objects,
 		Behavior:   int(behavior),
 		Missing_ok: missingOk,
-	}
+	}, nil
 }
 
 // parseOperatorWithArgtypesList parses a comma-separated list of operator_with_argtypes.
@@ -614,7 +640,7 @@ func (p *Parser) parseOperatorWithArgtypes() *nodes.ObjectWithArgs {
 //	DROP FUNCTION [IF EXISTS] function_with_argtypes_list [CASCADE|RESTRICT]
 //	DROP PROCEDURE [IF EXISTS] function_with_argtypes_list [CASCADE|RESTRICT]
 //	DROP ROUTINE [IF EXISTS] function_with_argtypes_list [CASCADE|RESTRICT]
-func (p *Parser) parseDropFuncStmt(objType nodes.ObjectType) nodes.Node {
+func (p *Parser) parseDropFuncStmt(objType nodes.ObjectType) (nodes.Node, error) {
 	p.advance() // consume FUNCTION/PROCEDURE/ROUTINE
 
 	missingOk := p.parseOptIfExists()
@@ -627,7 +653,7 @@ func (p *Parser) parseDropFuncStmt(objType nodes.ObjectType) nodes.Node {
 		Objects:    objects,
 		Behavior:   int(behavior),
 		Missing_ok: missingOk,
-	}
+	}, nil
 }
 
 // parseFunctionWithArgtypesList parses a comma-separated list of function_with_argtypes.
@@ -646,7 +672,7 @@ func (p *Parser) parseFunctionWithArgtypesList() *nodes.List {
 // Current token is AGGREGATE.
 //
 //	DROP AGGREGATE [IF EXISTS] aggregate_with_argtypes_list [CASCADE|RESTRICT]
-func (p *Parser) parseDropAggrStmt() nodes.Node {
+func (p *Parser) parseDropAggrStmt() (nodes.Node, error) {
 	p.advance() // consume AGGREGATE
 
 	missingOk := p.parseOptIfExists()
@@ -659,16 +685,45 @@ func (p *Parser) parseDropAggrStmt() nodes.Node {
 		Objects:    objects,
 		Behavior:   int(behavior),
 		Missing_ok: missingOk,
-	}
+	}, nil
 }
 
 // parseAggregateWithArgtypesList parses a comma-separated list of aggregate_with_argtypes.
 func (p *Parser) parseAggregateWithArgtypesList() *nodes.List {
-	agg := p.parseAggregateWithArgtypesLocal()
+	agg, _ := p.parseAggregateWithArgtypesLocal()
 	items := []nodes.Node{agg}
 	for p.cur.Type == ',' {
 		p.advance()
-		items = append(items, p.parseAggregateWithArgtypesLocal())
+		a, _ := p.parseAggregateWithArgtypesLocal()
+		items = append(items, a)
 	}
 	return &nodes.List{Items: items}
+}
+
+// parseDropTableSpaceStmt parses a DROP TABLESPACE statement.
+// The DROP keyword has already been consumed. Current token is TABLESPACE.
+//
+// Ref: https://www.postgresql.org/docs/17/sql-droptablespace.html
+//
+//	DROP TABLESPACE [ IF EXISTS ] name
+func (p *Parser) parseDropTableSpaceStmt() (nodes.Node, error) {
+	p.advance() // consume TABLESPACE
+
+	missingOk := false
+	if p.cur.Type == IF_P {
+		p.advance()
+		if _, err := p.expect(EXISTS); err != nil {
+			return nil, err
+		}
+		missingOk = true
+	}
+
+	name, err := p.parseName()
+	if err != nil {
+		return nil, err
+	}
+	return &nodes.DropTableSpaceStmt{
+		Tablespacename: name,
+		MissingOk:      missingOk,
+	}, nil
 }
