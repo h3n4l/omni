@@ -84,6 +84,25 @@ type View struct {
 	Columns     []string
 }
 
+// Routine represents a stored function or procedure in the catalog.
+type Routine struct {
+	Name            string
+	Database        *Database
+	IsProcedure     bool
+	Definer         string
+	Params          []*RoutineParam
+	Returns         string // return type string for functions (empty for procedures)
+	Body            string
+	Characteristics map[string]string // name -> value (DETERMINISTIC, COMMENT, etc.)
+}
+
+// RoutineParam represents a parameter of a stored routine.
+type RoutineParam struct {
+	Direction string // IN, OUT, INOUT (empty for functions)
+	Name      string
+	TypeName  string // full type string
+}
+
 func (t *Table) GetColumn(name string) *Column {
 	idx, ok := t.colByName[toLower(name)]
 	if !ok {

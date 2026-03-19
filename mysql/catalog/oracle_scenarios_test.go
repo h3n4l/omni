@@ -4614,3 +4614,288 @@ func TestOracle_Section_4_1_Partitioning(t *testing.T) {
 		}
 	})
 }
+
+func TestOracle_Section_4_2_StoredRoutines(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	// 4.2.1: CREATE FUNCTION — store metadata (name, params, return type, body)
+	t.Run("create_function", func(t *testing.T) {
+		oracle.execSQL("DROP FUNCTION IF EXISTS fn_add")
+		createSQL := "CREATE FUNCTION fn_add(a INT, b INT) RETURNS INT DETERMINISTIC RETURN a + b"
+		if err := oracle.execSQL(createSQL); err != nil {
+			t.Fatalf("oracle exec: %v", err)
+		}
+		oracleDDL, err := oracle.showCreateFunction("fn_add")
+		if err != nil {
+			t.Fatalf("oracle SHOW CREATE FUNCTION: %v", err)
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		results, parseErr := c.Exec(createSQL, nil)
+		if parseErr != nil {
+			t.Fatalf("omni parse error: %v", parseErr)
+		}
+		if results[0].Error != nil {
+			t.Fatalf("omni exec error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateFunction("test", "fn_add")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL, omniDDL)
+		}
+	})
+
+	// 4.2.2: CREATE PROCEDURE — store metadata
+	t.Run("create_procedure", func(t *testing.T) {
+		oracle.execSQLDirect("DROP PROCEDURE IF EXISTS sp_greet")
+		createSQL := "CREATE PROCEDURE sp_greet(IN name VARCHAR(100)) BEGIN SELECT CONCAT('Hello, ', name); END"
+		if err := oracle.execSQLDirect(createSQL); err != nil {
+			t.Fatalf("oracle exec: %v", err)
+		}
+		oracleDDL, err := oracle.showCreateProcedure("sp_greet")
+		if err != nil {
+			t.Fatalf("oracle SHOW CREATE PROCEDURE: %v", err)
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		results, parseErr := c.Exec(createSQL, nil)
+		if parseErr != nil {
+			t.Fatalf("omni parse error: %v", parseErr)
+		}
+		if results[0].Error != nil {
+			t.Fatalf("omni exec error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateProcedure("test", "sp_greet")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL, omniDDL)
+		}
+	})
+
+	// 4.2.3: DROP FUNCTION / PROCEDURE
+	t.Run("drop_function", func(t *testing.T) {
+		oracle.execSQL("DROP FUNCTION IF EXISTS fn_drop_test")
+		oracle.execSQL("CREATE FUNCTION fn_drop_test() RETURNS INT DETERMINISTIC RETURN 1")
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE FUNCTION fn_drop_test() RETURNS INT DETERMINISTIC RETURN 1", nil)
+
+		// Drop on oracle
+		if err := oracle.execSQL("DROP FUNCTION fn_drop_test"); err != nil {
+			t.Fatalf("oracle DROP FUNCTION: %v", err)
+		}
+		// Drop on omni
+		results, _ := c.Exec("DROP FUNCTION fn_drop_test", nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni DROP FUNCTION error: %v", results[0].Error)
+		}
+
+		// Both should now error on SHOW CREATE FUNCTION
+		_, oracleErr := oracle.showCreateFunction("fn_drop_test")
+		omniDDL := c.ShowCreateFunction("test", "fn_drop_test")
+
+		if oracleErr == nil {
+			t.Error("expected oracle error after DROP FUNCTION")
+		}
+		if omniDDL != "" {
+			t.Error("expected empty omni DDL after DROP FUNCTION")
+		}
+	})
+
+	t.Run("drop_procedure", func(t *testing.T) {
+		oracle.execSQLDirect("DROP PROCEDURE IF EXISTS sp_drop_test")
+		oracle.execSQLDirect("CREATE PROCEDURE sp_drop_test() BEGIN SELECT 1; END")
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE PROCEDURE sp_drop_test() BEGIN SELECT 1; END", nil)
+
+		// Drop on oracle
+		if err := oracle.execSQL("DROP PROCEDURE sp_drop_test"); err != nil {
+			t.Fatalf("oracle DROP PROCEDURE: %v", err)
+		}
+		// Drop on omni
+		results, _ := c.Exec("DROP PROCEDURE sp_drop_test", nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni DROP PROCEDURE error: %v", results[0].Error)
+		}
+
+		_, oracleErr := oracle.showCreateProcedure("sp_drop_test")
+		omniDDL := c.ShowCreateProcedure("test", "sp_drop_test")
+
+		if oracleErr == nil {
+			t.Error("expected oracle error after DROP PROCEDURE")
+		}
+		if omniDDL != "" {
+			t.Error("expected empty omni DDL after DROP PROCEDURE")
+		}
+	})
+
+	// 4.2.4: DROP FUNCTION IF EXISTS — no error for nonexistent
+	t.Run("drop_function_if_exists", func(t *testing.T) {
+		oracle.execSQL("DROP FUNCTION IF EXISTS fn_nonexistent_xyz")
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		results, _ := c.Exec("DROP FUNCTION IF EXISTS fn_nonexistent_xyz", nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni DROP FUNCTION IF EXISTS should not error: %v", results[0].Error)
+		}
+	})
+
+	// 4.2.5: DROP FUNCTION nonexistent — error
+	t.Run("drop_function_nonexistent_error", func(t *testing.T) {
+		oracleErr := oracle.execSQL("DROP FUNCTION fn_totally_nonexistent")
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		results, _ := c.Exec("DROP FUNCTION fn_totally_nonexistent", nil)
+
+		if oracleErr == nil {
+			t.Fatal("expected oracle error for DROP nonexistent FUNCTION")
+		}
+		if results[0].Error == nil {
+			t.Fatal("expected omni error for DROP nonexistent FUNCTION")
+		}
+
+		// Both should produce error code 1305
+		var mysqlErr *mysqldriver.MySQLError
+		if errors.As(oracleErr, &mysqlErr) {
+			if catErr, ok := results[0].Error.(*Error); ok {
+				if catErr.Code != int(mysqlErr.Number) {
+					t.Errorf("error code mismatch: oracle=%d omni=%d", mysqlErr.Number, catErr.Code)
+				}
+			}
+		}
+	})
+
+	// 4.2.6: ALTER ROUTINE (characteristics only)
+	t.Run("alter_function_comment", func(t *testing.T) {
+		oracle.execSQL("DROP FUNCTION IF EXISTS fn_alter_test")
+		oracle.execSQL("CREATE FUNCTION fn_alter_test() RETURNS INT DETERMINISTIC RETURN 42")
+		if err := oracle.execSQL("ALTER FUNCTION fn_alter_test COMMENT 'test comment'"); err != nil {
+			t.Fatalf("oracle ALTER FUNCTION: %v", err)
+		}
+		oracleDDL, err := oracle.showCreateFunction("fn_alter_test")
+		if err != nil {
+			t.Fatalf("oracle SHOW CREATE FUNCTION: %v", err)
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE FUNCTION fn_alter_test() RETURNS INT DETERMINISTIC RETURN 42", nil)
+		results, _ := c.Exec("ALTER FUNCTION fn_alter_test COMMENT 'test comment'", nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni ALTER FUNCTION error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateFunction("test", "fn_alter_test")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL, omniDDL)
+		}
+	})
+
+	t.Run("alter_procedure_sql_security", func(t *testing.T) {
+		oracle.execSQLDirect("DROP PROCEDURE IF EXISTS sp_alter_test")
+		oracle.execSQLDirect("CREATE PROCEDURE sp_alter_test() BEGIN SELECT 1; END")
+		if err := oracle.execSQLDirect("ALTER PROCEDURE sp_alter_test SQL SECURITY INVOKER"); err != nil {
+			t.Fatalf("oracle ALTER PROCEDURE: %v", err)
+		}
+		oracleDDL, err := oracle.showCreateProcedure("sp_alter_test")
+		if err != nil {
+			t.Fatalf("oracle SHOW CREATE PROCEDURE: %v", err)
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE PROCEDURE sp_alter_test() BEGIN SELECT 1; END", nil)
+		results, _ := c.Exec("ALTER PROCEDURE sp_alter_test SQL SECURITY INVOKER", nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni ALTER PROCEDURE error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateProcedure("test", "sp_alter_test")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL, omniDDL)
+		}
+	})
+
+	// 4.2.7: SHOW CREATE FUNCTION output
+	t.Run("show_create_function_output", func(t *testing.T) {
+		oracle.execSQL("DROP FUNCTION IF EXISTS fn_show_test")
+		createSQL := "CREATE FUNCTION fn_show_test(x INT) RETURNS VARCHAR(100) DETERMINISTIC RETURN CONCAT('val=', x)"
+		if err := oracle.execSQL(createSQL); err != nil {
+			t.Fatalf("oracle exec: %v", err)
+		}
+		oracleDDL, err := oracle.showCreateFunction("fn_show_test")
+		if err != nil {
+			t.Fatalf("oracle SHOW CREATE FUNCTION: %v", err)
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		results, parseErr := c.Exec(createSQL, nil)
+		if parseErr != nil {
+			t.Fatalf("omni parse error: %v", parseErr)
+		}
+		if results[0].Error != nil {
+			t.Fatalf("omni exec error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateFunction("test", "fn_show_test")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL, omniDDL)
+		}
+	})
+
+	// 4.2.8: SHOW CREATE PROCEDURE output
+	t.Run("show_create_procedure_output", func(t *testing.T) {
+		oracle.execSQLDirect("DROP PROCEDURE IF EXISTS sp_show_test")
+		createSQL := "CREATE PROCEDURE sp_show_test(IN id INT, OUT result VARCHAR(100)) BEGIN SET result = CONCAT('id=', id); END"
+		if err := oracle.execSQLDirect(createSQL); err != nil {
+			t.Fatalf("oracle exec: %v", err)
+		}
+		oracleDDL, err := oracle.showCreateProcedure("sp_show_test")
+		if err != nil {
+			t.Fatalf("oracle SHOW CREATE PROCEDURE: %v", err)
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		results, parseErr := c.Exec(createSQL, nil)
+		if parseErr != nil {
+			t.Fatalf("omni parse error: %v", parseErr)
+		}
+		if results[0].Error != nil {
+			t.Fatalf("omni exec error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateProcedure("test", "sp_show_test")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL, omniDDL)
+		}
+	})
+}

@@ -31,6 +31,10 @@ const (
 	ErrFKCannotDropParent      = 3730
 	ErrFKMissingIndex          = 1822
 	ErrFKIncompatibleColumns   = 3780
+	ErrNoSuchFunction          = 1305
+	ErrNoSuchProcedure         = 1305
+	ErrDupFunction             = 1304
+	ErrDupProcedure            = 1304
 )
 
 var sqlStateMap = map[int]string{
@@ -52,6 +56,8 @@ var sqlStateMap = map[int]string{
 	ErrFKCannotDropParent:      "HY000",
 	ErrFKMissingIndex:          "HY000",
 	ErrFKIncompatibleColumns:   "HY000",
+	ErrNoSuchFunction:          "42000",
+	ErrDupFunction:             "HY000",
 }
 
 func sqlState(code int) string {
@@ -134,4 +140,24 @@ func errFKMissingIndex(constraint, refTable string) error {
 func errFKIncompatibleColumns(col, refCol, constraint string) error {
 	return &Error{Code: ErrFKIncompatibleColumns, SQLState: sqlState(ErrFKIncompatibleColumns),
 		Message: fmt.Sprintf("Referencing column '%s' and referenced column '%s' in foreign key constraint '%s' are incompatible.", col, refCol, constraint)}
+}
+
+func errDupFunction(name string) error {
+	return &Error{Code: ErrDupFunction, SQLState: sqlState(ErrDupFunction),
+		Message: fmt.Sprintf("FUNCTION %s already exists", name)}
+}
+
+func errDupProcedure(name string) error {
+	return &Error{Code: ErrDupProcedure, SQLState: sqlState(ErrDupProcedure),
+		Message: fmt.Sprintf("PROCEDURE %s already exists", name)}
+}
+
+func errNoSuchFunction(name string) error {
+	return &Error{Code: ErrNoSuchFunction, SQLState: sqlState(ErrNoSuchFunction),
+		Message: fmt.Sprintf("FUNCTION %s does not exist", name)}
+}
+
+func errNoSuchProcedure(db, name string) error {
+	return &Error{Code: ErrNoSuchProcedure, SQLState: sqlState(ErrNoSuchProcedure),
+		Message: fmt.Sprintf("PROCEDURE %s.%s does not exist", db, name)}
 }

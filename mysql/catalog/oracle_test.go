@@ -95,6 +95,13 @@ func (o *mysqlOracle) execSQL(sqlStr string) error {
 	return nil
 }
 
+// execSQLDirect executes a single SQL statement directly without splitting on semicolons.
+// This is needed for CREATE PROCEDURE/FUNCTION with BEGIN...END blocks.
+func (o *mysqlOracle) execSQLDirect(sqlStr string) error {
+	_, err := o.db.ExecContext(o.ctx, sqlStr)
+	return err
+}
+
 // showCreateDatabase runs SHOW CREATE DATABASE and returns the CREATE DATABASE statement.
 func (o *mysqlOracle) showCreateDatabase(database string) (string, error) {
 	var dbName, createStmt string
@@ -111,6 +118,28 @@ func (o *mysqlOracle) showCreateTable(table string) (string, error) {
 	err := o.db.QueryRowContext(o.ctx, "SHOW CREATE TABLE "+table).Scan(&tableName, &createStmt)
 	if err != nil {
 		return "", fmt.Errorf("SHOW CREATE TABLE %s: %w", table, err)
+	}
+	return createStmt, nil
+}
+
+// showCreateFunction runs SHOW CREATE FUNCTION and returns the CREATE FUNCTION statement.
+func (o *mysqlOracle) showCreateFunction(name string) (string, error) {
+	var funcName, sqlMode, createStmt, charSetClient, collConn, dbCollation string
+	err := o.db.QueryRowContext(o.ctx, "SHOW CREATE FUNCTION "+name).Scan(
+		&funcName, &sqlMode, &createStmt, &charSetClient, &collConn, &dbCollation)
+	if err != nil {
+		return "", fmt.Errorf("SHOW CREATE FUNCTION %s: %w", name, err)
+	}
+	return createStmt, nil
+}
+
+// showCreateProcedure runs SHOW CREATE PROCEDURE and returns the CREATE PROCEDURE statement.
+func (o *mysqlOracle) showCreateProcedure(name string) (string, error) {
+	var procName, sqlMode, createStmt, charSetClient, collConn, dbCollation string
+	err := o.db.QueryRowContext(o.ctx, "SHOW CREATE PROCEDURE "+name).Scan(
+		&procName, &sqlMode, &createStmt, &charSetClient, &collConn, &dbCollation)
+	if err != nil {
+		return "", fmt.Errorf("SHOW CREATE PROCEDURE %s: %w", name, err)
 	}
 	return createStmt, nil
 }

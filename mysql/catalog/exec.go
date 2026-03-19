@@ -102,6 +102,12 @@ func (c *Catalog) processUtility(stmt nodes.Node) error {
 		return c.truncateTable(s)
 	case *nodes.UseStmt:
 		return c.useDatabase(s)
+	case *nodes.CreateFunctionStmt:
+		return c.createRoutine(s)
+	case *nodes.DropRoutineStmt:
+		return c.dropRoutine(s)
+	case *nodes.AlterRoutineStmt:
+		return c.alterRoutine(s)
 	default:
 		return nil
 	}

@@ -244,7 +244,7 @@ func (p *Parser) parseRoutineCharacteristic() (*nodes.RoutineCharacteristic, boo
 			Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "LANGUAGE", Value: name,
 		}, true
 
-	case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "deterministic"):
+	case p.cur.Type == kwDETERMINISTIC || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "deterministic")):
 		p.advance()
 		return &nodes.RoutineCharacteristic{
 			Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "DETERMINISTIC", Value: "YES",
@@ -252,7 +252,8 @@ func (p *Parser) parseRoutineCharacteristic() (*nodes.RoutineCharacteristic, boo
 
 	case p.cur.Type == kwNOT:
 		// NOT DETERMINISTIC
-		if next := p.peekNext(); next.Type == tokIDENT && eqFold(next.Str, "deterministic") {
+		next := p.peekNext()
+		if next.Type == kwDETERMINISTIC || (next.Type == tokIDENT && eqFold(next.Str, "deterministic")) {
 			p.advance()
 			p.advance()
 			return &nodes.RoutineCharacteristic{

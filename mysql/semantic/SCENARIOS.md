@@ -511,12 +511,12 @@ Every error must match MySQL's errno, SQLSTATE, and message format.
 ### 4.2 Stored Routines
 
 ```
-[ ] CREATE FUNCTION — store metadata (name, params, return type, body)
-[ ] CREATE PROCEDURE — store metadata
-[ ] DROP FUNCTION / PROCEDURE
-[ ] ALTER ROUTINE (characteristics only)
-[ ] SHOW CREATE FUNCTION output
-[ ] SHOW CREATE PROCEDURE output
+[x] CREATE FUNCTION — store metadata (name, params, return type, body)
+[x] CREATE PROCEDURE — store metadata
+[x] DROP FUNCTION / PROCEDURE
+[x] ALTER ROUTINE (characteristics only)
+[x] SHOW CREATE FUNCTION output
+[x] SHOW CREATE PROCEDURE output
 ```
 
 ### 4.3 Triggers
