@@ -294,32 +294,32 @@ Beyond output format — the catalog must behave identically to MySQL.
 ### 2.2 ALTER TABLE — Column Operations
 
 ```
-[ ] ADD COLUMN at end
-[ ] ADD COLUMN FIRST
-[ ] ADD COLUMN AFTER specific_col
-[ ] ADD multiple columns in one ALTER
-[ ] DROP COLUMN
-[ ] DROP COLUMN that's part of an index → index removed or shrunk
-[ ] DROP COLUMN that's the only column in an index → index removed
-[ ] DROP COLUMN that's part of PK → error
-[ ] DROP COLUMN that's referenced by FK → error
-[ ] DROP COLUMN IF EXISTS
-[ ] MODIFY COLUMN — change type, keep name
-[ ] MODIFY COLUMN — widen VARCHAR
-[ ] MODIFY COLUMN — narrow VARCHAR (data truncation warning in real MySQL)
-[ ] MODIFY COLUMN — change INT to BIGINT
-[ ] MODIFY COLUMN — add NOT NULL
-[ ] MODIFY COLUMN — remove NOT NULL
-[ ] MODIFY COLUMN FIRST / AFTER
-[ ] CHANGE COLUMN — rename + change type
-[ ] CHANGE COLUMN — same name, different type
-[ ] CHANGE COLUMN — update index column references
-[ ] RENAME COLUMN old TO new
-[ ] RENAME COLUMN — update index column references
-[ ] ALTER COLUMN col SET DEFAULT value
-[ ] ALTER COLUMN col DROP DEFAULT
-[ ] ALTER COLUMN col SET VISIBLE
-[ ] ALTER COLUMN col SET INVISIBLE
+[x] ADD COLUMN at end
+[x] ADD COLUMN FIRST
+[x] ADD COLUMN AFTER specific_col
+[x] ADD multiple columns in one ALTER
+[x] DROP COLUMN
+[x] DROP COLUMN that's part of an index → index removed or shrunk
+[x] DROP COLUMN that's the only column in an index → index removed
+[x] DROP COLUMN that's part of PK → error
+[x] DROP COLUMN that's referenced by FK → error
+[~] DROP COLUMN IF EXISTS — MySQL 8.0 does not support IF EXISTS on DROP COLUMN (syntax error); supported only in 8.0.32+
+[x] MODIFY COLUMN — change type, keep name
+[x] MODIFY COLUMN — widen VARCHAR
+[x] MODIFY COLUMN — narrow VARCHAR (data truncation warning in real MySQL)
+[x] MODIFY COLUMN — change INT to BIGINT
+[x] MODIFY COLUMN — add NOT NULL
+[x] MODIFY COLUMN — remove NOT NULL
+[x] MODIFY COLUMN FIRST / AFTER
+[x] CHANGE COLUMN — rename + change type
+[x] CHANGE COLUMN — same name, different type
+[x] CHANGE COLUMN — update index column references
+[x] RENAME COLUMN old TO new
+[x] RENAME COLUMN — update index column references
+[x] ALTER COLUMN col SET DEFAULT value
+[x] ALTER COLUMN col DROP DEFAULT
+[x] ALTER COLUMN col SET VISIBLE
+[x] ALTER COLUMN col SET INVISIBLE
 ```
 
 ### 2.3 ALTER TABLE — Index Operations

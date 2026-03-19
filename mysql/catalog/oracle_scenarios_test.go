@@ -1341,3 +1341,265 @@ func TestOracle_Section_2_1_CreateTableVariants(t *testing.T) {
 		}
 	})
 }
+
+func TestOracle_Section_2_2_AlterTableColumnOps(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	// DDL-comparison tests: run setup + alter, compare SHOW CREATE TABLE.
+	ddlCases := []struct {
+		name  string
+		setup string
+		alter string
+		table string
+	}{
+		{
+			"add_column_at_end",
+			"CREATE TABLE t_add_end (id INT PRIMARY KEY)",
+			"ALTER TABLE t_add_end ADD COLUMN name VARCHAR(100)",
+			"t_add_end",
+		},
+		{
+			"add_column_first",
+			"CREATE TABLE t_add_first (id INT PRIMARY KEY)",
+			"ALTER TABLE t_add_first ADD COLUMN name VARCHAR(100) FIRST",
+			"t_add_first",
+		},
+		{
+			"add_column_after",
+			"CREATE TABLE t_add_after (id INT PRIMARY KEY, age INT)",
+			"ALTER TABLE t_add_after ADD COLUMN name VARCHAR(100) AFTER id",
+			"t_add_after",
+		},
+		{
+			"add_multiple_columns",
+			"CREATE TABLE t_add_multi (id INT PRIMARY KEY)",
+			"ALTER TABLE t_add_multi ADD COLUMN name VARCHAR(100), ADD COLUMN age INT, ADD COLUMN email VARCHAR(255)",
+			"t_add_multi",
+		},
+		{
+			"drop_column",
+			"CREATE TABLE t_drop_col (id INT PRIMARY KEY, name VARCHAR(100), age INT)",
+			"ALTER TABLE t_drop_col DROP COLUMN age",
+			"t_drop_col",
+		},
+		{
+			"drop_column_part_of_index",
+			"CREATE TABLE t_drop_idx_col (id INT PRIMARY KEY, a INT, b INT, KEY idx_ab (a, b))",
+			"ALTER TABLE t_drop_idx_col DROP COLUMN b",
+			"t_drop_idx_col",
+		},
+		{
+			"drop_column_only_in_index",
+			"CREATE TABLE t_drop_only_idx (id INT PRIMARY KEY, a INT, KEY idx_a (a))",
+			"ALTER TABLE t_drop_only_idx DROP COLUMN a",
+			"t_drop_only_idx",
+		},
+		// Note: DROP COLUMN IF EXISTS is not supported in MySQL 8.0 (only 8.0.32+).
+		// Scenario marked as [~] partial in SCENARIOS.md.
+		{
+			"modify_column_change_type",
+			"CREATE TABLE t_mod_type (id INT PRIMARY KEY, val SMALLINT)",
+			"ALTER TABLE t_mod_type MODIFY COLUMN val INT",
+			"t_mod_type",
+		},
+		{
+			"modify_column_widen_varchar",
+			"CREATE TABLE t_mod_widen (id INT PRIMARY KEY, name VARCHAR(50))",
+			"ALTER TABLE t_mod_widen MODIFY COLUMN name VARCHAR(200)",
+			"t_mod_widen",
+		},
+		{
+			"modify_column_narrow_varchar",
+			"CREATE TABLE t_mod_narrow (id INT PRIMARY KEY, name VARCHAR(200))",
+			"ALTER TABLE t_mod_narrow MODIFY COLUMN name VARCHAR(50)",
+			"t_mod_narrow",
+		},
+		{
+			"modify_column_int_to_bigint",
+			"CREATE TABLE t_mod_bigint (id INT PRIMARY KEY, val INT)",
+			"ALTER TABLE t_mod_bigint MODIFY COLUMN val BIGINT",
+			"t_mod_bigint",
+		},
+		{
+			"modify_column_add_not_null",
+			"CREATE TABLE t_mod_nn (id INT PRIMARY KEY, name VARCHAR(100))",
+			"ALTER TABLE t_mod_nn MODIFY COLUMN name VARCHAR(100) NOT NULL",
+			"t_mod_nn",
+		},
+		{
+			"modify_column_remove_not_null",
+			"CREATE TABLE t_mod_rnn (id INT PRIMARY KEY, name VARCHAR(100) NOT NULL)",
+			"ALTER TABLE t_mod_rnn MODIFY COLUMN name VARCHAR(100)",
+			"t_mod_rnn",
+		},
+		{
+			"modify_column_first_after",
+			"CREATE TABLE t_mod_pos (a INT, b INT, c INT)",
+			"ALTER TABLE t_mod_pos MODIFY COLUMN c INT FIRST",
+			"t_mod_pos",
+		},
+		{
+			"change_column_rename_and_type",
+			"CREATE TABLE t_chg_rt (id INT PRIMARY KEY, old_name VARCHAR(50))",
+			"ALTER TABLE t_chg_rt CHANGE COLUMN old_name new_name VARCHAR(100)",
+			"t_chg_rt",
+		},
+		{
+			"change_column_same_name_diff_type",
+			"CREATE TABLE t_chg_st (id INT PRIMARY KEY, val INT)",
+			"ALTER TABLE t_chg_st CHANGE COLUMN val val BIGINT",
+			"t_chg_st",
+		},
+		{
+			"change_column_update_index_refs",
+			"CREATE TABLE t_chg_idx (id INT PRIMARY KEY, a INT, KEY idx_a (a))",
+			"ALTER TABLE t_chg_idx CHANGE COLUMN a b INT",
+			"t_chg_idx",
+		},
+		{
+			"rename_column",
+			"CREATE TABLE t_ren_col (id INT PRIMARY KEY, old_col INT)",
+			"ALTER TABLE t_ren_col RENAME COLUMN old_col TO new_col",
+			"t_ren_col",
+		},
+		{
+			"rename_column_update_index_refs",
+			"CREATE TABLE t_ren_idx (id INT PRIMARY KEY, a INT, KEY idx_a (a))",
+			"ALTER TABLE t_ren_idx RENAME COLUMN a TO b",
+			"t_ren_idx",
+		},
+		{
+			"alter_column_set_default",
+			"CREATE TABLE t_set_def (id INT PRIMARY KEY, val INT)",
+			"ALTER TABLE t_set_def ALTER COLUMN val SET DEFAULT 42",
+			"t_set_def",
+		},
+		{
+			"alter_column_drop_default",
+			"CREATE TABLE t_drop_def (id INT PRIMARY KEY, val INT DEFAULT 10)",
+			"ALTER TABLE t_drop_def ALTER COLUMN val DROP DEFAULT",
+			"t_drop_def",
+		},
+		{
+			"alter_column_set_visible",
+			"CREATE TABLE t_vis (id INT PRIMARY KEY, val INT /*!80023 INVISIBLE */)",
+			"ALTER TABLE t_vis ALTER COLUMN val SET VISIBLE",
+			"t_vis",
+		},
+		{
+			"alter_column_set_invisible",
+			"CREATE TABLE t_invis (id INT PRIMARY KEY, val INT)",
+			"ALTER TABLE t_invis ALTER COLUMN val SET INVISIBLE",
+			"t_invis",
+		},
+		{
+			"drop_column_part_of_pk",
+			"CREATE TABLE t_drop_pk (a INT, b INT, PRIMARY KEY (a, b))",
+			"ALTER TABLE t_drop_pk DROP COLUMN a",
+			"t_drop_pk",
+		},
+	}
+
+	for _, tc := range ddlCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Oracle: setup + alter.
+			oracle.execSQL("DROP TABLE IF EXISTS " + tc.table)
+			if err := oracle.execSQL(tc.setup); err != nil {
+				t.Fatalf("oracle setup: %v", err)
+			}
+			if err := oracle.execSQL(tc.alter); err != nil {
+				t.Fatalf("oracle alter: %v", err)
+			}
+			oracleDDL, err := oracle.showCreateTable(tc.table)
+			if err != nil {
+				t.Fatalf("oracle show create: %v", err)
+			}
+
+			// Omni: setup + alter.
+			c := New()
+			c.Exec("CREATE DATABASE test", nil)
+			c.SetCurrentDatabase("test")
+			results, _ := c.Exec(tc.setup, nil)
+			if results[0].Error != nil {
+				t.Fatalf("omni setup error: %v", results[0].Error)
+			}
+			results, _ = c.Exec(tc.alter, nil)
+			for _, r := range results {
+				if r.Error != nil {
+					t.Fatalf("omni alter error: %v", r.Error)
+				}
+			}
+			omniDDL := c.ShowCreateTable("test", tc.table)
+
+			if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+				t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+					oracleDDL, omniDDL)
+			}
+		})
+	}
+
+	// Error tests: operations that should produce errors.
+	errCases := []struct {
+		name    string
+		setup   string
+		alter   string
+		table   string
+		wantErr bool
+	}{
+		{
+			"drop_column_referenced_by_fk",
+			"CREATE TABLE t_fk_parent (id INT PRIMARY KEY); CREATE TABLE t_fk_child (id INT PRIMARY KEY, pid INT, FOREIGN KEY (pid) REFERENCES t_fk_parent(id))",
+			"ALTER TABLE t_fk_child DROP COLUMN pid",
+			"t_fk_child",
+			true,
+		},
+	}
+
+	for _, tc := range errCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Clean up tables first.
+			oracle.execSQL("DROP TABLE IF EXISTS t_fk_child")
+			oracle.execSQL("DROP TABLE IF EXISTS t_fk_parent")
+			oracle.execSQL("DROP TABLE IF EXISTS " + tc.table)
+
+			if err := oracle.execSQL(tc.setup); err != nil {
+				t.Fatalf("oracle setup: %v", err)
+			}
+			oracleErr := oracle.execSQL(tc.alter)
+
+			c := New()
+			c.Exec("CREATE DATABASE test", nil)
+			c.SetCurrentDatabase("test")
+			c.Exec(tc.setup, nil)
+			results, _ := c.Exec(tc.alter, nil)
+			var omniErr error
+			for _, r := range results {
+				if r.Error != nil {
+					omniErr = r.Error
+					break
+				}
+			}
+
+			if tc.wantErr {
+				if oracleErr == nil {
+					t.Fatal("expected oracle error but got nil")
+				}
+				if omniErr == nil {
+					t.Fatalf("expected omni error but got nil (oracle error: %v)", oracleErr)
+				}
+				t.Logf("both errored as expected — oracle: %v, omni: %v", oracleErr, omniErr)
+			} else {
+				if oracleErr != nil {
+					t.Fatalf("unexpected oracle error: %v", oracleErr)
+				}
+				if omniErr != nil {
+					t.Fatalf("unexpected omni error: %v", omniErr)
+				}
+			}
+		})
+	}
+}

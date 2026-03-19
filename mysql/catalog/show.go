@@ -174,7 +174,7 @@ func showColumnWithTable(col *Column, tbl *Table) string {
 	if col.Default != nil {
 		b.WriteString(" DEFAULT ")
 		b.WriteString(formatDefault(*col.Default, col))
-	} else if col.Nullable && !col.AutoIncrement && !isTextBlobType(col.DataType) {
+	} else if col.Nullable && !col.AutoIncrement && !isTextBlobType(col.DataType) && !col.DefaultDropped {
 		b.WriteString(" DEFAULT NULL")
 	}
 

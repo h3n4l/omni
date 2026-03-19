@@ -168,10 +168,79 @@ func (c *Catalog) alterDropColumn(tbl *Table, cmd *nodes.AlterTableCmd) error {
 		return errNoSuchColumn(cmd.Name)
 	}
 
+	// Check if column is referenced by a foreign key constraint.
+	for _, con := range tbl.Constraints {
+		if con.Type == ConForeignKey {
+			for _, col := range con.Columns {
+				if toLower(col) == colKey {
+					return &Error{
+						Code:     1828,
+						SQLState: "HY000",
+						Message:  fmt.Sprintf("Cannot drop column '%s': needed in a foreign key constraint '%s'", cmd.Name, con.Name),
+					}
+				}
+			}
+		}
+	}
+
+	// Remove column from indexes; if index becomes empty, remove it entirely.
+	cleanupIndexesForDroppedColumn(tbl, cmd.Name)
+
 	idx := tbl.colByName[colKey]
 	tbl.Columns = append(tbl.Columns[:idx], tbl.Columns[idx+1:]...)
 	rebuildColIndex(tbl)
 	return nil
+}
+
+// cleanupIndexesForDroppedColumn removes references to a dropped column from
+// all indexes. If an index loses all columns, it is removed entirely.
+// Associated constraints are also cleaned up.
+func cleanupIndexesForDroppedColumn(tbl *Table, colName string) {
+	colKey := toLower(colName)
+
+	// Clean up indexes.
+	newIndexes := make([]*Index, 0, len(tbl.Indexes))
+	removedIndexNames := make(map[string]bool)
+	for _, idx := range tbl.Indexes {
+		// Remove the column from this index.
+		newCols := make([]*IndexColumn, 0, len(idx.Columns))
+		for _, ic := range idx.Columns {
+			if toLower(ic.Name) != colKey {
+				newCols = append(newCols, ic)
+			}
+		}
+		if len(newCols) == 0 {
+			// Index has no columns left — remove it.
+			removedIndexNames[toLower(idx.Name)] = true
+			continue
+		}
+		idx.Columns = newCols
+		newIndexes = append(newIndexes, idx)
+	}
+	tbl.Indexes = newIndexes
+
+	// Clean up constraints that reference removed indexes.
+	if len(removedIndexNames) > 0 {
+		newConstraints := make([]*Constraint, 0, len(tbl.Constraints))
+		for _, con := range tbl.Constraints {
+			if removedIndexNames[toLower(con.IndexName)] || removedIndexNames[toLower(con.Name)] {
+				continue
+			}
+			newConstraints = append(newConstraints, con)
+		}
+		tbl.Constraints = newConstraints
+	}
+
+	// Also update constraint column lists for remaining constraints.
+	for _, con := range tbl.Constraints {
+		newCols := make([]string, 0, len(con.Columns))
+		for _, col := range con.Columns {
+			if toLower(col) != colKey {
+				newCols = append(newCols, col)
+			}
+		}
+		con.Columns = newCols
+	}
 }
 
 // alterModifyColumn replaces a column definition in-place (same name).
@@ -594,9 +663,11 @@ func (c *Catalog) alterColumnDefault(tbl *Table, cmd *nodes.AlterTableCmd) error
 	if cmd.DefaultExpr != nil {
 		s := nodeToSQL(cmd.DefaultExpr)
 		col.Default = &s
+		col.DefaultDropped = false
 	} else {
-		// DROP DEFAULT
+		// DROP DEFAULT — MySQL shows no default at all (not even DEFAULT NULL).
 		col.Default = nil
+		col.DefaultDropped = true
 	}
 	return nil
 }
