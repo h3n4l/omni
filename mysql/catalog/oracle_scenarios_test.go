@@ -1116,3 +1116,49 @@ func TestOracle_Section_1_14_FulltextSpatialIndexes(t *testing.T) {
 		})
 	}
 }
+
+func TestOracle_Section_1_15_ExpressionIndexes(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	cases := []struct {
+		name  string
+		sql   string
+		table string
+	}{
+		{"expr_func_upper", "CREATE TABLE t_expr1 (name VARCHAR(100), KEY `idx` ((UPPER(name))))", "t_expr1"},
+		{"expr_arithmetic", "CREATE TABLE t_expr2 (col1 INT, col2 INT, KEY `idx` ((col1 + col2)))", "t_expr2"},
+		{"expr_unique", "CREATE TABLE t_expr3 (name VARCHAR(100), UNIQUE KEY `uidx` ((UPPER(name))))", "t_expr3"},
+		{"expr_display_format", "CREATE TABLE t_expr4 (a INT, b INT, KEY `idx_col` (a), KEY `idx_expr` ((a * b)))", "t_expr4"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			oracle.execSQL("DROP TABLE IF EXISTS " + tc.table)
+			if err := oracle.execSQL(tc.sql); err != nil {
+				t.Fatalf("oracle exec: %v", err)
+			}
+			oracleDDL, _ := oracle.showCreateTable(tc.table)
+
+			c := New()
+			c.Exec("CREATE DATABASE test", nil)
+			c.SetCurrentDatabase("test")
+			results, err := c.Exec(tc.sql, nil)
+			if err != nil {
+				t.Fatalf("omni parse error: %v", err)
+			}
+			if results[0].Error != nil {
+				t.Fatalf("omni exec error: %v", results[0].Error)
+			}
+			omniDDL := c.ShowCreateTable("test", tc.table)
+
+			if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+				t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+					oracleDDL, omniDDL)
+			}
+		})
+	}
+}

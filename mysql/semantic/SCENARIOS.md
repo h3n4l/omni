@@ -199,10 +199,10 @@ The foundation — our output must be byte-for-byte identical to MySQL 8.0.
 ### 1.15 Expression Indexes (8.0.13+)
 
 ```
-[ ] KEY `idx` ((UPPER(name)))
-[ ] KEY `idx` ((col1 + col2))
-[ ] UNIQUE KEY on expression
-[ ] Expression index display format in SHOW CREATE TABLE
+[x] KEY `idx` ((UPPER(name)))
+[x] KEY `idx` ((col1 + col2))
+[x] UNIQUE KEY on expression
+[x] Expression index display format in SHOW CREATE TABLE
 ```
 
 ### 1.16 Index Options
