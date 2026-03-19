@@ -27,8 +27,8 @@ func TestCreateIndex(t *testing.T) {
 	if idx.Unique {
 		t.Error("expected non-unique index")
 	}
-	if idx.IndexType != "BTREE" {
-		t.Errorf("expected IndexType 'BTREE', got %q", idx.IndexType)
+	if idx.IndexType != "" {
+		t.Errorf("expected empty IndexType (implicit BTREE), got %q", idx.IndexType)
 	}
 	if len(idx.Columns) != 1 || idx.Columns[0].Name != "name" {
 		t.Errorf("expected index on column 'name', got %v", idx.Columns)

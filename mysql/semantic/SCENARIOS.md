@@ -177,14 +177,14 @@ The foundation — our output must be byte-for-byte identical to MySQL 8.0.
 ### 1.13 Regular Indexes
 
 ```
-[ ] KEY `idx_name` (col)
-[ ] KEY without name → auto-named
-[ ] Multi-column KEY
-[ ] KEY with prefix length: KEY `idx` (col(10))
-[ ] KEY with DESC: KEY `idx` (col DESC) (8.0+)
-[ ] KEY with mixed ASC/DESC: KEY `idx` (a ASC, b DESC)
-[ ] USING HASH — shown only for non-BTREE
-[ ] USING BTREE — not shown (default)
+[x] KEY `idx_name` (col)
+[x] KEY without name → auto-named
+[x] Multi-column KEY
+[x] KEY with prefix length: KEY `idx` (col(10))
+[x] KEY with DESC: KEY `idx` (col DESC) (8.0+)
+[x] KEY with mixed ASC/DESC: KEY `idx` (a ASC, b DESC)
+[x] USING HASH — shown only for non-BTREE
+[x] USING BTREE — shown when explicitly specified
 ```
 
 ### 1.14 Fulltext and Spatial Indexes

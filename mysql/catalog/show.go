@@ -273,8 +273,8 @@ func showIndex(idx *Index) string {
 	b.WriteString(strings.Join(cols, ","))
 	b.WriteString(")")
 
-	// USING clause: only for non-BTREE types, and not for PRIMARY KEY.
-	if !idx.Primary && idx.IndexType != "" && !strings.EqualFold(idx.IndexType, "BTREE") {
+	// USING clause: shown when explicitly specified, not for PRIMARY/FULLTEXT/SPATIAL.
+	if !idx.Primary && !idx.Fulltext && !idx.Spatial && idx.IndexType != "" {
 		b.WriteString(fmt.Sprintf(" USING %s", strings.ToUpper(idx.IndexType)))
 	}
 

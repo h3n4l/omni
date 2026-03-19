@@ -213,7 +213,6 @@ func (c *Catalog) createTable(stmt *nodes.CreateTableStmt) error {
 					Table:     tbl,
 					Columns:   []*IndexColumn{{Name: colDef.Name}},
 					Unique:    false,
-					IndexType: "BTREE",
 					Visible:   true,
 				})
 			case nodes.ColConstrVisible:
@@ -238,7 +237,7 @@ func (c *Catalog) createTable(stmt *nodes.CreateTableStmt) error {
 				Table:     tbl,
 				Columns:   []*IndexColumn{{Name: colDef.Name}},
 				Unique:    true,
-				IndexType: "BTREE",
+				IndexType: "",
 				Visible:   true,
 			})
 			tbl.Constraints = append(tbl.Constraints, &Constraint{
@@ -265,7 +264,7 @@ func (c *Catalog) createTable(stmt *nodes.CreateTableStmt) error {
 					Columns:   []*IndexColumn{{Name: colDef.Name}},
 					Unique:    true,
 					Primary:   true,
-					IndexType: "BTREE",
+					IndexType: "",
 					Visible:   true,
 				})
 				tbl.Constraints = append(tbl.Constraints, &Constraint{
@@ -282,7 +281,7 @@ func (c *Catalog) createTable(stmt *nodes.CreateTableStmt) error {
 					Table:     tbl,
 					Columns:   []*IndexColumn{{Name: colDef.Name}},
 					Unique:    true,
-					IndexType: "BTREE",
+					IndexType: "",
 					Visible:   true,
 				})
 				tbl.Constraints = append(tbl.Constraints, &Constraint{
@@ -320,7 +319,7 @@ func (c *Catalog) createTable(stmt *nodes.CreateTableStmt) error {
 				Columns:   idxCols,
 				Unique:    true,
 				Primary:   true,
-				IndexType: "BTREE",
+				IndexType: "",
 				Visible:   true,
 			})
 			tbl.Constraints = append(tbl.Constraints, &Constraint{
@@ -342,7 +341,7 @@ func (c *Catalog) createTable(stmt *nodes.CreateTableStmt) error {
 				Table:     tbl,
 				Columns:   idxCols,
 				Unique:    true,
-				IndexType: indexTypeOrDefault(con.IndexType, "BTREE"),
+				IndexType: resolveConstraintIndexType(con),
 				Visible:   true,
 			})
 			tbl.Constraints = append(tbl.Constraints, &Constraint{
@@ -385,7 +384,7 @@ func (c *Catalog) createTable(stmt *nodes.CreateTableStmt) error {
 				Name:      idxName,
 				Table:     tbl,
 				Columns:   idxCols,
-				IndexType: "BTREE",
+				IndexType: "",
 				Visible:   true,
 			})
 
@@ -412,7 +411,7 @@ func (c *Catalog) createTable(stmt *nodes.CreateTableStmt) error {
 				Name:      idxName,
 				Table:     tbl,
 				Columns:   idxCols,
-				IndexType: indexTypeOrDefault(con.IndexType, "BTREE"),
+				IndexType: resolveConstraintIndexType(con),
 				Visible:   true,
 			})
 
@@ -519,6 +518,22 @@ func indexTypeOrDefault(indexType, defaultType string) string {
 		return indexType
 	}
 	return defaultType
+}
+
+// resolveConstraintIndexType returns the index type from a constraint,
+// checking both IndexType (USING before key parts) and IndexOptions (USING after key parts).
+func resolveConstraintIndexType(con *nodes.Constraint) string {
+	if con.IndexType != "" {
+		return strings.ToUpper(con.IndexType)
+	}
+	for _, opt := range con.IndexOptions {
+		if strings.EqualFold(opt.Name, "USING") {
+			if s, ok := opt.Value.(*nodes.StringLit); ok {
+				return strings.ToUpper(s.Value)
+			}
+		}
+	}
+	return ""
 }
 
 func isStringType(dt string) bool {

@@ -125,7 +125,7 @@ func (c *Catalog) alterAddColumn(tbl *Table, cmd *nodes.AlterTableCmd) error {
 				Columns:   []*IndexColumn{{Name: colDef.Name}},
 				Unique:    true,
 				Primary:   true,
-				IndexType: "BTREE",
+				IndexType: "",
 				Visible:   true,
 			})
 			tbl.Constraints = append(tbl.Constraints, &Constraint{
@@ -142,7 +142,7 @@ func (c *Catalog) alterAddColumn(tbl *Table, cmd *nodes.AlterTableCmd) error {
 				Table:     tbl,
 				Columns:   []*IndexColumn{{Name: colDef.Name}},
 				Unique:    true,
-				IndexType: "BTREE",
+				IndexType: "",
 				Visible:   true,
 			})
 			tbl.Constraints = append(tbl.Constraints, &Constraint{
@@ -302,7 +302,7 @@ func (c *Catalog) alterAddConstraint(tbl *Table, cmd *nodes.AlterTableCmd) error
 			Columns:   idxCols,
 			Unique:    true,
 			Primary:   true,
-			IndexType: "BTREE",
+			IndexType: "",
 			Visible:   true,
 		})
 		tbl.Constraints = append(tbl.Constraints, &Constraint{
@@ -324,7 +324,7 @@ func (c *Catalog) alterAddConstraint(tbl *Table, cmd *nodes.AlterTableCmd) error
 			Table:     tbl,
 			Columns:   idxCols,
 			Unique:    true,
-			IndexType: indexTypeOrDefault(con.IndexType, "BTREE"),
+			IndexType: resolveConstraintIndexType(con),
 			Visible:   true,
 		})
 		tbl.Constraints = append(tbl.Constraints, &Constraint{
@@ -367,7 +367,7 @@ func (c *Catalog) alterAddConstraint(tbl *Table, cmd *nodes.AlterTableCmd) error
 			Name:      idxName,
 			Table:     tbl,
 			Columns:   idxCols,
-			IndexType: "BTREE",
+			IndexType: "",
 			Visible:   true,
 		})
 
@@ -394,7 +394,7 @@ func (c *Catalog) alterAddConstraint(tbl *Table, cmd *nodes.AlterTableCmd) error
 			Name:      idxName,
 			Table:     tbl,
 			Columns:   idxCols,
-			IndexType: indexTypeOrDefault(con.IndexType, "BTREE"),
+			IndexType: resolveConstraintIndexType(con),
 			Visible:   true,
 		})
 

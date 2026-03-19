@@ -59,7 +59,7 @@ func (c *Catalog) createIndex(stmt *nodes.CreateIndexStmt) error {
 		idx.Spatial = true
 		idx.IndexType = "SPATIAL"
 	default:
-		idx.IndexType = indexTypeOrDefault(stmt.IndexType, "BTREE")
+		idx.IndexType = stmt.IndexType
 		idx.Unique = stmt.Unique
 	}
 
