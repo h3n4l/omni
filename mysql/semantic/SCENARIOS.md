@@ -448,9 +448,9 @@ Every error must match MySQL's errno, SQLSTATE, and message format.
 ### 3.2 Table Errors
 
 ```
-[ ] 1050 (42S01) Table 'tbl' already exists
-[ ] 1051 (42S02) Unknown table 'db.tbl'
-[ ] 1146 (42S02) Table 'db.tbl' doesn't exist
+[x] 1050 (42S01) Table 'tbl' already exists
+[x] 1051 (42S02) Unknown table 'db.tbl'
+[x] 1146 (42S02) Table 'db.tbl' doesn't exist
 ```
 
 ### 3.3 Column Errors

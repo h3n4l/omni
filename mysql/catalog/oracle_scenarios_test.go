@@ -3311,3 +3311,150 @@ func TestOracle_Section_3_1_DatabaseErrors(t *testing.T) {
 		}
 	})
 }
+
+func TestOracle_Section_3_2_TableErrors(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	// Helper to extract MySQL error code and message from go-sql-driver error.
+	extractMySQLErr := func(err error) (uint16, string, string) {
+		var mysqlErr *mysqldriver.MySQLError
+		if errors.As(err, &mysqlErr) {
+			return mysqlErr.Number, string(mysqlErr.SQLState[:]), mysqlErr.Message
+		}
+		return 0, "", ""
+	}
+
+	t.Run("1050_table_already_exists", func(t *testing.T) {
+		// Setup: create a table, then try to create it again.
+		oracle.execSQL("DROP TABLE IF EXISTS t_err_dup")
+		oracle.execSQL("CREATE TABLE t_err_dup (id INT)")
+
+		oracleErr := oracle.execSQL("CREATE TABLE t_err_dup (id INT)")
+		if oracleErr == nil {
+			t.Fatal("oracle: expected error for duplicate CREATE TABLE")
+		}
+		oracleCode, oracleState, oracleMsg := extractMySQLErr(oracleErr)
+		t.Logf("oracle error: %d (%s) %s", oracleCode, oracleState, oracleMsg)
+
+		if oracleCode != 1050 {
+			t.Fatalf("oracle: expected error code 1050, got %d", oracleCode)
+		}
+
+		// Run on omni.
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_err_dup (id INT)", nil)
+		results, _ := c.Exec("CREATE TABLE t_err_dup (id INT)", &ExecOptions{ContinueOnError: true})
+		if results[0].Error == nil {
+			t.Fatal("omni: expected error for duplicate CREATE TABLE")
+		}
+		catErr, ok := results[0].Error.(*Error)
+		if !ok {
+			t.Fatalf("omni: expected *Error, got %T", results[0].Error)
+		}
+
+		// Compare error code.
+		if catErr.Code != int(oracleCode) {
+			t.Errorf("error code mismatch: oracle=%d omni=%d", oracleCode, catErr.Code)
+		}
+		// Compare SQLSTATE.
+		if catErr.SQLState != oracleState {
+			t.Errorf("SQLSTATE mismatch: oracle=%q omni=%q", oracleState, catErr.SQLState)
+		}
+		// Compare error message format.
+		if catErr.Message != oracleMsg {
+			t.Errorf("message mismatch:\n  oracle: %s\n  omni:   %s", oracleMsg, catErr.Message)
+		}
+
+		oracle.execSQL("DROP TABLE IF EXISTS t_err_dup")
+	})
+
+	t.Run("1051_unknown_table_drop", func(t *testing.T) {
+		// DROP TABLE on a nonexistent table should return 1051.
+		oracle.execSQL("DROP TABLE IF EXISTS t_err_noexist")
+
+		oracleErr := oracle.execSQL("DROP TABLE t_err_noexist")
+		if oracleErr == nil {
+			t.Fatal("oracle: expected error for DROP nonexistent table")
+		}
+		oracleCode, oracleState, oracleMsg := extractMySQLErr(oracleErr)
+		t.Logf("oracle error: %d (%s) %s", oracleCode, oracleState, oracleMsg)
+
+		if oracleCode != 1051 {
+			t.Fatalf("oracle: expected error code 1051, got %d", oracleCode)
+		}
+
+		// Run on omni.
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		results, _ := c.Exec("DROP TABLE t_err_noexist", &ExecOptions{ContinueOnError: true})
+		if results[0].Error == nil {
+			t.Fatal("omni: expected error for DROP nonexistent table")
+		}
+		catErr, ok := results[0].Error.(*Error)
+		if !ok {
+			t.Fatalf("omni: expected *Error, got %T", results[0].Error)
+		}
+
+		// Compare error code.
+		if catErr.Code != int(oracleCode) {
+			t.Errorf("error code mismatch: oracle=%d omni=%d", oracleCode, catErr.Code)
+		}
+		// Compare SQLSTATE.
+		if catErr.SQLState != oracleState {
+			t.Errorf("SQLSTATE mismatch: oracle=%q omni=%q", oracleState, catErr.SQLState)
+		}
+		// Compare error message format.
+		if catErr.Message != oracleMsg {
+			t.Errorf("message mismatch:\n  oracle: %s\n  omni:   %s", oracleMsg, catErr.Message)
+		}
+	})
+
+	t.Run("1146_table_doesnt_exist", func(t *testing.T) {
+		// ALTER TABLE on a nonexistent table should return 1146.
+		oracle.execSQL("DROP TABLE IF EXISTS t_err_noexist2")
+
+		oracleErr := oracle.execSQL("ALTER TABLE t_err_noexist2 ADD COLUMN x INT")
+		if oracleErr == nil {
+			t.Fatal("oracle: expected error for ALTER nonexistent table")
+		}
+		oracleCode, oracleState, oracleMsg := extractMySQLErr(oracleErr)
+		t.Logf("oracle error: %d (%s) %s", oracleCode, oracleState, oracleMsg)
+
+		if oracleCode != 1146 {
+			t.Fatalf("oracle: expected error code 1146, got %d", oracleCode)
+		}
+
+		// Run on omni.
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		results, _ := c.Exec("ALTER TABLE t_err_noexist2 ADD COLUMN x INT", &ExecOptions{ContinueOnError: true})
+		if results[0].Error == nil {
+			t.Fatal("omni: expected error for ALTER nonexistent table")
+		}
+		catErr, ok := results[0].Error.(*Error)
+		if !ok {
+			t.Fatalf("omni: expected *Error, got %T", results[0].Error)
+		}
+
+		// Compare error code.
+		if catErr.Code != int(oracleCode) {
+			t.Errorf("error code mismatch: oracle=%d omni=%d", oracleCode, catErr.Code)
+		}
+		// Compare SQLSTATE.
+		if catErr.SQLState != oracleState {
+			t.Errorf("SQLSTATE mismatch: oracle=%q omni=%q", oracleState, catErr.SQLState)
+		}
+		// Compare error message format.
+		if catErr.Message != oracleMsg {
+			t.Errorf("message mismatch:\n  oracle: %s\n  omni:   %s", oracleMsg, catErr.Message)
+		}
+	})
+}
