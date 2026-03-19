@@ -341,13 +341,13 @@ Beyond output format — the catalog must behave identically to MySQL.
 ### 2.4 ALTER TABLE — Constraint Operations
 
 ```
-[ ] ADD CONSTRAINT fk FOREIGN KEY ...
-[ ] ADD CHECK (expr)
-[ ] DROP FOREIGN KEY fk_name
-[ ] DROP CHECK chk_name
-[ ] DROP CONSTRAINT name (generic)
-[ ] ALTER CHECK name ENFORCED
-[ ] ALTER CHECK name NOT ENFORCED
+[x] ADD CONSTRAINT fk FOREIGN KEY ...
+[x] ADD CHECK (expr)
+[x] DROP FOREIGN KEY fk_name
+[x] DROP CHECK chk_name
+[x] DROP CONSTRAINT name (generic)
+[x] ALTER CHECK name ENFORCED
+[x] ALTER CHECK name NOT ENFORCED
 ```
 
 ### 2.5 ALTER TABLE — Table-level

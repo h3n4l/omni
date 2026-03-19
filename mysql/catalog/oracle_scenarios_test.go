@@ -1766,3 +1766,113 @@ func TestOracle_Section_2_3_AlterTableIndexOps(t *testing.T) {
 		})
 	}
 }
+
+func TestOracle_Section_2_4_AlterTableConstraintOps(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	// DDL-comparison tests: run setup + alter, compare SHOW CREATE TABLE.
+	ddlCases := []struct {
+		name  string
+		setup string
+		alter string
+		table string
+	}{
+		{
+			"add_foreign_key",
+			"CREATE TABLE t_parent_fk (id INT PRIMARY KEY); CREATE TABLE t_child_fk (id INT PRIMARY KEY, parent_id INT)",
+			"ALTER TABLE t_child_fk ADD CONSTRAINT fk_parent FOREIGN KEY (parent_id) REFERENCES t_parent_fk(id)",
+			"t_child_fk",
+		},
+		{
+			"add_check",
+			"CREATE TABLE t_add_chk (id INT PRIMARY KEY, age INT)",
+			"ALTER TABLE t_add_chk ADD CHECK (age > 0)",
+			"t_add_chk",
+		},
+		{
+			"drop_foreign_key",
+			"CREATE TABLE t_parent_dfk (id INT PRIMARY KEY); CREATE TABLE t_child_dfk (id INT PRIMARY KEY, parent_id INT, CONSTRAINT fk_drop FOREIGN KEY (parent_id) REFERENCES t_parent_dfk(id))",
+			"ALTER TABLE t_child_dfk DROP FOREIGN KEY fk_drop",
+			"t_child_dfk",
+		},
+		{
+			"drop_check",
+			"CREATE TABLE t_drop_chk (id INT PRIMARY KEY, age INT, CONSTRAINT chk_age CHECK (age > 0))",
+			"ALTER TABLE t_drop_chk DROP CHECK chk_age",
+			"t_drop_chk",
+		},
+		{
+			"drop_constraint_generic",
+			"CREATE TABLE t_drop_con (id INT PRIMARY KEY, val INT, CONSTRAINT chk_val CHECK (val >= 0))",
+			"ALTER TABLE t_drop_con DROP CONSTRAINT chk_val",
+			"t_drop_con",
+		},
+		{
+			"alter_check_not_enforced",
+			"CREATE TABLE t_chk_ne (id INT PRIMARY KEY, score INT, CONSTRAINT chk_score CHECK (score >= 0))",
+			"ALTER TABLE t_chk_ne ALTER CHECK chk_score NOT ENFORCED",
+			"t_chk_ne",
+		},
+		{
+			"alter_check_enforced",
+			"CREATE TABLE t_chk_enf (id INT PRIMARY KEY, score INT, CONSTRAINT chk_score2 CHECK (score >= 0) /*!80016 NOT ENFORCED */)",
+			"ALTER TABLE t_chk_enf ALTER CHECK chk_score2 ENFORCED",
+			"t_chk_enf",
+		},
+	}
+
+	for _, tc := range ddlCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Clean up all tables that might exist from setup.
+			for _, tName := range []string{
+				"t_parent_fk", "t_child_fk",
+				"t_parent_dfk", "t_child_dfk",
+				"t_add_chk",
+				"t_drop_chk",
+				"t_drop_con",
+				"t_chk_ne",
+				"t_chk_enf",
+			} {
+				oracle.execSQL("DROP TABLE IF EXISTS " + tName)
+			}
+			if err := oracle.execSQL(tc.setup); err != nil {
+				t.Fatalf("oracle setup: %v", err)
+			}
+			if err := oracle.execSQL(tc.alter); err != nil {
+				t.Fatalf("oracle alter: %v", err)
+			}
+			oracleDDL, err := oracle.showCreateTable(tc.table)
+			if err != nil {
+				t.Fatalf("oracle SHOW CREATE TABLE: %v", err)
+			}
+
+			c := New()
+			c.Exec("CREATE DATABASE test", nil)
+			c.SetCurrentDatabase("test")
+			if results, _ := c.Exec(tc.setup, nil); results != nil {
+				for _, r := range results {
+					if r.Error != nil {
+						t.Fatalf("omni setup error: %v", r.Error)
+					}
+				}
+			}
+			if results, _ := c.Exec(tc.alter, nil); results != nil {
+				for _, r := range results {
+					if r.Error != nil {
+						t.Fatalf("omni alter error: %v", r.Error)
+					}
+				}
+			}
+			omniDDL := c.ShowCreateTable("test", tc.table)
+
+			if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+				t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+					oracleDDL, omniDDL)
+			}
+		})
+	}
+}

@@ -67,6 +67,8 @@ func (c *Catalog) execAlterCmd(db *Database, tbl *Table, cmd *nodes.AlterTableCm
 		return c.alterIndexVisibility(tbl, cmd, true)
 	case nodes.ATAlterIndexInvisible:
 		return c.alterIndexVisibility(tbl, cmd, false)
+	case nodes.ATAlterCheckEnforced:
+		return c.alterCheckEnforced(tbl, cmd)
 	default:
 		// Unsupported alter command; silently ignore.
 		return nil
@@ -443,7 +445,7 @@ func (c *Catalog) alterAddConstraint(tbl *Table, cmd *nodes.AlterTableCmd) error
 	case nodes.ConstrCheck:
 		conName := con.Name
 		if conName == "" {
-			conName = fmt.Sprintf("%s_chk_%d", tbl.Name, len(tbl.Constraints)+1)
+			conName = fmt.Sprintf("%s_chk_%d", tbl.Name, nextCheckNumber(tbl))
 		}
 		tbl.Constraints = append(tbl.Constraints, &Constraint{
 			Name:        conName,
@@ -542,8 +544,10 @@ func (c *Catalog) alterDropConstraint(tbl *Table, cmd *nodes.AlterTableCmd) erro
 	key := toLower(name)
 
 	found := false
+	isForeignKey := false
 	for i, con := range tbl.Constraints {
 		if toLower(con.Name) == key {
+			isForeignKey = (con.Type == ConForeignKey)
 			tbl.Constraints = append(tbl.Constraints[:i], tbl.Constraints[i+1:]...)
 			found = true
 			break
@@ -561,11 +565,14 @@ func (c *Catalog) alterDropConstraint(tbl *Table, cmd *nodes.AlterTableCmd) erro
 		}
 	}
 
-	// Also remove the corresponding index (e.g., PRIMARY KEY index).
-	for i, idx := range tbl.Indexes {
-		if toLower(idx.Name) == key {
-			tbl.Indexes = append(tbl.Indexes[:i], tbl.Indexes[i+1:]...)
-			break
+	// For FK constraints, MySQL keeps the backing index when dropping the FK.
+	// For other constraints (e.g., PRIMARY KEY), also remove the corresponding index.
+	if !isForeignKey {
+		for i, idx := range tbl.Indexes {
+			if toLower(idx.Name) == key {
+				tbl.Indexes = append(tbl.Indexes[:i], tbl.Indexes[i+1:]...)
+				break
+			}
 		}
 	}
 
@@ -825,6 +832,22 @@ func updateColumnRefsInIndexes(tbl *Table, oldName, newName string) {
 				con.Columns[i] = newName
 			}
 		}
+	}
+}
+
+// alterCheckEnforced toggles the ENFORCED / NOT ENFORCED flag on a CHECK constraint.
+func (c *Catalog) alterCheckEnforced(tbl *Table, cmd *nodes.AlterTableCmd) error {
+	key := toLower(cmd.Name)
+	for _, con := range tbl.Constraints {
+		if toLower(con.Name) == key && con.Type == ConCheck {
+			con.NotEnforced = (cmd.NewName == "NOT ENFORCED")
+			return nil
+		}
+	}
+	return &Error{
+		Code:     3940,
+		SQLState: "HY000",
+		Message:  fmt.Sprintf("Constraint '%s' does not exist.", cmd.Name),
 	}
 }
 

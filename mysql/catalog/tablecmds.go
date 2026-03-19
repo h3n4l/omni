@@ -203,7 +203,7 @@ func (c *Catalog) createTable(stmt *nodes.CreateTableStmt) error {
 				// Add check constraint.
 				conName := cc.Name
 				if conName == "" {
-					conName = fmt.Sprintf("%s_chk_%d", tableName, len(tbl.Constraints)+1)
+					conName = fmt.Sprintf("%s_chk_%d", tableName, nextCheckNumber(tbl))
 				}
 				tbl.Constraints = append(tbl.Constraints, &Constraint{
 					Name:        conName,
@@ -424,7 +424,7 @@ func (c *Catalog) createTable(stmt *nodes.CreateTableStmt) error {
 		case nodes.ConstrCheck:
 			conName := con.Name
 			if conName == "" {
-				conName = fmt.Sprintf("%s_chk_%d", tableName, len(tbl.Constraints)+1)
+				conName = fmt.Sprintf("%s_chk_%d", tableName, nextCheckNumber(tbl))
 			}
 			tbl.Constraints = append(tbl.Constraints, &Constraint{
 				Name:        conName,
@@ -605,6 +605,26 @@ func countFKConstraints(tbl *Table) int {
 		}
 	}
 	return count
+}
+
+// nextCheckNumber returns the next available check constraint number for auto-naming.
+// MySQL uses tableName_chk_N where N starts at 1 and increments, skipping existing names.
+func nextCheckNumber(tbl *Table) int {
+	n := 1
+	for {
+		name := fmt.Sprintf("%s_chk_%d", tbl.Name, n)
+		exists := false
+		for _, c := range tbl.Constraints {
+			if toLower(c.Name) == toLower(name) {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			return n
+		}
+		n++
+	}
 }
 
 func isStringType(dt string) bool {
