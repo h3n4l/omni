@@ -824,8 +824,8 @@ func formatColumnType(dt *nodes.DataType) string {
 		// Do not emit length.
 	} else if name == "year" {
 		// YEAR(4) is deprecated in MySQL 8.0 — SHOW CREATE TABLE shows just `year`.
-	} else if name == "char" && dt.Length == 0 {
-		// CHAR with no length → MySQL shows char(1)
+	} else if (name == "char" || name == "binary") && dt.Length == 0 {
+		// CHAR/BINARY with no length → MySQL shows char(1)/binary(1)
 		buf.WriteString("(1)")
 	} else if dt.Length > 0 && dt.Scale > 0 {
 		fmt.Fprintf(&buf, "(%d,%d)", dt.Length, dt.Scale)

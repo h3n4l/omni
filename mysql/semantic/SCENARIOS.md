@@ -52,11 +52,11 @@ The foundation — our output must be byte-for-byte identical to MySQL 8.0.
 ### 1.3 Binary Types
 
 ```
-[ ] BINARY(16)
-[ ] BINARY (no length → BINARY(1))
-[ ] VARBINARY(255)
-[ ] TINYBLOB, BLOB, MEDIUMBLOB, LONGBLOB
-[ ] BLOB(1000) — display shows BLOB, not BLOB(1000)
+[x] BINARY(16)
+[x] BINARY (no length → BINARY(1))
+[x] VARBINARY(255)
+[x] TINYBLOB, BLOB, MEDIUMBLOB, LONGBLOB
+[x] BLOB(1000) — display shows BLOB, not BLOB(1000)
 ```
 
 ### 1.4 Date/Time Types
