@@ -397,11 +397,11 @@ Beyond output format — the catalog must behave identically to MySQL.
 ### 2.9 RENAME TABLE
 
 ```
-[ ] RENAME TABLE t1 TO t2
-[ ] RENAME TABLE t1 TO db2.t1 (cross-database)
-[ ] RENAME TABLE t1 TO t2, t3 TO t4 (multi-pair)
-[ ] RENAME TABLE nonexistent → error
-[ ] RENAME TABLE to existing name → error
+[x] RENAME TABLE t1 TO t2
+[x] RENAME TABLE t1 TO db2.t1 (cross-database)
+[x] RENAME TABLE t1 TO t2, t3 TO t4 (multi-pair)
+[x] RENAME TABLE nonexistent → error
+[x] RENAME TABLE to existing name → error
 ```
 
 ### 2.10 CREATE/DROP VIEW

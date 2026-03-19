@@ -2458,3 +2458,169 @@ func TestOracle_Section_2_8_CreateDropIndex(t *testing.T) {
 		}
 	})
 }
+
+func TestOracle_Section_2_9_RenameTable(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	t.Run("rename_basic", func(t *testing.T) {
+		// RENAME TABLE t1 TO t2
+		oracle.execSQL("DROP TABLE IF EXISTS t_ren1")
+		oracle.execSQL("DROP TABLE IF EXISTS t_ren2")
+		oracle.execSQL("CREATE TABLE t_ren1 (id INT PRIMARY KEY, name VARCHAR(100))")
+
+		if err := oracle.execSQL("RENAME TABLE t_ren1 TO t_ren2"); err != nil {
+			t.Fatalf("oracle RENAME TABLE error: %v", err)
+		}
+		oracleDDL, err := oracle.showCreateTable("t_ren2")
+		if err != nil {
+			t.Fatalf("oracle SHOW CREATE TABLE t_ren2 error: %v", err)
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_ren1 (id INT PRIMARY KEY, name VARCHAR(100))", nil)
+		results, _ := c.Exec("RENAME TABLE t_ren1 TO t_ren2", nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni RENAME TABLE error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateTable("test", "t_ren2")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s", oracleDDL, omniDDL)
+		}
+		// Old table should not exist
+		if c.ShowCreateTable("test", "t_ren1") != "" {
+			t.Error("omni: old table t_ren1 still exists after rename")
+		}
+	})
+
+	t.Run("rename_cross_database", func(t *testing.T) {
+		// RENAME TABLE t1 TO db2.t1 (cross-database)
+		oracle.execSQL("DROP TABLE IF EXISTS t_ren_cross")
+		oracle.execSQL("CREATE DATABASE IF NOT EXISTS test2")
+		oracle.execSQL("DROP TABLE IF EXISTS test2.t_ren_cross")
+		oracle.execSQL("CREATE TABLE t_ren_cross (id INT PRIMARY KEY, val VARCHAR(50) NOT NULL DEFAULT '')")
+
+		if err := oracle.execSQL("RENAME TABLE t_ren_cross TO test2.t_ren_cross"); err != nil {
+			t.Fatalf("oracle RENAME TABLE cross-db error: %v", err)
+		}
+		oracleDDL, err := oracle.showCreateTable("test2.t_ren_cross")
+		if err != nil {
+			t.Fatalf("oracle SHOW CREATE TABLE test2.t_ren_cross error: %v", err)
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.Exec("CREATE DATABASE test2", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_ren_cross (id INT PRIMARY KEY, val VARCHAR(50) NOT NULL DEFAULT '')", nil)
+		results, _ := c.Exec("RENAME TABLE t_ren_cross TO test2.t_ren_cross", nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni RENAME TABLE cross-db error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateTable("test2", "t_ren_cross")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s", oracleDDL, omniDDL)
+		}
+		// Old table should not exist in test
+		if c.ShowCreateTable("test", "t_ren_cross") != "" {
+			t.Error("omni: old table still exists in test after cross-db rename")
+		}
+	})
+
+	t.Run("rename_multi_pair", func(t *testing.T) {
+		// RENAME TABLE t1 TO t2, t3 TO t4 (multi-pair)
+		oracle.execSQL("DROP TABLE IF EXISTS t_mp1")
+		oracle.execSQL("DROP TABLE IF EXISTS t_mp2")
+		oracle.execSQL("DROP TABLE IF EXISTS t_mp3")
+		oracle.execSQL("DROP TABLE IF EXISTS t_mp4")
+		oracle.execSQL("CREATE TABLE t_mp1 (id INT PRIMARY KEY)")
+		oracle.execSQL("CREATE TABLE t_mp3 (val VARCHAR(100))")
+
+		if err := oracle.execSQL("RENAME TABLE t_mp1 TO t_mp2, t_mp3 TO t_mp4"); err != nil {
+			t.Fatalf("oracle RENAME TABLE multi-pair error: %v", err)
+		}
+		oracleDDL2, err := oracle.showCreateTable("t_mp2")
+		if err != nil {
+			t.Fatalf("oracle SHOW CREATE TABLE t_mp2 error: %v", err)
+		}
+		oracleDDL4, err := oracle.showCreateTable("t_mp4")
+		if err != nil {
+			t.Fatalf("oracle SHOW CREATE TABLE t_mp4 error: %v", err)
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_mp1 (id INT PRIMARY KEY)", nil)
+		c.Exec("CREATE TABLE t_mp3 (val VARCHAR(100))", nil)
+		results, _ := c.Exec("RENAME TABLE t_mp1 TO t_mp2, t_mp3 TO t_mp4", nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni RENAME TABLE multi-pair error: %v", results[0].Error)
+		}
+		omniDDL2 := c.ShowCreateTable("test", "t_mp2")
+		omniDDL4 := c.ShowCreateTable("test", "t_mp4")
+
+		if normalizeWhitespace(oracleDDL2) != normalizeWhitespace(omniDDL2) {
+			t.Errorf("t_mp2 mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s", oracleDDL2, omniDDL2)
+		}
+		if normalizeWhitespace(oracleDDL4) != normalizeWhitespace(omniDDL4) {
+			t.Errorf("t_mp4 mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s", oracleDDL4, omniDDL4)
+		}
+		// Old tables should be gone
+		if c.ShowCreateTable("test", "t_mp1") != "" {
+			t.Error("omni: t_mp1 still exists after rename")
+		}
+		if c.ShowCreateTable("test", "t_mp3") != "" {
+			t.Error("omni: t_mp3 still exists after rename")
+		}
+	})
+
+	t.Run("rename_nonexistent_error", func(t *testing.T) {
+		// RENAME TABLE nonexistent → error
+		oracle.execSQL("DROP TABLE IF EXISTS t_noexist_ren")
+		oracleErr := oracle.execSQL("RENAME TABLE t_noexist_ren TO t_noexist_ren2")
+		if oracleErr == nil {
+			t.Fatal("oracle: expected error for RENAME nonexistent table")
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		results, _ := c.Exec("RENAME TABLE t_noexist_ren TO t_noexist_ren2", &ExecOptions{ContinueOnError: true})
+		omniErr := results[0].Error
+		if omniErr == nil {
+			t.Fatal("omni: expected error for RENAME nonexistent table")
+		}
+	})
+
+	t.Run("rename_to_existing_error", func(t *testing.T) {
+		// RENAME TABLE to existing name → error
+		oracle.execSQL("DROP TABLE IF EXISTS t_ren_exist1")
+		oracle.execSQL("DROP TABLE IF EXISTS t_ren_exist2")
+		oracle.execSQL("CREATE TABLE t_ren_exist1 (id INT)")
+		oracle.execSQL("CREATE TABLE t_ren_exist2 (id INT)")
+
+		oracleErr := oracle.execSQL("RENAME TABLE t_ren_exist1 TO t_ren_exist2")
+		if oracleErr == nil {
+			t.Fatal("oracle: expected error for RENAME to existing table name")
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_ren_exist1 (id INT)", nil)
+		c.Exec("CREATE TABLE t_ren_exist2 (id INT)", nil)
+		results, _ := c.Exec("RENAME TABLE t_ren_exist1 TO t_ren_exist2", &ExecOptions{ContinueOnError: true})
+		omniErr := results[0].Error
+		if omniErr == nil {
+			t.Fatal("omni: expected error for RENAME to existing table name")
+		}
+	})
+}
