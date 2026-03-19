@@ -376,9 +376,9 @@ Beyond output format — the catalog must behave identically to MySQL.
 ### 2.7 TRUNCATE TABLE
 
 ```
-[ ] TRUNCATE TABLE t1
-[ ] TRUNCATE resets AUTO_INCREMENT
-[ ] TRUNCATE nonexistent table → error
+[x] TRUNCATE TABLE t1
+[x] TRUNCATE resets AUTO_INCREMENT
+[x] TRUNCATE nonexistent table → error
 ```
 
 ### 2.8 CREATE/DROP INDEX (standalone)

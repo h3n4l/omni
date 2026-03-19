@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -2155,6 +2156,88 @@ func TestOracle_Section_2_6_DropTable(t *testing.T) {
 		omniDDL := c.ShowCreateTable("test", "t_fk_parent")
 		if omniDDL == "" {
 			t.Error("omni: parent table was deleted despite FK reference")
+		}
+	})
+}
+
+func TestOracle_Section_2_7_TruncateTable(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	// Scenario 1: TRUNCATE TABLE t1 — table structure preserved
+	t.Run("truncate_basic", func(t *testing.T) {
+		oracle.execSQL("DROP TABLE IF EXISTS t_trunc1")
+		if err := oracle.execSQL("CREATE TABLE t_trunc1 (id INT PRIMARY KEY, name VARCHAR(100))"); err != nil {
+			t.Fatalf("oracle create: %v", err)
+		}
+		if err := oracle.execSQL("TRUNCATE TABLE t_trunc1"); err != nil {
+			t.Fatalf("oracle truncate: %v", err)
+		}
+		oracleDDL, _ := oracle.showCreateTable("t_trunc1")
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_trunc1 (id INT PRIMARY KEY, name VARCHAR(100))", nil)
+		results, _ := c.Exec("TRUNCATE TABLE t_trunc1", nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni truncate error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateTable("test", "t_trunc1")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL, omniDDL)
+		}
+	})
+
+	// Scenario 2: TRUNCATE resets AUTO_INCREMENT
+	t.Run("truncate_resets_auto_increment", func(t *testing.T) {
+		oracle.execSQL("DROP TABLE IF EXISTS t_trunc_ai")
+		if err := oracle.execSQL("CREATE TABLE t_trunc_ai (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100)) AUTO_INCREMENT=1000"); err != nil {
+			t.Fatalf("oracle create: %v", err)
+		}
+		// Verify AUTO_INCREMENT is shown before truncate
+		oracleBefore, _ := oracle.showCreateTable("t_trunc_ai")
+		if !strings.Contains(oracleBefore, "AUTO_INCREMENT=") {
+			t.Logf("oracle before truncate (no AUTO_INCREMENT shown): %s", oracleBefore)
+		}
+		if err := oracle.execSQL("TRUNCATE TABLE t_trunc_ai"); err != nil {
+			t.Fatalf("oracle truncate: %v", err)
+		}
+		oracleDDL, _ := oracle.showCreateTable("t_trunc_ai")
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_trunc_ai (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100)) AUTO_INCREMENT=1000", nil)
+		c.Exec("TRUNCATE TABLE t_trunc_ai", nil)
+		omniDDL := c.ShowCreateTable("test", "t_trunc_ai")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL, omniDDL)
+		}
+	})
+
+	// Scenario 3: TRUNCATE nonexistent table → error
+	t.Run("truncate_nonexistent", func(t *testing.T) {
+		oracle.execSQL("DROP TABLE IF EXISTS t_trunc_noexist")
+		oracleErr := oracle.execSQL("TRUNCATE TABLE t_trunc_noexist")
+		if oracleErr == nil {
+			t.Fatal("oracle: expected error for TRUNCATE nonexistent table")
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		results, _ := c.Exec("TRUNCATE TABLE t_trunc_noexist", nil)
+		omniErr := results[0].Error
+		if omniErr == nil {
+			t.Fatal("omni: expected error for TRUNCATE nonexistent table")
 		}
 	})
 }
