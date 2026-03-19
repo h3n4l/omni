@@ -4277,3 +4277,340 @@ func TestOracle_Section_3_6_ErrorContext(t *testing.T) {
 		oracle.execSQL("DROP DATABASE IF EXISTS db_ifne")
 	})
 }
+
+func TestOracle_Section_4_1_Partitioning(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	cases := []struct {
+		name  string
+		sql   string
+		table string
+	}{
+		{
+			"partition_by_range",
+			`CREATE TABLE t_part_range (
+				id INT NOT NULL,
+				created DATE NOT NULL
+			) PARTITION BY RANGE (YEAR(created)) (
+				PARTITION p0 VALUES LESS THAN (2020),
+				PARTITION p1 VALUES LESS THAN (2025),
+				PARTITION pmax VALUES LESS THAN MAXVALUE
+			)`,
+			"t_part_range",
+		},
+		{
+			"partition_by_range_columns",
+			`CREATE TABLE t_part_range_cols (
+				id INT NOT NULL,
+				city VARCHAR(50) NOT NULL,
+				name VARCHAR(50) NOT NULL
+			) PARTITION BY RANGE COLUMNS(city) (
+				PARTITION p0 VALUES LESS THAN ('M'),
+				PARTITION p1 VALUES LESS THAN MAXVALUE
+			)`,
+			"t_part_range_cols",
+		},
+		{
+			"partition_by_list",
+			`CREATE TABLE t_part_list (
+				id INT NOT NULL,
+				region INT NOT NULL
+			) PARTITION BY LIST (region) (
+				PARTITION pNorth VALUES IN (1,2,3),
+				PARTITION pSouth VALUES IN (4,5,6),
+				PARTITION pWest VALUES IN (7,8,9)
+			)`,
+			"t_part_list",
+		},
+		{
+			"partition_by_hash",
+			`CREATE TABLE t_part_hash (
+				id INT NOT NULL,
+				name VARCHAR(100)
+			) PARTITION BY HASH (id) PARTITIONS 4`,
+			"t_part_hash",
+		},
+		{
+			"partition_by_key",
+			`CREATE TABLE t_part_key (
+				id INT NOT NULL,
+				name VARCHAR(100)
+			) PARTITION BY KEY (id) PARTITIONS 3`,
+			"t_part_key",
+		},
+		{
+			"partition_linear_hash",
+			`CREATE TABLE t_part_linear (
+				id INT NOT NULL
+			) PARTITION BY LINEAR HASH (id) PARTITIONS 4`,
+			"t_part_linear",
+		},
+		{
+			"partition_subpartition",
+			`CREATE TABLE t_part_sub (
+				id INT NOT NULL,
+				purchased DATE NOT NULL
+			) PARTITION BY RANGE (YEAR(purchased))
+			SUBPARTITION BY HASH (id)
+			SUBPARTITIONS 2 (
+				PARTITION p0 VALUES LESS THAN (2020),
+				PARTITION p1 VALUES LESS THAN MAXVALUE
+			)`,
+			"t_part_sub",
+		},
+		{
+			"show_create_partitioned_table",
+			`CREATE TABLE t_part_show (
+				id INT NOT NULL,
+				val INT NOT NULL
+			) PARTITION BY RANGE (val) (
+				PARTITION p0 VALUES LESS THAN (10),
+				PARTITION p1 VALUES LESS THAN (20),
+				PARTITION p2 VALUES LESS THAN MAXVALUE
+			)`,
+			"t_part_show",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			oracle.execSQL("DROP TABLE IF EXISTS " + tc.table)
+			if err := oracle.execSQL(tc.sql); err != nil {
+				t.Fatalf("oracle exec: %v", err)
+			}
+			oracleDDL, _ := oracle.showCreateTable(tc.table)
+
+			c := New()
+			c.Exec("CREATE DATABASE test", nil)
+			c.SetCurrentDatabase("test")
+			results, _ := c.Exec(tc.sql, nil)
+			if results[0].Error != nil {
+				t.Fatalf("omni exec error: %v", results[0].Error)
+			}
+			omniDDL := c.ShowCreateTable("test", tc.table)
+
+			if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+				t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+					oracleDDL, omniDDL)
+			}
+		})
+	}
+
+	// ALTER TABLE partition tests — multi-step
+	t.Run("alter_add_partition", func(t *testing.T) {
+		oracle.execSQL("DROP TABLE IF EXISTS t_alter_addp")
+		setupSQL := `CREATE TABLE t_alter_addp (
+			id INT NOT NULL,
+			val INT NOT NULL
+		) PARTITION BY RANGE (val) (
+			PARTITION p0 VALUES LESS THAN (10),
+			PARTITION p1 VALUES LESS THAN (20)
+		)`
+		if err := oracle.execSQL(setupSQL); err != nil {
+			t.Fatalf("oracle setup: %v", err)
+		}
+		alterSQL := "ALTER TABLE t_alter_addp ADD PARTITION (PARTITION p2 VALUES LESS THAN (30))"
+		if err := oracle.execSQL(alterSQL); err != nil {
+			t.Fatalf("oracle alter: %v", err)
+		}
+		oracleDDL, _ := oracle.showCreateTable("t_alter_addp")
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec(setupSQL, nil)
+		results, _ := c.Exec(alterSQL, nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni exec error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateTable("test", "t_alter_addp")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL, omniDDL)
+		}
+	})
+
+	t.Run("alter_drop_partition", func(t *testing.T) {
+		oracle.execSQL("DROP TABLE IF EXISTS t_alter_dropp")
+		setupSQL := `CREATE TABLE t_alter_dropp (
+			id INT NOT NULL,
+			val INT NOT NULL
+		) PARTITION BY RANGE (val) (
+			PARTITION p0 VALUES LESS THAN (10),
+			PARTITION p1 VALUES LESS THAN (20),
+			PARTITION p2 VALUES LESS THAN MAXVALUE
+		)`
+		if err := oracle.execSQL(setupSQL); err != nil {
+			t.Fatalf("oracle setup: %v", err)
+		}
+		alterSQL := "ALTER TABLE t_alter_dropp DROP PARTITION p1"
+		if err := oracle.execSQL(alterSQL); err != nil {
+			t.Fatalf("oracle alter: %v", err)
+		}
+		oracleDDL, _ := oracle.showCreateTable("t_alter_dropp")
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec(setupSQL, nil)
+		results, _ := c.Exec(alterSQL, nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni exec error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateTable("test", "t_alter_dropp")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL, omniDDL)
+		}
+	})
+
+	t.Run("alter_reorganize_partition", func(t *testing.T) {
+		oracle.execSQL("DROP TABLE IF EXISTS t_alter_reorgp")
+		setupSQL := `CREATE TABLE t_alter_reorgp (
+			id INT NOT NULL,
+			val INT NOT NULL
+		) PARTITION BY RANGE (val) (
+			PARTITION p0 VALUES LESS THAN (10),
+			PARTITION p1 VALUES LESS THAN (30)
+		)`
+		if err := oracle.execSQL(setupSQL); err != nil {
+			t.Fatalf("oracle setup: %v", err)
+		}
+		alterSQL := `ALTER TABLE t_alter_reorgp REORGANIZE PARTITION p1 INTO (
+			PARTITION p1a VALUES LESS THAN (20),
+			PARTITION p1b VALUES LESS THAN (30)
+		)`
+		if err := oracle.execSQL(alterSQL); err != nil {
+			t.Fatalf("oracle alter: %v", err)
+		}
+		oracleDDL, _ := oracle.showCreateTable("t_alter_reorgp")
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec(setupSQL, nil)
+		results, _ := c.Exec(alterSQL, nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni exec error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateTable("test", "t_alter_reorgp")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL, omniDDL)
+		}
+	})
+
+	t.Run("alter_truncate_partition", func(t *testing.T) {
+		oracle.execSQL("DROP TABLE IF EXISTS t_alter_truncp")
+		setupSQL := `CREATE TABLE t_alter_truncp (
+			id INT NOT NULL,
+			val INT NOT NULL
+		) PARTITION BY RANGE (val) (
+			PARTITION p0 VALUES LESS THAN (10),
+			PARTITION p1 VALUES LESS THAN MAXVALUE
+		)`
+		if err := oracle.execSQL(setupSQL); err != nil {
+			t.Fatalf("oracle setup: %v", err)
+		}
+		alterSQL := "ALTER TABLE t_alter_truncp TRUNCATE PARTITION p0"
+		if err := oracle.execSQL(alterSQL); err != nil {
+			t.Fatalf("oracle alter: %v", err)
+		}
+		oracleDDL, _ := oracle.showCreateTable("t_alter_truncp")
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec(setupSQL, nil)
+		results, _ := c.Exec(alterSQL, nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni exec error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateTable("test", "t_alter_truncp")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL, omniDDL)
+		}
+	})
+
+	t.Run("alter_coalesce_partition", func(t *testing.T) {
+		oracle.execSQL("DROP TABLE IF EXISTS t_alter_coalp")
+		setupSQL := `CREATE TABLE t_alter_coalp (
+			id INT NOT NULL
+		) PARTITION BY HASH (id) PARTITIONS 4`
+		if err := oracle.execSQL(setupSQL); err != nil {
+			t.Fatalf("oracle setup: %v", err)
+		}
+		alterSQL := "ALTER TABLE t_alter_coalp COALESCE PARTITION 2"
+		if err := oracle.execSQL(alterSQL); err != nil {
+			t.Fatalf("oracle alter: %v", err)
+		}
+		oracleDDL, _ := oracle.showCreateTable("t_alter_coalp")
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec(setupSQL, nil)
+		results, _ := c.Exec(alterSQL, nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni exec error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateTable("test", "t_alter_coalp")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL, omniDDL)
+		}
+	})
+
+	t.Run("alter_exchange_partition", func(t *testing.T) {
+		oracle.execSQL("DROP TABLE IF EXISTS t_alter_exchp")
+		oracle.execSQL("DROP TABLE IF EXISTS t_alter_exchp_swap")
+		setupSQL := `CREATE TABLE t_alter_exchp (
+			id INT NOT NULL,
+			val INT NOT NULL
+		) PARTITION BY RANGE (val) (
+			PARTITION p0 VALUES LESS THAN (10),
+			PARTITION p1 VALUES LESS THAN MAXVALUE
+		)`
+		swapSQL := `CREATE TABLE t_alter_exchp_swap (
+			id INT NOT NULL,
+			val INT NOT NULL
+		)`
+		if err := oracle.execSQL(setupSQL); err != nil {
+			t.Fatalf("oracle setup: %v", err)
+		}
+		if err := oracle.execSQL(swapSQL); err != nil {
+			t.Fatalf("oracle swap table setup: %v", err)
+		}
+		alterSQL := "ALTER TABLE t_alter_exchp EXCHANGE PARTITION p0 WITH TABLE t_alter_exchp_swap"
+		if err := oracle.execSQL(alterSQL); err != nil {
+			t.Fatalf("oracle alter: %v", err)
+		}
+		oracleDDL, _ := oracle.showCreateTable("t_alter_exchp")
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec(setupSQL, nil)
+		c.Exec(swapSQL, nil)
+		results, _ := c.Exec(alterSQL, nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni exec error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateTable("test", "t_alter_exchp")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL, omniDDL)
+		}
+	})
+}

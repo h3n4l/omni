@@ -81,6 +81,12 @@ func (c *Catalog) ShowCreateTable(database, table string) string {
 		b.WriteString(opts)
 	}
 
+	// Partition clause.
+	if tbl.Partitioning != nil {
+		b.WriteString("\n")
+		b.WriteString(showPartitioning(tbl.Partitioning))
+	}
+
 	return b.String()
 }
 
@@ -444,4 +450,140 @@ func escapeComment(s string) string {
 	s = strings.ReplaceAll(s, "\\", "\\\\")
 	s = strings.ReplaceAll(s, "'", "''")
 	return s
+}
+
+// showPartitioning renders the partition clause for SHOW CREATE TABLE.
+// MySQL 8.0 outputs partitioning after table options with specific formatting.
+func showPartitioning(pi *PartitionInfo) string {
+	var b strings.Builder
+
+	// MySQL uses /*!50500 for RANGE COLUMNS and LIST COLUMNS, /*!50100 for others.
+	versionComment := "50100"
+	if pi.Type == "RANGE COLUMNS" || pi.Type == "LIST COLUMNS" {
+		versionComment = "50500"
+	}
+	b.WriteString(fmt.Sprintf("/*!%s PARTITION BY ", versionComment))
+	if pi.Linear {
+		b.WriteString("LINEAR ")
+	}
+	switch pi.Type {
+	case "RANGE":
+		b.WriteString(fmt.Sprintf("RANGE (%s)", pi.Expr))
+	case "RANGE COLUMNS":
+		// MySQL uses double space before COLUMNS and no backticks on column names.
+		b.WriteString(fmt.Sprintf("RANGE  COLUMNS(%s)", formatPartitionColumnsPlain(pi.Columns)))
+	case "LIST":
+		b.WriteString(fmt.Sprintf("LIST (%s)", pi.Expr))
+	case "LIST COLUMNS":
+		b.WriteString(fmt.Sprintf("LIST  COLUMNS(%s)", formatPartitionColumnsPlain(pi.Columns)))
+	case "HASH":
+		b.WriteString(fmt.Sprintf("HASH (%s)", pi.Expr))
+	case "KEY":
+		// MySQL does not backtick-quote KEY column names.
+		if pi.Algorithm > 0 {
+			b.WriteString(fmt.Sprintf("KEY ALGORITHM = %d (%s)", pi.Algorithm, formatPartitionColumnsPlain(pi.Columns)))
+		} else {
+			b.WriteString(fmt.Sprintf("KEY (%s)", formatPartitionColumnsPlain(pi.Columns)))
+		}
+	}
+
+	// Subpartition clause.
+	if pi.SubType != "" {
+		b.WriteString("\n")
+		b.WriteString("SUBPARTITION BY ")
+		if pi.SubLinear {
+			b.WriteString("LINEAR ")
+		}
+		switch pi.SubType {
+		case "HASH":
+			b.WriteString(fmt.Sprintf("HASH (%s)", pi.SubExpr))
+		case "KEY":
+			if pi.SubAlgo > 0 {
+				b.WriteString(fmt.Sprintf("KEY ALGORITHM = %d (%s)", pi.SubAlgo, formatPartitionColumns(pi.SubColumns)))
+			} else {
+				b.WriteString(fmt.Sprintf("KEY (%s)", formatPartitionColumns(pi.SubColumns)))
+			}
+		}
+		if pi.NumSubParts > 0 {
+			b.WriteString(fmt.Sprintf("\nSUBPARTITIONS %d", pi.NumSubParts))
+		}
+	}
+
+	// Partition definitions.
+	if len(pi.Partitions) > 0 {
+		b.WriteString("\n(")
+		for i, pd := range pi.Partitions {
+			if i > 0 {
+				b.WriteString(",\n ")
+			}
+			b.WriteString("PARTITION ")
+			b.WriteString(pd.Name)
+			if pd.ValueExpr != "" {
+				switch {
+				case strings.HasPrefix(pi.Type, "RANGE"):
+					if pd.ValueExpr == "MAXVALUE" {
+						if pi.Type == "RANGE COLUMNS" {
+							// RANGE COLUMNS uses parenthesized MAXVALUE
+							b.WriteString(" VALUES LESS THAN (MAXVALUE)")
+						} else {
+							b.WriteString(" VALUES LESS THAN MAXVALUE")
+						}
+					} else {
+						b.WriteString(fmt.Sprintf(" VALUES LESS THAN (%s)", pd.ValueExpr))
+					}
+				case strings.HasPrefix(pi.Type, "LIST"):
+					b.WriteString(fmt.Sprintf(" VALUES IN (%s)", pd.ValueExpr))
+				}
+			}
+			b.WriteString(fmt.Sprintf(" ENGINE = %s", partitionEngine(pd.Engine)))
+			if pd.Comment != "" {
+				b.WriteString(fmt.Sprintf(" COMMENT = '%s'", escapeComment(pd.Comment)))
+			}
+			// Subpartition definitions.
+			if len(pd.SubPartitions) > 0 {
+				b.WriteString("\n (")
+				for j, spd := range pd.SubPartitions {
+					if j > 0 {
+						b.WriteString(",\n  ")
+					}
+					b.WriteString("SUBPARTITION ")
+					b.WriteString(spd.Name)
+					b.WriteString(fmt.Sprintf(" ENGINE = %s", partitionEngine(spd.Engine)))
+					if spd.Comment != "" {
+						b.WriteString(fmt.Sprintf(" COMMENT = '%s'", escapeComment(spd.Comment)))
+					}
+				}
+				b.WriteString(")")
+			}
+		}
+		b.WriteString(")")
+	} else if pi.NumParts > 0 {
+		// HASH/KEY with PARTITIONS num but no explicit defs
+		b.WriteString(fmt.Sprintf("\nPARTITIONS %d", pi.NumParts))
+	}
+
+	b.WriteString(" */")
+	return b.String()
+}
+
+// formatPartitionColumns formats column names for partition clauses with backticks.
+func formatPartitionColumns(cols []string) string {
+	parts := make([]string, len(cols))
+	for i, c := range cols {
+		parts[i] = "`" + c + "`"
+	}
+	return strings.Join(parts, ",")
+}
+
+// formatPartitionColumnsPlain formats column names without backticks (MySQL style for RANGE COLUMNS, LIST COLUMNS, KEY).
+func formatPartitionColumnsPlain(cols []string) string {
+	return strings.Join(cols, ",")
+}
+
+// partitionEngine returns the engine for a partition, defaulting to InnoDB.
+func partitionEngine(engine string) string {
+	if engine == "" {
+		return "InnoDB"
+	}
+	return engine
 }

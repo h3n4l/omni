@@ -71,6 +71,18 @@ func (c *Catalog) execAlterCmd(db *Database, tbl *Table, cmd *nodes.AlterTableCm
 		return c.alterCheckEnforced(tbl, cmd)
 	case nodes.ATConvertCharset:
 		return c.alterConvertCharset(tbl, cmd)
+	case nodes.ATAddPartition:
+		return c.alterAddPartition(tbl, cmd)
+	case nodes.ATDropPartition:
+		return c.alterDropPartition(tbl, cmd)
+	case nodes.ATTruncatePartition:
+		return c.alterTruncatePartition(tbl, cmd)
+	case nodes.ATCoalescePartition:
+		return c.alterCoalescePartition(tbl, cmd)
+	case nodes.ATReorganizePartition:
+		return c.alterReorganizePartition(tbl, cmd)
+	case nodes.ATExchangePartition:
+		return c.alterExchangePartition(db, tbl, cmd)
 	default:
 		// Unsupported alter command; silently ignore.
 		return nil
@@ -895,3 +907,176 @@ func (c *Catalog) alterConvertCharset(tbl *Table, cmd *nodes.AlterTableCmd) erro
 
 // Ensure strings import is used (for toLower references via strings package).
 var _ = strings.ToLower
+
+// alterAddPartition adds partition definitions to a partitioned table.
+func (c *Catalog) alterAddPartition(tbl *Table, cmd *nodes.AlterTableCmd) error {
+	if tbl.Partitioning == nil {
+		return fmt.Errorf("ALTER TABLE ADD PARTITION: table '%s' is not partitioned", tbl.Name)
+	}
+	for _, pd := range cmd.PartitionDefs {
+		pdi := &PartitionDefInfo{
+			Name: pd.Name,
+		}
+		if pd.Values != nil {
+			pdi.ValueExpr = partitionValueToString(pd.Values, partitionTypeFromString(tbl.Partitioning.Type))
+		}
+		for _, opt := range pd.Options {
+			switch toLower(opt.Name) {
+			case "engine":
+				pdi.Engine = opt.Value
+			case "comment":
+				pdi.Comment = opt.Value
+			}
+		}
+		tbl.Partitioning.Partitions = append(tbl.Partitioning.Partitions, pdi)
+	}
+	return nil
+}
+
+// alterDropPartition drops named partitions from a partitioned table.
+func (c *Catalog) alterDropPartition(tbl *Table, cmd *nodes.AlterTableCmd) error {
+	if tbl.Partitioning == nil {
+		return fmt.Errorf("ALTER TABLE DROP PARTITION: table '%s' is not partitioned", tbl.Name)
+	}
+	dropSet := make(map[string]bool)
+	for _, name := range cmd.PartitionNames {
+		dropSet[toLower(name)] = true
+	}
+	var remaining []*PartitionDefInfo
+	for _, pd := range tbl.Partitioning.Partitions {
+		if !dropSet[toLower(pd.Name)] {
+			remaining = append(remaining, pd)
+		}
+	}
+	tbl.Partitioning.Partitions = remaining
+	return nil
+}
+
+// alterTruncatePartition truncates named partitions (no-op for metadata catalog).
+func (c *Catalog) alterTruncatePartition(tbl *Table, cmd *nodes.AlterTableCmd) error {
+	if tbl.Partitioning == nil {
+		return fmt.Errorf("ALTER TABLE TRUNCATE PARTITION: table '%s' is not partitioned", tbl.Name)
+	}
+	// Truncate is a data operation; for DDL catalog purposes, it's a no-op.
+	return nil
+}
+
+// alterCoalescePartition reduces the number of partitions for HASH/KEY partitioned tables.
+func (c *Catalog) alterCoalescePartition(tbl *Table, cmd *nodes.AlterTableCmd) error {
+	if tbl.Partitioning == nil {
+		return fmt.Errorf("ALTER TABLE COALESCE PARTITION: table '%s' is not partitioned", tbl.Name)
+	}
+	// Determine current partition count.
+	currentCount := len(tbl.Partitioning.Partitions)
+	if currentCount == 0 {
+		currentCount = tbl.Partitioning.NumParts
+	}
+	newCount := currentCount - cmd.Number
+	if newCount < 1 {
+		newCount = 1
+	}
+	if len(tbl.Partitioning.Partitions) > 0 {
+		tbl.Partitioning.Partitions = tbl.Partitioning.Partitions[:newCount]
+	}
+	tbl.Partitioning.NumParts = newCount
+	return nil
+}
+
+// alterReorganizePartition reorganizes partitions into new definitions.
+func (c *Catalog) alterReorganizePartition(tbl *Table, cmd *nodes.AlterTableCmd) error {
+	if tbl.Partitioning == nil {
+		return fmt.Errorf("ALTER TABLE REORGANIZE PARTITION: table '%s' is not partitioned", tbl.Name)
+	}
+	// Remove the old partitions.
+	dropSet := make(map[string]bool)
+	for _, name := range cmd.PartitionNames {
+		dropSet[toLower(name)] = true
+	}
+	var remaining []*PartitionDefInfo
+	insertPos := -1
+	for i, pd := range tbl.Partitioning.Partitions {
+		if dropSet[toLower(pd.Name)] {
+			if insertPos < 0 {
+				insertPos = i
+			}
+			continue
+		}
+		remaining = append(remaining, pd)
+	}
+	if insertPos < 0 {
+		insertPos = len(remaining)
+	}
+
+	// Build new partitions.
+	var newParts []*PartitionDefInfo
+	for _, pd := range cmd.PartitionDefs {
+		pdi := &PartitionDefInfo{
+			Name: pd.Name,
+		}
+		if pd.Values != nil {
+			pdi.ValueExpr = partitionValueToString(pd.Values, partitionTypeFromString(tbl.Partitioning.Type))
+		}
+		for _, opt := range pd.Options {
+			switch toLower(opt.Name) {
+			case "engine":
+				pdi.Engine = opt.Value
+			case "comment":
+				pdi.Comment = opt.Value
+			}
+		}
+		newParts = append(newParts, pdi)
+	}
+
+	// Insert new partitions at the position of the first removed partition.
+	result := make([]*PartitionDefInfo, 0, len(remaining)+len(newParts))
+	for i, pd := range remaining {
+		if i == insertPos {
+			result = append(result, newParts...)
+		}
+		result = append(result, pd)
+	}
+	if insertPos >= len(remaining) {
+		result = append(result, newParts...)
+	}
+	tbl.Partitioning.Partitions = result
+	return nil
+}
+
+// alterExchangePartition exchanges a partition with a non-partitioned table.
+func (c *Catalog) alterExchangePartition(db *Database, tbl *Table, cmd *nodes.AlterTableCmd) error {
+	if tbl.Partitioning == nil {
+		return fmt.Errorf("ALTER TABLE EXCHANGE PARTITION: table '%s' is not partitioned", tbl.Name)
+	}
+	// For DDL catalog purposes, exchange is primarily a data operation.
+	// We just validate both tables exist.
+	if cmd.ExchangeTable != nil {
+		exchDB := db
+		if cmd.ExchangeTable.Schema != "" {
+			exchDB = c.GetDatabase(cmd.ExchangeTable.Schema)
+			if exchDB == nil {
+				return errNoSuchTable(cmd.ExchangeTable.Schema, cmd.ExchangeTable.Name)
+			}
+		}
+		exchTbl := exchDB.GetTable(cmd.ExchangeTable.Name)
+		if exchTbl == nil {
+			return errNoSuchTable(exchDB.Name, cmd.ExchangeTable.Name)
+		}
+	}
+	return nil
+}
+
+// partitionTypeFromString converts a string partition type to AST PartitionType.
+func partitionTypeFromString(t string) nodes.PartitionType {
+	switch t {
+	case "RANGE", "RANGE COLUMNS":
+		return nodes.PartitionRange
+	case "LIST", "LIST COLUMNS":
+		return nodes.PartitionList
+	case "HASH":
+		return nodes.PartitionHash
+	case "KEY":
+		return nodes.PartitionKey
+	default:
+		return nodes.PartitionRange
+	}
+}

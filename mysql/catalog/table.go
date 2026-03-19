@@ -15,6 +15,40 @@ type Table struct {
 	Temporary     bool
 	RowFormat     string
 	KeyBlockSize  int
+	Partitioning  *PartitionInfo
+}
+
+// PartitionInfo holds partition metadata for a table.
+type PartitionInfo struct {
+	Type       string // RANGE, LIST, HASH, KEY
+	Linear     bool   // LINEAR HASH or LINEAR KEY
+	Expr       string // partition expression (for RANGE/LIST/HASH)
+	Columns    []string // partition columns (for RANGE COLUMNS/LIST COLUMNS/KEY)
+	Algorithm  int    // ALGORITHM={1|2} for KEY partitioning
+	NumParts   int    // PARTITIONS num
+	Partitions []*PartitionDefInfo
+	SubType    string // subpartition type (HASH or KEY, "" if none)
+	SubLinear  bool   // LINEAR for subpartition
+	SubExpr    string // subpartition expression
+	SubColumns []string // subpartition columns
+	SubAlgo    int    // subpartition ALGORITHM
+	NumSubParts int   // SUBPARTITIONS num
+}
+
+// PartitionDefInfo holds a single partition definition.
+type PartitionDefInfo struct {
+	Name          string
+	ValueExpr     string // "LESS THAN (...)" or "IN (...)" or ""
+	Engine        string // ENGINE option for this partition
+	Comment       string // COMMENT option for this partition
+	SubPartitions []*SubPartitionDefInfo
+}
+
+// SubPartitionDefInfo holds a single subpartition definition.
+type SubPartitionDefInfo struct {
+	Name    string
+	Engine  string
+	Comment string
 }
 
 type Column struct {

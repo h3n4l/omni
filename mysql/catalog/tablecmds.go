@@ -491,8 +491,121 @@ func (c *Catalog) createTable(stmt *nodes.CreateTableStmt) error {
 		return err
 	}
 
+	// Process partition clause.
+	if stmt.Partitions != nil {
+		tbl.Partitioning = buildPartitionInfo(stmt.Partitions)
+	}
+
 	db.Tables[key] = tbl
 	return nil
+}
+
+// buildPartitionInfo converts an AST PartitionClause to a catalog PartitionInfo.
+func buildPartitionInfo(pc *nodes.PartitionClause) *PartitionInfo {
+	pi := &PartitionInfo{
+		Linear:   pc.Linear,
+		NumParts: pc.NumParts,
+	}
+
+	switch pc.Type {
+	case nodes.PartitionRange:
+		if len(pc.Columns) > 0 {
+			pi.Type = "RANGE COLUMNS"
+			pi.Columns = pc.Columns
+		} else {
+			pi.Type = "RANGE"
+			pi.Expr = nodeToSQL(pc.Expr)
+		}
+	case nodes.PartitionList:
+		if len(pc.Columns) > 0 {
+			pi.Type = "LIST COLUMNS"
+			pi.Columns = pc.Columns
+		} else {
+			pi.Type = "LIST"
+			pi.Expr = nodeToSQL(pc.Expr)
+		}
+	case nodes.PartitionHash:
+		pi.Type = "HASH"
+		pi.Expr = nodeToSQL(pc.Expr)
+	case nodes.PartitionKey:
+		pi.Type = "KEY"
+		pi.Columns = pc.Columns
+		pi.Algorithm = pc.Algorithm
+	}
+
+	// Subpartition info.
+	if pc.SubPartType != 0 || pc.SubPartExpr != nil || len(pc.SubPartColumns) > 0 {
+		switch pc.SubPartType {
+		case nodes.PartitionHash:
+			pi.SubType = "HASH"
+			pi.SubExpr = nodeToSQL(pc.SubPartExpr)
+		case nodes.PartitionKey:
+			pi.SubType = "KEY"
+			pi.SubColumns = pc.SubPartColumns
+			pi.SubAlgo = pc.SubPartAlgo
+		}
+		pi.SubLinear = false // TODO: track linear for subpartitions if parser supports it
+		pi.NumSubParts = pc.NumSubParts
+	}
+
+	// Partition definitions.
+	for _, pd := range pc.Partitions {
+		pdi := &PartitionDefInfo{
+			Name: pd.Name,
+		}
+		// Values.
+		if pd.Values != nil {
+			pdi.ValueExpr = partitionValueToString(pd.Values, pc.Type)
+		}
+		// Options.
+		for _, opt := range pd.Options {
+			switch toLower(opt.Name) {
+			case "engine":
+				pdi.Engine = opt.Value
+			case "comment":
+				pdi.Comment = opt.Value
+			}
+		}
+		// Subpartitions.
+		for _, spd := range pd.SubPartitions {
+			spdi := &SubPartitionDefInfo{
+				Name: spd.Name,
+			}
+			for _, opt := range spd.Options {
+				switch toLower(opt.Name) {
+				case "engine":
+					spdi.Engine = opt.Value
+				case "comment":
+					spdi.Comment = opt.Value
+				}
+			}
+			pdi.SubPartitions = append(pdi.SubPartitions, spdi)
+		}
+		pi.Partitions = append(pi.Partitions, pdi)
+	}
+
+	return pi
+}
+
+// partitionValueToString converts a partition value node to SQL string.
+func partitionValueToString(v nodes.Node, ptype nodes.PartitionType) string {
+	switch n := v.(type) {
+	case *nodes.String:
+		if n.Str == "MAXVALUE" {
+			return "MAXVALUE"
+		}
+		return n.Str
+	case *nodes.List:
+		parts := make([]string, len(n.Items))
+		for i, item := range n.Items {
+			parts[i] = nodeToSQL(item.(nodes.ExprNode))
+		}
+		return strings.Join(parts, ",")
+	case nodes.ExprNode:
+		return nodeToSQL(n)
+	default:
+		return ""
+	}
 }
 
 // validateForeignKeys checks all FK constraints on a table against the referenced tables.
