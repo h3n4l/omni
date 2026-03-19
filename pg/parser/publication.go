@@ -609,7 +609,7 @@ func (p *Parser) parseRuleActionList() *nodes.List {
 	}
 
 	// Single RuleActionStmt
-	stmt := p.parseRuleActionStmt()
+	stmt, _ := p.parseRuleActionStmt()
 	if stmt == nil {
 		return nil
 	}
@@ -625,7 +625,7 @@ func (p *Parser) parseRuleActionMulti() *nodes.List {
 	var items []nodes.Node
 
 	// First item
-	stmt := p.parseRuleActionStmt()
+	stmt, _ := p.parseRuleActionStmt()
 	if stmt != nil {
 		items = append(items, stmt)
 	}
@@ -636,7 +636,7 @@ func (p *Parser) parseRuleActionMulti() *nodes.List {
 		if p.cur.Type == ')' || p.cur.Type == ';' || p.cur.Type == 0 {
 			continue
 		}
-		stmt = p.parseRuleActionStmt()
+		stmt, _ = p.parseRuleActionStmt()
 		if stmt != nil {
 			items = append(items, stmt)
 		}
@@ -652,24 +652,20 @@ func (p *Parser) parseRuleActionMulti() *nodes.List {
 //
 //	RuleActionStmt:
 //	    SelectStmt | InsertStmt | UpdateStmt | DeleteStmt | NotifyStmt
-func (p *Parser) parseRuleActionStmt() nodes.Node {
+func (p *Parser) parseRuleActionStmt() (nodes.Node, error) {
 	switch p.cur.Type {
 	case SELECT, VALUES, TABLE, WITH:
 		if p.cur.Type == WITH {
 			return p.parseWithStmt()
 		}
-		n, _ := p.parseSelectNoParens()
-		return n
+		return p.parseSelectNoParens()
 	case INSERT:
-		n, _ := p.parseInsertStmt(nil)
-		return n
+		return p.parseInsertStmt(nil)
 	case UPDATE:
-		n, _ := p.parseUpdateStmt(nil)
-		return n
+		return p.parseUpdateStmt(nil)
 	case DELETE_P:
-		n, _ := p.parseDeleteStmt(nil)
-		return n
+		return p.parseDeleteStmt(nil)
 	default:
-		return nil
+		return nil, nil
 	}
 }

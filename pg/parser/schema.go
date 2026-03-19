@@ -78,7 +78,8 @@ func (p *Parser) parseSchemaStmt() nodes.Node {
 	next := p.peekNext()
 	switch next.Type {
 	case TABLE:
-		return p.parseCreateOrCTAS()
+		n, _ := p.parseCreateOrCTAS()
+		return n
 	case INDEX, UNIQUE:
 		p.advance() // consume CREATE
 		n, _ := p.parseIndexStmt()

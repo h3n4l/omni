@@ -77,7 +77,7 @@
       "name": "alter_misc_utilities",
       "files": ["alter_misc.go", "drop.go", "schema.go", "database.go", "publication.go", "cursor.go", "copy.go", "utility.go"],
       "function_count": 139,
-      "status": "pending",
+      "status": "done",
       "notes": "Remaining ALTER, DROP, and utility statements"
     },
     {

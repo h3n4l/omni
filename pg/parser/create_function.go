@@ -556,7 +556,7 @@ func (p *Parser) parseOptRoutineBody() nodes.Node {
 				expr, _ := p.parseAExpr(0)
 				stmt = &nodes.ReturnStmt{Returnval: expr}
 			} else {
-				stmt = p.parseStmt()
+				stmt, _ = p.parseStmt()
 			}
 			if stmt != nil {
 				stmts = append(stmts, stmt)

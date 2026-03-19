@@ -156,7 +156,7 @@ func Collect(sql string, cursorOffset int) *CandidateSet {
 		recover() //nolint:errcheck
 	}()
 
-	p.parseStmt()
+	p.parseStmt() //nolint:errcheck
 	return cs
 }
 

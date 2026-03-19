@@ -49,7 +49,10 @@ func Parse(sql string) (*nodes.List, error) {
 			return nil, p.lexerError()
 		}
 		stmtStart := p.pos()
-		stmt := p.parseStmt()
+		stmt, err := p.parseStmt()
+		if err != nil {
+			return nil, err
+		}
 		if stmt == nil {
 			if p.cur.Type != 0 {
 				return nil, p.syntaxErrorAtCur()
@@ -75,7 +78,7 @@ func Parse(sql string) (*nodes.List, error) {
 // parseStmt dispatches to statement-specific parsers.
 // Minimal implementation — SELECT/VALUES/TABLE/WITH/INSERT/UPDATE/DELETE/MERGE/CREATE TABLE/ALTER TABLE are supported.
 // Full dispatch will be implemented in batch 34.
-func (p *Parser) parseStmt() nodes.Node {
+func (p *Parser) parseStmt() (nodes.Node, error) {
 	if p.collectMode() {
 		p.cachedCollect("parseStmt", func() {
 			// In collection mode, add all statement-starting keywords as candidates.
@@ -94,36 +97,29 @@ func (p *Parser) parseStmt() nodes.Node {
 				p.addTokenCandidate(t)
 			}
 		})
-		return nil
+		return nil, errCollecting
 	}
 	switch p.cur.Type {
 	case SELECT, VALUES, TABLE:
-		n, _ := p.parseSelectNoParens()
-		return n
+		return p.parseSelectNoParens()
 	case WITH:
 		return p.parseWithStmt()
 	case INSERT:
-		n, _ := p.parseInsertStmt(nil)
-		return n
+		return p.parseInsertStmt(nil)
 	case UPDATE:
-		n, _ := p.parseUpdateStmt(nil)
-		return n
+		return p.parseUpdateStmt(nil)
 	case DELETE_P:
-		n, _ := p.parseDeleteStmt(nil)
-		return n
+		return p.parseDeleteStmt(nil)
 	case MERGE:
-		n, _ := p.parseMergeStmt(nil)
-		return n
+		return p.parseMergeStmt(nil)
 	case CREATE:
 		return p.parseCreateDispatch()
 	case COMMENT:
 		p.advance() // consume COMMENT
-		n, _ := p.parseCommentStmt()
-		return n
+		return p.parseCommentStmt()
 	case SECURITY:
 		p.advance() // consume SECURITY
-		n, _ := p.parseSecLabelStmt()
-		return n
+		return p.parseSecLabelStmt()
 	case ALTER:
 		p.advance() // consume ALTER
 		if p.collectMode() {
@@ -138,151 +134,108 @@ func (p *Parser) parseStmt() nodes.Node {
 			for _, t := range alterTokens {
 				p.addTokenCandidate(t)
 			}
-			return nil
+			return nil, errCollecting
 		}
 		switch p.cur.Type {
 		case DATABASE:
-			n, _ := p.parseAlterDatabaseDispatch()
-			return n
+			return p.parseAlterDatabaseDispatch()
 		case ROLE:
-			n, _ := p.parseAlterRoleStmt()
-			return n
+			return p.parseAlterRoleStmt()
 		case USER:
 			// ALTER USER MAPPING or ALTER USER (role)
 			if p.peekNext().Type == MAPPING {
-				n, _ := p.parseAlterUserMappingStmt()
-				return n
+				return p.parseAlterUserMappingStmt()
 			}
-			n, _ := p.parseAlterRoleStmt()
-			return n
+			return p.parseAlterRoleStmt()
 		case SERVER:
-			n, _ := p.parseAlterForeignServerStmt()
-			return n
+			return p.parseAlterForeignServerStmt()
 		case GROUP_P:
-			n, _ := p.parseAlterGroupStmt()
-			return n
+			return p.parseAlterGroupStmt()
 		case POLICY:
-			n, _ := p.parseAlterPolicyStmt()
-			return n
+			return p.parseAlterPolicyStmt()
 		case PUBLICATION:
-			n, _ := p.parseAlterPublicationStmt()
-			return n
+			return p.parseAlterPublicationStmt()
 		case SUBSCRIPTION:
-			n, _ := p.parseAlterSubscriptionStmt()
-			return n
+			return p.parseAlterSubscriptionStmt()
 		case STATISTICS:
-			n, _ := p.parseAlterStatisticsStmt()
-			return n
+			return p.parseAlterStatisticsStmt()
 		case OPERATOR:
-			n, _ := p.parseAlterOperatorStmt()
-			return n
+			return p.parseAlterOperatorStmt()
 		case SCHEMA:
-			n, _ := p.parseAlterSchemaOwner()
-			return n
+			return p.parseAlterSchemaOwner()
 		case DEFAULT:
-			n, _ := p.parseAlterDefaultPrivilegesStmt()
-			return n
+			return p.parseAlterDefaultPrivilegesStmt()
 		case FUNCTION, PROCEDURE, ROUTINE:
-			n, _ := p.parseAlterFunctionStmt()
-			return n
+			return p.parseAlterFunctionStmt()
 		case TYPE_P:
-			n, _ := p.parseAlterTypeStmt()
-			return n
+			return p.parseAlterTypeStmt()
 		case DOMAIN_P:
-			n, _ := p.parseAlterDomainOwnerOrOther()
-			return n
+			return p.parseAlterDomainOwnerOrOther()
 		case COLLATION:
-			n, _ := p.parseAlterCollationStmt()
-			return n
+			return p.parseAlterCollationStmt()
 		case CONVERSION_P:
-			n, _ := p.parseAlterConversionStmt()
-			return n
+			return p.parseAlterConversionStmt()
 		case EXTENSION:
-			n, _ := p.parseAlterExtensionStmt()
-			return n
+			return p.parseAlterExtensionStmt()
 		case AGGREGATE:
-			n, _ := p.parseAlterAggregateStmt()
-			return n
+			return p.parseAlterAggregateStmt()
 		case TEXT_P:
-			n, _ := p.parseAlterTextSearchStmt()
-			return n
+			return p.parseAlterTextSearchStmt()
 		case LANGUAGE:
-			n, _ := p.parseAlterLanguageStmt()
-			return n
+			return p.parseAlterLanguageStmt()
 		case PROCEDURAL:
-			n, _ := p.parseAlterLanguageStmt()
-			return n
+			return p.parseAlterLanguageStmt()
 		case LARGE_P:
-			n, _ := p.parseAlterLargeObjectStmt()
-			return n
+			return p.parseAlterLargeObjectStmt()
 		case EVENT:
-			n, _ := p.parseAlterEventTriggerOwner()
-			return n
+			return p.parseAlterEventTriggerOwner()
 		case SYSTEM_P:
-			n, _ := p.parseAlterSystemStmt()
-			return n
+			return p.parseAlterSystemStmt()
 		case TABLESPACE:
-			n, _ := p.parseAlterTablespaceOwner()
-			return n
+			return p.parseAlterTablespaceOwner()
 		case TRIGGER:
-			n, _ := p.parseAlterTriggerDependsOnExtension()
-			return n
+			return p.parseAlterTriggerDependsOnExtension()
 		case RULE:
-			n, _ := p.parseAlterRuleStmt()
-			return n
+			return p.parseAlterRuleStmt()
 		default:
-			n, _ := p.parseAlterTableStmt()
-			return n
+			return p.parseAlterTableStmt()
 		}
 	case REFRESH:
 		p.advance() // consume REFRESH
-		n, _ := p.parseRefreshMatViewStmt()
-		return n
+		return p.parseRefreshMatViewStmt()
 	case BEGIN_P, START, COMMIT, END_P, ABORT_P, SAVEPOINT, RELEASE:
-		n, _ := p.parseTransactionStmt()
-		return n
+		return p.parseTransactionStmt()
 	case ROLLBACK:
-		n, _ := p.parseTransactionStmt()
-		return n
+		return p.parseTransactionStmt()
 	case PREPARE:
 		// PREPARE TRANSACTION is a transaction stmt; plain PREPARE is a prepared stmt.
 		if p.peekNext().Type == TRANSACTION {
-			n, _ := p.parseTransactionStmt()
-			return n
+			return p.parseTransactionStmt()
 		}
-		n, _ := p.parsePrepareStmt()
-		return n
+		return p.parsePrepareStmt()
 	case EXECUTE:
-		n, _ := p.parseExecuteStmt()
-		return n
+		return p.parseExecuteStmt()
 	case DEALLOCATE:
-		n, _ := p.parseDeallocateStmt()
-		return n
+		return p.parseDeallocateStmt()
 	case SET:
 		p.advance() // consume SET
 		// SET CONSTRAINTS is a different statement type.
 		if p.cur.Type == CONSTRAINTS {
-			n, _ := p.parseConstraintsSetStmt()
-			return n
+			return p.parseConstraintsSetStmt()
 		}
-		n, _ := p.parseVariableSetStmt()
-		return n
+		return p.parseVariableSetStmt()
 	case SHOW:
 		p.advance() // consume SHOW
-		n, _ := p.parseVariableShowStmt()
-		return n
+		return p.parseVariableShowStmt()
 	case RESET:
 		p.advance() // consume RESET
-		n, _ := p.parseVariableResetStmt()
-		return n
+		return p.parseVariableResetStmt()
 	case GRANT:
 		p.advance() // consume GRANT
-		n, _ := p.parseGrantStmt()
-		return n
+		return p.parseGrantStmt()
 	case REVOKE:
 		p.advance() // consume REVOKE
-		n, _ := p.parseRevokeStmt()
-		return n
+		return p.parseRevokeStmt()
 	case DROP:
 		p.advance() // consume DROP
 		if p.collectMode() {
@@ -299,88 +252,66 @@ func (p *Parser) parseStmt() nodes.Node {
 			for _, t := range dropTokens {
 				p.addTokenCandidate(t)
 			}
-			return nil
+			return nil, errCollecting
 		}
-		n, _ := p.parseDropStmt()
-		return n
+		return p.parseDropStmt()
 	case TRUNCATE:
 		p.advance() // consume TRUNCATE
-		n, _ := p.parseTruncateStmt()
-		return n
+		return p.parseTruncateStmt()
 	case LOCK_P:
-		n, _ := p.parseLockStmt()
-		return n
+		return p.parseLockStmt()
 	case DECLARE:
-		n, _ := p.parseDeclareCursorStmt()
-		return n
+		return p.parseDeclareCursorStmt()
 	case FETCH, MOVE:
-		n, _ := p.parseFetchStmt()
-		return n
+		return p.parseFetchStmt()
 	case CLOSE:
-		n, _ := p.parseClosePortalStmt()
-		return n
+		return p.parseClosePortalStmt()
 	case VACUUM:
-		n, _ := p.parseVacuumStmt()
-		return n
+		return p.parseVacuumStmt()
 	case ANALYZE, ANALYSE:
-		n, _ := p.parseAnalyzeStmt()
-		return n
+		return p.parseAnalyzeStmt()
 	case CLUSTER:
-		n, _ := p.parseClusterStmt()
-		return n
+		return p.parseClusterStmt()
 	case REINDEX:
-		n, _ := p.parseReindexStmt()
-		return n
+		return p.parseReindexStmt()
 	case COPY:
 		p.advance() // consume COPY
-		n, _ := p.parseCopyStmt()
-		return n
+		return p.parseCopyStmt()
 	case IMPORT_P:
 		p.advance() // consume IMPORT
-		n, _ := p.parseImportForeignSchemaStmt()
-		return n
+		return p.parseImportForeignSchemaStmt()
 	case EXPLAIN:
 		p.advance() // consume EXPLAIN
-		n, _ := p.parseExplainStmt()
-		return n
+		return p.parseExplainStmt()
 	case DO:
 		p.advance() // consume DO
-		n, _ := p.parseDoStmt()
-		return n
+		return p.parseDoStmt()
 	case CHECKPOINT:
 		p.advance() // consume CHECKPOINT
-		n, _ := p.parseCheckPointStmt()
-		return n
+		return p.parseCheckPointStmt()
 	case DISCARD:
 		p.advance() // consume DISCARD
-		n, _ := p.parseDiscardStmt()
-		return n
+		return p.parseDiscardStmt()
 	case LISTEN:
 		p.advance() // consume LISTEN
-		n, _ := p.parseListenStmt()
-		return n
+		return p.parseListenStmt()
 	case UNLISTEN:
 		p.advance() // consume UNLISTEN
-		n, _ := p.parseUnlistenStmt()
-		return n
+		return p.parseUnlistenStmt()
 	case NOTIFY:
 		p.advance() // consume NOTIFY
-		n, _ := p.parseNotifyStmt()
-		return n
+		return p.parseNotifyStmt()
 	case LOAD:
 		p.advance() // consume LOAD
-		n, _ := p.parseLoadStmt()
-		return n
+		return p.parseLoadStmt()
 	case CALL:
 		p.advance() // consume CALL
-		n, _ := p.parseCallStmt()
-		return n
+		return p.parseCallStmt()
 	case REASSIGN:
 		p.advance() // consume REASSIGN
-		n, _ := p.parseReassignOwnedStmt()
-		return n
+		return p.parseReassignOwnedStmt()
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
@@ -388,7 +319,7 @@ func (p *Parser) parseStmt() nodes.Node {
 //
 // The current token is CREATE. We peek at the next token to determine which
 // CREATE sub-statement to parse.
-func (p *Parser) parseCreateDispatch() nodes.Node {
+func (p *Parser) parseCreateDispatch() (nodes.Node, error) {
 	// In collect mode, check if the next token is at/past cursor.
 	// We need to peek ahead because CREATE has not been consumed yet.
 	if p.completing && !p.collecting {
@@ -412,7 +343,7 @@ func (p *Parser) parseCreateDispatch() nodes.Node {
 		for _, t := range createTokens {
 			p.addTokenCandidate(t)
 		}
-		return nil
+		return nil, errCollecting
 	}
 	next := p.peekNext()
 	switch next.Type {
@@ -423,44 +354,34 @@ func (p *Parser) parseCreateDispatch() nodes.Node {
 		p.expect(REPLACE)
 		switch p.cur.Type {
 		case FUNCTION, PROCEDURE:
-			n, _ := p.parseCreateFunctionStmt(true)
-			return n
+			return p.parseCreateFunctionStmt(true)
 		case TRIGGER, CONSTRAINT:
-			n, _ := p.parseCreateTrigStmt(true)
-			return n
+			return p.parseCreateTrigStmt(true)
 		case TRUSTED, PROCEDURAL, LANGUAGE:
-			n, _ := p.parseCreatePLangStmt(true)
-			return n
+			return p.parseCreatePLangStmt(true)
 		case RULE:
-			n, _ := p.parseCreateRuleStmt(true)
-			return n
+			return p.parseCreateRuleStmt(true)
 		case AGGREGATE:
-			n, _ := p.parseDefineStmtAggregate(true)
-			return n
+			return p.parseDefineStmtAggregate(true)
 		case TRANSFORM:
-			n, _ := p.parseCreateTransformStmt(true)
-			return n
+			return p.parseCreateTransformStmt(true)
 		default:
-			n, _ := p.parseViewStmt(true)
-			return n
+			return p.parseViewStmt(true)
 		}
 	case VIEW:
 		// CREATE VIEW ...
 		p.advance() // consume CREATE
-		n, _ := p.parseViewStmt(false)
-		return n
+		return p.parseViewStmt(false)
 	case RECURSIVE:
 		// CREATE RECURSIVE VIEW ...
 		p.advance() // consume CREATE
-		n, _ := p.parseViewStmt(false)
-		return n
+		return p.parseViewStmt(false)
 	case MATERIALIZED:
 		// CREATE MATERIALIZED VIEW ...
 		p.advance() // consume CREATE
 		relpersistence := byte(nodes.RELPERSISTENCE_PERMANENT)
 		p.advance() // consume MATERIALIZED
-		n, _ := p.parseCreateMatViewStmt(relpersistence)
-		return n
+		return p.parseCreateMatViewStmt(relpersistence)
 	case TABLE:
 		// CREATE TABLE ... (could be regular CREATE TABLE or CREATE TABLE AS)
 		return p.parseCreateOrCTAS()
@@ -476,202 +397,164 @@ func (p *Parser) parseCreateDispatch() nodes.Node {
 	case UNIQUE:
 		// CREATE UNIQUE INDEX ...
 		p.advance() // consume CREATE
-		n, _ := p.parseIndexStmt()
-		return n
+		return p.parseIndexStmt()
 	case INDEX:
 		// CREATE INDEX ...
 		p.advance() // consume CREATE
-		n, _ := p.parseIndexStmt()
-		return n
+		return p.parseIndexStmt()
 	case SEQUENCE:
 		// CREATE SEQUENCE ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreateSeqStmt(byte(nodes.RELPERSISTENCE_PERMANENT))
-		return n
+		return p.parseCreateSeqStmt(byte(nodes.RELPERSISTENCE_PERMANENT))
 	case DOMAIN_P:
 		// CREATE DOMAIN ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreateDomainStmt()
-		return n
+		return p.parseCreateDomainStmt()
 	case TYPE_P:
 		// CREATE TYPE ... (base, composite, enum, range, shell)
 		p.advance() // consume CREATE
-		n, _ := p.parseDefineStmtType()
-		return n
+		return p.parseDefineStmtType()
 	case AGGREGATE:
 		// CREATE AGGREGATE ...
 		p.advance() // consume CREATE
-		n, _ := p.parseDefineStmtAggregate(false)
-		return n
+		return p.parseDefineStmtAggregate(false)
 	case OPERATOR:
 		// CREATE OPERATOR ... / CREATE OPERATOR CLASS ... / CREATE OPERATOR FAMILY ...
 		p.advance() // consume CREATE
-		n, _ := p.parseDefineStmtOperator()
-		return n
+		return p.parseDefineStmtOperator()
 	case TEXT_P:
 		// CREATE TEXT SEARCH ...
 		p.advance() // consume CREATE
-		n, _ := p.parseDefineStmtTextSearch()
-		return n
+		return p.parseDefineStmtTextSearch()
 	case COLLATION:
 		// CREATE COLLATION ...
 		p.advance() // consume CREATE
-		n, _ := p.parseDefineStmtCollation()
-		return n
+		return p.parseDefineStmtCollation()
 	case STATISTICS:
 		// CREATE STATISTICS ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreateStatsStmt()
-		return n
+		return p.parseCreateStatsStmt()
 	case FUNCTION:
 		// CREATE FUNCTION ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreateFunctionStmt(false)
-		return n
+		return p.parseCreateFunctionStmt(false)
 	case PROCEDURE:
 		// CREATE PROCEDURE ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreateFunctionStmt(false)
-		return n
+		return p.parseCreateFunctionStmt(false)
 	case DATABASE:
 		// CREATE DATABASE ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreatedbStmt()
-		return n
+		return p.parseCreatedbStmt()
 	case ROLE:
 		// CREATE ROLE ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreateRoleStmt()
-		return n
+		return p.parseCreateRoleStmt()
 	case USER:
 		// CREATE USER ... or CREATE USER MAPPING ...
 		p.advance() // consume CREATE
 		// Peek: if next after USER is MAPPING, it's CREATE USER MAPPING
 		if p.peekNext().Type == MAPPING {
-			n, _ := p.parseCreateUserMappingIfNotExistsStmt()
-			return n
+			return p.parseCreateUserMappingIfNotExistsStmt()
 		}
-		n, _ := p.parseCreateUserStmt()
-		return n
+		return p.parseCreateUserStmt()
 	case GROUP_P:
 		// CREATE GROUP ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreateGroupStmt()
-		return n
+		return p.parseCreateGroupStmt()
 	case POLICY:
 		// CREATE POLICY ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreatePolicyStmt()
-		return n
+		return p.parseCreatePolicyStmt()
 	case TRIGGER:
 		// CREATE TRIGGER ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreateTrigStmt(false)
-		return n
+		return p.parseCreateTrigStmt(false)
 	case CONSTRAINT:
 		// CREATE CONSTRAINT TRIGGER ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreateTrigStmt(false)
-		return n
+		return p.parseCreateTrigStmt(false)
 	case EVENT:
 		// CREATE EVENT TRIGGER ...
 		p.advance() // consume CREATE
 		p.advance() // consume EVENT
-		n, _ := p.parseCreateEventTrigStmt()
-		return n
+		return p.parseCreateEventTrigStmt()
 	case FOREIGN:
 		// CREATE FOREIGN DATA WRAPPER or CREATE FOREIGN TABLE
 		p.advance() // consume CREATE
 		p.advance() // consume FOREIGN
 		if p.cur.Type == DATA_P {
 			// CREATE FOREIGN DATA WRAPPER
-			n, _ := p.parseCreateFdwStmt()
-			return n
+			return p.parseCreateFdwStmt()
 		}
 		// CREATE FOREIGN TABLE
-		n, _ := p.parseCreateForeignTableStmt()
-		return n
+		return p.parseCreateForeignTableStmt()
 	case SERVER:
 		// CREATE SERVER ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreateForeignServerStmt()
-		return n
+		return p.parseCreateForeignServerStmt()
 	case LANGUAGE:
 		// CREATE LANGUAGE ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreatePLangStmt(false)
-		return n
+		return p.parseCreatePLangStmt(false)
 	case TRUSTED:
 		// CREATE TRUSTED [PROCEDURAL] LANGUAGE ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreatePLangStmt(false)
-		return n
+		return p.parseCreatePLangStmt(false)
 	case PROCEDURAL:
 		// CREATE PROCEDURAL LANGUAGE ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreatePLangStmt(false)
-		return n
+		return p.parseCreatePLangStmt(false)
 	case GLOBAL:
 		// CREATE GLOBAL TEMP TABLE ... (same as CREATE TEMP)
 		return p.parseCreateTempDispatch()
 	case PUBLICATION:
 		// CREATE PUBLICATION ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreatePublicationStmt()
-		return n
+		return p.parseCreatePublicationStmt()
 	case SUBSCRIPTION:
 		// CREATE SUBSCRIPTION ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreateSubscriptionStmt()
-		return n
+		return p.parseCreateSubscriptionStmt()
 	case RULE:
 		// CREATE RULE ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreateRuleStmt(false)
-		return n
+		return p.parseCreateRuleStmt(false)
 	case EXTENSION:
 		// CREATE EXTENSION ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreateExtensionStmt()
-		return n
+		return p.parseCreateExtensionStmt()
 	case ACCESS:
 		// CREATE ACCESS METHOD ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreateAmStmt()
-		return n
+		return p.parseCreateAmStmt()
 	case CAST:
 		// CREATE CAST ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreateCastStmt()
-		return n
+		return p.parseCreateCastStmt()
 	case TRANSFORM:
 		// CREATE TRANSFORM ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreateTransformStmt(false)
-		return n
+		return p.parseCreateTransformStmt(false)
 	case CONVERSION_P:
 		// CREATE CONVERSION ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreateConversionStmt(false)
-		return n
+		return p.parseCreateConversionStmt(false)
 	case DEFAULT:
 		// CREATE DEFAULT CONVERSION ...
 		p.advance() // consume CREATE
 		p.advance() // consume DEFAULT
-		n, _ := p.parseCreateConversionStmt(true)
-		return n
+		return p.parseCreateConversionStmt(true)
 	case TABLESPACE:
 		// CREATE TABLESPACE ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreateTableSpaceStmt()
-		return n
+		return p.parseCreateTableSpaceStmt()
 	case SCHEMA:
 		// CREATE SCHEMA ...
 		p.advance() // consume CREATE
-		n, _ := p.parseCreateSchemaStmt()
-		return n
+		return p.parseCreateSchemaStmt()
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
@@ -679,23 +562,25 @@ func (p *Parser) parseCreateDispatch() nodes.Node {
 // The CREATE keyword has NOT been consumed yet.
 //
 // We need to look past OptTemp to see if it's TABLE or VIEW.
-func (p *Parser) parseCreateTempDispatch() nodes.Node {
+func (p *Parser) parseCreateTempDispatch() (nodes.Node, error) {
 	p.advance() // consume CREATE
 	relpersistence := p.parseOptTemp()
 
 	if p.cur.Type == VIEW || p.cur.Type == RECURSIVE {
 		// CREATE TEMP VIEW ... or CREATE TEMP RECURSIVE VIEW ...
-		stmt, _ := p.parseViewStmt(false)
+		stmt, err := p.parseViewStmt(false)
+		if err != nil {
+			return nil, err
+		}
 		if stmt != nil {
 			stmt.View.Relpersistence = relpersistence
 		}
-		return stmt
+		return stmt, nil
 	}
 
 	if p.cur.Type == SEQUENCE {
 		// CREATE TEMP SEQUENCE ...
-		n, _ := p.parseCreateSeqStmt(relpersistence)
-		return n
+		return p.parseCreateSeqStmt(relpersistence)
 	}
 
 	// CREATE TEMP TABLE ...
@@ -711,17 +596,13 @@ func (p *Parser) parseCreateTempDispatch() nodes.Node {
 
 	names, err := p.parseQualifiedName()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	// Determine if this is CTAS or regular CREATE TABLE.
 	// CTAS: no '(' for column defs, just optional column list then AS.
 	// Regular: has '(' for column defs, or PARTITION OF, or OF.
 	if p.cur.Type == '(' {
-		// Could be opt_column_list for CTAS or column defs for CREATE TABLE.
-		// CTAS has opt_column_list = '(' columnList ')' then AS or OptAccessMethod etc.
-		// CREATE TABLE has '(' TableElementList ')'.
-		// We need to check if after the closing ')' we see AS.
 		return p.parseCreateTableOrCTASAfterParen(names, relpersistence, ifNotExists)
 	}
 
@@ -736,24 +617,26 @@ func (p *Parser) parseCreateTempDispatch() nodes.Node {
 
 // parseCreateUnloggedDispatch dispatches CREATE UNLOGGED ... statements.
 // The CREATE keyword has NOT been consumed yet.
-func (p *Parser) parseCreateUnloggedDispatch() nodes.Node {
+func (p *Parser) parseCreateUnloggedDispatch() (nodes.Node, error) {
 	p.advance() // consume CREATE
 	p.advance() // consume UNLOGGED
 	relpersistence := byte(nodes.RELPERSISTENCE_UNLOGGED)
 
 	if p.cur.Type == MATERIALIZED {
 		p.advance() // consume MATERIALIZED
-		n, _ := p.parseCreateMatViewStmt(relpersistence)
-		return n
+		return p.parseCreateMatViewStmt(relpersistence)
 	}
 
 	if p.cur.Type == VIEW || p.cur.Type == RECURSIVE {
 		// CREATE UNLOGGED VIEW ... or CREATE UNLOGGED RECURSIVE VIEW ...
-		stmt, _ := p.parseViewStmt(false)
+		stmt, err := p.parseViewStmt(false)
+		if err != nil {
+			return nil, err
+		}
 		if stmt != nil {
 			stmt.View.Relpersistence = relpersistence
 		}
-		return stmt
+		return stmt, nil
 	}
 
 	// CREATE UNLOGGED TABLE ...
@@ -769,7 +652,7 @@ func (p *Parser) parseCreateUnloggedDispatch() nodes.Node {
 
 	names, err := p.parseQualifiedName()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	if p.cur.Type == '(' {
@@ -786,7 +669,7 @@ func (p *Parser) parseCreateUnloggedDispatch() nodes.Node {
 // parseCreateOrCTAS parses CREATE TABLE ... which could be either a regular
 // CREATE TABLE or a CREATE TABLE AS (CTAS) statement.
 // The CREATE keyword has NOT been consumed yet.
-func (p *Parser) parseCreateOrCTAS() nodes.Node {
+func (p *Parser) parseCreateOrCTAS() (nodes.Node, error) {
 	p.advance() // consume CREATE
 	relpersistence := byte(nodes.RELPERSISTENCE_PERMANENT)
 	p.expect(TABLE)
@@ -801,7 +684,7 @@ func (p *Parser) parseCreateOrCTAS() nodes.Node {
 
 	names, err := p.parseQualifiedName()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	// Determine if this is CTAS or regular CREATE TABLE.
@@ -826,7 +709,7 @@ func (p *Parser) parseCreateOrCTAS() nodes.Node {
 // In CTAS, the column list is just names (no types). In CREATE TABLE, we have
 // full table element definitions. We can distinguish them by looking at what
 // follows the first identifier inside the parens.
-func (p *Parser) parseCreateTableOrCTASAfterParen(names *nodes.List, relpersistence byte, ifNotExists bool) nodes.Node {
+func (p *Parser) parseCreateTableOrCTASAfterParen(names *nodes.List, relpersistence byte, ifNotExists bool) (nodes.Node, error) {
 	// Save state: we're at '('
 	// We need to look ahead to determine if this is CTAS or CREATE TABLE.
 	// Strategy: parse as CREATE TABLE (which expects '(' TableElementList ')').
@@ -868,7 +751,7 @@ func (p *Parser) parseCreateTableOrCTASAfterParen(names *nodes.List, relpersiste
 		stmt.Options = p.parseOptWith()
 		stmt.OnCommit = p.parseOnCommitOption()
 		stmt.Tablespacename = p.parseOptTableSpace()
-		return stmt
+		return stmt, nil
 	}
 
 	// Check if this is a CTAS column list by looking at what the first identifier
@@ -886,7 +769,7 @@ func (p *Parser) parseCreateTableOrCTASAfterParen(names *nodes.List, relpersiste
 		stmt.Options = p.parseOptWith()
 		stmt.OnCommit = p.parseOnCommitOption()
 		stmt.Tablespacename = p.parseOptTableSpace()
-		return stmt
+		return stmt, nil
 	}
 
 	// Might be CTAS with column list, but we need to verify.
@@ -937,7 +820,7 @@ func (p *Parser) parseCreateTableOrCTASAfterParen(names *nodes.List, relpersiste
 		stmt.Options = p.parseOptWith()
 		stmt.OnCommit = p.parseOnCommitOption()
 		stmt.Tablespacename = p.parseOptTableSpace()
-		return stmt
+		return stmt, nil
 	}
 
 	// Fallback: parse as CREATE TABLE
@@ -949,7 +832,7 @@ func (p *Parser) parseCreateTableOrCTASAfterParen(names *nodes.List, relpersiste
 	stmt.Options = p.parseOptWith()
 	stmt.OnCommit = p.parseOnCommitOption()
 	stmt.Tablespacename = p.parseOptTableSpace()
-	return stmt
+	return stmt, nil
 }
 
 // isCreateTableElement returns true if the current token starts a table element
@@ -965,7 +848,7 @@ func (p *Parser) isCreateTableElement() bool {
 // finishCTAS completes parsing a CTAS statement after names and optional column
 // list have been parsed. Handles OptAccessMethod, OptWith, OnCommitOption,
 // OptTableSpace, AS, SelectStmt, and opt_with_data.
-func (p *Parser) finishCTAS(names *nodes.List, colNames *nodes.List, relpersistence byte, ifNotExists bool) *nodes.CreateTableAsStmt {
+func (p *Parser) finishCTAS(names *nodes.List, colNames *nodes.List, relpersistence byte, ifNotExists bool) (*nodes.CreateTableAsStmt, error) {
 	rv := makeRangeVarFromAnyName(names)
 	rv.Relpersistence = relpersistence
 
@@ -980,14 +863,24 @@ func (p *Parser) finishCTAS(names *nodes.List, colNames *nodes.List, relpersiste
 	var query nodes.Node
 	if p.cur.Type == EXECUTE {
 		p.advance()
-		name, _ := p.parseName()
-		params, _ := p.parseExecuteParamClause()
+		name, err := p.parseName()
+		if err != nil {
+			return nil, err
+		}
+		params, err := p.parseExecuteParamClause()
+		if err != nil {
+			return nil, err
+		}
 		query = &nodes.ExecuteStmt{
 			Name:   name,
 			Params: params,
 		}
 	} else {
-		query, _ = p.parseSelectNoParens()
+		var err error
+		query, err = p.parseSelectNoParens()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	withData := p.parseOptWithData()
@@ -1007,12 +900,12 @@ func (p *Parser) finishCTAS(names *nodes.List, colNames *nodes.List, relpersiste
 		Into:        into,
 		Objtype:     nodes.OBJECT_TABLE,
 		IfNotExists: ifNotExists,
-	}
+	}, nil
 }
 
 // finishCreateStmt completes parsing a regular CREATE TABLE after the name
 // has been parsed. Handles PARTITION OF, OF, etc.
-func (p *Parser) finishCreateStmt(names *nodes.List, relpersistence byte, ifNotExists bool) *nodes.CreateStmt {
+func (p *Parser) finishCreateStmt(names *nodes.List, relpersistence byte, ifNotExists bool) (*nodes.CreateStmt, error) {
 	rv := makeRangeVarFromNames(names)
 	rv.Relpersistence = relpersistence
 
@@ -1025,12 +918,10 @@ func (p *Parser) finishCreateStmt(names *nodes.List, relpersistence byte, ifNotE
 	case PARTITION:
 		p.advance()
 		p.expect(OF)
-		n, _ := p.parseCreateStmtPartitionOf(stmt, relpersistence)
-		return n
+		return p.parseCreateStmtPartitionOf(stmt, relpersistence)
 	case OF:
 		p.advance()
-		n, _ := p.parseCreateStmtOf(stmt)
-		return n
+		return p.parseCreateStmtOf(stmt)
 	}
 
 	// Should have '(' but we already handled that case
@@ -1043,39 +934,44 @@ func (p *Parser) finishCreateStmt(names *nodes.List, relpersistence byte, ifNotE
 	stmt.Options = p.parseOptWith()
 	stmt.OnCommit = p.parseOnCommitOption()
 	stmt.Tablespacename = p.parseOptTableSpace()
-	return stmt
+	return stmt, nil
 }
 
 // parseWithStmt parses a WITH clause followed by SELECT, INSERT, UPDATE, DELETE, or MERGE.
-func (p *Parser) parseWithStmt() nodes.Node {
-	withClause, _ := p.parseWithClause()
+func (p *Parser) parseWithStmt() (nodes.Node, error) {
+	withClause, err := p.parseWithClause()
+	if err != nil {
+		return nil, err
+	}
 	switch p.cur.Type {
 	case INSERT:
-		n, _ := p.parseInsertStmt(withClause)
-		return n
+		return p.parseInsertStmt(withClause)
 	case UPDATE:
-		n, _ := p.parseUpdateStmt(withClause)
-		return n
+		return p.parseUpdateStmt(withClause)
 	case DELETE_P:
-		n, _ := p.parseDeleteStmt(withClause)
-		return n
+		return p.parseDeleteStmt(withClause)
 	case MERGE:
-		n, _ := p.parseMergeStmt(withClause)
-		return n
+		return p.parseMergeStmt(withClause)
 	default:
 		// SELECT
-		stmt, _ := p.parseSelectClause(setOpPrecNone)
+		stmt, err := p.parseSelectClause(setOpPrecNone)
+		if err != nil {
+			return nil, err
+		}
 		if stmt == nil {
-			return nil
+			return nil, nil
 		}
 		if p.cur.Type == ORDER {
 			p.advance()
 			p.expect(BY)
-			stmt.SortClause, _ = p.parseSortByList()
+			stmt.SortClause, err = p.parseSortByList()
+			if err != nil {
+				return nil, err
+			}
 		}
 		p.parseSelectOptions(stmt)
 		stmt.WithClause = withClause
-		return stmt
+		return stmt, nil
 	}
 }
 

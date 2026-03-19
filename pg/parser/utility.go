@@ -13,14 +13,20 @@ func (p *Parser) parseExplainStmt() (nodes.Node, error) {
 		if _, err := p.expect(')'); err != nil {
 			return nil, err
 		}
-		query := p.parseExplainableStmt()
+		query, err := p.parseExplainableStmt()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.ExplainStmt{Query: query, Options: opts}, nil
 	}
 	if p.cur.Type == ANALYZE || p.cur.Type == ANALYSE {
 		p.advance()
 		if p.cur.Type == VERBOSE {
 			p.advance()
-			query := p.parseExplainableStmt()
+			query, err := p.parseExplainableStmt()
+			if err != nil {
+				return nil, err
+			}
 			return &nodes.ExplainStmt{
 				Query: query,
 				Options: &nodes.List{Items: []nodes.Node{
@@ -29,7 +35,10 @@ func (p *Parser) parseExplainStmt() (nodes.Node, error) {
 				}},
 			}, nil
 		}
-		query := p.parseExplainableStmt()
+		query, err := p.parseExplainableStmt()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.ExplainStmt{
 			Query:   query,
 			Options: &nodes.List{Items: []nodes.Node{&nodes.DefElem{Defname: "analyze", Loc: nodes.NoLoc()}}},
@@ -37,50 +46,48 @@ func (p *Parser) parseExplainStmt() (nodes.Node, error) {
 	}
 	if p.cur.Type == VERBOSE {
 		p.advance()
-		query := p.parseExplainableStmt()
+		query, err := p.parseExplainableStmt()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.ExplainStmt{
 			Query:   query,
 			Options: &nodes.List{Items: []nodes.Node{&nodes.DefElem{Defname: "verbose", Loc: nodes.NoLoc()}}},
 		}, nil
 	}
-	query := p.parseExplainableStmt()
+	query, err := p.parseExplainableStmt()
+	if err != nil {
+		return nil, err
+	}
 	return &nodes.ExplainStmt{Query: query}, nil
 }
 
 // parseExplainableStmt parses the statement that can follow EXPLAIN.
-func (p *Parser) parseExplainableStmt() nodes.Node {
+func (p *Parser) parseExplainableStmt() (nodes.Node, error) {
 	switch p.cur.Type {
 	case SELECT, VALUES, TABLE, '(':
-		n, _ := p.parseSelectNoParens()
-		return n
+		return p.parseSelectNoParens()
 	case WITH:
 		return p.parseWithStmt()
 	case INSERT:
-		n, _ := p.parseInsertStmt(nil)
-		return n
+		return p.parseInsertStmt(nil)
 	case UPDATE:
-		n, _ := p.parseUpdateStmt(nil)
-		return n
+		return p.parseUpdateStmt(nil)
 	case DELETE_P:
-		n, _ := p.parseDeleteStmt(nil)
-		return n
+		return p.parseDeleteStmt(nil)
 	case MERGE:
-		n, _ := p.parseMergeStmt(nil)
-		return n
+		return p.parseMergeStmt(nil)
 	case EXECUTE:
-		n, _ := p.parseExecuteStmt()
-		return n
+		return p.parseExecuteStmt()
 	case CREATE:
 		return p.parseCreateDispatch()
 	case DECLARE:
-		n, _ := p.parseDeclareCursorStmt()
-		return n
+		return p.parseDeclareCursorStmt()
 	case REFRESH:
 		p.advance()
-		n, _ := p.parseRefreshMatViewStmt()
-		return n
+		return p.parseRefreshMatViewStmt()
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
