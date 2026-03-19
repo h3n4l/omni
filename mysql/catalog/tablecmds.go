@@ -602,6 +602,8 @@ func formatColumnType(dt *nodes.DataType) string {
 		// TEXT(n) and BLOB(n) — MySQL stores the length internally but
 		// SHOW CREATE TABLE displays just TEXT / BLOB without the length.
 		// Do not emit length.
+	} else if name == "year" {
+		// YEAR(4) is deprecated in MySQL 8.0 — SHOW CREATE TABLE shows just `year`.
 	} else if name == "char" && dt.Length == 0 {
 		// CHAR with no length → MySQL shows char(1)
 		buf.WriteString("(1)")

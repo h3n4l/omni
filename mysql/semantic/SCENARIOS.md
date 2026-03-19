@@ -62,15 +62,15 @@ The foundation — our output must be byte-for-byte identical to MySQL 8.0.
 ### 1.4 Date/Time Types
 
 ```
-[ ] DATE
-[ ] TIME
-[ ] TIME(3) — fractional seconds
-[ ] DATETIME
-[ ] DATETIME(6)
-[ ] TIMESTAMP
-[ ] TIMESTAMP(3)
-[ ] YEAR
-[ ] YEAR(4) — same as YEAR
+[x] DATE
+[x] TIME
+[x] TIME(3) — fractional seconds
+[x] DATETIME
+[x] DATETIME(6)
+[x] TIMESTAMP
+[x] TIMESTAMP(3)
+[x] YEAR
+[x] YEAR(4) — same as YEAR
 ```
 
 ### 1.5 Spatial Types

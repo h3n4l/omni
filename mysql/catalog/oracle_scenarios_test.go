@@ -61,6 +61,57 @@ func TestOracle_Section_1_2_StringTypes(t *testing.T) {
 	}
 }
 
+func TestOracle_Section_1_4_DateTimeTypes(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	cases := []struct {
+		name  string
+		sql   string
+		table string
+	}{
+		{"date", "CREATE TABLE t_date (a DATE)", "t_date"},
+		{"time", "CREATE TABLE t_time (a TIME)", "t_time"},
+		{"time_fsp", "CREATE TABLE t_time3 (a TIME(3))", "t_time3"},
+		{"datetime", "CREATE TABLE t_datetime (a DATETIME)", "t_datetime"},
+		{"datetime_fsp", "CREATE TABLE t_datetime6 (a DATETIME(6))", "t_datetime6"},
+		{"timestamp", "CREATE TABLE t_timestamp (a TIMESTAMP)", "t_timestamp"},
+		{"timestamp_fsp", "CREATE TABLE t_timestamp3 (a TIMESTAMP(3))", "t_timestamp3"},
+		{"year", "CREATE TABLE t_year (a YEAR)", "t_year"},
+		{"year_4", "CREATE TABLE t_year4 (a YEAR(4))", "t_year4"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			oracle.execSQL("DROP TABLE IF EXISTS " + tc.table)
+			if err := oracle.execSQL(tc.sql); err != nil {
+				t.Fatalf("oracle exec: %v", err)
+			}
+			oracleDDL, _ := oracle.showCreateTable(tc.table)
+
+			c := New()
+			c.Exec("CREATE DATABASE test", nil)
+			c.SetCurrentDatabase("test")
+			results, err := c.Exec(tc.sql, nil)
+			if err != nil {
+				t.Fatalf("omni parse error: %v", err)
+			}
+			if results[0].Error != nil {
+				t.Fatalf("omni exec error: %v", results[0].Error)
+			}
+			omniDDL := c.ShowCreateTable("test", tc.table)
+
+			if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+				t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+					oracleDDL, omniDDL)
+			}
+		})
+	}
+}
+
 func TestOracle_Section_1_1_NumericTypes(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping oracle test in short mode")
