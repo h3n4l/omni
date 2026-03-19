@@ -190,10 +190,10 @@ The foundation — our output must be byte-for-byte identical to MySQL 8.0.
 ### 1.14 Fulltext and Spatial Indexes
 
 ```
-[ ] FULLTEXT KEY `ft_idx` (col)
-[ ] FULLTEXT KEY on multiple TEXT columns
-[ ] FULLTEXT KEY auto-naming
-[ ] SPATIAL KEY `sp_idx` (geo_col)
+[x] FULLTEXT KEY `ft_idx` (col)
+[x] FULLTEXT KEY on multiple TEXT columns
+[x] FULLTEXT KEY auto-naming
+[x] SPATIAL KEY `sp_idx` (geo_col)
 ```
 
 ### 1.15 Expression Indexes (8.0.13+)
