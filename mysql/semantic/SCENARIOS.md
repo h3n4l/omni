@@ -325,17 +325,17 @@ Beyond output format — the catalog must behave identically to MySQL.
 ### 2.3 ALTER TABLE — Index Operations
 
 ```
-[ ] ADD INDEX idx_name (col)
-[ ] ADD UNIQUE INDEX
-[ ] ADD FULLTEXT INDEX
-[ ] ADD PRIMARY KEY
-[ ] ADD PRIMARY KEY when one already exists → error 1068
-[ ] DROP INDEX idx_name
-[ ] DROP INDEX IF EXISTS
-[ ] DROP PRIMARY KEY
-[ ] RENAME INDEX old TO new
-[ ] ALTER INDEX idx VISIBLE
-[ ] ALTER INDEX idx INVISIBLE
+[x] ADD INDEX idx_name (col)
+[x] ADD UNIQUE INDEX
+[x] ADD FULLTEXT INDEX
+[x] ADD PRIMARY KEY
+[x] ADD PRIMARY KEY when one already exists → error 1068
+[x] DROP INDEX idx_name
+[~] DROP INDEX IF EXISTS — MySQL 8.0 does not support IF EXISTS on DROP INDEX (syntax error)
+[x] DROP PRIMARY KEY
+[x] RENAME INDEX old TO new
+[x] ALTER INDEX idx VISIBLE
+[x] ALTER INDEX idx INVISIBLE
 ```
 
 ### 2.4 ALTER TABLE — Constraint Operations

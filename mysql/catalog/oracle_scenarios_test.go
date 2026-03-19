@@ -1603,3 +1603,166 @@ func TestOracle_Section_2_2_AlterTableColumnOps(t *testing.T) {
 		})
 	}
 }
+
+func TestOracle_Section_2_3_AlterTableIndexOps(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	// DDL-comparison tests: run setup + alter, compare SHOW CREATE TABLE.
+	ddlCases := []struct {
+		name  string
+		setup string
+		alter string
+		table string
+	}{
+		{
+			"add_index",
+			"CREATE TABLE t_add_idx (id INT PRIMARY KEY, name VARCHAR(100))",
+			"ALTER TABLE t_add_idx ADD INDEX idx_name (name)",
+			"t_add_idx",
+		},
+		{
+			"add_unique_index",
+			"CREATE TABLE t_add_uniq (id INT PRIMARY KEY, email VARCHAR(255))",
+			"ALTER TABLE t_add_uniq ADD UNIQUE INDEX idx_email (email)",
+			"t_add_uniq",
+		},
+		{
+			"add_fulltext_index",
+			"CREATE TABLE t_add_ft (id INT PRIMARY KEY, body TEXT) ENGINE=InnoDB",
+			"ALTER TABLE t_add_ft ADD FULLTEXT INDEX idx_body (body)",
+			"t_add_ft",
+		},
+		{
+			"add_primary_key",
+			"CREATE TABLE t_add_pk (id INT NOT NULL, name VARCHAR(100))",
+			"ALTER TABLE t_add_pk ADD PRIMARY KEY (id)",
+			"t_add_pk",
+		},
+		{
+			"drop_index",
+			"CREATE TABLE t_drop_idx (id INT PRIMARY KEY, name VARCHAR(100), KEY idx_name (name))",
+			"ALTER TABLE t_drop_idx DROP INDEX idx_name",
+			"t_drop_idx",
+		},
+		// Note: DROP INDEX IF EXISTS is not supported in MySQL 8.0 (syntax error).
+		// Scenario marked as [~] partial in SCENARIOS.md.
+		{
+			"drop_primary_key",
+			"CREATE TABLE t_drop_pk (id INT NOT NULL, name VARCHAR(100), PRIMARY KEY (id))",
+			"ALTER TABLE t_drop_pk DROP PRIMARY KEY",
+			"t_drop_pk",
+		},
+		{
+			"rename_index",
+			"CREATE TABLE t_ren_idx (id INT PRIMARY KEY, name VARCHAR(100), KEY idx_old (name))",
+			"ALTER TABLE t_ren_idx RENAME INDEX idx_old TO idx_new",
+			"t_ren_idx",
+		},
+		{
+			"alter_index_invisible",
+			"CREATE TABLE t_idx_invis (id INT PRIMARY KEY, name VARCHAR(100), KEY idx_name (name))",
+			"ALTER TABLE t_idx_invis ALTER INDEX idx_name INVISIBLE",
+			"t_idx_invis",
+		},
+		{
+			"alter_index_visible",
+			"CREATE TABLE t_idx_vis (id INT PRIMARY KEY, name VARCHAR(100), KEY idx_name (name) INVISIBLE)",
+			"ALTER TABLE t_idx_vis ALTER INDEX idx_name VISIBLE",
+			"t_idx_vis",
+		},
+	}
+
+	for _, tc := range ddlCases {
+		t.Run(tc.name, func(t *testing.T) {
+			oracle.execSQL("DROP TABLE IF EXISTS " + tc.table)
+			if err := oracle.execSQL(tc.setup); err != nil {
+				t.Fatalf("oracle setup: %v", err)
+			}
+			if err := oracle.execSQL(tc.alter); err != nil {
+				t.Fatalf("oracle alter: %v", err)
+			}
+			oracleDDL, err := oracle.showCreateTable(tc.table)
+			if err != nil {
+				t.Fatalf("oracle SHOW CREATE TABLE: %v", err)
+			}
+
+			c := New()
+			c.Exec("CREATE DATABASE test", nil)
+			c.SetCurrentDatabase("test")
+			if results, _ := c.Exec(tc.setup, nil); results != nil {
+				for _, r := range results {
+					if r.Error != nil {
+						t.Fatalf("omni setup error: %v", r.Error)
+					}
+				}
+			}
+			if results, _ := c.Exec(tc.alter, nil); results != nil {
+				for _, r := range results {
+					if r.Error != nil {
+						t.Fatalf("omni alter error: %v", r.Error)
+					}
+				}
+			}
+			omniDDL := c.ShowCreateTable("test", tc.table)
+
+			if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+				t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+					oracleDDL, omniDDL)
+			}
+		})
+	}
+
+	// Error tests.
+	errCases := []struct {
+		name    string
+		setup   string
+		alter   string
+		table   string
+		wantErr bool
+	}{
+		{
+			"add_primary_key_when_exists",
+			"CREATE TABLE t_dup_pk (id INT PRIMARY KEY, val INT NOT NULL)",
+			"ALTER TABLE t_dup_pk ADD PRIMARY KEY (val)",
+			"t_dup_pk",
+			true,
+		},
+	}
+
+	for _, tc := range errCases {
+		t.Run(tc.name, func(t *testing.T) {
+			oracle.execSQL("DROP TABLE IF EXISTS " + tc.table)
+			if err := oracle.execSQL(tc.setup); err != nil {
+				t.Fatalf("oracle setup: %v", err)
+			}
+			oracleErr := oracle.execSQL(tc.alter)
+
+			c := New()
+			c.Exec("CREATE DATABASE test", nil)
+			c.SetCurrentDatabase("test")
+			c.Exec(tc.setup, nil)
+			results, _ := c.Exec(tc.alter, nil)
+			var omniErr error
+			for _, r := range results {
+				if r.Error != nil {
+					omniErr = r.Error
+					break
+				}
+			}
+
+			if tc.wantErr {
+				if oracleErr == nil {
+					t.Fatal("expected oracle error but got nil")
+				}
+				if omniErr == nil {
+					t.Fatalf("expected omni error but got nil (oracle error: %v)", oracleErr)
+				}
+				t.Logf("both errored as expected — oracle: %v, omni: %v", oracleErr, omniErr)
+			}
+		})
+	}
+}

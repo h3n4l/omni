@@ -541,21 +541,35 @@ func (c *Catalog) alterDropConstraint(tbl *Table, cmd *nodes.AlterTableCmd) erro
 	name := cmd.Name
 	key := toLower(name)
 
+	found := false
 	for i, con := range tbl.Constraints {
 		if toLower(con.Name) == key {
 			tbl.Constraints = append(tbl.Constraints[:i], tbl.Constraints[i+1:]...)
-			return nil
+			found = true
+			break
 		}
 	}
 
-	if cmd.IfExists {
-		return nil
+	if !found {
+		if cmd.IfExists {
+			return nil
+		}
+		return &Error{
+			Code:     ErrDupKeyName,
+			SQLState: sqlState(ErrDupKeyName),
+			Message:  fmt.Sprintf("Can't DROP '%s'; check that column/key exists", name),
+		}
 	}
-	return &Error{
-		Code:     ErrDupKeyName,
-		SQLState: sqlState(ErrDupKeyName),
-		Message:  fmt.Sprintf("Can't DROP '%s'; check that column/key exists", name),
+
+	// Also remove the corresponding index (e.g., PRIMARY KEY index).
+	for i, idx := range tbl.Indexes {
+		if toLower(idx.Name) == key {
+			tbl.Indexes = append(tbl.Indexes[:i], tbl.Indexes[i+1:]...)
+			break
+		}
 	}
+
+	return nil
 }
 
 // alterRenameColumn changes a column name in-place.
