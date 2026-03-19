@@ -19,7 +19,7 @@ import (
 //	    RENAME TO new_name
 //	ALTER TABLE ALL IN TABLESPACE name [ OWNED BY role_name [, ... ] ]
 //	    SET TABLESPACE new_tablespace [ NOWAIT ]
-func (p *Parser) parseAlterTableStmt() nodes.Node {
+func (p *Parser) parseAlterTableStmt() (nodes.Node, error) {
 	// Already consumed ALTER; current token is TABLE, INDEX, SEQUENCE, VIEW, MATERIALIZED, or FOREIGN.
 	switch p.cur.Type {
 	case TABLE:
@@ -36,29 +36,30 @@ func (p *Parser) parseAlterTableStmt() nodes.Node {
 		return p.parseAlterForeignTable()
 	case EVENT:
 		p.advance() // consume EVENT
-		n, _ := p.parseAlterEventTrigStmt()
-		return n
+		return p.parseAlterEventTrigStmt()
 	case EXTENSION:
 		return p.parseAlterExtensionStmt()
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
 // parseAlterTable handles ALTER TABLE ...
-func (p *Parser) parseAlterTable() nodes.Node {
+func (p *Parser) parseAlterTable() (nodes.Node, error) {
 	p.advance() // consume TABLE
 
 	// ALTER TABLE ALL IN TABLESPACE ...
 	if p.cur.Type == ALL {
-		return p.parseAlterTableMoveAll(int(nodes.OBJECT_TABLE))
+		return p.parseAlterTableMoveAll(int(nodes.OBJECT_TABLE)), nil
 	}
 
 	// IF EXISTS
 	missingOk := false
 	if p.cur.Type == IF_P {
 		p.advance()
-		p.expect(EXISTS)
+		if _, err := p.expect(EXISTS); err != nil {
+			return nil, err
+		}
 		missingOk = true
 	}
 
@@ -67,7 +68,7 @@ func (p *Parser) parseAlterTable() nodes.Node {
 
 	// Check for RENAME (produces RenameStmt, not AlterTableStmt)
 	if p.cur.Type == RENAME {
-		return p.parseAlterTableRename(rel, missingOk)
+		return p.parseAlterTableRename(rel, missingOk), nil
 	}
 
 	// Check for SET SCHEMA (produces AlterObjectSchemaStmt)
@@ -80,7 +81,7 @@ func (p *Parser) parseAlterTable() nodes.Node {
 			Relation:   rel,
 			Newschema:  newschema,
 			MissingOk:  missingOk,
-		}
+		}, nil
 	}
 
 	// alter_table_cmds
@@ -90,23 +91,25 @@ func (p *Parser) parseAlterTable() nodes.Node {
 		Cmds:       cmds,
 		ObjType:    int(nodes.OBJECT_TABLE),
 		Missing_ok: missingOk,
-	}
+	}, nil
 }
 
 // parseAlterIndex handles ALTER INDEX ...
-func (p *Parser) parseAlterIndex() nodes.Node {
+func (p *Parser) parseAlterIndex() (nodes.Node, error) {
 	p.advance() // consume INDEX
 
 	// ALTER INDEX ALL IN TABLESPACE ...
 	if p.cur.Type == ALL {
-		return p.parseAlterTableMoveAll(int(nodes.OBJECT_INDEX))
+		return p.parseAlterTableMoveAll(int(nodes.OBJECT_INDEX)), nil
 	}
 
 	// IF EXISTS
 	missingOk := false
 	if p.cur.Type == IF_P {
 		p.advance()
-		p.expect(EXISTS)
+		if _, err := p.expect(EXISTS); err != nil {
+			return nil, err
+		}
 		missingOk = true
 	}
 
@@ -117,20 +120,24 @@ func (p *Parser) parseAlterIndex() nodes.Node {
 	// Check for RENAME
 	if p.cur.Type == RENAME {
 		p.advance() // consume RENAME
-		p.expect(TO)
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
 		newname, _ := p.parseName()
 		return &nodes.RenameStmt{
 			RenameType: nodes.OBJECT_INDEX,
 			Relation:   rv,
 			Newname:    newname,
 			MissingOk:  missingOk,
-		}
+		}, nil
 	}
 
 	// ALTER INDEX name ATTACH PARTITION name
 	if p.cur.Type == ATTACH {
 		p.advance() // ATTACH
-		p.expect(PARTITION)
+		if _, err := p.expect(PARTITION); err != nil {
+			return nil, err
+		}
 		partNames, _ := p.parseQualifiedName()
 		partRv := makeRangeVarFromAnyName(partNames)
 		cmd := &nodes.AlterTableCmd{
@@ -144,22 +151,26 @@ func (p *Parser) parseAlterIndex() nodes.Node {
 			Cmds:       &nodes.List{Items: []nodes.Node{cmd}},
 			ObjType:    int(nodes.OBJECT_INDEX),
 			Missing_ok: missingOk,
-		}
+		}, nil
 	}
 
 	// ALTER INDEX name [NO] DEPENDS ON EXTENSION ext_name
 	if p.cur.Type == DEPENDS || (p.cur.Type == NO && p.peekNext().Type == DEPENDS) {
 		remove := p.parseOptNo()
 		p.advance() // consume DEPENDS
-		p.expect(ON)
-		p.expect(EXTENSION)
+		if _, err := p.expect(ON); err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(EXTENSION); err != nil {
+			return nil, err
+		}
 		extname, _ := p.parseName()
 		return &nodes.AlterObjectDependsStmt{
 			ObjectType: nodes.OBJECT_INDEX,
 			Relation:   rv,
 			Extname:    &nodes.String{Str: extname},
 			Remove:     remove,
-		}
+		}, nil
 	}
 
 	cmds := p.parseAlterTableCmds()
@@ -168,17 +179,19 @@ func (p *Parser) parseAlterIndex() nodes.Node {
 		Cmds:       cmds,
 		ObjType:    int(nodes.OBJECT_INDEX),
 		Missing_ok: missingOk,
-	}
+	}, nil
 }
 
 // parseAlterSequence handles ALTER SEQUENCE ...
-func (p *Parser) parseAlterSequence() nodes.Node {
+func (p *Parser) parseAlterSequence() (nodes.Node, error) {
 	p.advance() // consume SEQUENCE
 
 	missingOk := false
 	if p.cur.Type == IF_P {
 		p.advance()
-		p.expect(EXISTS)
+		if _, err := p.expect(EXISTS); err != nil {
+			return nil, err
+		}
 		missingOk = true
 	}
 
@@ -188,14 +201,16 @@ func (p *Parser) parseAlterSequence() nodes.Node {
 	if p.cur.Type == RENAME {
 		rv := makeRangeVarFromAnyName(names)
 		p.advance()
-		p.expect(TO)
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
 		newname, _ := p.parseName()
 		return &nodes.RenameStmt{
 			RenameType: nodes.OBJECT_SEQUENCE,
 			Relation:   rv,
 			Newname:    newname,
 			MissingOk:  missingOk,
-		}
+		}, nil
 	}
 
 	// Check for SET SCHEMA (produces AlterObjectSchemaStmt)
@@ -209,7 +224,7 @@ func (p *Parser) parseAlterSequence() nodes.Node {
 			Relation:   rv,
 			Newschema:  newschema,
 			MissingOk:  missingOk,
-		}
+		}, nil
 	}
 
 	// OWNER TO goes through alter_table_cmds in the yacc grammar
@@ -221,7 +236,7 @@ func (p *Parser) parseAlterSequence() nodes.Node {
 			Cmds:       cmds,
 			ObjType:    int(nodes.OBJECT_SEQUENCE),
 			Missing_ok: missingOk,
-		}
+		}, nil
 	}
 
 	// AlterSeqStmt: ALTER SEQUENCE name SeqOptList
@@ -231,17 +246,19 @@ func (p *Parser) parseAlterSequence() nodes.Node {
 		Sequence:  rv,
 		Options:   options,
 		MissingOk: missingOk,
-	}
+	}, nil
 }
 
 // parseAlterView handles ALTER VIEW ...
-func (p *Parser) parseAlterView() nodes.Node {
+func (p *Parser) parseAlterView() (nodes.Node, error) {
 	p.advance() // consume VIEW
 
 	missingOk := false
 	if p.cur.Type == IF_P {
 		p.advance()
-		p.expect(EXISTS)
+		if _, err := p.expect(EXISTS); err != nil {
+			return nil, err
+		}
 		missingOk = true
 	}
 
@@ -251,14 +268,16 @@ func (p *Parser) parseAlterView() nodes.Node {
 	// Check for RENAME
 	if p.cur.Type == RENAME {
 		p.advance()
-		p.expect(TO)
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
 		newname, _ := p.parseName()
 		return &nodes.RenameStmt{
 			RenameType: nodes.OBJECT_VIEW,
 			Relation:   rv,
 			Newname:    newname,
 			MissingOk:  missingOk,
-		}
+		}, nil
 	}
 
 	// Check for SET SCHEMA (produces AlterObjectSchemaStmt)
@@ -271,7 +290,7 @@ func (p *Parser) parseAlterView() nodes.Node {
 			Relation:   rv,
 			Newschema:  newschema,
 			MissingOk:  missingOk,
-		}
+		}, nil
 	}
 
 	cmds := p.parseAlterTableCmds()
@@ -280,23 +299,27 @@ func (p *Parser) parseAlterView() nodes.Node {
 		Cmds:       cmds,
 		ObjType:    int(nodes.OBJECT_VIEW),
 		Missing_ok: missingOk,
-	}
+	}, nil
 }
 
 // parseAlterMaterializedView handles ALTER MATERIALIZED VIEW ...
-func (p *Parser) parseAlterMaterializedView() nodes.Node {
+func (p *Parser) parseAlterMaterializedView() (nodes.Node, error) {
 	p.advance() // consume MATERIALIZED
-	p.expect(VIEW)
+	if _, err := p.expect(VIEW); err != nil {
+		return nil, err
+	}
 
 	// ALTER MATERIALIZED VIEW ALL IN TABLESPACE ...
 	if p.cur.Type == ALL {
-		return p.parseAlterTableMoveAll(int(nodes.OBJECT_MATVIEW))
+		return p.parseAlterTableMoveAll(int(nodes.OBJECT_MATVIEW)), nil
 	}
 
 	missingOk := false
 	if p.cur.Type == IF_P {
 		p.advance()
-		p.expect(EXISTS)
+		if _, err := p.expect(EXISTS); err != nil {
+			return nil, err
+		}
 		missingOk = true
 	}
 
@@ -306,14 +329,16 @@ func (p *Parser) parseAlterMaterializedView() nodes.Node {
 	// Check for RENAME
 	if p.cur.Type == RENAME {
 		p.advance()
-		p.expect(TO)
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
 		newname, _ := p.parseName()
 		return &nodes.RenameStmt{
 			RenameType: nodes.OBJECT_MATVIEW,
 			Relation:   rv,
 			Newname:    newname,
 			MissingOk:  missingOk,
-		}
+		}, nil
 	}
 
 	// Check for SET SCHEMA (produces AlterObjectSchemaStmt)
@@ -326,22 +351,26 @@ func (p *Parser) parseAlterMaterializedView() nodes.Node {
 			Relation:   rv,
 			Newschema:  newschema,
 			MissingOk:  missingOk,
-		}
+		}, nil
 	}
 
 	// ALTER MATERIALIZED VIEW name [NO] DEPENDS ON EXTENSION ext_name
 	if p.cur.Type == DEPENDS || (p.cur.Type == NO && p.peekNext().Type == DEPENDS) {
 		remove := p.parseOptNo()
 		p.advance() // consume DEPENDS
-		p.expect(ON)
-		p.expect(EXTENSION)
+		if _, err := p.expect(ON); err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(EXTENSION); err != nil {
+			return nil, err
+		}
 		extname, _ := p.parseName()
 		return &nodes.AlterObjectDependsStmt{
 			ObjectType: nodes.OBJECT_MATVIEW,
 			Relation:   rv,
 			Extname:    &nodes.String{Str: extname},
 			Remove:     remove,
-		}
+		}, nil
 	}
 
 	cmds := p.parseAlterTableCmds()
@@ -350,11 +379,11 @@ func (p *Parser) parseAlterMaterializedView() nodes.Node {
 		Cmds:       cmds,
 		ObjType:    int(nodes.OBJECT_MATVIEW),
 		Missing_ok: missingOk,
-	}
+	}, nil
 }
 
 // parseAlterForeignTable handles ALTER FOREIGN TABLE ... and ALTER FOREIGN DATA WRAPPER ...
-func (p *Parser) parseAlterForeignTable() nodes.Node {
+func (p *Parser) parseAlterForeignTable() (nodes.Node, error) {
 	p.advance() // consume FOREIGN
 
 	// ALTER FOREIGN DATA WRAPPER ...
@@ -362,12 +391,16 @@ func (p *Parser) parseAlterForeignTable() nodes.Node {
 		return p.parseAlterFdwStmt()
 	}
 
-	p.expect(TABLE)
+	if _, err := p.expect(TABLE); err != nil {
+		return nil, err
+	}
 
 	missingOk := false
 	if p.cur.Type == IF_P {
 		p.advance()
-		p.expect(EXISTS)
+		if _, err := p.expect(EXISTS); err != nil {
+			return nil, err
+		}
 		missingOk = true
 	}
 
@@ -375,7 +408,7 @@ func (p *Parser) parseAlterForeignTable() nodes.Node {
 
 	// Check for RENAME
 	if p.cur.Type == RENAME {
-		return p.parseAlterTableRename(rel, missingOk)
+		return p.parseAlterTableRename(rel, missingOk), nil
 	}
 
 	// Check for SET SCHEMA (produces AlterObjectSchemaStmt)
@@ -388,7 +421,7 @@ func (p *Parser) parseAlterForeignTable() nodes.Node {
 			Relation:   rel,
 			Newschema:  newschema,
 			MissingOk:  missingOk,
-		}
+		}, nil
 	}
 
 	cmds := p.parseAlterTableCmds()
@@ -397,7 +430,7 @@ func (p *Parser) parseAlterForeignTable() nodes.Node {
 		Cmds:       cmds,
 		ObjType:    int(nodes.OBJECT_FOREIGN_TABLE),
 		Missing_ok: missingOk,
-	}
+	}, nil
 }
 
 // parseAlterTableMoveAll parses ALTER TABLE/INDEX/MATERIALIZED VIEW ALL IN TABLESPACE ...
@@ -985,7 +1018,7 @@ func (p *Parser) parseAlterColumnTypeInner(colname string) *nodes.AlterTableCmd 
 		collname, _ := p.parseAnyName()
 		coldef.CollClause = &nodes.CollateClause{
 			Collname: collname,
-			Loc: nodes.NoLoc(),
+			Loc:      nodes.NoLoc(),
 		}
 	}
 
@@ -1014,7 +1047,7 @@ func (p *Parser) parseAlterColumnAddGenerated(colname string) *nodes.AlterTableC
 		Contype:       nodes.CONSTR_IDENTITY,
 		GeneratedWhen: byte(gw),
 		Options:       opts,
-		Loc: nodes.NoLoc(),
+		Loc:           nodes.NoLoc(),
 	}
 	return &nodes.AlterTableCmd{
 		Subtype: int(nodes.AT_AddIdentity),
@@ -1572,7 +1605,7 @@ func (p *Parser) parseAlterGenericOptionElem() *nodes.DefElem {
 		return &nodes.DefElem{
 			Defname:   name,
 			Defaction: int(nodes.DEFELEM_DROP),
-			Loc: nodes.NoLoc(),
+			Loc:       nodes.NoLoc(),
 		}
 	default:
 		return p.parseGenericOptionElem()
@@ -1586,9 +1619,9 @@ func (p *Parser) parseGenericOptionElem() *nodes.DefElem {
 	arg := p.cur.Str
 	p.advance()
 	return &nodes.DefElem{
-		Defname:  name,
-		Arg:      &nodes.String{Str: arg},
-		Loc: nodes.NoLoc(),
+		Defname: name,
+		Arg:     &nodes.String{Str: arg},
+		Loc:     nodes.NoLoc(),
 	}
 }
 

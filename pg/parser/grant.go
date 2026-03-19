@@ -4,7 +4,7 @@ import (
 	nodes "github.com/bytebase/omni/pg/ast"
 )
 
-func (p *Parser) parseGrantStmt() nodes.Node {
+func (p *Parser) parseGrantStmt() (nodes.Node, error) {
 	switch p.cur.Type {
 	case ALL:
 		p.advance()
@@ -24,7 +24,7 @@ func (p *Parser) parseGrantStmt() nodes.Node {
 			}
 			return p.finishGrantRole(true, roles)
 		}
-		return nil
+		return nil, nil
 	case SELECT, INSERT, UPDATE, DELETE_P, TRUNCATE, REFERENCES, TRIGGER,
 		CREATE, TEMPORARY, TEMP, EXECUTE:
 		privs := p.parsePrivilegeList()
@@ -43,18 +43,26 @@ func (p *Parser) parseGrantStmt() nodes.Node {
 	}
 }
 
-func (p *Parser) parseRevokeStmt() nodes.Node {
+func (p *Parser) parseRevokeStmt() (nodes.Node, error) {
 	grantOptionFor := false
 	adminOptionFor := false
 	if p.cur.Type == GRANT {
 		p.advance()
-		p.expect(OPTION)
-		p.expect(FOR)
+		if _, err := p.expect(OPTION); err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(FOR); err != nil {
+			return nil, err
+		}
 		grantOptionFor = true
 	} else if p.cur.Type == ADMIN {
 		p.advance()
-		p.expect(OPTION)
-		p.expect(FOR)
+		if _, err := p.expect(OPTION); err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(FOR); err != nil {
+			return nil, err
+		}
 		adminOptionFor = true
 	}
 	switch p.cur.Type {
@@ -76,7 +84,7 @@ func (p *Parser) parseRevokeStmt() nodes.Node {
 			}
 			return p.finishRevokeRole(roles, adminOptionFor)
 		}
-		return nil
+		return nil, nil
 	case SELECT, INSERT, UPDATE, DELETE_P, TRUNCATE, REFERENCES, TRIGGER,
 		CREATE, TEMPORARY, TEMP, EXECUTE:
 		privs := p.parsePrivilegeList()
@@ -95,45 +103,53 @@ func (p *Parser) parseRevokeStmt() nodes.Node {
 	}
 }
 
-func (p *Parser) finishGrantOnObject(allPrivs bool, privs *nodes.List) nodes.Node {
+func (p *Parser) finishGrantOnObject(allPrivs bool, privs *nodes.List) (nodes.Node, error) {
 	var privileges *nodes.List
 	if !allPrivs {
 		privileges = privs
 	}
 	targtype, objtype, objects := p.parseGrantTarget()
-	p.expect(TO)
+	if _, err := p.expect(TO); err != nil {
+		return nil, err
+	}
 	grantees := p.parseGranteeList()
 	grantOption := p.parseOptGrantGrantOption()
 	return &nodes.GrantStmt{
 		IsGrant: true, Targtype: targtype, Objtype: objtype,
 		Objects: objects, Privileges: privileges, Grantees: grantees,
 		GrantOption: grantOption,
-	}
+	}, nil
 }
 
-func (p *Parser) finishRevokeOnObject(grantOptionFor bool, privs *nodes.List) nodes.Node {
+func (p *Parser) finishRevokeOnObject(grantOptionFor bool, privs *nodes.List) (nodes.Node, error) {
 	targtype, objtype, objects := p.parseGrantTarget()
-	p.expect(FROM)
+	if _, err := p.expect(FROM); err != nil {
+		return nil, err
+	}
 	grantees := p.parseGranteeList()
 	behavior := p.parseOptDropBehavior()
 	return &nodes.GrantStmt{
 		IsGrant: false, Targtype: targtype, Objtype: objtype,
 		Objects: objects, Privileges: privs, Grantees: grantees,
 		GrantOption: grantOptionFor, Behavior: nodes.DropBehavior(behavior),
-	}
+	}, nil
 }
 
-func (p *Parser) finishGrantRole(isGrant bool, roles *nodes.List) nodes.Node {
-	p.expect(TO)
+func (p *Parser) finishGrantRole(isGrant bool, roles *nodes.List) (nodes.Node, error) {
+	if _, err := p.expect(TO); err != nil {
+		return nil, err
+	}
 	grantees := p.parseRoleList()
 	opts := p.parseGrantRoleOptList()
 	return &nodes.GrantRoleStmt{
 		GrantedRoles: roles, GranteeRoles: grantees, IsGrant: isGrant, Opt: opts,
-	}
+	}, nil
 }
 
-func (p *Parser) finishRevokeRole(roles *nodes.List, adminOptionFor bool) nodes.Node {
-	p.expect(FROM)
+func (p *Parser) finishRevokeRole(roles *nodes.List, adminOptionFor bool) (nodes.Node, error) {
+	if _, err := p.expect(FROM); err != nil {
+		return nil, err
+	}
 	grantees := p.parseRoleList()
 	grantedBy := p.parseOptGrantedBy()
 	behavior := p.parseOptDropBehavior()
@@ -144,7 +160,7 @@ func (p *Parser) finishRevokeRole(roles *nodes.List, adminOptionFor bool) nodes.
 	return &nodes.GrantRoleStmt{
 		GrantedRoles: roles, GranteeRoles: grantees, IsGrant: false,
 		Opt: opts, Grantor: grantedBy, Behavior: nodes.DropBehavior(behavior),
-	}
+	}, nil
 }
 
 func (p *Parser) parseGrantTarget() (nodes.GrantTargetType, nodes.ObjectType, *nodes.List) {
@@ -515,28 +531,28 @@ func (p *Parser) parseGrantRoleOptValue() *nodes.DefElem {
 	return makeDefElem(name, val)
 }
 
-func (p *Parser) parseCreateRoleStmt() nodes.Node {
+func (p *Parser) parseCreateRoleStmt() (nodes.Node, error) {
 	p.advance() // consume ROLE
 	name := p.parseRoleId()
 	p.parseGrantOptWith()
 	options := p.parseOptRoleList(true)
-	return &nodes.CreateRoleStmt{StmtType: nodes.ROLESTMT_ROLE, Role: name, Options: options}
+	return &nodes.CreateRoleStmt{StmtType: nodes.ROLESTMT_ROLE, Role: name, Options: options}, nil
 }
 
-func (p *Parser) parseCreateUserStmt() nodes.Node {
+func (p *Parser) parseCreateUserStmt() (nodes.Node, error) {
 	p.advance() // consume USER
 	name := p.parseRoleId()
 	p.parseGrantOptWith()
 	options := p.parseOptRoleList(true)
-	return &nodes.CreateRoleStmt{StmtType: nodes.ROLESTMT_USER, Role: name, Options: options}
+	return &nodes.CreateRoleStmt{StmtType: nodes.ROLESTMT_USER, Role: name, Options: options}, nil
 }
 
-func (p *Parser) parseCreateGroupStmt() nodes.Node {
+func (p *Parser) parseCreateGroupStmt() (nodes.Node, error) {
 	p.advance() // consume GROUP
 	name := p.parseRoleId()
 	p.parseGrantOptWith()
 	options := p.parseOptRoleList(true)
-	return &nodes.CreateRoleStmt{StmtType: nodes.ROLESTMT_GROUP, Role: name, Options: options}
+	return &nodes.CreateRoleStmt{StmtType: nodes.ROLESTMT_GROUP, Role: name, Options: options}, nil
 }
 
 func (p *Parser) parseRoleId() string {
@@ -697,45 +713,51 @@ func (p *Parser) parseCreateOptRoleElem() *nodes.DefElem {
 	}
 }
 
-func (p *Parser) parseAlterRoleStmt() nodes.Node {
+func (p *Parser) parseAlterRoleStmt() (nodes.Node, error) {
 	p.advance() // consume ROLE or USER
 	// ALTER ROLE ALL SET/RESET/IN DATABASE ...
 	if p.cur.Type == ALL {
 		p.advance()
 		if p.cur.Type == SET || p.cur.Type == RESET {
-			return p.parseAlterRoleSetStmtSuffix(nil, "")
+			return p.parseAlterRoleSetStmtSuffix(nil, ""), nil
 		}
 		if p.cur.Type == IN_P {
 			p.advance()
-			p.expect(DATABASE)
+			if _, err := p.expect(DATABASE); err != nil {
+				return nil, err
+			}
 			dbname, _ := p.parseName()
-			return p.parseAlterRoleSetStmtSuffix(nil, dbname)
+			return p.parseAlterRoleSetStmtSuffix(nil, dbname), nil
 		}
-		return nil
+		return nil, nil
 	}
 	role := p.parseRoleSpec()
 	if p.cur.Type == RENAME {
 		p.advance()
-		p.expect(TO)
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
 		newname, _ := p.parseName()
 		return &nodes.RenameStmt{
 			RenameType: nodes.OBJECT_ROLE,
 			Subname:    role.Rolename,
 			Newname:    newname,
-		}
+		}, nil
 	}
 	if p.cur.Type == SET || p.cur.Type == RESET {
-		return p.parseAlterRoleSetStmtSuffix(role, "")
+		return p.parseAlterRoleSetStmtSuffix(role, ""), nil
 	}
 	if p.cur.Type == IN_P {
 		p.advance()
-		p.expect(DATABASE)
+		if _, err := p.expect(DATABASE); err != nil {
+			return nil, err
+		}
 		dbname, _ := p.parseName()
-		return p.parseAlterRoleSetStmtSuffix(role, dbname)
+		return p.parseAlterRoleSetStmtSuffix(role, dbname), nil
 	}
 	p.parseGrantOptWith()
 	options := p.parseOptRoleList(false)
-	return &nodes.AlterRoleStmt{Role: role, Options: options, Action: 1}
+	return &nodes.AlterRoleStmt{Role: role, Options: options, Action: 1}, nil
 }
 
 func (p *Parser) parseAlterRoleSetStmtSuffix(role *nodes.RoleSpec, dbname string) nodes.Node {
@@ -756,50 +778,58 @@ func (p *Parser) parseAlterRoleSetStmtSuffix(role *nodes.RoleSpec, dbname string
 	return &nodes.AlterRoleSetStmt{Role: role, Database: dbname, Setstmt: setstmt}
 }
 
-func (p *Parser) parseAlterGroupStmt() nodes.Node {
+func (p *Parser) parseAlterGroupStmt() (nodes.Node, error) {
 	p.advance() // consume GROUP
 	role := p.parseRoleSpec()
 	if p.cur.Type == ADD_P {
 		p.advance()
-		p.expect(USER)
+		if _, err := p.expect(USER); err != nil {
+			return nil, err
+		}
 		roles := p.parseRoleList()
 		return &nodes.AlterRoleStmt{
 			Role: role, Options: &nodes.List{Items: []nodes.Node{makeDefElem("rolemembers", roles)}}, Action: 1,
-		}
+		}, nil
 	} else if p.cur.Type == DROP {
 		p.advance()
-		p.expect(USER)
+		if _, err := p.expect(USER); err != nil {
+			return nil, err
+		}
 		roles := p.parseRoleList()
 		return &nodes.AlterRoleStmt{
 			Role: role, Options: &nodes.List{Items: []nodes.Node{makeDefElem("rolemembers", roles)}}, Action: -1,
-		}
+		}, nil
 	} else if p.cur.Type == RENAME {
 		p.advance()
-		p.expect(TO)
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
 		newname, _ := p.parseName()
 		return &nodes.RenameStmt{
 			RenameType: nodes.OBJECT_ROLE,
 			Subname:    role.Rolename,
 			Newname:    newname,
-		}
+		}, nil
 	}
-	return nil
+	return nil, nil
 }
 
-func (p *Parser) parseDropRoleStmt() nodes.Node {
+func (p *Parser) parseDropRoleStmt() (nodes.Node, error) {
 	p.advance() // consume ROLE/USER/GROUP
 	missingOk := p.parseOptIfExists()
 	roles := p.parseRoleList()
-	return &nodes.DropRoleStmt{Roles: roles, MissingOk: missingOk}
+	return &nodes.DropRoleStmt{Roles: roles, MissingOk: missingOk}, nil
 }
 
-func (p *Parser) parseCreatePolicyStmt() nodes.Node {
+func (p *Parser) parseCreatePolicyStmt() (nodes.Node, error) {
 	p.advance() // consume POLICY
 	policyName, _ := p.parseName()
-	p.expect(ON)
+	if _, err := p.expect(ON); err != nil {
+		return nil, err
+	}
 	names, err := p.parseQualifiedName()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	table := makeRangeVarFromNames(names)
 	permissive := true
@@ -825,9 +855,13 @@ func (p *Parser) parseCreatePolicyStmt() nodes.Node {
 	var qual nodes.Node
 	if p.cur.Type == USING {
 		p.advance()
-		p.expect('(')
+		if _, err := p.expect('('); err != nil {
+			return nil, err
+		}
 		qual, _ = p.parseAExpr(0)
-		p.expect(')')
+		if _, err := p.expect(')'); err != nil {
+			return nil, err
+		}
 	}
 	var withCheck nodes.Node
 	if p.cur.Type == WITH {
@@ -835,24 +869,30 @@ func (p *Parser) parseCreatePolicyStmt() nodes.Node {
 		if next.Type == CHECK {
 			p.advance()
 			p.advance()
-			p.expect('(')
+			if _, err := p.expect('('); err != nil {
+				return nil, err
+			}
 			withCheck, _ = p.parseAExpr(0)
-			p.expect(')')
+			if _, err := p.expect(')'); err != nil {
+				return nil, err
+			}
 		}
 	}
 	return &nodes.CreatePolicyStmt{
 		PolicyName: policyName, Table: table, CmdName: cmdName,
 		Permissive: permissive, Roles: roles, Qual: qual, WithCheck: withCheck,
-	}
+	}, nil
 }
 
-func (p *Parser) parseAlterPolicyStmt() nodes.Node {
+func (p *Parser) parseAlterPolicyStmt() (nodes.Node, error) {
 	p.advance() // consume POLICY
 	policyName, _ := p.parseName()
-	p.expect(ON)
+	if _, err := p.expect(ON); err != nil {
+		return nil, err
+	}
 	names, err := p.parseQualifiedName()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	table := makeRangeVarFromNames(names)
 	var roles *nodes.List
@@ -864,23 +904,31 @@ func (p *Parser) parseAlterPolicyStmt() nodes.Node {
 	}
 	if p.cur.Type == USING {
 		p.advance()
-		p.expect('(')
+		if _, err := p.expect('('); err != nil {
+			return nil, err
+		}
 		qual, _ = p.parseAExpr(0)
-		p.expect(')')
+		if _, err := p.expect(')'); err != nil {
+			return nil, err
+		}
 	}
 	if p.cur.Type == WITH {
 		next := p.peekNext()
 		if next.Type == CHECK {
 			p.advance()
 			p.advance()
-			p.expect('(')
+			if _, err := p.expect('('); err != nil {
+				return nil, err
+			}
 			withCheck, _ = p.parseAExpr(0)
-			p.expect(')')
+			if _, err := p.expect(')'); err != nil {
+				return nil, err
+			}
 		}
 	}
 	return &nodes.AlterPolicyStmt{
 		PolicyName: policyName, Table: table, Roles: roles, Qual: qual, WithCheck: withCheck,
-	}
+	}, nil
 }
 
 func (p *Parser) parseRowSecurityCmd() string {

@@ -79,18 +79,23 @@ func (p *Parser) parseDropStmt() nodes.Node {
 	case DATABASE:
 		return p.parseDropdbStmt()
 	case ROLE, GROUP_P:
-		return p.parseDropRoleStmt()
+		n, _ := p.parseDropRoleStmt()
+		return n
 	case USER:
 		// DROP USER MAPPING or DROP USER (role)
 		next := p.peekNext()
 		if next.Type == MAPPING {
-			return p.parseDropUserMappingStmt()
+			n, _ := p.parseDropUserMappingStmt()
+			return n
 		}
-		return p.parseDropRoleStmt()
+		n, _ := p.parseDropRoleStmt()
+		return n
 	case CAST:
-		return p.parseDropCastStmt()
+		n, _ := p.parseDropCastStmt()
+		return n
 	case TRANSFORM:
-		return p.parseDropTransformStmt()
+		n, _ := p.parseDropTransformStmt()
+		return n
 	case OPERATOR:
 		return p.parseDropOperatorClassOrFamily()
 	case TABLESPACE:

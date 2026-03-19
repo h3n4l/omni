@@ -61,7 +61,7 @@
       "name": "create_view_define_trigger",
       "files": ["create_view.go", "define.go", "trigger.go"],
       "function_count": 91,
-      "status": "pending",
+      "status": "done",
       "notes": "Views, operator/aggregate definitions, triggers"
     },
     {

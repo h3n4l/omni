@@ -142,19 +142,25 @@ func (p *Parser) parseStmt() nodes.Node {
 		case DATABASE:
 			return p.parseAlterDatabaseDispatch()
 		case ROLE:
-			return p.parseAlterRoleStmt()
+			n, _ := p.parseAlterRoleStmt()
+			return n
 		case USER:
 			// ALTER USER MAPPING or ALTER USER (role)
 			if p.peekNext().Type == MAPPING {
-				return p.parseAlterUserMappingStmt()
+				n, _ := p.parseAlterUserMappingStmt()
+				return n
 			}
-			return p.parseAlterRoleStmt()
+			n, _ := p.parseAlterRoleStmt()
+			return n
 		case SERVER:
-			return p.parseAlterForeignServerStmt()
+			n, _ := p.parseAlterForeignServerStmt()
+			return n
 		case GROUP_P:
-			return p.parseAlterGroupStmt()
+			n, _ := p.parseAlterGroupStmt()
+			return n
 		case POLICY:
-			return p.parseAlterPolicyStmt()
+			n, _ := p.parseAlterPolicyStmt()
+			return n
 		case PUBLICATION:
 			return p.parseAlterPublicationStmt()
 		case SUBSCRIPTION:
@@ -181,7 +187,8 @@ func (p *Parser) parseStmt() nodes.Node {
 		case CONVERSION_P:
 			return p.parseAlterConversionStmt()
 		case EXTENSION:
-			return p.parseAlterExtensionStmt()
+			n, _ := p.parseAlterExtensionStmt()
+			return n
 		case AGGREGATE:
 			return p.parseAlterAggregateStmt()
 		case TEXT_P:
@@ -204,7 +211,8 @@ func (p *Parser) parseStmt() nodes.Node {
 		case RULE:
 			return p.parseAlterRuleStmt()
 		default:
-			return p.parseAlterTableStmt()
+			n, _ := p.parseAlterTableStmt()
+			return n
 		}
 	case REFRESH:
 		p.advance() // consume REFRESH
@@ -249,10 +257,12 @@ func (p *Parser) parseStmt() nodes.Node {
 		return n
 	case GRANT:
 		p.advance() // consume GRANT
-		return p.parseGrantStmt()
+		n, _ := p.parseGrantStmt()
+		return n
 	case REVOKE:
 		p.advance() // consume REVOKE
-		return p.parseRevokeStmt()
+		n, _ := p.parseRevokeStmt()
+		return n
 	case DROP:
 		p.advance() // consume DROP
 		if p.collectMode() {
@@ -301,7 +311,8 @@ func (p *Parser) parseStmt() nodes.Node {
 		return p.parseCopyStmt()
 	case IMPORT_P:
 		p.advance() // consume IMPORT
-		return p.parseImportForeignSchemaStmt()
+		n, _ := p.parseImportForeignSchemaStmt()
+		return n
 	case EXPLAIN:
 		p.advance() // consume EXPLAIN
 		return p.parseExplainStmt()
@@ -382,14 +393,16 @@ func (p *Parser) parseCreateDispatch() nodes.Node {
 			n, _ := p.parseCreateTrigStmt(true)
 			return n
 		case TRUSTED, PROCEDURAL, LANGUAGE:
-			return p.parseCreatePLangStmt(true)
+			n, _ := p.parseCreatePLangStmt(true)
+			return n
 		case RULE:
 			return p.parseCreateRuleStmt(true)
 		case AGGREGATE:
 			n, _ := p.parseDefineStmtAggregate(true)
 			return n
 		case TRANSFORM:
-			return p.parseCreateTransformStmt(true)
+			n, _ := p.parseCreateTransformStmt(true)
+			return n
 		default:
 			n, _ := p.parseViewStmt(true)
 			return n
@@ -490,23 +503,28 @@ func (p *Parser) parseCreateDispatch() nodes.Node {
 	case ROLE:
 		// CREATE ROLE ...
 		p.advance() // consume CREATE
-		return p.parseCreateRoleStmt()
+		n, _ := p.parseCreateRoleStmt()
+		return n
 	case USER:
 		// CREATE USER ... or CREATE USER MAPPING ...
 		p.advance() // consume CREATE
 		// Peek: if next after USER is MAPPING, it's CREATE USER MAPPING
 		if p.peekNext().Type == MAPPING {
-			return p.parseCreateUserMappingIfNotExistsStmt()
+			n, _ := p.parseCreateUserMappingIfNotExistsStmt()
+			return n
 		}
-		return p.parseCreateUserStmt()
+		n, _ := p.parseCreateUserStmt()
+		return n
 	case GROUP_P:
 		// CREATE GROUP ...
 		p.advance() // consume CREATE
-		return p.parseCreateGroupStmt()
+		n, _ := p.parseCreateGroupStmt()
+		return n
 	case POLICY:
 		// CREATE POLICY ...
 		p.advance() // consume CREATE
-		return p.parseCreatePolicyStmt()
+		n, _ := p.parseCreatePolicyStmt()
+		return n
 	case TRIGGER:
 		// CREATE TRIGGER ...
 		p.advance() // consume CREATE
@@ -529,26 +547,32 @@ func (p *Parser) parseCreateDispatch() nodes.Node {
 		p.advance() // consume FOREIGN
 		if p.cur.Type == DATA_P {
 			// CREATE FOREIGN DATA WRAPPER
-			return p.parseCreateFdwStmt()
+			n, _ := p.parseCreateFdwStmt()
+			return n
 		}
 		// CREATE FOREIGN TABLE
-		return p.parseCreateForeignTableStmt()
+		n, _ := p.parseCreateForeignTableStmt()
+		return n
 	case SERVER:
 		// CREATE SERVER ...
 		p.advance() // consume CREATE
-		return p.parseCreateForeignServerStmt()
+		n, _ := p.parseCreateForeignServerStmt()
+		return n
 	case LANGUAGE:
 		// CREATE LANGUAGE ...
 		p.advance() // consume CREATE
-		return p.parseCreatePLangStmt(false)
+		n, _ := p.parseCreatePLangStmt(false)
+		return n
 	case TRUSTED:
 		// CREATE TRUSTED [PROCEDURAL] LANGUAGE ...
 		p.advance() // consume CREATE
-		return p.parseCreatePLangStmt(false)
+		n, _ := p.parseCreatePLangStmt(false)
+		return n
 	case PROCEDURAL:
 		// CREATE PROCEDURAL LANGUAGE ...
 		p.advance() // consume CREATE
-		return p.parseCreatePLangStmt(false)
+		n, _ := p.parseCreatePLangStmt(false)
+		return n
 	case GLOBAL:
 		// CREATE GLOBAL TEMP TABLE ... (same as CREATE TEMP)
 		return p.parseCreateTempDispatch()
@@ -567,19 +591,23 @@ func (p *Parser) parseCreateDispatch() nodes.Node {
 	case EXTENSION:
 		// CREATE EXTENSION ...
 		p.advance() // consume CREATE
-		return p.parseCreateExtensionStmt()
+		n, _ := p.parseCreateExtensionStmt()
+		return n
 	case ACCESS:
 		// CREATE ACCESS METHOD ...
 		p.advance() // consume CREATE
-		return p.parseCreateAmStmt()
+		n, _ := p.parseCreateAmStmt()
+		return n
 	case CAST:
 		// CREATE CAST ...
 		p.advance() // consume CREATE
-		return p.parseCreateCastStmt()
+		n, _ := p.parseCreateCastStmt()
+		return n
 	case TRANSFORM:
 		// CREATE TRANSFORM ...
 		p.advance() // consume CREATE
-		return p.parseCreateTransformStmt(false)
+		n, _ := p.parseCreateTransformStmt(false)
+		return n
 	case CONVERSION_P:
 		// CREATE CONVERSION ...
 		p.advance() // consume CREATE

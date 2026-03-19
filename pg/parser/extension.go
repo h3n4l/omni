@@ -5,14 +5,18 @@ import (
 )
 
 // parseCreateExtensionStmt parses a CREATE EXTENSION statement.
-func (p *Parser) parseCreateExtensionStmt() nodes.Node {
+func (p *Parser) parseCreateExtensionStmt() (nodes.Node, error) {
 	p.advance() // consume EXTENSION
 
 	ifNotExists := false
 	if p.cur.Type == IF_P {
 		p.advance()
-		p.expect(NOT)
-		p.expect(EXISTS)
+		if _, err := p.expect(NOT); err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(EXISTS); err != nil {
+			return nil, err
+		}
 		ifNotExists = true
 	}
 
@@ -28,7 +32,7 @@ func (p *Parser) parseCreateExtensionStmt() nodes.Node {
 		Extname:     name,
 		IfNotExists: ifNotExists,
 		Options:     opts,
-	}
+	}, nil
 }
 
 func (p *Parser) parseCreateExtensionOptList() *nodes.List {
@@ -65,7 +69,7 @@ func (p *Parser) parseCreateExtensionOptItem() *nodes.DefElem {
 }
 
 // parseAlterExtensionStmt parses ALTER EXTENSION statements.
-func (p *Parser) parseAlterExtensionStmt() nodes.Node {
+func (p *Parser) parseAlterExtensionStmt() (nodes.Node, error) {
 	p.advance() // consume EXTENSION
 
 	name, _ := p.parseName()
@@ -77,24 +81,26 @@ func (p *Parser) parseAlterExtensionStmt() nodes.Node {
 		return &nodes.AlterExtensionStmt{
 			Extname: name,
 			Options: opts,
-		}
+		}, nil
 	case ADD_P:
 		p.advance()
-		return p.parseAlterExtensionContents(name, 1)
+		return p.parseAlterExtensionContents(name, 1), nil
 	case DROP:
 		p.advance()
-		return p.parseAlterExtensionContents(name, -1)
+		return p.parseAlterExtensionContents(name, -1), nil
 	case SET:
 		p.advance()
-		p.expect(SCHEMA)
+		if _, err := p.expect(SCHEMA); err != nil {
+			return nil, err
+		}
 		newschema, _ := p.parseName()
 		return &nodes.AlterObjectSchemaStmt{
 			ObjectType: nodes.OBJECT_EXTENSION,
 			Object:     &nodes.String{Str: name},
 			Newschema:  newschema,
-		}
+		}, nil
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
@@ -366,17 +372,23 @@ func extExtractAggrArgTypes(args *nodes.List) *nodes.List {
 }
 
 // parseCreateAmStmt parses CREATE ACCESS METHOD statement.
-func (p *Parser) parseCreateAmStmt() nodes.Node {
+func (p *Parser) parseCreateAmStmt() (nodes.Node, error) {
 	p.advance() // consume ACCESS
-	p.expect(METHOD)
+	if _, err := p.expect(METHOD); err != nil {
+		return nil, err
+	}
 	name, _ := p.parseName()
-	p.expect(TYPE_P)
+	if _, err := p.expect(TYPE_P); err != nil {
+		return nil, err
+	}
 	amtype := p.parseAmType()
-	p.expect(HANDLER)
+	if _, err := p.expect(HANDLER); err != nil {
+		return nil, err
+	}
 	handlerName := p.parseExtHandlerName()
 	return &nodes.CreateAmStmt{
 		Amname: name, HandlerName: handlerName, Amtype: amtype,
-	}
+	}, nil
 }
 
 func (p *Parser) parseAmType() byte {
@@ -406,33 +418,45 @@ func (p *Parser) parseExtHandlerName() *nodes.List {
 }
 
 // parseCreateCastStmt parses CREATE CAST statement.
-func (p *Parser) parseCreateCastStmt() nodes.Node {
+func (p *Parser) parseCreateCastStmt() (nodes.Node, error) {
 	p.advance() // consume CAST
-	p.expect('(')
+	if _, err := p.expect('('); err != nil {
+		return nil, err
+	}
 	srcType, _ := p.parseTypename()
-	p.expect(AS)
+	if _, err := p.expect(AS); err != nil {
+		return nil, err
+	}
 	tgtType, _ := p.parseTypename()
-	p.expect(')')
+	if _, err := p.expect(')'); err != nil {
+		return nil, err
+	}
 
 	stmt := &nodes.CreateCastStmt{Sourcetype: srcType, Targettype: tgtType}
 
 	if p.cur.Type == WITHOUT {
 		p.advance()
-		p.expect(FUNCTION)
+		if _, err := p.expect(FUNCTION); err != nil {
+			return nil, err
+		}
 		stmt.Context = p.parseCastContext()
-		return stmt
+		return stmt, nil
 	}
-	p.expect(WITH)
+	if _, err := p.expect(WITH); err != nil {
+		return nil, err
+	}
 	if p.cur.Type == INOUT {
 		p.advance()
 		stmt.Context = p.parseCastContext()
 		stmt.Inout = true
-		return stmt
+		return stmt, nil
 	}
-	p.expect(FUNCTION)
+	if _, err := p.expect(FUNCTION); err != nil {
+		return nil, err
+	}
 	stmt.Func = p.parseExtFuncWithArgtypes()
 	stmt.Context = p.parseCastContext()
-	return stmt
+	return stmt, nil
 }
 
 func (p *Parser) parseCastContext() nodes.CoercionContext {
@@ -453,36 +477,50 @@ func (p *Parser) parseCastContext() nodes.CoercionContext {
 }
 
 // parseDropCastStmt parses DROP CAST statement.
-func (p *Parser) parseDropCastStmt() nodes.Node {
+func (p *Parser) parseDropCastStmt() (nodes.Node, error) {
 	p.advance() // consume CAST
 	missingOk := p.parseOptIfExists()
-	p.expect('(')
+	if _, err := p.expect('('); err != nil {
+		return nil, err
+	}
 	srcType, _ := p.parseTypename()
-	p.expect(AS)
+	if _, err := p.expect(AS); err != nil {
+		return nil, err
+	}
 	tgtType, _ := p.parseTypename()
-	p.expect(')')
+	if _, err := p.expect(')'); err != nil {
+		return nil, err
+	}
 	behavior := p.parseOptDropBehavior()
 	return &nodes.DropStmt{
 		RemoveType: int(nodes.OBJECT_CAST),
 		Objects:    &nodes.List{Items: []nodes.Node{&nodes.List{Items: []nodes.Node{srcType, tgtType}}}},
 		Behavior:   behavior, Missing_ok: missingOk,
-	}
+	}, nil
 }
 
 // parseCreateTransformStmt parses CREATE [OR REPLACE] TRANSFORM statement.
-func (p *Parser) parseCreateTransformStmt(replace bool) nodes.Node {
+func (p *Parser) parseCreateTransformStmt(replace bool) (nodes.Node, error) {
 	p.advance() // consume TRANSFORM
-	p.expect(FOR)
+	if _, err := p.expect(FOR); err != nil {
+		return nil, err
+	}
 	typeName, _ := p.parseTypename()
-	p.expect(LANGUAGE)
+	if _, err := p.expect(LANGUAGE); err != nil {
+		return nil, err
+	}
 	lang, _ := p.parseName()
-	p.expect('(')
+	if _, err := p.expect('('); err != nil {
+		return nil, err
+	}
 	fromsql, tosql := p.parseTransformElementList()
-	p.expect(')')
+	if _, err := p.expect(')'); err != nil {
+		return nil, err
+	}
 	return &nodes.CreateTransformStmt{
 		Replace: replace, TypeName: typeName, Lang: lang,
 		Fromsql: fromsql, Tosql: tosql,
-	}
+	}, nil
 }
 
 func (p *Parser) parseTransformElementList() (fromsql *nodes.ObjectWithArgs, tosql *nodes.ObjectWithArgs) {
@@ -519,17 +557,21 @@ func (p *Parser) parseTransformElementList() (fromsql *nodes.ObjectWithArgs, tos
 }
 
 // parseDropTransformStmt parses DROP TRANSFORM statement.
-func (p *Parser) parseDropTransformStmt() nodes.Node {
+func (p *Parser) parseDropTransformStmt() (nodes.Node, error) {
 	p.advance() // consume TRANSFORM
 	missingOk := p.parseOptIfExists()
-	p.expect(FOR)
+	if _, err := p.expect(FOR); err != nil {
+		return nil, err
+	}
 	typeName, _ := p.parseTypename()
-	p.expect(LANGUAGE)
+	if _, err := p.expect(LANGUAGE); err != nil {
+		return nil, err
+	}
 	lang, _ := p.parseName()
 	behavior := p.parseOptDropBehavior()
 	return &nodes.DropStmt{
 		RemoveType: int(nodes.OBJECT_TRANSFORM),
 		Objects:    &nodes.List{Items: []nodes.Node{&nodes.List{Items: []nodes.Node{typeName, &nodes.String{Str: lang}}}}},
 		Behavior:   behavior, Missing_ok: missingOk,
-	}
+	}, nil
 }
