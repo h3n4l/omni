@@ -156,12 +156,12 @@ The foundation — our output must be byte-for-byte identical to MySQL 8.0.
 ### 1.11 Primary Key
 
 ```
-[ ] Single column PK: PRIMARY KEY (id)
-[ ] Multi-column PK: PRIMARY KEY (a, b)
-[ ] PK on BIGINT UNSIGNED AUTO_INCREMENT
-[ ] PK column ordering in SHOW CREATE TABLE
-[ ] PK implicitly makes columns NOT NULL
-[ ] PK name is never shown (always PRIMARY KEY, not KEY `PRIMARY`)
+[x] Single column PK: PRIMARY KEY (id)
+[x] Multi-column PK: PRIMARY KEY (a, b)
+[x] PK on BIGINT UNSIGNED AUTO_INCREMENT
+[x] PK column ordering in SHOW CREATE TABLE
+[x] PK implicitly makes columns NOT NULL
+[x] PK name is never shown (always PRIMARY KEY, not KEY `PRIMARY`)
 ```
 
 ### 1.12 Unique Keys
