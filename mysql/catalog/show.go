@@ -103,16 +103,19 @@ func showColumn(col *Column) string {
 		return b.String()
 	}
 
-	// NOT NULL.
+	// NOT NULL / NULL.
 	if !col.Nullable {
 		b.WriteString(" NOT NULL")
+	} else if isTimestampType(col.DataType) {
+		// MySQL 8.0 explicitly shows NULL for TIMESTAMP columns.
+		b.WriteString(" NULL")
 	}
 
 	// DEFAULT.
 	if col.Default != nil {
 		b.WriteString(" DEFAULT ")
-		b.WriteString(formatDefault(*col.Default, col.Nullable))
-	} else if col.Nullable && !col.AutoIncrement {
+		b.WriteString(formatDefault(*col.Default, col))
+	} else if col.Nullable && !col.AutoIncrement && !isTextBlobType(col.DataType) {
 		b.WriteString(" DEFAULT NULL")
 	}
 
@@ -140,53 +143,55 @@ func showColumn(col *Column) string {
 }
 
 // formatDefault formats a default value for SHOW CREATE TABLE output.
-func formatDefault(val string, nullable bool) string {
+// MySQL 8.0 quotes numeric defaults as strings (e.g. DEFAULT '0').
+func formatDefault(val string, col *Column) string {
 	if strings.EqualFold(val, "NULL") {
 		return "NULL"
 	}
-	// Check if it's a numeric literal.
-	if isNumericLiteral(val) {
-		return val
-	}
-	// Check for special expressions (CURRENT_TIMESTAMP, etc.)
+	// Normalize CURRENT_TIMESTAMP() → CURRENT_TIMESTAMP (MySQL 8.0 format).
 	upper := strings.ToUpper(val)
-	if upper == "CURRENT_TIMESTAMP" || strings.HasPrefix(upper, "CURRENT_TIMESTAMP(") {
+	if upper == "CURRENT_TIMESTAMP" || upper == "CURRENT_TIMESTAMP()" {
+		return "CURRENT_TIMESTAMP"
+	}
+	if strings.HasPrefix(upper, "CURRENT_TIMESTAMP(") {
+		// CURRENT_TIMESTAMP(N) — keep precision.
 		return val
 	}
 	if upper == "NOW()" {
+		return "CURRENT_TIMESTAMP"
+	}
+	// b'...' and 0x... bit/hex literals — not quoted.
+	if strings.HasPrefix(val, "b'") || strings.HasPrefix(val, "B'") ||
+		strings.HasPrefix(val, "0x") || strings.HasPrefix(val, "0X") {
 		return val
 	}
 	// Already single-quoted string — return as-is.
 	if len(val) >= 2 && val[0] == '\'' && val[len(val)-1] == '\'' {
 		return val
 	}
-	// Otherwise quote as string.
+	// MySQL 8.0 quotes all literal defaults (including numerics).
 	return "'" + val + "'"
 }
 
-func isNumericLiteral(s string) bool {
-	if len(s) == 0 {
-		return false
+// isTimestampType returns true for TIMESTAMP/DATETIME types.
+func isTimestampType(dt string) bool {
+	switch strings.ToLower(dt) {
+	case "timestamp":
+		return true
 	}
-	start := 0
-	if s[0] == '-' || s[0] == '+' {
-		start = 1
-		if start >= len(s) {
-			return false
-		}
+	return false
+}
+
+// isTextBlobType returns true for types where MySQL doesn't show DEFAULT NULL.
+func isTextBlobType(dt string) bool {
+	switch strings.ToLower(dt) {
+	case "text", "tinytext", "mediumtext", "longtext",
+		"blob", "tinyblob", "mediumblob", "longblob",
+		"json", "geometry", "point", "linestring", "polygon",
+		"multipoint", "multilinestring", "multipolygon", "geometrycollection":
+		return true
 	}
-	hasDot := false
-	for i := start; i < len(s); i++ {
-		if s[i] == '.' {
-			if hasDot {
-				return false
-			}
-			hasDot = true
-		} else if s[i] < '0' || s[i] > '9' {
-			return false
-		}
-	}
-	return true
+	return false
 }
 
 func showIndex(idx *Index) string {
@@ -294,14 +299,14 @@ func showTableOptions(tbl *Table) string {
 		parts = append(parts, fmt.Sprintf("DEFAULT CHARSET=%s", tbl.Charset))
 	}
 
-	// Show collation only if not the default for the charset.
-	if tbl.Collation != "" && tbl.Charset != "" {
-		defColl, ok := defaultCollationForCharset[toLower(tbl.Charset)]
-		if !ok || !strings.EqualFold(tbl.Collation, defColl) {
-			parts = append(parts, fmt.Sprintf("COLLATE=%s", tbl.Collation))
-		}
-	} else if tbl.Collation != "" {
+	// MySQL 8.0 always shows COLLATE in SHOW CREATE TABLE.
+	if tbl.Collation != "" {
 		parts = append(parts, fmt.Sprintf("COLLATE=%s", tbl.Collation))
+	} else if tbl.Charset != "" {
+		// If no explicit collation, show the default for the charset.
+		if defColl, ok := defaultCollationForCharset[toLower(tbl.Charset)]; ok {
+			parts = append(parts, fmt.Sprintf("COLLATE=%s", defColl))
+		}
 	}
 
 	if tbl.Comment != "" {

@@ -22,8 +22,8 @@ func TestShowCreateTableBasic(t *testing.T) {
 	assertContains(t, got, "KEY `idx_name` (`name`)")
 	assertContains(t, got, "ENGINE=InnoDB")
 	assertContains(t, got, "DEFAULT CHARSET=utf8mb4")
-	// Default collation for utf8mb4 should NOT appear.
-	assertNotContains(t, got, "COLLATE=")
+	// MySQL 8.0 always shows COLLATE in SHOW CREATE TABLE.
+	assertContains(t, got, "COLLATE=utf8mb4_0900_ai_ci")
 }
 
 func TestShowCreateTableUniqueKey(t *testing.T) {
@@ -54,8 +54,8 @@ func TestShowCreateTableDefaults(t *testing.T) {
 	assertContains(t, got, "`nullable_col` varchar(50) DEFAULT NULL")
 	// String default.
 	assertContains(t, got, "`str_default` varchar(50) DEFAULT 'hello'")
-	// Numeric default — not quoted.
-	assertContains(t, got, "`num_default` int DEFAULT 42")
+	// Numeric default — MySQL 8.0 quotes it.
+	assertContains(t, got, "`num_default` int DEFAULT '42'")
 }
 
 func TestShowCreateTableMultipleIndexes(t *testing.T) {

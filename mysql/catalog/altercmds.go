@@ -1,0 +1,743 @@
+package catalog
+
+import (
+	"fmt"
+	"strings"
+
+	nodes "github.com/bytebase/omni/mysql/ast"
+)
+
+func (c *Catalog) alterTable(stmt *nodes.AlterTableStmt) error {
+	// Resolve database.
+	dbName := ""
+	if stmt.Table != nil {
+		dbName = stmt.Table.Schema
+	}
+	db, err := c.resolveDatabase(dbName)
+	if err != nil {
+		return err
+	}
+
+	tableName := stmt.Table.Name
+	key := toLower(tableName)
+	tbl := db.Tables[key]
+	if tbl == nil {
+		return errNoSuchTable(db.Name, tableName)
+	}
+
+	for _, cmd := range stmt.Commands {
+		if err := c.execAlterCmd(db, tbl, cmd); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Catalog) execAlterCmd(db *Database, tbl *Table, cmd *nodes.AlterTableCmd) error {
+	switch cmd.Type {
+	case nodes.ATAddColumn:
+		return c.alterAddColumn(tbl, cmd)
+	case nodes.ATDropColumn:
+		return c.alterDropColumn(tbl, cmd)
+	case nodes.ATModifyColumn:
+		return c.alterModifyColumn(tbl, cmd)
+	case nodes.ATChangeColumn:
+		return c.alterChangeColumn(tbl, cmd)
+	case nodes.ATAddIndex, nodes.ATAddConstraint:
+		return c.alterAddConstraint(tbl, cmd)
+	case nodes.ATDropIndex:
+		return c.alterDropIndex(tbl, cmd)
+	case nodes.ATDropConstraint:
+		return c.alterDropConstraint(tbl, cmd)
+	case nodes.ATRenameColumn:
+		return c.alterRenameColumn(tbl, cmd)
+	case nodes.ATRenameIndex:
+		return c.alterRenameIndex(tbl, cmd)
+	case nodes.ATRenameTable:
+		return c.alterRenameTable(db, tbl, cmd)
+	case nodes.ATTableOption:
+		return c.alterTableOption(tbl, cmd)
+	case nodes.ATAlterColumnDefault:
+		return c.alterColumnDefault(tbl, cmd)
+	case nodes.ATAlterColumnVisible:
+		return c.alterColumnVisibility(tbl, cmd, false)
+	case nodes.ATAlterColumnInvisible:
+		return c.alterColumnVisibility(tbl, cmd, true)
+	case nodes.ATAlterIndexVisible:
+		return c.alterIndexVisibility(tbl, cmd, true)
+	case nodes.ATAlterIndexInvisible:
+		return c.alterIndexVisibility(tbl, cmd, false)
+	default:
+		// Unsupported alter command; silently ignore.
+		return nil
+	}
+}
+
+// alterAddColumn adds a new column to the table.
+func (c *Catalog) alterAddColumn(tbl *Table, cmd *nodes.AlterTableCmd) error {
+	colDef := cmd.Column
+	if colDef == nil {
+		return nil
+	}
+
+	colKey := toLower(colDef.Name)
+	if _, exists := tbl.colByName[colKey]; exists {
+		return errDupColumn(colDef.Name)
+	}
+
+	col := buildColumnFromDef(tbl, colDef)
+
+	// Determine position.
+	if cmd.First {
+		// Insert at position 0.
+		tbl.Columns = append([]*Column{col}, tbl.Columns...)
+	} else if cmd.After != "" {
+		afterIdx, ok := tbl.colByName[toLower(cmd.After)]
+		if !ok {
+			return errNoSuchColumn(cmd.After)
+		}
+		// Insert after afterIdx.
+		pos := afterIdx + 1
+		tbl.Columns = append(tbl.Columns, nil)
+		copy(tbl.Columns[pos+1:], tbl.Columns[pos:])
+		tbl.Columns[pos] = col
+	} else {
+		// Append at end.
+		tbl.Columns = append(tbl.Columns, col)
+	}
+
+	rebuildColIndex(tbl)
+
+	// Process column-level constraints that produce indexes/constraints.
+	for _, cc := range colDef.Constraints {
+		switch cc.Type {
+		case nodes.ColConstrPrimaryKey:
+			// Check for duplicate PK.
+			for _, idx := range tbl.Indexes {
+				if idx.Primary {
+					return errMultiplePriKey()
+				}
+			}
+			col.Nullable = false
+			tbl.Indexes = append(tbl.Indexes, &Index{
+				Name:      "PRIMARY",
+				Table:     tbl,
+				Columns:   []*IndexColumn{{Name: colDef.Name}},
+				Unique:    true,
+				Primary:   true,
+				IndexType: "BTREE",
+				Visible:   true,
+			})
+			tbl.Constraints = append(tbl.Constraints, &Constraint{
+				Name:      "PRIMARY",
+				Type:      ConPrimaryKey,
+				Table:     tbl,
+				Columns:   []string{colDef.Name},
+				IndexName: "PRIMARY",
+			})
+		case nodes.ColConstrUnique:
+			idxName := allocIndexName(tbl, colDef.Name)
+			tbl.Indexes = append(tbl.Indexes, &Index{
+				Name:      idxName,
+				Table:     tbl,
+				Columns:   []*IndexColumn{{Name: colDef.Name}},
+				Unique:    true,
+				IndexType: "BTREE",
+				Visible:   true,
+			})
+			tbl.Constraints = append(tbl.Constraints, &Constraint{
+				Name:      idxName,
+				Type:      ConUniqueKey,
+				Table:     tbl,
+				Columns:   []string{colDef.Name},
+				IndexName: idxName,
+			})
+		}
+	}
+
+	return nil
+}
+
+// alterDropColumn removes a column from the table.
+func (c *Catalog) alterDropColumn(tbl *Table, cmd *nodes.AlterTableCmd) error {
+	colKey := toLower(cmd.Name)
+	if _, exists := tbl.colByName[colKey]; !exists {
+		if cmd.IfExists {
+			return nil
+		}
+		return errNoSuchColumn(cmd.Name)
+	}
+
+	idx := tbl.colByName[colKey]
+	tbl.Columns = append(tbl.Columns[:idx], tbl.Columns[idx+1:]...)
+	rebuildColIndex(tbl)
+	return nil
+}
+
+// alterModifyColumn replaces a column definition in-place (same name).
+func (c *Catalog) alterModifyColumn(tbl *Table, cmd *nodes.AlterTableCmd) error {
+	colDef := cmd.Column
+	if colDef == nil {
+		return nil
+	}
+
+	colKey := toLower(colDef.Name)
+	idx, exists := tbl.colByName[colKey]
+	if !exists {
+		return errNoSuchColumn(colDef.Name)
+	}
+
+	col := buildColumnFromDef(tbl, colDef)
+	col.Position = idx + 1
+	tbl.Columns[idx] = col
+
+	// Handle repositioning.
+	if cmd.First || cmd.After != "" {
+		// Remove from current position.
+		tbl.Columns = append(tbl.Columns[:idx], tbl.Columns[idx+1:]...)
+		if cmd.First {
+			tbl.Columns = append([]*Column{col}, tbl.Columns...)
+		} else {
+			afterIdx, ok := tbl.colByName[toLower(cmd.After)]
+			if !ok {
+				// Rebuild first since we removed.
+				rebuildColIndex(tbl)
+				afterIdx, ok = tbl.colByName[toLower(cmd.After)]
+				if !ok {
+					return errNoSuchColumn(cmd.After)
+				}
+			}
+			pos := afterIdx + 1
+			tbl.Columns = append(tbl.Columns, nil)
+			copy(tbl.Columns[pos+1:], tbl.Columns[pos:])
+			tbl.Columns[pos] = col
+		}
+		rebuildColIndex(tbl)
+	}
+
+	return nil
+}
+
+// alterChangeColumn replaces a column (old name -> new name + new definition).
+func (c *Catalog) alterChangeColumn(tbl *Table, cmd *nodes.AlterTableCmd) error {
+	colDef := cmd.Column
+	if colDef == nil {
+		return nil
+	}
+
+	oldName := cmd.Name
+	oldKey := toLower(oldName)
+	idx, exists := tbl.colByName[oldKey]
+	if !exists {
+		return errNoSuchColumn(oldName)
+	}
+
+	// Check if new name conflicts with existing column (unless same).
+	newKey := toLower(colDef.Name)
+	if newKey != oldKey {
+		if _, dup := tbl.colByName[newKey]; dup {
+			return errDupColumn(colDef.Name)
+		}
+	}
+
+	col := buildColumnFromDef(tbl, colDef)
+	col.Position = idx + 1
+	tbl.Columns[idx] = col
+
+	// Update index/constraint column references if name changed.
+	if newKey != oldKey {
+		updateColumnRefsInIndexes(tbl, oldName, colDef.Name)
+	}
+
+	// Handle repositioning.
+	if cmd.First || cmd.After != "" {
+		tbl.Columns = append(tbl.Columns[:idx], tbl.Columns[idx+1:]...)
+		rebuildColIndex(tbl)
+		if cmd.First {
+			tbl.Columns = append([]*Column{col}, tbl.Columns...)
+		} else {
+			afterIdx, ok := tbl.colByName[toLower(cmd.After)]
+			if !ok {
+				return errNoSuchColumn(cmd.After)
+			}
+			pos := afterIdx + 1
+			tbl.Columns = append(tbl.Columns, nil)
+			copy(tbl.Columns[pos+1:], tbl.Columns[pos:])
+			tbl.Columns[pos] = col
+		}
+	}
+
+	rebuildColIndex(tbl)
+	return nil
+}
+
+// alterAddConstraint adds a constraint or index to the table.
+func (c *Catalog) alterAddConstraint(tbl *Table, cmd *nodes.AlterTableCmd) error {
+	con := cmd.Constraint
+	if con == nil {
+		return nil
+	}
+
+	cols := extractColumnNames(con)
+
+	switch con.Type {
+	case nodes.ConstrPrimaryKey:
+		// Check for duplicate PK.
+		for _, idx := range tbl.Indexes {
+			if idx.Primary {
+				return errMultiplePriKey()
+			}
+		}
+		// Mark PK columns as NOT NULL.
+		for _, colName := range cols {
+			col := tbl.GetColumn(colName)
+			if col != nil {
+				col.Nullable = false
+			}
+		}
+		idxCols := buildIndexColumns(con)
+		tbl.Indexes = append(tbl.Indexes, &Index{
+			Name:      "PRIMARY",
+			Table:     tbl,
+			Columns:   idxCols,
+			Unique:    true,
+			Primary:   true,
+			IndexType: "BTREE",
+			Visible:   true,
+		})
+		tbl.Constraints = append(tbl.Constraints, &Constraint{
+			Name:      "PRIMARY",
+			Type:      ConPrimaryKey,
+			Table:     tbl,
+			Columns:   cols,
+			IndexName: "PRIMARY",
+		})
+
+	case nodes.ConstrUnique:
+		idxName := con.Name
+		if idxName == "" && len(cols) > 0 {
+			idxName = allocIndexName(tbl, cols[0])
+		}
+		idxCols := buildIndexColumns(con)
+		tbl.Indexes = append(tbl.Indexes, &Index{
+			Name:      idxName,
+			Table:     tbl,
+			Columns:   idxCols,
+			Unique:    true,
+			IndexType: indexTypeOrDefault(con.IndexType, "BTREE"),
+			Visible:   true,
+		})
+		tbl.Constraints = append(tbl.Constraints, &Constraint{
+			Name:      idxName,
+			Type:      ConUniqueKey,
+			Table:     tbl,
+			Columns:   cols,
+			IndexName: idxName,
+		})
+
+	case nodes.ConstrForeignKey:
+		conName := con.Name
+		if conName == "" {
+			conName = fmt.Sprintf("%s_ibfk_%d", tbl.Name, len(tbl.Constraints)+1)
+		}
+		refDB := ""
+		refTable := ""
+		if con.RefTable != nil {
+			refDB = con.RefTable.Schema
+			refTable = con.RefTable.Name
+		}
+		tbl.Constraints = append(tbl.Constraints, &Constraint{
+			Name:       conName,
+			Type:       ConForeignKey,
+			Table:      tbl,
+			Columns:    cols,
+			RefDatabase: refDB,
+			RefTable:   refTable,
+			RefColumns: con.RefColumns,
+			OnDelete:   refActionToString(con.OnDelete),
+			OnUpdate:   refActionToString(con.OnUpdate),
+		})
+		// Add implicit backing index.
+		idxName := con.Name
+		if idxName == "" && len(cols) > 0 {
+			idxName = allocIndexName(tbl, cols[0])
+		}
+		idxCols := buildIndexColumns(con)
+		tbl.Indexes = append(tbl.Indexes, &Index{
+			Name:      idxName,
+			Table:     tbl,
+			Columns:   idxCols,
+			IndexType: "BTREE",
+			Visible:   true,
+		})
+
+	case nodes.ConstrCheck:
+		conName := con.Name
+		if conName == "" {
+			conName = fmt.Sprintf("%s_chk_%d", tbl.Name, len(tbl.Constraints)+1)
+		}
+		tbl.Constraints = append(tbl.Constraints, &Constraint{
+			Name:        conName,
+			Type:        ConCheck,
+			Table:       tbl,
+			CheckExpr:   nodeToSQL(con.Expr),
+			NotEnforced: con.NotEnforced,
+		})
+
+	case nodes.ConstrIndex:
+		idxName := con.Name
+		if idxName == "" && len(cols) > 0 {
+			idxName = allocIndexName(tbl, cols[0])
+		}
+		idxCols := buildIndexColumns(con)
+		tbl.Indexes = append(tbl.Indexes, &Index{
+			Name:      idxName,
+			Table:     tbl,
+			Columns:   idxCols,
+			IndexType: indexTypeOrDefault(con.IndexType, "BTREE"),
+			Visible:   true,
+		})
+
+	case nodes.ConstrFulltextIndex:
+		idxName := con.Name
+		if idxName == "" && len(cols) > 0 {
+			idxName = allocIndexName(tbl, cols[0])
+		}
+		idxCols := buildIndexColumns(con)
+		tbl.Indexes = append(tbl.Indexes, &Index{
+			Name:      idxName,
+			Table:     tbl,
+			Columns:   idxCols,
+			Fulltext:  true,
+			IndexType: "FULLTEXT",
+			Visible:   true,
+		})
+
+	case nodes.ConstrSpatialIndex:
+		idxName := con.Name
+		if idxName == "" && len(cols) > 0 {
+			idxName = allocIndexName(tbl, cols[0])
+		}
+		idxCols := buildIndexColumns(con)
+		tbl.Indexes = append(tbl.Indexes, &Index{
+			Name:      idxName,
+			Table:     tbl,
+			Columns:   idxCols,
+			Spatial:   true,
+			IndexType: "SPATIAL",
+			Visible:   true,
+		})
+	}
+
+	return nil
+}
+
+// alterDropIndex removes an index (and any associated constraint) by name.
+func (c *Catalog) alterDropIndex(tbl *Table, cmd *nodes.AlterTableCmd) error {
+	name := cmd.Name
+	key := toLower(name)
+
+	found := false
+	for i, idx := range tbl.Indexes {
+		if toLower(idx.Name) == key {
+			tbl.Indexes = append(tbl.Indexes[:i], tbl.Indexes[i+1:]...)
+			found = true
+			break
+		}
+	}
+	if !found {
+		if cmd.IfExists {
+			return nil
+		}
+		return &Error{
+			Code:     ErrDupKeyName,
+			SQLState: sqlState(ErrDupKeyName),
+			Message:  fmt.Sprintf("Can't DROP '%s'; check that column/key exists", name),
+		}
+	}
+
+	// Also remove any constraint that references this index.
+	for i, con := range tbl.Constraints {
+		if toLower(con.IndexName) == key || toLower(con.Name) == key {
+			tbl.Constraints = append(tbl.Constraints[:i], tbl.Constraints[i+1:]...)
+			break
+		}
+	}
+
+	return nil
+}
+
+// alterDropConstraint removes a constraint by name.
+func (c *Catalog) alterDropConstraint(tbl *Table, cmd *nodes.AlterTableCmd) error {
+	name := cmd.Name
+	key := toLower(name)
+
+	for i, con := range tbl.Constraints {
+		if toLower(con.Name) == key {
+			tbl.Constraints = append(tbl.Constraints[:i], tbl.Constraints[i+1:]...)
+			return nil
+		}
+	}
+
+	if cmd.IfExists {
+		return nil
+	}
+	return &Error{
+		Code:     ErrDupKeyName,
+		SQLState: sqlState(ErrDupKeyName),
+		Message:  fmt.Sprintf("Can't DROP '%s'; check that column/key exists", name),
+	}
+}
+
+// alterRenameColumn changes a column name in-place.
+func (c *Catalog) alterRenameColumn(tbl *Table, cmd *nodes.AlterTableCmd) error {
+	oldKey := toLower(cmd.Name)
+	idx, exists := tbl.colByName[oldKey]
+	if !exists {
+		return errNoSuchColumn(cmd.Name)
+	}
+
+	newKey := toLower(cmd.NewName)
+	if newKey != oldKey {
+		if _, dup := tbl.colByName[newKey]; dup {
+			return errDupColumn(cmd.NewName)
+		}
+	}
+
+	tbl.Columns[idx].Name = cmd.NewName
+	updateColumnRefsInIndexes(tbl, cmd.Name, cmd.NewName)
+	rebuildColIndex(tbl)
+	return nil
+}
+
+// alterRenameIndex changes an index name in-place.
+func (c *Catalog) alterRenameIndex(tbl *Table, cmd *nodes.AlterTableCmd) error {
+	oldKey := toLower(cmd.Name)
+	newKey := toLower(cmd.NewName)
+
+	if newKey != oldKey && indexNameExists(tbl, cmd.NewName) {
+		return errDupKeyName(cmd.NewName)
+	}
+
+	for _, idx := range tbl.Indexes {
+		if toLower(idx.Name) == oldKey {
+			idx.Name = cmd.NewName
+			// Also update any constraint that references this index.
+			for _, con := range tbl.Constraints {
+				if toLower(con.IndexName) == oldKey {
+					con.IndexName = cmd.NewName
+					con.Name = cmd.NewName
+				}
+			}
+			return nil
+		}
+	}
+
+	return &Error{
+		Code:     ErrDupKeyName,
+		SQLState: sqlState(ErrDupKeyName),
+		Message:  fmt.Sprintf("Key '%s' doesn't exist in table '%s'", cmd.Name, tbl.Name),
+	}
+}
+
+// alterRenameTable moves a table to a new name.
+func (c *Catalog) alterRenameTable(db *Database, tbl *Table, cmd *nodes.AlterTableCmd) error {
+	newName := cmd.NewName
+	newKey := toLower(newName)
+	oldKey := toLower(tbl.Name)
+
+	if newKey != oldKey {
+		if db.Tables[newKey] != nil {
+			return errDupTable(newName)
+		}
+	}
+
+	delete(db.Tables, oldKey)
+	tbl.Name = newName
+	db.Tables[newKey] = tbl
+	return nil
+}
+
+// alterTableOption applies a table option (ENGINE, CHARSET, etc.).
+func (c *Catalog) alterTableOption(tbl *Table, cmd *nodes.AlterTableCmd) error {
+	opt := cmd.Option
+	if opt == nil {
+		return nil
+	}
+
+	switch toLower(opt.Name) {
+	case "engine":
+		tbl.Engine = opt.Value
+	case "charset", "character set", "default charset", "default character set":
+		tbl.Charset = opt.Value
+	case "collate", "default collate":
+		tbl.Collation = opt.Value
+	case "comment":
+		tbl.Comment = opt.Value
+	case "auto_increment":
+		fmt.Sscanf(opt.Value, "%d", &tbl.AutoIncrement)
+	case "row_format":
+		tbl.RowFormat = opt.Value
+	}
+	return nil
+}
+
+// alterColumnDefault sets or drops the default on an existing column.
+func (c *Catalog) alterColumnDefault(tbl *Table, cmd *nodes.AlterTableCmd) error {
+	colKey := toLower(cmd.Name)
+	idx, exists := tbl.colByName[colKey]
+	if !exists {
+		return errNoSuchColumn(cmd.Name)
+	}
+
+	col := tbl.Columns[idx]
+	if cmd.DefaultExpr != nil {
+		s := nodeToSQL(cmd.DefaultExpr)
+		col.Default = &s
+	} else {
+		// DROP DEFAULT
+		col.Default = nil
+	}
+	return nil
+}
+
+// alterColumnVisibility toggles the INVISIBLE flag on a column.
+func (c *Catalog) alterColumnVisibility(tbl *Table, cmd *nodes.AlterTableCmd, invisible bool) error {
+	colKey := toLower(cmd.Name)
+	idx, exists := tbl.colByName[colKey]
+	if !exists {
+		return errNoSuchColumn(cmd.Name)
+	}
+	tbl.Columns[idx].Invisible = invisible
+	return nil
+}
+
+// alterIndexVisibility toggles the Visible flag on an index.
+func (c *Catalog) alterIndexVisibility(tbl *Table, cmd *nodes.AlterTableCmd, visible bool) error {
+	key := toLower(cmd.Name)
+	for _, idx := range tbl.Indexes {
+		if toLower(idx.Name) == key {
+			idx.Visible = visible
+			return nil
+		}
+	}
+	return &Error{
+		Code:     ErrDupKeyName,
+		SQLState: sqlState(ErrDupKeyName),
+		Message:  fmt.Sprintf("Key '%s' doesn't exist in table '%s'", cmd.Name, tbl.Name),
+	}
+}
+
+// rebuildColIndex rebuilds tbl.colByName and updates Position fields.
+func rebuildColIndex(tbl *Table) {
+	tbl.colByName = make(map[string]int, len(tbl.Columns))
+	for i, col := range tbl.Columns {
+		col.Position = i + 1
+		tbl.colByName[toLower(col.Name)] = i
+	}
+}
+
+// buildColumnFromDef builds a catalog Column from an AST ColumnDef.
+func buildColumnFromDef(tbl *Table, colDef *nodes.ColumnDef) *Column {
+	col := &Column{
+		Name:     colDef.Name,
+		Nullable: true,
+	}
+
+	// Type info.
+	if colDef.TypeName != nil {
+		col.DataType = toLower(colDef.TypeName.Name)
+		col.ColumnType = formatColumnType(colDef.TypeName)
+		if colDef.TypeName.Charset != "" {
+			col.Charset = colDef.TypeName.Charset
+		}
+		if colDef.TypeName.Collate != "" {
+			col.Collation = colDef.TypeName.Collate
+		}
+	}
+
+	// Default charset/collation for string types.
+	if isStringType(col.DataType) {
+		if col.Charset == "" {
+			col.Charset = tbl.Charset
+		}
+		if col.Collation == "" {
+			col.Collation = tbl.Collation
+		}
+	}
+
+	// Top-level column properties.
+	if colDef.AutoIncrement {
+		col.AutoIncrement = true
+		col.Nullable = false
+	}
+	if colDef.Comment != "" {
+		col.Comment = colDef.Comment
+	}
+	if colDef.DefaultValue != nil {
+		s := nodeToSQL(colDef.DefaultValue)
+		col.Default = &s
+	}
+	if colDef.OnUpdate != nil {
+		col.OnUpdate = nodeToSQL(colDef.OnUpdate)
+	}
+	if colDef.Generated != nil {
+		col.Generated = &GeneratedColumnInfo{
+			Expr:   nodeToSQL(colDef.Generated.Expr),
+			Stored: colDef.Generated.Stored,
+		}
+	}
+
+	// Process column-level constraints (non-index-producing ones).
+	for _, cc := range colDef.Constraints {
+		switch cc.Type {
+		case nodes.ColConstrNotNull:
+			col.Nullable = false
+		case nodes.ColConstrNull:
+			col.Nullable = true
+		case nodes.ColConstrDefault:
+			if cc.Expr != nil {
+				s := nodeToSQL(cc.Expr)
+				col.Default = &s
+			}
+		case nodes.ColConstrAutoIncrement:
+			col.AutoIncrement = true
+			col.Nullable = false
+		case nodes.ColConstrVisible:
+			col.Invisible = false
+		case nodes.ColConstrInvisible:
+			col.Invisible = true
+		case nodes.ColConstrCollate:
+			if cc.Expr != nil {
+				if s, ok := cc.Expr.(*nodes.StringLit); ok {
+					col.Collation = s.Value
+				}
+			}
+		}
+	}
+
+	return col
+}
+
+// updateColumnRefsInIndexes updates index and constraint column references
+// when a column is renamed.
+func updateColumnRefsInIndexes(tbl *Table, oldName, newName string) {
+	oldKey := toLower(oldName)
+	for _, idx := range tbl.Indexes {
+		for _, ic := range idx.Columns {
+			if toLower(ic.Name) == oldKey {
+				ic.Name = newName
+			}
+		}
+	}
+	for _, con := range tbl.Constraints {
+		for i, col := range con.Columns {
+			if toLower(col) == oldKey {
+				con.Columns[i] = newName
+			}
+		}
+	}
+}
+
+// Ensure strings import is used (for toLower references via strings package).
+var _ = strings.ToLower
