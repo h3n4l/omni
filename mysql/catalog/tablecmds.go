@@ -156,7 +156,7 @@ func (c *Catalog) createTable(stmt *nodes.CreateTableStmt) error {
 		}
 		if colDef.Generated != nil {
 			col.Generated = &GeneratedColumnInfo{
-				Expr:   nodeToSQL(colDef.Generated.Expr),
+				Expr:   nodeToSQLGenerated(colDef.Generated.Expr, tbl.Charset),
 				Stored: colDef.Generated.Stored,
 			}
 		}
@@ -603,6 +603,76 @@ func convertToBinaryType(col *Column, dt *nodes.DataType) *Column {
 	col.Charset = ""
 	col.Collation = ""
 	return col
+}
+
+// nodeToSQLGenerated converts an AST expression to SQL for use in a generated
+// column definition. MySQL prefixes string literals with a charset introducer
+// (e.g., _utf8mb4'value') in generated column expressions.
+func nodeToSQLGenerated(node nodes.ExprNode, charset string) string {
+	if node == nil {
+		return ""
+	}
+	switch n := node.(type) {
+	case *nodes.ColumnRef:
+		if n.Table != "" {
+			return "`" + n.Table + "`.`" + n.Column + "`"
+		}
+		return "`" + n.Column + "`"
+	case *nodes.IntLit:
+		return fmt.Sprintf("%d", n.Value)
+	case *nodes.StringLit:
+		// MySQL adds charset introducer for string literals in generated columns.
+		if charset != "" {
+			return "_" + charset + "'" + n.Value + "'"
+		}
+		return "'" + n.Value + "'"
+	case *nodes.FuncCallExpr:
+		funcName := strings.ToLower(n.Name)
+		if n.Star {
+			return funcName + "(*)"
+		}
+		var args []string
+		for _, a := range n.Args {
+			args = append(args, nodeToSQLGenerated(a, charset))
+		}
+		return funcName + "(" + strings.Join(args, ",") + ")"
+	case *nodes.NullLit:
+		return "NULL"
+	case *nodes.BoolLit:
+		if n.Value {
+			return "1"
+		}
+		return "0"
+	case *nodes.FloatLit:
+		return n.Value
+	case *nodes.BitLit:
+		val := strings.TrimLeft(n.Value, "0")
+		if val == "" {
+			val = "0"
+		}
+		return "b'" + val + "'"
+	case *nodes.ParenExpr:
+		return "(" + nodeToSQLGenerated(n.Expr, charset) + ")"
+	case *nodes.BinaryExpr:
+		left := nodeToSQLGenerated(n.Left, charset)
+		right := nodeToSQLGenerated(n.Right, charset)
+		op := binaryOpToString(n.Op)
+		return "(" + left + " " + op + " " + right + ")"
+	case *nodes.UnaryExpr:
+		operand := nodeToSQLGenerated(n.Operand, charset)
+		switch n.Op {
+		case nodes.UnaryMinus:
+			return "-" + operand
+		case nodes.UnaryNot:
+			return "NOT " + operand
+		case nodes.UnaryBitNot:
+			return "~" + operand
+		default:
+			return operand
+		}
+	default:
+		return "(?)"
+	}
 }
 
 func nodeToSQL(node nodes.ExprNode) string {

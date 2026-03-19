@@ -424,6 +424,18 @@ func (p *Parser) parseColumnOption(col *nodes.ColumnDef) bool {
 		col.Generated = gen
 		return true
 
+	case kwAS:
+		// AS (expr) [VIRTUAL|STORED] — shorthand for GENERATED ALWAYS AS (expr)
+		if p.peekNext().Type == '(' {
+			gen, err := p.parseGeneratedColumnShorthand()
+			if err != nil {
+				return false
+			}
+			col.Generated = gen
+			return true
+		}
+		return false
+
 	case kwON:
 		// ON UPDATE CURRENT_TIMESTAMP
 		if next := p.peekNext(); next.Type == kwUPDATE {
@@ -642,6 +654,40 @@ func (p *Parser) parseGeneratedColumn() (*nodes.GeneratedColumn, error) {
 	if _, err := p.expect(kwAS); err != nil {
 		return nil, err
 	}
+
+	// (expr)
+	if _, err := p.expect('('); err != nil {
+		return nil, err
+	}
+	expr, err := p.parseExpr()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(')'); err != nil {
+		return nil, err
+	}
+
+	gen := &nodes.GeneratedColumn{
+		Loc:  nodes.Loc{Start: start, End: p.pos()},
+		Expr: expr,
+	}
+
+	// VIRTUAL or STORED
+	if _, ok := p.match(kwVIRTUAL); ok {
+		gen.Stored = false
+	} else if _, ok := p.match(kwSTORED); ok {
+		gen.Stored = true
+	}
+
+	gen.Loc.End = p.pos()
+	return gen, nil
+}
+
+// parseGeneratedColumnShorthand parses AS (expr) [VIRTUAL|STORED] — the
+// shorthand form without GENERATED ALWAYS prefix.
+func (p *Parser) parseGeneratedColumnShorthand() (*nodes.GeneratedColumn, error) {
+	start := p.pos()
+	p.advance() // consume AS
 
 	// (expr)
 	if _, err := p.expect('('); err != nil {

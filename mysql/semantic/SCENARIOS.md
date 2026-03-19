@@ -131,13 +131,13 @@ The foundation — our output must be byte-for-byte identical to MySQL 8.0.
 ### 1.9 Generated Columns
 
 ```
-[ ] INT GENERATED ALWAYS AS (col1 + col2) VIRTUAL
-[ ] INT GENERATED ALWAYS AS (col1 * col2) STORED
-[ ] VARCHAR(255) AS (CONCAT(first_name, ' ', last_name)) VIRTUAL
-[ ] Generated column with NOT NULL
-[ ] Generated column with COMMENT
-[ ] Generated column with INVISIBLE
-[ ] JSON GENERATED ALWAYS AS (JSON_EXTRACT(data, '$.name'))
+[x] INT GENERATED ALWAYS AS (col1 + col2) VIRTUAL
+[x] INT GENERATED ALWAYS AS (col1 * col2) STORED
+[x] VARCHAR(255) AS (CONCAT(first_name, ' ', last_name)) VIRTUAL
+[x] Generated column with NOT NULL
+[x] Generated column with COMMENT
+[x] Generated column with INVISIBLE
+[x] JSON GENERATED ALWAYS AS (JSON_EXTRACT(data, '$.name'))
 ```
 
 ### 1.10 Column Attributes Combination
