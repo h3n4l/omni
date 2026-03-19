@@ -17,12 +17,12 @@ import (
 //	func_expr_windowless:
 //	    func_application
 //	    | func_expr_common_subexpr
-func (p *Parser) parseFuncExprWindowless() nodes.Node {
+func (p *Parser) parseFuncExprWindowless() (nodes.Node, error) {
 	// func_expr_common_subexpr keywords are handled by parseCExpr which
 	// already dispatches COALESCE, GREATEST, LEAST, CAST, etc.
 	// For func_application, we need a name followed by '('.
 	// We delegate to parseCExpr which handles both cases.
-	return p.parseCExpr()
+	return p.parseCExpr(), nil
 }
 
 // parseWindowClause parses an optional WINDOW clause in a SELECT statement.
@@ -32,9 +32,9 @@ func (p *Parser) parseFuncExprWindowless() nodes.Node {
 //	opt_window_clause:
 //	    WINDOW window_definition_list
 //	    | /* EMPTY */
-func (p *Parser) parseWindowClause() *nodes.List {
+func (p *Parser) parseWindowClause() (*nodes.List, error) {
 	if p.cur.Type != WINDOW {
-		return nil
+		return nil, nil
 	}
 	p.advance() // consume WINDOW
 	return p.parseWindowDefinitionList()
@@ -45,26 +45,38 @@ func (p *Parser) parseWindowClause() *nodes.List {
 //	window_definition_list:
 //	    window_definition
 //	    | window_definition_list ',' window_definition
-func (p *Parser) parseWindowDefinitionList() *nodes.List {
-	first := p.parseWindowDefinition()
+func (p *Parser) parseWindowDefinitionList() (*nodes.List, error) {
+	first, err := p.parseWindowDefinition()
+	if err != nil {
+		return nil, err
+	}
 	items := []nodes.Node{first}
 	for p.cur.Type == ',' {
 		p.advance()
-		items = append(items, p.parseWindowDefinition())
+		wd, err := p.parseWindowDefinition()
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, wd)
 	}
-	return &nodes.List{Items: items}
+	return &nodes.List{Items: items}, nil
 }
 
 // parseWindowDefinition parses a single named window definition.
 //
 //	window_definition:
 //	    ColId AS window_specification
-func (p *Parser) parseWindowDefinition() *nodes.WindowDef {
+func (p *Parser) parseWindowDefinition() (*nodes.WindowDef, error) {
 	loc := p.pos()
-	name, _ := p.parseColId()
-	p.expect(AS)
+	name, err := p.parseColId()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(AS); err != nil {
+		return nil, err
+	}
 	wd := p.parseWindowSpecification().(*nodes.WindowDef)
 	wd.Name = name
 	wd.Loc = nodes.Loc{Start: loc, End: p.pos()}
-	return wd
+	return wd, nil
 }

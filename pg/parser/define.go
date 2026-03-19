@@ -19,6 +19,7 @@ func (p *Parser) parseDefineStmtAggregate(replace bool) nodes.Node {
 	savedPrev := p.prev
 	savedNext := p.nextBuf
 	savedHasNext := p.hasNext
+	savedLexerErr := p.lexer.Err
 
 	args := p.parseAggrArgs()
 	if args != nil && p.cur.Type == '(' {
@@ -38,6 +39,7 @@ func (p *Parser) parseDefineStmtAggregate(replace bool) nodes.Node {
 	p.prev = savedPrev
 	p.nextBuf = savedNext
 	p.hasNext = savedHasNext
+	p.lexer.Err = savedLexerErr
 
 	def := p.parseOldAggrDefinition()
 	return &nodes.DefineStmt{
@@ -583,7 +585,7 @@ func (p *Parser) parseStatsParam() nodes.Node {
 		name, _ := p.parseColId()
 		return &nodes.StatsElem{Name: name}
 	}
-	expr := p.parseFuncExprWindowless()
+	expr, _ := p.parseFuncExprWindowless()
 	return &nodes.StatsElem{Expr: expr}
 }
 

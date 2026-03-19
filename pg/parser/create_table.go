@@ -1382,7 +1382,7 @@ func (p *Parser) parsePartElem() *nodes.PartitionElem {
 	}
 
 	// func_expr_windowless
-	expr := p.parseFuncExprWindowless()
+	expr, _ := p.parseFuncExprWindowless()
 	collation := p.parseOptCollate()
 	opclass := p.parseOptQualifiedName()
 	return &nodes.PartitionElem{

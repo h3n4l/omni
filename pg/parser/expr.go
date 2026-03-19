@@ -2302,7 +2302,7 @@ func (p *Parser) parseIntervalConst() nodes.Node {
 	if p.cur.Type == SCONST {
 		tok := p.advance()
 		// Parse optional interval qualifier after the string
-		optInterval := p.parseOptInterval()
+		optInterval, _ := p.parseOptInterval()
 		if optInterval != nil {
 			tn.Typmods = optInterval
 		}

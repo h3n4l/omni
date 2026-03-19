@@ -170,7 +170,7 @@ func (p *Parser) parseIndexElem() *nodes.IndexElem {
 		elem.NullsOrdering = nodes.SortByNulls(p.parseOptNullsOrder())
 	} else {
 		// func_expr_windowless (non-identifier start, e.g. special function syntax)
-		elem.Expr = p.parseFuncExprWindowless()
+		elem.Expr, _ = p.parseFuncExprWindowless()
 		elem.Collation = p.parseOptCollate()
 		elem.Opclass, elem.Opclassopts = p.parseIndexElemOpclass()
 		elem.Ordering = nodes.SortByDir(p.parseOptAscDesc())

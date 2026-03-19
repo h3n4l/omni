@@ -261,7 +261,7 @@ func (p *Parser) parseSimpleSelectCore() *nodes.SelectStmt {
 	}
 
 	// WINDOW clause
-	stmt.WindowClause = p.parseWindowClause()
+	stmt.WindowClause, _ = p.parseWindowClause()
 
 	stmt.Loc = nodes.Loc{Start: loc, End: p.prev.End}
 	return stmt
@@ -906,7 +906,7 @@ func (p *Parser) parseTableRefPrimary() nodes.Node {
 		// matches func_expr_windowless, which includes func_expr_common_subexpr.
 		// For example, SELECT * FROM user parses USER as CURRENT_USER via this path.
 		if p.isFuncExprCommonSubexprStart() {
-			funcExpr := p.parseFuncExprWindowless()
+			funcExpr, _ := p.parseFuncExprWindowless()
 			return p.finishFuncTable(funcExpr)
 		}
 		return nil
@@ -993,7 +993,7 @@ func (p *Parser) parseLateralTableRef() nodes.Node {
 	}
 
 	// LATERAL func_table func_alias_clause
-	funcExpr := p.parseFuncExprWindowless()
+	funcExpr, _ := p.parseFuncExprWindowless()
 	rf := &nodes.RangeFunction{
 		Lateral:   true,
 		Functions: &nodes.List{Items: []nodes.Node{&nodes.List{Items: []nodes.Node{funcExpr}}}},
@@ -1011,7 +1011,7 @@ func (p *Parser) parseRowsFromTable() nodes.Node {
 
 	var items []nodes.Node
 	for {
-		funcExpr := p.parseFuncExprWindowless()
+		funcExpr, _ := p.parseFuncExprWindowless()
 		var colDef *nodes.List
 		if p.cur.Type == AS && p.peekNext().Type == '(' {
 			p.advance() // AS
@@ -1081,6 +1081,12 @@ func (p *Parser) parseRelationOrFuncTable() nodes.Node {
 	// name.something
 	if p.cur.Type == '.' {
 		p.advance() // consume '.'
+		// After "name.", we may have reached the cursor — emit rule candidates.
+		if p.collectMode() {
+			p.addRuleCandidate("relation_expr")
+			p.addRuleCandidate("qualified_name")
+			p.addRuleCandidate("func_name")
+		}
 		attr, _ := p.parseAttrName()
 
 		// schema.func(
@@ -1093,6 +1099,12 @@ func (p *Parser) parseRelationOrFuncTable() nodes.Node {
 		// catalog.schema.name
 		if p.cur.Type == '.' {
 			p.advance()
+			// After "name.attr.", emit rule candidates for 3-part names.
+			if p.collectMode() {
+				p.addRuleCandidate("relation_expr")
+				p.addRuleCandidate("qualified_name")
+				p.addRuleCandidate("func_name")
+			}
 			attr2, _ := p.parseAttrName()
 
 			// catalog.schema.func(

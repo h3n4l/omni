@@ -47,7 +47,10 @@ func (p *Parser) parseTypename() (*nodes.TypeName, error) {
 		}
 	} else {
 		// opt_array_bounds: zero or more '[ ]' or '[ Iconst ]'
-		bounds := p.parseOptArrayBounds()
+		bounds, err := p.parseOptArrayBounds()
+		if err != nil {
+			return nil, err
+		}
 		if bounds != nil {
 			tn.ArrayBounds = bounds
 		}
@@ -62,7 +65,7 @@ func (p *Parser) parseTypename() (*nodes.TypeName, error) {
 //	    opt_array_bounds '[' ']'
 //	    | opt_array_bounds '[' Iconst ']'
 //	    | /* EMPTY */
-func (p *Parser) parseOptArrayBounds() *nodes.List {
+func (p *Parser) parseOptArrayBounds() (*nodes.List, error) {
 	var items []nodes.Node
 	for p.cur.Type == '[' {
 		p.advance()
@@ -70,7 +73,7 @@ func (p *Parser) parseOptArrayBounds() *nodes.List {
 			ival := p.cur.Ival
 			p.advance()
 			if _, err := p.expect(']'); err != nil {
-				return nil
+				return nil, err
 			}
 			items = append(items, &nodes.Integer{Ival: ival})
 		} else if p.cur.Type == ']' {
@@ -78,13 +81,13 @@ func (p *Parser) parseOptArrayBounds() *nodes.List {
 			items = append(items, &nodes.Integer{Ival: -1})
 		} else {
 			// Not an array bound; caller will handle
-			return nil
+			return nil, nil
 		}
 	}
 	if len(items) == 0 {
-		return nil
+		return nil, nil
 	}
-	return &nodes.List{Items: items}
+	return &nodes.List{Items: items}, nil
 }
 
 // parseSimpleTypename parses a SimpleTypename production.
@@ -125,17 +128,29 @@ func (p *Parser) parseSimpleTypename() (*nodes.TypeName, error) {
 	case DECIMAL_P:
 		p.advance()
 		tn := makeTypeName("numeric")
-		tn.Typmods = p.parseOptTypeModifiers()
+		typmods, err := p.parseOptTypeModifiers()
+		if err != nil {
+			return nil, err
+		}
+		tn.Typmods = typmods
 		return tn, nil
 	case DEC:
 		p.advance()
 		tn := makeTypeName("numeric")
-		tn.Typmods = p.parseOptTypeModifiers()
+		typmods, err := p.parseOptTypeModifiers()
+		if err != nil {
+			return nil, err
+		}
+		tn.Typmods = typmods
 		return tn, nil
 	case NUMERIC:
 		p.advance()
 		tn := makeTypeName("numeric")
-		tn.Typmods = p.parseOptTypeModifiers()
+		typmods, err := p.parseOptTypeModifiers()
+		if err != nil {
+			return nil, err
+		}
+		tn.Typmods = typmods
 		return tn, nil
 	case BIT:
 		return p.parseBit()
@@ -185,7 +200,10 @@ func (p *Parser) parseGenericType() (*nodes.TypeName, error) {
 		if err != nil {
 			return nil, err
 		}
-		typmods := p.parseOptTypeModifiers()
+		typmods, err := p.parseOptTypeModifiers()
+		if err != nil {
+			return nil, err
+		}
 		return &nodes.TypeName{
 			Names: &nodes.List{Items: []nodes.Node{
 				&nodes.String{Str: name},
@@ -196,7 +214,10 @@ func (p *Parser) parseGenericType() (*nodes.TypeName, error) {
 		}, nil
 	}
 
-	typmods := p.parseOptTypeModifiers()
+	typmods, err := p.parseOptTypeModifiers()
+	if err != nil {
+		return nil, err
+	}
 	return &nodes.TypeName{
 		Names:    &nodes.List{Items: []nodes.Node{&nodes.String{Str: name}}},
 		Typmods:  typmods,
@@ -209,16 +230,16 @@ func (p *Parser) parseGenericType() (*nodes.TypeName, error) {
 //	opt_type_modifiers:
 //	    '(' expr_list ')'
 //	    | /* EMPTY */
-func (p *Parser) parseOptTypeModifiers() *nodes.List {
+func (p *Parser) parseOptTypeModifiers() (*nodes.List, error) {
 	if p.cur.Type != '(' {
-		return nil
+		return nil, nil
 	}
 	p.advance()
 	exprs := p.parseExprList()
 	if _, err := p.expect(')'); err != nil {
-		return nil
+		return nil, err
 	}
-	return exprs
+	return exprs, nil
 }
 
 // parseExprList parses a comma-separated list of expressions.
@@ -535,7 +556,10 @@ func (p *Parser) parseIntervalType() (*nodes.TypeName, error) {
 	}
 
 	// opt_interval
-	typmods := p.parseOptInterval()
+	typmods, err := p.parseOptInterval()
+	if err != nil {
+		return nil, err
+	}
 	if typmods != nil {
 		tn.Typmods = typmods
 	}
@@ -551,24 +575,26 @@ func (p *Parser) parseIntervalType() (*nodes.TypeName, error) {
 //	    | HOUR_P TO MINUTE_P | HOUR_P TO interval_second
 //	    | MINUTE_P TO interval_second
 //	    | /* EMPTY */
-func (p *Parser) parseOptInterval() *nodes.List {
+func (p *Parser) parseOptInterval() (*nodes.List, error) {
 	switch p.cur.Type {
 	case YEAR_P:
 		p.advance()
 		if _, ok := p.match(TO); ok {
-			p.expect(MONTH_P)
+			if _, err := p.expect(MONTH_P); err != nil {
+				return nil, err
+			}
 			return &nodes.List{Items: []nodes.Node{
 				makeIntConst(int64(nodes.INTERVAL_MASK_YEAR | nodes.INTERVAL_MASK_MONTH)),
-			}}
+			}}, nil
 		}
 		return &nodes.List{Items: []nodes.Node{
 			makeIntConst(int64(nodes.INTERVAL_MASK_YEAR)),
-		}}
+		}}, nil
 	case MONTH_P:
 		p.advance()
 		return &nodes.List{Items: []nodes.Node{
 			makeIntConst(int64(nodes.INTERVAL_MASK_MONTH)),
-		}}
+		}}, nil
 	case DAY_P:
 		p.advance()
 		if _, ok := p.match(TO); ok {
@@ -577,21 +603,24 @@ func (p *Parser) parseOptInterval() *nodes.List {
 				p.advance()
 				return &nodes.List{Items: []nodes.Node{
 					makeIntConst(int64(nodes.INTERVAL_MASK_DAY | nodes.INTERVAL_MASK_HOUR)),
-				}}
+				}}, nil
 			case MINUTE_P:
 				p.advance()
 				return &nodes.List{Items: []nodes.Node{
 					makeIntConst(int64(nodes.INTERVAL_MASK_DAY | nodes.INTERVAL_MASK_HOUR | nodes.INTERVAL_MASK_MINUTE)),
-				}}
+				}}, nil
 			case SECOND_P:
-				secs := p.parseIntervalSecond()
+				secs, err := p.parseIntervalSecond()
+				if err != nil {
+					return nil, err
+				}
 				secs.Items[0] = makeIntConst(int64(nodes.INTERVAL_MASK_DAY | nodes.INTERVAL_MASK_HOUR | nodes.INTERVAL_MASK_MINUTE | nodes.INTERVAL_MASK_SECOND))
-				return secs
+				return secs, nil
 			}
 		}
 		return &nodes.List{Items: []nodes.Node{
 			makeIntConst(int64(nodes.INTERVAL_MASK_DAY)),
-		}}
+		}}, nil
 	case HOUR_P:
 		p.advance()
 		if _, ok := p.match(TO); ok {
@@ -600,32 +629,38 @@ func (p *Parser) parseOptInterval() *nodes.List {
 				p.advance()
 				return &nodes.List{Items: []nodes.Node{
 					makeIntConst(int64(nodes.INTERVAL_MASK_HOUR | nodes.INTERVAL_MASK_MINUTE)),
-				}}
+				}}, nil
 			case SECOND_P:
-				secs := p.parseIntervalSecond()
+				secs, err := p.parseIntervalSecond()
+				if err != nil {
+					return nil, err
+				}
 				secs.Items[0] = makeIntConst(int64(nodes.INTERVAL_MASK_HOUR | nodes.INTERVAL_MASK_MINUTE | nodes.INTERVAL_MASK_SECOND))
-				return secs
+				return secs, nil
 			}
 		}
 		return &nodes.List{Items: []nodes.Node{
 			makeIntConst(int64(nodes.INTERVAL_MASK_HOUR)),
-		}}
+		}}, nil
 	case MINUTE_P:
 		p.advance()
 		if _, ok := p.match(TO); ok {
 			if p.cur.Type == SECOND_P {
-				secs := p.parseIntervalSecond()
+				secs, err := p.parseIntervalSecond()
+				if err != nil {
+					return nil, err
+				}
 				secs.Items[0] = makeIntConst(int64(nodes.INTERVAL_MASK_MINUTE | nodes.INTERVAL_MASK_SECOND))
-				return secs
+				return secs, nil
 			}
 		}
 		return &nodes.List{Items: []nodes.Node{
 			makeIntConst(int64(nodes.INTERVAL_MASK_MINUTE)),
-		}}
+		}}, nil
 	case SECOND_P:
 		return p.parseIntervalSecond()
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
@@ -634,21 +669,23 @@ func (p *Parser) parseOptInterval() *nodes.List {
 //	interval_second:
 //	    SECOND_P
 //	    | SECOND_P '(' Iconst ')'
-func (p *Parser) parseIntervalSecond() *nodes.List {
+func (p *Parser) parseIntervalSecond() (*nodes.List, error) {
 	p.advance() // consume SECOND_P
 	if p.cur.Type == '(' {
 		p.advance()
 		ival := p.cur.Ival
 		p.advance() // consume ICONST
-		p.expect(')')
+		if _, err := p.expect(')'); err != nil {
+			return nil, err
+		}
 		return &nodes.List{Items: []nodes.Node{
 			makeIntConst(int64(nodes.INTERVAL_MASK_SECOND)),
 			makeIntConst(ival),
-		}}
+		}}, nil
 	}
 	return &nodes.List{Items: []nodes.Node{
 		makeIntConst(int64(nodes.INTERVAL_MASK_SECOND)),
-	}}
+	}}, nil
 }
 
 // parseTypeList parses a comma-separated list of typenames.
@@ -715,6 +752,7 @@ func (p *Parser) parseFuncType() (*nodes.TypeName, error) {
 			savedPrev := p.prev
 			savedNext := p.nextBuf
 			savedHasNext := p.hasNext
+			savedLexerErr := p.lexer.Err
 
 			name, _ := p.parseTypeFunctionName()
 			if p.cur.Type == '.' {
@@ -740,6 +778,7 @@ func (p *Parser) parseFuncType() (*nodes.TypeName, error) {
 			p.prev = savedPrev
 			p.nextBuf = savedNext
 			p.hasNext = savedHasNext
+			p.lexer.Err = savedLexerErr
 		}
 	}
 
