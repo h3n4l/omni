@@ -1876,3 +1876,112 @@ func TestOracle_Section_2_4_AlterTableConstraintOps(t *testing.T) {
 		})
 	}
 }
+
+func TestOracle_Section_2_5_AlterTableTableLevel(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	cases := []struct {
+		name  string
+		setup string
+		alter string
+		table string // table name to SHOW CREATE TABLE after alter
+	}{
+		{
+			"rename_to",
+			"CREATE TABLE t_rename_src (id INT PRIMARY KEY, name VARCHAR(100))",
+			"ALTER TABLE t_rename_src RENAME TO t_rename_dst",
+			"t_rename_dst",
+		},
+		{
+			"engine_myisam",
+			"CREATE TABLE t_engine (id INT PRIMARY KEY, val INT)",
+			"ALTER TABLE t_engine ENGINE=MyISAM",
+			"t_engine",
+		},
+		{
+			"convert_charset_utf8mb4",
+			"CREATE TABLE t_conv_cs (id INT PRIMARY KEY, name VARCHAR(100)) DEFAULT CHARSET=latin1",
+			"ALTER TABLE t_conv_cs CONVERT TO CHARACTER SET utf8mb4",
+			"t_conv_cs",
+		},
+		{
+			"default_charset_latin1",
+			"CREATE TABLE t_def_cs (id INT PRIMARY KEY, name VARCHAR(100))",
+			"ALTER TABLE t_def_cs DEFAULT CHARACTER SET latin1",
+			"t_def_cs",
+		},
+		{
+			"comment",
+			"CREATE TABLE t_comment (id INT PRIMARY KEY)",
+			"ALTER TABLE t_comment COMMENT='new comment'",
+			"t_comment",
+		},
+		{
+			"auto_increment",
+			"CREATE TABLE t_autoinc (id INT PRIMARY KEY AUTO_INCREMENT, val INT)",
+			"ALTER TABLE t_autoinc AUTO_INCREMENT=1000",
+			"t_autoinc",
+		},
+		{
+			"row_format_compressed",
+			"CREATE TABLE t_rowfmt (id INT PRIMARY KEY, val INT)",
+			"ALTER TABLE t_rowfmt ROW_FORMAT=COMPRESSED",
+			"t_rowfmt",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Clean up tables that might exist.
+			for _, tName := range []string{
+				"t_rename_src", "t_rename_dst",
+				"t_engine",
+				"t_conv_cs",
+				"t_def_cs",
+				"t_comment",
+				"t_autoinc",
+				"t_rowfmt",
+			} {
+				oracle.execSQL("DROP TABLE IF EXISTS " + tName)
+			}
+			if err := oracle.execSQL(tc.setup); err != nil {
+				t.Fatalf("oracle setup: %v", err)
+			}
+			if err := oracle.execSQL(tc.alter); err != nil {
+				t.Fatalf("oracle alter: %v", err)
+			}
+			oracleDDL, err := oracle.showCreateTable(tc.table)
+			if err != nil {
+				t.Fatalf("oracle SHOW CREATE TABLE: %v", err)
+			}
+
+			c := New()
+			c.Exec("CREATE DATABASE test", nil)
+			c.SetCurrentDatabase("test")
+			if results, _ := c.Exec(tc.setup, nil); results != nil {
+				for _, r := range results {
+					if r.Error != nil {
+						t.Fatalf("omni setup error: %v", r.Error)
+					}
+				}
+			}
+			if results, _ := c.Exec(tc.alter, nil); results != nil {
+				for _, r := range results {
+					if r.Error != nil {
+						t.Fatalf("omni alter error: %v", r.Error)
+					}
+				}
+			}
+			omniDDL := c.ShowCreateTable("test", tc.table)
+
+			if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+				t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+					oracleDDL, omniDDL)
+			}
+		})
+	}
+}

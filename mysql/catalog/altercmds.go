@@ -69,6 +69,8 @@ func (c *Catalog) execAlterCmd(db *Database, tbl *Table, cmd *nodes.AlterTableCm
 		return c.alterIndexVisibility(tbl, cmd, false)
 	case nodes.ATAlterCheckEnforced:
 		return c.alterCheckEnforced(tbl, cmd)
+	case nodes.ATConvertCharset:
+		return c.alterConvertCharset(tbl, cmd)
 	default:
 		// Unsupported alter command; silently ignore.
 		return nil
@@ -660,6 +662,10 @@ func (c *Catalog) alterTableOption(tbl *Table, cmd *nodes.AlterTableCmd) error {
 		tbl.Engine = opt.Value
 	case "charset", "character set", "default charset", "default character set":
 		tbl.Charset = opt.Value
+		// Update collation to the default for this charset.
+		if defColl, ok := defaultCollationForCharset[toLower(opt.Value)]; ok {
+			tbl.Collation = defColl
+		}
 	case "collate", "default collate":
 		tbl.Collation = opt.Value
 	case "comment":
@@ -849,6 +855,34 @@ func (c *Catalog) alterCheckEnforced(tbl *Table, cmd *nodes.AlterTableCmd) error
 		SQLState: "HY000",
 		Message:  fmt.Sprintf("Constraint '%s' does not exist.", cmd.Name),
 	}
+}
+
+// alterConvertCharset handles CONVERT TO CHARACTER SET charset [COLLATE collation].
+// This changes the table's default charset/collation AND converts all existing
+// string columns to the new charset/collation.
+func (c *Catalog) alterConvertCharset(tbl *Table, cmd *nodes.AlterTableCmd) error {
+	charset := cmd.Name
+	collation := cmd.NewName
+
+	// If no collation specified, use the default collation for the charset.
+	if collation == "" {
+		if defColl, ok := defaultCollationForCharset[toLower(charset)]; ok {
+			collation = defColl
+		}
+	}
+
+	tbl.Charset = charset
+	tbl.Collation = collation
+
+	// Convert all string-type columns to the new charset/collation.
+	for _, col := range tbl.Columns {
+		if isStringType(col.DataType) {
+			col.Charset = charset
+			col.Collation = collation
+		}
+	}
+
+	return nil
 }
 
 // Ensure strings import is used (for toLower references via strings package).

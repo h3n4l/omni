@@ -353,13 +353,13 @@ Beyond output format — the catalog must behave identically to MySQL.
 ### 2.5 ALTER TABLE — Table-level
 
 ```
-[ ] RENAME TO new_name
-[ ] ENGINE=MyISAM (change engine)
-[ ] CONVERT TO CHARACTER SET utf8mb4
-[ ] DEFAULT CHARACTER SET latin1
-[ ] COMMENT='new comment'
-[ ] AUTO_INCREMENT=1000
-[ ] ROW_FORMAT=COMPRESSED
+[x] RENAME TO new_name
+[x] ENGINE=MyISAM (change engine)
+[x] CONVERT TO CHARACTER SET utf8mb4
+[x] DEFAULT CHARACTER SET latin1
+[x] COMMENT='new comment'
+[x] AUTO_INCREMENT=1000
+[x] ROW_FORMAT=COMPRESSED
 ```
 
 ### 2.6 DROP TABLE
