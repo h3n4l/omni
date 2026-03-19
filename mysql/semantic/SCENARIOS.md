@@ -471,9 +471,9 @@ Every error must match MySQL's errno, SQLSTATE, and message format.
 ### 3.5 FK Errors
 
 ```
-[ ] 1824 (HY000) Failed to open the referenced table 'tbl'
-[ ] 1822 (HY000) A foreign key constraint fails
-[ ] FK column type mismatch detection
+[x] 1824 (HY000) Failed to open the referenced table 'tbl'
+[x] 1822 (HY000) A foreign key constraint fails
+[x] FK column type mismatch detection
 ```
 
 ### 3.6 Error Context

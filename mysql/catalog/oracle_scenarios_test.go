@@ -3715,3 +3715,156 @@ func TestOracle_Section_3_4_IndexKeyErrors(t *testing.T) {
 		oracle.execSQL("DROP TABLE IF EXISTS t_drop_key")
 	})
 }
+
+func TestOracle_Section_3_5_FKErrors(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	// Helper to extract MySQL error code and message from go-sql-driver error.
+	extractMySQLErr := func(err error) (uint16, string, string) {
+		var mysqlErr *mysqldriver.MySQLError
+		if errors.As(err, &mysqlErr) {
+			return mysqlErr.Number, string(mysqlErr.SQLState[:]), mysqlErr.Message
+		}
+		return 0, "", ""
+	}
+
+	t.Run("1824_fk_ref_table_not_found", func(t *testing.T) {
+		// Try to create a table with FK referencing a nonexistent table.
+		oracle.execSQL("DROP TABLE IF EXISTS t_fk_noref")
+		oracle.execSQL("DROP TABLE IF EXISTS t_nonexistent_parent")
+
+		oracleErr := oracle.execSQL("CREATE TABLE t_fk_noref (id INT, pid INT, FOREIGN KEY (pid) REFERENCES t_nonexistent_parent(id))")
+		if oracleErr == nil {
+			t.Fatal("oracle: expected error for FK referencing nonexistent table")
+		}
+		oracleCode, oracleState, oracleMsg := extractMySQLErr(oracleErr)
+		t.Logf("oracle error: %d (%s) %s", oracleCode, oracleState, oracleMsg)
+
+		if oracleCode != 1824 {
+			t.Fatalf("oracle: expected error code 1824, got %d", oracleCode)
+		}
+
+		// Run on omni.
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		results, _ := c.Exec("CREATE TABLE t_fk_noref (id INT, pid INT, FOREIGN KEY (pid) REFERENCES t_nonexistent_parent(id))", &ExecOptions{ContinueOnError: true})
+		if results[0].Error == nil {
+			t.Fatal("omni: expected error for FK referencing nonexistent table")
+		}
+		catErr, ok := results[0].Error.(*Error)
+		if !ok {
+			t.Fatalf("omni: expected *Error, got %T: %v", results[0].Error, results[0].Error)
+		}
+
+		// Compare error code.
+		if catErr.Code != int(oracleCode) {
+			t.Errorf("error code mismatch: oracle=%d omni=%d", oracleCode, catErr.Code)
+		}
+		// Compare SQLSTATE.
+		if catErr.SQLState != oracleState {
+			t.Errorf("SQLSTATE mismatch: oracle=%q omni=%q", oracleState, catErr.SQLState)
+		}
+		// Compare error message format.
+		if catErr.Message != oracleMsg {
+			t.Errorf("message mismatch:\n  oracle: %s\n  omni:   %s", oracleMsg, catErr.Message)
+		}
+	})
+
+	t.Run("1822_fk_missing_index_on_ref_table", func(t *testing.T) {
+		// Create a parent table without a key on the referenced column,
+		// then try to create a child with FK referencing that column.
+		oracle.execSQL("DROP TABLE IF EXISTS t_fk_child_nokey")
+		oracle.execSQL("DROP TABLE IF EXISTS t_fk_parent_nokey")
+		oracle.execSQL("CREATE TABLE t_fk_parent_nokey (id INT, val INT)")
+
+		oracleErr := oracle.execSQL("CREATE TABLE t_fk_child_nokey (id INT, pid INT, FOREIGN KEY (pid) REFERENCES t_fk_parent_nokey(val))")
+		if oracleErr == nil {
+			t.Fatal("oracle: expected error for FK referencing column without index")
+		}
+		oracleCode, oracleState, oracleMsg := extractMySQLErr(oracleErr)
+		t.Logf("oracle error: %d (%s) %s", oracleCode, oracleState, oracleMsg)
+
+		if oracleCode != 1822 {
+			t.Fatalf("oracle: expected error code 1822, got %d", oracleCode)
+		}
+
+		// Run on omni.
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_fk_parent_nokey (id INT, val INT)", nil)
+		results, _ := c.Exec("CREATE TABLE t_fk_child_nokey (id INT, pid INT, FOREIGN KEY (pid) REFERENCES t_fk_parent_nokey(val))", &ExecOptions{ContinueOnError: true})
+		if results[0].Error == nil {
+			t.Fatal("omni: expected error for FK referencing column without index")
+		}
+		catErr, ok := results[0].Error.(*Error)
+		if !ok {
+			t.Fatalf("omni: expected *Error, got %T: %v", results[0].Error, results[0].Error)
+		}
+
+		// Compare error code.
+		if catErr.Code != int(oracleCode) {
+			t.Errorf("error code mismatch: oracle=%d omni=%d", oracleCode, catErr.Code)
+		}
+		// Compare SQLSTATE.
+		if catErr.SQLState != oracleState {
+			t.Errorf("SQLSTATE mismatch: oracle=%q omni=%q", oracleState, catErr.SQLState)
+		}
+		// Compare error message format.
+		if catErr.Message != oracleMsg {
+			t.Errorf("message mismatch:\n  oracle: %s\n  omni:   %s", oracleMsg, catErr.Message)
+		}
+
+		oracle.execSQL("DROP TABLE IF EXISTS t_fk_child_nokey")
+		oracle.execSQL("DROP TABLE IF EXISTS t_fk_parent_nokey")
+	})
+
+	t.Run("3780_fk_column_type_mismatch", func(t *testing.T) {
+		// Create parent with INT PK, then try to create child with VARCHAR FK column.
+		oracle.execSQL("DROP TABLE IF EXISTS t_fk_child_mismatch")
+		oracle.execSQL("DROP TABLE IF EXISTS t_fk_parent_mismatch")
+		oracle.execSQL("CREATE TABLE t_fk_parent_mismatch (id INT PRIMARY KEY)")
+
+		oracleErr := oracle.execSQL("CREATE TABLE t_fk_child_mismatch (id INT, pid VARCHAR(50), FOREIGN KEY (pid) REFERENCES t_fk_parent_mismatch(id))")
+		if oracleErr == nil {
+			t.Fatal("oracle: expected error for FK column type mismatch")
+		}
+		oracleCode, oracleState, oracleMsg := extractMySQLErr(oracleErr)
+		t.Logf("oracle error: %d (%s) %s", oracleCode, oracleState, oracleMsg)
+
+		// Run on omni.
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_fk_parent_mismatch (id INT PRIMARY KEY)", nil)
+		results, _ := c.Exec("CREATE TABLE t_fk_child_mismatch (id INT, pid VARCHAR(50), FOREIGN KEY (pid) REFERENCES t_fk_parent_mismatch(id))", &ExecOptions{ContinueOnError: true})
+		if results[0].Error == nil {
+			t.Fatal("omni: expected error for FK column type mismatch")
+		}
+		catErr, ok := results[0].Error.(*Error)
+		if !ok {
+			t.Fatalf("omni: expected *Error, got %T: %v", results[0].Error, results[0].Error)
+		}
+
+		// Compare error code.
+		if catErr.Code != int(oracleCode) {
+			t.Errorf("error code mismatch: oracle=%d omni=%d", oracleCode, catErr.Code)
+		}
+		// Compare SQLSTATE.
+		if catErr.SQLState != oracleState {
+			t.Errorf("SQLSTATE mismatch: oracle=%q omni=%q", oracleState, catErr.SQLState)
+		}
+		// Compare error message format.
+		if catErr.Message != oracleMsg {
+			t.Errorf("message mismatch:\n  oracle: %s\n  omni:   %s", oracleMsg, catErr.Message)
+		}
+
+		oracle.execSQL("DROP TABLE IF EXISTS t_fk_child_mismatch")
+		oracle.execSQL("DROP TABLE IF EXISTS t_fk_parent_mismatch")
+	})
+}

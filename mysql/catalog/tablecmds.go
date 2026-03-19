@@ -486,8 +486,125 @@ func (c *Catalog) createTable(stmt *nodes.CreateTableStmt) error {
 		}
 	}
 
+	// Validate foreign key constraints.
+	if err := c.validateForeignKeys(db, tbl); err != nil {
+		return err
+	}
+
 	db.Tables[key] = tbl
 	return nil
+}
+
+// validateForeignKeys checks all FK constraints on a table against the referenced tables.
+// It validates: (1) referenced table exists, (2) referenced columns have an index,
+// (3) column types are compatible.
+func (c *Catalog) validateForeignKeys(db *Database, tbl *Table) error {
+	for _, con := range tbl.Constraints {
+		if con.Type != ConForeignKey {
+			continue
+		}
+		if err := c.validateSingleFK(db, tbl, con); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validateSingleFK validates a single FK constraint against its referenced table.
+func (c *Catalog) validateSingleFK(db *Database, tbl *Table, con *Constraint) error {
+	// Resolve the referenced table.
+	refDBName := con.RefDatabase
+	var refDB *Database
+	if refDBName != "" {
+		refDB = c.GetDatabase(refDBName)
+	} else {
+		refDB = db
+	}
+
+	var refTbl *Table
+	if refDB != nil {
+		// Self-referencing FK: the table being created references itself.
+		if toLower(con.RefTable) == toLower(tbl.Name) && refDB == db {
+			refTbl = tbl
+		} else {
+			refTbl = refDB.GetTable(con.RefTable)
+		}
+	}
+
+	if refTbl == nil {
+		return errFKNoRefTable(con.RefTable)
+	}
+
+	// Check that referenced columns have an index (PK or UNIQUE or KEY)
+	// that starts with the referenced columns in order.
+	if !hasIndexOnColumns(refTbl, con.RefColumns) {
+		return errFKMissingIndex(con.Name, con.RefTable)
+	}
+
+	// Check column type compatibility.
+	for i, colName := range con.Columns {
+		if i >= len(con.RefColumns) {
+			break
+		}
+		col := tbl.GetColumn(colName)
+		refCol := refTbl.GetColumn(con.RefColumns[i])
+		if col == nil || refCol == nil {
+			continue
+		}
+		if !fkTypesCompatible(col, refCol) {
+			return errFKIncompatibleColumns(colName, con.RefColumns[i], con.Name)
+		}
+	}
+
+	return nil
+}
+
+// hasIndexOnColumns checks whether a table has an index (PK, UNIQUE, or regular KEY)
+// whose leading columns match the given columns.
+func hasIndexOnColumns(tbl *Table, cols []string) bool {
+	for _, idx := range tbl.Indexes {
+		if len(idx.Columns) < len(cols) {
+			continue
+		}
+		match := true
+		for i, col := range cols {
+			if toLower(idx.Columns[i].Name) != toLower(col) {
+				match = false
+				break
+			}
+		}
+		if match {
+			return true
+		}
+	}
+	return false
+}
+
+// fkTypesCompatible checks whether two columns have compatible types for FK relationships.
+// MySQL requires that FK and referenced columns have the same storage type.
+func fkTypesCompatible(col, refCol *Column) bool {
+	// Compare base data types.
+	if col.DataType != refCol.DataType {
+		return false
+	}
+
+	// For integer types, check signedness (unsigned must match).
+	colUnsigned := strings.Contains(strings.ToLower(col.ColumnType), "unsigned")
+	refUnsigned := strings.Contains(strings.ToLower(refCol.ColumnType), "unsigned")
+	if colUnsigned != refUnsigned {
+		return false
+	}
+
+	// For string types, check charset compatibility.
+	if isStringType(col.DataType) {
+		colCharset := col.Charset
+		refCharset := refCol.Charset
+		if colCharset != "" && refCharset != "" && toLower(colCharset) != toLower(refCharset) {
+			return false
+		}
+	}
+
+	return true
 }
 
 // extractColumnNames returns column names from an AST constraint.

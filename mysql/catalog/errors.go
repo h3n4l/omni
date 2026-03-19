@@ -29,6 +29,8 @@ const (
 	ErrCantDropKey             = 1091
 	ErrCheckConstraintViolated = 3819
 	ErrFKCannotDropParent      = 3730
+	ErrFKMissingIndex          = 1822
+	ErrFKIncompatibleColumns   = 3780
 )
 
 var sqlStateMap = map[int]string{
@@ -48,6 +50,8 @@ var sqlStateMap = map[int]string{
 	ErrCantDropKey:             "42000",
 	ErrCheckConstraintViolated: "HY000",
 	ErrFKCannotDropParent:      "HY000",
+	ErrFKMissingIndex:          "HY000",
+	ErrFKIncompatibleColumns:   "HY000",
 }
 
 func sqlState(code int) string {
@@ -115,4 +119,19 @@ func errFKCannotDropParent(table, fkName, refTable string) error {
 func errCantDropKey(name string) error {
 	return &Error{Code: ErrCantDropKey, SQLState: sqlState(ErrCantDropKey),
 		Message: fmt.Sprintf("Can't DROP '%s'; check that column/key exists", name)}
+}
+
+func errFKNoRefTable(table string) error {
+	return &Error{Code: ErrFKNoRefTable, SQLState: sqlState(ErrFKNoRefTable),
+		Message: fmt.Sprintf("Failed to open the referenced table '%s'", table)}
+}
+
+func errFKMissingIndex(constraint, refTable string) error {
+	return &Error{Code: ErrFKMissingIndex, SQLState: sqlState(ErrFKMissingIndex),
+		Message: fmt.Sprintf("Failed to add the foreign key constraint. Missing index for constraint '%s' in the referenced table '%s'", constraint, refTable)}
+}
+
+func errFKIncompatibleColumns(col, refCol, constraint string) error {
+	return &Error{Code: ErrFKIncompatibleColumns, SQLState: sqlState(ErrFKIncompatibleColumns),
+		Message: fmt.Sprintf("Referencing column '%s' and referenced column '%s' in foreign key constraint '%s' are incompatible.", col, refCol, constraint)}
 }

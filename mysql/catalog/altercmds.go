@@ -415,23 +415,29 @@ func (c *Catalog) alterAddConstraint(tbl *Table, cmd *nodes.AlterTableCmd) error
 		if conName == "" {
 			conName = fmt.Sprintf("%s_ibfk_%d", tbl.Name, countFKConstraints(tbl)+1)
 		}
-		refDB := ""
+		refDBName := ""
 		refTable := ""
 		if con.RefTable != nil {
-			refDB = con.RefTable.Schema
+			refDBName = con.RefTable.Schema
 			refTable = con.RefTable.Name
 		}
-		tbl.Constraints = append(tbl.Constraints, &Constraint{
+		fkCon := &Constraint{
 			Name:       conName,
 			Type:       ConForeignKey,
 			Table:      tbl,
 			Columns:    cols,
-			RefDatabase: refDB,
+			RefDatabase: refDBName,
 			RefTable:   refTable,
 			RefColumns: con.RefColumns,
 			OnDelete:   refActionToString(con.OnDelete),
 			OnUpdate:   refActionToString(con.OnUpdate),
-		})
+		}
+		// Validate FK before adding.
+		db := tbl.Database
+		if err := c.validateSingleFK(db, tbl, fkCon); err != nil {
+			return err
+		}
+		tbl.Constraints = append(tbl.Constraints, fkCon)
 		// Add implicit backing index.
 		idxName := con.Name
 		if idxName == "" && len(cols) > 0 {
