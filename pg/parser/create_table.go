@@ -15,27 +15,33 @@ import (
 //	    | CREATE OptTemp TABLE IF NOT EXISTS qualified_name '(' OptTableElementList ')' OptInherit OptPartitionSpec OptAccessMethod OptWith OnCommitOption OptTableSpace
 //	    | CREATE OptTemp TABLE qualified_name PARTITION OF qualified_name ...
 //	    | CREATE OptTemp TABLE qualified_name OF any_name ...
-func (p *Parser) parseCreateStmt() *nodes.CreateStmt {
+func (p *Parser) parseCreateStmt() (*nodes.CreateStmt, error) {
 	p.advance() // consume CREATE
 
 	// OptTemp
 	relpersistence := p.parseOptTemp()
 
-	p.expect(TABLE)
+	if _, err := p.expect(TABLE); err != nil {
+		return nil, err
+	}
 
 	// IF NOT EXISTS
 	ifNotExists := false
 	if p.cur.Type == IF_P {
 		p.advance()
-		p.expect(NOT)
-		p.expect(EXISTS)
+		if _, err := p.expect(NOT); err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(EXISTS); err != nil {
+			return nil, err
+		}
 		ifNotExists = true
 	}
 
 	// qualified_name
 	names, err := p.parseQualifiedName()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	rv := makeRangeVarFromNames(names)
 	rv.Relpersistence = relpersistence
@@ -49,7 +55,9 @@ func (p *Parser) parseCreateStmt() *nodes.CreateStmt {
 	switch p.cur.Type {
 	case PARTITION:
 		p.advance() // PARTITION
-		p.expect(OF)
+		if _, err := p.expect(OF); err != nil {
+			return nil, err
+		}
 		return p.parseCreateStmtPartitionOf(stmt, relpersistence)
 	case OF:
 		p.advance()
@@ -57,9 +65,13 @@ func (p *Parser) parseCreateStmt() *nodes.CreateStmt {
 	}
 
 	// '(' OptTableElementList ')'
-	p.expect('(')
+	if _, err := p.expect('('); err != nil {
+		return nil, err
+	}
 	stmt.TableElts = p.parseOptTableElementList()
-	p.expect(')')
+	if _, err := p.expect(')'); err != nil {
+		return nil, err
+	}
 
 	// OptInherit
 	stmt.InhRelations = p.parseOptInherit()
@@ -79,7 +91,7 @@ func (p *Parser) parseCreateStmt() *nodes.CreateStmt {
 	// OptTableSpace
 	stmt.Tablespacename = p.parseOptTableSpace()
 
-	return stmt
+	return stmt, nil
 }
 
 // parseOptTemp parses OptTemp production.
@@ -105,11 +117,11 @@ func (p *Parser) parseOptTemp() byte {
 }
 
 // parseCreateStmtPartitionOf parses the PARTITION OF variant of CREATE TABLE.
-func (p *Parser) parseCreateStmtPartitionOf(stmt *nodes.CreateStmt, relpersistence byte) *nodes.CreateStmt {
+func (p *Parser) parseCreateStmtPartitionOf(stmt *nodes.CreateStmt, relpersistence byte) (*nodes.CreateStmt, error) {
 	// parent table name
 	parentNames, err := p.parseQualifiedName()
 	if err != nil {
-		return stmt
+		return stmt, err
 	}
 	parentRv := makeRangeVarFromNames(parentNames)
 	parentRv.Relpersistence = relpersistence
@@ -118,7 +130,9 @@ func (p *Parser) parseCreateStmtPartitionOf(stmt *nodes.CreateStmt, relpersisten
 	if p.cur.Type == '(' {
 		p.advance()
 		stmt.TableElts = p.parseTypedTableElementList()
-		p.expect(')')
+		if _, err := p.expect(')'); err != nil {
+			return nil, err
+		}
 	}
 
 	// ForValues
@@ -140,15 +154,15 @@ func (p *Parser) parseCreateStmtPartitionOf(stmt *nodes.CreateStmt, relpersisten
 	// OptTableSpace
 	stmt.Tablespacename = p.parseOptTableSpace()
 
-	return stmt
+	return stmt, nil
 }
 
 // parseCreateStmtOf parses the OF typename variant of CREATE TABLE.
-func (p *Parser) parseCreateStmtOf(stmt *nodes.CreateStmt) *nodes.CreateStmt {
+func (p *Parser) parseCreateStmtOf(stmt *nodes.CreateStmt) (*nodes.CreateStmt, error) {
 	// any_name -> TypeName
 	anyName, err := p.parseAnyName()
 	if err != nil {
-		return stmt
+		return stmt, err
 	}
 	stmt.OfTypename = makeTypeNameFromNameList(anyName)
 
@@ -156,7 +170,9 @@ func (p *Parser) parseCreateStmtOf(stmt *nodes.CreateStmt) *nodes.CreateStmt {
 	if p.cur.Type == '(' {
 		p.advance()
 		stmt.TableElts = p.parseTypedTableElementList()
-		p.expect(')')
+		if _, err := p.expect(')'); err != nil {
+			return nil, err
+		}
 	}
 
 	// OptAccessMethod
@@ -171,7 +187,7 @@ func (p *Parser) parseCreateStmtOf(stmt *nodes.CreateStmt) *nodes.CreateStmt {
 	// OptTableSpace
 	stmt.Tablespacename = p.parseOptTableSpace()
 
-	return stmt
+	return stmt, nil
 }
 
 // makeTypeNameFromNameList creates a TypeName from an any_name list.

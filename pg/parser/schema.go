@@ -74,10 +74,12 @@ func (p *Parser) parseSchemaStmt() nodes.Node {
 		return p.parseCreateOrCTAS()
 	case INDEX, UNIQUE:
 		p.advance() // consume CREATE
-		return p.parseIndexStmt()
+		n, _ := p.parseIndexStmt()
+		return n
 	case SEQUENCE:
 		p.advance() // consume CREATE
-		return p.parseCreateSeqStmt(byte(nodes.RELPERSISTENCE_PERMANENT))
+		n, _ := p.parseCreateSeqStmt(byte(nodes.RELPERSISTENCE_PERMANENT))
+		return n
 	case VIEW:
 		p.advance() // consume CREATE
 		return p.parseViewStmt(false)

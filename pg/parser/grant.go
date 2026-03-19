@@ -742,13 +742,13 @@ func (p *Parser) parseAlterRoleSetStmtSuffix(role *nodes.RoleSpec, dbname string
 	var setstmt *nodes.VariableSetStmt
 	if p.cur.Type == SET {
 		p.advance()
-		result := p.parseVariableSetStmt()
+		result, _ := p.parseVariableSetStmt()
 		if vs, ok := result.(*nodes.VariableSetStmt); ok {
 			setstmt = vs
 		}
 	} else if p.cur.Type == RESET {
 		p.advance()
-		result := p.parseVariableResetStmt()
+		result, _ := p.parseVariableResetStmt()
 		if vs, ok := result.(*nodes.VariableSetStmt); ok {
 			setstmt = vs
 		}

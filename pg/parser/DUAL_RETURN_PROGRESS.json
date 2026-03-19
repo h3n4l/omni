@@ -45,7 +45,7 @@
       "name": "select_insert_update",
       "files": ["select.go", "insert.go", "update.go"],
       "function_count": 90,
-      "status": "pending",
+      "status": "done",
       "notes": "DML statement parsing, depends on expr"
     },
     {

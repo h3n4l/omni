@@ -192,7 +192,8 @@ func (p *Parser) parseStmt() nodes.Node {
 		case EVENT:
 			return p.parseAlterEventTriggerOwner()
 		case SYSTEM_P:
-			return p.parseAlterSystemStmt()
+			n, _ := p.parseAlterSystemStmt()
+			return n
 		case TABLESPACE:
 			return p.parseAlterTablespaceOwner()
 		case TRIGGER:
@@ -229,15 +230,19 @@ func (p *Parser) parseStmt() nodes.Node {
 		p.advance() // consume SET
 		// SET CONSTRAINTS is a different statement type.
 		if p.cur.Type == CONSTRAINTS {
-			return p.parseConstraintsSetStmt()
+			n, _ := p.parseConstraintsSetStmt()
+			return n
 		}
-		return p.parseVariableSetStmt()
+		n, _ := p.parseVariableSetStmt()
+		return n
 	case SHOW:
 		p.advance() // consume SHOW
-		return p.parseVariableShowStmt()
+		n, _ := p.parseVariableShowStmt()
+		return n
 	case RESET:
 		p.advance() // consume RESET
-		return p.parseVariableResetStmt()
+		n, _ := p.parseVariableResetStmt()
+		return n
 	case GRANT:
 		p.advance() // consume GRANT
 		return p.parseGrantStmt()
@@ -276,13 +281,17 @@ func (p *Parser) parseStmt() nodes.Node {
 	case CLOSE:
 		return p.parseClosePortalStmt()
 	case VACUUM:
-		return p.parseVacuumStmt()
+		n, _ := p.parseVacuumStmt()
+		return n
 	case ANALYZE, ANALYSE:
-		return p.parseAnalyzeStmt()
+		n, _ := p.parseAnalyzeStmt()
+		return n
 	case CLUSTER:
-		return p.parseClusterStmt()
+		n, _ := p.parseClusterStmt()
+		return n
 	case REINDEX:
-		return p.parseReindexStmt()
+		n, _ := p.parseReindexStmt()
+		return n
 	case COPY:
 		p.advance() // consume COPY
 		return p.parseCopyStmt()
@@ -363,7 +372,8 @@ func (p *Parser) parseCreateDispatch() nodes.Node {
 		p.expect(REPLACE)
 		switch p.cur.Type {
 		case FUNCTION, PROCEDURE:
-			return p.parseCreateFunctionStmt(true)
+			n, _ := p.parseCreateFunctionStmt(true)
+			return n
 		case TRIGGER, CONSTRAINT:
 			return p.parseCreateTrigStmt(true)
 		case TRUSTED, PROCEDURAL, LANGUAGE:
@@ -406,19 +416,23 @@ func (p *Parser) parseCreateDispatch() nodes.Node {
 	case UNIQUE:
 		// CREATE UNIQUE INDEX ...
 		p.advance() // consume CREATE
-		return p.parseIndexStmt()
+		n, _ := p.parseIndexStmt()
+		return n
 	case INDEX:
 		// CREATE INDEX ...
 		p.advance() // consume CREATE
-		return p.parseIndexStmt()
+		n, _ := p.parseIndexStmt()
+		return n
 	case SEQUENCE:
 		// CREATE SEQUENCE ...
 		p.advance() // consume CREATE
-		return p.parseCreateSeqStmt(byte(nodes.RELPERSISTENCE_PERMANENT))
+		n, _ := p.parseCreateSeqStmt(byte(nodes.RELPERSISTENCE_PERMANENT))
+		return n
 	case DOMAIN_P:
 		// CREATE DOMAIN ...
 		p.advance() // consume CREATE
-		return p.parseCreateDomainStmt()
+		n, _ := p.parseCreateDomainStmt()
+		return n
 	case TYPE_P:
 		// CREATE TYPE ... (base, composite, enum, range, shell)
 		p.advance() // consume CREATE
@@ -446,11 +460,13 @@ func (p *Parser) parseCreateDispatch() nodes.Node {
 	case FUNCTION:
 		// CREATE FUNCTION ...
 		p.advance() // consume CREATE
-		return p.parseCreateFunctionStmt(false)
+		n, _ := p.parseCreateFunctionStmt(false)
+		return n
 	case PROCEDURE:
 		// CREATE PROCEDURE ...
 		p.advance() // consume CREATE
-		return p.parseCreateFunctionStmt(false)
+		n, _ := p.parseCreateFunctionStmt(false)
+		return n
 	case DATABASE:
 		// CREATE DATABASE ...
 		p.advance() // consume CREATE
@@ -586,7 +602,8 @@ func (p *Parser) parseCreateTempDispatch() nodes.Node {
 
 	if p.cur.Type == SEQUENCE {
 		// CREATE TEMP SEQUENCE ...
-		return p.parseCreateSeqStmt(relpersistence)
+		n, _ := p.parseCreateSeqStmt(relpersistence)
+		return n
 	}
 
 	// CREATE TEMP TABLE ...
@@ -915,10 +932,12 @@ func (p *Parser) finishCreateStmt(names *nodes.List, relpersistence byte, ifNotE
 	case PARTITION:
 		p.advance()
 		p.expect(OF)
-		return p.parseCreateStmtPartitionOf(stmt, relpersistence)
+		n, _ := p.parseCreateStmtPartitionOf(stmt, relpersistence)
+		return n
 	case OF:
 		p.advance()
-		return p.parseCreateStmtOf(stmt)
+		n, _ := p.parseCreateStmtOf(stmt)
+		return n
 	}
 
 	// Should have '(' but we already handled that case

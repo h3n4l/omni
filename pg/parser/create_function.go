@@ -20,13 +20,15 @@ import (
 //
 // The CREATE and optional OR REPLACE have already been consumed.
 // isReplace indicates whether OR REPLACE was present.
-func (p *Parser) parseCreateFunctionStmt(isReplace bool) *nodes.CreateFunctionStmt {
+func (p *Parser) parseCreateFunctionStmt(isReplace bool) (*nodes.CreateFunctionStmt, error) {
 	isProcedure := false
 	if p.cur.Type == PROCEDURE {
 		isProcedure = true
 		p.advance()
 	} else {
-		p.expect(FUNCTION)
+		if _, err := p.expect(FUNCTION); err != nil {
+			return nil, err
+		}
 	}
 
 	// func_name
@@ -55,7 +57,7 @@ func (p *Parser) parseCreateFunctionStmt(isReplace bool) *nodes.CreateFunctionSt
 		} else {
 			stmt.Options.Items = append(stmt.Options.Items, procDef)
 		}
-		return stmt
+		return stmt, nil
 	}
 
 	// FUNCTION: check for RETURNS
@@ -64,9 +66,13 @@ func (p *Parser) parseCreateFunctionStmt(isReplace bool) *nodes.CreateFunctionSt
 		if p.cur.Type == TABLE {
 			// RETURNS TABLE '(' table_func_column_list ')'
 			p.advance()
-			p.expect('(')
+			if _, err := p.expect('('); err != nil {
+				return nil, err
+			}
 			tableCols := p.parseTableFuncColumnList()
-			p.expect(')')
+			if _, err := p.expect(')'); err != nil {
+				return nil, err
+			}
 			// Add table columns to parameter list
 			if params == nil {
 				stmt.Parameters = tableCols
@@ -83,14 +89,17 @@ func (p *Parser) parseCreateFunctionStmt(isReplace bool) *nodes.CreateFunctionSt
 			}
 		} else {
 			// RETURNS func_return
-			retType, _ := p.parseFuncType()
+			retType, err := p.parseFuncType()
+			if err != nil {
+				return nil, err
+			}
 			stmt.ReturnType = retType
 		}
 	}
 
 	stmt.Options = p.parseOptCreatefuncOptList()
 	stmt.SqlBody = p.parseOptRoutineBody()
-	return stmt
+	return stmt, nil
 }
 
 // parseFuncNameForCreate parses a function name for CREATE FUNCTION.
@@ -516,7 +525,7 @@ func (p *Parser) parseCommonFuncOptItem() *nodes.DefElem {
 	case RESET:
 		// VariableResetStmt (RESET reset_rest)
 		p.advance() // consume RESET
-		arg := p.parseVariableResetStmt()
+		arg, _ := p.parseVariableResetStmt()
 		return &nodes.DefElem{Defname: "set", Arg: arg}
 	}
 	return nil

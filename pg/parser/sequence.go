@@ -11,18 +11,27 @@ import (
 //	CreateSeqStmt:
 //	    CREATE OptTemp SEQUENCE qualified_name OptSeqOptList
 //	    | CREATE OptTemp SEQUENCE IF NOT EXISTS qualified_name OptSeqOptList
-func (p *Parser) parseCreateSeqStmt(relpersistence byte) nodes.Node {
-	p.expect(SEQUENCE) // consume SEQUENCE
+func (p *Parser) parseCreateSeqStmt(relpersistence byte) (nodes.Node, error) {
+	if _, err := p.expect(SEQUENCE); err != nil {
+		return nil, err
+	}
 
 	ifNotExists := false
 	if p.cur.Type == IF_P {
 		p.advance()
-		p.expect(NOT)
-		p.expect(EXISTS)
+		if _, err := p.expect(NOT); err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(EXISTS); err != nil {
+			return nil, err
+		}
 		ifNotExists = true
 	}
 
-	names, _ := p.parseQualifiedName()
+	names, err := p.parseQualifiedName()
+	if err != nil {
+		return nil, err
+	}
 	rv := makeRangeVarFromNames(names)
 	rv.Relpersistence = relpersistence
 
@@ -32,7 +41,7 @@ func (p *Parser) parseCreateSeqStmt(relpersistence byte) nodes.Node {
 		Sequence:    rv,
 		Options:     options,
 		IfNotExists: ifNotExists,
-	}
+	}, nil
 }
 
 // parseOptSeqOptList parses an optional sequence option list.
@@ -62,10 +71,13 @@ func (p *Parser) isSeqOptStart() bool {
 //
 //	CreateDomainStmt:
 //	    CREATE DOMAIN any_name opt_as Typename opt_column_constraints
-func (p *Parser) parseCreateDomainStmt() nodes.Node {
+func (p *Parser) parseCreateDomainStmt() (nodes.Node, error) {
 	p.advance() // consume DOMAIN
 
-	domainname, _ := p.parseAnyName()
+	domainname, err := p.parseAnyName()
+	if err != nil {
+		return nil, err
+	}
 
 	// opt_as: AS | /* EMPTY */
 	if p.cur.Type == AS {
@@ -74,7 +86,7 @@ func (p *Parser) parseCreateDomainStmt() nodes.Node {
 
 	typname, err := p.parseTypename()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	constraints := p.parseOptColumnConstraints()
@@ -83,7 +95,7 @@ func (p *Parser) parseCreateDomainStmt() nodes.Node {
 		Domainname:  domainname,
 		Typname:     typname,
 		Constraints: constraints,
-	}
+	}, nil
 }
 
 // parseCreateTypeEnumStmt parses a CREATE TYPE ... AS ENUM statement.
@@ -91,23 +103,34 @@ func (p *Parser) parseCreateDomainStmt() nodes.Node {
 //
 //	CreateEnumStmt:
 //	    CREATE TYPE any_name AS ENUM '(' opt_enum_val_list ')'
-func (p *Parser) parseCreateTypeEnumStmt() nodes.Node {
+func (p *Parser) parseCreateTypeEnumStmt() (nodes.Node, error) {
 	p.advance() // consume TYPE
 
-	typeName, _ := p.parseAnyName()
+	typeName, err := p.parseAnyName()
+	if err != nil {
+		return nil, err
+	}
 
-	p.expect(AS)
-	p.expect(ENUM_P)
-	p.expect('(')
+	if _, err := p.expect(AS); err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(ENUM_P); err != nil {
+		return nil, err
+	}
+	if _, err := p.expect('('); err != nil {
+		return nil, err
+	}
 
 	vals := p.parseOptEnumValList()
 
-	p.expect(')')
+	if _, err := p.expect(')'); err != nil {
+		return nil, err
+	}
 
 	return &nodes.CreateEnumStmt{
 		TypeName: typeName,
 		Vals:     vals,
-	}
+	}, nil
 }
 
 // parseSeqOptList parses a sequence option list.

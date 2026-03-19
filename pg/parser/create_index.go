@@ -15,7 +15,7 @@ import (
 //	    [ WITH ( storage_parameter [= value] [, ... ] ) ]
 //	    [ TABLESPACE tablespace_name ]
 //	    [ WHERE predicate ]
-func (p *Parser) parseIndexStmt() *nodes.IndexStmt {
+func (p *Parser) parseIndexStmt() (*nodes.IndexStmt, error) {
 	// CREATE already consumed by parseCreateDispatch
 
 	// opt_unique
@@ -25,7 +25,9 @@ func (p *Parser) parseIndexStmt() *nodes.IndexStmt {
 		unique = true
 	}
 
-	p.expect(INDEX)
+	if _, err := p.expect(INDEX); err != nil {
+		return nil, err
+	}
 
 	// opt_concurrently
 	concurrent := false
@@ -39,8 +41,12 @@ func (p *Parser) parseIndexStmt() *nodes.IndexStmt {
 	idxname := ""
 	if p.cur.Type == IF_P {
 		p.advance()
-		p.expect(NOT)
-		p.expect(EXISTS)
+		if _, err := p.expect(NOT); err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(EXISTS); err != nil {
+			return nil, err
+		}
 		ifNotExists = true
 		idxname, _ = p.parseName()
 	} else if p.cur.Type == ON {
@@ -51,10 +57,15 @@ func (p *Parser) parseIndexStmt() *nodes.IndexStmt {
 	}
 
 	// ON
-	p.expect(ON)
+	if _, err := p.expect(ON); err != nil {
+		return nil, err
+	}
 
 	// relation_expr
-	rel, _ := p.parseRelationExpr()
+	rel, err := p.parseRelationExpr()
+	if err != nil {
+		return nil, err
+	}
 
 	// access_method_clause
 	accessMethod := ""
@@ -64,9 +75,13 @@ func (p *Parser) parseIndexStmt() *nodes.IndexStmt {
 	}
 
 	// '(' index_params ')'
-	p.expect('(')
+	if _, err := p.expect('('); err != nil {
+		return nil, err
+	}
 	indexParams := p.parseIndexParams()
-	p.expect(')')
+	if _, err := p.expect(')'); err != nil {
+		return nil, err
+	}
 
 	// opt_unique_null_treatment
 	nullsNotDistinct := p.parseOptUniqueNullTreatment()
@@ -75,9 +90,13 @@ func (p *Parser) parseIndexStmt() *nodes.IndexStmt {
 	var includeParams *nodes.List
 	if p.cur.Type == INCLUDE {
 		p.advance()
-		p.expect('(')
+		if _, err := p.expect('('); err != nil {
+			return nil, err
+		}
 		includeParams = p.parseIndexParams()
-		p.expect(')')
+		if _, err := p.expect(')'); err != nil {
+			return nil, err
+		}
 	}
 
 	// opt_reloptions
@@ -109,7 +128,7 @@ func (p *Parser) parseIndexStmt() *nodes.IndexStmt {
 		Nulls_not_distinct:   nullsNotDistinct,
 		Concurrent:           concurrent,
 		IfNotExists:          ifNotExists,
-	}
+	}, nil
 }
 
 // parseIndexParams parses a comma-separated list of index elements.

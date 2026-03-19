@@ -12,7 +12,7 @@ import (
 //	SET set_rest
 //	| SET LOCAL set_rest
 //	| SET SESSION set_rest
-func (p *Parser) parseVariableSetStmt() nodes.Node {
+func (p *Parser) parseVariableSetStmt() (nodes.Node, error) {
 	isLocal := false
 
 	switch p.cur.Type {
@@ -42,14 +42,14 @@ func (p *Parser) parseVariableSetStmt() nodes.Node {
 
 	stmt := p.parseSetRest()
 	if stmt == nil {
-		return nil
+		return nil, nil
 	}
 
 	vs, ok := stmt.(*nodes.VariableSetStmt)
 	if ok {
 		vs.IsLocal = isLocal
 	}
-	return stmt
+	return stmt, nil
 }
 
 // parseSetRest parses set_rest.
@@ -523,31 +523,39 @@ func (p *Parser) parseOptEncoding() string {
 //	| SHOW TRANSACTION ISOLATION LEVEL
 //	| SHOW SESSION AUTHORIZATION
 //	| SHOW ALL
-func (p *Parser) parseVariableShowStmt() nodes.Node {
+func (p *Parser) parseVariableShowStmt() (nodes.Node, error) {
 	switch p.cur.Type {
 	case TIME:
 		p.advance() // consume TIME
-		p.expect(ZONE)
-		return &nodes.VariableShowStmt{Name: "timezone"}
+		if _, err := p.expect(ZONE); err != nil {
+			return nil, err
+		}
+		return &nodes.VariableShowStmt{Name: "timezone"}, nil
 
 	case TRANSACTION:
 		p.advance() // consume TRANSACTION
-		p.expect(ISOLATION)
-		p.expect(LEVEL)
-		return &nodes.VariableShowStmt{Name: "transaction_isolation"}
+		if _, err := p.expect(ISOLATION); err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(LEVEL); err != nil {
+			return nil, err
+		}
+		return &nodes.VariableShowStmt{Name: "transaction_isolation"}, nil
 
 	case SESSION:
 		p.advance() // consume SESSION
-		p.expect(AUTHORIZATION)
-		return &nodes.VariableShowStmt{Name: "session_authorization"}
+		if _, err := p.expect(AUTHORIZATION); err != nil {
+			return nil, err
+		}
+		return &nodes.VariableShowStmt{Name: "session_authorization"}, nil
 
 	case ALL:
 		p.advance()
-		return &nodes.VariableShowStmt{Name: "all"}
+		return &nodes.VariableShowStmt{Name: "all"}, nil
 
 	default:
 		name := p.parseVarName()
-		return &nodes.VariableShowStmt{Name: name}
+		return &nodes.VariableShowStmt{Name: name}, nil
 	}
 }
 
@@ -564,38 +572,46 @@ func (p *Parser) parseVariableShowStmt() nodes.Node {
 //	| TIME ZONE
 //	| TRANSACTION ISOLATION LEVEL
 //	| SESSION AUTHORIZATION
-func (p *Parser) parseVariableResetStmt() nodes.Node {
+func (p *Parser) parseVariableResetStmt() (nodes.Node, error) {
 	switch p.cur.Type {
 	case TIME:
 		p.advance() // consume TIME
-		p.expect(ZONE)
+		if _, err := p.expect(ZONE); err != nil {
+			return nil, err
+		}
 		return &nodes.VariableSetStmt{
 			Kind: nodes.VAR_RESET,
 			Name: "timezone",
-		}
+		}, nil
 
 	case TRANSACTION:
 		p.advance() // consume TRANSACTION
-		p.expect(ISOLATION)
-		p.expect(LEVEL)
+		if _, err := p.expect(ISOLATION); err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(LEVEL); err != nil {
+			return nil, err
+		}
 		return &nodes.VariableSetStmt{
 			Kind: nodes.VAR_RESET,
 			Name: "transaction_isolation",
-		}
+		}, nil
 
 	case SESSION:
 		p.advance() // consume SESSION
-		p.expect(AUTHORIZATION)
+		if _, err := p.expect(AUTHORIZATION); err != nil {
+			return nil, err
+		}
 		return &nodes.VariableSetStmt{
 			Kind: nodes.VAR_RESET,
 			Name: "session_authorization",
-		}
+		}, nil
 
 	case ALL:
 		p.advance()
 		return &nodes.VariableSetStmt{
 			Kind: nodes.VAR_RESET_ALL,
-		}
+		}, nil
 
 	default:
 		// generic_reset: var_name
@@ -603,7 +619,7 @@ func (p *Parser) parseVariableResetStmt() nodes.Node {
 		return &nodes.VariableSetStmt{
 			Kind: nodes.VAR_RESET,
 			Name: name,
-		}
+		}, nil
 	}
 }
 
@@ -623,7 +639,7 @@ func (p *Parser) parseVariableResetStmt() nodes.Node {
 //
 //	DEFERRED
 //	| IMMEDIATE
-func (p *Parser) parseConstraintsSetStmt() nodes.Node {
+func (p *Parser) parseConstraintsSetStmt() (nodes.Node, error) {
 	p.advance() // consume CONSTRAINTS
 
 	var constraints *nodes.List
@@ -639,14 +655,16 @@ func (p *Parser) parseConstraintsSetStmt() nodes.Node {
 		p.advance()
 		deferred = true
 	} else {
-		p.expect(IMMEDIATE)
+		if _, err := p.expect(IMMEDIATE); err != nil {
+			return nil, err
+		}
 		deferred = false
 	}
 
 	return &nodes.ConstraintsSetStmt{
 		Constraints: constraints,
 		Deferred:    deferred,
-	}
+	}, nil
 }
 
 // parseConstraintsNameList parses a qualified_name_list for SET CONSTRAINTS.
@@ -676,7 +694,7 @@ func (p *Parser) parseConstraintsNameList() *nodes.List {
 //	ALTER SYSTEM SET configuration_parameter { TO | = } { value [, ...] | DEFAULT }
 //	ALTER SYSTEM RESET configuration_parameter
 //	ALTER SYSTEM RESET ALL
-func (p *Parser) parseAlterSystemStmt() nodes.Node {
+func (p *Parser) parseAlterSystemStmt() (nodes.Node, error) {
 	p.advance() // consume SYSTEM_P
 
 	switch p.cur.Type {
@@ -685,7 +703,7 @@ func (p *Parser) parseAlterSystemStmt() nodes.Node {
 		setstmt := p.parseGenericSetOrFromCurrent()
 		return &nodes.AlterSystemStmt{
 			Setstmt: setstmt.(*nodes.VariableSetStmt),
-		}
+		}, nil
 	case RESET:
 		p.advance() // consume RESET
 		var setstmt *nodes.VariableSetStmt
@@ -703,9 +721,9 @@ func (p *Parser) parseAlterSystemStmt() nodes.Node {
 		}
 		return &nodes.AlterSystemStmt{
 			Setstmt: setstmt,
-		}
+		}, nil
 	default:
-		return nil
+		return nil, p.syntaxErrorAtCur()
 	}
 }
 

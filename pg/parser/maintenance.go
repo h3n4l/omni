@@ -9,20 +9,22 @@ import (
 //	VacuumStmt:
 //	    VACUUM opt_full opt_freeze opt_verbose opt_analyze opt_vacuum_relation_list
 //	    | VACUUM '(' utility_option_list ')' opt_vacuum_relation_list
-func (p *Parser) parseVacuumStmt() nodes.Node {
+func (p *Parser) parseVacuumStmt() (nodes.Node, error) {
 	p.advance() // consume VACUUM
 
 	// VACUUM '(' utility_option_list ')' opt_vacuum_relation_list
 	if p.cur.Type == '(' {
 		p.advance() // consume '('
 		opts := p.parseUtilityOptionList()
-		p.expect(')')
+		if _, err := p.expect(')'); err != nil {
+			return nil, err
+		}
 		rels := p.parseOptVacuumRelationList()
 		return &nodes.VacuumStmt{
 			Options:     opts,
 			Rels:        rels,
 			IsVacuumCmd: true,
-		}
+		}, nil
 	}
 
 	// VACUUM opt_full opt_freeze opt_verbose opt_analyze opt_vacuum_relation_list
@@ -57,7 +59,7 @@ func (p *Parser) parseVacuumStmt() nodes.Node {
 	}
 
 	n.Rels = p.parseOptVacuumRelationList()
-	return n
+	return n, nil
 }
 
 // parseAnalyzeStmt parses an ANALYZE/ANALYSE statement.
@@ -65,20 +67,22 @@ func (p *Parser) parseVacuumStmt() nodes.Node {
 //	AnalyzeStmt:
 //	    analyze_keyword opt_verbose opt_vacuum_relation_list
 //	    | analyze_keyword '(' utility_option_list ')' opt_vacuum_relation_list
-func (p *Parser) parseAnalyzeStmt() nodes.Node {
+func (p *Parser) parseAnalyzeStmt() (nodes.Node, error) {
 	p.advance() // consume ANALYZE/ANALYSE
 
 	// analyze_keyword '(' utility_option_list ')' opt_vacuum_relation_list
 	if p.cur.Type == '(' {
 		p.advance() // consume '('
 		opts := p.parseUtilityOptionList()
-		p.expect(')')
+		if _, err := p.expect(')'); err != nil {
+			return nil, err
+		}
 		rels := p.parseOptVacuumRelationList()
 		return &nodes.VacuumStmt{
 			Options:     opts,
 			Rels:        rels,
 			IsVacuumCmd: false,
-		}
+		}, nil
 	}
 
 	// analyze_keyword opt_verbose opt_vacuum_relation_list
@@ -91,7 +95,7 @@ func (p *Parser) parseAnalyzeStmt() nodes.Node {
 	}
 
 	n.Rels = p.parseOptVacuumRelationList()
-	return n
+	return n, nil
 }
 
 // parseOptVacuumRelationList parses opt_vacuum_relation_list.
@@ -153,20 +157,22 @@ func (p *Parser) parseVacuumRelation() *nodes.VacuumRelation {
 //	    | CLUSTER opt_verbose qualified_name cluster_index_specification
 //	    | CLUSTER opt_verbose
 //	    | CLUSTER opt_verbose name ON qualified_name
-func (p *Parser) parseClusterStmt() nodes.Node {
+func (p *Parser) parseClusterStmt() (nodes.Node, error) {
 	p.advance() // consume CLUSTER
 
 	// CLUSTER '(' utility_option_list ')' [qualified_name cluster_index_specification]
 	if p.cur.Type == '(' {
 		p.advance() // consume '('
 		params := p.parseUtilityOptionList()
-		p.expect(')')
+		if _, err := p.expect(')'); err != nil {
+			return nil, err
+		}
 
 		// Check if a qualified_name follows
 		if p.isColId() {
 			names, err := p.parseQualifiedName()
 			if err != nil {
-				return &nodes.ClusterStmt{Params: params}
+				return &nodes.ClusterStmt{Params: params}, nil
 			}
 			rv := makeRangeVarFromNames(names)
 			idxName := p.parseClusterIndexSpecification()
@@ -174,9 +180,9 @@ func (p *Parser) parseClusterStmt() nodes.Node {
 				Relation:  rv,
 				Indexname: idxName,
 				Params:    params,
-			}
+			}, nil
 		}
-		return &nodes.ClusterStmt{Params: params}
+		return &nodes.ClusterStmt{Params: params}, nil
 	}
 
 	// opt_verbose
@@ -193,7 +199,7 @@ func (p *Parser) parseClusterStmt() nodes.Node {
 		if verbose {
 			n.Params = &nodes.List{Items: []nodes.Node{makeDefElem("verbose", nil)}}
 		}
-		return n
+		return n, nil
 	}
 
 	// We have a name. Could be:
@@ -209,7 +215,7 @@ func (p *Parser) parseClusterStmt() nodes.Node {
 		if verbose {
 			n.Params = &nodes.List{Items: []nodes.Node{makeDefElem("verbose", nil)}}
 		}
-		return n
+		return n, nil
 	}
 
 	if p.cur.Type == ON {
@@ -222,7 +228,7 @@ func (p *Parser) parseClusterStmt() nodes.Node {
 		}
 		tableNames, err := p.parseQualifiedName()
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		rv := makeRangeVarFromNames(tableNames)
 		n := &nodes.ClusterStmt{
@@ -232,7 +238,7 @@ func (p *Parser) parseClusterStmt() nodes.Node {
 		if verbose {
 			n.Params = &nodes.List{Items: []nodes.Node{makeDefElem("verbose", nil)}}
 		}
-		return n
+		return n, nil
 	}
 
 	// CLUSTER [VERBOSE] qualified_name [USING name]
@@ -245,7 +251,7 @@ func (p *Parser) parseClusterStmt() nodes.Node {
 	if verbose {
 		n.Params = &nodes.List{Items: []nodes.Node{makeDefElem("verbose", nil)}}
 	}
-	return n
+	return n, nil
 }
 
 // parseClusterIndexSpecification parses cluster_index_specification.
@@ -268,7 +274,7 @@ func (p *Parser) parseClusterIndexSpecification() string {
 //	    REINDEX opt_reindex_option_list reindex_target_type opt_concurrently qualified_name
 //	    | REINDEX opt_reindex_option_list SCHEMA opt_concurrently name
 //	    | REINDEX opt_reindex_option_list reindex_target_multitable opt_concurrently name
-func (p *Parser) parseReindexStmt() nodes.Node {
+func (p *Parser) parseReindexStmt() (nodes.Node, error) {
 	p.advance() // consume REINDEX
 
 	// opt_reindex_option_list: '(' utility_option_list ')' | /* EMPTY */
@@ -276,7 +282,9 @@ func (p *Parser) parseReindexStmt() nodes.Node {
 	if p.cur.Type == '(' {
 		p.advance()
 		params = p.parseUtilityOptionList()
-		p.expect(')')
+		if _, err := p.expect(')'); err != nil {
+			return nil, err
+		}
 	}
 
 	switch p.cur.Type {
@@ -296,14 +304,14 @@ func (p *Parser) parseReindexStmt() nodes.Node {
 
 		names, err := p.parseQualifiedName()
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		rv := makeRangeVarFromNames(names)
 		return &nodes.ReindexStmt{
 			Kind:     kind,
 			Relation: rv,
 			Params:   params,
-		}
+		}, nil
 
 	case SCHEMA:
 		p.advance()
@@ -319,7 +327,7 @@ func (p *Parser) parseReindexStmt() nodes.Node {
 			Kind:   nodes.REINDEX_OBJECT_SCHEMA,
 			Name:   name,
 			Params: params,
-		}
+		}, nil
 
 	case SYSTEM_P, DATABASE:
 		// reindex_target_multitable
@@ -340,10 +348,10 @@ func (p *Parser) parseReindexStmt() nodes.Node {
 			Kind:   kind,
 			Name:   name,
 			Params: params,
-		}
+		}, nil
 
 	default:
-		return nil
+		return nil, p.syntaxErrorAtCur()
 	}
 }
 
@@ -462,4 +470,3 @@ func (p *Parser) parseOptBooleanOrString() string {
 		return p.parseNonReservedWordOrSconst()
 	}
 }
-
