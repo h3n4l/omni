@@ -248,6 +248,9 @@ func (p *Parser) parseSimpleSelectCore() (*nodes.SelectStmt, error) {
 		if err != nil {
 			return nil, err
 		}
+		if stmt.FromClause == nil {
+			return nil, p.syntaxErrorAtCur()
+		}
 		if p.collectMode() {
 			for _, t := range []int{
 				WHERE, GROUP_P, HAVING, WINDOW,
@@ -764,7 +767,11 @@ func (p *Parser) parseCommonTableExpr() (*nodes.CommonTableExpr, error) {
 	if _, err := p.expect('('); err != nil {
 		return nil, err
 	}
-	cte.Ctequery = p.parsePreparableStmt()
+	ctequery, err := p.parsePreparableStmt()
+	if err != nil {
+		return nil, err
+	}
+	cte.Ctequery = ctequery
 	if _, err := p.expect(')'); err != nil {
 		return nil, err
 	}
@@ -1677,6 +1684,9 @@ func (p *Parser) tryParseJoin(left nodes.Node) (nodes.Node, error) {
 		if err != nil {
 			return nil, err
 		}
+		if !p.collectMode() && right == nil {
+			return nil, p.syntaxErrorAtCur()
+		}
 		return &nodes.JoinExpr{
 			Jointype: nodes.JOIN_INNER,
 			Larg:     left,
@@ -1689,6 +1699,9 @@ func (p *Parser) tryParseJoin(left nodes.Node) (nodes.Node, error) {
 		right, err := p.parseTableRefPrimary()
 		if err != nil {
 			return nil, err
+		}
+		if !p.collectMode() && right == nil {
+			return nil, p.syntaxErrorAtCur()
 		}
 		j := &nodes.JoinExpr{
 			Jointype: nodes.JOIN_INNER,
@@ -1708,6 +1721,9 @@ func (p *Parser) tryParseJoin(left nodes.Node) (nodes.Node, error) {
 		right, err := p.parseTableRefPrimary()
 		if err != nil {
 			return nil, err
+		}
+		if !p.collectMode() && right == nil {
+			return nil, p.syntaxErrorAtCur()
 		}
 		j := &nodes.JoinExpr{
 			Jointype: nodes.JOIN_INNER,
@@ -1729,6 +1745,9 @@ func (p *Parser) tryParseJoin(left nodes.Node) (nodes.Node, error) {
 		if err != nil {
 			return nil, err
 		}
+		if !p.collectMode() && right == nil {
+			return nil, p.syntaxErrorAtCur()
+		}
 		j := &nodes.JoinExpr{
 			Jointype: nodes.JOIN_LEFT,
 			Larg:     left,
@@ -1749,6 +1768,9 @@ func (p *Parser) tryParseJoin(left nodes.Node) (nodes.Node, error) {
 		if err != nil {
 			return nil, err
 		}
+		if !p.collectMode() && right == nil {
+			return nil, p.syntaxErrorAtCur()
+		}
 		j := &nodes.JoinExpr{
 			Jointype: nodes.JOIN_RIGHT,
 			Larg:     left,
@@ -1768,6 +1790,9 @@ func (p *Parser) tryParseJoin(left nodes.Node) (nodes.Node, error) {
 		right, err := p.parseTableRefPrimary()
 		if err != nil {
 			return nil, err
+		}
+		if !p.collectMode() && right == nil {
+			return nil, p.syntaxErrorAtCur()
 		}
 		j := &nodes.JoinExpr{
 			Jointype: nodes.JOIN_FULL,
@@ -1804,6 +1829,9 @@ func (p *Parser) tryParseJoin(left nodes.Node) (nodes.Node, error) {
 		right, err := p.parseTableRefPrimary()
 		if err != nil {
 			return nil, err
+		}
+		if !p.collectMode() && right == nil {
+			return nil, p.syntaxErrorAtCur()
 		}
 		return &nodes.JoinExpr{
 			Jointype:  jt,

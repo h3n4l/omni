@@ -105,6 +105,14 @@ func TestParseErrors(t *testing.T) {
 		{name: "b_expr concat-op no right", sql: "SELECT CAST(1 || AS int)", wantContains: `syntax error at or near "AS"`, wantPos: 17},
 		{name: "b_expr IS DISTINCT FROM no right", sql: "SELECT CAST(1 IS DISTINCT FROM AS int)", wantContains: `syntax error at or near "AS"`, wantPos: 31},
 		{name: "b_expr TYPECAST no type", sql: "SELECT CAST(1:: AS int)", wantContains: `syntax error at or near "AS"`, wantPos: 16},
+		// Section 4.1: JOIN Clauses — soft-fail nil checks
+		{name: "CROSS JOIN no right table", sql: "SELECT * FROM t CROSS JOIN", wantContains: "syntax error", wantPos: -1},
+		{name: "JOIN no right table", sql: "SELECT * FROM t JOIN", wantContains: "syntax error", wantPos: -1},
+		{name: "INNER JOIN no right table", sql: "SELECT * FROM t INNER JOIN", wantContains: "syntax error", wantPos: -1},
+		{name: "LEFT JOIN no right table", sql: "SELECT * FROM t LEFT JOIN", wantContains: "syntax error", wantPos: -1},
+		{name: "RIGHT JOIN no right table", sql: "SELECT * FROM t RIGHT JOIN", wantContains: "syntax error", wantPos: -1},
+		{name: "FULL JOIN no right table", sql: "SELECT * FROM t FULL JOIN", wantContains: "syntax error", wantPos: -1},
+		{name: "NATURAL JOIN no right table", sql: "SELECT * FROM t NATURAL JOIN", wantContains: "syntax error", wantPos: -1},
 	}
 
 	for _, tt := range tests {

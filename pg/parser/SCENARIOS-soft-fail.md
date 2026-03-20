@@ -91,13 +91,13 @@ These are the same operators in `parseBExprInfix()` context (restricted expressi
 
 After consuming JOIN keyword(s), `parseTableRefPrimary()` can return (nil, nil). The nil `right` is used directly in JoinExpr construction.
 
-- [ ] `SELECT * FROM t CROSS JOIN` — CROSS JOIN consumed, no right table → syntax error at end of input
-- [ ] `SELECT * FROM t JOIN` — JOIN consumed, no right table → syntax error at end of input
-- [ ] `SELECT * FROM t INNER JOIN` — INNER JOIN consumed, no right table → syntax error at end of input
-- [ ] `SELECT * FROM t LEFT JOIN` — LEFT JOIN consumed, no right table → syntax error at end of input
-- [ ] `SELECT * FROM t RIGHT JOIN` — RIGHT JOIN consumed, no right table → syntax error at end of input
-- [ ] `SELECT * FROM t FULL JOIN` — FULL JOIN consumed, no right table → syntax error at end of input
-- [ ] `SELECT * FROM t NATURAL JOIN` — NATURAL JOIN consumed, no right table → syntax error at end of input
+- [x] `SELECT * FROM t CROSS JOIN` — CROSS JOIN consumed, no right table → syntax error at end of input
+- [x] `SELECT * FROM t JOIN` — JOIN consumed, no right table → syntax error at end of input
+- [x] `SELECT * FROM t INNER JOIN` — INNER JOIN consumed, no right table → syntax error at end of input
+- [x] `SELECT * FROM t LEFT JOIN` — LEFT JOIN consumed, no right table → syntax error at end of input
+- [x] `SELECT * FROM t RIGHT JOIN` — RIGHT JOIN consumed, no right table → syntax error at end of input
+- [x] `SELECT * FROM t FULL JOIN` — FULL JOIN consumed, no right table → syntax error at end of input
+- [x] `SELECT * FROM t NATURAL JOIN` — NATURAL JOIN consumed, no right table → syntax error at end of input
 
 ### 4.2 GROUP BY, WHERE & Aggregation
 
