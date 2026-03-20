@@ -36,6 +36,12 @@ func deparseSelectStmt(stmt *ast.SelectStmt) string {
 
 	var b strings.Builder
 
+	// CTE (WITH clause) — emit before the SELECT keyword
+	if len(stmt.CTEs) > 0 {
+		b.WriteString(deparseCTEs(stmt.CTEs))
+		b.WriteString(" ")
+	}
+
 	b.WriteString("select ")
 
 	// DISTINCT
@@ -120,7 +126,14 @@ func deparseSelectStmt(stmt *ast.SelectStmt) string {
 
 // deparseSetOperation formats a set operation (UNION, INTERSECT, EXCEPT).
 // MySQL 8.0 format: select ... union [all] select ... (flat, no parens around sub-selects)
+// CTEs from the leftmost child are hoisted and emitted before the entire set operation.
 func deparseSetOperation(stmt *ast.SelectStmt) string {
+	// Hoist CTEs from the leftmost descendant
+	var ctePrefix string
+	if ctes := extractCTEs(stmt); len(ctes) > 0 {
+		ctePrefix = deparseCTEs(ctes) + " "
+	}
+
 	left := deparseSelectStmt(stmt.Left)
 	right := deparseSelectStmt(stmt.Right)
 
@@ -146,7 +159,75 @@ func deparseSetOperation(stmt *ast.SelectStmt) string {
 		}
 	}
 
-	return left + " " + op + " " + right
+	return ctePrefix + left + " " + op + " " + right
+}
+
+// extractCTEs walks down the left spine of a set operation tree and extracts
+// CTEs from the leftmost leaf SelectStmt, clearing them so they aren't emitted
+// again by deparseSelectStmt.
+func extractCTEs(stmt *ast.SelectStmt) []*ast.CommonTableExpr {
+	// Walk to the leftmost leaf
+	cur := stmt
+	for cur.SetOp != ast.SetOpNone && cur.Left != nil {
+		cur = cur.Left
+	}
+	if len(cur.CTEs) > 0 {
+		ctes := cur.CTEs
+		cur.CTEs = nil // prevent double emission
+		return ctes
+	}
+	return nil
+}
+
+// deparseCTEs formats a WITH clause (one or more CTEs).
+// MySQL 8.0 format: with [recursive] `name` [(`col`, ...)] as (select ...) [, ...]
+func deparseCTEs(ctes []*ast.CommonTableExpr) string {
+	var b strings.Builder
+	b.WriteString("with ")
+
+	// Check if any CTE is recursive (the flag is per-CTE in the AST
+	// but WITH RECURSIVE applies to the whole clause in SQL)
+	recursive := false
+	for _, cte := range ctes {
+		if cte.Recursive {
+			recursive = true
+			break
+		}
+	}
+	if recursive {
+		b.WriteString("recursive ")
+	}
+
+	for i, cte := range ctes {
+		if i > 0 {
+			b.WriteString(",")
+		}
+		b.WriteString("`")
+		b.WriteString(cte.Name)
+		b.WriteString("`")
+
+		// Column list
+		if len(cte.Columns) > 0 {
+			b.WriteString(" (")
+			for j, col := range cte.Columns {
+				if j > 0 {
+					b.WriteString(",")
+				}
+				b.WriteString("`")
+				b.WriteString(col)
+				b.WriteString("`")
+			}
+			b.WriteString(")")
+		}
+
+		b.WriteString(" as (")
+		if cte.Select != nil {
+			b.WriteString(deparseSelectStmt(cte.Select))
+		}
+		b.WriteString(")")
+	}
+
+	return b.String()
 }
 
 // deparseResTarget formats a single result target in the SELECT list.

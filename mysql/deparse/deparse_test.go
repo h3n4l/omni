@@ -1229,3 +1229,46 @@ func TestDeparseSelect_Section_5_5_SetOperations(t *testing.T) {
 		})
 	}
 }
+
+func TestDeparseSelect_Section_5_7_CTE(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		// Simple CTE
+		{
+			"simple_cte",
+			"WITH cte AS (SELECT 1) SELECT a FROM cte",
+			"with `cte` as (select 1 AS `1`) select `a` AS `a` from `cte`",
+		},
+		// CTE with column list
+		{
+			"cte_with_columns",
+			"WITH cte(x) AS (SELECT 1) SELECT x FROM cte",
+			"with `cte` (`x`) as (select 1 AS `1`) select `x` AS `x` from `cte`",
+		},
+		// RECURSIVE CTE
+		{
+			"recursive_cte",
+			"WITH RECURSIVE cte AS (SELECT 1 UNION ALL SELECT 1) SELECT a FROM cte",
+			"with recursive `cte` as (select 1 AS `1` union all select 1 AS `1`) select `a` AS `a` from `cte`",
+		},
+		// Multiple CTEs
+		{
+			"multiple_ctes",
+			"WITH c1 AS (SELECT 1), c2 AS (SELECT 2) SELECT a FROM c1, c2",
+			"with `c1` as (select 1 AS `1`),`c2` as (select 2 AS `2`) select `a` AS `a` from (`c1` join `c2`)",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			sel := parseSelect(t, tc.input)
+			got := DeparseSelect(sel)
+			if got != tc.expected {
+				t.Errorf("DeparseSelect(%q) =\n  %q\nwant:\n  %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}

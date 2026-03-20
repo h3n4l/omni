@@ -347,10 +347,10 @@ Depends on Phase 1-4. Handles full SELECT clause formatting.
 ### 5.7 CTE (WITH clause)
 
 ```
-[ ] Simple CTE: `WITH cte AS (...) SELECT ...` → `with `cte` as (...) select ...`
-[ ] CTE with column list: `WITH cte(x) AS (...)` → `with `cte` (`x`) as (...)`
-[ ] RECURSIVE CTE: `WITH RECURSIVE cte AS (...)` → `with recursive `cte` as (...)`
-[ ] Multiple CTEs: `WITH c1 AS (...), c2 AS (...) SELECT ...`
+[x] Simple CTE: `WITH cte AS (...) SELECT ...` → `with `cte` as (...) select ...`
+[x] CTE with column list: `WITH cte(x) AS (...)` → `with `cte` (`x`) as (...)`
+[x] RECURSIVE CTE: `WITH RECURSIVE cte AS (...)` → `with recursive `cte` as (...)`
+[x] Multiple CTEs: `WITH c1 AS (...), c2 AS (...) SELECT ...`
 ```
 
 ### 5.8 FOR UPDATE / FOR SHARE
