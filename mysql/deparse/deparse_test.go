@@ -416,6 +416,44 @@ func TestDeparse_Section_2_7_OtherExpressions(t *testing.T) {
 	}
 }
 
+func TestDeparse_Section_3_1_FunctionsAndRewrites(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		// Regular function calls — lowercase, no space after comma
+		{"simple_concat", "CONCAT(a, b)", "concat(`a`,`b`)"},
+		{"nested_functions", "CONCAT(UPPER(TRIM(a)), LOWER(b))", "concat(upper(trim(`a`)),lower(`b`))"},
+		{"ifnull", "IFNULL(a, 0)", "ifnull(`a`,0)"},
+		{"coalesce", "COALESCE(a, b, 0)", "coalesce(`a`,`b`,0)"},
+		{"nullif", "NULLIF(a, 0)", "nullif(`a`,0)"},
+		{"if_func", "IF(a > 0, 'yes', 'no')", "if((`a` > 0),'yes','no')"},
+		{"abs", "ABS(a)", "abs(`a`)"},
+		{"greatest", "GREATEST(a, b)", "greatest(`a`,`b`)"},
+		{"least", "LEAST(a, b)", "least(`a`,`b`)"},
+
+		// Function name rewrites
+		{"substring_to_substr", "SUBSTRING(a, 1, 3)", "substr(`a`,1,3)"},
+		{"current_timestamp_no_parens", "CURRENT_TIMESTAMP", "now()"},
+		{"current_timestamp_parens", "CURRENT_TIMESTAMP()", "now()"},
+		{"current_date", "CURRENT_DATE", "curdate()"},
+		{"current_time", "CURRENT_TIME", "curtime()"},
+		{"current_user", "CURRENT_USER", "current_user()"},
+		{"now_stays", "NOW()", "now()"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			node := parseExpr(t, tc.input)
+			got := Deparse(node)
+			if got != tc.expected {
+				t.Errorf("Deparse(%q) = %q, want %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
 func TestDeparse_NilNode(t *testing.T) {
 	got := Deparse(nil)
 	if got != "" {

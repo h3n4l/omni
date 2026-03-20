@@ -66,6 +66,8 @@ func deparseExpr(node ast.ExprNode) string {
 		return deparseIntervalExpr(n)
 	case *ast.CollateExpr:
 		return deparseCollateExpr(n)
+	case *ast.FuncCallExpr:
+		return deparseFuncCallExpr(n)
 	default:
 		return fmt.Sprintf("/* unsupported: %T */", node)
 	}
@@ -384,5 +386,57 @@ func deparseIntervalExpr(n *ast.IntervalExpr) string {
 func deparseCollateExpr(n *ast.CollateExpr) string {
 	expr := deparseExpr(n.Expr)
 	return "(" + expr + " collate " + n.Collation + ")"
+}
+
+// funcNameRewrites maps uppercase function names to their MySQL 8.0 canonical forms.
+// These rewrites are applied by SHOW CREATE VIEW in MySQL 8.0.
+var funcNameRewrites = map[string]string{
+	"SUBSTRING":         "substr",
+	"CURRENT_TIMESTAMP":  "now",
+	"CURRENT_DATE":       "curdate",
+	"CURRENT_TIME":       "curtime",
+	"CURRENT_USER":       "current_user",
+	"NOW":                "now",
+	"LOCALTIME":          "now",
+	"LOCALTIMESTAMP":     "now",
+}
+
+func deparseFuncCallExpr(n *ast.FuncCallExpr) string {
+	// Determine the canonical function name
+	name := strings.ToUpper(n.Name)
+	canonical, ok := funcNameRewrites[name]
+	if !ok {
+		canonical = strings.ToLower(n.Name)
+	}
+
+	// Schema-qualified name
+	if n.Schema != "" {
+		canonical = strings.ToLower(n.Schema) + "." + canonical
+	}
+
+	// Zero-arg functions (CURRENT_TIMESTAMP, NOW(), etc.) — always emit parens
+	if len(n.Args) == 0 && !n.Star {
+		return canonical + "()"
+	}
+
+	// COUNT(*) — star form
+	if n.Star {
+		return canonical + "(*)"
+	}
+
+	// Build argument list with no spaces after commas
+	args := make([]string, len(n.Args))
+	for i, arg := range n.Args {
+		args[i] = deparseExpr(arg)
+	}
+
+	var argStr string
+	if n.Distinct {
+		argStr = "distinct " + strings.Join(args, ",")
+	} else {
+		argStr = strings.Join(args, ",")
+	}
+
+	return canonical + "(" + argStr + ")"
 }
 

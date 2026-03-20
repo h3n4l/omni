@@ -157,21 +157,21 @@ Function name rewrites (SUBSTRING→substr, etc.) are applied here — oracle te
 ### 3.1 Regular Functions & Name Rewrites
 
 ```
-[ ] Simple function: `CONCAT(a, b)` → `concat(`a`,`b`)` — lowercase, no space after comma
-[ ] Nested functions: `CONCAT(UPPER(TRIM(a)), LOWER(b))` → `concat(upper(trim(`a`)),lower(`b`))`
-[ ] IFNULL: `IFNULL(a, 0)` → `ifnull(`a`,0)`
-[ ] COALESCE: `COALESCE(a, b, 0)` → `coalesce(`a`,`b`,0)`
-[ ] NULLIF: `NULLIF(a, 0)` → `nullif(`a`,0)`
-[ ] IF: `IF(a > 0, 'yes', 'no')` → `if((`a` > 0),'yes','no')` — condition gets parens
-[ ] ABS: `ABS(a)` → `abs(`a`)`
-[ ] GREATEST/LEAST: → `greatest(`a`,`b`)`, `least(`a`,`b`)`
-[ ] SUBSTRING → substr: `SUBSTRING(a, 1, 3)` → `substr(`a`,1,3)`
-[ ] CURRENT_TIMESTAMP → now(): `CURRENT_TIMESTAMP` → `now()`
-[ ] CURRENT_TIMESTAMP() → now(): `CURRENT_TIMESTAMP()` → `now()`
-[ ] CURRENT_DATE → curdate(): `CURRENT_DATE` → `curdate()`
-[ ] CURRENT_TIME → curtime(): `CURRENT_TIME` → `curtime()`
-[ ] CURRENT_USER → current_user(): `CURRENT_USER` → `current_user()` — adds parens
-[ ] NOW() stays: `NOW()` → `now()`
+[x] Simple function: `CONCAT(a, b)` → `concat(`a`,`b`)` — lowercase, no space after comma
+[x] Nested functions: `CONCAT(UPPER(TRIM(a)), LOWER(b))` → `concat(upper(trim(`a`)),lower(`b`))`
+[x] IFNULL: `IFNULL(a, 0)` → `ifnull(`a`,0)`
+[x] COALESCE: `COALESCE(a, b, 0)` → `coalesce(`a`,`b`,0)`
+[x] NULLIF: `NULLIF(a, 0)` → `nullif(`a`,0)`
+[x] IF: `IF(a > 0, 'yes', 'no')` → `if((`a` > 0),'yes','no')` — condition gets parens
+[x] ABS: `ABS(a)` → `abs(`a`)`
+[x] GREATEST/LEAST: → `greatest(`a`,`b`)`, `least(`a`,`b`)`
+[x] SUBSTRING → substr: `SUBSTRING(a, 1, 3)` → `substr(`a`,1,3)`
+[x] CURRENT_TIMESTAMP → now(): `CURRENT_TIMESTAMP` → `now()`
+[x] CURRENT_TIMESTAMP() → now(): `CURRENT_TIMESTAMP()` → `now()`
+[x] CURRENT_DATE → curdate(): `CURRENT_DATE` → `curdate()`
+[x] CURRENT_TIME → curtime(): `CURRENT_TIME` → `curtime()`
+[x] CURRENT_USER → current_user(): `CURRENT_USER` → `current_user()` — adds parens
+[x] NOW() stays: `NOW()` → `now()`
 ```
 
 ### 3.2 Special Function Forms
