@@ -250,15 +250,65 @@ func deparseJoinClause(j *ast.JoinClause) string {
 
 	// ON condition
 	if j.Condition != nil {
-		if on, ok := j.Condition.(*ast.OnCondition); ok {
+		switch cond := j.Condition.(type) {
+		case *ast.OnCondition:
 			b.WriteString(" on(")
-			b.WriteString(deparseExpr(on.Expr))
+			b.WriteString(deparseExpr(cond.Expr))
+			b.WriteString(")")
+		case *ast.UsingCondition:
+			// USING (col1, col2) → on((`left`.`col1` = `right`.`col1`) and (...))
+			// Requires resolving table names from Left/Right table expressions.
+			// For RIGHT JOIN, left/right are already swapped above.
+			leftName := tableExprName(j.Left)
+			rightName := tableExprName(j.Right)
+			if j.Type == ast.JoinRight {
+				// Tables were swapped above, so swap names to match original SQL
+				leftName, rightName = rightName, leftName
+			}
+			b.WriteString(" on(")
+			b.WriteString(deparseUsingAsOn(cond.Columns, leftName, rightName))
 			b.WriteString(")")
 		}
 	}
 
 	b.WriteString(")")
 	return b.String()
+}
+
+// tableExprName extracts the effective name (alias or table name) from a table expression.
+// Used for USING → ON expansion to qualify column references.
+func tableExprName(tbl ast.TableExpr) string {
+	switch t := tbl.(type) {
+	case *ast.TableRef:
+		if t.Alias != "" {
+			return t.Alias
+		}
+		return t.Name
+	default:
+		return ""
+	}
+}
+
+// deparseUsingAsOn expands USING columns into ON condition format.
+// e.g., USING (a, b) with left=t1, right=t2 → (`t1`.`a` = `t2`.`a`) and (`t1`.`b` = `t2`.`b`)
+// MySQL 8.0 format: on((`t1`.`a` = `t2`.`a`))
+func deparseUsingAsOn(columns []string, leftName, rightName string) string {
+	if len(columns) == 0 {
+		return ""
+	}
+	parts := make([]string, len(columns))
+	for i, col := range columns {
+		parts[i] = "(`" + leftName + "`.`" + col + "` = `" + rightName + "`.`" + col + "`)"
+	}
+	if len(parts) == 1 {
+		return parts[0]
+	}
+	// Multiple columns: chain with "and"
+	result := parts[0]
+	for i := 1; i < len(parts); i++ {
+		result = "(" + result + " and " + parts[i] + ")"
+	}
+	return result
 }
 
 // deparseSubqueryTableExpr formats a derived table (subquery as table expression).

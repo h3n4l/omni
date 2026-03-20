@@ -298,15 +298,15 @@ Depends on Phase 1-4. Handles full SELECT clause formatting.
 ### 5.3 JOIN Clause
 
 ```
-[ ] INNER JOIN: `t1 JOIN t2 ON t1.a = t2.a` → `(`t1` join `t2` on((`t1`.`a` = `t2`.`a`)))`
-[ ] LEFT JOIN: `(`t1` left join `t2` on((...)))`
-[ ] RIGHT JOIN → LEFT JOIN: `t1 RIGHT JOIN t2 ON ...` → `(`t2` left join `t1` on((...)))` — tables swapped
-[ ] CROSS JOIN: `t1 CROSS JOIN t2` → `(`t1` join `t2`)` — CROSS removed
-[ ] STRAIGHT_JOIN: `(`t1` straight_join `t2` on((...)))` — lowercase
-[ ] NATURAL JOIN: expanded to `join ... on((col equality conditions))`
-[ ] NATURAL LEFT JOIN: expanded similarly with `left join`
-[ ] NATURAL RIGHT JOIN: expanded as `left join` with table swap
-[ ] USING: `JOIN t2 USING (a)` → `join `t2` on((`t1`.`a` = `t2`.`a`))` — expanded to ON
+[x] INNER JOIN: `t1 JOIN t2 ON t1.a = t2.a` → `(`t1` join `t2` on((`t1`.`a` = `t2`.`a`)))`
+[x] LEFT JOIN: `(`t1` left join `t2` on((...)))`
+[x] RIGHT JOIN → LEFT JOIN: `t1 RIGHT JOIN t2 ON ...` → `(`t2` left join `t1` on((...)))` — tables swapped
+[x] CROSS JOIN: `t1 CROSS JOIN t2` → `(`t1` join `t2`)` — CROSS removed
+[x] STRAIGHT_JOIN: `(`t1` straight_join `t2` on((...)))` — lowercase
+[~] NATURAL JOIN: expanded to `join ... on((col equality conditions))` — basic join format works; full ON expansion needs Phase 6 resolver
+[~] NATURAL LEFT JOIN: expanded similarly with `left join` — basic format works; full ON expansion needs Phase 6 resolver
+[~] NATURAL RIGHT JOIN: expanded as `left join` with table swap — basic format works; full ON expansion needs Phase 6 resolver
+[x] USING: `JOIN t2 USING (a)` → `join `t2` on((`t1`.`a` = `t2`.`a`))` — expanded to ON
 ```
 
 ### 5.4 WHERE, GROUP BY, HAVING, ORDER BY, LIMIT

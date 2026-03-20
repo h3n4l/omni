@@ -998,3 +998,116 @@ func TestDeparseSelect_Section_5_2_DerivedTable(t *testing.T) {
 		}
 	})
 }
+
+func TestDeparseSelect_Section_5_3_JoinClause(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		// INNER JOIN
+		{"inner_join", "SELECT a FROM t1 JOIN t2 ON t1.a = t2.a",
+			"select `a` AS `a` from (`t1` join `t2` on((`t1`.`a` = `t2`.`a`)))"},
+		// LEFT JOIN
+		{"left_join", "SELECT a FROM t1 LEFT JOIN t2 ON t1.a = t2.a",
+			"select `a` AS `a` from (`t1` left join `t2` on((`t1`.`a` = `t2`.`a`)))"},
+		// RIGHT JOIN → LEFT JOIN with table swap
+		{"right_join", "SELECT a FROM t1 RIGHT JOIN t2 ON t1.a = t2.a",
+			"select `a` AS `a` from (`t2` left join `t1` on((`t1`.`a` = `t2`.`a`)))"},
+		// CROSS JOIN → plain join (no ON)
+		{"cross_join", "SELECT a FROM t1 CROSS JOIN t2",
+			"select `a` AS `a` from (`t1` join `t2`)"},
+		// STRAIGHT_JOIN — lowercase
+		{"straight_join", "SELECT a FROM t1 STRAIGHT_JOIN t2 ON t1.a = t2.a",
+			"select `a` AS `a` from (`t1` straight_join `t2` on((`t1`.`a` = `t2`.`a`)))"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			sel := parseSelect(t, tc.input)
+			got := DeparseSelect(sel)
+			if got != tc.expected {
+				t.Errorf("DeparseSelect(%q) =\n  %q\nwant:\n  %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
+func TestDeparseSelect_Section_5_3_NaturalJoin(t *testing.T) {
+	// NATURAL JOIN — expanded to join without ON (needs Phase 6 resolver for column expansion)
+	// For now, verify basic format; full ON expansion requires schema info.
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		// NATURAL JOIN → join (no ON without resolver)
+		{"natural_join", "SELECT a FROM t1 NATURAL JOIN t2",
+			"select `a` AS `a` from (`t1` join `t2`)"},
+		// NATURAL LEFT JOIN → left join (no ON without resolver)
+		{"natural_left_join", "SELECT a FROM t1 NATURAL LEFT JOIN t2",
+			"select `a` AS `a` from (`t1` left join `t2`)"},
+		// NATURAL RIGHT JOIN → left join with table swap (no ON without resolver)
+		{"natural_right_join", "SELECT a FROM t1 NATURAL RIGHT JOIN t2",
+			"select `a` AS `a` from (`t2` left join `t1`)"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			sel := parseSelect(t, tc.input)
+			got := DeparseSelect(sel)
+			if got != tc.expected {
+				t.Errorf("DeparseSelect(%q) =\n  %q\nwant:\n  %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
+func TestDeparseSelect_Section_5_3_UsingClause(t *testing.T) {
+	// USING — expanded to ON with qualified column references
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		// USING single column
+		{"using_single", "SELECT a FROM t1 JOIN t2 USING (a)",
+			"select `a` AS `a` from (`t1` join `t2` on((`t1`.`a` = `t2`.`a`)))"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			sel := parseSelect(t, tc.input)
+			got := DeparseSelect(sel)
+			if got != tc.expected {
+				t.Errorf("DeparseSelect(%q) =\n  %q\nwant:\n  %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
+// TestDeparseSelect_Section_5_3_UsingMultiColumn tests USING with multiple columns via AST.
+func TestDeparseSelect_Section_5_3_UsingMultiColumn(t *testing.T) {
+	// Build AST manually for USING (a, b) since parser may only support single-column USING parsing
+	t.Run("using_multi_column", func(t *testing.T) {
+		join := &ast.JoinClause{
+			Type:  ast.JoinInner,
+			Left:  &ast.TableRef{Name: "t1"},
+			Right: &ast.TableRef{Name: "t2"},
+			Condition: &ast.UsingCondition{
+				Columns: []string{"a", "b"},
+			},
+		}
+		sel := &ast.SelectStmt{
+			TargetList: []ast.ExprNode{
+				&ast.ResTarget{Val: &ast.ColumnRef{Column: "x"}},
+			},
+			From: []ast.TableExpr{join},
+		}
+		got := DeparseSelect(sel)
+		expected := "select `x` AS `x` from (`t1` join `t2` on(((`t1`.`a` = `t2`.`a`) and (`t1`.`b` = `t2`.`b`))))"
+		if got != expected {
+			t.Errorf("DeparseSelect(USING multi) =\n  %q\nwant:\n  %q", got, expected)
+		}
+	})
+}
