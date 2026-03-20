@@ -131,7 +131,7 @@ func TestResolver_Section_6_1_ColumnQualification(t *testing.T) {
 		{
 			"column_in_having",
 			"SELECT a, COUNT(*) FROM t GROUP BY a HAVING a > 0",
-			"select `t`.`a` AS `a`,count(0) AS `count(0)` from `t` group by `t`.`a` having (`t`.`a` > 0)",
+			"select `t`.`a` AS `a`,count(0) AS `COUNT(*)` from `t` group by `t`.`a` having (`t`.`a` > 0)",
 		},
 		{
 			"column_in_on_condition",
@@ -432,7 +432,7 @@ func TestResolver_Section_6_5_CastCharsetFromCatalog(t *testing.T) {
 		// Default database charset is utf8mb4 — CAST to CHAR should use charset utf8mb4
 		cat := setupCatalog(t) // uses default charset (utf8mb4)
 		got := resolveAndDeparse(t, cat, "SELECT CAST(a AS CHAR) FROM t")
-		expected := "select cast(`t`.`a` as char charset utf8mb4) AS `cast(a as char charset utf8mb4)` from `t`"
+		expected := "select cast(`t`.`a` as char charset utf8mb4) AS `CAST(a AS CHAR)` from `t`"
 		if got != expected {
 			t.Errorf("CAST CHAR utf8mb4:\n  got:  %q\n  want: %q", got, expected)
 		}
@@ -442,7 +442,7 @@ func TestResolver_Section_6_5_CastCharsetFromCatalog(t *testing.T) {
 		// Database with latin1 charset — CAST to CHAR should use charset latin1
 		cat := setupCatalogWithCharset(t, "latin1")
 		got := resolveAndDeparse(t, cat, "SELECT CAST(a AS CHAR) FROM t")
-		expected := "select cast(`t`.`a` as char charset latin1) AS `cast(a as char charset latin1)` from `t`"
+		expected := "select cast(`t`.`a` as char charset latin1) AS `CAST(a AS CHAR)` from `t`"
 		if got != expected {
 			t.Errorf("CAST CHAR latin1:\n  got:  %q\n  want: %q", got, expected)
 		}
@@ -452,7 +452,7 @@ func TestResolver_Section_6_5_CastCharsetFromCatalog(t *testing.T) {
 		// Database with latin1 charset — CAST to CHAR(10) should use charset latin1
 		cat := setupCatalogWithCharset(t, "latin1")
 		got := resolveAndDeparse(t, cat, "SELECT CAST(a AS CHAR(10)) FROM t")
-		expected := "select cast(`t`.`a` as char(10) charset latin1) AS `cast(a as char(10) charset latin1)` from `t`"
+		expected := "select cast(`t`.`a` as char(10) charset latin1) AS `CAST(a AS CHAR(10))` from `t`"
 		if got != expected {
 			t.Errorf("CAST CHAR(10) latin1:\n  got:  %q\n  want: %q", got, expected)
 		}
@@ -462,7 +462,7 @@ func TestResolver_Section_6_5_CastCharsetFromCatalog(t *testing.T) {
 		// CAST to BINARY should always use charset binary, regardless of database charset
 		cat := setupCatalogWithCharset(t, "latin1")
 		got := resolveAndDeparse(t, cat, "SELECT CAST(a AS BINARY) FROM t")
-		expected := "select cast(`t`.`a` as char charset binary) AS `cast(a as char charset binary)` from `t`"
+		expected := "select cast(`t`.`a` as char charset binary) AS `CAST(a AS BINARY)` from `t`"
 		if got != expected {
 			t.Errorf("CAST BINARY (latin1 db):\n  got:  %q\n  want: %q", got, expected)
 		}
@@ -472,7 +472,7 @@ func TestResolver_Section_6_5_CastCharsetFromCatalog(t *testing.T) {
 		// CONVERT(expr, CHAR) — rewritten to CAST, should use database charset
 		cat := setupCatalogWithCharset(t, "latin1")
 		got := resolveAndDeparse(t, cat, "SELECT CONVERT(a, CHAR) FROM t")
-		expected := "select cast(`t`.`a` as char charset latin1) AS `cast(a as char charset latin1)` from `t`"
+		expected := "select cast(`t`.`a` as char charset latin1) AS `CAST(a AS CHAR)` from `t`"
 		if got != expected {
 			t.Errorf("CONVERT CHAR latin1:\n  got:  %q\n  want: %q", got, expected)
 		}

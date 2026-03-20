@@ -451,11 +451,11 @@ Depends on all previous phases. End-to-end oracle testing against MySQL 8.0.
 ### 7.3 Expression Views (oracle match)
 
 ```
-[ ] Arithmetic expression view: `SELECT a + b FROM t`
-[ ] Function call view: `SELECT CONCAT(a, b) FROM t`
-[ ] CASE expression view: `SELECT CASE WHEN a > 0 THEN 'pos' ELSE 'neg' END FROM t`
-[ ] CAST expression view: `SELECT CAST(a AS CHAR) FROM t`
-[ ] Aggregate view: `SELECT COUNT(*), SUM(a) FROM t GROUP BY a HAVING SUM(a) > 10`
+[x] Arithmetic expression view: `SELECT a + b FROM t`
+[x] Function call view: `SELECT CONCAT(a, b) FROM t`
+[x] CASE expression view: `SELECT CASE WHEN a > 0 THEN 'pos' ELSE 'neg' END FROM t`
+[x] CAST expression view: `SELECT CAST(a AS CHAR) FROM t`
+[x] Aggregate view: `SELECT COUNT(*), SUM(a) FROM t GROUP BY a HAVING SUM(a) > 10`
 ```
 
 ### 7.4 Join Views (oracle match)

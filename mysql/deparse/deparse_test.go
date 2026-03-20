@@ -918,7 +918,7 @@ func TestDeparseSelect_Section_5_1_TargetListAliases(t *testing.T) {
 		// Auto-alias NULL
 		{"auto_alias_null", "SELECT NULL", "select NULL AS `NULL`"},
 		// Auto-alias function call
-		{"auto_alias_func", "SELECT CONCAT(a, b) FROM t", "select concat(`a`,`b`) AS `concat(a,b)` from `t`"},
+		{"auto_alias_func", "SELECT CONCAT(a, b) FROM t", "select concat(`a`,`b`) AS `CONCAT(a, b)` from `t`"},
 		// Auto-alias boolean literal
 		{"auto_alias_true", "SELECT TRUE", "select true AS `TRUE`"},
 		{"auto_alias_false", "SELECT FALSE", "select false AS `FALSE`"},
@@ -1176,7 +1176,7 @@ func TestDeparseSelect_Section_5_6_Subqueries(t *testing.T) {
 		// Scalar subquery in SELECT list
 		// Auto-alias uses deparsed form (lowercase function names, backtick-quoted columns)
 		{"scalar_subquery", "SELECT (SELECT MAX(a) FROM t) FROM t",
-			"select (select max(`a`) AS `max(a)` from `t`) AS `(select max(`a`) AS `max(a)` from `t`)` from `t`"},
+			"select (select max(`a`) AS `MAX(a)` from `t`) AS `(select max(`a`) AS `MAX(a)` from `t`)` from `t`"},
 		// IN subquery in WHERE
 		{"in_subquery", "SELECT a FROM t WHERE a IN (SELECT a FROM t)",
 			"select `a` AS `a` from `t` where (`a` in (select `a` AS `a` from `t`))"},

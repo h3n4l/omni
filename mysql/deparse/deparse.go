@@ -342,8 +342,9 @@ func autoAlias(expr ast.ExprNode, exprStr string, position int) string {
 }
 
 // deparseExprAlias generates a human-readable expression text for use as an auto-alias.
-// Unlike deparseExpr, this does NOT backtick-quote column names, matching MySQL 8.0's
-// behavior of using the original expression text as the alias.
+// Unlike deparseExpr, this preserves the original expression text style matching MySQL 8.0's
+// auto-alias behavior: function names stay uppercase, spaces after commas, CASE/CAST
+// keywords uppercase, no charset addition in CAST, COUNT(*) keeps *.
 func deparseExprAlias(node ast.ExprNode) string {
 	switch n := node.(type) {
 	case *ast.ColumnRef:
@@ -356,7 +357,9 @@ func deparseExprAlias(node ast.ExprNode) string {
 	case *ast.FloatLit:
 		return n.Value
 	case *ast.StringLit:
-		return n.Value
+		// When embedded in an expression, include quotes to match MySQL 8.0's behavior.
+		// The top-level autoAlias handles standalone StringLit without quotes.
+		return "'" + n.Value + "'"
 	case *ast.NullLit:
 		return "NULL"
 	case *ast.BoolLit:
@@ -383,35 +386,88 @@ func deparseExprAlias(node ast.ExprNode) string {
 		}
 		return operand
 	case *ast.FuncCallExpr:
-		name := strings.ToLower(n.Name)
-		// Apply function name rewrites for alias generation
-		upper := strings.ToUpper(n.Name)
-		if rewritten, ok := funcNameRewrites[upper]; ok {
-			name = rewritten
-		}
+		// MySQL 8.0 auto-alias preserves original function name case (uppercase from parser).
+		name := n.Name
 		if n.Star {
-			return name + "(0)"
+			// COUNT(*) → alias "COUNT(*)" — keep *, not 0.
+			return name + "(*)"
 		}
 		args := make([]string, len(n.Args))
 		for i, arg := range n.Args {
 			args[i] = deparseExprAlias(arg)
 		}
 		if n.Distinct {
-			return name + "(distinct " + strings.Join(args, ",") + ")"
+			return name + "(distinct " + strings.Join(args, ", ") + ")"
 		}
-		return name + "(" + strings.Join(args, ",") + ")"
+		return name + "(" + strings.Join(args, ", ") + ")"
 	case *ast.ParenExpr:
 		return deparseExprAlias(n.Expr)
 	case *ast.CastExpr:
-		return "cast(" + deparseExprAlias(n.Expr) + " as " + deparseDataType(n.TypeName) + ")"
+		// MySQL 8.0 auto-alias: "CAST(a AS CHAR)" — uppercase keywords, no charset.
+		return "CAST(" + deparseExprAlias(n.Expr) + " AS " + deparseDataTypeAlias(n.TypeName) + ")"
 	case *ast.ConvertExpr:
 		if n.Charset != "" {
-			return "convert(" + deparseExprAlias(n.Expr) + " using " + strings.ToLower(n.Charset) + ")"
+			return "CONVERT(" + deparseExprAlias(n.Expr) + " USING " + strings.ToLower(n.Charset) + ")"
 		}
-		return "cast(" + deparseExprAlias(n.Expr) + " as " + deparseDataType(n.TypeName) + ")"
+		return "CAST(" + deparseExprAlias(n.Expr) + " AS " + deparseDataTypeAlias(n.TypeName) + ")"
+	case *ast.CaseExpr:
+		// MySQL 8.0 auto-alias: "CASE WHEN a > 0 THEN 'pos' ELSE 'neg' END" — uppercase keywords.
+		var b strings.Builder
+		b.WriteString("CASE")
+		if n.Operand != nil {
+			b.WriteString(" ")
+			b.WriteString(deparseExprAlias(n.Operand))
+		}
+		for _, w := range n.Whens {
+			b.WriteString(" WHEN ")
+			b.WriteString(deparseExprAlias(w.Cond))
+			b.WriteString(" THEN ")
+			b.WriteString(deparseExprAlias(w.Result))
+		}
+		if n.Default != nil {
+			b.WriteString(" ELSE ")
+			b.WriteString(deparseExprAlias(n.Default))
+		}
+		b.WriteString(" END")
+		return b.String()
 	default:
 		// Fallback: use the regular deparsed text
 		return deparseExpr(node)
+	}
+}
+
+// deparseDataTypeAlias formats a data type for auto-alias purposes.
+// Unlike deparseDataType, this does NOT add charset (matching MySQL 8.0's alias behavior).
+func deparseDataTypeAlias(dt *ast.DataType) string {
+	if dt == nil {
+		return ""
+	}
+	name := strings.ToUpper(dt.Name)
+	switch strings.ToLower(dt.Name) {
+	case "char":
+		if dt.Length > 0 {
+			return fmt.Sprintf("%s(%d)", name, dt.Length)
+		}
+		return name
+	case "binary":
+		if dt.Length > 0 {
+			return fmt.Sprintf("%s(%d)", name, dt.Length)
+		}
+		return name
+	case "signed", "signed integer":
+		return "SIGNED"
+	case "unsigned", "unsigned integer":
+		return "UNSIGNED"
+	case "decimal":
+		if dt.Scale > 0 {
+			return fmt.Sprintf("DECIMAL(%d,%d)", dt.Length, dt.Scale)
+		}
+		if dt.Length > 0 {
+			return fmt.Sprintf("DECIMAL(%d)", dt.Length)
+		}
+		return "DECIMAL"
+	default:
+		return name
 	}
 }
 
