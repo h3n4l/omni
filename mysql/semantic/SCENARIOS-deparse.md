@@ -329,11 +329,11 @@ Depends on Phase 1-4. Handles full SELECT clause formatting.
 ### 5.5 Set Operations
 
 ```
-[ ] UNION: `SELECT a FROM t UNION SELECT b FROM t` → `select ... union select ...`
-[ ] UNION ALL: → `... union all ...`
-[ ] Multiple UNION: three SELECTs chained flat (not nested parens)
-[ ] INTERSECT: `... intersect ...` (MySQL 8.0.31+)
-[ ] EXCEPT: `... except ...` (MySQL 8.0.31+)
+[x] UNION: `SELECT a FROM t UNION SELECT b FROM t` → `select ... union select ...`
+[x] UNION ALL: → `... union all ...`
+[x] Multiple UNION: three SELECTs chained flat (not nested parens)
+[x] INTERSECT: `... intersect ...` (MySQL 8.0.31+)
+[x] EXCEPT: `... except ...` (MySQL 8.0.31+)
 ```
 
 ### 5.6 Subqueries

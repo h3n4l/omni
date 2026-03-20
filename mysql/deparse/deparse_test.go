@@ -1166,3 +1166,37 @@ func TestDeparseSelect_Section_5_4_WhereGroupByHavingOrderByLimit(t *testing.T) 
 		})
 	}
 }
+
+func TestDeparseSelect_Section_5_5_SetOperations(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		// UNION
+		{"union", "SELECT a FROM t UNION SELECT b FROM t",
+			"select `a` AS `a` from `t` union select `b` AS `b` from `t`"},
+		// UNION ALL
+		{"union_all", "SELECT a FROM t UNION ALL SELECT b FROM t",
+			"select `a` AS `a` from `t` union all select `b` AS `b` from `t`"},
+		// Multiple UNION: three SELECTs chained flat (left-associative)
+		{"multiple_union", "SELECT a FROM t UNION SELECT b FROM t UNION SELECT c FROM t",
+			"select `a` AS `a` from `t` union select `b` AS `b` from `t` union select `c` AS `c` from `t`"},
+		// INTERSECT
+		{"intersect", "SELECT a FROM t INTERSECT SELECT b FROM t",
+			"select `a` AS `a` from `t` intersect select `b` AS `b` from `t`"},
+		// EXCEPT
+		{"except", "SELECT a FROM t EXCEPT SELECT b FROM t",
+			"select `a` AS `a` from `t` except select `b` AS `b` from `t`"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			sel := parseSelect(t, tc.input)
+			got := DeparseSelect(sel)
+			if got != tc.expected {
+				t.Errorf("DeparseSelect(%q) =\n  %q\nwant:\n  %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}

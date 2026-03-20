@@ -29,6 +29,11 @@ func DeparseSelect(stmt *ast.SelectStmt) string {
 }
 
 func deparseSelectStmt(stmt *ast.SelectStmt) string {
+	// Handle set operations: UNION / UNION ALL / INTERSECT / EXCEPT
+	if stmt.SetOp != ast.SetOpNone {
+		return deparseSetOperation(stmt)
+	}
+
 	var b strings.Builder
 
 	b.WriteString("select ")
@@ -111,6 +116,37 @@ func deparseSelectStmt(stmt *ast.SelectStmt) string {
 	}
 
 	return b.String()
+}
+
+// deparseSetOperation formats a set operation (UNION, INTERSECT, EXCEPT).
+// MySQL 8.0 format: select ... union [all] select ... (flat, no parens around sub-selects)
+func deparseSetOperation(stmt *ast.SelectStmt) string {
+	left := deparseSelectStmt(stmt.Left)
+	right := deparseSelectStmt(stmt.Right)
+
+	var op string
+	switch stmt.SetOp {
+	case ast.SetOpUnion:
+		if stmt.SetAll {
+			op = "union all"
+		} else {
+			op = "union"
+		}
+	case ast.SetOpIntersect:
+		if stmt.SetAll {
+			op = "intersect all"
+		} else {
+			op = "intersect"
+		}
+	case ast.SetOpExcept:
+		if stmt.SetAll {
+			op = "except all"
+		} else {
+			op = "except"
+		}
+	}
+
+	return left + " " + op + " " + right
 }
 
 // deparseResTarget formats a single result target in the SELECT list.
