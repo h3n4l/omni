@@ -214,5 +214,47 @@ func TestResolverTable_GetColumn(t *testing.T) {
 	}
 }
 
+func TestResolver_Section_6_2_SelectStarExpansion(t *testing.T) {
+	cat := setupCatalog(t)
+
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			"simple_star",
+			"SELECT * FROM t",
+			"select `t`.`a` AS `a`,`t`.`b` AS `b`,`t`.`c` AS `c` from `t`",
+		},
+		{
+			"star_alias_per_column",
+			// Each expanded column gets `table`.`col` AS `col` format
+			"SELECT * FROM t1",
+			"select `t1`.`a` AS `a`,`t1`.`b` AS `b` from `t1`",
+		},
+		{
+			"star_ordering",
+			// Columns in table definition order (Column.Position)
+			"SELECT * FROM t",
+			"select `t`.`a` AS `a`,`t`.`b` AS `b`,`t`.`c` AS `c` from `t`",
+		},
+		{
+			"star_with_where",
+			"SELECT * FROM t WHERE a > 0",
+			"select `t`.`a` AS `a`,`t`.`b` AS `b`,`t`.`c` AS `c` from `t` where (`t`.`a` > 0)",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := resolveAndDeparse(t, cat, tc.input)
+			if got != tc.expected {
+				t.Errorf("resolveAndDeparse(%q) =\n  %q\nwant:\n  %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
 // Ensure the Resolver handles an unused import gracefully.
 var _ = strings.ToLower

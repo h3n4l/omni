@@ -388,10 +388,10 @@ Depends on Phase 4-5. Requires Catalog access.
 ### 6.2 SELECT * Expansion
 
 ```
-[ ] Simple *: `SELECT * FROM t` → all columns listed with aliases
-[ ] * with alias per column: each gets `col` AS `col``
-[ ] * ordering: columns in table definition order (Column.Position)
-[ ] * with WHERE: columns listed, WHERE still applies
+[x] Simple *: `SELECT * FROM t` → all columns listed with aliases
+[x] * with alias per column: each gets `col` AS `col``
+[x] * ordering: columns in table definition order (Column.Position)
+[x] * with WHERE: columns listed, WHERE still applies
 ```
 
 ### 6.3 Auto-Alias Generation
