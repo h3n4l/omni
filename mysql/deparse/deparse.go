@@ -446,9 +446,9 @@ func deparseFuncCallExpr(n *ast.FuncCallExpr) string {
 		return canonical + "()"
 	}
 
-	// COUNT(*) — star form
+	// COUNT(*) — MySQL 8.0 rewrites COUNT(*) to count(0)
 	if n.Star {
-		return canonical + "(*)"
+		return canonical + "(0)"
 	}
 
 	// Build argument list with no spaces after commas

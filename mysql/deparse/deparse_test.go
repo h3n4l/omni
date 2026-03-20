@@ -481,6 +481,39 @@ func TestDeparse_Section_3_2_SpecialFunctionForms(t *testing.T) {
 	}
 }
 
+func TestDeparse_Section_3_3_AggregateFunctions(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		// COUNT(*) — MySQL 8.0 rewrites * to 0
+		{"count_star", "COUNT(*)", "count(0)"},
+		// COUNT(col)
+		{"count_col", "COUNT(a)", "count(`a`)"},
+		// COUNT(DISTINCT col)
+		{"count_distinct", "COUNT(DISTINCT a)", "count(distinct `a`)"},
+		// SUM
+		{"sum", "SUM(a)", "sum(`a`)"},
+		// AVG
+		{"avg", "AVG(a)", "avg(`a`)"},
+		// MAX
+		{"max", "MAX(a)", "max(`a`)"},
+		// MIN
+		{"min", "MIN(a)", "min(`a`)"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			node := parseExpr(t, tc.input)
+			got := Deparse(node)
+			if got != tc.expected {
+				t.Errorf("Deparse(%q) = %q, want %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
 func TestDeparse_NilNode(t *testing.T) {
 	got := Deparse(nil)
 	if got != "" {

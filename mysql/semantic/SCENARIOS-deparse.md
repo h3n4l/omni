@@ -186,13 +186,13 @@ Function name rewrites (SUBSTRING→substr, etc.) are applied here — oracle te
 ### 3.3 Aggregate Functions
 
 ```
-[ ] COUNT(*): `COUNT(*)` → `count(0)` — * becomes 0
-[ ] COUNT(col): `COUNT(a)` → `count(`a`)`
-[ ] COUNT(DISTINCT col): `COUNT(DISTINCT a)` → `count(distinct `a`)`
-[ ] SUM: `SUM(a)` → `sum(`a`)`
-[ ] AVG: `AVG(a)` → `avg(`a`)`
-[ ] MAX: `MAX(a)` → `max(`a`)`
-[ ] MIN: `MIN(a)` → `min(`a`)`
+[x] COUNT(*): `COUNT(*)` → `count(0)` — * becomes 0
+[x] COUNT(col): `COUNT(a)` → `count(`a`)`
+[x] COUNT(DISTINCT col): `COUNT(DISTINCT a)` → `count(distinct `a`)`
+[x] SUM: `SUM(a)` → `sum(`a`)`
+[x] AVG: `AVG(a)` → `avg(`a`)`
+[x] MAX: `MAX(a)` → `max(`a`)`
+[x] MIN: `MIN(a)` → `min(`a`)`
 ```
 
 ### 3.4 GROUP_CONCAT
