@@ -177,10 +177,10 @@ Function name rewrites (SUBSTRING→substr, etc.) are applied here — oracle te
 ### 3.2 Special Function Forms
 
 ```
-[ ] TRIM simple: `TRIM(a)` → `trim(`a`)`
-[ ] TRIM LEADING: `TRIM(LEADING 'x' FROM a)` — verify MySQL format
-[ ] TRIM TRAILING: `TRIM(TRAILING 'x' FROM a)` — verify MySQL format
-[ ] TRIM BOTH: `TRIM(BOTH 'x' FROM a)` — verify MySQL format
+[x] TRIM simple: `TRIM(a)` → `trim(`a`)`
+[x] TRIM LEADING: `TRIM(LEADING 'x' FROM a)` → `trim(leading 'x' from `a`)` — oracle verified
+[x] TRIM TRAILING: `TRIM(TRAILING 'x' FROM a)` → `trim(trailing 'x' from `a`)` — oracle verified
+[x] TRIM BOTH: `TRIM(BOTH 'x' FROM a)` → `trim(both 'x' from `a`)` — oracle verified
 ```
 
 ### 3.3 Aggregate Functions

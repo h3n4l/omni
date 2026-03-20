@@ -401,9 +401,36 @@ var funcNameRewrites = map[string]string{
 	"LOCALTIMESTAMP":     "now",
 }
 
+// deparseTrimDirectional handles TRIM(LEADING|TRAILING|BOTH remstr FROM str).
+// MySQL 8.0 SHOW CREATE VIEW format: trim(leading 'x' from `a`)
+func deparseTrimDirectional(direction string, args []ast.ExprNode) string {
+	if len(args) == 2 {
+		remstr := deparseExpr(args[0])
+		str := deparseExpr(args[1])
+		return "trim(" + direction + " " + remstr + " from " + str + ")"
+	}
+	// Fallback: single arg (shouldn't happen for directional, but be safe)
+	if len(args) == 1 {
+		return "trim(" + direction + " " + deparseExpr(args[0]) + ")"
+	}
+	return "trim()"
+}
+
 func deparseFuncCallExpr(n *ast.FuncCallExpr) string {
-	// Determine the canonical function name
+	// Handle TRIM special forms: TRIM_LEADING, TRIM_TRAILING, TRIM_BOTH
+	// Parser encodes these as FuncCallExpr with Name="TRIM_LEADING" etc.
+	// Args: [remstr, str] for directional forms
 	name := strings.ToUpper(n.Name)
+	switch name {
+	case "TRIM_LEADING":
+		return deparseTrimDirectional("leading", n.Args)
+	case "TRIM_TRAILING":
+		return deparseTrimDirectional("trailing", n.Args)
+	case "TRIM_BOTH":
+		return deparseTrimDirectional("both", n.Args)
+	}
+
+	// Determine the canonical function name
 	canonical, ok := funcNameRewrites[name]
 	if !ok {
 		canonical = strings.ToLower(n.Name)

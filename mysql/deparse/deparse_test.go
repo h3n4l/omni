@@ -454,6 +454,33 @@ func TestDeparse_Section_3_1_FunctionsAndRewrites(t *testing.T) {
 	}
 }
 
+func TestDeparse_Section_3_2_SpecialFunctionForms(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		// TRIM simple — no direction, single arg
+		{"trim_simple", "TRIM(a)", "trim(`a`)"},
+		// TRIM LEADING
+		{"trim_leading", "TRIM(LEADING 'x' FROM a)", "trim(leading 'x' from `a`)"},
+		// TRIM TRAILING
+		{"trim_trailing", "TRIM(TRAILING 'x' FROM a)", "trim(trailing 'x' from `a`)"},
+		// TRIM BOTH
+		{"trim_both", "TRIM(BOTH 'x' FROM a)", "trim(both 'x' from `a`)"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			node := parseExpr(t, tc.input)
+			got := Deparse(node)
+			if got != tc.expected {
+				t.Errorf("Deparse(%q) = %q, want %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
 func TestDeparse_NilNode(t *testing.T) {
 	got := Deparse(nil)
 	if got != "" {
