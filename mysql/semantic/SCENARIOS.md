@@ -611,12 +611,12 @@ Every error must match MySQL's errno, SQLSTATE, and message format.
 ### 6.3 INFORMATION_SCHEMA Consistency
 
 ```
-[ ] INFORMATION_SCHEMA.COLUMNS matches catalog state
-[ ] INFORMATION_SCHEMA.STATISTICS matches catalog indexes
-[ ] INFORMATION_SCHEMA.TABLE_CONSTRAINTS matches
-[ ] INFORMATION_SCHEMA.KEY_COLUMN_USAGE matches
-[ ] INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS matches
-[ ] INFORMATION_SCHEMA.CHECK_CONSTRAINTS matches
+[~] INFORMATION_SCHEMA.COLUMNS matches catalog state — requires INFORMATION_SCHEMA query engine; internal state verified via Go API
+[~] INFORMATION_SCHEMA.STATISTICS matches catalog indexes — requires INFORMATION_SCHEMA query engine; internal state verified via Go API
+[~] INFORMATION_SCHEMA.TABLE_CONSTRAINTS matches — requires INFORMATION_SCHEMA query engine; internal state verified via Go API
+[~] INFORMATION_SCHEMA.KEY_COLUMN_USAGE matches — requires INFORMATION_SCHEMA query engine; internal state verified via Go API
+[~] INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS matches — requires INFORMATION_SCHEMA query engine; internal state verified via Go API
+[~] INFORMATION_SCHEMA.CHECK_CONSTRAINTS matches — requires INFORMATION_SCHEMA query engine; internal state verified via Go API
 ```
 
 ---

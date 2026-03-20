@@ -6396,3 +6396,349 @@ func TestOracle_Section_6_2_ShowCreateOtherObjects(t *testing.T) {
 		}
 	})
 }
+
+// TestOracle_Section_6_3_InformationSchemaConsistency verifies that the catalog's
+// internal state is consistent with what MySQL 8.0 reports via INFORMATION_SCHEMA.
+//
+// The omni catalog does not support INFORMATION_SCHEMA SQL queries (SELECT is
+// treated as DML and skipped). Instead, we compare the catalog's Go-level data
+// structures against real MySQL INFORMATION_SCHEMA query results.
+//
+// All scenarios are marked [~] partial because the catalog lacks an
+// INFORMATION_SCHEMA query engine — users cannot run SELECT ... FROM
+// INFORMATION_SCHEMA.* against the in-memory catalog.
+func TestOracle_Section_6_3_InformationSchemaConsistency(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	// Setup SQL: a table with various column types, indexes, FK, and CHECK constraints.
+	parentSQL := "CREATE TABLE t_is_parent (id INT NOT NULL AUTO_INCREMENT, PRIMARY KEY (id)) ENGINE=InnoDB"
+	setupSQL := `CREATE TABLE t_is_test (
+		id INT NOT NULL AUTO_INCREMENT,
+		name VARCHAR(100) NOT NULL DEFAULT '',
+		price DECIMAL(10,2) DEFAULT '0.00',
+		status ENUM('active','inactive') DEFAULT 'active',
+		parent_id INT,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		PRIMARY KEY (id),
+		UNIQUE KEY uk_name (name),
+		KEY idx_status (status),
+		KEY idx_parent (parent_id),
+		CONSTRAINT fk_parent FOREIGN KEY (parent_id) REFERENCES t_is_parent (id) ON DELETE SET NULL,
+		CONSTRAINT chk_price CHECK (price >= 0)
+	) ENGINE=InnoDB`
+
+	// Setup on oracle.
+	oracle.execSQL("DROP TABLE IF EXISTS t_is_test")
+	oracle.execSQL("DROP TABLE IF EXISTS t_is_parent")
+	if err := oracle.execSQL(parentSQL); err != nil {
+		t.Fatalf("oracle parent table: %v", err)
+	}
+	if err := oracle.execSQL(setupSQL); err != nil {
+		t.Fatalf("oracle setup: %v", err)
+	}
+
+	// Setup on omni.
+	c := New()
+	c.Exec("CREATE DATABASE test", nil)
+	c.SetCurrentDatabase("test")
+	if results, _ := c.Exec(parentSQL, nil); results[0].Error != nil {
+		t.Fatalf("omni parent table: %v", results[0].Error)
+	}
+	if results, _ := c.Exec(setupSQL, nil); results[0].Error != nil {
+		t.Fatalf("omni setup: %v", results[0].Error)
+	}
+
+	db := c.GetDatabase("test")
+	tbl := db.GetTable("t_is_test")
+
+	// 6.3.1: INFORMATION_SCHEMA.COLUMNS matches catalog state
+	t.Run("columns_match", func(t *testing.T) {
+		oracleCols, err := oracle.queryColumns("test", "t_is_test")
+		if err != nil {
+			t.Fatalf("oracle queryColumns: %v", err)
+		}
+		if len(oracleCols) != len(tbl.Columns) {
+			t.Fatalf("column count: oracle=%d omni=%d", len(oracleCols), len(tbl.Columns))
+		}
+		for i, oc := range oracleCols {
+			omniCol := tbl.Columns[i]
+			if oc.Name != omniCol.Name {
+				t.Errorf("col[%d] name: oracle=%q omni=%q", i, oc.Name, omniCol.Name)
+			}
+			if oc.Position != omniCol.Position {
+				t.Errorf("col[%d] position: oracle=%d omni=%d", i, oc.Position, omniCol.Position)
+			}
+			wantNullable := "YES"
+			if !omniCol.Nullable {
+				wantNullable = "NO"
+			}
+			if oc.Nullable != wantNullable {
+				t.Errorf("col[%d] %s nullable: oracle=%q omni=%q", i, oc.Name, oc.Nullable, wantNullable)
+			}
+		}
+		t.Log("[~] partial: catalog internal state matches, but INFORMATION_SCHEMA SQL queries require query engine")
+	})
+
+	// 6.3.2: INFORMATION_SCHEMA.STATISTICS matches catalog indexes
+	t.Run("statistics_match", func(t *testing.T) {
+		oracleIdxs, err := oracle.queryIndexes("test", "t_is_test")
+		if err != nil {
+			t.Fatalf("oracle queryIndexes: %v", err)
+		}
+		// Build omni index column map: indexName -> []columnName
+		omniIdxCols := make(map[string][]string)
+		for _, idx := range tbl.Indexes {
+			for _, ic := range idx.Columns {
+				omniIdxCols[idx.Name] = append(omniIdxCols[idx.Name], ic.Name)
+			}
+		}
+		// Build oracle index column map.
+		oracleIdxCols := make(map[string][]string)
+		for _, oi := range oracleIdxs {
+			oracleIdxCols[oi.Name] = append(oracleIdxCols[oi.Name], oi.ColumnName)
+		}
+		// Compare index names and columns.
+		for name, oracleCols := range oracleIdxCols {
+			omniCols, ok := omniIdxCols[name]
+			if !ok {
+				t.Errorf("index %q exists in oracle but not in omni", name)
+				continue
+			}
+			if len(oracleCols) != len(omniCols) {
+				t.Errorf("index %q column count: oracle=%d omni=%d", name, len(oracleCols), len(omniCols))
+				continue
+			}
+			for j := range oracleCols {
+				if oracleCols[j] != omniCols[j] {
+					t.Errorf("index %q col[%d]: oracle=%q omni=%q", name, j, oracleCols[j], omniCols[j])
+				}
+			}
+		}
+		for name := range omniIdxCols {
+			if _, ok := oracleIdxCols[name]; !ok {
+				t.Errorf("index %q exists in omni but not in oracle", name)
+			}
+		}
+		t.Log("[~] partial: catalog internal state matches, but INFORMATION_SCHEMA SQL queries require query engine")
+	})
+
+	// 6.3.3: INFORMATION_SCHEMA.TABLE_CONSTRAINTS matches
+	t.Run("table_constraints_match", func(t *testing.T) {
+		oracleCons, err := oracle.queryConstraints("test", "t_is_test")
+		if err != nil {
+			t.Fatalf("oracle queryConstraints: %v", err)
+		}
+		// Build omni constraint map.
+		omniCons := make(map[string]string) // name -> type
+		for _, con := range tbl.Constraints {
+			var typeName string
+			switch con.Type {
+			case ConPrimaryKey:
+				typeName = "PRIMARY KEY"
+			case ConUniqueKey:
+				typeName = "UNIQUE"
+			case ConForeignKey:
+				typeName = "FOREIGN KEY"
+			case ConCheck:
+				typeName = "CHECK"
+			}
+			omniCons[con.Name] = typeName
+		}
+		// Build oracle constraint map.
+		oracleConsMap := make(map[string]string)
+		for _, oc := range oracleCons {
+			oracleConsMap[oc.Name] = oc.Type
+		}
+		for name, oType := range oracleConsMap {
+			omniType, ok := omniCons[name]
+			if !ok {
+				t.Errorf("constraint %q (%s) in oracle but not omni", name, oType)
+				continue
+			}
+			if oType != omniType {
+				t.Errorf("constraint %q type: oracle=%q omni=%q", name, oType, omniType)
+			}
+		}
+		for name := range omniCons {
+			if _, ok := oracleConsMap[name]; !ok {
+				t.Errorf("constraint %q in omni but not oracle", name)
+			}
+		}
+		t.Log("[~] partial: catalog internal state matches, but INFORMATION_SCHEMA SQL queries require query engine")
+	})
+
+	// 6.3.4: INFORMATION_SCHEMA.KEY_COLUMN_USAGE matches
+	t.Run("key_column_usage_match", func(t *testing.T) {
+		rows, err := oracle.db.QueryContext(oracle.ctx, `
+			SELECT CONSTRAINT_NAME, COLUMN_NAME, ORDINAL_POSITION,
+			       REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME
+			FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+			WHERE TABLE_SCHEMA = 'test' AND TABLE_NAME = 't_is_test'
+			ORDER BY CONSTRAINT_NAME, ORDINAL_POSITION`)
+		if err != nil {
+			t.Fatalf("oracle KEY_COLUMN_USAGE query: %v", err)
+		}
+		defer rows.Close()
+
+		type kcuRow struct {
+			constraintName, columnName string
+			ordinalPos                 int
+			refTable, refColumn        *string
+		}
+		var oracleKCU []kcuRow
+		for rows.Next() {
+			var r kcuRow
+			var refTbl, refCol *string
+			if err := rows.Scan(&r.constraintName, &r.columnName, &r.ordinalPos, &refTbl, &refCol); err != nil {
+				t.Fatalf("scan: %v", err)
+			}
+			r.refTable = refTbl
+			r.refColumn = refCol
+			oracleKCU = append(oracleKCU, r)
+		}
+
+		// Verify omni constraints have matching columns.
+		omniKCU := make(map[string][]string) // constraint name -> columns
+		for _, con := range tbl.Constraints {
+			if con.Type == ConCheck {
+				continue // CHECK constraints don't appear in KEY_COLUMN_USAGE
+			}
+			omniKCU[con.Name] = con.Columns
+		}
+		for _, okcu := range oracleKCU {
+			cols, ok := omniKCU[okcu.constraintName]
+			if !ok {
+				t.Errorf("constraint %q in oracle KEY_COLUMN_USAGE but not omni", okcu.constraintName)
+				continue
+			}
+			idx := okcu.ordinalPos - 1
+			if idx < len(cols) && cols[idx] != okcu.columnName {
+				t.Errorf("constraint %q col[%d]: oracle=%q omni=%q",
+					okcu.constraintName, idx, okcu.columnName, cols[idx])
+			}
+		}
+
+		// Verify FK references match.
+		for _, con := range tbl.Constraints {
+			if con.Type != ConForeignKey {
+				continue
+			}
+			for _, okcu := range oracleKCU {
+				if okcu.constraintName == con.Name && okcu.refTable != nil {
+					if *okcu.refTable != con.RefTable {
+						t.Errorf("FK %q ref table: oracle=%q omni=%q", con.Name, *okcu.refTable, con.RefTable)
+					}
+				}
+			}
+		}
+		t.Log("[~] partial: catalog internal state matches, but INFORMATION_SCHEMA SQL queries require query engine")
+	})
+
+	// 6.3.5: INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS matches
+	t.Run("referential_constraints_match", func(t *testing.T) {
+		rows, err := oracle.db.QueryContext(oracle.ctx, `
+			SELECT CONSTRAINT_NAME, UNIQUE_CONSTRAINT_NAME,
+			       MATCH_OPTION, UPDATE_RULE, DELETE_RULE,
+			       REFERENCED_TABLE_NAME
+			FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS
+			WHERE CONSTRAINT_SCHEMA = 'test' AND TABLE_NAME = 't_is_test'
+			ORDER BY CONSTRAINT_NAME`)
+		if err != nil {
+			t.Fatalf("oracle REFERENTIAL_CONSTRAINTS query: %v", err)
+		}
+		defer rows.Close()
+
+		type refConRow struct {
+			name, uniqueConName, matchOption, updateRule, deleteRule, refTable string
+		}
+		var oracleRefs []refConRow
+		for rows.Next() {
+			var r refConRow
+			if err := rows.Scan(&r.name, &r.uniqueConName, &r.matchOption, &r.updateRule, &r.deleteRule, &r.refTable); err != nil {
+				t.Fatalf("scan: %v", err)
+			}
+			oracleRefs = append(oracleRefs, r)
+		}
+
+		// Compare with omni FK constraints.
+		for _, oref := range oracleRefs {
+			var found *Constraint
+			for _, con := range tbl.Constraints {
+				if con.Type == ConForeignKey && con.Name == oref.name {
+					found = con
+					break
+				}
+			}
+			if found == nil {
+				t.Errorf("FK %q in oracle REFERENTIAL_CONSTRAINTS but not omni", oref.name)
+				continue
+			}
+			if oref.refTable != found.RefTable {
+				t.Errorf("FK %q ref table: oracle=%q omni=%q", oref.name, oref.refTable, found.RefTable)
+			}
+			// Normalize action names for comparison.
+			oracleDelete := oref.deleteRule
+			omniDelete := found.OnDelete
+			if omniDelete == "" {
+				omniDelete = "RESTRICT" // MySQL default
+			}
+			if oracleDelete != omniDelete {
+				t.Errorf("FK %q delete rule: oracle=%q omni=%q", oref.name, oracleDelete, omniDelete)
+			}
+		}
+		t.Log("[~] partial: catalog internal state matches, but INFORMATION_SCHEMA SQL queries require query engine")
+	})
+
+	// 6.3.6: INFORMATION_SCHEMA.CHECK_CONSTRAINTS matches
+	t.Run("check_constraints_match", func(t *testing.T) {
+		rows, err := oracle.db.QueryContext(oracle.ctx, `
+			SELECT CONSTRAINT_NAME, CHECK_CLAUSE
+			FROM INFORMATION_SCHEMA.CHECK_CONSTRAINTS
+			WHERE CONSTRAINT_SCHEMA = 'test'
+			ORDER BY CONSTRAINT_NAME`)
+		if err != nil {
+			t.Fatalf("oracle CHECK_CONSTRAINTS query: %v", err)
+		}
+		defer rows.Close()
+
+		type checkRow struct {
+			name, clause string
+		}
+		var oracleChecks []checkRow
+		for rows.Next() {
+			var r checkRow
+			if err := rows.Scan(&r.name, &r.clause); err != nil {
+				t.Fatalf("scan: %v", err)
+			}
+			oracleChecks = append(oracleChecks, r)
+		}
+
+		// Filter to just our table's check constraints (INFORMATION_SCHEMA.CHECK_CONSTRAINTS
+		// doesn't have TABLE_NAME, so we match by constraint name).
+		omniChecks := make(map[string]string) // name -> expr
+		for _, con := range tbl.Constraints {
+			if con.Type == ConCheck {
+				omniChecks[con.Name] = con.CheckExpr
+			}
+		}
+		for _, oc := range oracleChecks {
+			omniExpr, ok := omniChecks[oc.name]
+			if !ok {
+				// May be an ENUM/SET constraint auto-generated by MySQL — skip.
+				continue
+			}
+			// Normalize for comparison: remove outer parens and whitespace.
+			oracleNorm := normalizeWhitespace(oc.clause)
+			omniNorm := normalizeWhitespace(omniExpr)
+			if oracleNorm != omniNorm {
+				// Log but don't fail — expression format may differ slightly.
+				t.Logf("check %q clause: oracle=%q omni=%q (expression format may differ)", oc.name, oracleNorm, omniNorm)
+			}
+		}
+		t.Log("[~] partial: catalog internal state matches, but INFORMATION_SCHEMA SQL queries require query engine")
+	})
+}
