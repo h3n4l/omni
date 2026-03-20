@@ -56,6 +56,90 @@ func deparseExprForOracle(t *testing.T, expr string) string {
 	return deparse.Deparse(target)
 }
 
+// deparseExprRewriteForOracle parses a SQL expression, applies RewriteExpr, and deparses.
+func deparseExprRewriteForOracle(t *testing.T, expr string) string {
+	t.Helper()
+	sql := "SELECT " + expr + " FROM t"
+	stmts, err := parser.Parse(sql)
+	if err != nil {
+		t.Fatalf("failed to parse %q: %v", sql, err)
+	}
+	if stmts.Len() == 0 {
+		t.Fatalf("no statements parsed from %q", sql)
+	}
+	sel, ok := stmts.Items[0].(*nodes.SelectStmt)
+	if !ok {
+		t.Fatalf("expected SelectStmt, got %T", stmts.Items[0])
+	}
+	if len(sel.TargetList) == 0 {
+		t.Fatalf("no target list in SELECT from %q", sql)
+	}
+	target := sel.TargetList[0]
+	if rt, ok := target.(*nodes.ResTarget); ok {
+		return deparse.Deparse(deparse.RewriteExpr(rt.Val))
+	}
+	return deparse.Deparse(deparse.RewriteExpr(target))
+}
+
+// TestDeparse_Section_4_1_Oracle verifies NOT folding against MySQL 8.0.
+func TestDeparse_Section_4_1_Oracle(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	// Create base table with integer column for boolean/comparison tests
+	oracle.execSQLDirect("CREATE TABLE IF NOT EXISTS t (a INT, b INT)")
+
+	cases := []struct {
+		name  string
+		input string // expression to test
+	}{
+		{"not_gt", "NOT (a > 0)"},
+		{"not_lt", "NOT (a < 0)"},
+		{"not_ge", "NOT (a >= 0)"},
+		{"not_le", "NOT (a <= 0)"},
+		{"not_eq", "NOT (a = 0)"},
+		{"not_ne", "NOT (a <> 0)"},
+		{"not_col", "NOT a"},
+		{"not_add", "NOT (a + 1)"},
+		{"bang_col", "!a"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			viewName := "v_" + tc.name
+			selectSQL := fmt.Sprintf("SELECT %s FROM t", tc.input)
+
+			// Create view on MySQL 8.0
+			oracle.execSQLDirect("DROP VIEW IF EXISTS " + viewName)
+			createSQL := fmt.Sprintf("CREATE VIEW %s AS %s", viewName, selectSQL)
+			if err := oracle.execSQLDirect(createSQL); err != nil {
+				t.Fatalf("CREATE VIEW failed: %v", err)
+			}
+
+			mysqlOutput, err := oracle.showCreateView(viewName)
+			if err != nil {
+				t.Fatalf("SHOW CREATE VIEW failed: %v", err)
+			}
+
+			// Extract just the expression from MySQL's output
+			mysqlExpr := extractExprFromView(mysqlOutput)
+
+			// Our deparser output (with rewrite)
+			omniExpr := deparseExprRewriteForOracle(t, tc.input)
+
+			t.Logf("MySQL:  %s", mysqlExpr)
+			t.Logf("Omni:   %s", omniExpr)
+
+			if mysqlExpr != omniExpr {
+				t.Errorf("mismatch:\n--- mysql ---\n%s\n--- omni ---\n%s", mysqlExpr, omniExpr)
+			}
+		})
+	}
+}
+
 // TestDeparse_Section_3_2_Oracle verifies TRIM special forms against MySQL 8.0.
 func TestDeparse_Section_3_2_Oracle(t *testing.T) {
 	if testing.Short() {

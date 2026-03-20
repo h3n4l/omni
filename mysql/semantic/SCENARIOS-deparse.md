@@ -233,16 +233,16 @@ This phase focuses on the standalone rewrite logic: NOT folding and boolean cont
 ### 4.1 NOT Folding
 
 ```
-[ ] NOT (a > 0) → (a <= 0) — comparison operator inversion
-[ ] NOT (a < 0) → (a >= 0)
-[ ] NOT (a >= 0) → (a < 0)
-[ ] NOT (a <= 0) → (a > 0)
-[ ] NOT (a = 0) → (a <> 0)
-[ ] NOT (a <> 0) → (a = 0)
-[ ] NOT (non-boolean) → (0 = expr) — e.g., NOT(a+1) → (0 = (a+1))
-[ ] NOT LIKE → not((expr like pattern)) — NOT wrapping, not folding
-[ ] ! operator on column: `!a` → `(0 = `a`)` — C-style NOT same as NOT
-[ ] NOT (a > 0) in view: oracle verification of folded output
+[x] NOT (a > 0) → (a <= 0) — comparison operator inversion
+[x] NOT (a < 0) → (a >= 0)
+[x] NOT (a >= 0) → (a < 0)
+[x] NOT (a <= 0) → (a > 0)
+[x] NOT (a = 0) → (a <> 0)
+[x] NOT (a <> 0) → (a = 0)
+[x] NOT (non-boolean) → (0 = expr) — e.g., NOT(a+1) → (0 = (a+1))
+[x] NOT LIKE → not((expr like pattern)) — NOT wrapping, not folding
+[x] ! operator on column: `!a` → `(0 = `a`)` — C-style NOT same as NOT
+[x] NOT (a > 0) in view: oracle verification of folded output
 ```
 
 ### 4.2 Boolean Context Wrapping (isBooleanExpr)

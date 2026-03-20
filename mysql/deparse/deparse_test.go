@@ -610,3 +610,126 @@ func TestDeparse_NilNode(t *testing.T) {
 		t.Errorf("Deparse(nil) = %q, want empty string", got)
 	}
 }
+
+// parseRewriteDeparse is a helper that parses an expression, applies RewriteExpr, and deparses.
+func parseRewriteDeparse(t *testing.T, expr string) string {
+	t.Helper()
+	node := parseExpr(t, expr)
+	rewritten := RewriteExpr(node)
+	return Deparse(rewritten)
+}
+
+func TestDeparse_Section_4_1_NOTFolding(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		// NOT (comparison) → inverted comparison operator
+		{"not_gt", "NOT (a > 0)", "(`a` <= 0)"},
+		{"not_lt", "NOT (a < 0)", "(`a` >= 0)"},
+		{"not_ge", "NOT (a >= 0)", "(`a` < 0)"},
+		{"not_le", "NOT (a <= 0)", "(`a` > 0)"},
+		{"not_eq", "NOT (a = 0)", "(`a` <> 0)"},
+		{"not_ne", "NOT (a <> 0)", "(`a` = 0)"},
+
+		// NOT (non-boolean) → (0 = expr)
+		{"not_col", "NOT a", "(0 = `a`)"},
+		{"not_add", "NOT (a + 1)", "(0 = (`a` + 1))"},
+
+		// NOT LIKE → not((expr like pattern))  — stays as not() wrapping
+		{"not_like", "NOT (a LIKE 'foo%')", "(not((`a` like 'foo%')))"},
+
+		// ! operator on column — same as NOT
+		{"bang_col", "!a", "(0 = `a`)"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := parseRewriteDeparse(t, tc.input)
+			if got != tc.expected {
+				t.Errorf("RewriteExpr+Deparse(%q) = %q, want %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
+// TestDeparse_Section_4_1_NOTFolding_AST tests NOT folding via hand-built AST nodes
+// for cases where the parser may handle NOT differently (e.g., NOT LIKE is parsed
+// directly as LikeExpr with Not=true, not as UnaryNot wrapping LikeExpr).
+func TestDeparse_Section_4_1_NOTFolding_AST(t *testing.T) {
+	// NOT wrapping a LikeExpr (as if we manually constructed this AST)
+	t.Run("not_wrapping_like_ast", func(t *testing.T) {
+		node := &ast.UnaryExpr{
+			Op: ast.UnaryNot,
+			Operand: &ast.LikeExpr{
+				Expr:    &ast.ColumnRef{Column: "a"},
+				Pattern: &ast.StringLit{Value: "foo%"},
+			},
+		}
+		rewritten := RewriteExpr(node)
+		got := Deparse(rewritten)
+		expected := "(not((`a` like 'foo%')))"
+		if got != expected {
+			t.Errorf("RewriteExpr+Deparse(NOT(a LIKE 'foo%%')) = %q, want %q", got, expected)
+		}
+	})
+
+	// NOT wrapping comparison via AST (no ParenExpr wrapper)
+	t.Run("not_gt_no_paren_ast", func(t *testing.T) {
+		node := &ast.UnaryExpr{
+			Op: ast.UnaryNot,
+			Operand: &ast.BinaryExpr{
+				Op:    ast.BinOpGt,
+				Left:  &ast.ColumnRef{Column: "a"},
+				Right: &ast.IntLit{Value: 0},
+			},
+		}
+		rewritten := RewriteExpr(node)
+		got := Deparse(rewritten)
+		expected := "(`a` <= 0)"
+		if got != expected {
+			t.Errorf("RewriteExpr+Deparse(NOT(a > 0)) = %q, want %q", got, expected)
+		}
+	})
+
+	// ! on column ref — (0 = `a`)
+	t.Run("bang_column_ast", func(t *testing.T) {
+		node := &ast.UnaryExpr{
+			Op:      ast.UnaryNot,
+			Operand: &ast.ColumnRef{Column: "a"},
+		}
+		rewritten := RewriteExpr(node)
+		got := Deparse(rewritten)
+		expected := "(0 = `a`)"
+		if got != expected {
+			t.Errorf("RewriteExpr+Deparse(!a) = %q, want %q", got, expected)
+		}
+	})
+
+	// NOT on arithmetic — (0 = (a + 1))
+	t.Run("not_arithmetic_ast", func(t *testing.T) {
+		node := &ast.UnaryExpr{
+			Op: ast.UnaryNot,
+			Operand: &ast.BinaryExpr{
+				Op:    ast.BinOpAdd,
+				Left:  &ast.ColumnRef{Column: "a"},
+				Right: &ast.IntLit{Value: 1},
+			},
+		}
+		rewritten := RewriteExpr(node)
+		got := Deparse(rewritten)
+		expected := "(0 = (`a` + 1))"
+		if got != expected {
+			t.Errorf("RewriteExpr+Deparse(NOT(a+1)) = %q, want %q", got, expected)
+		}
+	})
+}
+
+// TestRewriteExpr_NilNode tests that RewriteExpr handles nil gracefully.
+func TestRewriteExpr_NilNode(t *testing.T) {
+	got := RewriteExpr(nil)
+	if got != nil {
+		t.Errorf("RewriteExpr(nil) = %v, want nil", got)
+	}
+}
