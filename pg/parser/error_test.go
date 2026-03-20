@@ -70,6 +70,17 @@ func TestParseErrors(t *testing.T) {
 		// Section 1.3: IS DISTINCT FROM — soft-fail nil checks
 		{name: "IS DISTINCT FROM no right expr", sql: "SELECT 1 IS DISTINCT FROM", wantContains: "syntax error", wantPos: -1},
 		{name: "IS NOT DISTINCT FROM no right expr", sql: "SELECT 1 IS NOT DISTINCT FROM", wantContains: "syntax error", wantPos: -1},
+		// Section 2.1: BETWEEN / LIKE / ILIKE / SIMILAR TO — soft-fail nil checks
+		{name: "BETWEEN no lower bound", sql: "SELECT 1 BETWEEN", wantContains: "syntax error", wantPos: -1},
+		{name: "BETWEEN AND no upper bound", sql: "SELECT 1 BETWEEN 0 AND", wantContains: "syntax error", wantPos: -1},
+		{name: "NOT BETWEEN no lower bound", sql: "SELECT 1 NOT BETWEEN", wantContains: "syntax error", wantPos: -1},
+		{name: "LIKE no pattern", sql: "SELECT 'a' LIKE", wantContains: "syntax error", wantPos: -1},
+		{name: "LIKE ESCAPE no escape char", sql: "SELECT 'a' LIKE 'b' ESCAPE", wantContains: "syntax error", wantPos: -1},
+		{name: "NOT LIKE no pattern", sql: "SELECT 'a' NOT LIKE", wantContains: "syntax error", wantPos: -1},
+		{name: "ILIKE no pattern", sql: "SELECT 'a' ILIKE", wantContains: "syntax error", wantPos: -1},
+		{name: "ILIKE ESCAPE no escape char", sql: "SELECT 'a' ILIKE 'b' ESCAPE", wantContains: "syntax error", wantPos: -1},
+		{name: "SIMILAR TO no pattern", sql: "SELECT 'a' SIMILAR TO", wantContains: "syntax error", wantPos: -1},
+		{name: "SIMILAR TO ESCAPE no escape char", sql: "SELECT 'a' SIMILAR TO 'b' ESCAPE", wantContains: "syntax error", wantPos: -1},
 	}
 
 	for _, tt := range tests {

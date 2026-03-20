@@ -485,12 +485,18 @@ func (p *Parser) parseBetweenExpr(left nodes.Node, negated bool) (nodes.Node, er
 	if err != nil {
 		return nil, err
 	}
+	if lower == nil {
+		return nil, p.syntaxErrorAtCur()
+	}
 	if _, err := p.expect(AND); err != nil {
 		return nil, err
 	}
 	upper, err := p.parseAExpr(precIn + 1)
 	if err != nil {
 		return nil, err
+	}
+	if upper == nil {
+		return nil, p.syntaxErrorAtCur()
 	}
 
 	var kind nodes.A_Expr_Kind
@@ -584,6 +590,9 @@ func (p *Parser) parseLikeExpr(left nodes.Node, negated bool) (nodes.Node, error
 	if err != nil {
 		return nil, err
 	}
+	if right == nil {
+		return nil, p.syntaxErrorAtCur()
+	}
 
 	op := "~~"
 	if negated {
@@ -595,6 +604,9 @@ func (p *Parser) parseLikeExpr(left nodes.Node, negated bool) (nodes.Node, error
 		escapeExpr, err := p.parseAExpr(precIn + 1)
 		if err != nil {
 			return nil, err
+		}
+		if escapeExpr == nil {
+			return nil, p.syntaxErrorAtCur()
 		}
 		escapedPattern := &nodes.FuncCall{
 			Funcname:   makeFuncName("pg_catalog", "like_escape"),
@@ -625,6 +637,9 @@ func (p *Parser) parseIlikeExpr(left nodes.Node, negated bool) (nodes.Node, erro
 	if err != nil {
 		return nil, err
 	}
+	if right == nil {
+		return nil, p.syntaxErrorAtCur()
+	}
 
 	op := "~~*"
 	if negated {
@@ -636,6 +651,9 @@ func (p *Parser) parseIlikeExpr(left nodes.Node, negated bool) (nodes.Node, erro
 		escapeExpr, err := p.parseAExpr(precIn + 1)
 		if err != nil {
 			return nil, err
+		}
+		if escapeExpr == nil {
+			return nil, p.syntaxErrorAtCur()
 		}
 		escapedPattern := &nodes.FuncCall{
 			Funcname:   makeFuncName("pg_catalog", "iclike_escape"),
@@ -669,6 +687,9 @@ func (p *Parser) parseSimilarExpr(left nodes.Node, negated bool) (nodes.Node, er
 	if err != nil {
 		return nil, err
 	}
+	if right == nil {
+		return nil, p.syntaxErrorAtCur()
+	}
 
 	if negated {
 		if p.cur.Type == ESCAPE {
@@ -676,6 +697,9 @@ func (p *Parser) parseSimilarExpr(left nodes.Node, negated bool) (nodes.Node, er
 			escapeExpr, err := p.parseAExpr(precIn + 1)
 			if err != nil {
 				return nil, err
+			}
+			if escapeExpr == nil {
+				return nil, p.syntaxErrorAtCur()
 			}
 			// NOT SIMILAR with ESCAPE
 			escapedPattern := &nodes.FuncCall{
@@ -711,6 +735,9 @@ func (p *Parser) parseSimilarExpr(left nodes.Node, negated bool) (nodes.Node, er
 		escapeExpr, err := p.parseAExpr(precIn + 1)
 		if err != nil {
 			return nil, err
+		}
+		if escapeExpr == nil {
+			return nil, p.syntaxErrorAtCur()
 		}
 		escapedPattern := &nodes.FuncCall{
 			Funcname:   makeFuncName("pg_catalog", "similar_to_escape"),

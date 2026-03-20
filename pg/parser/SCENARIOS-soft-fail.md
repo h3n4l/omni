@@ -42,16 +42,16 @@ For each: after consuming the operator, `parseAExpr()` can return (nil, nil). Th
 
 ### 2.1 BETWEEN / LIKE / ILIKE / SIMILAR TO
 
-- [ ] `SELECT 1 BETWEEN` — BETWEEN consumed, no lower bound → syntax error at end of input
-- [ ] `SELECT 1 BETWEEN 0 AND` — lower bound parsed, AND consumed, no upper bound → syntax error at end of input
-- [ ] `SELECT 1 NOT BETWEEN` — NOT BETWEEN consumed, no lower bound → syntax error at end of input
-- [ ] `SELECT 'a' LIKE` — LIKE consumed, no pattern → syntax error at end of input
-- [ ] `SELECT 'a' LIKE 'b' ESCAPE` — ESCAPE consumed, no escape char → syntax error at end of input
-- [ ] `SELECT 'a' NOT LIKE` — NOT LIKE consumed, no pattern → syntax error at end of input
-- [ ] `SELECT 'a' ILIKE` — ILIKE consumed, no pattern → syntax error at end of input
-- [ ] `SELECT 'a' ILIKE 'b' ESCAPE` — ESCAPE consumed, no escape char → syntax error at end of input
-- [ ] `SELECT 'a' SIMILAR TO` — SIMILAR TO consumed, no pattern → syntax error at end of input
-- [ ] `SELECT 'a' SIMILAR TO 'b' ESCAPE` — ESCAPE consumed, no escape char → syntax error at end of input
+- [x] `SELECT 1 BETWEEN` — BETWEEN consumed, no lower bound → syntax error at end of input
+- [x] `SELECT 1 BETWEEN 0 AND` — lower bound parsed, AND consumed, no upper bound → syntax error at end of input
+- [x] `SELECT 1 NOT BETWEEN` — NOT BETWEEN consumed, no lower bound → syntax error at end of input
+- [x] `SELECT 'a' LIKE` — LIKE consumed, no pattern → syntax error at end of input
+- [x] `SELECT 'a' LIKE 'b' ESCAPE` — ESCAPE consumed, no escape char → syntax error at end of input
+- [x] `SELECT 'a' NOT LIKE` — NOT LIKE consumed, no pattern → syntax error at end of input
+- [x] `SELECT 'a' ILIKE` — ILIKE consumed, no pattern → syntax error at end of input
+- [x] `SELECT 'a' ILIKE 'b' ESCAPE` — ESCAPE consumed, no escape char → syntax error at end of input
+- [x] `SELECT 'a' SIMILAR TO` — SIMILAR TO consumed, no pattern → syntax error at end of input
+- [x] `SELECT 'a' SIMILAR TO 'b' ESCAPE` — ESCAPE consumed, no escape char → syntax error at end of input
 
 ### 2.2 COLLATE, TYPECAST & String Functions
 
