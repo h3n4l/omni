@@ -162,6 +162,10 @@ func (p *Parser) parseQualifiedName() (*nodes.List, error) {
 //	    ColId
 //	    | ColId '.' any_name
 func (p *Parser) parseAnyName() (*nodes.List, error) {
+	if p.collectMode() {
+		p.addRuleCandidate("any_name")
+		return nil, errCollecting
+	}
 	id, err := p.parseColId()
 	if err != nil {
 		return nil, err
@@ -170,6 +174,12 @@ func (p *Parser) parseAnyName() (*nodes.List, error) {
 
 	for p.cur.Type == '.' {
 		p.advance()
+		// After "name.", we may have reached the cursor position.
+		// Emit rule candidates so callers can recognize schema-qualified names.
+		if p.collectMode() {
+			p.addRuleCandidate("any_name")
+			return &nodes.List{Items: items}, errCollecting
+		}
 		// The recursive any_name starts with ColId, but we need to handle
 		// the case where the next token after '.' is '*' which could be
 		// part of a different rule. Only continue if we see a ColId.
@@ -646,7 +656,7 @@ func makeRangeVarFromAnyName(names *nodes.List) *nodes.RangeVar {
 	rv := &nodes.RangeVar{
 		Inh:            true,
 		Relpersistence: 'p',
-		Loc: nodes.NoLoc(),
+		Loc:            nodes.NoLoc(),
 	}
 	if names == nil {
 		return rv
