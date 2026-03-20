@@ -56,6 +56,12 @@ func deparseExpr(node ast.ExprNode) string {
 		return deparseIsExpr(n)
 	case *ast.RowExpr:
 		return deparseRowExpr(n)
+	case *ast.CaseExpr:
+		return deparseCaseExpr(n)
+	case *ast.CastExpr:
+		return deparseCastExpr(n)
+	case *ast.ConvertExpr:
+		return deparseConvertExpr(n)
 	default:
 		return fmt.Sprintf("/* unsupported: %T */", node)
 	}
@@ -257,5 +263,104 @@ func deparseRowExpr(n *ast.RowExpr) string {
 		items[i] = deparseExpr(item)
 	}
 	return "row(" + strings.Join(items, ",") + ")"
+}
+
+func deparseCaseExpr(n *ast.CaseExpr) string {
+	var b strings.Builder
+	b.WriteString("(case")
+	if n.Operand != nil {
+		b.WriteString(" ")
+		b.WriteString(deparseExpr(n.Operand))
+	}
+	for _, w := range n.Whens {
+		b.WriteString(" when ")
+		b.WriteString(deparseExpr(w.Cond))
+		b.WriteString(" then ")
+		b.WriteString(deparseExpr(w.Result))
+	}
+	if n.Default != nil {
+		b.WriteString(" else ")
+		b.WriteString(deparseExpr(n.Default))
+	}
+	b.WriteString(" end)")
+	return b.String()
+}
+
+func deparseCastExpr(n *ast.CastExpr) string {
+	expr := deparseExpr(n.Expr)
+	typeName := deparseDataType(n.TypeName)
+	return "cast(" + expr + " as " + typeName + ")"
+}
+
+func deparseConvertExpr(n *ast.ConvertExpr) string {
+	expr := deparseExpr(n.Expr)
+	// CONVERT(expr USING charset) form
+	if n.Charset != "" {
+		return "convert(" + expr + " using " + strings.ToLower(n.Charset) + ")"
+	}
+	// CONVERT(expr, type) form — MySQL rewrites to CAST
+	typeName := deparseDataType(n.TypeName)
+	return "cast(" + expr + " as " + typeName + ")"
+}
+
+func deparseDataType(dt *ast.DataType) string {
+	if dt == nil {
+		return ""
+	}
+	name := strings.ToLower(dt.Name)
+	switch name {
+	case "char":
+		result := "char"
+		if dt.Length > 0 {
+			result += fmt.Sprintf("(%d)", dt.Length)
+		}
+		// MySQL adds charset for CHAR in CAST
+		charset := dt.Charset
+		if charset == "" {
+			charset = "utf8mb4"
+		}
+		result += " charset " + strings.ToLower(charset)
+		return result
+	case "binary":
+		// CAST to BINARY becomes cast(x as char charset binary)
+		result := "char"
+		if dt.Length > 0 {
+			result += fmt.Sprintf("(%d)", dt.Length)
+		}
+		result += " charset binary"
+		return result
+	case "signed", "signed integer":
+		return "signed"
+	case "unsigned", "unsigned integer":
+		return "unsigned"
+	case "decimal":
+		if dt.Scale > 0 {
+			return fmt.Sprintf("decimal(%d,%d)", dt.Length, dt.Scale)
+		}
+		if dt.Length > 0 {
+			return fmt.Sprintf("decimal(%d)", dt.Length)
+		}
+		return "decimal"
+	case "date":
+		return "date"
+	case "datetime":
+		if dt.Length > 0 {
+			return fmt.Sprintf("datetime(%d)", dt.Length)
+		}
+		return "datetime"
+	case "time":
+		if dt.Length > 0 {
+			return fmt.Sprintf("time(%d)", dt.Length)
+		}
+		return "time"
+	case "json":
+		return "json"
+	case "float":
+		return "float"
+	case "double":
+		return "double"
+	default:
+		return name
+	}
 }
 

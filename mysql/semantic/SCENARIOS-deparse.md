@@ -127,19 +127,19 @@ Rewrites (!=→<>, MOD→%, +a dropped) are applied here — oracle tests verify
 ### 2.6 CASE, CAST & CONVERT
 
 ```
-[ ] Searched CASE: `CASE WHEN a > 0 THEN 'pos' ELSE 'zero' END` → `(case when (`a` > 0) then 'pos' else 'zero' end)`
-[ ] Searched CASE multiple WHEN: `CASE WHEN a>0 THEN 'a' WHEN b>0 THEN 'b' ELSE 'c' END`
-[ ] Simple CASE: `CASE a WHEN 1 THEN 'one' ELSE 'other' END` → `(case `a` when 1 then 'one' else 'other' end)`
-[ ] CASE without ELSE: verify MySQL output
-[ ] CAST to CHAR: `CAST(a AS CHAR)` → `cast(`a` as char charset utf8mb4)` — adds charset
-[ ] CAST to CHAR(N): `CAST(a AS CHAR(10))` → `cast(`a` as char(10) charset utf8mb4)`
-[ ] CAST to BINARY: `CAST(a AS BINARY)` → `cast(`a` as char charset binary)`
-[ ] CAST to SIGNED: `CAST(a AS SIGNED)` → `cast(`a` as signed)`
-[ ] CAST to UNSIGNED: `CAST(a AS UNSIGNED)` → `cast(`a` as unsigned)`
-[ ] CAST to DECIMAL: `CAST(a AS DECIMAL(10,2))` → `cast(`a` as decimal(10,2))`
-[ ] CAST to DATE/DATETIME/JSON: lowercase, no charset added
-[ ] CONVERT USING: `CONVERT(a USING utf8mb4)` → `convert(`a` using utf8mb4)`
-[ ] CONVERT type: `CONVERT(a, CHAR)` → `cast(`a` as char charset utf8mb4)` — rewritten to cast
+[x] Searched CASE: `CASE WHEN a > 0 THEN 'pos' ELSE 'zero' END` → `(case when (`a` > 0) then 'pos' else 'zero' end)`
+[x] Searched CASE multiple WHEN: `CASE WHEN a>0 THEN 'a' WHEN b>0 THEN 'b' ELSE 'c' END`
+[x] Simple CASE: `CASE a WHEN 1 THEN 'one' ELSE 'other' END` → `(case `a` when 1 then 'one' else 'other' end)`
+[x] CASE without ELSE: verify MySQL output
+[x] CAST to CHAR: `CAST(a AS CHAR)` → `cast(`a` as char charset utf8mb4)` — adds charset
+[x] CAST to CHAR(N): `CAST(a AS CHAR(10))` → `cast(`a` as char(10) charset utf8mb4)`
+[x] CAST to BINARY: `CAST(a AS BINARY)` → `cast(`a` as char charset binary)`
+[x] CAST to SIGNED: `CAST(a AS SIGNED)` → `cast(`a` as signed)`
+[x] CAST to UNSIGNED: `CAST(a AS UNSIGNED)` → `cast(`a` as unsigned)`
+[x] CAST to DECIMAL: `CAST(a AS DECIMAL(10,2))` → `cast(`a` as decimal(10,2))`
+[x] CAST to DATE/DATETIME/JSON: lowercase, no charset added
+[x] CONVERT USING: `CONVERT(a USING utf8mb4)` → `convert(`a` using utf8mb4)`
+[x] CONVERT type: `CONVERT(a, CHAR)` → `cast(`a` as char charset utf8mb4)` — rewritten to cast
 ```
 
 ### 2.7 Other Expressions

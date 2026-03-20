@@ -340,6 +340,59 @@ func TestDeparse_Section_2_5_ComparisonPredicates(t *testing.T) {
 	}
 }
 
+func TestDeparse_Section_2_6_CaseCastConvert(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		// Searched CASE
+		{"searched_case", "CASE WHEN a > 0 THEN 'pos' ELSE 'zero' END",
+			"(case when (`a` > 0) then 'pos' else 'zero' end)"},
+		// Searched CASE multiple WHEN
+		{"searched_case_multi", "CASE WHEN a>0 THEN 'a' WHEN b>0 THEN 'b' ELSE 'c' END",
+			"(case when (`a` > 0) then 'a' when (`b` > 0) then 'b' else 'c' end)"},
+		// Simple CASE
+		{"simple_case", "CASE a WHEN 1 THEN 'one' ELSE 'other' END",
+			"(case `a` when 1 then 'one' else 'other' end)"},
+		// CASE without ELSE
+		{"case_no_else", "CASE WHEN a > 0 THEN 'pos' END",
+			"(case when (`a` > 0) then 'pos' end)"},
+		// CAST to CHAR
+		{"cast_char", "CAST(a AS CHAR)", "cast(`a` as char charset utf8mb4)"},
+		// CAST to CHAR(N)
+		{"cast_char_n", "CAST(a AS CHAR(10))", "cast(`a` as char(10) charset utf8mb4)"},
+		// CAST to BINARY
+		{"cast_binary", "CAST(a AS BINARY)", "cast(`a` as char charset binary)"},
+		// CAST to SIGNED
+		{"cast_signed", "CAST(a AS SIGNED)", "cast(`a` as signed)"},
+		// CAST to UNSIGNED
+		{"cast_unsigned", "CAST(a AS UNSIGNED)", "cast(`a` as unsigned)"},
+		// CAST to DECIMAL
+		{"cast_decimal", "CAST(a AS DECIMAL(10,2))", "cast(`a` as decimal(10,2))"},
+		// CAST to DATE
+		{"cast_date", "CAST(a AS DATE)", "cast(`a` as date)"},
+		// CAST to DATETIME
+		{"cast_datetime", "CAST(a AS DATETIME)", "cast(`a` as datetime)"},
+		// CAST to JSON
+		{"cast_json", "CAST(a AS JSON)", "cast(`a` as json)"},
+		// CONVERT USING
+		{"convert_using", "CONVERT(a USING utf8mb4)", "convert(`a` using utf8mb4)"},
+		// CONVERT type — rewritten to cast
+		{"convert_type_char", "CONVERT(a, CHAR)", "cast(`a` as char charset utf8mb4)"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			node := parseExpr(t, tc.input)
+			got := Deparse(node)
+			if got != tc.expected {
+				t.Errorf("Deparse(%q) = %q, want %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
 func TestDeparse_NilNode(t *testing.T) {
 	got := Deparse(nil)
 	if got != "" {
