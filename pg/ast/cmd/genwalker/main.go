@@ -25,7 +25,7 @@ func main() {
 	fset := token.NewFileSet()
 
 	// Parse both source files.
-	sources := []string{"pg/ast/parsenodes.go", "pg/ast/node.go"}
+	sources := []string{"parsenodes.go", "node.go"}
 	var files []*ast.File
 	for _, src := range sources {
 		f, err := parser.ParseFile(fset, src, nil, 0)
@@ -137,11 +137,11 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "format: %v\n", err)
 		// Write unformatted for debugging.
-		os.WriteFile("pg/ast/walk_generated.go", buf.Bytes(), 0644)
+		os.WriteFile("walk_generated.go", buf.Bytes(), 0644)
 		os.Exit(1)
 	}
 
-	if err := os.WriteFile("pg/ast/walk_generated.go", formatted, 0644); err != nil {
+	if err := os.WriteFile("walk_generated.go", formatted, 0644); err != nil {
 		fmt.Fprintf(os.Stderr, "write: %v\n", err)
 		os.Exit(1)
 	}
