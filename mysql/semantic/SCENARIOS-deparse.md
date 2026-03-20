@@ -470,12 +470,12 @@ Depends on all previous phases. End-to-end oracle testing against MySQL 8.0.
 ### 7.5 Advanced Views (oracle match)
 
 ```
-[ ] UNION view: `SELECT a FROM t UNION SELECT b FROM t`
-[ ] CTE view: `WITH cte AS (SELECT a FROM t) SELECT * FROM cte`
-[ ] Window function view: `SELECT a, ROW_NUMBER() OVER (ORDER BY a) FROM t`
-[ ] Nested subquery view: `SELECT * FROM t WHERE a IN (SELECT a FROM t WHERE a > 0)`
-[ ] Boolean expression view: `SELECT a AND b, a OR b FROM t` (with (0<>) wrapping)
-[ ] Combined rewrite view: all rewrite rules in one complex view
+[x] UNION view: `SELECT a FROM t UNION SELECT b FROM t`
+[x] CTE view: `WITH cte AS (SELECT a FROM t) SELECT * FROM cte`
+[x] Window function view: `SELECT a, ROW_NUMBER() OVER (ORDER BY a) FROM t`
+[x] Nested subquery view: `SELECT * FROM t WHERE a IN (SELECT a FROM t WHERE a > 0)`
+[x] Boolean expression view: `SELECT a AND b, a OR b FROM t` (with (0<>) wrapping)
+[x] Combined rewrite view: all rewrite rules in one complex view
 ```
 
 ### 7.6 Regression & Compatibility

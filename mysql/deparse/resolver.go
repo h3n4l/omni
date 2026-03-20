@@ -63,22 +63,57 @@ type scopeEntry struct {
 // Resolve takes a SelectStmt and returns a new SelectStmt with all column
 // references fully qualified. The original AST is modified in-place.
 func (r *Resolver) Resolve(stmt *ast.SelectStmt) *ast.SelectStmt {
+	return r.resolveWithCTEs(stmt, nil)
+}
+
+// resolveWithCTEs resolves a SelectStmt with optional CTE virtual tables
+// available in scope. cteTables maps CTE names to virtual ResolverTables
+// built from their SELECT target lists.
+func (r *Resolver) resolveWithCTEs(stmt *ast.SelectStmt, cteTables map[string]*ResolverTable) *ast.SelectStmt {
 	if stmt == nil {
 		return nil
 	}
 	// Handle set operations recursively
 	if stmt.SetOp != ast.SetOpNone {
 		if stmt.Left != nil {
-			r.Resolve(stmt.Left)
+			r.resolveWithCTEs(stmt.Left, cteTables)
 		}
 		if stmt.Right != nil {
-			r.Resolve(stmt.Right)
+			r.resolveWithCTEs(stmt.Right, cteTables)
 		}
 		return stmt
 	}
 
-	// Build scope from FROM clause
+	// Process CTEs: resolve each CTE's SELECT, then build virtual tables.
+	// CTEs are resolved in order; later CTEs can reference earlier ones.
+	localCTETables := make(map[string]*ResolverTable)
+	if cteTables != nil {
+		for k, v := range cteTables {
+			localCTETables[k] = v
+		}
+	}
+	for _, cte := range stmt.CTEs {
+		// Resolve the CTE's SELECT (with any previously defined CTEs available)
+		cteResolver := &Resolver{
+			Lookup:         r.withCTELookup(localCTETables),
+			DefaultCharset: r.DefaultCharset,
+		}
+		cteResolver.resolveWithCTEs(cte.Select, localCTETables)
+
+		// Build a virtual table from the CTE's resolved target list
+		vt := buildCTEVirtualTable(cte)
+		if vt != nil {
+			localCTETables[strings.ToLower(cte.Name)] = vt
+		}
+	}
+
+	// Build scope from FROM clause, using a lookup that includes CTE virtual tables
+	origLookup := r.Lookup
+	if len(localCTETables) > 0 {
+		r.Lookup = r.withCTELookup(localCTETables)
+	}
 	sc := r.buildScope(stmt.From)
+	r.Lookup = origLookup
 
 	// Resolve target list (may expand stars)
 	stmt.TargetList = r.resolveTargetList(stmt.TargetList, sc)
@@ -629,6 +664,73 @@ func (r *Resolver) resolveCastCharset(dt *ast.DataType) {
 		}
 		dt.Charset = charset
 	}
+}
+
+// withCTELookup returns a TableLookup function that first checks CTE virtual tables,
+// then falls back to the original Lookup.
+func (r *Resolver) withCTELookup(cteTables map[string]*ResolverTable) TableLookup {
+	return func(tableName string) *ResolverTable {
+		key := strings.ToLower(tableName)
+		if vt, ok := cteTables[key]; ok {
+			return vt
+		}
+		if r.Lookup != nil {
+			return r.Lookup(tableName)
+		}
+		return nil
+	}
+}
+
+// buildCTEVirtualTable constructs a ResolverTable from a CTE's SELECT target list.
+// This allows the main query to resolve column references to CTE columns.
+func buildCTEVirtualTable(cte *ast.CommonTableExpr) *ResolverTable {
+	if cte.Select == nil {
+		return nil
+	}
+
+	// If the CTE has an explicit column list, use those names
+	if len(cte.Columns) > 0 {
+		cols := make([]ResolverColumn, len(cte.Columns))
+		for i, name := range cte.Columns {
+			cols[i] = ResolverColumn{Name: name, Position: i + 1}
+		}
+		return &ResolverTable{Name: cte.Name, Columns: cols}
+	}
+
+	// Otherwise, derive columns from the CTE's SELECT target list
+	sel := cte.Select
+	// For set operations, use the left side's target list
+	for sel.SetOp != ast.SetOpNone && sel.Left != nil {
+		sel = sel.Left
+	}
+
+	var cols []ResolverColumn
+	for i, target := range sel.TargetList {
+		name := cteColumnName(target, i+1)
+		cols = append(cols, ResolverColumn{Name: name, Position: i + 1})
+	}
+	if len(cols) == 0 {
+		return nil
+	}
+	return &ResolverTable{Name: cte.Name, Columns: cols}
+}
+
+// cteColumnName extracts the column name from a target list entry.
+// Uses alias if present, otherwise column ref name, otherwise positional name.
+func cteColumnName(target ast.ExprNode, position int) string {
+	if rt, ok := target.(*ast.ResTarget); ok {
+		if rt.Name != "" {
+			return rt.Name
+		}
+		if col, ok := rt.Val.(*ast.ColumnRef); ok {
+			return col.Column
+		}
+		return fmt.Sprintf("Name_exp_%d", position)
+	}
+	if col, ok := target.(*ast.ColumnRef); ok {
+		return col.Column
+	}
+	return fmt.Sprintf("Name_exp_%d", position)
 }
 
 // AmbiguousColumnError is returned when a column reference matches multiple tables.

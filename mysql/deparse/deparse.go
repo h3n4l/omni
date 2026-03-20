@@ -29,6 +29,16 @@ func DeparseSelect(stmt *ast.SelectStmt) string {
 }
 
 func deparseSelectStmt(stmt *ast.SelectStmt) string {
+	return deparseSelectStmtCtx(stmt, false)
+}
+
+// deparseSelectStmtNoAlias formats a SELECT without target list aliases.
+// Used for subquery contexts (IN, EXISTS) where MySQL omits AS alias.
+func deparseSelectStmtNoAlias(stmt *ast.SelectStmt) string {
+	return deparseSelectStmtCtx(stmt, true)
+}
+
+func deparseSelectStmtCtx(stmt *ast.SelectStmt, suppressAlias bool) string {
 	// Handle set operations: UNION / UNION ALL / INTERSECT / EXCEPT
 	if stmt.SetOp != ast.SetOpNone {
 		return deparseSetOperation(stmt)
@@ -54,7 +64,11 @@ func deparseSelectStmt(stmt *ast.SelectStmt) string {
 		if i > 0 {
 			b.WriteString(",")
 		}
-		b.WriteString(deparseResTarget(target, i+1))
+		if suppressAlias {
+			b.WriteString(deparseResTargetNoAlias(target))
+		} else {
+			b.WriteString(deparseResTarget(target, i+1))
+		}
 	}
 
 	// FROM clause
@@ -279,6 +293,15 @@ func deparseCTEs(ctes []*ast.CommonTableExpr) string {
 	return b.String()
 }
 
+// deparseResTargetNoAlias formats a target list entry without the AS alias.
+// Used for subquery contexts (IN, EXISTS) where MySQL omits aliases.
+func deparseResTargetNoAlias(node ast.ExprNode) string {
+	if rt, ok := node.(*ast.ResTarget); ok {
+		return deparseExpr(rt.Val)
+	}
+	return deparseExpr(node)
+}
+
 // deparseResTarget formats a single result target in the SELECT list.
 // MySQL 8.0 SHOW CREATE VIEW format: expr AS `alias`
 // - Always uses AS keyword
@@ -304,7 +327,20 @@ func deparseResTarget(node ast.ExprNode, position int) string {
 		alias = autoAlias(expr, exprStr, position)
 	}
 
+	// MySQL 8.0 uses double-space before AS for window function expressions.
+	// The OVER clause already ends with " )", and MySQL adds an extra space.
+	if hasWindowFunction(expr) {
+		return exprStr + "  AS `" + alias + "`"
+	}
 	return exprStr + " AS `" + alias + "`"
+}
+
+// hasWindowFunction checks if an expression is or contains a window function (has OVER clause).
+func hasWindowFunction(node ast.ExprNode) bool {
+	if fc, ok := node.(*ast.FuncCallExpr); ok && fc.Over != nil {
+		return true
+	}
+	return false
 }
 
 // autoAlias generates an automatic alias for a SELECT target expression.
@@ -370,7 +406,7 @@ func deparseExprAlias(node ast.ExprNode) string {
 	case *ast.BinaryExpr:
 		left := deparseExprAlias(n.Left)
 		right := deparseExprAlias(n.Right)
-		op := binaryOpToString(n.Op)
+		op := binaryOpToStringAlias(n.Op)
 		return left + " " + op + " " + right
 	case *ast.UnaryExpr:
 		operand := deparseExprAlias(n.Operand)
@@ -380,7 +416,7 @@ func deparseExprAlias(node ast.ExprNode) string {
 		case ast.UnaryPlus:
 			return operand
 		case ast.UnaryNot:
-			return "not(" + operand + ")"
+			return "NOT (" + operand + ")"
 		case ast.UnaryBitNot:
 			return "~" + operand
 		}
@@ -390,16 +426,26 @@ func deparseExprAlias(node ast.ExprNode) string {
 		name := n.Name
 		if n.Star {
 			// COUNT(*) → alias "COUNT(*)" — keep *, not 0.
-			return name + "(*)"
+			result := name + "(*)"
+			if n.Over != nil {
+				result += " " + deparseWindowDefAlias(n.Over)
+			}
+			return result
 		}
 		args := make([]string, len(n.Args))
 		for i, arg := range n.Args {
 			args[i] = deparseExprAlias(arg)
 		}
+		var result string
 		if n.Distinct {
-			return name + "(distinct " + strings.Join(args, ", ") + ")"
+			result = name + "(distinct " + strings.Join(args, ", ") + ")"
+		} else {
+			result = name + "(" + strings.Join(args, ", ") + ")"
 		}
-		return name + "(" + strings.Join(args, ", ") + ")"
+		if n.Over != nil {
+			result += " " + deparseWindowDefAlias(n.Over)
+		}
+		return result
 	case *ast.ParenExpr:
 		return deparseExprAlias(n.Expr)
 	case *ast.CastExpr:
@@ -821,6 +867,57 @@ func binaryOpToString(op ast.BinaryOp) string {
 	}
 }
 
+// binaryOpToStringAlias returns the operator string for auto-alias purposes.
+// MySQL 8.0 uses uppercase AND/OR/XOR in auto-aliases.
+func binaryOpToStringAlias(op ast.BinaryOp) string {
+	switch op {
+	case ast.BinOpAnd:
+		return "AND"
+	case ast.BinOpOr:
+		return "OR"
+	case ast.BinOpXor:
+		return "XOR"
+	default:
+		return binaryOpToString(op)
+	}
+}
+
+// deparseWindowDefAlias formats a window definition for auto-alias purposes.
+// MySQL 8.0 uses: OVER (ORDER BY col) in the alias text.
+func deparseWindowDefAlias(wd *ast.WindowDef) string {
+	var b strings.Builder
+	b.WriteString("OVER (")
+
+	needSpace := false
+	if len(wd.PartitionBy) > 0 {
+		b.WriteString("PARTITION BY ")
+		for i, expr := range wd.PartitionBy {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString(deparseExprAlias(expr))
+		}
+		needSpace = true
+	}
+	if len(wd.OrderBy) > 0 {
+		if needSpace {
+			b.WriteString(" ")
+		}
+		b.WriteString("ORDER BY ")
+		for i, item := range wd.OrderBy {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString(deparseExprAlias(item.Expr))
+			if item.Desc {
+				b.WriteString(" desc")
+			}
+		}
+	}
+	b.WriteString(")")
+	return b.String()
+}
+
 func deparseUnaryExpr(n *ast.UnaryExpr) string {
 	operand := deparseExpr(n.Operand)
 	switch n.Op {
@@ -846,8 +943,10 @@ func deparseInExpr(n *ast.InExpr) string {
 	}
 
 	// IN subquery: a IN (SELECT ...)
+	// MySQL 8.0 does NOT wrap IN subquery in outer parens (unlike IN value list).
+	// MySQL 8.0 also omits AS aliases in the subquery's target list.
 	if n.Select != nil {
-		return "(" + expr + " " + keyword + " (" + deparseSelectStmt(n.Select) + "))"
+		return expr + " " + keyword + " (" + deparseSelectStmtNoAlias(n.Select) + ")"
 	}
 
 	// Build the value list with no spaces after commas
