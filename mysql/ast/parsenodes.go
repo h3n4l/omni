@@ -858,6 +858,16 @@ type BitLit struct {
 func (l *BitLit) nodeTag()  {}
 func (l *BitLit) exprNode() {}
 
+// TemporalLit represents a temporal literal (DATE '...', TIME '...', TIMESTAMP '...').
+type TemporalLit struct {
+	Loc   Loc
+	Type  string // "DATE", "TIME", "TIMESTAMP"
+	Value string
+}
+
+func (l *TemporalLit) nodeTag()  {}
+func (l *TemporalLit) exprNode() {}
+
 // -----------------------------------------------------------------------
 // Clause and helper nodes
 // -----------------------------------------------------------------------

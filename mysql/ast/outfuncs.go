@@ -207,6 +207,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		fmt.Fprintf(sb, "{HEX_LIT :val %s :loc %d}", n.Value, n.Loc.Start)
 	case *BitLit:
 		fmt.Fprintf(sb, "{BIT_LIT :val %s :loc %d}", n.Value, n.Loc.Start)
+	case *TemporalLit:
+		fmt.Fprintf(sb, "{TEMPORAL_LIT :type %s :val %s :loc %d}", n.Type, n.Value, n.Loc.Start)
 	case *VariableRef:
 		writeVariableRef(sb, n)
 

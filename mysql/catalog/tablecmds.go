@@ -153,6 +153,9 @@ func (c *Catalog) createTable(stmt *nodes.CreateTableStmt) error {
 		}
 
 		// Top-level column properties.
+		if colDef.TypeName != nil && colDef.TypeName.SRID != 0 {
+			col.SRID = colDef.TypeName.SRID
+		}
 		if colDef.AutoIncrement {
 			col.AutoIncrement = true
 			col.Nullable = false

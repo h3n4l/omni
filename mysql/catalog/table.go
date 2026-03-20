@@ -66,6 +66,7 @@ type Column struct {
 	OnUpdate       string
 	Generated      *GeneratedColumnInfo
 	Invisible      bool
+	SRID           int // Spatial Reference ID (0 = not set)
 }
 
 type GeneratedColumnInfo struct {

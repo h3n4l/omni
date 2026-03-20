@@ -82,7 +82,7 @@ The foundation — our output must be byte-for-byte identical to MySQL 8.0.
 [x] POLYGON
 [x] MULTIPOINT, MULTILINESTRING, MULTIPOLYGON
 [x] GEOMETRYCOLLECTION
-[~] POINT NOT NULL SRID 4326 — requires parser support for SRID on column definitions
+[x] POINT NOT NULL SRID 4326
 ```
 
 ### 1.6 JSON Type

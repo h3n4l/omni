@@ -803,10 +803,11 @@ func (p *Parser) parseTableFactor() (nodes.TableExpr, error) {
 	}
 
 	if p.cur.Type == '(' {
+		startPos := p.pos()
 		p.advance()
 
-		// Subquery
-		if p.cur.Type == kwSELECT {
+		// Subquery (derived table): (SELECT ...) or (WITH ... SELECT ...)
+		if p.cur.Type == kwSELECT || p.cur.Type == kwWITH {
 			sel, err := p.parseSelectStmt()
 			if err != nil {
 				return nil, err
@@ -816,19 +817,17 @@ func (p *Parser) parseTableFactor() (nodes.TableExpr, error) {
 			}
 
 			sub := &nodes.SubqueryExpr{
-				Loc:    nodes.Loc{Start: sel.Loc.Start},
+				Loc:    nodes.Loc{Start: startPos},
 				Select: sel,
 			}
 
-			// Optional alias
+			// Optional alias: [AS] alias
 			if _, ok := p.match(kwAS); ok {
-				// Subquery alias — stored in a wrapper TableRef
 				alias, _, _ := p.parseIdentifier()
-				return &nodes.TableRef{
-					Loc:   nodes.Loc{Start: sub.Loc.Start, End: p.pos()},
-					Name:  alias,
-					Alias: alias,
-				}, nil
+				sub.Alias = alias
+			} else if p.isIdentToken() && !p.isSelectTerminator() {
+				alias, _, _ := p.parseIdentifier()
+				sub.Alias = alias
 			}
 
 			sub.Loc.End = p.pos()

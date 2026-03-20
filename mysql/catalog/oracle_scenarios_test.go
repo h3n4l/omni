@@ -1045,6 +1045,9 @@ func TestOracle_Section_1_5_SpatialTypes(t *testing.T) {
 		{"multilinestring", "CREATE TABLE t_multilinestring (a MULTILINESTRING)", "t_multilinestring"},
 		{"multipolygon", "CREATE TABLE t_multipolygon (a MULTIPOLYGON)", "t_multipolygon"},
 		{"geometrycollection", "CREATE TABLE t_geomcoll (a GEOMETRYCOLLECTION)", "t_geomcoll"},
+		{"point_srid", "CREATE TABLE t_point_srid (a POINT NOT NULL SRID 4326)", "t_point_srid"},
+		{"linestring_srid", "CREATE TABLE t_ls_srid (a LINESTRING SRID 4326)", "t_ls_srid"},
+		{"polygon_srid", "CREATE TABLE t_poly_srid (a POLYGON NOT NULL SRID 4326)", "t_poly_srid"},
 	}
 
 	for _, tc := range cases {

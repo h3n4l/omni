@@ -370,6 +370,28 @@ func (p *Parser) parsePrimaryExpr() (nodes.ExprNode, error) {
 			return p.parseVariableRef()
 		}
 
+		// Temporal literals: DATE '2024-01-01', TIME '12:00:00', TIMESTAMP '2024-01-01 12:00:00'
+		if (p.cur.Type == kwDATE || p.cur.Type == kwTIME || p.cur.Type == kwTIMESTAMP) && p.peekNext().Type == tokSCONST {
+			typeTok := p.advance() // consume DATE/TIME/TIMESTAMP keyword
+			valTok := p.advance()  // consume the string literal
+			return &nodes.TemporalLit{
+				Loc:   nodes.Loc{Start: typeTok.Loc, End: valTok.Loc + len(valTok.Str) + 2},
+				Type:  strings.ToUpper(typeTok.Str),
+				Value: valTok.Str,
+			}, nil
+		}
+
+		// Charset introducer: _utf8mb4'hello', _latin1'world'
+		if p.cur.Type == tokIDENT && strings.HasPrefix(p.cur.Str, "_") && p.peekNext().Type == tokSCONST {
+			charsetTok := p.advance() // consume the charset identifier
+			strTok := p.advance()     // consume the string literal
+			return &nodes.StringLit{
+				Loc:     nodes.Loc{Start: charsetTok.Loc, End: strTok.Loc + len(strTok.Str) + 2},
+				Value:   strTok.Str,
+				Charset: charsetTok.Str,
+			}, nil
+		}
+
 		// Identifier — could be column ref or function call
 		if p.isIdentToken() {
 			return p.parseIdentExpr()

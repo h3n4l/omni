@@ -366,6 +366,8 @@ func autoAlias(expr ast.ExprNode, exprStr string, position int) string {
 			return "TRUE"
 		}
 		return "FALSE"
+	case *ast.TemporalLit:
+		return n.Type + "'" + n.Value + "'"
 	default:
 		// For expressions: generate a human-readable alias text without backtick quoting.
 		// MySQL 8.0 uses the original expression text for the alias.
@@ -403,6 +405,8 @@ func deparseExprAlias(node ast.ExprNode) string {
 			return "TRUE"
 		}
 		return "FALSE"
+	case *ast.TemporalLit:
+		return n.Type + "'" + n.Value + "'"
 	case *ast.BinaryExpr:
 		left := deparseExprAlias(n.Left)
 		right := deparseExprAlias(n.Right)
@@ -703,6 +707,8 @@ func deparseExpr(node ast.ExprNode) string {
 		return deparseHexLit(n)
 	case *ast.BitLit:
 		return deparseBitLit(n)
+	case *ast.TemporalLit:
+		return n.Type + "'" + n.Value + "'"
 	case *ast.BinaryExpr:
 		return deparseBinaryExpr(n)
 	case *ast.ColumnRef:

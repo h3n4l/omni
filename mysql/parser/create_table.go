@@ -257,7 +257,8 @@ func (p *Parser) isColumnConstraintStart() bool {
 		return true
 	}
 	if p.cur.Type == tokIDENT {
-		if eqFold(p.cur.Str, "engine_attribute") || eqFold(p.cur.Str, "secondary_engine_attribute") {
+		if eqFold(p.cur.Str, "engine_attribute") || eqFold(p.cur.Str, "secondary_engine_attribute") ||
+			eqFold(p.cur.Str, "srid") {
 			return true
 		}
 	}
@@ -515,6 +516,15 @@ func (p *Parser) parseColumnOption(col *nodes.ColumnDef) bool {
 				Type: nodes.ColConstrEngineAttribute,
 				Name: val,
 			})
+			return true
+		}
+		if eqFold(optName, "srid") {
+			p.advance()
+			if p.cur.Type != tokICONST {
+				return false
+			}
+			col.TypeName.SRID = int(p.cur.Ival)
+			p.advance()
 			return true
 		}
 		if eqFold(optName, "secondary_engine_attribute") {

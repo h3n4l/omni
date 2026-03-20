@@ -216,6 +216,11 @@ func showColumnWithTable(col *Column, tbl *Table) string {
 		b.WriteString(" NULL")
 	}
 
+	// SRID for spatial types — MySQL 8.0 places it after NOT NULL, before DEFAULT.
+	if col.SRID != 0 {
+		b.WriteString(fmt.Sprintf(" /*!80003 SRID %d */", col.SRID))
+	}
+
 	// DEFAULT.
 	if col.Default != nil {
 		b.WriteString(" DEFAULT ")

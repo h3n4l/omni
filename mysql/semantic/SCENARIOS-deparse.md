@@ -36,8 +36,8 @@ Foundation: build the `Deparse(node) string` function and handle all literal typ
 [x] String with single quote: `'it''s'` → `'it\'s'` (MySQL switches to backslash escaping)
 [x] Empty string: `''` → `''`
 [x] String with backslash: `'back\\slash'` → `'back\\slash'`
-[~] Charset introducer: `_utf8mb4'hello'` → `_utf8mb4'hello'` (deparse logic implemented; parser doesn't support charset introducers)
-[~] Charset introducer latin1: `_latin1'world'` → `_latin1'world'` (deparse logic implemented; parser doesn't support charset introducers)
+[x] Charset introducer: `_utf8mb4'hello'` → `_utf8mb4'hello'`
+[x] Charset introducer latin1: `_latin1'world'` → `_latin1'world'`
 ```
 
 ### 1.3 Hex, Bit & Date/Time Literals
@@ -47,9 +47,9 @@ Foundation: build the `Deparse(node) string` function and handle all literal typ
 [x] Hex literal X'' form: `X'FF'` → `0xff` (normalized to 0x form, lowercase)
 [x] Bit literal 0b form: `0b1010` → `0x0a` (converted to hex)
 [x] Bit literal b'' form: `b'1010'` → `0x0a` (converted to hex)
-[~] DATE literal: `DATE '2024-01-01'` → `DATE'2024-01-01'` (no space, uppercase DATE) — parser doesn't support temporal literals
-[~] TIME literal: `TIME '12:00:00'` → `TIME'12:00:00'` (no space, uppercase TIME) — parser doesn't support temporal literals
-[~] TIMESTAMP literal: `TIMESTAMP '2024-01-01 12:00:00'` → `TIMESTAMP'2024-01-01 12:00:00'` — parser doesn't support temporal literals
+[x] DATE literal: `DATE '2024-01-01'` → `DATE'2024-01-01'` (no space, uppercase DATE)
+[x] TIME literal: `TIME '12:00:00'` → `TIME'12:00:00'` (no space, uppercase TIME)
+[x] TIMESTAMP literal: `TIMESTAMP '2024-01-01 12:00:00'` → `TIMESTAMP'2024-01-01 12:00:00'`
 ```
 
 ## Phase 2: Operators & Expressions
@@ -291,8 +291,8 @@ Depends on Phase 1-4. Handles full SELECT clause formatting.
 [x] Table alias with AS: `FROM t AS t1` → `from `t` `t1`` — no AS keyword for table alias
 [x] Table alias without AS: `FROM t t1` → `from `t` `t1`` — same output
 [x] Multiple tables (implicit cross join): `FROM t1, t2` → `from (`t1` join `t2`)`
-[~] Derived table: `FROM (SELECT a FROM t) d` → `from (select ...) `d`` — no AS — deparse logic implemented; parser doesn't produce SubqueryExpr for derived tables in FROM
-[~] Derived table with AS: same output (AS stripped) — deparse logic implemented; parser doesn't produce SubqueryExpr for derived tables in FROM
+[x] Derived table: `FROM (SELECT a FROM t) d` → `from (select ...) `d`` — no AS
+[x] Derived table with AS: same output (AS stripped)
 ```
 
 ### 5.3 JOIN Clause
@@ -464,7 +464,7 @@ Depends on all previous phases. End-to-end oracle testing against MySQL 8.0.
 [x] INNER JOIN view: `SELECT t1.a, t2.b FROM t1 JOIN t2 ON t1.a = t2.a`
 [x] LEFT JOIN view: `SELECT t1.a, t2.b FROM t1 LEFT JOIN t2 ON t1.a = t2.a`
 [x] Multiple table view: `SELECT t1.a FROM t1, t2 WHERE t1.a = t2.a`
-[~] Subquery in FROM view: `SELECT d.x FROM (SELECT a AS x FROM t) d` — parser doesn't produce SubqueryExpr for derived tables in FROM
+[x] Subquery in FROM view: `SELECT d.x FROM (SELECT a AS x FROM t) d`
 ```
 
 ### 7.5 Advanced Views (oracle match)
