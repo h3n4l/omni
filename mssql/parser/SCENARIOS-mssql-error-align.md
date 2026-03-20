@@ -48,10 +48,10 @@ Migrate all parse functions from returning single values to `(T, error)` tuples.
 
 ### 1.5 DDL: create_table.go, create_index.go
 
-- [ ] create_table.go — `parseCreateTableStmt`, `parseColumnDef`, `parseTableConstraint`, `parseInlineConstraint`, `parseIdentitySpec`, `parseEncryptedWith`, `parseGeneratedAlways`, `parseTableOptions`, `parseOneTableOption`, `parseEdgeConstraintConnections`, `parseInlineTableIndex`, `parseReferentialActions`, `parseRefAction`, `parseCreateTableAsSelectStmt`, `parseCTASWithOptions`, `parseCTASOption`, `parseParenIdentList` return dual
-- [ ] create_index.go — `parseCreateIndexStmt`, `parseIndexColumnList`, `parseCreateXmlIndexStmt`, `parseCreateSelectiveXmlIndexStmt`, `parseCreateSpatialIndexStmt`, `parseCreateAggregateStmt`, `parseDropAggregateStmt`, `parseCreateJsonIndexStmt`, `parseCreateVectorIndexStmt`, `parseOptionList` return dual
-- [ ] All cross-file callers updated
-- [ ] Build passes after 1.5
+- [x] create_table.go — `parseCreateTableStmt`, `parseColumnDef`, `parseTableConstraint`, `parseInlineConstraint`, `parseIdentitySpec`, `parseEncryptedWith`, `parseGeneratedAlways`, `parseTableOptions`, `parseOneTableOption`, `parseEdgeConstraintConnections`, `parseInlineTableIndex`, `parseCreateTableAsSelectStmt`, `parseCTASWithOptions`, `parseCTASOption`, `parseParenIdentList`, `parseColumnConstraint` return dual (note: `parseReferentialActions` and `parseRefAction` kept as-is since they are void/value-type helpers not returning nodes)
+- [x] create_index.go — `parseCreateIndexStmt`, `parseIndexColumnList`, `parseCreateXmlIndexStmt`, `parseCreateSelectiveXmlIndexStmt`, `parseCreateSpatialIndexStmt`, `parseCreateAggregateStmt`, `parseDropAggregateStmt`, `parseCreateJsonIndexStmt`, `parseCreateVectorIndexStmt`, `parseOptionList` return dual
+- [x] All cross-file callers updated
+- [x] Build passes after 1.5
 
 ### 1.6 DDL: create_view.go, create_proc.go, create_trigger.go
 

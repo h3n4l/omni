@@ -1196,7 +1196,7 @@ func (p *Parser) parseCreateExternalTableAsSelectStmt() *nodes.CreateExternalTab
 		p.advance() // consume '('
 		var cols []nodes.Node
 		for p.cur.Type != ')' && p.cur.Type != tokEOF {
-			col := p.parseColumnDef()
+			col, _ := p.parseColumnDef()
 			if col != nil {
 				cols = append(cols, col)
 			} else {

@@ -188,15 +188,15 @@ func (p *Parser) parseAlterTableAdd() []nodes.Node {
 
 		if p.cur.Type == kwCONSTRAINT {
 			action.Type = nodes.ATAddConstraint
-			action.Constraint = p.parseTableConstraint()
+			action.Constraint, _ = p.parseTableConstraint()
 		} else if p.cur.Type == kwPRIMARY || p.cur.Type == kwUNIQUE ||
 			p.cur.Type == kwFOREIGN || p.cur.Type == kwCHECK || p.cur.Type == kwDEFAULT {
 			// Unnamed constraint
 			action.Type = nodes.ATAddConstraint
-			action.Constraint = p.parseTableConstraint()
+			action.Constraint, _ = p.parseTableConstraint()
 		} else {
 			action.Type = nodes.ATAddColumn
-			action.Column = p.parseColumnDef()
+			action.Column, _ = p.parseColumnDef()
 		}
 
 		action.Loc.End = p.pos()
@@ -731,7 +731,7 @@ func (p *Parser) parseAlterTableRebuild() *nodes.AlterTableAction {
 	if p.cur.Type == kwWITH {
 		p.advance() // consume WITH
 		if p.cur.Type == '(' {
-			action.Options = p.parseOptionList()
+			action.Options, _ = p.parseOptionList()
 		}
 	}
 

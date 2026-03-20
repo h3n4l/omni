@@ -67,7 +67,7 @@ func (p *Parser) parseCreateTypeStmt() *nodes.CreateTypeStmt {
 				if p.cur.Type == kwCONSTRAINT || p.cur.Type == kwPRIMARY ||
 					p.cur.Type == kwUNIQUE || p.cur.Type == kwCHECK ||
 					p.cur.Type == kwFOREIGN {
-					constraint := p.parseTableConstraint()
+					constraint, _ := p.parseTableConstraint()
 					if constraint != nil {
 						elements = append(elements, constraint)
 					}
@@ -77,7 +77,7 @@ func (p *Parser) parseCreateTypeStmt() *nodes.CreateTypeStmt {
 						elements = append(elements, idx)
 					}
 				} else {
-					col := p.parseColumnDef()
+					col, _ := p.parseColumnDef()
 					if col != nil {
 						elements = append(elements, col)
 					}

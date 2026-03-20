@@ -239,7 +239,7 @@ func (p *Parser) parseCreateFunctionStmt(orAlter bool) *nodes.CreateFunctionStmt
 				p.advance()
 				var cols []nodes.Node
 				for p.cur.Type != ')' && p.cur.Type != tokEOF {
-					col := p.parseColumnDef()
+					col, _ := p.parseColumnDef()
 					if col != nil {
 						cols = append(cols, col)
 					}
@@ -265,7 +265,7 @@ func (p *Parser) parseCreateFunctionStmt(orAlter bool) *nodes.CreateFunctionStmt
 					p.advance()
 					var cols []nodes.Node
 					for p.cur.Type != ')' && p.cur.Type != tokEOF {
-						col := p.parseColumnDef()
+						col, _ := p.parseColumnDef()
 						if col != nil {
 							cols = append(cols, col)
 						}

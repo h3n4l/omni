@@ -444,7 +444,7 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 			p.prev = savedPrev
 			p.nextBuf = savedNextBuf
 			p.hasNext = savedHasNext
-			ctasStmt := p.parseCreateTableAsSelectStmt()
+			ctasStmt, _ := p.parseCreateTableAsSelectStmt()
 			ctasStmt.Loc.Start = loc
 			return ctasStmt
 		}
@@ -455,11 +455,11 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 		p.prev = savedPrev
 		p.nextBuf = savedNextBuf
 		p.hasNext = savedHasNext
-		stmt := p.parseCreateTableStmt()
+		stmt, _ := p.parseCreateTableStmt()
 		stmt.Loc.Start = loc
 		return stmt
 	case kwINDEX, kwCLUSTERED, kwNONCLUSTERED, kwCOLUMNSTORE:
-		stmt := p.parseCreateIndexStmt(unique)
+		stmt, _ := p.parseCreateIndexStmt(unique)
 		stmt.Loc.Start = loc
 		return stmt
 	case kwPRIMARY:
@@ -468,7 +468,7 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 		if p.cur.Type == kwXML {
 			p.advance() // consume XML
 			p.match(kwINDEX)
-			stmt := p.parseCreateXmlIndexStmt(true)
+			stmt, _ := p.parseCreateXmlIndexStmt(true)
 			stmt.Loc.Start = loc
 			return stmt
 		}
@@ -661,7 +661,7 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 			}
 			if p.cur.Type == kwINDEX {
 				p.advance() // consume INDEX
-				stmt := p.parseCreateXmlIndexStmt(false)
+				stmt, _ := p.parseCreateXmlIndexStmt(false)
 				stmt.Loc.Start = loc
 				return stmt
 			}
@@ -673,7 +673,7 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 			if p.cur.Type == kwXML {
 				p.advance() // consume XML
 				p.match(kwINDEX)
-				stmt := p.parseCreateSelectiveXmlIndexStmt()
+				stmt, _ := p.parseCreateSelectiveXmlIndexStmt()
 				stmt.Loc.Start = loc
 				return stmt
 			}
@@ -683,7 +683,7 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 		if p.cur.Type == kwJSON {
 			p.advance() // consume JSON
 			p.match(kwINDEX)
-			stmt := p.parseCreateJsonIndexStmt()
+			stmt, _ := p.parseCreateJsonIndexStmt()
 			stmt.Loc.Start = loc
 			return stmt
 		}
@@ -691,7 +691,7 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 		if p.cur.Type == kwVECTOR {
 			p.advance() // consume VECTOR
 			p.match(kwINDEX)
-			stmt := p.parseCreateVectorIndexStmt()
+			stmt, _ := p.parseCreateVectorIndexStmt()
 			stmt.Loc.Start = loc
 			return stmt
 		}
@@ -699,14 +699,14 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SPATIAL") {
 			p.advance() // consume SPATIAL
 			p.match(kwINDEX)
-			stmt := p.parseCreateSpatialIndexStmt()
+			stmt, _ := p.parseCreateSpatialIndexStmt()
 			stmt.Loc.Start = loc
 			return stmt
 		}
 		// CREATE AGGREGATE
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AGGREGATE") {
 			p.advance() // consume AGGREGATE
-			stmt := p.parseCreateAggregateStmt()
+			stmt, _ := p.parseCreateAggregateStmt()
 			stmt.Loc.Start = loc
 			return stmt
 		}
@@ -1800,7 +1800,7 @@ func (p *Parser) parseDropOrSecurityStmt() nodes.StmtNode {
 		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "AGGREGATE") {
 			p.advance() // consume DROP
 			p.advance() // consume AGGREGATE
-			stmt := p.parseDropAggregateStmt()
+			stmt, _ := p.parseDropAggregateStmt()
 			stmt.Loc.Start = loc
 			return stmt
 		}

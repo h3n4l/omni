@@ -232,7 +232,7 @@ func (p *Parser) parseCreateExternalTableStmt() *nodes.SecurityStmt {
 				p.advance()
 				continue
 			}
-			col := p.parseColumnDef()
+			col, _ := p.parseColumnDef()
 			if col != nil {
 				opts = append(opts, col)
 			}

@@ -29,7 +29,7 @@ import (
 //	    [ TEXTIMAGE_ON { filegroup | "default" } ]
 //	    [ FILESTREAM_ON { partition_scheme_name | filegroup | "default" } ]
 //	    [ WITH ( <table_option> [ ,...n ] ) ]
-func (p *Parser) parseCreateTableStmt() *nodes.CreateTableStmt {
+func (p *Parser) parseCreateTableStmt() (*nodes.CreateTableStmt, error) {
 	loc := p.pos()
 
 	stmt := &nodes.CreateTableStmt{
@@ -37,7 +37,11 @@ func (p *Parser) parseCreateTableStmt() *nodes.CreateTableStmt {
 	}
 
 	// Table name
-	stmt.Name , _ = p.parseTableRef()
+	var err error
+	stmt.Name, err = p.parseTableRef()
+	if err != nil {
+		return nil, err
+	}
 
 	// AS NODE | AS EDGE (graph tables) | AS FILETABLE
 	// Note: AS CLONE OF is handled at the dispatch level (parser.go)
@@ -61,7 +65,7 @@ func (p *Parser) parseCreateTableStmt() *nodes.CreateTableStmt {
 	// Column and constraint definitions
 	if _, err := p.expect('('); err != nil {
 		stmt.Loc.End = p.pos()
-		return stmt
+		return stmt, nil
 	}
 
 	var cols []nodes.Node
@@ -96,7 +100,10 @@ func (p *Parser) parseCreateTableStmt() *nodes.CreateTableStmt {
 
 		// Check for inline INDEX definition
 		if p.cur.Type == kwINDEX {
-			idx := p.parseInlineTableIndex()
+			idx, err := p.parseInlineTableIndex()
+			if err != nil {
+				return nil, err
+			}
 			if idx != nil {
 				if stmt.Indexes == nil {
 					stmt.Indexes = &nodes.List{}
@@ -106,12 +113,18 @@ func (p *Parser) parseCreateTableStmt() *nodes.CreateTableStmt {
 		} else if p.cur.Type == kwCONSTRAINT || p.cur.Type == kwPRIMARY ||
 			p.cur.Type == kwUNIQUE || p.cur.Type == kwCHECK ||
 			p.cur.Type == kwFOREIGN {
-			constraint := p.parseTableConstraint()
+			constraint, err := p.parseTableConstraint()
+			if err != nil {
+				return nil, err
+			}
 			if constraint != nil {
 				constraints = append(constraints, constraint)
 			}
 		} else {
-			col := p.parseColumnDef()
+			col, err := p.parseColumnDef()
+			if err != nil {
+				return nil, err
+			}
 			if col != nil {
 				cols = append(cols, col)
 			}
@@ -168,7 +181,11 @@ func (p *Parser) parseCreateTableStmt() *nodes.CreateTableStmt {
 	// WITH ( table_options )
 	if p.cur.Type == kwWITH {
 		p.advance()
-		stmt.TableOptions = p.parseTableOptions()
+		tableOpts, err := p.parseTableOptions()
+		if err != nil {
+			return nil, err
+		}
+		stmt.TableOptions = tableOpts
 	}
 
 	// AS NODE | AS EDGE (graph tables) -- can also appear after closing paren
@@ -186,7 +203,7 @@ func (p *Parser) parseCreateTableStmt() *nodes.CreateTableStmt {
 	}
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseTableOptions parses ( option = value [, ...] ) for CREATE TABLE WITH clause.
@@ -209,15 +226,18 @@ func (p *Parser) parseCreateTableStmt() *nodes.CreateTableStmt {
 //	  | FILETABLE_PRIMARY_KEY_CONSTRAINT_NAME = <constraint_name>
 //	  | FILETABLE_STREAMID_UNIQUE_CONSTRAINT_NAME = <constraint_name>
 //	  | FILETABLE_FULLPATH_UNIQUE_CONSTRAINT_NAME = <constraint_name>
-func (p *Parser) parseTableOptions() *nodes.List {
+func (p *Parser) parseTableOptions() (*nodes.List, error) {
 	if p.cur.Type != '(' {
-		return nil
+		return nil, nil
 	}
 	p.advance()
 
 	var items []nodes.Node
 	for p.cur.Type != ')' && p.cur.Type != tokEOF {
-		opt := p.parseOneTableOption()
+		opt, err := p.parseOneTableOption()
+		if err != nil {
+			return nil, err
+		}
 		if opt != nil {
 			items = append(items, opt)
 		}
@@ -225,19 +245,21 @@ func (p *Parser) parseTableOptions() *nodes.List {
 			break
 		}
 	}
-	p.expect(')')
+	if _, err := p.expect(')'); err != nil {
+		return nil, err
+	}
 
 	if len(items) == 0 {
-		return nil
+		return nil, nil
 	}
-	return &nodes.List{Items: items}
+	return &nodes.List{Items: items}, nil
 }
 
 // parseOneTableOption parses a single NAME = VALUE table option.
-func (p *Parser) parseOneTableOption() *nodes.TableOption {
+func (p *Parser) parseOneTableOption() (*nodes.TableOption, error) {
 	loc := p.pos()
 	if !p.isIdentLike() {
-		return nil
+		return nil, nil
 	}
 	name := strings.ToUpper(p.cur.Str)
 	p.advance()
@@ -250,7 +272,7 @@ func (p *Parser) parseOneTableOption() *nodes.TableOption {
 	// Expect '='
 	if p.cur.Type != '=' {
 		opt.Loc.End = p.pos()
-		return opt
+		return opt, nil
 	}
 	p.advance()
 
@@ -333,7 +355,7 @@ func (p *Parser) parseOneTableOption() *nodes.TableOption {
 	}
 
 	opt.Loc.End = p.pos()
-	return opt
+	return opt, nil
 }
 
 // parseColumnDef parses a column definition, computed column, or column set.
@@ -368,12 +390,12 @@ func (p *Parser) parseOneTableOption() *nodes.TableOption {
 //
 //	<column_set_definition> ::=
 //	column_set_name XML COLUMN_SET FOR ALL_SPARSE_COLUMNS
-func (p *Parser) parseColumnDef() *nodes.ColumnDef {
+func (p *Parser) parseColumnDef() (*nodes.ColumnDef, error) {
 	loc := p.pos()
 
 	name, ok := p.parseIdentifier()
 	if !ok {
-		return nil
+		return nil, nil
 	}
 
 	col := &nodes.ColumnDef{
@@ -385,7 +407,10 @@ func (p *Parser) parseColumnDef() *nodes.ColumnDef {
 	if p.cur.Type == kwAS {
 		p.advance()
 		compLoc := p.pos()
-		expr, _ := p.parseExpr()
+		expr, err := p.parseExpr()
+		if err != nil {
+			return nil, err
+		}
 		persisted := false
 		notNull := false
 		if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "persisted") {
@@ -408,10 +433,14 @@ func (p *Parser) parseColumnDef() *nodes.ColumnDef {
 		for p.cur.Type == kwCONSTRAINT || p.cur.Type == kwPRIMARY || p.cur.Type == kwUNIQUE ||
 			p.cur.Type == kwCHECK || p.cur.Type == kwFOREIGN || p.cur.Type == kwREFERENCES {
 			var constraint *nodes.ConstraintDef
+			var cErr error
 			if p.cur.Type == kwCONSTRAINT {
-				constraint = p.parseColumnConstraint()
+				constraint, cErr = p.parseColumnConstraint()
 			} else {
-				constraint = p.parseInlineConstraint("")
+				constraint, cErr = p.parseInlineConstraint("")
+			}
+			if cErr != nil {
+				return nil, cErr
 			}
 			if constraint != nil {
 				if col.Constraints == nil {
@@ -421,11 +450,15 @@ func (p *Parser) parseColumnDef() *nodes.ColumnDef {
 			}
 		}
 		col.Loc.End = p.pos()
-		return col
+		return col, nil
 	}
 
 	// Data type
-	col.DataType , _ = p.parseDataType()
+	var dtErr error
+	col.DataType, dtErr = p.parseDataType()
+	if dtErr != nil {
+		return nil, dtErr
+	}
 
 	// column_set_definition: column_set_name XML COLUMN_SET FOR ALL_SPARSE_COLUMNS
 	if col.DataType != nil && strings.EqualFold(col.DataType.Name, "xml") &&
@@ -439,7 +472,7 @@ func (p *Parser) parseColumnDef() *nodes.ColumnDef {
 		}
 		col.IsColumnSet = true
 		col.Loc.End = p.pos()
-		return col
+		return col, nil
 	}
 
 	// Column-level options in any order
@@ -500,13 +533,21 @@ func (p *Parser) parseColumnDef() *nodes.ColumnDef {
 
 		// ENCRYPTED WITH (...)
 		if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "encrypted") {
-			col.EncryptedWith = p.parseEncryptedWith()
+			encWith, encErr := p.parseEncryptedWith()
+			if encErr != nil {
+				return nil, encErr
+			}
+			col.EncryptedWith = encWith
 			consumed = true
 		}
 
 		// GENERATED ALWAYS AS { ROW | TRANSACTION_ID | SEQUENCE_NUMBER } { START | END } [ HIDDEN ]
 		if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "generated") {
-			col.GeneratedAlways = p.parseGeneratedAlways()
+			genAlways, genErr := p.parseGeneratedAlways()
+			if genErr != nil {
+				return nil, genErr
+			}
+			col.GeneratedAlways = genAlways
 			// GENERATED ALWAYS ... HIDDEN
 			if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "hidden") {
 				col.Hidden = true
@@ -517,7 +558,11 @@ func (p *Parser) parseColumnDef() *nodes.ColumnDef {
 
 		// IDENTITY
 		if p.cur.Type == kwIDENTITY {
-			col.Identity = p.parseIdentitySpec()
+			identSpec, identErr := p.parseIdentitySpec()
+			if identErr != nil {
+				return nil, identErr
+			}
+			col.Identity = identSpec
 			consumed = true
 		}
 
@@ -550,7 +595,11 @@ func (p *Parser) parseColumnDef() *nodes.ColumnDef {
 		// DEFAULT
 		if p.cur.Type == kwDEFAULT {
 			p.advance()
-			col.DefaultExpr, _ = p.parseExpr()
+			defExpr, defErr := p.parseExpr()
+			if defErr != nil {
+				return nil, defErr
+			}
+			col.DefaultExpr = defExpr
 			consumed = true
 		}
 
@@ -566,7 +615,10 @@ func (p *Parser) parseColumnDef() *nodes.ColumnDef {
 
 		// CONSTRAINT (inline column constraint)
 		if p.cur.Type == kwCONSTRAINT {
-			constraint := p.parseColumnConstraint()
+			constraint, cErr := p.parseColumnConstraint()
+			if cErr != nil {
+				return nil, cErr
+			}
 			if constraint != nil {
 				if col.Constraints == nil {
 					col.Constraints = &nodes.List{}
@@ -578,7 +630,10 @@ func (p *Parser) parseColumnDef() *nodes.ColumnDef {
 
 		// PRIMARY KEY / UNIQUE (without CONSTRAINT keyword)
 		if p.cur.Type == kwPRIMARY || p.cur.Type == kwUNIQUE {
-			constraint := p.parseInlineConstraint("")
+			constraint, cErr := p.parseInlineConstraint("")
+			if cErr != nil {
+				return nil, cErr
+			}
 			if constraint != nil {
 				if col.Constraints == nil {
 					col.Constraints = &nodes.List{}
@@ -590,7 +645,10 @@ func (p *Parser) parseColumnDef() *nodes.ColumnDef {
 
 		// CHECK (without CONSTRAINT keyword)
 		if p.cur.Type == kwCHECK {
-			constraint := p.parseInlineConstraint("")
+			constraint, cErr := p.parseInlineConstraint("")
+			if cErr != nil {
+				return nil, cErr
+			}
 			if constraint != nil {
 				if col.Constraints == nil {
 					col.Constraints = &nodes.List{}
@@ -602,7 +660,10 @@ func (p *Parser) parseColumnDef() *nodes.ColumnDef {
 
 		// REFERENCES (inline FK without CONSTRAINT keyword)
 		if p.cur.Type == kwREFERENCES {
-			constraint := p.parseInlineConstraint("")
+			constraint, cErr := p.parseInlineConstraint("")
+			if cErr != nil {
+				return nil, cErr
+			}
 			if constraint != nil {
 				if col.Constraints == nil {
 					col.Constraints = &nodes.List{}
@@ -618,7 +679,7 @@ func (p *Parser) parseColumnDef() *nodes.ColumnDef {
 	}
 
 	col.Loc.End = p.pos()
-	return col
+	return col, nil
 }
 
 // parseEncryptedWith parses ENCRYPTED WITH (...).
@@ -628,7 +689,7 @@ func (p *Parser) parseColumnDef() *nodes.ColumnDef {
 //	      ENCRYPTION_TYPE = { DETERMINISTIC | RANDOMIZED } ,
 //	      ALGORITHM = 'AEAD_AES_256_CBC_HMAC_SHA_256'
 //	    )
-func (p *Parser) parseEncryptedWith() *nodes.EncryptedWithSpec {
+func (p *Parser) parseEncryptedWith() (*nodes.EncryptedWithSpec, error) {
 	loc := p.pos()
 	p.advance() // ENCRYPTED
 
@@ -638,13 +699,13 @@ func (p *Parser) parseEncryptedWith() *nodes.EncryptedWithSpec {
 
 	if p.cur.Type != kwWITH {
 		spec.Loc.End = p.pos()
-		return spec
+		return spec, nil
 	}
 	p.advance() // WITH
 
 	if p.cur.Type != '(' {
 		spec.Loc.End = p.pos()
-		return spec
+		return spec, nil
 	}
 	p.advance()
 
@@ -681,16 +742,18 @@ func (p *Parser) parseEncryptedWith() *nodes.EncryptedWithSpec {
 			break
 		}
 	}
-	p.expect(')')
+	if _, err := p.expect(')'); err != nil {
+		return nil, err
+	}
 
 	spec.Loc.End = p.pos()
-	return spec
+	return spec, nil
 }
 
 // parseGeneratedAlways parses GENERATED ALWAYS AS { ROW | TRANSACTION_ID | SEQUENCE_NUMBER } { START | END }.
 //
 //	GENERATED ALWAYS AS { ROW | TRANSACTION_ID | SEQUENCE_NUMBER } { START | END } [ HIDDEN ]
-func (p *Parser) parseGeneratedAlways() *nodes.GeneratedAlwaysSpec {
+func (p *Parser) parseGeneratedAlways() (*nodes.GeneratedAlwaysSpec, error) {
 	loc := p.pos()
 	p.advance() // GENERATED
 
@@ -730,11 +793,11 @@ func (p *Parser) parseGeneratedAlways() *nodes.GeneratedAlwaysSpec {
 	}
 
 	spec.Loc.End = p.pos()
-	return spec
+	return spec, nil
 }
 
 // parseIdentitySpec parses IDENTITY(seed, increment).
-func (p *Parser) parseIdentitySpec() *nodes.IdentitySpec {
+func (p *Parser) parseIdentitySpec() (*nodes.IdentitySpec, error) {
 	loc := p.pos()
 	p.advance() // consume IDENTITY
 
@@ -760,11 +823,11 @@ func (p *Parser) parseIdentitySpec() *nodes.IdentitySpec {
 	}
 
 	spec.Loc.End = p.pos()
-	return spec
+	return spec, nil
 }
 
 // parseColumnConstraint parses CONSTRAINT name followed by constraint type.
-func (p *Parser) parseColumnConstraint() *nodes.ConstraintDef {
+func (p *Parser) parseColumnConstraint() (*nodes.ConstraintDef, error) {
 	p.advance() // consume CONSTRAINT
 	name, _ := p.parseIdentifier()
 	return p.parseInlineConstraint(name)
@@ -789,7 +852,7 @@ func (p *Parser) parseColumnConstraint() *nodes.ConstraintDef {
 //	        [ NOT FOR REPLICATION ]
 //	  | CHECK [ NOT FOR REPLICATION ] ( logical_expression )
 //	}
-func (p *Parser) parseInlineConstraint(name string) *nodes.ConstraintDef {
+func (p *Parser) parseInlineConstraint(name string) (*nodes.ConstraintDef, error) {
 	loc := p.pos()
 	cd := &nodes.ConstraintDef{
 		Name: name,
@@ -823,19 +886,35 @@ func (p *Parser) parseInlineConstraint(name string) *nodes.ConstraintDef {
 			cd.NotForReplication = true
 		}
 		if _, err := p.expect('('); err == nil {
-			cd.Expr, _ = p.parseExpr()
+			var exprErr error
+			cd.Expr, exprErr = p.parseExpr()
+			if exprErr != nil {
+				return nil, exprErr
+			}
 			_, _ = p.expect(')')
 		}
 	case kwDEFAULT:
 		p.advance()
 		cd.Type = nodes.ConstraintDefault
-		cd.Expr, _ = p.parseExpr()
+		var exprErr error
+		cd.Expr, exprErr = p.parseExpr()
+		if exprErr != nil {
+			return nil, exprErr
+		}
 	case kwREFERENCES:
 		p.advance()
 		cd.Type = nodes.ConstraintForeignKey
-		cd.RefTable , _ = p.parseTableRef()
+		var refErr error
+		cd.RefTable, refErr = p.parseTableRef()
+		if refErr != nil {
+			return nil, refErr
+		}
 		if p.cur.Type == '(' {
-			cd.RefColumns = p.parseParenIdentList()
+			var pilErr error
+			cd.RefColumns, pilErr = p.parseParenIdentList()
+			if pilErr != nil {
+				return nil, pilErr
+			}
 		}
 		p.parseReferentialActions(cd)
 		// [ NOT FOR REPLICATION ]
@@ -848,11 +927,11 @@ func (p *Parser) parseInlineConstraint(name string) *nodes.ConstraintDef {
 			cd.NotForReplication = true
 		}
 	default:
-		return nil
+		return nil, nil
 	}
 
 	cd.Loc.End = p.pos()
-	return cd
+	return cd, nil
 }
 
 // parseConstraintWithOptions parses [ WITH FILLFACTOR = N | WITH ( index_options ) ] on PK/UNIQUE constraints.
@@ -916,7 +995,7 @@ func (p *Parser) parseConstraintOnFilegroup(cd *nodes.ConstraintDef) {
 //	        [ NOT FOR REPLICATION ]
 //	    | CHECK [ NOT FOR REPLICATION ] ( logical_expression )
 //	}
-func (p *Parser) parseTableConstraint() *nodes.ConstraintDef {
+func (p *Parser) parseTableConstraint() (*nodes.ConstraintDef, error) {
 	loc := p.pos()
 	var name string
 
@@ -937,7 +1016,11 @@ func (p *Parser) parseTableConstraint() *nodes.ConstraintDef {
 		cd.Type = nodes.ConstraintPrimaryKey
 		p.parseClusteredOption(cd)
 		if p.cur.Type == '(' {
-			cd.Columns = p.parseIndexColumnList()
+			var err error
+			cd.Columns, err = p.parseIndexColumnList()
+			if err != nil {
+				return nil, err
+			}
 		}
 		p.parseConstraintWithOptions(cd)
 		p.parseConstraintOnFilegroup(cd)
@@ -946,7 +1029,11 @@ func (p *Parser) parseTableConstraint() *nodes.ConstraintDef {
 		cd.Type = nodes.ConstraintUnique
 		p.parseClusteredOption(cd)
 		if p.cur.Type == '(' {
-			cd.Columns = p.parseIndexColumnList()
+			var err error
+			cd.Columns, err = p.parseIndexColumnList()
+			if err != nil {
+				return nil, err
+			}
 		}
 		p.parseConstraintWithOptions(cd)
 		p.parseConstraintOnFilegroup(cd)
@@ -963,7 +1050,11 @@ func (p *Parser) parseTableConstraint() *nodes.ConstraintDef {
 			cd.NotForReplication = true
 		}
 		if _, err := p.expect('('); err == nil {
-			cd.Expr, _ = p.parseExpr()
+			var exprErr error
+			cd.Expr, exprErr = p.parseExpr()
+			if exprErr != nil {
+				return nil, exprErr
+			}
 			_, _ = p.expect(')')
 		}
 	case kwFOREIGN:
@@ -971,12 +1062,24 @@ func (p *Parser) parseTableConstraint() *nodes.ConstraintDef {
 		p.match(kwKEY)
 		cd.Type = nodes.ConstraintForeignKey
 		if p.cur.Type == '(' {
-			cd.Columns = p.parseParenIdentList()
+			var err error
+			cd.Columns, err = p.parseParenIdentList()
+			if err != nil {
+				return nil, err
+			}
 		}
 		if _, ok := p.match(kwREFERENCES); ok {
-			cd.RefTable , _ = p.parseTableRef()
+			var refErr error
+			cd.RefTable, refErr = p.parseTableRef()
+			if refErr != nil {
+				return nil, refErr
+			}
 			if p.cur.Type == '(' {
-				cd.RefColumns = p.parseParenIdentList()
+				var pilErr error
+				cd.RefColumns, pilErr = p.parseParenIdentList()
+				if pilErr != nil {
+					return nil, pilErr
+				}
 			}
 			p.parseReferentialActions(cd)
 		}
@@ -992,7 +1095,11 @@ func (p *Parser) parseTableConstraint() *nodes.ConstraintDef {
 	case kwDEFAULT:
 		p.advance()
 		cd.Type = nodes.ConstraintDefault
-		cd.Expr, _ = p.parseExpr()
+		var exprErr error
+		cd.Expr, exprErr = p.parseExpr()
+		if exprErr != nil {
+			return nil, exprErr
+		}
 		// FOR column
 		if _, ok := p.match(kwFOR); ok {
 			p.parseIdentifier() // column name (not stored separately but consumed)
@@ -1001,15 +1108,19 @@ func (p *Parser) parseTableConstraint() *nodes.ConstraintDef {
 		// Check for EDGE CONSTRAINT: CONSTRAINT name CONNECTION (...)
 		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "CONNECTION") {
 			cd.Type = nodes.ConstraintEdge
-			cd.EdgeConnections = p.parseEdgeConstraintConnections()
+			var ecErr error
+			cd.EdgeConnections, ecErr = p.parseEdgeConstraintConnections()
+			if ecErr != nil {
+				return nil, ecErr
+			}
 			p.parseReferentialActions(cd)
 		} else {
-			return nil
+			return nil, nil
 		}
 	}
 
 	cd.Loc.End = p.pos()
-	return cd
+	return cd, nil
 }
 
 // parseEdgeConstraintConnections parses CONNECTION ( from_table TO to_table [, ...] ).
@@ -1017,19 +1128,25 @@ func (p *Parser) parseTableConstraint() *nodes.ConstraintDef {
 // Ref: https://learn.microsoft.com/en-us/sql/relational-databases/tables/graph-edge-constraints
 //
 //	CONNECTION ( from_table TO to_table [ , from_table TO to_table ... ] )
-func (p *Parser) parseEdgeConstraintConnections() *nodes.List {
+func (p *Parser) parseEdgeConstraintConnections() (*nodes.List, error) {
 	p.advance() // consume CONNECTION
 
 	var conns []nodes.Node
 	if _, err := p.expect('('); err != nil {
-		return nil
+		return nil, err
 	}
 
 	for {
 		loc := p.pos()
-		fromTable , _ := p.parseTableRef()
+		fromTable, err := p.parseTableRef()
+		if err != nil {
+			return nil, err
+		}
 		p.match(kwTO)
-		toTable , _ := p.parseTableRef()
+		toTable, err := p.parseTableRef()
+		if err != nil {
+			return nil, err
+		}
 		conn := &nodes.EdgeConnectionDef{
 			FromTable: fromTable,
 			ToTable:   toTable,
@@ -1041,8 +1158,10 @@ func (p *Parser) parseEdgeConstraintConnections() *nodes.List {
 		}
 	}
 
-	p.expect(')')
-	return &nodes.List{Items: conns}
+	if _, err := p.expect(')'); err != nil {
+		return nil, err
+	}
+	return &nodes.List{Items: conns}, nil
 }
 
 // parseClusteredOption parses optional CLUSTERED/NONCLUSTERED.
@@ -1116,7 +1235,7 @@ func (p *Parser) parseRefAction() nodes.ReferentialAction {
 //	         | filegroup_name | default } ]
 //	    [ FILESTREAM_ON { filestream_filegroup_name | partition_scheme_name | "NULL" } ]
 //	}
-func (p *Parser) parseInlineTableIndex() *nodes.InlineIndexDef {
+func (p *Parser) parseInlineTableIndex() (*nodes.InlineIndexDef, error) {
 	loc := p.pos()
 	p.advance() // consume INDEX
 
@@ -1146,7 +1265,11 @@ func (p *Parser) parseInlineTableIndex() *nodes.InlineIndexDef {
 			if p.cur.Type == kwORDER || (p.isIdentLike() && strings.EqualFold(p.cur.Str, "ORDER")) {
 				p.advance()
 				if p.cur.Type == '(' {
-					idx.Columns = p.parseIndexColumnList()
+					var err error
+					idx.Columns, err = p.parseIndexColumnList()
+					if err != nil {
+						return nil, err
+					}
 				}
 			}
 			goto trailingOptions
@@ -1162,14 +1285,22 @@ func (p *Parser) parseInlineTableIndex() *nodes.InlineIndexDef {
 		p.advance()
 		idx.Columnstore = true
 		if p.cur.Type == '(' {
-			idx.Columns = p.parseIndexColumnList()
+			var err error
+			idx.Columns, err = p.parseIndexColumnList()
+			if err != nil {
+				return nil, err
+			}
 		}
 		goto trailingOptions
 	}
 
 	// ( column_name [ ASC | DESC ] [ ,...n ] )
 	if p.cur.Type == '(' {
-		idx.Columns = p.parseIndexColumnList()
+		var err error
+		idx.Columns, err = p.parseIndexColumnList()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 trailingOptions:
@@ -1177,20 +1308,32 @@ trailingOptions:
 	if p.cur.Type == kwINCLUDE {
 		p.advance()
 		if p.cur.Type == '(' {
-			idx.IncludeCols = p.parseParenIdentList()
+			var err error
+			idx.IncludeCols, err = p.parseParenIdentList()
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	// [ WHERE <filter_predicate> ]
 	if _, ok := p.match(kwWHERE); ok {
-		idx.WhereClause, _ = p.parseExpr()
+		var err error
+		idx.WhereClause, err = p.parseExpr()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// [ WITH ( <index_option> [ ,...n ] ) ]
 	if p.cur.Type == kwWITH {
 		p.advance()
 		if p.cur.Type == '(' {
-			idx.Options = p.parseOptionList()
+			var err error
+			idx.Options, err = p.parseOptionList()
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -1221,7 +1364,7 @@ trailingOptions:
 	}
 
 	idx.Loc.End = p.pos()
-	return idx
+	return idx, nil
 }
 
 // isCTAS detects whether the current token stream (after table name) represents
@@ -1305,7 +1448,7 @@ func (p *Parser) isCTAS(_ *nodes.TableRef) bool {
 //	    }
 //	    | PARTITION ( partition_column_name RANGE [ LEFT | RIGHT ]
 //	        FOR VALUES ( [ boundary_value [,...n] ] ) )
-func (p *Parser) parseCreateTableAsSelectStmt() *nodes.CreateTableAsSelectStmt {
+func (p *Parser) parseCreateTableAsSelectStmt() (*nodes.CreateTableAsSelectStmt, error) {
 	loc := p.pos()
 
 	stmt := &nodes.CreateTableAsSelectStmt{
@@ -1313,20 +1456,30 @@ func (p *Parser) parseCreateTableAsSelectStmt() *nodes.CreateTableAsSelectStmt {
 	}
 
 	// Table name
-	stmt.Name , _ = p.parseTableRef()
+	var err error
+	stmt.Name, err = p.parseTableRef()
+	if err != nil {
+		return nil, err
+	}
 
 	// Optional column list: ( col1, col2, ... )
 	if p.cur.Type == '(' {
 		// Peek ahead to check if this is a simple column name list (CTAS)
 		// or a column definition list (regular CREATE TABLE).
 		// In CTAS, the paren list contains only identifiers separated by commas.
-		stmt.Columns = p.parseParenIdentList()
+		stmt.Columns, err = p.parseParenIdentList()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Optional WITH ( distribution_option [, table_option ...] )
 	if p.cur.Type == kwWITH {
 		p.advance() // consume WITH
-		stmt.Options = p.parseCTASWithOptions()
+		stmt.Options, err = p.parseCTASWithOptions()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// AS <select_statement>
@@ -1335,27 +1488,33 @@ func (p *Parser) parseCreateTableAsSelectStmt() *nodes.CreateTableAsSelectStmt {
 	}
 
 	// Parse the SELECT statement
-	stmt.Query, _ = p.parseSelectStmt()
+	stmt.Query, err = p.parseSelectStmt()
+	if err != nil {
+		return nil, err
+	}
 
 	// Optional OPTION ( query_hint )
 	// This is already handled inside parseSelectStmt via parseOptionClause
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseCTASWithOptions parses the WITH ( ... ) clause for a CTAS statement.
 // Options include DISTRIBUTION, CLUSTERED COLUMNSTORE INDEX, CLUSTERED INDEX,
 // HEAP, and PARTITION.
-func (p *Parser) parseCTASWithOptions() *nodes.List {
+func (p *Parser) parseCTASWithOptions() (*nodes.List, error) {
 	if p.cur.Type != '(' {
-		return nil
+		return nil, nil
 	}
 	p.advance() // consume (
 
 	var items []nodes.Node
 	for p.cur.Type != ')' && p.cur.Type != tokEOF {
-		opt := p.parseCTASOption()
+		opt, err := p.parseCTASOption()
+		if err != nil {
+			return nil, err
+		}
 		if opt != nil {
 			items = append(items, opt)
 		}
@@ -1363,16 +1522,18 @@ func (p *Parser) parseCTASWithOptions() *nodes.List {
 			break
 		}
 	}
-	p.expect(')')
+	if _, err := p.expect(')'); err != nil {
+		return nil, err
+	}
 
 	if len(items) == 0 {
-		return nil
+		return nil, nil
 	}
-	return &nodes.List{Items: items}
+	return &nodes.List{Items: items}, nil
 }
 
 // parseCTASOption parses a single CTAS WITH option.
-func (p *Parser) parseCTASOption() *nodes.TableOption {
+func (p *Parser) parseCTASOption() (*nodes.TableOption, error) {
 	loc := p.pos()
 
 	// CLUSTERED COLUMNSTORE INDEX [ORDER (col, ...)]
@@ -1409,7 +1570,7 @@ func (p *Parser) parseCTASOption() *nodes.TableOption {
 				}
 			}
 			opt.Loc.End = p.pos()
-			return opt
+			return opt, nil
 		}
 		// CLUSTERED INDEX ( col [ASC|DESC], ... )
 		if next.Type == kwINDEX {
@@ -1444,7 +1605,7 @@ func (p *Parser) parseCTASOption() *nodes.TableOption {
 				opt.Value = strings.Join(parts, ", ")
 			}
 			opt.Loc.End = p.pos()
-			return opt
+			return opt, nil
 		}
 	}
 
@@ -1456,7 +1617,7 @@ func (p *Parser) parseCTASOption() *nodes.TableOption {
 			Loc:  nodes.Loc{Start: loc},
 		}
 		opt.Loc.End = p.pos()
-		return opt
+		return opt, nil
 	}
 
 	// PARTITION ( col RANGE [LEFT|RIGHT] FOR VALUES ( ... ) )
@@ -1523,7 +1684,7 @@ func (p *Parser) parseCTASOption() *nodes.TableOption {
 			p.expect(')')
 		}
 		opt.Loc.End = p.pos()
-		return opt
+		return opt, nil
 	}
 
 	// DISTRIBUTION = HASH(col [,...]) | ROUND_ROBIN | REPLICATE
@@ -1559,7 +1720,7 @@ func (p *Parser) parseCTASOption() *nodes.TableOption {
 			}
 		}
 		opt.Loc.End = p.pos()
-		return opt
+		return opt, nil
 	}
 
 	// Fallback: parse as NAME = VALUE
@@ -1567,7 +1728,7 @@ func (p *Parser) parseCTASOption() *nodes.TableOption {
 }
 
 // parseParenIdentList parses (ident, ident, ...).
-func (p *Parser) parseParenIdentList() *nodes.List {
+func (p *Parser) parseParenIdentList() (*nodes.List, error) {
 	p.advance() // consume (
 	var items []nodes.Node
 	for p.cur.Type != ')' && p.cur.Type != tokEOF {
@@ -1581,5 +1742,5 @@ func (p *Parser) parseParenIdentList() *nodes.List {
 		}
 	}
 	_, _ = p.expect(')')
-	return &nodes.List{Items: items}
+	return &nodes.List{Items: items}, nil
 }

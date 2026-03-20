@@ -72,7 +72,7 @@ func (p *Parser) parseVariableDecl() *nodes.VariableDecl {
 			p.advance()
 			var cols []nodes.Node
 			for p.cur.Type != ')' && p.cur.Type != tokEOF {
-				col := p.parseColumnDef()
+				col, _ := p.parseColumnDef()
 				if col != nil {
 					cols = append(cols, col)
 				}

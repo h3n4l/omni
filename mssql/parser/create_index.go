@@ -33,7 +33,7 @@ import (
 //	         }
 //	    ]
 //	    [ FILESTREAM_ON { filestream_filegroup_name | partition_scheme_name | "NULL" } ]
-func (p *Parser) parseCreateIndexStmt(unique bool) *nodes.CreateIndexStmt {
+func (p *Parser) parseCreateIndexStmt(unique bool) (*nodes.CreateIndexStmt, error) {
 	loc := p.pos()
 
 	stmt := &nodes.CreateIndexStmt{
@@ -67,19 +67,31 @@ func (p *Parser) parseCreateIndexStmt(unique bool) *nodes.CreateIndexStmt {
 
 	// ON table
 	if _, ok := p.match(kwON); ok {
-		stmt.Table , _ = p.parseTableRef()
+		var err error
+		stmt.Table, err = p.parseTableRef()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Column list
 	if p.cur.Type == '(' {
-		stmt.Columns = p.parseIndexColumnList()
+		var err error
+		stmt.Columns, err = p.parseIndexColumnList()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// INCLUDE (relational index only)
 	if p.cur.Type == kwINCLUDE {
 		p.advance()
 		if p.cur.Type == '(' {
-			stmt.IncludeCols = p.parseParenIdentList()
+			var err error
+			stmt.IncludeCols, err = p.parseParenIdentList()
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -87,13 +99,21 @@ func (p *Parser) parseCreateIndexStmt(unique bool) *nodes.CreateIndexStmt {
 	if p.cur.Type == kwORDER {
 		p.advance()
 		if p.cur.Type == '(' {
-			stmt.OrderCols = p.parseParenIdentList()
+			var err error
+			stmt.OrderCols, err = p.parseParenIdentList()
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	// WHERE (filtered index)
 	if _, ok := p.match(kwWHERE); ok {
-		stmt.WhereClause, _ = p.parseExpr()
+		var err error
+		stmt.WhereClause, err = p.parseExpr()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// WITH ( <relational_index_option> [ ,...n ] )
@@ -138,11 +158,11 @@ func (p *Parser) parseCreateIndexStmt(unique bool) *nodes.CreateIndexStmt {
 	}
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseIndexColumnList parses (col [ASC|DESC], ...).
-func (p *Parser) parseIndexColumnList() *nodes.List {
+func (p *Parser) parseIndexColumnList() (*nodes.List, error) {
 	p.advance() // consume (
 	var items []nodes.Node
 	for p.cur.Type != ')' && p.cur.Type != tokEOF {
@@ -167,7 +187,7 @@ func (p *Parser) parseIndexColumnList() *nodes.List {
 		}
 	}
 	_, _ = p.expect(')')
-	return &nodes.List{Items: items}
+	return &nodes.List{Items: items}, nil
 }
 
 // parseCreateXmlIndexStmt parses CREATE [PRIMARY] XML INDEX.
@@ -181,7 +201,7 @@ func (p *Parser) parseIndexColumnList() *nodes.List {
 //	        [ FOR { VALUE | PATH | PROPERTY } ]
 //	    ]
 //	    [ WITH ( <xml_index_option> [ ,...n ] ) ]
-func (p *Parser) parseCreateXmlIndexStmt(primary bool) *nodes.CreateXmlIndexStmt {
+func (p *Parser) parseCreateXmlIndexStmt(primary bool) (*nodes.CreateXmlIndexStmt, error) {
 	loc := p.pos()
 	stmt := &nodes.CreateXmlIndexStmt{
 		Primary: primary,
@@ -194,7 +214,11 @@ func (p *Parser) parseCreateXmlIndexStmt(primary bool) *nodes.CreateXmlIndexStmt
 
 	// ON table
 	if _, ok := p.match(kwON); ok {
-		stmt.Table , _ = p.parseTableRef()
+		var err error
+		stmt.Table, err = p.parseTableRef()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// (xml_column)
@@ -226,19 +250,23 @@ func (p *Parser) parseCreateXmlIndexStmt(primary bool) *nodes.CreateXmlIndexStmt
 	if p.cur.Type == kwWITH {
 		p.advance()
 		if p.cur.Type == '(' {
-			stmt.Options = p.parseOptionList()
+			var err error
+			stmt.Options, err = p.parseOptionList()
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseCreateSelectiveXmlIndexStmt parses CREATE SELECTIVE XML INDEX.
 // Caller has consumed CREATE SELECTIVE XML INDEX.
 //
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-selective-xml-index-transact-sql
-func (p *Parser) parseCreateSelectiveXmlIndexStmt() *nodes.CreateSelectiveXmlIndexStmt {
+func (p *Parser) parseCreateSelectiveXmlIndexStmt() (*nodes.CreateSelectiveXmlIndexStmt, error) {
 	loc := p.pos()
 	stmt := &nodes.CreateSelectiveXmlIndexStmt{
 		Loc: nodes.Loc{Start: loc},
@@ -250,7 +278,11 @@ func (p *Parser) parseCreateSelectiveXmlIndexStmt() *nodes.CreateSelectiveXmlInd
 
 	// ON table
 	if _, ok := p.match(kwON); ok {
-		stmt.Table , _ = p.parseTableRef()
+		var err error
+		stmt.Table, err = p.parseTableRef()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// (xml_column)
@@ -267,19 +299,29 @@ func (p *Parser) parseCreateSelectiveXmlIndexStmt() *nodes.CreateSelectiveXmlInd
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "XMLNAMESPACES") {
 			p.advance()
 			if p.cur.Type == '(' {
-				stmt.Namespaces = p.parseOptionList()
+				var err error
+				stmt.Namespaces, err = p.parseOptionList()
+				if err != nil {
+					return nil, err
+				}
 			}
 		} else if p.cur.Type == '(' {
-			// This is WITH (options), handle after FOR
-			// Back up: we already consumed WITH, so parse options now
-			stmt.Options = p.parseOptionList()
+			var err error
+			stmt.Options, err = p.parseOptionList()
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	// FOR (path_list)
 	if _, ok := p.match(kwFOR); ok {
 		if p.cur.Type == '(' {
-			stmt.Paths = p.parseOptionList()
+			var err error
+			stmt.Paths, err = p.parseOptionList()
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -287,12 +329,16 @@ func (p *Parser) parseCreateSelectiveXmlIndexStmt() *nodes.CreateSelectiveXmlInd
 	if stmt.Options == nil && p.cur.Type == kwWITH {
 		p.advance()
 		if p.cur.Type == '(' {
-			stmt.Options = p.parseOptionList()
+			var err error
+			stmt.Options, err = p.parseOptionList()
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseCreateSpatialIndexStmt parses CREATE SPATIAL INDEX.
@@ -314,7 +360,7 @@ func (p *Parser) parseCreateSelectiveXmlIndexStmt() *nodes.CreateSelectiveXmlInd
 //	    [ USING { GEOGRAPHY_AUTO_GRID | GEOGRAPHY_GRID } ]
 //	    [ WITH ( [<tessellation_grid>] [, <tessellation_cells_per_object>]
 //	             [, <spatial_index_option> [,...n] ] ) ]
-func (p *Parser) parseCreateSpatialIndexStmt() *nodes.CreateSpatialIndexStmt {
+func (p *Parser) parseCreateSpatialIndexStmt() (*nodes.CreateSpatialIndexStmt, error) {
 	loc := p.pos()
 	stmt := &nodes.CreateSpatialIndexStmt{
 		Loc: nodes.Loc{Start: loc},
@@ -326,7 +372,11 @@ func (p *Parser) parseCreateSpatialIndexStmt() *nodes.CreateSpatialIndexStmt {
 
 	// ON table
 	if _, ok := p.match(kwON); ok {
-		stmt.Table , _ = p.parseTableRef()
+		var err error
+		stmt.Table, err = p.parseTableRef()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// (spatial_column)
@@ -363,7 +413,7 @@ func (p *Parser) parseCreateSpatialIndexStmt() *nodes.CreateSpatialIndexStmt {
 	}
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseCreateAggregateStmt parses CREATE AGGREGATE.
@@ -382,14 +432,18 @@ func (p *Parser) parseCreateSpatialIndexStmt() *nodes.CreateSpatialIndexStmt {
 //
 //	<return_sqltype> ::=
 //	        system_scalar_type | { [ udt_schema_name. ] udt_type_name }
-func (p *Parser) parseCreateAggregateStmt() *nodes.CreateAggregateStmt {
+func (p *Parser) parseCreateAggregateStmt() (*nodes.CreateAggregateStmt, error) {
 	loc := p.pos()
 	stmt := &nodes.CreateAggregateStmt{
 		Loc: nodes.Loc{Start: loc},
 	}
 
 	// [schema.]aggregate_name
-	stmt.Name , _ = p.parseTableRef()
+	var err error
+	stmt.Name, err = p.parseTableRef()
+	if err != nil {
+		return nil, err
+	}
 
 	// (@param_name type, ...)
 	if p.cur.Type == '(' {
@@ -403,7 +457,10 @@ func (p *Parser) parseCreateAggregateStmt() *nodes.CreateAggregateStmt {
 				p.advance()
 			}
 			// data type
-			param.DataType , _ = p.parseDataType()
+			param.DataType, err = p.parseDataType()
+			if err != nil {
+				return nil, err
+			}
 			params = append(params, param)
 			if _, ok := p.match(','); !ok {
 				break
@@ -416,7 +473,10 @@ func (p *Parser) parseCreateAggregateStmt() *nodes.CreateAggregateStmt {
 	// RETURNS return_type
 	if p.cur.Type == kwRETURNS {
 		p.advance()
-		stmt.ReturnType , _ = p.parseDataType()
+		stmt.ReturnType, err = p.parseDataType()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// EXTERNAL NAME assembly_qualified_name
@@ -445,7 +505,7 @@ func (p *Parser) parseCreateAggregateStmt() *nodes.CreateAggregateStmt {
 	}
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseDropAggregateStmt parses DROP AGGREGATE [IF EXISTS] name.
@@ -454,7 +514,7 @@ func (p *Parser) parseCreateAggregateStmt() *nodes.CreateAggregateStmt {
 // BNF: mssql/parser/bnf/drop-aggregate-transact-sql.bnf
 //
 //	DROP AGGREGATE [ IF EXISTS ] [ schema_name . ] aggregate_name
-func (p *Parser) parseDropAggregateStmt() *nodes.DropAggregateStmt {
+func (p *Parser) parseDropAggregateStmt() (*nodes.DropAggregateStmt, error) {
 	loc := p.pos()
 	stmt := &nodes.DropAggregateStmt{
 		Loc: nodes.Loc{Start: loc},
@@ -466,9 +526,13 @@ func (p *Parser) parseDropAggregateStmt() *nodes.DropAggregateStmt {
 		stmt.IfExists = true
 	}
 
-	stmt.Name , _ = p.parseTableRef()
+	var err error
+	stmt.Name, err = p.parseTableRef()
+	if err != nil {
+		return nil, err
+	}
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // joinDots joins string parts with dots.
@@ -504,7 +568,7 @@ func joinDots(parts []string) string {
 //	  | MAXDOP = max_degree_of_parallelism
 //	  | DATA_COMPRESSION = { NONE | ROW | PAGE }
 //	}
-func (p *Parser) parseCreateJsonIndexStmt() *nodes.CreateJsonIndexStmt {
+func (p *Parser) parseCreateJsonIndexStmt() (*nodes.CreateJsonIndexStmt, error) {
 	loc := p.pos()
 	stmt := &nodes.CreateJsonIndexStmt{
 		Loc: nodes.Loc{Start: loc},
@@ -516,7 +580,11 @@ func (p *Parser) parseCreateJsonIndexStmt() *nodes.CreateJsonIndexStmt {
 
 	// ON table
 	if _, ok := p.match(kwON); ok {
-		stmt.Table , _ = p.parseTableRef()
+		var err error
+		stmt.Table, err = p.parseTableRef()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// (json_column_name)
@@ -534,7 +602,10 @@ func (p *Parser) parseCreateJsonIndexStmt() *nodes.CreateJsonIndexStmt {
 			var paths []nodes.Node
 			for p.cur.Type != ')' && p.cur.Type != tokEOF {
 				// JSON paths are string literals like '$.name'
-				expr, _ := p.parseExpr()
+				expr, err := p.parseExpr()
+				if err != nil {
+					return nil, err
+				}
 				if expr != nil {
 					paths = append(paths, expr)
 				}
@@ -553,7 +624,11 @@ func (p *Parser) parseCreateJsonIndexStmt() *nodes.CreateJsonIndexStmt {
 	if p.cur.Type == kwWITH {
 		p.advance()
 		if p.cur.Type == '(' {
-			stmt.Options = p.parseOptionList()
+			var err error
+			stmt.Options, err = p.parseOptionList()
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -566,7 +641,7 @@ func (p *Parser) parseCreateJsonIndexStmt() *nodes.CreateJsonIndexStmt {
 	}
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseCreateVectorIndexStmt parses a CREATE VECTOR INDEX statement.
@@ -582,7 +657,7 @@ func (p *Parser) parseCreateJsonIndexStmt() *nodes.CreateJsonIndexStmt {
 //	    [ [ , ] MAXDOP = max_degree_of_parallelism ]
 //	) ]
 //	[ ON { filegroup_name | "default" } ]
-func (p *Parser) parseCreateVectorIndexStmt() *nodes.CreateVectorIndexStmt {
+func (p *Parser) parseCreateVectorIndexStmt() (*nodes.CreateVectorIndexStmt, error) {
 	loc := p.pos()
 	stmt := &nodes.CreateVectorIndexStmt{
 		Loc: nodes.Loc{Start: loc},
@@ -594,7 +669,11 @@ func (p *Parser) parseCreateVectorIndexStmt() *nodes.CreateVectorIndexStmt {
 
 	// ON table
 	if _, ok := p.match(kwON); ok {
-		stmt.Table , _ = p.parseTableRef()
+		var err error
+		stmt.Table, err = p.parseTableRef()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// (vector_column)
@@ -609,7 +688,11 @@ func (p *Parser) parseCreateVectorIndexStmt() *nodes.CreateVectorIndexStmt {
 	if p.cur.Type == kwWITH {
 		p.advance()
 		if p.cur.Type == '(' {
-			stmt.Options = p.parseOptionList()
+			var err error
+			stmt.Options, err = p.parseOptionList()
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -622,15 +705,18 @@ func (p *Parser) parseCreateVectorIndexStmt() *nodes.CreateVectorIndexStmt {
 	}
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseOptionList parses (option = value, ...) used in WITH clauses.
-func (p *Parser) parseOptionList() *nodes.List {
+func (p *Parser) parseOptionList() (*nodes.List, error) {
 	p.advance() // consume (
 	var items []nodes.Node
 	for p.cur.Type != ')' && p.cur.Type != tokEOF {
-		expr, _ := p.parseExpr()
+		expr, err := p.parseExpr()
+		if err != nil {
+			return nil, err
+		}
 		if expr != nil {
 			items = append(items, expr)
 		}
@@ -639,5 +725,5 @@ func (p *Parser) parseOptionList() *nodes.List {
 		}
 	}
 	_, _ = p.expect(')')
-	return &nodes.List{Items: items}
+	return &nodes.List{Items: items}, nil
 }
