@@ -1111,3 +1111,58 @@ func TestDeparseSelect_Section_5_3_UsingMultiColumn(t *testing.T) {
 		}
 	})
 }
+
+func TestDeparseSelect_Section_5_4_WhereGroupByHavingOrderByLimit(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		// WHERE simple
+		{"where_simple", "SELECT a FROM t WHERE a > 1",
+			"select `a` AS `a` from `t` where (`a` > 1)"},
+		// WHERE compound
+		{"where_compound", "SELECT a FROM t WHERE a > 1 AND b < 10",
+			"select `a` AS `a` from `t` where ((`a` > 1) and (`b` < 10))"},
+		// GROUP BY single
+		{"group_by_single", "SELECT a FROM t GROUP BY a",
+			"select `a` AS `a` from `t` group by `a`"},
+		// GROUP BY multiple — no space after comma
+		{"group_by_multiple", "SELECT a, b FROM t GROUP BY a, b",
+			"select `a` AS `a`,`b` AS `b` from `t` group by `a`,`b`"},
+		// GROUP BY WITH ROLLUP
+		{"group_by_with_rollup", "SELECT a FROM t GROUP BY a WITH ROLLUP",
+			"select `a` AS `a` from `t` group by `a` with rollup"},
+		// HAVING
+		{"having", "SELECT a FROM t GROUP BY a HAVING COUNT(*) > 1",
+			"select `a` AS `a` from `t` group by `a` having (count(0) > 1)"},
+		// ORDER BY ASC (default — no explicit ASC in output)
+		{"order_by_asc", "SELECT a FROM t ORDER BY a",
+			"select `a` AS `a` from `t` order by `a`"},
+		// ORDER BY DESC
+		{"order_by_desc", "SELECT a FROM t ORDER BY a DESC",
+			"select `a` AS `a` from `t` order by `a` desc"},
+		// ORDER BY multiple — comma no space
+		{"order_by_multiple", "SELECT a, b FROM t ORDER BY a, b DESC",
+			"select `a` AS `a`,`b` AS `b` from `t` order by `a`,`b` desc"},
+		// LIMIT
+		{"limit", "SELECT a FROM t LIMIT 10",
+			"select `a` AS `a` from `t` limit 10"},
+		// LIMIT with OFFSET — MySQL comma syntax: LIMIT offset,count
+		{"limit_with_offset", "SELECT a FROM t LIMIT 10 OFFSET 5",
+			"select `a` AS `a` from `t` limit 5,10"},
+		// DISTINCT
+		{"distinct", "SELECT DISTINCT a FROM t",
+			"select distinct `a` AS `a` from `t`"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			sel := parseSelect(t, tc.input)
+			got := DeparseSelect(sel)
+			if got != tc.expected {
+				t.Errorf("DeparseSelect(%q) =\n  %q\nwant:\n  %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}

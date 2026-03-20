@@ -59,6 +59,57 @@ func deparseSelectStmt(stmt *ast.SelectStmt) string {
 		}
 	}
 
+	// WHERE clause
+	if stmt.Where != nil {
+		b.WriteString(" where ")
+		b.WriteString(deparseExpr(stmt.Where))
+	}
+
+	// GROUP BY clause
+	if len(stmt.GroupBy) > 0 {
+		b.WriteString(" group by ")
+		for i, expr := range stmt.GroupBy {
+			if i > 0 {
+				b.WriteString(",")
+			}
+			b.WriteString(deparseExpr(expr))
+		}
+		if stmt.WithRollup {
+			b.WriteString(" with rollup")
+		}
+	}
+
+	// HAVING clause
+	if stmt.Having != nil {
+		b.WriteString(" having ")
+		b.WriteString(deparseExpr(stmt.Having))
+	}
+
+	// ORDER BY clause
+	if len(stmt.OrderBy) > 0 {
+		b.WriteString(" order by ")
+		for i, item := range stmt.OrderBy {
+			if i > 0 {
+				b.WriteString(",")
+			}
+			b.WriteString(deparseExpr(item.Expr))
+			if item.Desc {
+				b.WriteString(" desc")
+			}
+		}
+	}
+
+	// LIMIT clause
+	if stmt.Limit != nil {
+		b.WriteString(" limit ")
+		if stmt.Limit.Offset != nil {
+			// MySQL comma syntax: LIMIT offset,count
+			b.WriteString(deparseExpr(stmt.Limit.Offset))
+			b.WriteString(",")
+		}
+		b.WriteString(deparseExpr(stmt.Limit.Count))
+	}
+
 	return b.String()
 }
 

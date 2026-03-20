@@ -312,18 +312,18 @@ Depends on Phase 1-4. Handles full SELECT clause formatting.
 ### 5.4 WHERE, GROUP BY, HAVING, ORDER BY, LIMIT
 
 ```
-[ ] WHERE simple: `WHERE a > 1` → `where (`a` > 1)`
-[ ] WHERE compound: `WHERE a > 1 AND b < 10` → `where ((`a` > 1) and (`b` < 10))`
-[ ] GROUP BY single: `GROUP BY a` → `group by `a``
-[ ] GROUP BY multiple: `GROUP BY a, b` → `group by `a`,`b`` (no space after comma)
-[ ] GROUP BY WITH ROLLUP: `GROUP BY a WITH ROLLUP` → `group by `a` with rollup`
-[ ] HAVING: `HAVING COUNT(*) > 1` → `having (count(0) > 1)`
-[ ] ORDER BY ASC (default): `ORDER BY a` → `order by `a``
-[ ] ORDER BY DESC: `ORDER BY a DESC` → `order by `a` desc`
-[ ] ORDER BY multiple: `ORDER BY a, b DESC` → `order by `a`,`b` desc`
-[ ] LIMIT: `LIMIT 10` → `limit 10`
-[ ] LIMIT with OFFSET: `LIMIT 10 OFFSET 5` → `limit 5,10` (MySQL comma syntax)
-[ ] DISTINCT: `SELECT DISTINCT a` → `select distinct `a``
+[x] WHERE simple: `WHERE a > 1` → `where (`a` > 1)`
+[x] WHERE compound: `WHERE a > 1 AND b < 10` → `where ((`a` > 1) and (`b` < 10))`
+[x] GROUP BY single: `GROUP BY a` → `group by `a``
+[x] GROUP BY multiple: `GROUP BY a, b` → `group by `a`,`b`` (no space after comma)
+[x] GROUP BY WITH ROLLUP: `GROUP BY a WITH ROLLUP` → `group by `a` with rollup`
+[x] HAVING: `HAVING COUNT(*) > 1` → `having (count(0) > 1)`
+[x] ORDER BY ASC (default): `ORDER BY a` → `order by `a``
+[x] ORDER BY DESC: `ORDER BY a DESC` → `order by `a` desc`
+[x] ORDER BY multiple: `ORDER BY a, b DESC` → `order by `a`,`b` desc`
+[x] LIMIT: `LIMIT 10` → `limit 10`
+[x] LIMIT with OFFSET: `LIMIT 10 OFFSET 5` → `limit 5,10` (MySQL comma syntax)
+[x] DISTINCT: `SELECT DISTINCT a` → `select distinct `a``
 ```
 
 ### 5.5 Set Operations
