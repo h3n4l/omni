@@ -47,7 +47,7 @@ import (
 //	    ]
 //	    [ OPTION ( <query_hint> [ ,...n ] ) ]
 //	[ ; ]
-func (p *Parser) parseUpdateStmt() *nodes.UpdateStmt {
+func (p *Parser) parseUpdateStmt() (*nodes.UpdateStmt, error) {
 	loc := p.pos()
 	p.advance() // consume UPDATE
 
@@ -57,44 +57,76 @@ func (p *Parser) parseUpdateStmt() *nodes.UpdateStmt {
 
 	// Optional TOP
 	if p.cur.Type == kwTOP {
-		stmt.Top, _ = p.parseTopClause()
+		top, err := p.parseTopClause()
+		if err != nil {
+			return nil, err
+		}
+		stmt.Top = top
 	}
 
 	// Table name or @table_variable
-	stmt.Relation, _ = p.parseTableRef()
+	rel, err := p.parseTableRef()
+	if err != nil {
+		return nil, err
+	}
+	stmt.Relation = rel
 
 	// Optional WITH ( <Table_Hint_Limited> ) on target
 	if p.cur.Type == kwWITH && p.peekNext().Type == '(' {
-		stmt.Relation.Hints, _ = p.parseTableHints()
+		hints, err := p.parseTableHints()
+		if err != nil {
+			return nil, err
+		}
+		stmt.Relation.Hints = hints
 	}
 
 	// SET clause
 	if _, err := p.expect(kwSET); err == nil {
-		stmt.SetClause = p.parseSetClauseList()
+		setList, err := p.parseSetClauseList()
+		if err != nil {
+			return nil, err
+		}
+		stmt.SetClause = setList
 	}
 
 	// OUTPUT clause
 	if p.cur.Type == kwOUTPUT {
-		stmt.OutputClause = p.parseOutputClause()
+		oc, err := p.parseOutputClause()
+		if err != nil {
+			return nil, err
+		}
+		stmt.OutputClause = oc
 	}
 
 	// FROM clause
 	if _, ok := p.match(kwFROM); ok {
-		stmt.FromClause, _ = p.parseFromClause()
+		from, err := p.parseFromClause()
+		if err != nil {
+			return nil, err
+		}
+		stmt.FromClause = from
 	}
 
 	// WHERE clause (includes CURRENT OF cursor support)
 	if _, ok := p.match(kwWHERE); ok {
-		stmt.WhereClause = p.parseWhereClauseBody()
+		wc, err := p.parseWhereClauseBody()
+		if err != nil {
+			return nil, err
+		}
+		stmt.WhereClause = wc
 	}
 
 	// OPTION clause
 	if p.cur.Type == kwOPTION {
-		stmt.OptionClause, _ = p.parseOptionClause()
+		oc, err := p.parseOptionClause()
+		if err != nil {
+			return nil, err
+		}
+		stmt.OptionClause = oc
 	}
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseDeleteStmt parses a DELETE statement.
@@ -124,7 +156,7 @@ func (p *Parser) parseUpdateStmt() *nodes.UpdateStmt {
 //	    ]
 //	    [ OPTION ( <Query Hint> [ ,...n ] ) ]
 //	[; ]
-func (p *Parser) parseDeleteStmt() *nodes.DeleteStmt {
+func (p *Parser) parseDeleteStmt() (*nodes.DeleteStmt, error) {
 	loc := p.pos()
 	p.advance() // consume DELETE
 
@@ -134,42 +166,70 @@ func (p *Parser) parseDeleteStmt() *nodes.DeleteStmt {
 
 	// Optional TOP
 	if p.cur.Type == kwTOP {
-		stmt.Top, _ = p.parseTopClause()
+		top, err := p.parseTopClause()
+		if err != nil {
+			return nil, err
+		}
+		stmt.Top = top
 	}
 
 	// Optional FROM before table name
 	p.match(kwFROM)
 
 	// Table name or @table_variable
-	stmt.Relation, _ = p.parseTableRef()
+	rel, err := p.parseTableRef()
+	if err != nil {
+		return nil, err
+	}
+	stmt.Relation = rel
 
 	// Optional WITH ( <Table_Hint_Limited> ) on target
 	if p.cur.Type == kwWITH && p.peekNext().Type == '(' {
-		stmt.Relation.Hints, _ = p.parseTableHints()
+		hints, err := p.parseTableHints()
+		if err != nil {
+			return nil, err
+		}
+		stmt.Relation.Hints = hints
 	}
 
 	// OUTPUT clause
 	if p.cur.Type == kwOUTPUT {
-		stmt.OutputClause = p.parseOutputClause()
+		oc, err := p.parseOutputClause()
+		if err != nil {
+			return nil, err
+		}
+		stmt.OutputClause = oc
 	}
 
 	// FROM clause (second FROM for join)
 	if _, ok := p.match(kwFROM); ok {
-		stmt.FromClause, _ = p.parseFromClause()
+		from, err := p.parseFromClause()
+		if err != nil {
+			return nil, err
+		}
+		stmt.FromClause = from
 	}
 
 	// WHERE clause (includes CURRENT OF cursor support)
 	if _, ok := p.match(kwWHERE); ok {
-		stmt.WhereClause = p.parseWhereClauseBody()
+		wc, err := p.parseWhereClauseBody()
+		if err != nil {
+			return nil, err
+		}
+		stmt.WhereClause = wc
 	}
 
 	// OPTION clause
 	if p.cur.Type == kwOPTION {
-		stmt.OptionClause, _ = p.parseOptionClause()
+		oc, err := p.parseOptionClause()
+		if err != nil {
+			return nil, err
+		}
+		stmt.OptionClause = oc
 	}
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseWhereClauseBody parses the body of a WHERE clause, handling both
@@ -178,7 +238,7 @@ func (p *Parser) parseDeleteStmt() *nodes.DeleteStmt {
 //	WHERE { <search_condition>
 //	      | CURRENT OF { { [ GLOBAL ] cursor_name } | cursor_variable_name }
 //	      }
-func (p *Parser) parseWhereClauseBody() nodes.ExprNode {
+func (p *Parser) parseWhereClauseBody() (nodes.ExprNode, error) {
 	if p.cur.Type == kwCURRENT {
 		next := p.peekNext()
 		if next.Type == kwOF {
@@ -199,11 +259,10 @@ func (p *Parser) parseWhereClauseBody() nodes.ExprNode {
 				CursorName: cursorName,
 				Global:     global,
 				Loc:        nodes.Loc{Start: loc, End: p.pos()},
-			}
+			}, nil
 		}
 	}
-	result, _ := p.parseExpr()
-	return result
+	return p.parseExpr()
 }
 
 // isCompoundAssign returns the operator string if the current token is a compound assignment operator,
@@ -234,10 +293,13 @@ func (p *Parser) isCompoundAssign() string {
 // parseSetClauseList parses a comma-separated list of SET assignments.
 //
 //	set_clause_list = set_clause { ',' set_clause }
-func (p *Parser) parseSetClauseList() *nodes.List {
+func (p *Parser) parseSetClauseList() (*nodes.List, error) {
 	var items []nodes.Node
 	for {
-		item := p.parseSetClause()
+		item, err := p.parseSetClause()
+		if err != nil {
+			return nil, err
+		}
 		if item == nil {
 			break
 		}
@@ -246,7 +308,7 @@ func (p *Parser) parseSetClauseList() *nodes.List {
 			break
 		}
 	}
-	return &nodes.List{Items: items}
+	return &nodes.List{Items: items}, nil
 }
 
 // parseSetClause parses a single SET assignment.
@@ -258,7 +320,7 @@ func (p *Parser) parseSetClauseList() *nodes.List {
 //	column_name { += | -= | *= | /= | %= | &= | ^= | |= } expression
 //	@variable { += | -= | *= | /= | %= | &= | ^= | |= } expression
 //	@variable = column { += | -= | *= | /= | %= | &= | ^= | |= } expression
-func (p *Parser) parseSetClause() *nodes.SetExpr {
+func (p *Parser) parseSetClause() (*nodes.SetExpr, error) {
 	loc := p.pos()
 
 	se := &nodes.SetExpr{
@@ -270,9 +332,13 @@ func (p *Parser) parseSetClause() *nodes.SetExpr {
 		p.advance()
 	} else {
 		// Parse column reference (not a full expression - just the column name)
-		se.Column = p.parseSetTarget()
+		target, err := p.parseSetTarget()
+		if err != nil {
+			return nil, err
+		}
+		se.Column = target
 		if se.Column == nil {
-			return nil
+			return nil, nil
 		}
 
 		// Check for .WRITE(expression, @Offset, @Length) form
@@ -285,9 +351,13 @@ func (p *Parser) parseSetClause() *nodes.SetExpr {
 				if p.cur.Type == '(' {
 					se.WriteMethod = true
 					// Parse as a FuncCallExpr to store the args
-					se.Value, _ = p.parseFuncCall("WRITE", writeLoc)
+					fc, err := p.parseFuncCall("WRITE", writeLoc)
+					if err != nil {
+						return nil, err
+					}
+					se.Value = fc
 					se.Loc.End = p.pos()
-					return se
+					return se, nil
 				}
 			}
 		}
@@ -298,21 +368,25 @@ func (p *Parser) parseSetClause() *nodes.SetExpr {
 		se.Operator = op
 		p.advance()
 	} else if _, err := p.expect('='); err != nil {
-		return nil
+		return nil, nil
 	}
 
-	se.Value, _ = p.parseExpr()
+	val, err := p.parseExpr()
+	if err != nil {
+		return nil, err
+	}
+	se.Value = val
 	se.Loc.End = p.pos()
-	return se
+	return se, nil
 }
 
 // parseSetTarget parses the left side of a SET assignment (qualified column name).
-func (p *Parser) parseSetTarget() *nodes.ColumnRef {
+func (p *Parser) parseSetTarget() (*nodes.ColumnRef, error) {
 	loc := p.pos()
 
 	name, ok := p.parseIdentifier()
 	if !ok {
-		return nil
+		return nil, nil
 	}
 
 	ref := &nodes.ColumnRef{
@@ -326,7 +400,7 @@ func (p *Parser) parseSetTarget() *nodes.ColumnRef {
 		next := p.peekNext()
 		// Don't consume if it's .WRITE (handled separately)
 		if next.Type == tokIDENT && strings.EqualFold(next.Str, "WRITE") {
-			return ref
+			return ref, nil
 		}
 		p.advance()
 		col, ok := p.parseIdentifier()
@@ -336,5 +410,5 @@ func (p *Parser) parseSetTarget() *nodes.ColumnRef {
 		}
 	}
 
-	return ref
+	return ref, nil
 }

@@ -31,7 +31,7 @@ import (
 //	    }
 //	}
 //	[;]
-func (p *Parser) parseInsertStmt() *nodes.InsertStmt {
+func (p *Parser) parseInsertStmt() (*nodes.InsertStmt, error) {
 	loc := p.pos()
 	p.advance() // consume INSERT
 
@@ -41,18 +41,30 @@ func (p *Parser) parseInsertStmt() *nodes.InsertStmt {
 
 	// Optional TOP
 	if p.cur.Type == kwTOP {
-		stmt.Top, _ = p.parseTopClause()
+		top, err := p.parseTopClause()
+		if err != nil {
+			return nil, err
+		}
+		stmt.Top = top
 	}
 
 	// Optional INTO
 	p.match(kwINTO)
 
 	// Table name or @table_variable
-	stmt.Relation, _ = p.parseTableRef()
+	rel, err := p.parseTableRef()
+	if err != nil {
+		return nil, err
+	}
+	stmt.Relation = rel
 
 	// Optional WITH ( <Table_Hint_Limited> ) on target
 	if p.cur.Type == kwWITH && p.peekNext().Type == '(' {
-		stmt.Relation.Hints, _ = p.parseTableHints()
+		hints, err := p.parseTableHints()
+		if err != nil {
+			return nil, err
+		}
+		stmt.Relation.Hints = hints
 	}
 
 	// Optional column list
@@ -69,21 +81,35 @@ func (p *Parser) parseInsertStmt() *nodes.InsertStmt {
 				break
 			}
 		}
-		_, _ = p.expect(')')
+		if _, err := p.expect(')'); err != nil {
+			return nil, err
+		}
 		stmt.Cols = &nodes.List{Items: cols}
 	}
 
 	// OUTPUT clause (before source)
 	if p.cur.Type == kwOUTPUT {
-		stmt.OutputClause = p.parseOutputClause()
+		oc, err := p.parseOutputClause()
+		if err != nil {
+			return nil, err
+		}
+		stmt.OutputClause = oc
 	}
 
 	// Source: VALUES, SELECT, EXEC, DEFAULT VALUES
 	switch {
 	case p.cur.Type == kwVALUES:
-		stmt.Source = p.parseValuesClause()
+		vc, err := p.parseValuesClause()
+		if err != nil {
+			return nil, err
+		}
+		stmt.Source = vc
 	case p.cur.Type == kwSELECT || p.cur.Type == kwWITH:
-		stmt.Source, _ = p.parseSelectStmt()
+		sel, err := p.parseSelectStmt()
+		if err != nil {
+			return nil, err
+		}
+		stmt.Source = sel
 	case p.cur.Type == kwEXEC || p.cur.Type == kwEXECUTE:
 		stmt.Source = p.parseExecStmt()
 	case p.cur.Type == kwDEFAULT:
@@ -101,17 +127,21 @@ func (p *Parser) parseInsertStmt() *nodes.InsertStmt {
 
 	// Optional OPTION clause
 	if p.cur.Type == kwOPTION {
-		stmt.OptionClause, _ = p.parseOptionClause()
+		oc, err := p.parseOptionClause()
+		if err != nil {
+			return nil, err
+		}
+		stmt.OptionClause = oc
 	}
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseValuesClause parses VALUES (...), (...), ...
 //
 //	VALUES '(' expr_list ')' { ',' '(' expr_list ')' }
-func (p *Parser) parseValuesClause() *nodes.ValuesClause {
+func (p *Parser) parseValuesClause() (*nodes.ValuesClause, error) {
 	loc := p.pos()
 	p.advance() // consume VALUES
 
@@ -124,8 +154,13 @@ func (p *Parser) parseValuesClause() *nodes.ValuesClause {
 		if _, err := p.expect('('); err != nil {
 			break
 		}
-		row, _ := p.parseExprList()
-		_, _ = p.expect(')')
+		row, err := p.parseExprList()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(')'); err != nil {
+			return nil, err
+		}
 		rows = append(rows, row)
 		if _, ok := p.match(','); !ok {
 			break
@@ -133,7 +168,7 @@ func (p *Parser) parseValuesClause() *nodes.ValuesClause {
 	}
 	vc.Rows = &nodes.List{Items: rows}
 	vc.Loc.End = p.pos()
-	return vc
+	return vc, nil
 }
 
 // parseOutputClause parses an OUTPUT clause.
@@ -141,7 +176,7 @@ func (p *Parser) parseValuesClause() *nodes.ValuesClause {
 // BNF: OUTPUT { dml_select_list } [ INTO { @table_variable | output_table } [ ( column_list ) ] ]
 //
 //	OUTPUT output_columns [INTO table [(col_list)]]
-func (p *Parser) parseOutputClause() *nodes.OutputClause {
+func (p *Parser) parseOutputClause() (*nodes.OutputClause, error) {
 	loc := p.pos()
 	p.advance() // consume OUTPUT
 
@@ -150,7 +185,11 @@ func (p *Parser) parseOutputClause() *nodes.OutputClause {
 	}
 
 	// Parse output targets (comma-separated expressions like inserted.col, deleted.col, $action)
-	oc.Targets, _ = p.parseTargetList()
+	targets, err := p.parseTargetList()
+	if err != nil {
+		return nil, err
+	}
+	oc.Targets = targets
 
 	// Optional INTO @table_variable | output_table
 	if _, ok := p.match(kwINTO); ok {
@@ -162,7 +201,11 @@ func (p *Parser) parseOutputClause() *nodes.OutputClause {
 			}
 			p.advance()
 		} else {
-			oc.IntoTable , _ = p.parseTableRef()
+			tbl, err := p.parseTableRef()
+			if err != nil {
+				return nil, err
+			}
+			oc.IntoTable = tbl
 		}
 		// Optional column list
 		if p.cur.Type == '(' {
@@ -178,13 +221,15 @@ func (p *Parser) parseOutputClause() *nodes.OutputClause {
 					break
 				}
 			}
-			_, _ = p.expect(')')
+			if _, err := p.expect(')'); err != nil {
+				return nil, err
+			}
 			oc.IntoCols = &nodes.List{Items: cols}
 		}
 	}
 
 	oc.Loc.End = p.pos()
-	return oc
+	return oc, nil
 }
 
 // isOutputKeyword checks if the current token is the OUTPUT keyword.

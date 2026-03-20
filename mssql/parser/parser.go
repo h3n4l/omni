@@ -76,7 +76,8 @@ func (p *Parser) parseStmt() nodes.StmtNode {
 				return stmt
 			}
 		}
-		return p.parseInsertStmt()
+		stmt, _ := p.parseInsertStmt()
+		return stmt
 	case kwUPDATE:
 		// Could be UPDATE table... or UPDATE STATISTICS
 		next := p.peekNext()
@@ -88,11 +89,14 @@ func (p *Parser) parseStmt() nodes.StmtNode {
 			stmt.Loc.Start = loc
 			return stmt
 		}
-		return p.parseUpdateStmt()
+		stmt, _ := p.parseUpdateStmt()
+		return stmt
 	case kwDELETE:
-		return p.parseDeleteStmt()
+		stmt, _ := p.parseDeleteStmt()
+		return stmt
 	case kwMERGE:
-		return p.parseMergeStmt()
+		stmt, _ := p.parseMergeStmt()
+		return stmt
 	case kwCREATE:
 		return p.parseCreateStmt()
 	case kwALTER:

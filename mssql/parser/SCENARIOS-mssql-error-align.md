@@ -40,11 +40,11 @@ Migrate all parse functions from returning single values to `(T, error)` tuples.
 
 ### 1.4 DML: insert.go, update_delete.go, merge.go
 
-- [ ] insert.go — `parseInsertStmt`, `parseValuesClause`, `parseOutputClause` return dual
-- [ ] update_delete.go — `parseUpdateStmt`, `parseDeleteStmt`, `parseWhereClauseBody`, `parseSetClauseList`, `parseSetClause`, `parseSetTarget` return dual
-- [ ] merge.go — `parseMergeStmt`, `parseMergeWhenClause`, `parseMergeInsertAction` return dual
-- [ ] All cross-file callers updated
-- [ ] Build passes after 1.4
+- [x] insert.go — `parseInsertStmt`, `parseValuesClause`, `parseOutputClause` return dual
+- [x] update_delete.go — `parseUpdateStmt`, `parseDeleteStmt`, `parseWhereClauseBody`, `parseSetClauseList`, `parseSetClause`, `parseSetTarget` return dual
+- [x] merge.go — `parseMergeStmt`, `parseMergeWhenClause`, `parseMergeInsertAction` return dual
+- [x] All cross-file callers updated
+- [x] Build passes after 1.4
 
 ### 1.5 DDL: create_table.go, create_index.go
 
