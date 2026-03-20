@@ -493,6 +493,15 @@ func (p *Parser) parseAlterTableMoveAll(objType int) *nodes.AlterTableMoveAllStm
 func (p *Parser) parseAlterTableRename(rel *nodes.RangeVar, missingOk bool) (*nodes.RenameStmt, error) {
 	p.advance() // consume RENAME
 
+	if p.collectMode() {
+		p.addTokenCandidate(TO)
+		p.addTokenCandidate(COLUMN)
+		p.addTokenCandidate(CONSTRAINT)
+		// Also valid: column name directly (RENAME col_name TO ...)
+		p.addRuleCandidate("columnref")
+		return nil, nil
+	}
+
 	switch p.cur.Type {
 	case TO:
 		// RENAME TO name
@@ -507,6 +516,10 @@ func (p *Parser) parseAlterTableRename(rel *nodes.RangeVar, missingOk bool) (*no
 	case COLUMN:
 		// RENAME COLUMN colname TO newname
 		p.advance() // consume COLUMN
+		if p.collectMode() {
+			p.addRuleCandidate("columnref")
+			return nil, nil
+		}
 		oldname, err := p.parseColId()
 		if err != nil {
 			return nil, err

@@ -157,6 +157,12 @@ func (p *Parser) parseIndexParams() *nodes.List {
 //	    | '(' a_expr ')' opt_collate opt_qualified_name opt_asc_desc opt_nulls_order
 //	    | '(' a_expr ')' opt_collate any_name reloptions opt_asc_desc opt_nulls_order
 func (p *Parser) parseIndexElem() *nodes.IndexElem {
+	if p.collectMode() {
+		p.addRuleCandidate("columnref")
+		p.addRuleCandidate("func_name")
+		p.addTokenCandidate('(')
+		return nil
+	}
 	elem := &nodes.IndexElem{}
 
 	if p.cur.Type == '(' {

@@ -1103,6 +1103,10 @@ func (p *Parser) parseOptColumnList() (*nodes.List, error) {
 		return nil, nil
 	}
 	p.advance()
+	if p.collectMode() {
+		p.addRuleCandidate("columnref")
+		return nil, nil
+	}
 	list := p.parseColumnList()
 	if list == nil {
 		return nil, p.syntaxErrorAtCur()
@@ -1117,6 +1121,10 @@ func (p *Parser) parseOptColumnList() (*nodes.List, error) {
 //
 //	columnList: name | columnList ',' name
 func (p *Parser) parseColumnList() *nodes.List {
+	if p.collectMode() {
+		p.addRuleCandidate("columnref")
+		return nil
+	}
 	name, err := p.parseName()
 	if err != nil {
 		return nil

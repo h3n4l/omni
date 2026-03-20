@@ -77,6 +77,14 @@ func (p *Parser) parseSelectWithParens() (*nodes.SelectStmt, error) {
 	if _, err := p.expect('('); err != nil {
 		return nil, err
 	}
+	if p.collectMode() {
+		p.addTokenCandidate('(')
+		p.addTokenCandidate(SELECT)
+		p.addTokenCandidate(VALUES)
+		p.addTokenCandidate(TABLE)
+		p.addTokenCandidate(WITH)
+		return nil, nil
+	}
 	var stmt *nodes.SelectStmt
 	var err error
 	if p.cur.Type == '(' {
@@ -1153,6 +1161,16 @@ func (p *Parser) parseParenTableRef() (nodes.Node, error) {
 
 	// '(' joined_table ')' opt_alias_clause
 	p.advance() // consume '('
+	if p.collectMode() {
+		// After '(' in FROM, valid starts include both subquery keywords
+		// and table references for joined tables.
+		for _, t := range []int{SELECT, VALUES, WITH, TABLE, '('} {
+			p.addTokenCandidate(t)
+		}
+		p.addRuleCandidate("relation_expr")
+		p.addRuleCandidate("qualified_name")
+		return nil, nil
+	}
 	inner, err := p.parseTableRef()
 	if err != nil {
 		return nil, err
@@ -1865,6 +1883,10 @@ func (p *Parser) parseJoinQual(j *nodes.JoinExpr) error {
 		p.advance()
 		if _, err := p.expect('('); err != nil {
 			return err
+		}
+		if p.collectMode() {
+			p.addRuleCandidate("columnref")
+			return nil
 		}
 		names, err := p.parseNameList()
 		if err != nil {

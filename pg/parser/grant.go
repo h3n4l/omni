@@ -273,6 +273,10 @@ func (p *Parser) parseGrantTarget() (nodes.GrantTargetType, nodes.ObjectType, *n
 		}
 		p.expect(IN_P)
 		p.expect(SCHEMA)
+		if p.collectMode() {
+			p.addRuleCandidate("qualified_name")
+			return nodes.ACL_TARGET_ALL_IN_SCHEMA, objType, nil, nil
+		}
 		names, _ := p.parseNameList()
 		return nodes.ACL_TARGET_ALL_IN_SCHEMA, objType, makeNameListAsAnyNameList(names), nil
 	default:

@@ -40,6 +40,13 @@ func resolveRule(rule string, cat *catalog.Catalog, sql string, offset int) []Ca
 		return resolveRelations(cat, sql, offset)
 	case "func_name":
 		return resolveFunctions(cat)
+	case "any_name":
+		// any_name appears in contexts like COMMENT ON COLUMN schema.table.col
+		// where the name could be a column, table, or schema. Resolve all.
+		var result []Candidate
+		result = append(result, resolveColumns(cat, sql, offset)...)
+		result = append(result, resolveRelations(cat, sql, offset)...)
+		return result
 	}
 	return nil
 }

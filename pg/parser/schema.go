@@ -164,9 +164,23 @@ func (p *Parser) parseCommentStmt() (nodes.Node, error) {
 
 	stmt := &nodes.CommentStmt{}
 
+	if p.collectMode() {
+		p.cachedCollect("parseCommentStmt", func() {
+			for _, t := range []int{COLUMN, TYPE_P, TABLE, SCHEMA, INDEX, SEQUENCE, FUNCTION, PROCEDURE, TRIGGER, VIEW, MATERIALIZED, EXTENSION, POLICY, DOMAIN_P} {
+				p.addTokenCandidate(t)
+			}
+		})
+		return nil, nil
+	}
+
 	switch p.cur.Type {
 	case COLUMN:
 		p.advance()
+		if p.collectMode() {
+			p.addRuleCandidate("columnref")
+			p.addRuleCandidate("qualified_name")
+			return nil, nil
+		}
 		stmt.Objtype = nodes.OBJECT_COLUMN
 		name, err := p.parseAnyName()
 		if err != nil {

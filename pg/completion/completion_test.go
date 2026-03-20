@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/bytebase/omni/pg/catalog"
+	"github.com/bytebase/omni/pg/parser"
 )
 
 func TestCompleteCandidateTypes(t *testing.T) {
@@ -115,5 +116,239 @@ func TestTrickyCompletePartialSQL(t *testing.T) {
 	}
 	if !found {
 		t.Error("expected 'orders' table in tricky completion")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Batch 1: Parenthesized column-list completion
+// ---------------------------------------------------------------------------
+
+func TestCompleteJoinUsing(t *testing.T) {
+	cat := catalog.New()
+	cat.Exec("CREATE TABLE t1 (id int, name text); CREATE TABLE t2 (id int, age int);", nil)
+
+	sql := "SELECT * FROM t1 JOIN t2 USING ("
+	candidates := Complete(sql, len(sql), cat)
+	found := false
+	for _, c := range candidates {
+		if c.Type == CandidateColumn {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected column candidates inside JOIN USING ()")
+	}
+}
+
+func TestCollectJoinUsingEmitsColumnref(t *testing.T) {
+	sql := "SELECT * FROM t1 JOIN t2 USING ("
+	cs := parser.Collect(sql, len(sql))
+	if cs == nil || !cs.HasRule("columnref") {
+		t.Error("expected columnref rule inside JOIN USING ()")
+	}
+}
+
+func TestCollectForeignKeyColumnList(t *testing.T) {
+	sql := "CREATE TABLE t (a int, FOREIGN KEY ("
+	cs := parser.Collect(sql, len(sql))
+	if cs == nil || !cs.HasRule("columnref") {
+		t.Error("expected columnref rule inside FOREIGN KEY ()")
+	}
+}
+
+func TestCollectUniqueColumnList(t *testing.T) {
+	sql := "CREATE TABLE t (a int, UNIQUE ("
+	cs := parser.Collect(sql, len(sql))
+	if cs == nil || !cs.HasRule("columnref") {
+		t.Error("expected columnref rule inside UNIQUE ()")
+	}
+}
+
+func TestCollectPrimaryKeyColumnList(t *testing.T) {
+	sql := "CREATE TABLE t (a int, PRIMARY KEY ("
+	cs := parser.Collect(sql, len(sql))
+	if cs == nil || !cs.HasRule("columnref") {
+		t.Error("expected columnref rule inside PRIMARY KEY ()")
+	}
+}
+
+func TestCollectReferencesColumnList(t *testing.T) {
+	// Column-level constraint: col REFERENCES other_table (
+	sql := "CREATE TABLE t (a int REFERENCES other ("
+	cs := parser.Collect(sql, len(sql))
+	if cs == nil || !cs.HasRule("columnref") {
+		t.Error("expected columnref rule inside REFERENCES table ()")
+	}
+}
+
+func TestCollectReferencesInTableConstraint(t *testing.T) {
+	// Table-level constraint: FOREIGN KEY (a) REFERENCES other (
+	sql := "CREATE TABLE t (a int, FOREIGN KEY (a) REFERENCES other ("
+	cs := parser.Collect(sql, len(sql))
+	if cs == nil || !cs.HasRule("columnref") {
+		t.Error("expected columnref rule inside table constraint REFERENCES ()")
+	}
+}
+
+func TestCollectCreateIndexColumnList(t *testing.T) {
+	sql := "CREATE INDEX idx ON t ("
+	cs := parser.Collect(sql, len(sql))
+	if cs == nil || !cs.HasRule("columnref") {
+		t.Error("expected columnref rule inside CREATE INDEX ()")
+	}
+}
+
+func TestCompleteCreateIndexColumn(t *testing.T) {
+	cat := catalog.New()
+	cat.Exec("CREATE TABLE orders (id int, amount numeric);", nil)
+
+	sql := "CREATE INDEX idx ON orders ("
+	candidates := Complete(sql, len(sql), cat)
+	found := false
+	for _, c := range candidates {
+		if c.Type == CandidateColumn {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected column candidates inside CREATE INDEX ()")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Batch 2: DDL/Utility statement completion
+// ---------------------------------------------------------------------------
+
+func TestCollectAlterTableRename(t *testing.T) {
+	// After RENAME, should suggest COLUMN, CONSTRAINT, TO, and columnref
+	sql := "ALTER TABLE t RENAME "
+	cs := parser.Collect(sql, len(sql))
+	if cs == nil {
+		t.Fatal("expected non-nil candidate set")
+	}
+	if !cs.HasRule("columnref") {
+		t.Error("expected columnref rule after ALTER TABLE RENAME")
+	}
+	if !cs.HasToken(parser.COLUMN) {
+		t.Error("expected COLUMN token after ALTER TABLE RENAME")
+	}
+	if !cs.HasToken(parser.TO) {
+		t.Error("expected TO token after ALTER TABLE RENAME")
+	}
+	if !cs.HasToken(parser.CONSTRAINT) {
+		t.Error("expected CONSTRAINT token after ALTER TABLE RENAME")
+	}
+}
+
+func TestCollectAlterTableRenameColumn(t *testing.T) {
+	// After RENAME COLUMN, should suggest columnref
+	sql := "ALTER TABLE t RENAME COLUMN "
+	cs := parser.Collect(sql, len(sql))
+	if cs == nil || !cs.HasRule("columnref") {
+		t.Error("expected columnref rule after ALTER TABLE RENAME COLUMN")
+	}
+}
+
+func TestCompleteAlterTableRenameColumn(t *testing.T) {
+	cat := catalog.New()
+	cat.Exec("CREATE TABLE users (id int, name text);", nil)
+
+	sql := "ALTER TABLE users RENAME COLUMN "
+	candidates := Complete(sql, len(sql), cat)
+	found := false
+	for _, c := range candidates {
+		if c.Type == CandidateColumn {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected column candidates after ALTER TABLE RENAME COLUMN")
+	}
+}
+
+func TestCollectCommentOnColumn(t *testing.T) {
+	// After COMMENT ON COLUMN, should suggest columnref/qualified_name
+	sql := "COMMENT ON COLUMN "
+	cs := parser.Collect(sql, len(sql))
+	if cs == nil {
+		t.Fatal("expected non-nil candidate set")
+	}
+	if !cs.HasRule("columnref") && !cs.HasRule("qualified_name") {
+		t.Error("expected columnref or qualified_name rule after COMMENT ON COLUMN")
+	}
+}
+
+func TestCollectCommentOn(t *testing.T) {
+	// After COMMENT ON, should suggest object type keywords
+	sql := "COMMENT ON "
+	cs := parser.Collect(sql, len(sql))
+	if cs == nil {
+		t.Fatal("expected non-nil candidate set")
+	}
+	if !cs.HasToken(parser.COLUMN) {
+		t.Error("expected COLUMN token after COMMENT ON")
+	}
+	if !cs.HasToken(parser.TABLE) {
+		t.Error("expected TABLE token after COMMENT ON")
+	}
+}
+
+
+func TestCompleteCommentOnColumn(t *testing.T) {
+	cat := catalog.New()
+	cat.Exec("CREATE TABLE users (id int, name text);", nil)
+
+	sql := "COMMENT ON COLUMN users."
+	candidates := Complete(sql, len(sql), cat)
+	found := false
+	for _, c := range candidates {
+		if c.Type == CandidateColumn {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected column candidates after COMMENT ON COLUMN users.")
+	}
+}
+
+func TestCollectGrantInSchema(t *testing.T) {
+	// After GRANT ALL TABLES IN SCHEMA, should suggest schema name
+	sql := "GRANT SELECT ON ALL TABLES IN SCHEMA "
+	cs := parser.Collect(sql, len(sql))
+	if cs == nil || !cs.HasRule("qualified_name") {
+		t.Error("expected qualified_name rule after GRANT ... IN SCHEMA")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Batch 3: Parenthesized subquery completion
+// ---------------------------------------------------------------------------
+
+func TestCollectParenthesizedSubquery(t *testing.T) {
+	sql := "SELECT * FROM ("
+	cs := parser.Collect(sql, len(sql))
+	if cs == nil {
+		t.Fatal("expected non-nil candidate set")
+	}
+	if !cs.HasToken(parser.SELECT) {
+		t.Error("expected SELECT token inside parenthesized subquery")
+	}
+}
+
+func TestCompleteParenthesizedSubquery(t *testing.T) {
+	candidates := Complete("SELECT * FROM (", 15, nil)
+	found := false
+	for _, c := range candidates {
+		if c.Type == CandidateKeyword && c.Text == "SELECT" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected SELECT keyword inside parenthesized subquery")
 	}
 }
