@@ -843,6 +843,9 @@ func (p *Parser) parseAtTimeZone(left nodes.Node) (nodes.Node, error) {
 	if err != nil {
 		return nil, err
 	}
+	if tz == nil {
+		return nil, p.syntaxErrorAtCur()
+	}
 	return &nodes.FuncCall{
 		Funcname:   makeFuncName("pg_catalog", "timezone"),
 		Args:       &nodes.List{Items: []nodes.Node{tz, left}},

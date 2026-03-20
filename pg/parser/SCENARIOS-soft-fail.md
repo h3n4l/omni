@@ -55,16 +55,16 @@ For each: after consuming the operator, `parseAExpr()` can return (nil, nil). Th
 
 ### 2.2 COLLATE, TYPECAST & String Functions
 
-- [ ] `SELECT 'a' COLLATE` — COLLATE consumed, no collation name → syntax error at end of input
-- [ ] `SELECT 1::` — TYPECAST (::) consumed, no type name → syntax error at end of input
-- [ ] `SELECT now() AT TIME ZONE` — AT TIME ZONE consumed, no timezone expr → syntax error at end of input
-- [ ] `SELECT OVERLAY('abc' PLACING` — PLACING consumed, no replacement expr → syntax error at end of input
-- [ ] `SELECT OVERLAY('abc' PLACING 'x' FROM 1 FOR` — FOR consumed, no length expr → syntax error at end of input
-- [ ] `SELECT POSITION('a' IN` — IN consumed, no string expr → syntax error at end of input
-- [ ] `SELECT SUBSTRING('abc' FROM` — FROM consumed, no start expr → syntax error at end of input
-- [ ] `SELECT SUBSTRING('abc' FROM 1 FOR` — FOR consumed, no length expr → syntax error at end of input
-- [ ] `SELECT SUBSTRING('abc' SIMILAR` — SIMILAR consumed, no pattern → syntax error at end of input
-- [ ] `SELECT TRIM(LEADING FROM` — FROM consumed, no source string → syntax error at end of input
+- [x] `SELECT 'a' COLLATE` — COLLATE consumed, no collation name → syntax error at end of input
+- [x] `SELECT 1::` — TYPECAST (::) consumed, no type name → syntax error at end of input
+- [x] `SELECT now() AT TIME ZONE` — AT TIME ZONE consumed, no timezone expr → syntax error at end of input
+- [x] `SELECT OVERLAY('abc' PLACING` — PLACING consumed, no replacement expr → syntax error at end of input
+- [x] `SELECT OVERLAY('abc' PLACING 'x' FROM 1 FOR` — FOR consumed, no length expr → syntax error at end of input
+- [x] `SELECT POSITION('a' IN` — IN consumed, no string expr → syntax error at end of input
+- [x] `SELECT SUBSTRING('abc' FROM` — FROM consumed, no start expr → syntax error at end of input
+- [x] `SELECT SUBSTRING('abc' FROM 1 FOR` — FOR consumed, no length expr → syntax error at end of input
+- [x] `SELECT SUBSTRING('abc' SIMILAR` — SIMILAR consumed, no pattern → syntax error at end of input
+- [x] `SELECT TRIM(LEADING FROM` — FROM consumed, no source string → syntax error at end of input
 
 ## Phase 3: expr.go — b_expr Operators
 

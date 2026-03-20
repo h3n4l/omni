@@ -81,6 +81,17 @@ func TestParseErrors(t *testing.T) {
 		{name: "ILIKE ESCAPE no escape char", sql: "SELECT 'a' ILIKE 'b' ESCAPE", wantContains: "syntax error", wantPos: -1},
 		{name: "SIMILAR TO no pattern", sql: "SELECT 'a' SIMILAR TO", wantContains: "syntax error", wantPos: -1},
 		{name: "SIMILAR TO ESCAPE no escape char", sql: "SELECT 'a' SIMILAR TO 'b' ESCAPE", wantContains: "syntax error", wantPos: -1},
+		// Section 2.2: COLLATE, TYPECAST & String Functions — soft-fail nil checks
+		{name: "COLLATE no collation name", sql: "SELECT 'a' COLLATE", wantContains: "syntax error", wantPos: -1},
+		{name: "TYPECAST no type name", sql: "SELECT 1::", wantContains: "syntax error", wantPos: -1},
+		{name: "AT TIME ZONE no timezone expr", sql: "SELECT now() AT TIME ZONE", wantContains: "syntax error", wantPos: -1},
+		{name: "OVERLAY PLACING no replacement", sql: "SELECT OVERLAY('abc' PLACING", wantContains: "syntax error", wantPos: -1},
+		{name: "OVERLAY FOR no length", sql: "SELECT OVERLAY('abc' PLACING 'x' FROM 1 FOR", wantContains: "syntax error", wantPos: -1},
+		{name: "POSITION IN no string", sql: "SELECT POSITION('a' IN", wantContains: "syntax error", wantPos: -1},
+		{name: "SUBSTRING FROM no start", sql: "SELECT SUBSTRING('abc' FROM", wantContains: "syntax error", wantPos: -1},
+		{name: "SUBSTRING FROM FOR no length", sql: "SELECT SUBSTRING('abc' FROM 1 FOR", wantContains: "syntax error", wantPos: -1},
+		{name: "SUBSTRING SIMILAR no pattern", sql: "SELECT SUBSTRING('abc' SIMILAR", wantContains: "syntax error", wantPos: -1},
+		{name: "TRIM FROM no source string", sql: "SELECT TRIM(LEADING FROM", wantContains: "syntax error", wantPos: -1},
 	}
 
 	for _, tt := range tests {
