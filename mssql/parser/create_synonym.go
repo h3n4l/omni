@@ -18,11 +18,18 @@ import (
 //	      | schema_name_2. ]
 //	    object_name
 //	}
-func (p *Parser) parseCreateSynonymStmt() *nodes.CreateSynonymStmt {
+func (p *Parser) parseCreateSynonymStmt() (*nodes.CreateSynonymStmt, error) {
 	stmt := &nodes.CreateSynonymStmt{}
-	stmt.Name , _ = p.parseTableRef()
+	var err error
+	stmt.Name, err = p.parseTableRef()
+	if err != nil {
+		return nil, err
+	}
 	p.match(kwFOR)
-	stmt.Target , _ = p.parseTableRef()
+	stmt.Target, err = p.parseTableRef()
+	if err != nil {
+		return nil, err
+	}
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }

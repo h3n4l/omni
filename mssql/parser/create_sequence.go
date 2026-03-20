@@ -19,16 +19,25 @@ import (
 //	    [ { MAXVALUE [ <constant> ] } | { NO MAXVALUE } ]
 //	    [ CYCLE | { NO CYCLE } ]
 //	    [ { CACHE [ <constant> ] } | { NO CACHE } ]
-func (p *Parser) parseCreateSequenceStmt() *nodes.CreateSequenceStmt {
+func (p *Parser) parseCreateSequenceStmt() (*nodes.CreateSequenceStmt, error) {
 	stmt := &nodes.CreateSequenceStmt{}
-	stmt.Name , _ = p.parseTableRef()
+	var err error
+	stmt.Name, err = p.parseTableRef()
+	if err != nil {
+		return nil, err
+	}
 	if p.cur.Type == kwAS {
 		p.advance()
-		stmt.DataType , _ = p.parseDataType()
+		stmt.DataType, err = p.parseDataType()
+		if err != nil {
+			return nil, err
+		}
 	}
-	p.parseSequenceOptions(stmt, false)
+	if err := p.parseSequenceOptions(stmt, false); err != nil {
+		return nil, err
+	}
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseAlterSequenceStmt parses an ALTER SEQUENCE statement.
@@ -42,11 +51,17 @@ func (p *Parser) parseCreateSequenceStmt() *nodes.CreateSequenceStmt {
 //	    [ { MAXVALUE <constant> } | { NO MAXVALUE } ]
 //	    [ CYCLE | { NO CYCLE } ]
 //	    [ { CACHE [ <constant> ] } | { NO CACHE } ]
-func (p *Parser) parseAlterSequenceStmt() *nodes.AlterSequenceStmt {
+func (p *Parser) parseAlterSequenceStmt() (*nodes.AlterSequenceStmt, error) {
 	stmt := &nodes.AlterSequenceStmt{}
-	stmt.Name , _ = p.parseTableRef()
+	var err error
+	stmt.Name, err = p.parseTableRef()
+	if err != nil {
+		return nil, err
+	}
 	tmp := &nodes.CreateSequenceStmt{}
-	p.parseSequenceOptions(tmp, true)
+	if err := p.parseSequenceOptions(tmp, true); err != nil {
+		return nil, err
+	}
 	stmt.Restart = tmp.Restart
 	stmt.RestartWith = tmp.RestartWith
 	stmt.Increment = tmp.Increment
@@ -58,12 +73,12 @@ func (p *Parser) parseAlterSequenceStmt() *nodes.AlterSequenceStmt {
 	stmt.Cache = tmp.Cache
 	stmt.NoCache = tmp.NoCache
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseSequenceOptions parses the common options for CREATE/ALTER SEQUENCE.
 // Options can appear in any order per the BNF grammar.
-func (p *Parser) parseSequenceOptions(stmt *nodes.CreateSequenceStmt, isAlter bool) {
+func (p *Parser) parseSequenceOptions(stmt *nodes.CreateSequenceStmt, isAlter bool) error {
 	for {
 		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "NO") {
 			// NO { MINVALUE | MAXVALUE | CYCLE | CACHE }
@@ -91,35 +106,55 @@ func (p *Parser) parseSequenceOptions(stmt *nodes.CreateSequenceStmt, isAlter bo
 			}
 		}
 
+		var err error
 		if !isAlter && p.matchIdentCI("START") {
 			if p.cur.Type == kwWITH {
 				p.advance()
 			}
-			stmt.Start, _ = p.parseExpr()
+			stmt.Start, err = p.parseExpr()
+			if err != nil {
+				return err
+			}
 		} else if isAlter && p.matchIdentCI("RESTART") {
 			stmt.Restart = true
 			if p.cur.Type == kwWITH {
 				p.advance()
-				stmt.RestartWith, _ = p.parseExpr()
+				stmt.RestartWith, err = p.parseExpr()
+				if err != nil {
+					return err
+				}
 			}
 		} else if p.matchIdentCI("INCREMENT") {
 			p.matchIdentCI("BY")
-			stmt.Increment, _ = p.parseExpr()
+			stmt.Increment, err = p.parseExpr()
+			if err != nil {
+				return err
+			}
 		} else if p.matchIdentCI("MINVALUE") {
-			stmt.MinValue, _ = p.parseExpr()
+			stmt.MinValue, err = p.parseExpr()
+			if err != nil {
+				return err
+			}
 		} else if p.matchIdentCI("MAXVALUE") {
-			stmt.MaxValue, _ = p.parseExpr()
+			stmt.MaxValue, err = p.parseExpr()
+			if err != nil {
+				return err
+			}
 		} else if p.matchIdentCI("CYCLE") {
 			b := true
 			stmt.Cycle = &b
 		} else if p.matchIdentCI("CACHE") {
 			if p.cur.Type == tokICONST {
-				stmt.Cache, _ = p.parseExpr()
+				stmt.Cache, err = p.parseExpr()
+				if err != nil {
+					return err
+				}
 			}
 		} else {
 			break
 		}
 	}
+	return nil
 }
 
 // isNextIdentCI checks if the next token (via peekNext) is an identifier-like

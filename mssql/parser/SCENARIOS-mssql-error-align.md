@@ -63,14 +63,14 @@ Migrate all parse functions from returning single values to `(T, error)` tuples.
 
 ### 1.7 DDL: create_database.go, create_type.go, create_sequence.go, create_schema.go, create_statistics.go, create_synonym.go
 
-- [ ] create_database.go — all 9 functions return dual
-- [ ] create_type.go — `parseCreateTypeStmt`, `parseTableTypeIndex` return dual
-- [ ] create_sequence.go — `parseCreateSequenceStmt`, `parseAlterSequenceStmt` return dual
-- [ ] create_schema.go — `parseCreateSchemaStmt`, `parseAlterSchemaStmt` return dual
-- [ ] create_statistics.go — all 4 functions return dual
-- [ ] create_synonym.go — `parseCreateSynonymStmt` returns dual
-- [ ] All cross-file callers updated
-- [ ] Build passes after 1.7
+- [x] create_database.go — all 9 functions return dual
+- [x] create_type.go — `parseCreateTypeStmt`, `parseTableTypeIndex` return dual
+- [x] create_sequence.go — `parseCreateSequenceStmt`, `parseAlterSequenceStmt` return dual
+- [x] create_schema.go — `parseCreateSchemaStmt`, `parseAlterSchemaStmt` return dual
+- [x] create_statistics.go — all 4 functions return dual
+- [x] create_synonym.go — `parseCreateSynonymStmt` returns dual
+- [x] All cross-file callers updated
+- [x] Build passes after 1.7
 
 ### 1.8 ALTER: alter_table.go, alter_objects.go
 

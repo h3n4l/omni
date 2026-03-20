@@ -21,7 +21,7 @@ import (
 //	<schema_element> ::=
 //	    { table_definition | view_definition | grant_statement |
 //	      revoke_statement | deny_statement }
-func (p *Parser) parseCreateSchemaStmt() *nodes.CreateSchemaStmt {
+func (p *Parser) parseCreateSchemaStmt() (*nodes.CreateSchemaStmt, error) {
 	stmt := &nodes.CreateSchemaStmt{}
 
 	if p.cur.Type == kwAUTHORIZATION {
@@ -64,7 +64,7 @@ func (p *Parser) parseCreateSchemaStmt() *nodes.CreateSchemaStmt {
 	}
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseAlterSchemaStmt parses an ALTER SCHEMA statement.
@@ -74,7 +74,7 @@ func (p *Parser) parseCreateSchemaStmt() *nodes.CreateSchemaStmt {
 //	ALTER SCHEMA schema_name TRANSFER [ <entity_type> :: ] securable_name
 //
 //	<entity_type> ::= { Object | Type | XML Schema Collection }
-func (p *Parser) parseAlterSchemaStmt() *nodes.AlterSchemaStmt {
+func (p *Parser) parseAlterSchemaStmt() (*nodes.AlterSchemaStmt, error) {
 	stmt := &nodes.AlterSchemaStmt{}
 
 	name, _ := p.parseIdentifier()
@@ -125,5 +125,5 @@ func (p *Parser) parseAlterSchemaStmt() *nodes.AlterSchemaStmt {
 	}
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }

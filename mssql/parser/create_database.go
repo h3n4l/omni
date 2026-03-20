@@ -89,7 +89,7 @@ import (
 //	    ) [ , ...n ]
 //	    AS SNAPSHOT OF source_database_name
 //	[ ; ]
-func (p *Parser) parseCreateDatabaseStmt() *nodes.CreateDatabaseStmt {
+func (p *Parser) parseCreateDatabaseStmt() (*nodes.CreateDatabaseStmt, error) {
 	loc := p.pos()
 
 	stmt := &nodes.CreateDatabaseStmt{
@@ -233,7 +233,7 @@ func (p *Parser) parseCreateDatabaseStmt() *nodes.CreateDatabaseStmt {
 	}
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseDatabaseFileSpec parses a single file specification.

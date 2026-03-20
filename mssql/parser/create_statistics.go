@@ -26,7 +26,7 @@ import (
 //	        [ [ , ] MAXDOP = max_degree_of_parallelism ]
 //	        [ [ , ] AUTO_DROP = { ON | OFF } ]
 //	    ]
-func (p *Parser) parseCreateStatisticsStmt() *nodes.CreateStatisticsStmt {
+func (p *Parser) parseCreateStatisticsStmt() (*nodes.CreateStatisticsStmt, error) {
 	loc := p.pos()
 	// STATISTICS keyword already consumed by caller
 
@@ -42,7 +42,11 @@ func (p *Parser) parseCreateStatisticsStmt() *nodes.CreateStatisticsStmt {
 
 	// ON table
 	if _, ok := p.match(kwON); ok {
-		stmt.Table , _ = p.parseTableRef()
+		var err error
+		stmt.Table, err = p.parseTableRef()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Column list
@@ -65,7 +69,11 @@ func (p *Parser) parseCreateStatisticsStmt() *nodes.CreateStatisticsStmt {
 	// WHERE filter predicate (optional)
 	if p.cur.Type == kwWHERE {
 		p.advance()
-		stmt.Where, _ = p.parseExpr()
+		var err error
+		stmt.Where, err = p.parseExpr()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// WITH options
@@ -75,7 +83,7 @@ func (p *Parser) parseCreateStatisticsStmt() *nodes.CreateStatisticsStmt {
 	}
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseUpdateStatisticsStmt parses an UPDATE STATISTICS statement.
@@ -102,7 +110,7 @@ func (p *Parser) parseCreateStatisticsStmt() *nodes.CreateStatisticsStmt {
 //	        [ [ , ] MAXDOP = max_degree_of_parallelism ]
 //	        [ [ , ] AUTO_DROP = { ON | OFF } ]
 //	    ]
-func (p *Parser) parseUpdateStatisticsStmt() *nodes.UpdateStatisticsStmt {
+func (p *Parser) parseUpdateStatisticsStmt() (*nodes.UpdateStatisticsStmt, error) {
 	loc := p.pos()
 	// STATISTICS keyword already consumed by caller
 
@@ -111,7 +119,11 @@ func (p *Parser) parseUpdateStatisticsStmt() *nodes.UpdateStatisticsStmt {
 	}
 
 	// Table name
-	stmt.Table , _ = p.parseTableRef()
+	var err error
+	stmt.Table, err = p.parseTableRef()
+	if err != nil {
+		return nil, err
+	}
 
 	// Optional statistics name or list
 	if p.cur.Type == '(' {
@@ -146,7 +158,7 @@ func (p *Parser) parseUpdateStatisticsStmt() *nodes.UpdateStatisticsStmt {
 	}
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseDropStatisticsStmt parses a DROP STATISTICS statement.
@@ -154,7 +166,7 @@ func (p *Parser) parseUpdateStatisticsStmt() *nodes.UpdateStatisticsStmt {
 // BNF: mssql/parser/bnf/drop-statistics-transact-sql.bnf
 //
 //	DROP STATISTICS table.statistics_name | view.statistics_name [ ,...n ]
-func (p *Parser) parseDropStatisticsStmt() *nodes.DropStatisticsStmt {
+func (p *Parser) parseDropStatisticsStmt() (*nodes.DropStatisticsStmt, error) {
 	loc := p.pos()
 	// STATISTICS keyword already consumed by caller
 
@@ -186,7 +198,7 @@ func (p *Parser) parseDropStatisticsStmt() *nodes.DropStatisticsStmt {
 	stmt.Names = &nodes.List{Items: names}
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseStatisticsWithOptions parses the WITH clause of CREATE/UPDATE STATISTICS.

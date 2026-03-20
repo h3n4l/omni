@@ -23,15 +23,22 @@ import (
 //	        [ WITH ( BUCKET_COUNT = count ) ]
 //	        ( column_name [ ASC | DESC ] [ ,...n ] )
 //	        [ INCLUDE ( column_name [ ,...n ] ) ]
-func (p *Parser) parseCreateTypeStmt() *nodes.CreateTypeStmt {
+func (p *Parser) parseCreateTypeStmt() (*nodes.CreateTypeStmt, error) {
 	stmt := &nodes.CreateTypeStmt{}
 
-	stmt.Name , _ = p.parseTableRef()
+	var err error
+	stmt.Name, err = p.parseTableRef()
+	if err != nil {
+		return nil, err
+	}
 
 	switch {
 	case p.cur.Type == kwFROM:
 		p.advance()
-		stmt.BaseType , _ = p.parseDataType()
+		stmt.BaseType, err = p.parseDataType()
+		if err != nil {
+			return nil, err
+		}
 		if p.cur.Type == kwNULL {
 			b := true
 			stmt.Nullable = &b
@@ -67,17 +74,26 @@ func (p *Parser) parseCreateTypeStmt() *nodes.CreateTypeStmt {
 				if p.cur.Type == kwCONSTRAINT || p.cur.Type == kwPRIMARY ||
 					p.cur.Type == kwUNIQUE || p.cur.Type == kwCHECK ||
 					p.cur.Type == kwFOREIGN {
-					constraint, _ := p.parseTableConstraint()
+					constraint, err := p.parseTableConstraint()
+					if err != nil {
+						return nil, err
+					}
 					if constraint != nil {
 						elements = append(elements, constraint)
 					}
 				} else if p.cur.Type == kwINDEX {
-					idx := p.parseTableTypeIndex()
+					idx, err := p.parseTableTypeIndex()
+					if err != nil {
+						return nil, err
+					}
 					if idx != nil {
 						elements = append(elements, idx)
 					}
 				} else {
-					col, _ := p.parseColumnDef()
+					col, err := p.parseColumnDef()
+					if err != nil {
+						return nil, err
+					}
 					if col != nil {
 						elements = append(elements, col)
 					}
@@ -110,7 +126,7 @@ func (p *Parser) parseCreateTypeStmt() *nodes.CreateTypeStmt {
 	}
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseTableTypeIndex parses an INDEX clause within CREATE TYPE AS TABLE.
@@ -121,7 +137,7 @@ func (p *Parser) parseCreateTypeStmt() *nodes.CreateTypeStmt {
 //	    [ WITH ( BUCKET_COUNT = count ) ]
 //	    ( column_name [ ASC | DESC ] [ ,...n ] )
 //	    [ INCLUDE ( column_name [ ,...n ] ) ]
-func (p *Parser) parseTableTypeIndex() *nodes.TableTypeIndex {
+func (p *Parser) parseTableTypeIndex() (*nodes.TableTypeIndex, error) {
 	idx := &nodes.TableTypeIndex{Loc: nodes.Loc{Start: p.pos()}}
 
 	p.match(kwINDEX) // consume INDEX keyword
@@ -151,7 +167,10 @@ func (p *Parser) parseTableTypeIndex() *nodes.TableTypeIndex {
 		if _, err := p.expect('('); err == nil {
 			if p.matchIdentCI("BUCKET_COUNT") {
 				p.match('=')
-				idx.BucketCount, _ = p.parseExpr()
+				idx.BucketCount, err = p.parseExpr()
+				if err != nil {
+					return nil, err
+				}
 			}
 			p.match(')')
 		}
@@ -202,5 +221,5 @@ func (p *Parser) parseTableTypeIndex() *nodes.TableTypeIndex {
 	}
 
 	idx.Loc.End = p.pos()
-	return idx
+	return idx, nil
 }

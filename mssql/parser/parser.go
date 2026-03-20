@@ -85,7 +85,7 @@ func (p *Parser) parseStmt() nodes.StmtNode {
 			loc := p.pos()
 			p.advance() // consume UPDATE
 			p.advance() // consume STATISTICS
-			stmt := p.parseUpdateStatisticsStmt()
+			stmt, _ := p.parseUpdateStatisticsStmt()
 			stmt.Loc.Start = loc
 			return stmt
 		}
@@ -527,7 +527,7 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 			}
 		}
 		p.advance() // consume DATABASE
-		stmt := p.parseCreateDatabaseStmt()
+		stmt, _ := p.parseCreateDatabaseStmt()
 		stmt.Loc.Start = loc
 		return stmt
 	case kwTRIGGER:
@@ -537,12 +537,12 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 		return stmt
 	case kwSCHEMA:
 		p.advance() // consume SCHEMA
-		stmt := p.parseCreateSchemaStmt()
+		stmt, _ := p.parseCreateSchemaStmt()
 		stmt.Loc.Start = loc
 		return stmt
 	case kwTYPE:
 		p.advance() // consume TYPE
-		stmt := p.parseCreateTypeStmt()
+		stmt, _ := p.parseCreateTypeStmt()
 		stmt.Loc.Start = loc
 		return stmt
 	case kwUSER:
@@ -562,12 +562,12 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 		return stmt
 	default:
 		if p.matchIdentCI("SEQUENCE") {
-			stmt := p.parseCreateSequenceStmt()
+			stmt, _ := p.parseCreateSequenceStmt()
 			stmt.Loc.Start = loc
 			return stmt
 		}
 		if p.matchIdentCI("SYNONYM") {
-			stmt := p.parseCreateSynonymStmt()
+			stmt, _ := p.parseCreateSynonymStmt()
 			stmt.Loc.Start = loc
 			return stmt
 		}
@@ -603,7 +603,7 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 		// CREATE STATISTICS name ON table (col, ...)
 		if p.cur.Type == kwSTATISTICS {
 			p.advance() // consume STATISTICS
-			stmt := p.parseCreateStatisticsStmt()
+			stmt, _ := p.parseCreateStatisticsStmt()
 			stmt.Loc.Start = loc
 			return stmt
 		}
@@ -1078,7 +1078,7 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 		return stmt
 	case kwSCHEMA:
 		p.advance() // consume SCHEMA
-		stmt := p.parseAlterSchemaStmt()
+		stmt, _ := p.parseAlterSchemaStmt()
 		stmt.Loc.Start = loc
 		return stmt
 	case kwUSER:
@@ -1098,7 +1098,7 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 		return stmt
 	default:
 		if p.matchIdentCI("SEQUENCE") {
-			stmt := p.parseAlterSequenceStmt()
+			stmt, _ := p.parseAlterSequenceStmt()
 			stmt.Loc.Start = loc
 			return stmt
 		}
@@ -1521,7 +1521,7 @@ func (p *Parser) parseDropOrSecurityStmt() nodes.StmtNode {
 		// DROP STATISTICS table.stats_name [, ...]
 		p.advance() // consume DROP
 		p.advance() // consume STATISTICS
-		stmt := p.parseDropStatisticsStmt()
+		stmt, _ := p.parseDropStatisticsStmt()
 		stmt.Loc.Start = loc
 		return stmt
 	default:
