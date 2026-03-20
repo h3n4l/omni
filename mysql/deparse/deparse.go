@@ -4,6 +4,7 @@ package deparse
 
 import (
 	"fmt"
+	"strings"
 
 	ast "github.com/bytebase/omni/mysql/ast"
 )
@@ -23,6 +24,13 @@ func deparseExpr(node ast.ExprNode) string {
 		return fmt.Sprintf("%d", n.Value)
 	case *ast.FloatLit:
 		return n.Value
+	case *ast.BoolLit:
+		if n.Value {
+			return "true"
+		}
+		return "false"
+	case *ast.StringLit:
+		return deparseStringLit(n)
 	case *ast.NullLit:
 		return "NULL"
 	case *ast.UnaryExpr:
@@ -32,6 +40,17 @@ func deparseExpr(node ast.ExprNode) string {
 	default:
 		return fmt.Sprintf("/* unsupported: %T */", node)
 	}
+}
+
+func deparseStringLit(n *ast.StringLit) string {
+	// MySQL 8.0 uses backslash escaping for single quotes: '' → \'
+	// and preserves backslashes as-is.
+	escaped := strings.ReplaceAll(n.Value, `\`, `\\`)
+	escaped = strings.ReplaceAll(escaped, `'`, `\'`)
+	if n.Charset != "" {
+		return n.Charset + "'" + escaped + "'"
+	}
+	return "'" + escaped + "'"
 }
 
 func deparseUnaryExpr(n *ast.UnaryExpr) string {

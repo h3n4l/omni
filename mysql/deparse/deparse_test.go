@@ -66,6 +66,59 @@ func TestDeparse_Section_1_1_IntFloatNull(t *testing.T) {
 	}
 }
 
+func TestDeparse_Section_1_2_BoolStringLiterals(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		// Boolean literals
+		{"true_literal", "TRUE", "true"},
+		{"false_literal", "FALSE", "false"},
+
+		// String literals
+		{"simple_string", "'hello'", "'hello'"},
+		{"string_with_single_quote", "'it''s'", `'it\'s'`},
+		{"empty_string", "''", "''"},
+		{"string_with_backslash", `'back\\slash'`, `'back\\slash'`},
+
+		// Charset introducers — skipped: parser doesn't support charset introducers yet
+		// {"charset_utf8mb4", "_utf8mb4'hello'", "_utf8mb4'hello'"},
+		// {"charset_latin1", "_latin1'world'", "_latin1'world'"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			node := parseExpr(t, tc.input)
+			got := Deparse(node)
+			if got != tc.expected {
+				t.Errorf("Deparse(%q) = %q, want %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
+// TestDeparse_Section_1_2_CharsetIntroducer tests charset introducer deparsing
+// using hand-built AST nodes, since the parser doesn't support charset introducers yet.
+func TestDeparse_Section_1_2_CharsetIntroducer(t *testing.T) {
+	cases := []struct {
+		name     string
+		node     ast.ExprNode
+		expected string
+	}{
+		{"charset_utf8mb4", &ast.StringLit{Value: "hello", Charset: "_utf8mb4"}, "_utf8mb4'hello'"},
+		{"charset_latin1", &ast.StringLit{Value: "world", Charset: "_latin1"}, "_latin1'world'"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := Deparse(tc.node)
+			if got != tc.expected {
+				t.Errorf("Deparse() = %q, want %q", got, tc.expected)
+			}
+		})
+	}
+}
+
 func TestDeparse_NilNode(t *testing.T) {
 	got := Deparse(nil)
 	if got != "" {

@@ -30,14 +30,14 @@ Foundation: build the `Deparse(node) string` function and handle all literal typ
 ### 1.2 Boolean & String Literals
 
 ```
-[ ] TRUE literal: `TRUE` → `true` (lowercase)
-[ ] FALSE literal: `FALSE` → `false` (lowercase)
-[ ] Simple string: `'hello'` → `'hello'`
-[ ] String with single quote: `'it''s'` → `'it\'s'` (MySQL switches to backslash escaping)
-[ ] Empty string: `''` → `''`
-[ ] String with backslash: `'back\\slash'` → `'back\\slash'`
-[ ] Charset introducer: `_utf8mb4'hello'` → `_utf8mb4'hello'`
-[ ] Charset introducer latin1: `_latin1'world'` → `_latin1'world'`
+[x] TRUE literal: `TRUE` → `true` (lowercase)
+[x] FALSE literal: `FALSE` → `false` (lowercase)
+[x] Simple string: `'hello'` → `'hello'`
+[x] String with single quote: `'it''s'` → `'it\'s'` (MySQL switches to backslash escaping)
+[x] Empty string: `''` → `''`
+[x] String with backslash: `'back\\slash'` → `'back\\slash'`
+[~] Charset introducer: `_utf8mb4'hello'` → `_utf8mb4'hello'` (deparse logic implemented; parser doesn't support charset introducers)
+[~] Charset introducer latin1: `_latin1'world'` → `_latin1'world'` (deparse logic implemented; parser doesn't support charset introducers)
 ```
 
 ### 1.3 Hex, Bit & Date/Time Literals
