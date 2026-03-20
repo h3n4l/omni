@@ -542,6 +542,41 @@ func TestDeparse_Section_3_4_GroupConcat(t *testing.T) {
 	}
 }
 
+func TestDeparse_Section_3_5_WindowFunctions(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		// ROW_NUMBER with ORDER BY
+		{"row_number_over_order_by",
+			"ROW_NUMBER() OVER (ORDER BY a)",
+			"row_number() OVER (ORDER BY `a` )"},
+		// SUM with PARTITION BY and ORDER BY
+		{"sum_over_partition_order",
+			"SUM(b) OVER (PARTITION BY a ORDER BY b)",
+			"sum(`b`) OVER (PARTITION BY `a` ORDER BY `b` )"},
+		// Frame clause: ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+		{"sum_over_frame",
+			"SUM(b) OVER (PARTITION BY a ORDER BY b ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)",
+			"sum(`b`) OVER (PARTITION BY `a` ORDER BY `b` ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW )"},
+		// Named window reference
+		{"named_window_ref",
+			"ROW_NUMBER() OVER w",
+			"row_number() OVER w"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			node := parseExpr(t, tc.input)
+			got := Deparse(node)
+			if got != tc.expected {
+				t.Errorf("Deparse(%q) = %q, want %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
 func TestDeparse_NilNode(t *testing.T) {
 	got := Deparse(nil)
 	if got != "" {

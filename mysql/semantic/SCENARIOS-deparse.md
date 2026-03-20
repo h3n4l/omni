@@ -209,10 +209,10 @@ Prerequisite: AST may need a dedicated Separator field on FuncCallExpr or a Grou
 ### 3.5 Window Functions
 
 ```
-[ ] ROW_NUMBER: `ROW_NUMBER() OVER (ORDER BY a)` → `row_number() OVER (ORDER BY `a` )` — OVER uppercase, trailing space
-[ ] SUM OVER PARTITION BY: `SUM(b) OVER (PARTITION BY a ORDER BY b)` — PARTITION BY uppercase
-[ ] Frame clause: `ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW` — uppercase frame keywords
-[ ] Named window: `WINDOW w AS (ORDER BY a)` — verify format
+[x] ROW_NUMBER: `ROW_NUMBER() OVER (ORDER BY a)` → `row_number() OVER (ORDER BY `a` )` — OVER uppercase, trailing space
+[x] SUM OVER PARTITION BY: `SUM(b) OVER (PARTITION BY a ORDER BY b)` — PARTITION BY uppercase
+[x] Frame clause: `ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW` — uppercase frame keywords
+[x] Named window: `WINDOW w AS (ORDER BY a)` — verify format
 ```
 
 ### 3.6 Operator-to-Function Rewrites

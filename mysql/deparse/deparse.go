@@ -448,12 +448,20 @@ func deparseFuncCallExpr(n *ast.FuncCallExpr) string {
 
 	// Zero-arg functions (CURRENT_TIMESTAMP, NOW(), etc.) — always emit parens
 	if len(n.Args) == 0 && !n.Star {
-		return canonical + "()"
+		result := canonical + "()"
+		if n.Over != nil {
+			result += " " + deparseWindowDef(n.Over)
+		}
+		return result
 	}
 
 	// COUNT(*) — MySQL 8.0 rewrites COUNT(*) to count(0)
 	if n.Star {
-		return canonical + "(0)"
+		result := canonical + "(0)"
+		if n.Over != nil {
+			result += " " + deparseWindowDef(n.Over)
+		}
+		return result
 	}
 
 	// Build argument list with no spaces after commas
@@ -469,7 +477,121 @@ func deparseFuncCallExpr(n *ast.FuncCallExpr) string {
 		argStr = strings.Join(args, ",")
 	}
 
-	return canonical + "(" + argStr + ")"
+	result := canonical + "(" + argStr + ")"
+
+	// Append OVER clause for window functions
+	if n.Over != nil {
+		result += " " + deparseWindowDef(n.Over)
+	}
+
+	return result
+}
+
+// deparseWindowDef formats a window definition.
+// MySQL 8.0 format: OVER (PARTITION BY ... ORDER BY ... frame_clause )
+// Note: trailing space before closing paren, uppercase keywords.
+func deparseWindowDef(wd *ast.WindowDef) string {
+	// Named window reference: OVER window_name
+	if wd.RefName != "" && len(wd.PartitionBy) == 0 && len(wd.OrderBy) == 0 && wd.Frame == nil {
+		return "OVER " + wd.RefName
+	}
+
+	var b strings.Builder
+	b.WriteString("OVER (")
+
+	needSpace := false
+
+	// PARTITION BY
+	if len(wd.PartitionBy) > 0 {
+		b.WriteString("PARTITION BY ")
+		for i, expr := range wd.PartitionBy {
+			if i > 0 {
+				b.WriteString(",")
+			}
+			b.WriteString(deparseExpr(expr))
+		}
+		needSpace = true
+	}
+
+	// ORDER BY
+	if len(wd.OrderBy) > 0 {
+		if needSpace {
+			b.WriteString(" ")
+		}
+		b.WriteString("ORDER BY ")
+		for i, item := range wd.OrderBy {
+			if i > 0 {
+				b.WriteString(",")
+			}
+			b.WriteString(deparseExpr(item.Expr))
+			if item.Desc {
+				b.WriteString(" desc")
+			}
+		}
+		needSpace = true
+	}
+
+	// Frame clause
+	if wd.Frame != nil {
+		if needSpace {
+			b.WriteString(" ")
+		}
+		b.WriteString(deparseWindowFrame(wd.Frame))
+		needSpace = true
+	}
+
+	// Trailing space before closing paren (MySQL 8.0 format)
+	b.WriteString(" )")
+
+	return b.String()
+}
+
+// deparseWindowFrame formats a window frame specification.
+// MySQL 8.0 format: ROWS/RANGE/GROUPS BETWEEN start AND end (all uppercase).
+func deparseWindowFrame(f *ast.WindowFrame) string {
+	var b strings.Builder
+
+	// Frame type
+	switch f.Type {
+	case ast.FrameRows:
+		b.WriteString("ROWS")
+	case ast.FrameRange:
+		b.WriteString("RANGE")
+	case ast.FrameGroups:
+		b.WriteString("GROUPS")
+	}
+
+	if f.End != nil {
+		// BETWEEN ... AND ... form
+		b.WriteString(" BETWEEN ")
+		b.WriteString(deparseWindowFrameBound(f.Start))
+		b.WriteString(" AND ")
+		b.WriteString(deparseWindowFrameBound(f.End))
+	} else {
+		// Single bound form
+		b.WriteString(" ")
+		b.WriteString(deparseWindowFrameBound(f.Start))
+	}
+
+	return b.String()
+}
+
+// deparseWindowFrameBound formats a window frame bound.
+func deparseWindowFrameBound(fb *ast.WindowFrameBound) string {
+	switch fb.Type {
+	case ast.BoundUnboundedPreceding:
+		return "UNBOUNDED PRECEDING"
+	case ast.BoundPreceding:
+		return deparseExpr(fb.Offset) + " PRECEDING"
+	case ast.BoundCurrentRow:
+		return "CURRENT ROW"
+	case ast.BoundFollowing:
+		return deparseExpr(fb.Offset) + " FOLLOWING"
+	case ast.BoundUnboundedFollowing:
+		return "UNBOUNDED FOLLOWING"
+	default:
+		return "/* unknown bound */"
+	}
 }
 
 // deparseGroupConcat handles GROUP_CONCAT with its special syntax:
