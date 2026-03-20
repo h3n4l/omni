@@ -294,6 +294,9 @@ func (p *Parser) parseAExprInfix(left nodes.Node, prec int) (nodes.Node, error) 
 		if err != nil {
 			return nil, err
 		}
+		if right == nil {
+			return nil, p.syntaxErrorAtCur()
+		}
 		return makeSimpleAExpr(nodes.AEXPR_OP, opStr, left, right), nil
 	case '*', '/', '%':
 		tok := p.advance()
@@ -301,12 +304,18 @@ func (p *Parser) parseAExprInfix(left nodes.Node, prec int) (nodes.Node, error) 
 		if err != nil {
 			return nil, err
 		}
+		if right == nil {
+			return nil, p.syntaxErrorAtCur()
+		}
 		return makeSimpleAExpr(nodes.AEXPR_OP, string(rune(tok.Type)), left, right), nil
 	case '^':
 		p.advance()
 		right, err := p.parseAExpr(prec + 1) // left-assoc in PostgreSQL
 		if err != nil {
 			return nil, err
+		}
+		if right == nil {
+			return nil, p.syntaxErrorAtCur()
 		}
 		return makeSimpleAExpr(nodes.AEXPR_OP, "^", left, right), nil
 

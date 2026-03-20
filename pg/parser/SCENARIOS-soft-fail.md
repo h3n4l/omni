@@ -26,12 +26,12 @@ For each: after consuming the operator, `parseAExpr()` can return (nil, nil). Th
 
 ### 1.2 Arithmetic Operators
 
-- [ ] `SELECT 1 +` — plus consumed, no right operand → syntax error at end of input
-- [ ] `SELECT 1 -` — minus consumed, no right operand → syntax error at end of input
-- [ ] `SELECT 1 *` — multiply consumed, no right operand → syntax error at end of input
-- [ ] `SELECT 1 /` — divide consumed, no right operand → syntax error at end of input
-- [ ] `SELECT 1 %` — modulo consumed, no right operand → syntax error at end of input
-- [ ] `SELECT 1 ^` — exponent consumed, no right operand → syntax error at end of input
+- [x] `SELECT 1 +` — plus consumed, no right operand → syntax error at end of input
+- [x] `SELECT 1 -` — minus consumed, no right operand → syntax error at end of input
+- [x] `SELECT 1 *` — multiply consumed, no right operand → syntax error at end of input
+- [x] `SELECT 1 /` — divide consumed, no right operand → syntax error at end of input
+- [x] `SELECT 1 %` — modulo consumed, no right operand → syntax error at end of input
+- [x] `SELECT 1 ^` — exponent consumed, no right operand → syntax error at end of input
 
 ### 1.3 IS DISTINCT FROM
 

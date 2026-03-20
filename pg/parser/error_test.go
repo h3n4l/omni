@@ -60,6 +60,13 @@ func TestParseErrors(t *testing.T) {
 		{name: "greater-equals no right operand", sql: "SELECT 1 >=", wantContains: "syntax error", wantPos: -1},
 		{name: "not-equals no right operand", sql: "SELECT 1 <>", wantContains: "syntax error", wantPos: -1},
 		{name: "concat-op no right operand", sql: "SELECT 1 ||", wantContains: "syntax error", wantPos: -1},
+		// Section 1.2: Arithmetic Operators — soft-fail nil checks
+		{name: "plus no right operand", sql: "SELECT 1 +", wantContains: "syntax error", wantPos: -1},
+		{name: "minus no right operand", sql: "SELECT 1 -", wantContains: "syntax error", wantPos: -1},
+		{name: "multiply no right operand", sql: "SELECT 1 *", wantContains: "syntax error", wantPos: -1},
+		{name: "divide no right operand", sql: "SELECT 1 /", wantContains: "syntax error", wantPos: -1},
+		{name: "modulo no right operand", sql: "SELECT 1 %", wantContains: "syntax error", wantPos: -1},
+		{name: "exponent no right operand", sql: "SELECT 1 ^", wantContains: "syntax error", wantPos: -1},
 	}
 
 	for _, tt := range tests {
