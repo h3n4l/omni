@@ -1167,6 +1167,35 @@ func TestDeparseSelect_Section_5_4_WhereGroupByHavingOrderByLimit(t *testing.T) 
 	}
 }
 
+func TestDeparseSelect_Section_5_6_Subqueries(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		// Scalar subquery in SELECT list
+		// Auto-alias uses deparsed form (lowercase function names, backtick-quoted columns)
+		{"scalar_subquery", "SELECT (SELECT MAX(a) FROM t) FROM t",
+			"select (select max(`a`) AS `max(a)` from `t`) AS `(select max(`a`) AS `max(a)` from `t`)` from `t`"},
+		// IN subquery in WHERE
+		{"in_subquery", "SELECT a FROM t WHERE a IN (SELECT a FROM t)",
+			"select `a` AS `a` from `t` where (`a` in (select `a` AS `a` from `t`))"},
+		// EXISTS in WHERE
+		{"exists_subquery", "SELECT a FROM t WHERE EXISTS (SELECT 1 FROM t)",
+			"select `a` AS `a` from `t` where exists(select 1 AS `1` from `t`)"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			sel := parseSelect(t, tc.input)
+			got := DeparseSelect(sel)
+			if got != tc.expected {
+				t.Errorf("DeparseSelect(%q) =\n  %q\nwant:\n  %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
 func TestDeparseSelect_Section_5_5_SetOperations(t *testing.T) {
 	cases := []struct {
 		name     string

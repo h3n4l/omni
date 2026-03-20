@@ -640,6 +640,12 @@ func deparseInExpr(n *ast.InExpr) string {
 	if n.Not {
 		keyword = "not in"
 	}
+
+	// IN subquery: a IN (SELECT ...)
+	if n.Select != nil {
+		return "(" + expr + " " + keyword + " (" + deparseSelectStmt(n.Select) + "))"
+	}
+
 	// Build the value list with no spaces after commas
 	items := make([]string, len(n.List))
 	for i, item := range n.List {

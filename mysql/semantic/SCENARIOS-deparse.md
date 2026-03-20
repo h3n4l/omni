@@ -339,9 +339,9 @@ Depends on Phase 1-4. Handles full SELECT clause formatting.
 ### 5.6 Subqueries
 
 ```
-[ ] Scalar subquery: `(SELECT MAX(a) FROM t)` → `(select max(`a`) from `t`)`
-[ ] IN subquery: `a IN (SELECT a FROM t)` → `... in (select ...)`
-[ ] EXISTS: `EXISTS (SELECT 1 FROM t)` → `exists(select 1 from `t`)` — no space after exists
+[x] Scalar subquery: `(SELECT MAX(a) FROM t)` → `(select max(`a`) from `t`)`
+[x] IN subquery: `a IN (SELECT a FROM t)` → `... in (select ...)`
+[x] EXISTS: `EXISTS (SELECT 1 FROM t)` → `exists(select 1 from `t`)` — no space after exists
 ```
 
 ### 5.7 CTE (WITH clause)
