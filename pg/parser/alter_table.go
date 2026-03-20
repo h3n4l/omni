@@ -542,6 +542,10 @@ func (p *Parser) parseAlterTableRename(rel *nodes.RangeVar, missingOk bool) (*no
 	case CONSTRAINT:
 		// RENAME CONSTRAINT oldname TO newname
 		p.advance() // consume CONSTRAINT
+		if p.collectMode() {
+			p.addRuleCandidate("qualified_name")
+			return nil, nil
+		}
 		oldname, _ := p.parseName()
 		p.expect(TO)
 		newname, _ := p.parseName()
@@ -732,6 +736,11 @@ func (p *Parser) parseAlterTableDrop() *nodes.AlterTableCmd {
 	switch p.cur.Type {
 	case COLUMN:
 		p.advance() // consume COLUMN
+		if p.collectMode() {
+			p.addRuleCandidate("columnref")
+			p.addTokenCandidate(IF_P)
+			return nil
+		}
 		// IF EXISTS
 		missingOk := false
 		if p.cur.Type == IF_P {
@@ -749,6 +758,11 @@ func (p *Parser) parseAlterTableDrop() *nodes.AlterTableCmd {
 		}
 	case CONSTRAINT:
 		p.advance() // consume CONSTRAINT
+		if p.collectMode() {
+			p.addRuleCandidate("qualified_name")
+			p.addTokenCandidate(IF_P)
+			return nil
+		}
 		missingOk := false
 		if p.cur.Type == IF_P {
 			p.advance()
@@ -804,9 +818,18 @@ func (p *Parser) parseAlterTableAlter() (*nodes.AlterTableCmd, error) {
 		hasColumnKeyword = true
 	}
 
+	if hasColumnKeyword && p.collectMode() {
+		p.addRuleCandidate("columnref")
+		return nil, nil
+	}
+
 	// Check for ALTER CONSTRAINT (no column involved)
 	if !hasColumnKeyword && p.cur.Type == CONSTRAINT {
 		p.advance() // consume CONSTRAINT
+		if p.collectMode() {
+			p.addRuleCandidate("qualified_name")
+			return nil, nil
+		}
 		name, _ := p.parseName()
 		// ConstraintAttributeSpec (we consume but don't store — matches yacc behavior)
 		p.parseConstraintAttributeSpec()

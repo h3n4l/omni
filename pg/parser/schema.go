@@ -719,6 +719,11 @@ func (p *Parser) parseSecLabelStmt() (nodes.Node, error) {
 	switch p.cur.Type {
 	case COLUMN:
 		p.advance()
+		if p.collectMode() {
+			p.addRuleCandidate("columnref")
+			p.addRuleCandidate("qualified_name")
+			return nil, nil
+		}
 		stmt.Objtype = nodes.OBJECT_COLUMN
 		name, err := p.parseAnyName()
 		if err != nil {

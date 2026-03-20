@@ -352,3 +352,136 @@ func TestCompleteParenthesizedSubquery(t *testing.T) {
 		t.Error("expected SELECT keyword inside parenthesized subquery")
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Batch 4: Bytebase-reported remaining issues + systematic audit fixes
+// ---------------------------------------------------------------------------
+
+func TestCollectDropColumn(t *testing.T) {
+	sql := "ALTER TABLE t1 DROP COLUMN "
+	cs := parser.Collect(sql, len(sql))
+	if cs == nil || !cs.HasRule("columnref") {
+		t.Error("expected columnref rule after ALTER TABLE DROP COLUMN")
+	}
+}
+
+func TestCompleteDropColumn(t *testing.T) {
+	cat := catalog.New()
+	cat.Exec("CREATE TABLE t1 (c1 int, c2 text);", nil)
+
+	sql := "ALTER TABLE t1 DROP COLUMN "
+	candidates := Complete(sql, len(sql), cat)
+	found := false
+	for _, c := range candidates {
+		if c.Type == CandidateColumn {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected column candidates after ALTER TABLE DROP COLUMN")
+	}
+}
+
+func TestCollectAlterColumn(t *testing.T) {
+	sql := "ALTER TABLE t1 ALTER COLUMN "
+	cs := parser.Collect(sql, len(sql))
+	if cs == nil || !cs.HasRule("columnref") {
+		t.Error("expected columnref rule after ALTER TABLE ALTER COLUMN")
+	}
+}
+
+func TestCompleteAlterColumn(t *testing.T) {
+	cat := catalog.New()
+	cat.Exec("CREATE TABLE t1 (c1 int, c2 text);", nil)
+
+	sql := "ALTER TABLE t1 ALTER COLUMN "
+	candidates := Complete(sql, len(sql), cat)
+	found := false
+	for _, c := range candidates {
+		if c.Type == CandidateColumn {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected column candidates after ALTER TABLE ALTER COLUMN")
+	}
+}
+
+func TestCollectParenthesizedUnion(t *testing.T) {
+	sql := "(SELECT c1 FROM t1) UNION (SELECT  FROM t2)"
+	cs := parser.Collect(sql, 34) // cursor after "(SELECT "
+	if cs == nil || !cs.HasRule("columnref") {
+		t.Error("expected columnref rule in parenthesized UNION branch")
+	}
+}
+
+func TestCompleteParenthesizedUnion(t *testing.T) {
+	cat := catalog.New()
+	cat.Exec("CREATE TABLE t1 (c1 int); CREATE TABLE t2 (c1 int, c2 int);", nil)
+
+	sql := "(SELECT c1 FROM t1) UNION (SELECT  FROM t2)"
+	candidates := Complete(sql, 34, cat)
+	found := false
+	for _, c := range candidates {
+		if c.Type == CandidateColumn {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected column candidates in parenthesized UNION branch")
+	}
+}
+
+func TestCollectDropConstraint(t *testing.T) {
+	sql := "ALTER TABLE t1 DROP CONSTRAINT "
+	cs := parser.Collect(sql, len(sql))
+	if cs == nil || !cs.HasRule("qualified_name") {
+		t.Error("expected qualified_name rule after ALTER TABLE DROP CONSTRAINT")
+	}
+}
+
+func TestCollectRenameConstraint(t *testing.T) {
+	sql := "ALTER TABLE t1 RENAME CONSTRAINT "
+	cs := parser.Collect(sql, len(sql))
+	if cs == nil || !cs.HasRule("qualified_name") {
+		t.Error("expected qualified_name rule after ALTER TABLE RENAME CONSTRAINT")
+	}
+}
+
+func TestCollectAlterConstraint(t *testing.T) {
+	sql := "ALTER TABLE t1 ALTER CONSTRAINT "
+	cs := parser.Collect(sql, len(sql))
+	if cs == nil || !cs.HasRule("qualified_name") {
+		t.Error("expected qualified_name rule after ALTER TABLE ALTER CONSTRAINT")
+	}
+}
+
+func TestCollectSecurityLabelOnColumn(t *testing.T) {
+	sql := "SECURITY LABEL ON COLUMN "
+	cs := parser.Collect(sql, len(sql))
+	if cs == nil {
+		t.Fatal("expected non-nil candidate set")
+	}
+	if !cs.HasRule("columnref") && !cs.HasRule("qualified_name") {
+		t.Error("expected columnref or qualified_name rule after SECURITY LABEL ON COLUMN")
+	}
+}
+
+func TestCollectUniqueUsingIndex(t *testing.T) {
+	sql := "CREATE TABLE t (a int, UNIQUE USING INDEX "
+	cs := parser.Collect(sql, len(sql))
+	if cs == nil || !cs.HasRule("qualified_name") {
+		t.Error("expected qualified_name rule after UNIQUE USING INDEX")
+	}
+}
+
+func TestCollectPrimaryKeyUsingIndex(t *testing.T) {
+	sql := "CREATE TABLE t (a int, PRIMARY KEY USING INDEX "
+	cs := parser.Collect(sql, len(sql))
+	if cs == nil || !cs.HasRule("qualified_name") {
+		t.Error("expected qualified_name rule after PRIMARY KEY USING INDEX")
+	}
+}

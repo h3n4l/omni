@@ -100,6 +100,9 @@ func (p *Parser) parseStmt() (nodes.Node, error) {
 		return nil, errCollecting
 	}
 	switch p.cur.Type {
+	case '(':
+		// Parenthesized SELECT: (SELECT ...) UNION ... or (SELECT ...)
+		return p.parseSelectNoParens()
 	case SELECT, VALUES, TABLE:
 		return p.parseSelectNoParens()
 	case WITH:

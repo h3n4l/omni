@@ -682,6 +682,10 @@ func (p *Parser) parseConstraintElem() *nodes.Constraint {
 			if next.Type == INDEX {
 				p.advance() // USING
 				p.advance() // INDEX
+				if p.collectMode() {
+					p.addRuleCandidate("qualified_name")
+					return nil
+				}
 				idxName, _ := p.parseName()
 				attrs := p.parseConstraintAttributeSpec()
 				n := &nodes.Constraint{
@@ -725,6 +729,10 @@ func (p *Parser) parseConstraintElem() *nodes.Constraint {
 			if next.Type == INDEX {
 				p.advance() // USING
 				p.advance() // INDEX
+				if p.collectMode() {
+					p.addRuleCandidate("qualified_name")
+					return nil
+				}
 				idxName, _ := p.parseName()
 				attrs := p.parseConstraintAttributeSpec()
 				n := &nodes.Constraint{
