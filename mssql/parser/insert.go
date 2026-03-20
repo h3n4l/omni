@@ -48,7 +48,7 @@ func (p *Parser) parseInsertStmt() *nodes.InsertStmt {
 	p.match(kwINTO)
 
 	// Table name or @table_variable
-	stmt.Relation = p.parseTableRef()
+	stmt.Relation , _ = p.parseTableRef()
 
 	// Optional WITH ( <Table_Hint_Limited> ) on target
 	if p.cur.Type == kwWITH && p.peekNext().Type == '(' {
@@ -162,7 +162,7 @@ func (p *Parser) parseOutputClause() *nodes.OutputClause {
 			}
 			p.advance()
 		} else {
-			oc.IntoTable = p.parseTableRef()
+			oc.IntoTable , _ = p.parseTableRef()
 		}
 		// Optional column list
 		if p.cur.Type == '(' {

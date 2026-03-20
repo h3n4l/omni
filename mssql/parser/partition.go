@@ -31,7 +31,7 @@ func (p *Parser) parseCreatePartitionFunctionStmt() *nodes.CreatePartitionFuncti
 	// ( input_parameter_type )
 	if p.cur.Type == '(' {
 		p.advance()
-		stmt.InputType = p.parseDataType()
+		stmt.InputType , _ = p.parseDataType()
 		p.match(')')
 	}
 

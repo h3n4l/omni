@@ -42,7 +42,7 @@ func (p *Parser) parseCreateFulltextIndexStmt() *nodes.CreateFulltextIndexStmt {
 
 	// ON table_name
 	if _, ok := p.match(kwON); ok {
-		stmt.Table = p.parseTableRef()
+		stmt.Table , _ = p.parseTableRef()
 	}
 
 	// Column list
@@ -205,7 +205,7 @@ func (p *Parser) parseAlterFulltextIndexStmt() *nodes.AlterFulltextIndexStmt {
 
 	// ON table_name
 	if _, ok := p.match(kwON); ok {
-		stmt.Table = p.parseTableRef()
+		stmt.Table , _ = p.parseTableRef()
 	}
 
 	// Action dispatch

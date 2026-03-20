@@ -45,12 +45,12 @@ func (p *Parser) parseIdentifier() (string, bool) {
 //	                 | [ database_name . [ schema_name ] . ]
 //	                 | [ schema_name . ]
 //	                 object_name
-func (p *Parser) parseTableRef() *nodes.TableRef {
+func (p *Parser) parseTableRef() (*nodes.TableRef, error) {
 	loc := p.pos()
 
 	name, ok := p.parseIdentifier()
 	if !ok {
-		return nil
+		return nil, nil
 	}
 
 	ref := &nodes.TableRef{
@@ -90,7 +90,7 @@ func (p *Parser) parseTableRef() *nodes.TableRef {
 	}
 
 	ref.Loc.End = p.pos()
-	return ref
+	return ref, nil
 }
 
 // parseIdentExpr parses an identifier expression (column ref, function call, or qualified name).
@@ -99,14 +99,14 @@ func (p *Parser) parseTableRef() *nodes.TableRef {
 //	ident_expr = identifier [ '(' args ')' ]
 //	           | identifier '.' identifier [ '.' identifier [ '.' identifier ] ]
 //	           | identifier '.' '*'
-func (p *Parser) parseIdentExpr() nodes.ExprNode {
+func (p *Parser) parseIdentExpr() (nodes.ExprNode, error) {
 	loc := p.pos()
 	name := p.cur.Str
 	p.advance()
 
 	// Function call: ident(...)
 	if p.cur.Type == '(' {
-		return p.parseFuncCall(name, loc)
+		return p.parseFuncCall(name, loc), nil
 	}
 
 	// Static method call: type::Method(args)
@@ -135,10 +135,12 @@ func (p *Parser) parseIdentExpr() nodes.ExprNode {
 				}
 			}
 			mc.Args = &nodes.List{Items: args}
-			_, _ = p.expect(')')
+			if _, err := p.expect(')'); err != nil {
+				return nil, err
+			}
 		}
 		mc.Loc.End = p.pos()
-		return mc
+		return mc, nil
 	}
 
 	// Qualified name: ident.ident[.ident[.ident]] or ident.*
@@ -150,14 +152,14 @@ func (p *Parser) parseIdentExpr() nodes.ExprNode {
 	return &nodes.ColumnRef{
 		Column: name,
 		Loc:    nodes.Loc{Start: loc},
-	}
+	}, nil
 }
 
 // parseQualifiedRef parses a dot-qualified column reference or star expression.
 // The first part has already been consumed.
 //
 //	qualified_ref = first '.' ( '*' | ident [ '.' ( '*' | ident [ '.' ( '*' | ident ) ] ) ] )
-func (p *Parser) parseQualifiedRef(first string, loc int) nodes.ExprNode {
+func (p *Parser) parseQualifiedRef(first string, loc int) (nodes.ExprNode, error) {
 	parts := []string{first}
 	for p.cur.Type == '.' {
 		p.advance() // consume .
@@ -173,7 +175,7 @@ func (p *Parser) parseQualifiedRef(first string, loc int) nodes.ExprNode {
 			return &nodes.StarExpr{
 				Qualifier: qualifier,
 				Loc:       nodes.Loc{Start: loc},
-			}
+			}, nil
 		}
 
 		// Accept identifier or keyword-as-identifier after dot
@@ -221,10 +223,12 @@ func (p *Parser) parseQualifiedRef(first string, loc int) nodes.ExprNode {
 						}
 					}
 					mc.Args = &nodes.List{Items: args}
-					_, _ = p.expect(')')
+					if _, err := p.expect(')'); err != nil {
+						return nil, err
+					}
 				}
 				mc.Loc.End = p.pos()
-				return mc
+				return mc, nil
 			}
 
 			parts = append(parts, partName)
@@ -256,12 +260,12 @@ func (p *Parser) parseQualifiedRef(first string, loc int) nodes.ExprNode {
 		ref.Table = parts[3]
 		ref.Column = parts[4]
 	}
-	return ref
+	return ref, nil
 }
 
 // parseFuncCallWithSchema parses a schema-qualified function call.
 // schema.func(args)
-func (p *Parser) parseFuncCallWithSchema(schema, funcName string, loc int) nodes.ExprNode {
+func (p *Parser) parseFuncCallWithSchema(schema, funcName string, loc int) (nodes.ExprNode, error) {
 	p.advance() // consume (
 
 	fc := &nodes.FuncCallExpr{
@@ -273,11 +277,13 @@ func (p *Parser) parseFuncCallWithSchema(schema, funcName string, loc int) nodes
 	if p.cur.Type == '*' {
 		p.advance()
 		fc.Star = true
-		_, _ = p.expect(')')
+		if _, err := p.expect(')'); err != nil {
+			return nil, err
+		}
 		if p.cur.Type == kwOVER {
 			fc.Over = p.parseOverClause()
 		}
-		return fc
+		return fc, nil
 	}
 
 	if p.cur.Type == ')' {
@@ -285,7 +291,7 @@ func (p *Parser) parseFuncCallWithSchema(schema, funcName string, loc int) nodes
 		if p.cur.Type == kwOVER {
 			fc.Over = p.parseOverClause()
 		}
-		return fc
+		return fc, nil
 	}
 
 	// Check for DISTINCT
@@ -302,12 +308,14 @@ func (p *Parser) parseFuncCallWithSchema(schema, funcName string, loc int) nodes
 		}
 	}
 	fc.Args = &nodes.List{Items: args}
-	_, _ = p.expect(')')
+	if _, err := p.expect(')'); err != nil {
+		return nil, err
+	}
 
 	// Check for OVER clause
 	if p.cur.Type == kwOVER {
 		fc.Over = p.parseOverClause()
 	}
 
-	return fc
+	return fc, nil
 }

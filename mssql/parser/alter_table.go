@@ -96,7 +96,7 @@ func (p *Parser) parseAlterTableStmt() *nodes.AlterTableStmt {
 	}
 
 	// Table name
-	stmt.Name = p.parseTableRef()
+	stmt.Name , _ = p.parseTableRef()
 
 	// Parse optional WITH { CHECK | NOCHECK } prefix
 	withCheck := ""
@@ -418,7 +418,7 @@ func (p *Parser) parseAlterTableAlterColumn() *nodes.AlterTableAction {
 		Loc:     nodes.Loc{Start: loc},
 	}
 
-	action.DataType = p.parseDataType()
+	action.DataType , _ = p.parseDataType()
 
 	// COLLATE collation_name
 	if p.cur.Type == kwCOLLATE {
@@ -684,7 +684,7 @@ func (p *Parser) parseAlterTableSwitch() *nodes.AlterTableAction {
 	if p.cur.Type == kwTO {
 		p.advance() // consume TO
 	}
-	action.TargetName = p.parseTableRef()
+	action.TargetName , _ = p.parseTableRef()
 
 	// Optional PARTITION target_partition_number
 	if p.cur.Type == kwPARTITION {

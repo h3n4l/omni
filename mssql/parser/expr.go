@@ -523,13 +523,15 @@ func (p *Parser) parsePrimary() nodes.ExprNode {
 	case kwTRY_CONVERT:
 		return p.parseTryConvert()
 	case tokIDENT:
-		return p.parseIdentExpr()
+		node, _ := p.parseIdentExpr()
+		return node
 	default:
 		// Many keywords can also be used as identifiers or function names in T-SQL.
 		if p.isIdentLike() {
 			next := p.peekNext()
 			if next.Type == '(' || next.Type == '.' || next.Type == '=' {
-				return p.parseIdentExpr()
+				node, _ := p.parseIdentExpr()
+				return node
 			}
 		}
 		return nil
@@ -551,7 +553,7 @@ func (p *Parser) parseCast() nodes.ExprNode {
 	if _, err := p.expect(kwAS); err != nil {
 		return nil
 	}
-	dt := p.parseDataType()
+	dt, _ := p.parseDataType()
 	_, _ = p.expect(')')
 	return &nodes.CastExpr{
 		Expr:     expr,
@@ -575,7 +577,7 @@ func (p *Parser) parseTryCast() nodes.ExprNode {
 	if _, err := p.expect(kwAS); err != nil {
 		return nil
 	}
-	dt := p.parseDataType()
+	dt, _ := p.parseDataType()
 	_, _ = p.expect(')')
 	return &nodes.TryCastExpr{
 		Expr:     expr,
@@ -595,7 +597,7 @@ func (p *Parser) parseConvert() nodes.ExprNode {
 	if _, err := p.expect('('); err != nil {
 		return nil
 	}
-	dt := p.parseDataType()
+	dt, _ := p.parseDataType()
 	if _, err := p.expect(','); err != nil {
 		return nil
 	}
@@ -624,7 +626,7 @@ func (p *Parser) parseTryConvert() nodes.ExprNode {
 	if _, err := p.expect('('); err != nil {
 		return nil
 	}
-	dt := p.parseDataType()
+	dt, _ := p.parseDataType()
 	if _, err := p.expect(','); err != nil {
 		return nil
 	}

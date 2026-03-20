@@ -17,7 +17,7 @@ import (
 //	          | DATE | DATETIME | DATETIME2 | SMALLDATETIME | DATETIMEOFFSET | TIME
 //	          | UNIQUEIDENTIFIER | XML | SQL_VARIANT | GEOGRAPHY | GEOMETRY | HIERARCHYID
 //	          | user_defined_type
-func (p *Parser) parseDataType() *nodes.DataType {
+func (p *Parser) parseDataType() (*nodes.DataType, error) {
 	loc := p.pos()
 
 	// Get type name - could be keyword (INT, VARCHAR, etc.) or identifier
@@ -30,7 +30,7 @@ func (p *Parser) parseDataType() *nodes.DataType {
 		name = p.cur.Str
 		p.advance()
 	} else {
-		return nil
+		return nil, nil
 	}
 
 	dt := &nodes.DataType{
@@ -62,9 +62,11 @@ func (p *Parser) parseDataType() *nodes.DataType {
 				dt.Length = nil
 			}
 		}
-		_, _ = p.expect(')')
+		if _, err := p.expect(')'); err != nil {
+			return nil, err
+		}
 	}
 
 	dt.Loc.End = p.pos()
-	return dt
+	return dt, nil
 }

@@ -69,7 +69,7 @@ func (p *Parser) parseSelectStmt() *nodes.SelectStmt {
 
 	// INTO
 	if _, ok := p.match(kwINTO); ok {
-		stmt.IntoTable = p.parseTableRef()
+		stmt.IntoTable , _ = p.parseTableRef()
 	}
 
 	// FROM
@@ -476,7 +476,7 @@ func (p *Parser) parsePrimaryTableSource() nodes.TableExpr {
 	}
 
 	// Table reference
-	ref := p.parseTableRef()
+	ref , _ := p.parseTableRef()
 	if ref == nil {
 		return nil
 	}
@@ -1684,7 +1684,7 @@ func (p *Parser) parseQueryHint() nodes.Node {
 			if p.cur.Type == '(' {
 				p.advance()
 				// Parse exposed_object_name as a TableRef
-				hint.TableName = p.parseTableRef()
+				hint.TableName , _ = p.parseTableRef()
 				// Parse comma-separated table hints reusing parseTableHint()
 				var hints []nodes.Node
 				for p.cur.Type == ',' {

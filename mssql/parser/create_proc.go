@@ -47,7 +47,7 @@ func (p *Parser) parseCreateProcedureStmt(orAlter bool) *nodes.CreateProcedureSt
 	}
 
 	// Procedure name
-	stmt.Name = p.parseTableRef()
+	stmt.Name , _ = p.parseTableRef()
 
 	// Optional procedure number: ; number
 	if p.cur.Type == ';' {
@@ -216,7 +216,7 @@ func (p *Parser) parseCreateFunctionStmt(orAlter bool) *nodes.CreateFunctionStmt
 	}
 
 	// Function name
-	stmt.Name = p.parseTableRef()
+	stmt.Name , _ = p.parseTableRef()
 
 	// Parameters in parentheses
 	if p.cur.Type == '(' {
@@ -279,7 +279,7 @@ func (p *Parser) parseCreateFunctionStmt(orAlter bool) *nodes.CreateFunctionStmt
 				stmt.ReturnsTable.Loc.End = p.pos()
 			}
 		} else {
-			stmt.ReturnType = p.parseDataType()
+			stmt.ReturnType , _ = p.parseDataType()
 		}
 	}
 
@@ -376,7 +376,7 @@ func (p *Parser) parseParamDef() *nodes.ParamDef {
 	p.match(kwAS)
 
 	// Data type
-	param.DataType = p.parseDataType()
+	param.DataType , _ = p.parseDataType()
 
 	// VARYING (for cursor parameters)
 	if p.cur.Type == kwVARYING {

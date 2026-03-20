@@ -75,7 +75,7 @@ func (p *Parser) parseCreateTriggerStmt(orAlter bool) *nodes.CreateTriggerStmt {
 	}
 
 	// Trigger name (possibly schema-qualified)
-	stmt.Name = p.parseTableRef()
+	stmt.Name , _ = p.parseTableRef()
 
 	// ON clause
 	if _, ok := p.match(kwON); !ok {
@@ -95,7 +95,7 @@ func (p *Parser) parseCreateTriggerStmt(orAlter bool) *nodes.CreateTriggerStmt {
 		}
 	} else {
 		// DML trigger: ON table_or_view
-		stmt.Table = p.parseTableRef()
+		stmt.Table , _ = p.parseTableRef()
 	}
 
 	// Optional WITH clause (trigger options: ENCRYPTION, EXECUTE AS, NATIVE_COMPILATION, SCHEMABINDING)

@@ -816,7 +816,7 @@ func (p *Parser) parseAlterIndexStmt() *nodes.AlterIndexStmt {
 	// ON table_name
 	if p.cur.Type == kwON {
 		p.advance() // consume ON
-		stmt.Table = p.parseTableRef()
+		stmt.Table , _ = p.parseTableRef()
 	}
 
 	// Action: REBUILD, REORGANIZE, DISABLE, SET, RESUME, PAUSE, ABORT

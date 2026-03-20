@@ -61,7 +61,7 @@ func (p *Parser) parseCreateMessageTypeStmt() *nodes.ServiceBrokerStmt {
 					p.advance()
 				}
 				// schema collection name (possibly dot-qualified)
-				ref := p.parseTableRef()
+				ref , _ := p.parseTableRef()
 				schemaName := ""
 				if ref != nil {
 					if ref.Schema != "" {
@@ -195,7 +195,7 @@ func (p *Parser) parseCreateQueueStmt() *nodes.ServiceBrokerStmt {
 	}
 
 	// Parse possibly schema-qualified queue name
-	ref := p.parseTableRef()
+	ref , _ := p.parseTableRef()
 	if ref != nil {
 		if ref.Schema != "" {
 			stmt.Name = ref.Schema + "." + ref.Object
@@ -307,7 +307,7 @@ func (p *Parser) parseQueueActivationClause(opts []nodes.Node) []nodes.Node {
 				p.advance()
 			}
 			// Parse possibly schema-qualified procedure name
-			ref := p.parseTableRef()
+			ref , _ := p.parseTableRef()
 			if ref != nil {
 				name := ref.Object
 				if ref.Schema != "" {
@@ -534,7 +534,7 @@ func (p *Parser) parseReceiveStmt() *nodes.ReceiveStmt {
 
 	// FROM queue
 	if _, ok := p.match(kwFROM); ok {
-		stmt.Queue = p.parseTableRef()
+		stmt.Queue , _ = p.parseTableRef()
 	}
 
 	// INTO table_variable
@@ -977,7 +977,7 @@ func (p *Parser) parseGetConversationGroupStmt() *nodes.ServiceBrokerStmt {
 	// FROM queue
 	if _, ok := p.match(kwFROM); ok {
 		qLoc := p.pos()
-		ref := p.parseTableRef()
+		ref , _ := p.parseTableRef()
 		if ref != nil {
 			var opts []nodes.Node
 			opts = append(opts, &nodes.ServiceBrokerOption{Name: "QUEUE", Value: ref.Object, Loc: nodes.Loc{Start: qLoc, End: p.pos()}})
@@ -1012,7 +1012,7 @@ func (p *Parser) parseServiceBrokerOptions() *nodes.List {
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "QUEUE") {
 			qLoc := p.pos()
 			p.advance()
-			ref := p.parseTableRef()
+			ref , _ := p.parseTableRef()
 			if ref != nil {
 				opts = append(opts, &nodes.ServiceBrokerOption{Name: "QUEUE", Value: ref.Object, Loc: nodes.Loc{Start: qLoc, End: p.pos()}})
 			}
@@ -1152,7 +1152,7 @@ func (p *Parser) parseAlterQueueStmt() *nodes.ServiceBrokerStmt {
 	}
 
 	// Parse possibly schema-qualified queue name
-	ref := p.parseTableRef()
+	ref , _ := p.parseTableRef()
 	if ref != nil {
 		if ref.Schema != "" {
 			stmt.Name = ref.Schema + "." + ref.Object
@@ -1269,7 +1269,7 @@ func (p *Parser) parseAlterServiceStmt() *nodes.ServiceBrokerStmt {
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "QUEUE") {
 			qLoc := p.pos()
 			p.advance()
-			ref := p.parseTableRef()
+			ref , _ := p.parseTableRef()
 			if ref != nil {
 				opts = append(opts, &nodes.ServiceBrokerOption{Name: "QUEUE", Value: ref.Object, Loc: nodes.Loc{Start: qLoc, End: p.pos()}})
 			}
@@ -1490,7 +1490,7 @@ func (p *Parser) parseAlterMessageTypeStmt() *nodes.ServiceBrokerStmt {
 					p.advance() // consume COLLECTION
 				}
 				// schema collection name (possibly dot-qualified)
-				ref := p.parseTableRef()
+				ref , _ := p.parseTableRef()
 				schemaName := ""
 				if ref != nil {
 					if ref.Schema != "" {
@@ -1619,7 +1619,7 @@ func (p *Parser) parseDropServiceBrokerStmt(objectType string) *nodes.ServiceBro
 	}
 
 	// Parse possibly qualified name
-	ref := p.parseTableRef()
+	ref , _ := p.parseTableRef()
 	if ref != nil {
 		if ref.Schema != "" {
 			stmt.Name = ref.Schema + "." + ref.Object

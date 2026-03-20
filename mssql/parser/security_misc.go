@@ -32,7 +32,7 @@ func (p *Parser) parseCreateSecurityPolicyStmt() *nodes.SecurityPolicyStmt {
 	}
 
 	// [schema_name.] policy_name
-	stmt.Name = p.parseTableRef()
+	stmt.Name , _ = p.parseTableRef()
 
 	// Parse predicates
 	stmt.Predicates = p.parseSecurityPredicateList()
@@ -86,7 +86,7 @@ func (p *Parser) parseAlterSecurityPolicyStmt() *nodes.SecurityPolicyStmt {
 	}
 
 	// schema_name.policy_name
-	stmt.Name = p.parseTableRef()
+	stmt.Name , _ = p.parseTableRef()
 
 	// Parse predicates
 	stmt.Predicates = p.parseSecurityPredicateList()
@@ -132,7 +132,7 @@ func (p *Parser) parseDropSecurityPolicyStmt() *nodes.SecurityPolicyStmt {
 	}
 
 	// [schema_name.] policy_name
-	stmt.Name = p.parseTableRef()
+	stmt.Name , _ = p.parseTableRef()
 
 	stmt.Loc.End = p.pos()
 	return stmt
@@ -195,14 +195,14 @@ func (p *Parser) parseSecurityPredicate() *nodes.SecurityPredicate {
 		// ON table
 		if p.cur.Type == kwON {
 			p.advance()
-			pred.Table = p.parseTableRef()
+			pred.Table , _ = p.parseTableRef()
 		}
 		pred.Loc.End = p.pos()
 		return pred
 	}
 
 	// Function name: schema.function_name
-	pred.Function = p.parseTableRef()
+	pred.Function , _ = p.parseTableRef()
 
 	// ( args )
 	if p.cur.Type == '(' {
@@ -226,7 +226,7 @@ func (p *Parser) parseSecurityPredicate() *nodes.SecurityPredicate {
 	// ON table
 	if p.cur.Type == kwON {
 		p.advance()
-		pred.Table = p.parseTableRef()
+		pred.Table , _ = p.parseTableRef()
 	}
 
 	// Optional block_dml_operation: AFTER INSERT|UPDATE, BEFORE UPDATE|DELETE
@@ -328,7 +328,7 @@ func (p *Parser) parseAddSensitivityClassificationStmt() *nodes.SensitivityClass
 	// object_name list (comma-separated qualified names: schema.table.column)
 	var cols []nodes.Node
 	for {
-		ref := p.parseTableRef()
+		ref , _ := p.parseTableRef()
 		if ref != nil {
 			cols = append(cols, ref)
 		}
@@ -408,7 +408,7 @@ func (p *Parser) parseDropSensitivityClassificationStmt() *nodes.SensitivityClas
 	// object_name list
 	var cols []nodes.Node
 	for {
-		ref := p.parseTableRef()
+		ref , _ := p.parseTableRef()
 		if ref != nil {
 			cols = append(cols, ref)
 		}
@@ -467,7 +467,7 @@ func (p *Parser) parseSignatureStmt(action string) *nodes.SignatureStmt {
 			stmt.ModuleClass = strings.ToUpper(name1)
 			p.advance() // consume class word
 			p.advance() // consume ::
-			stmt.ModuleName = p.parseTableRef()
+			stmt.ModuleName , _ = p.parseTableRef()
 		} else {
 			// Could be a dotted name or multi-word class (e.g., ASYMMETRIC KEY::)
 			p.advance() // consume name1
@@ -476,7 +476,7 @@ func (p *Parser) parseSignatureStmt(action string) *nodes.SignatureStmt {
 				stmt.ModuleClass = strings.ToUpper(name1) + " " + strings.ToUpper(p.cur.Str)
 				p.advance() // consume second word
 				p.advance() // consume ::
-				stmt.ModuleName = p.parseTableRef()
+				stmt.ModuleName , _ = p.parseTableRef()
 			} else {
 				// No :: — reconstruct as dotted name
 				ref := &nodes.TableRef{Object: name1}

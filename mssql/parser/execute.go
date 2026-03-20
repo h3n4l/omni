@@ -98,7 +98,7 @@ func (p *Parser) parseExecStmt() *nodes.ExecStmt {
 	}
 
 	// Procedure name
-	stmt.Name = p.parseTableRef()
+	stmt.Name , _ = p.parseTableRef()
 
 	// Optional procedure number: ;number (EXEC sp_test;1)
 	if p.cur.Type == ';' {

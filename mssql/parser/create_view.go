@@ -31,7 +31,7 @@ func (p *Parser) parseCreateViewStmt(orAlter bool) *nodes.CreateViewStmt {
 	}
 
 	// View name
-	stmt.Name = p.parseTableRef()
+	stmt.Name , _ = p.parseTableRef()
 
 	// Optional column list
 	if p.cur.Type == '(' {
@@ -116,7 +116,7 @@ func (p *Parser) parseCreateMaterializedViewStmt() *nodes.CreateMaterializedView
 	}
 
 	// View name
-	stmt.Name = p.parseTableRef()
+	stmt.Name , _ = p.parseTableRef()
 
 	// WITH ( <distribution_option> [, FOR_APPEND] )
 	if p.cur.Type == kwWITH {
@@ -190,7 +190,7 @@ func (p *Parser) parseAlterMaterializedViewStmt() *nodes.AlterMaterializedViewSt
 	}
 
 	// View name
-	stmt.Name = p.parseTableRef()
+	stmt.Name , _ = p.parseTableRef()
 
 	// REBUILD | DISABLE
 	action, ok := p.parseIdentifier()

@@ -67,7 +67,7 @@ func (p *Parser) parseCreateIndexStmt(unique bool) *nodes.CreateIndexStmt {
 
 	// ON table
 	if _, ok := p.match(kwON); ok {
-		stmt.Table = p.parseTableRef()
+		stmt.Table , _ = p.parseTableRef()
 	}
 
 	// Column list
@@ -194,7 +194,7 @@ func (p *Parser) parseCreateXmlIndexStmt(primary bool) *nodes.CreateXmlIndexStmt
 
 	// ON table
 	if _, ok := p.match(kwON); ok {
-		stmt.Table = p.parseTableRef()
+		stmt.Table , _ = p.parseTableRef()
 	}
 
 	// (xml_column)
@@ -250,7 +250,7 @@ func (p *Parser) parseCreateSelectiveXmlIndexStmt() *nodes.CreateSelectiveXmlInd
 
 	// ON table
 	if _, ok := p.match(kwON); ok {
-		stmt.Table = p.parseTableRef()
+		stmt.Table , _ = p.parseTableRef()
 	}
 
 	// (xml_column)
@@ -326,7 +326,7 @@ func (p *Parser) parseCreateSpatialIndexStmt() *nodes.CreateSpatialIndexStmt {
 
 	// ON table
 	if _, ok := p.match(kwON); ok {
-		stmt.Table = p.parseTableRef()
+		stmt.Table , _ = p.parseTableRef()
 	}
 
 	// (spatial_column)
@@ -389,7 +389,7 @@ func (p *Parser) parseCreateAggregateStmt() *nodes.CreateAggregateStmt {
 	}
 
 	// [schema.]aggregate_name
-	stmt.Name = p.parseTableRef()
+	stmt.Name , _ = p.parseTableRef()
 
 	// (@param_name type, ...)
 	if p.cur.Type == '(' {
@@ -403,7 +403,7 @@ func (p *Parser) parseCreateAggregateStmt() *nodes.CreateAggregateStmt {
 				p.advance()
 			}
 			// data type
-			param.DataType = p.parseDataType()
+			param.DataType , _ = p.parseDataType()
 			params = append(params, param)
 			if _, ok := p.match(','); !ok {
 				break
@@ -416,7 +416,7 @@ func (p *Parser) parseCreateAggregateStmt() *nodes.CreateAggregateStmt {
 	// RETURNS return_type
 	if p.cur.Type == kwRETURNS {
 		p.advance()
-		stmt.ReturnType = p.parseDataType()
+		stmt.ReturnType , _ = p.parseDataType()
 	}
 
 	// EXTERNAL NAME assembly_qualified_name
@@ -466,7 +466,7 @@ func (p *Parser) parseDropAggregateStmt() *nodes.DropAggregateStmt {
 		stmt.IfExists = true
 	}
 
-	stmt.Name = p.parseTableRef()
+	stmt.Name , _ = p.parseTableRef()
 	stmt.Loc.End = p.pos()
 	return stmt
 }
@@ -516,7 +516,7 @@ func (p *Parser) parseCreateJsonIndexStmt() *nodes.CreateJsonIndexStmt {
 
 	// ON table
 	if _, ok := p.match(kwON); ok {
-		stmt.Table = p.parseTableRef()
+		stmt.Table , _ = p.parseTableRef()
 	}
 
 	// (json_column_name)
@@ -594,7 +594,7 @@ func (p *Parser) parseCreateVectorIndexStmt() *nodes.CreateVectorIndexStmt {
 
 	// ON table
 	if _, ok := p.match(kwON); ok {
-		stmt.Table = p.parseTableRef()
+		stmt.Table , _ = p.parseTableRef()
 	}
 
 	// (vector_column)

@@ -536,7 +536,7 @@ func (p *Parser) parseTruncateStmt() *nodes.TruncateStmt {
 		Loc: nodes.Loc{Start: loc},
 	}
 
-	stmt.Table = p.parseTableRef()
+	stmt.Table , _ = p.parseTableRef()
 
 	// WITH ( PARTITIONS ( range [,...n] ) )
 	if p.cur.Type == kwWITH {
@@ -876,7 +876,7 @@ func (p *Parser) parseEnableDisableTriggerStmt(enable bool) *nodes.EnableDisable
 				stmt.OnAllServer = true
 			}
 		} else {
-			stmt.OnObject = p.parseTableRef()
+			stmt.OnObject , _ = p.parseTableRef()
 		}
 	}
 
@@ -956,7 +956,7 @@ func (p *Parser) parseCopyIntoStmt() *nodes.CopyIntoStmt {
 	}
 
 	// Table name (possibly qualified: schema.table)
-	stmt.Table = p.parseTableRef()
+	stmt.Table , _ = p.parseTableRef()
 
 	// Optional column list: ( Column_name [ DEFAULT value ] [ field_number ] [,...n] )
 	if p.cur.Type == '(' {
@@ -1132,7 +1132,7 @@ func (p *Parser) parseRenameStmt() *nodes.RenameStmt {
 	}
 
 	// Object/table/database name
-	stmt.Name = p.parseTableRef()
+	stmt.Name , _ = p.parseTableRef()
 
 	// Check for COLUMN rename variant
 	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "COLUMN") {
@@ -1189,7 +1189,7 @@ func (p *Parser) parseCreateExternalTableAsSelectStmt() *nodes.CreateExternalTab
 	}
 
 	// Table name
-	stmt.Name = p.parseTableRef()
+	stmt.Name , _ = p.parseTableRef()
 
 	// Optional column list: parse as structured ColumnDef nodes
 	if p.cur.Type == '(' {
@@ -1270,7 +1270,7 @@ func (p *Parser) parseCreateTableCloneStmt(name *nodes.TableRef) *nodes.CreateTa
 	p.matchIdentCI("OF")
 
 	// Source table name
-	stmt.SourceName = p.parseTableRef()
+	stmt.SourceName , _ = p.parseTableRef()
 
 	// Optional AT 'point_in_time'
 	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AT") {
@@ -1399,7 +1399,7 @@ func (p *Parser) parsePredictColumnDef() *nodes.ColumnDef {
 	p.advance()
 
 	// data_type
-	dt := p.parseDataType()
+	dt , _ := p.parseDataType()
 
 	col := &nodes.ColumnDef{
 		Name:     colName,
@@ -1457,7 +1457,7 @@ func (p *Parser) parseCreateRemoteTableAsSelectStmt() *nodes.CreateRemoteTableAs
 	}
 
 	// Table name: { database_name.schema_name.table_name | schema_name.table_name | table_name }
-	stmt.Name = p.parseTableRef()
+	stmt.Name , _ = p.parseTableRef()
 
 	// AT ('<connection_string>')
 	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AT") {
@@ -1529,7 +1529,7 @@ func (p *Parser) parseCreateFederationStmt() *nodes.CreateFederationStmt {
 		stmt.DistributionName = name
 	}
 	// data_type - parse as type reference string
-	stmt.DataType = p.parseDataType()
+	stmt.DataType , _ = p.parseDataType()
 	// RANGE
 	p.matchIdentCI("RANGE")
 	p.match(')')
@@ -1686,7 +1686,7 @@ func (p *Parser) parseInsertBulkStmt() *nodes.InsertBulkStmt {
 	}
 
 	// table name (three-part name)
-	stmt.Table = p.parseTableRef()
+	stmt.Table , _ = p.parseTableRef()
 
 	// optional column definition list
 	if p.cur.Type == '(' {
@@ -1745,7 +1745,7 @@ func (p *Parser) parseInsertBulkColumnDef() *nodes.InsertBulkColumnDef {
 		col.Name = name
 	}
 
-	col.DataType = p.parseDataType()
+	col.DataType , _ = p.parseDataType()
 
 	// Optional NULL / NOT NULL
 	if p.cur.Type == kwNOT {

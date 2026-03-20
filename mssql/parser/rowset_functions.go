@@ -77,7 +77,7 @@ func (p *Parser) parseRowsetWithClause() *nodes.List {
 		if !ok {
 			break
 		}
-		dt := p.parseDataType()
+		dt , _ := p.parseDataType()
 		col := &nodes.ColumnDef{
 			Name:     colName,
 			DataType: dt,

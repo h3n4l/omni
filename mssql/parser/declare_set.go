@@ -96,7 +96,7 @@ func (p *Parser) parseVariableDecl() *nodes.VariableDecl {
 	}
 
 	// Data type
-	vd.DataType = p.parseDataType()
+	vd.DataType , _ = p.parseDataType()
 
 	// Optional default value
 	if p.cur.Type == '=' {
@@ -216,7 +216,7 @@ func (p *Parser) parseSetOptionStmt(loc int) *nodes.SetOptionStmt {
 		p.advance() // consume IDENTITY_INSERT
 		stmt.Option = "IDENTITY_INSERT"
 		// table name
-		tableRef := p.parseTableRef()
+		tableRef , _ := p.parseTableRef()
 		// ON or OFF
 		var onoff string
 		if p.cur.Type == kwON {

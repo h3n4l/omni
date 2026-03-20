@@ -26,12 +26,12 @@ import (
 func (p *Parser) parseCreateTypeStmt() *nodes.CreateTypeStmt {
 	stmt := &nodes.CreateTypeStmt{}
 
-	stmt.Name = p.parseTableRef()
+	stmt.Name , _ = p.parseTableRef()
 
 	switch {
 	case p.cur.Type == kwFROM:
 		p.advance()
-		stmt.BaseType = p.parseDataType()
+		stmt.BaseType , _ = p.parseDataType()
 		if p.cur.Type == kwNULL {
 			b := true
 			stmt.Nullable = &b

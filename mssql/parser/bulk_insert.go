@@ -52,7 +52,7 @@ func (p *Parser) parseBulkInsertStmt() *nodes.BulkInsertStmt {
 	}
 
 	// Table name (possibly qualified: db.schema.table)
-	stmt.Table = p.parseTableRef()
+	stmt.Table , _ = p.parseTableRef()
 
 	// FROM 'data_file'
 	if p.cur.Type == kwFROM {

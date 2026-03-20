@@ -46,7 +46,7 @@ func (p *Parser) parseMergeStmt() *nodes.MergeStmt {
 	p.match(kwINTO)
 
 	// Target table
-	stmt.Target = p.parseTableRef()
+	stmt.Target , _ = p.parseTableRef()
 
 	// Optional WITH ( <merge_hint> ) on target
 	if p.cur.Type == kwWITH && p.peekNext().Type == '(' {

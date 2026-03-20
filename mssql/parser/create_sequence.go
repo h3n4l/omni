@@ -21,10 +21,10 @@ import (
 //	    [ { CACHE [ <constant> ] } | { NO CACHE } ]
 func (p *Parser) parseCreateSequenceStmt() *nodes.CreateSequenceStmt {
 	stmt := &nodes.CreateSequenceStmt{}
-	stmt.Name = p.parseTableRef()
+	stmt.Name , _ = p.parseTableRef()
 	if p.cur.Type == kwAS {
 		p.advance()
-		stmt.DataType = p.parseDataType()
+		stmt.DataType , _ = p.parseDataType()
 	}
 	p.parseSequenceOptions(stmt, false)
 	stmt.Loc.End = p.pos()
@@ -44,7 +44,7 @@ func (p *Parser) parseCreateSequenceStmt() *nodes.CreateSequenceStmt {
 //	    [ { CACHE [ <constant> ] } | { NO CACHE } ]
 func (p *Parser) parseAlterSequenceStmt() *nodes.AlterSequenceStmt {
 	stmt := &nodes.AlterSequenceStmt{}
-	stmt.Name = p.parseTableRef()
+	stmt.Name , _ = p.parseTableRef()
 	tmp := &nodes.CreateSequenceStmt{}
 	p.parseSequenceOptions(tmp, true)
 	stmt.Restart = tmp.Restart

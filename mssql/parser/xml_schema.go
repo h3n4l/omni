@@ -19,7 +19,7 @@ func (p *Parser) parseCreateXmlSchemaCollectionStmt() *nodes.CreateXmlSchemaColl
 	}
 
 	// relational_schema.sql_identifier
-	stmt.Name = p.parseTableRef()
+	stmt.Name , _ = p.parseTableRef()
 
 	// AS Expression
 	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AS") {
@@ -45,7 +45,7 @@ func (p *Parser) parseAlterXmlSchemaCollectionStmt() *nodes.AlterXmlSchemaCollec
 	}
 
 	// relational_schema.sql_identifier
-	stmt.Name = p.parseTableRef()
+	stmt.Name , _ = p.parseTableRef()
 
 	// ADD Expression
 	if _, ok := p.match(kwADD); ok {

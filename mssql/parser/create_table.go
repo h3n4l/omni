@@ -37,7 +37,7 @@ func (p *Parser) parseCreateTableStmt() *nodes.CreateTableStmt {
 	}
 
 	// Table name
-	stmt.Name = p.parseTableRef()
+	stmt.Name , _ = p.parseTableRef()
 
 	// AS NODE | AS EDGE (graph tables) | AS FILETABLE
 	// Note: AS CLONE OF is handled at the dispatch level (parser.go)
@@ -425,7 +425,7 @@ func (p *Parser) parseColumnDef() *nodes.ColumnDef {
 	}
 
 	// Data type
-	col.DataType = p.parseDataType()
+	col.DataType , _ = p.parseDataType()
 
 	// column_set_definition: column_set_name XML COLUMN_SET FOR ALL_SPARSE_COLUMNS
 	if col.DataType != nil && strings.EqualFold(col.DataType.Name, "xml") &&
@@ -833,7 +833,7 @@ func (p *Parser) parseInlineConstraint(name string) *nodes.ConstraintDef {
 	case kwREFERENCES:
 		p.advance()
 		cd.Type = nodes.ConstraintForeignKey
-		cd.RefTable = p.parseTableRef()
+		cd.RefTable , _ = p.parseTableRef()
 		if p.cur.Type == '(' {
 			cd.RefColumns = p.parseParenIdentList()
 		}
@@ -974,7 +974,7 @@ func (p *Parser) parseTableConstraint() *nodes.ConstraintDef {
 			cd.Columns = p.parseParenIdentList()
 		}
 		if _, ok := p.match(kwREFERENCES); ok {
-			cd.RefTable = p.parseTableRef()
+			cd.RefTable , _ = p.parseTableRef()
 			if p.cur.Type == '(' {
 				cd.RefColumns = p.parseParenIdentList()
 			}
@@ -1027,9 +1027,9 @@ func (p *Parser) parseEdgeConstraintConnections() *nodes.List {
 
 	for {
 		loc := p.pos()
-		fromTable := p.parseTableRef()
+		fromTable , _ := p.parseTableRef()
 		p.match(kwTO)
-		toTable := p.parseTableRef()
+		toTable , _ := p.parseTableRef()
 		conn := &nodes.EdgeConnectionDef{
 			FromTable: fromTable,
 			ToTable:   toTable,
@@ -1313,7 +1313,7 @@ func (p *Parser) parseCreateTableAsSelectStmt() *nodes.CreateTableAsSelectStmt {
 	}
 
 	// Table name
-	stmt.Name = p.parseTableRef()
+	stmt.Name , _ = p.parseTableRef()
 
 	// Optional column list: ( col1, col2, ... )
 	if p.cur.Type == '(' {

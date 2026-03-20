@@ -42,7 +42,7 @@ func (p *Parser) parseCreateStatisticsStmt() *nodes.CreateStatisticsStmt {
 
 	// ON table
 	if _, ok := p.match(kwON); ok {
-		stmt.Table = p.parseTableRef()
+		stmt.Table , _ = p.parseTableRef()
 	}
 
 	// Column list
@@ -111,7 +111,7 @@ func (p *Parser) parseUpdateStatisticsStmt() *nodes.UpdateStatisticsStmt {
 	}
 
 	// Table name
-	stmt.Table = p.parseTableRef()
+	stmt.Table , _ = p.parseTableRef()
 
 	// Optional statistics name or list
 	if p.cur.Type == '(' {

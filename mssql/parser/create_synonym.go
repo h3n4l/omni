@@ -20,9 +20,9 @@ import (
 //	}
 func (p *Parser) parseCreateSynonymStmt() *nodes.CreateSynonymStmt {
 	stmt := &nodes.CreateSynonymStmt{}
-	stmt.Name = p.parseTableRef()
+	stmt.Name , _ = p.parseTableRef()
 	p.match(kwFOR)
-	stmt.Target = p.parseTableRef()
+	stmt.Target , _ = p.parseTableRef()
 	stmt.Loc.End = p.pos()
 	return stmt
 }

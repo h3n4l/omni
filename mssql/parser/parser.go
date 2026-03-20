@@ -412,7 +412,7 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 		savedPrev := p.prev
 		savedNextBuf := p.nextBuf
 		savedHasNext := p.hasNext
-		tableName := p.parseTableRef()
+		tableName , _ := p.parseTableRef()
 
 		// Check for AS CLONE OF
 		if p.cur.Type == kwAS {
@@ -1480,7 +1480,7 @@ func (p *Parser) parseDropOrSecurityStmt() nodes.StmtNode {
 		}
 		var nameItems []nodes.Node
 		for {
-			ref := p.parseTableRef()
+			ref , _ := p.parseTableRef()
 			if ref != nil {
 				nameItems = append(nameItems, ref)
 			}
@@ -1769,13 +1769,13 @@ func (p *Parser) parseDropOrSecurityStmt() nodes.StmtNode {
 			if dropStmt.ObjectType == nodes.DropFulltextIndex {
 				// DROP FULLTEXT INDEX ON table_name
 				if _, ok := p.match(kwON); ok {
-					if ref := p.parseTableRef(); ref != nil {
+					if ref , _ := p.parseTableRef(); ref != nil {
 						nameItems = append(nameItems, ref)
 					}
 				}
 			} else {
 				for {
-					ref := p.parseTableRef()
+					ref , _ := p.parseTableRef()
 					if ref != nil {
 						nameItems = append(nameItems, ref)
 					}
@@ -1919,6 +1919,14 @@ func (p *Parser) expect(tokenType int) (Token, error) {
 // pos returns the byte position of the current token.
 func (p *Parser) pos() int {
 	return p.cur.Loc
+}
+
+// unexpectedToken returns a ParseError for the current token position.
+func (p *Parser) unexpectedToken() error {
+	return &ParseError{
+		Message:  "unexpected token",
+		Position: p.cur.Loc,
+	}
 }
 
 // ParseError represents a parse error with position information.

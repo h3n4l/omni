@@ -61,7 +61,7 @@ func (p *Parser) parseUpdateStmt() *nodes.UpdateStmt {
 	}
 
 	// Table name or @table_variable
-	stmt.Relation = p.parseTableRef()
+	stmt.Relation , _ = p.parseTableRef()
 
 	// Optional WITH ( <Table_Hint_Limited> ) on target
 	if p.cur.Type == kwWITH && p.peekNext().Type == '(' {
@@ -141,7 +141,7 @@ func (p *Parser) parseDeleteStmt() *nodes.DeleteStmt {
 	p.match(kwFROM)
 
 	// Table name or @table_variable
-	stmt.Relation = p.parseTableRef()
+	stmt.Relation , _ = p.parseTableRef()
 
 	// Optional WITH ( <Table_Hint_Limited> ) on target
 	if p.cur.Type == kwWITH && p.peekNext().Type == '(' {

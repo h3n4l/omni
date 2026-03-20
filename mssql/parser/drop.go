@@ -180,13 +180,13 @@ func (p *Parser) parseDropStmt() *nodes.DropStmt {
 	if stmt.ObjectType == nodes.DropFulltextIndex {
 		// ON table_name
 		if _, ok := p.match(kwON); ok {
-			if ref := p.parseTableRef(); ref != nil {
+			if ref , _ := p.parseTableRef(); ref != nil {
 				names = append(names, ref)
 			}
 		}
 	} else {
 		for {
-			name := p.parseTableRef()
+			name , _ := p.parseTableRef()
 			if name == nil {
 				break
 			}
