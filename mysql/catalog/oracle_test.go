@@ -144,6 +144,18 @@ func (o *mysqlOracle) showCreateProcedure(name string) (string, error) {
 	return createStmt, nil
 }
 
+// showCreateTrigger runs SHOW CREATE TRIGGER and returns the SQL Original Statement field.
+func (o *mysqlOracle) showCreateTrigger(name string) (string, error) {
+	var trigName, sqlMode, createStmt, charSetClient, collConn, dbCollation string
+	var created sql.NullString
+	err := o.db.QueryRowContext(o.ctx, "SHOW CREATE TRIGGER "+name).Scan(
+		&trigName, &sqlMode, &createStmt, &charSetClient, &collConn, &dbCollation, &created)
+	if err != nil {
+		return "", fmt.Errorf("SHOW CREATE TRIGGER %s: %w", name, err)
+	}
+	return createStmt, nil
+}
+
 // queryColumns queries INFORMATION_SCHEMA.COLUMNS for the given table.
 func (o *mysqlOracle) queryColumns(database, table string) ([]columnInfo, error) {
 	rows, err := o.db.QueryContext(o.ctx, `

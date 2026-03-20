@@ -522,10 +522,10 @@ Every error must match MySQL's errno, SQLSTATE, and message format.
 ### 4.3 Triggers
 
 ```
-[ ] CREATE TRIGGER — store metadata (name, timing, event, table, body)
-[ ] DROP TRIGGER
-[ ] SHOW CREATE TRIGGER output
-[ ] Multiple triggers per table/event (MySQL 8.0 supports ordering)
+[x] CREATE TRIGGER — store metadata (name, timing, event, table, body)
+[x] DROP TRIGGER
+[x] SHOW CREATE TRIGGER output
+[x] Multiple triggers per table/event (MySQL 8.0 supports ordering)
 ```
 
 ### 4.4 Events

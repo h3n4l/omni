@@ -35,6 +35,8 @@ const (
 	ErrNoSuchProcedure         = 1305
 	ErrDupFunction             = 1304
 	ErrDupProcedure            = 1304
+	ErrNoSuchTrigger           = 1360
+	ErrDupTrigger              = 1359
 )
 
 var sqlStateMap = map[int]string{
@@ -160,4 +162,14 @@ func errNoSuchFunction(name string) error {
 func errNoSuchProcedure(db, name string) error {
 	return &Error{Code: ErrNoSuchProcedure, SQLState: sqlState(ErrNoSuchProcedure),
 		Message: fmt.Sprintf("PROCEDURE %s.%s does not exist", db, name)}
+}
+
+func errDupTrigger(name string) error {
+	return &Error{Code: ErrDupTrigger, SQLState: sqlState(ErrDupTrigger),
+		Message: fmt.Sprintf("Trigger already exists")}
+}
+
+func errNoSuchTrigger(db, name string) error {
+	return &Error{Code: ErrNoSuchTrigger, SQLState: sqlState(ErrNoSuchTrigger),
+		Message: fmt.Sprintf("Trigger does not exist")}
 }

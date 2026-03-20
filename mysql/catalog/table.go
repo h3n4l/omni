@@ -103,6 +103,24 @@ type RoutineParam struct {
 	TypeName  string // full type string
 }
 
+// Trigger represents a trigger in the catalog.
+type Trigger struct {
+	Name     string
+	Database *Database
+	Table    string // table name the trigger is on
+	Timing   string // BEFORE, AFTER
+	Event    string // INSERT, UPDATE, DELETE
+	Definer  string
+	Body     string
+	Order    *TriggerOrderInfo
+}
+
+// TriggerOrderInfo represents FOLLOWS/PRECEDES ordering.
+type TriggerOrderInfo struct {
+	Follows     bool
+	TriggerName string
+}
+
 func (t *Table) GetColumn(name string) *Column {
 	idx, ok := t.colByName[toLower(name)]
 	if !ok {

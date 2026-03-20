@@ -108,6 +108,10 @@ func (c *Catalog) processUtility(stmt nodes.Node) error {
 		return c.dropRoutine(s)
 	case *nodes.AlterRoutineStmt:
 		return c.alterRoutine(s)
+	case *nodes.CreateTriggerStmt:
+		return c.createTrigger(s)
+	case *nodes.DropTriggerStmt:
+		return c.dropTrigger(s)
 	default:
 		return nil
 	}

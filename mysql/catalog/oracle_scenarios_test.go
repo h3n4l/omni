@@ -4899,3 +4899,248 @@ func TestOracle_Section_4_2_StoredRoutines(t *testing.T) {
 		}
 	})
 }
+
+func TestOracle_Section_4_3_Triggers(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	// Setup: create a table that triggers can reference.
+	oracle.execSQL("DROP TABLE IF EXISTS t_trigger")
+	if err := oracle.execSQL("CREATE TABLE t_trigger (id INT AUTO_INCREMENT PRIMARY KEY, val INT, name VARCHAR(100))"); err != nil {
+		t.Fatalf("oracle setup table: %v", err)
+	}
+
+	// 4.3.1: CREATE TRIGGER — store metadata (name, timing, event, table, body)
+	t.Run("create_trigger_before_insert", func(t *testing.T) {
+		oracle.execSQL("DROP TRIGGER IF EXISTS tr_before_insert")
+		createSQL := "CREATE TRIGGER tr_before_insert BEFORE INSERT ON t_trigger FOR EACH ROW SET NEW.val = NEW.val + 1"
+		if err := oracle.execSQLDirect(createSQL); err != nil {
+			t.Fatalf("oracle exec: %v", err)
+		}
+		oracleDDL, err := oracle.showCreateTrigger("tr_before_insert")
+		if err != nil {
+			t.Fatalf("oracle SHOW CREATE TRIGGER: %v", err)
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_trigger (id INT AUTO_INCREMENT PRIMARY KEY, val INT, name VARCHAR(100))", nil)
+		results, parseErr := c.Exec(createSQL, nil)
+		if parseErr != nil {
+			t.Fatalf("omni parse error: %v", parseErr)
+		}
+		if results[0].Error != nil {
+			t.Fatalf("omni exec error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateTrigger("test", "tr_before_insert")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL, omniDDL)
+		}
+	})
+
+	t.Run("create_trigger_after_update", func(t *testing.T) {
+		oracle.execSQL("DROP TRIGGER IF EXISTS tr_after_update")
+		createSQL := "CREATE TRIGGER tr_after_update AFTER UPDATE ON t_trigger FOR EACH ROW SET @updated = @updated + 1"
+		if err := oracle.execSQLDirect(createSQL); err != nil {
+			t.Fatalf("oracle exec: %v", err)
+		}
+		oracleDDL, err := oracle.showCreateTrigger("tr_after_update")
+		if err != nil {
+			t.Fatalf("oracle SHOW CREATE TRIGGER: %v", err)
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_trigger (id INT AUTO_INCREMENT PRIMARY KEY, val INT, name VARCHAR(100))", nil)
+		results, parseErr := c.Exec(createSQL, nil)
+		if parseErr != nil {
+			t.Fatalf("omni parse error: %v", parseErr)
+		}
+		if results[0].Error != nil {
+			t.Fatalf("omni exec error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateTrigger("test", "tr_after_update")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL, omniDDL)
+		}
+	})
+
+	t.Run("create_trigger_before_delete", func(t *testing.T) {
+		oracle.execSQL("DROP TRIGGER IF EXISTS tr_before_delete")
+		createSQL := "CREATE TRIGGER tr_before_delete BEFORE DELETE ON t_trigger FOR EACH ROW SET @deleted = OLD.id"
+		if err := oracle.execSQLDirect(createSQL); err != nil {
+			t.Fatalf("oracle exec: %v", err)
+		}
+		oracleDDL, err := oracle.showCreateTrigger("tr_before_delete")
+		if err != nil {
+			t.Fatalf("oracle SHOW CREATE TRIGGER: %v", err)
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_trigger (id INT AUTO_INCREMENT PRIMARY KEY, val INT, name VARCHAR(100))", nil)
+		results, parseErr := c.Exec(createSQL, nil)
+		if parseErr != nil {
+			t.Fatalf("omni parse error: %v", parseErr)
+		}
+		if results[0].Error != nil {
+			t.Fatalf("omni exec error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateTrigger("test", "tr_before_delete")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL, omniDDL)
+		}
+	})
+
+	// 4.3.2: DROP TRIGGER
+	t.Run("drop_trigger", func(t *testing.T) {
+		oracle.execSQL("DROP TRIGGER IF EXISTS tr_drop_test")
+		oracle.execSQLDirect("CREATE TRIGGER tr_drop_test BEFORE INSERT ON t_trigger FOR EACH ROW SET NEW.val = 0")
+		if err := oracle.execSQL("DROP TRIGGER tr_drop_test"); err != nil {
+			t.Fatalf("oracle DROP TRIGGER: %v", err)
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_trigger (id INT AUTO_INCREMENT PRIMARY KEY, val INT, name VARCHAR(100))", nil)
+		c.Exec("CREATE TRIGGER tr_drop_test BEFORE INSERT ON t_trigger FOR EACH ROW SET NEW.val = 0", nil)
+		results, _ := c.Exec("DROP TRIGGER tr_drop_test", nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni DROP TRIGGER error: %v", results[0].Error)
+		}
+
+		// Verify trigger is gone
+		ddl := c.ShowCreateTrigger("test", "tr_drop_test")
+		if ddl != "" {
+			t.Errorf("trigger should be gone, but got: %s", ddl)
+		}
+	})
+
+	t.Run("drop_trigger_if_exists", func(t *testing.T) {
+		oracle.execSQL("DROP TRIGGER IF EXISTS tr_nonexistent_drop")
+		if err := oracle.execSQL("DROP TRIGGER IF EXISTS tr_nonexistent_drop"); err != nil {
+			t.Fatalf("oracle DROP TRIGGER IF EXISTS: %v", err)
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		results, _ := c.Exec("DROP TRIGGER IF EXISTS tr_nonexistent_drop", nil)
+		if results[0].Error != nil {
+			t.Fatalf("omni DROP TRIGGER IF EXISTS should not error: %v", results[0].Error)
+		}
+	})
+
+	t.Run("drop_trigger_not_exist_error", func(t *testing.T) {
+		oracle.execSQL("DROP TRIGGER IF EXISTS tr_no_exist")
+		oracleErr := oracle.execSQL("DROP TRIGGER tr_no_exist")
+		if oracleErr == nil {
+			t.Fatal("expected oracle error for DROP TRIGGER on nonexistent trigger")
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		results, _ := c.Exec("DROP TRIGGER tr_no_exist", nil)
+		if results[0].Error == nil {
+			t.Fatal("expected omni error for DROP TRIGGER on nonexistent trigger")
+		}
+		if catErr, ok := results[0].Error.(*Error); ok {
+			if catErr.Code != ErrNoSuchTrigger {
+				t.Errorf("error code: want %d, got %d", ErrNoSuchTrigger, catErr.Code)
+			}
+		}
+	})
+
+	// 4.3.3: SHOW CREATE TRIGGER output
+	t.Run("show_create_trigger_output", func(t *testing.T) {
+		oracle.execSQL("DROP TRIGGER IF EXISTS tr_show_test")
+		createSQL := "CREATE TRIGGER tr_show_test AFTER INSERT ON t_trigger FOR EACH ROW SET @last_insert = NEW.id"
+		if err := oracle.execSQLDirect(createSQL); err != nil {
+			t.Fatalf("oracle exec: %v", err)
+		}
+		oracleDDL, err := oracle.showCreateTrigger("tr_show_test")
+		if err != nil {
+			t.Fatalf("oracle SHOW CREATE TRIGGER: %v", err)
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_trigger (id INT AUTO_INCREMENT PRIMARY KEY, val INT, name VARCHAR(100))", nil)
+		results, parseErr := c.Exec(createSQL, nil)
+		if parseErr != nil {
+			t.Fatalf("omni parse error: %v", parseErr)
+		}
+		if results[0].Error != nil {
+			t.Fatalf("omni exec error: %v", results[0].Error)
+		}
+		omniDDL := c.ShowCreateTrigger("test", "tr_show_test")
+
+		if normalizeWhitespace(oracleDDL) != normalizeWhitespace(omniDDL) {
+			t.Errorf("mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL, omniDDL)
+		}
+	})
+
+	// 4.3.4: Multiple triggers per table/event (MySQL 8.0 supports ordering)
+	t.Run("multiple_triggers_ordering", func(t *testing.T) {
+		oracle.execSQL("DROP TRIGGER IF EXISTS tr_multi_2")
+		oracle.execSQL("DROP TRIGGER IF EXISTS tr_multi_1")
+		create1 := "CREATE TRIGGER tr_multi_1 BEFORE INSERT ON t_trigger FOR EACH ROW SET NEW.val = NEW.val + 10"
+		create2 := "CREATE TRIGGER tr_multi_2 BEFORE INSERT ON t_trigger FOR EACH ROW FOLLOWS tr_multi_1 SET NEW.val = NEW.val + 20"
+		if err := oracle.execSQLDirect(create1); err != nil {
+			t.Fatalf("oracle exec trigger 1: %v", err)
+		}
+		if err := oracle.execSQLDirect(create2); err != nil {
+			t.Fatalf("oracle exec trigger 2: %v", err)
+		}
+
+		oracleDDL1, err := oracle.showCreateTrigger("tr_multi_1")
+		if err != nil {
+			t.Fatalf("oracle SHOW CREATE TRIGGER tr_multi_1: %v", err)
+		}
+		oracleDDL2, err := oracle.showCreateTrigger("tr_multi_2")
+		if err != nil {
+			t.Fatalf("oracle SHOW CREATE TRIGGER tr_multi_2: %v", err)
+		}
+
+		c := New()
+		c.Exec("CREATE DATABASE test", nil)
+		c.SetCurrentDatabase("test")
+		c.Exec("CREATE TABLE t_trigger (id INT AUTO_INCREMENT PRIMARY KEY, val INT, name VARCHAR(100))", nil)
+		results1, _ := c.Exec(create1, nil)
+		if results1[0].Error != nil {
+			t.Fatalf("omni exec trigger 1 error: %v", results1[0].Error)
+		}
+		results2, _ := c.Exec(create2, nil)
+		if results2[0].Error != nil {
+			t.Fatalf("omni exec trigger 2 error: %v", results2[0].Error)
+		}
+
+		omniDDL1 := c.ShowCreateTrigger("test", "tr_multi_1")
+		omniDDL2 := c.ShowCreateTrigger("test", "tr_multi_2")
+
+		if normalizeWhitespace(oracleDDL1) != normalizeWhitespace(omniDDL1) {
+			t.Errorf("trigger 1 mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL1, omniDDL1)
+		}
+		if normalizeWhitespace(oracleDDL2) != normalizeWhitespace(omniDDL2) {
+			t.Errorf("trigger 2 mismatch:\n--- oracle ---\n%s\n--- omni ---\n%s",
+				oracleDDL2, omniDDL2)
+		}
+	})
+}

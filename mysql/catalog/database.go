@@ -10,6 +10,7 @@ type Database struct {
 	Views      map[string]*View
 	Functions  map[string]*Routine // lowered name -> stored function
 	Procedures map[string]*Routine // lowered name -> stored procedure
+	Triggers   map[string]*Trigger // lowered name -> trigger
 }
 
 func newDatabase(name, charset, collation string) *Database {
@@ -21,6 +22,7 @@ func newDatabase(name, charset, collation string) *Database {
 		Views:      make(map[string]*View),
 		Functions:  make(map[string]*Routine),
 		Procedures: make(map[string]*Routine),
+		Triggers:   make(map[string]*Trigger),
 	}
 }
 
