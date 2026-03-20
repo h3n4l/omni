@@ -1,0 +1,157 @@
+package parser
+
+import (
+	"strings"
+	"testing"
+)
+
+func TestParseErrors(t *testing.T) {
+	tests := []struct {
+		name         string
+		sql          string
+		wantContains string
+		wantPos      int // 0-based byte offset, -1 = end of input
+	}{
+		// Basic syntax errors
+		{
+			name:         "missing keyword",
+			sql:          "SELECT * FRO t;",
+			wantContains: `syntax error at or near "FRO"`,
+			wantPos:      9,
+		},
+		{
+			name:         "unexpected token",
+			sql:          "CREATE TABLE (id int);",
+			wantContains: `syntax error at or near "("`,
+			wantPos:      13,
+		},
+		// Numeric table name
+		{
+			name:         "numeric table name",
+			sql:          "CREATE TABLE 123 (id int);",
+			wantContains: `syntax error at or near "123"`,
+			wantPos:      13,
+		},
+		// Multiline — position is byte offset, not line/col
+		{
+			name:         "multiline error",
+			sql:          "SELECT *\nFROM t\nWHER a = 1;",
+			wantContains: `syntax error at or near "a"`,
+			wantPos:      21,
+		},
+		// Error() format: pgx-style single line
+		{
+			name:         "pgx format",
+			sql:          "SELECT * FRO t;",
+			wantContains: "ERROR:",
+		},
+		{
+			name:         "sqlstate in output",
+			sql:          "SELECT * FRO t;",
+			wantContains: "SQLSTATE 42601",
+		},
+		// Section 1.1: Logical & Comparison Operators — soft-fail nil checks
+		{name: "OR no right operand", sql: "SELECT 1 OR", wantContains: "syntax error", wantPos: -1},
+		{name: "AND no right operand", sql: "SELECT 1 AND", wantContains: "syntax error", wantPos: -1},
+		{name: "less-than no right operand", sql: "SELECT 1 <", wantContains: "syntax error", wantPos: -1},
+		{name: "greater-than no right operand", sql: "SELECT 1 >", wantContains: "syntax error", wantPos: -1},
+		{name: "equals no right operand", sql: "SELECT 1 =", wantContains: "syntax error", wantPos: -1},
+		{name: "less-equals no right operand", sql: "SELECT 1 <=", wantContains: "syntax error", wantPos: -1},
+		{name: "greater-equals no right operand", sql: "SELECT 1 >=", wantContains: "syntax error", wantPos: -1},
+		{name: "not-equals no right operand", sql: "SELECT 1 <>", wantContains: "syntax error", wantPos: -1},
+		{name: "concat-op no right operand", sql: "SELECT 1 ||", wantContains: "syntax error", wantPos: -1},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := Parse(tt.sql)
+			if err == nil {
+				t.Fatalf("Parse(%q) expected error, got nil", tt.sql)
+			}
+
+			if !strings.Contains(err.Error(), tt.wantContains) {
+				t.Errorf("Parse(%q) error = %q, want substring %q", tt.sql, err.Error(), tt.wantContains)
+			}
+
+			if tt.wantPos != 0 { // 0 means "don't check position"
+				pe, ok := err.(*ParseError)
+				if !ok {
+					t.Fatalf("error is not *ParseError: %T", err)
+				}
+				if tt.wantPos == -1 {
+					// For end-of-input, the EOF token has Loc=len(sql) or similar;
+					// just verify Position >= len(strings.TrimRight(tt.sql, " \t\n;"))
+					trimmed := strings.TrimRight(tt.sql, " \t\n;")
+					if pe.Position < len(trimmed) {
+						t.Errorf("Position = %d, want >= %d (end of input)", pe.Position, len(trimmed))
+					}
+				} else if pe.Position != tt.wantPos {
+					t.Errorf("Position = %d, want %d", pe.Position, tt.wantPos)
+				}
+			}
+		})
+	}
+}
+
+func TestParseErrors_NameType(t *testing.T) {
+	tests := []struct {
+		name         string
+		sql          string
+		wantContains string
+		wantPos      int
+	}{
+		{
+			name:         "invalid table name",
+			sql:          "CREATE TABLE 123 (id int);",
+			wantContains: `syntax error at or near "123"`,
+			wantPos:      13,
+		},
+		{
+			name:         "invalid array bound",
+			sql:          "CREATE TABLE t (id int[x]);",
+			wantContains: `syntax error at or near "x"`,
+			wantPos:      23,
+		},
+		{
+			name:         "invalid column type",
+			sql:          "CREATE TABLE t (id INT XYZ);",
+			wantContains: `syntax error at or near "XYZ"`,
+			wantPos:      23,
+		},
+		{
+			name:         "invalid national type",
+			sql:          "CREATE TABLE t (id NATIONAL 123);",
+			wantContains: `syntax error at or near "123"`,
+			wantPos:      28,
+		},
+		{
+			name:         "leading garbage",
+			sql:          ") SELECT 1;",
+			wantContains: `syntax error at or near ")"`,
+			wantPos:      0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := Parse(tt.sql)
+			if err == nil {
+				t.Fatalf("Parse(%q) expected error, got nil", tt.sql)
+			}
+
+			if !strings.Contains(err.Error(), tt.wantContains) {
+				t.Errorf("Parse(%q) error = %q, want substring %q", tt.sql, err.Error(), tt.wantContains)
+			}
+
+			if tt.wantPos > 0 {
+				pe, ok := err.(*ParseError)
+				if !ok {
+					t.Fatalf("error is not *ParseError: %T", err)
+				}
+				if pe.Position != tt.wantPos {
+					t.Errorf("Position = %d, want %d", pe.Position, tt.wantPos)
+				}
+			}
+		})
+	}
+}

@@ -151,12 +151,18 @@ func (p *Parser) parseAExprInfix(left nodes.Node, prec int) (nodes.Node, error) 
 		if err != nil {
 			return nil, err
 		}
+		if right == nil {
+			return nil, p.syntaxErrorAtCur()
+		}
 		return makeBoolExpr(nodes.OR_EXPR, left, right), nil
 	case AND:
 		p.advance()
 		right, err := p.parseAExpr(prec + 1)
 		if err != nil {
 			return nil, err
+		}
+		if right == nil {
+			return nil, p.syntaxErrorAtCur()
 		}
 		return makeBoolExpr(nodes.AND_EXPR, left, right), nil
 
@@ -182,6 +188,9 @@ func (p *Parser) parseAExprInfix(left nodes.Node, prec int) (nodes.Node, error) 
 		if err != nil {
 			return nil, err
 		}
+		if right == nil {
+			return nil, p.syntaxErrorAtCur()
+		}
 		return makeSimpleAExpr(nodes.AEXPR_OP, opStr, left, right), nil
 	case LESS_EQUALS:
 		p.advance()
@@ -192,6 +201,9 @@ func (p *Parser) parseAExprInfix(left nodes.Node, prec int) (nodes.Node, error) 
 		right, err := p.parseAExpr(prec + 1)
 		if err != nil {
 			return nil, err
+		}
+		if right == nil {
+			return nil, p.syntaxErrorAtCur()
 		}
 		return makeSimpleAExpr(nodes.AEXPR_OP, "<=", left, right), nil
 	case GREATER_EQUALS:
@@ -204,6 +216,9 @@ func (p *Parser) parseAExprInfix(left nodes.Node, prec int) (nodes.Node, error) 
 		if err != nil {
 			return nil, err
 		}
+		if right == nil {
+			return nil, p.syntaxErrorAtCur()
+		}
 		return makeSimpleAExpr(nodes.AEXPR_OP, ">=", left, right), nil
 	case NOT_EQUALS:
 		p.advance()
@@ -214,6 +229,9 @@ func (p *Parser) parseAExprInfix(left nodes.Node, prec int) (nodes.Node, error) 
 		right, err := p.parseAExpr(prec + 1)
 		if err != nil {
 			return nil, err
+		}
+		if right == nil {
+			return nil, p.syntaxErrorAtCur()
 		}
 		return makeSimpleAExpr(nodes.AEXPR_OP, "<>", left, right), nil
 
@@ -257,6 +275,9 @@ func (p *Parser) parseAExprInfix(left nodes.Node, prec int) (nodes.Node, error) 
 		right, err := p.parseAExpr(prec + 1)
 		if err != nil {
 			return nil, err
+		}
+		if right == nil {
+			return nil, p.syntaxErrorAtCur()
 		}
 		return &nodes.A_Expr{Kind: nodes.AEXPR_OP, Name: opName, Lexpr: left, Rexpr: right}, nil
 
@@ -505,7 +526,10 @@ func (p *Parser) parseInExpr(left nodes.Node, negated bool) (nodes.Node, error) 
 	// Try to determine if this is a subquery or expression list.
 	// Subqueries start with SELECT, VALUES, WITH, or '(' followed by another select.
 	if p.isSelectStart() {
-		subquery := p.parseSelectStmtForExpr()
+		subquery, err := p.parseSelectStmtForExpr()
+		if err != nil {
+			return nil, err
+		}
 		if _, err := p.expect(')'); err != nil {
 			return nil, err
 		}
@@ -718,7 +742,10 @@ func (p *Parser) parseSubqueryOp(left nodes.Node, opName *nodes.List) (nodes.Nod
 	p.advance()
 
 	if p.isSelectStart() {
-		subquery := p.parseSelectStmtForExpr()
+		subquery, err := p.parseSelectStmtForExpr()
+		if err != nil {
+			return nil, err
+		}
 		if _, err := p.expect(')'); err != nil {
 			return nil, err
 		}
@@ -1285,7 +1312,10 @@ func (p *Parser) parseParenExprOrRow() (nodes.Node, error) {
 
 	// Check for subquery
 	if p.isSelectStart() {
-		subquery := p.parseSelectStmtForExpr()
+		subquery, err := p.parseSelectStmtForExpr()
+		if err != nil {
+			return nil, err
+		}
 		if _, err := p.expect(')'); err != nil {
 			return nil, err
 		}
@@ -1360,7 +1390,10 @@ func (p *Parser) parseExistsExpr() (nodes.Node, error) {
 	if _, err := p.expect('('); err != nil {
 		return nil, err
 	}
-	subquery := p.parseSelectStmtForExpr()
+	subquery, err := p.parseSelectStmtForExpr()
+	if err != nil {
+		return nil, err
+	}
 	if _, err := p.expect(')'); err != nil {
 		return nil, err
 	}
@@ -1390,7 +1423,10 @@ func (p *Parser) parseArrayCExpr() (nodes.Node, error) {
 
 	if p.cur.Type == '(' {
 		p.advance()
-		subquery := p.parseSelectStmtForExpr()
+		subquery, err := p.parseSelectStmtForExpr()
+		if err != nil {
+			return nil, err
+		}
 		if _, err := p.expect(')'); err != nil {
 			return nil, err
 		}
@@ -2940,9 +2976,8 @@ func (p *Parser) isSelectStart() bool {
 
 // parseSelectStmtForExpr parses a select statement in expression context.
 // Delegates to the full SELECT parser in select.go.
-func (p *Parser) parseSelectStmtForExpr() nodes.Node {
-	n, _ := p.parseSelectNoParens()
-	return n
+func (p *Parser) parseSelectStmtForExpr() (nodes.Node, error) {
+	return p.parseSelectNoParens()
 }
 
 // parseTargetList parses a comma-separated target list (SELECT expressions).
