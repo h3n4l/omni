@@ -461,10 +461,10 @@ Depends on all previous phases. End-to-end oracle testing against MySQL 8.0.
 ### 7.4 Join Views (oracle match)
 
 ```
-[ ] INNER JOIN view: `SELECT t1.a, t2.b FROM t1 JOIN t2 ON t1.a = t2.a`
-[ ] LEFT JOIN view: `SELECT t1.a, t2.b FROM t1 LEFT JOIN t2 ON t1.a = t2.a`
-[ ] Multiple table view: `SELECT t1.a FROM t1, t2 WHERE t1.a = t2.a`
-[ ] Subquery in FROM view: `SELECT d.x FROM (SELECT a AS x FROM t) d`
+[x] INNER JOIN view: `SELECT t1.a, t2.b FROM t1 JOIN t2 ON t1.a = t2.a`
+[x] LEFT JOIN view: `SELECT t1.a, t2.b FROM t1 LEFT JOIN t2 ON t1.a = t2.a`
+[x] Multiple table view: `SELECT t1.a FROM t1, t2 WHERE t1.a = t2.a`
+[~] Subquery in FROM view: `SELECT d.x FROM (SELECT a AS x FROM t) d` — parser doesn't produce SubqueryExpr for derived tables in FROM
 ```
 
 ### 7.5 Advanced Views (oracle match)

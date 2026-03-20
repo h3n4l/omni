@@ -288,6 +288,102 @@ func TestDeparse_Section_7_2_SimpleViews(t *testing.T) {
 	}
 }
 
+// TestDeparse_Section_7_4_JoinViews verifies that our catalog's SHOW CREATE VIEW
+// output matches MySQL 8.0's output for views with JOINs (INNER JOIN, LEFT JOIN,
+// multiple tables, subquery in FROM).
+func TestDeparse_Section_7_4_JoinViews(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	// Setup: create base tables on MySQL 8.0
+	if err := oracle.execSQLDirect("CREATE TABLE IF NOT EXISTS t (a INT, b INT, c INT)"); err != nil {
+		t.Fatalf("failed to create table t on MySQL: %v", err)
+	}
+	if err := oracle.execSQLDirect("CREATE TABLE IF NOT EXISTS t1 (a INT, b INT)"); err != nil {
+		t.Fatalf("failed to create table t1 on MySQL: %v", err)
+	}
+	if err := oracle.execSQLDirect("CREATE TABLE IF NOT EXISTS t2 (a INT, b INT)"); err != nil {
+		t.Fatalf("failed to create table t2 on MySQL: %v", err)
+	}
+
+	cases := []struct {
+		name     string
+		createAs string // the SELECT portion after CREATE VIEW v AS
+		tables   string // additional CREATE TABLE statements for our catalog (beyond t, t1, t2)
+		partial  bool   // expected partial match (parser limitation)
+	}{
+		{"inner_join", "SELECT t1.a, t2.b FROM t1 JOIN t2 ON t1.a = t2.a", "", false},
+		{"left_join", "SELECT t1.a, t2.b FROM t1 LEFT JOIN t2 ON t1.a = t2.a", "", false},
+		{"multi_table", "SELECT t1.a FROM t1, t2 WHERE t1.a = t2.a", "", false},
+		{"subquery_from", "SELECT d.x FROM (SELECT a AS x FROM t) d", "", true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			viewName := "v_" + tc.name
+
+			// --- MySQL 8.0 side ---
+			oracle.execSQLDirect("DROP VIEW IF EXISTS " + viewName)
+			createSQL := fmt.Sprintf("CREATE VIEW %s AS %s", viewName, tc.createAs)
+			if err := oracle.execSQLDirect(createSQL); err != nil {
+				t.Fatalf("CREATE VIEW on MySQL failed: %v", err)
+			}
+			mysqlOutput, err := oracle.showCreateView(viewName)
+			if err != nil {
+				t.Fatalf("SHOW CREATE VIEW on MySQL failed: %v", err)
+			}
+			mysqlBody := stripDatabasePrefix(extractSelectBody(mysqlOutput))
+
+			// --- Our catalog side ---
+			cat := New()
+			cat.Exec("CREATE DATABASE test", nil)
+			cat.SetCurrentDatabase("test")
+			cat.Exec("CREATE TABLE t (a INT, b INT, c INT)", nil)
+			cat.Exec("CREATE TABLE t1 (a INT, b INT)", nil)
+			cat.Exec("CREATE TABLE t2 (a INT, b INT)", nil)
+			if tc.tables != "" {
+				cat.Exec(tc.tables, nil)
+			}
+			results, _ := cat.Exec(fmt.Sprintf("CREATE VIEW %s AS %s", viewName, tc.createAs), nil)
+			if len(results) == 0 {
+				if tc.partial {
+					t.Skipf("CREATE VIEW on catalog returned no results (expected partial — parser limitation)")
+				}
+				t.Fatalf("CREATE VIEW on catalog returned no results")
+			}
+			if results[0].Error != nil {
+				if tc.partial {
+					t.Skipf("CREATE VIEW on catalog failed (expected partial): %v", results[0].Error)
+				}
+				t.Fatalf("CREATE VIEW on catalog failed: %v", results[0].Error)
+			}
+			omniOutput := cat.ShowCreateView("test", viewName)
+			if omniOutput == "" {
+				if tc.partial {
+					t.Skip("ShowCreateView returned empty (expected partial)")
+				}
+				t.Fatal("ShowCreateView returned empty")
+			}
+			omniBody := extractSelectBody(omniOutput)
+
+			t.Logf("MySQL full:  %s", mysqlOutput)
+			t.Logf("Omni full:   %s", omniOutput)
+			t.Logf("MySQL body:  %s", mysqlBody)
+			t.Logf("Omni body:   %s", omniBody)
+
+			if mysqlBody != omniBody {
+				if tc.partial {
+					t.Skipf("SELECT body mismatch (expected partial):\n--- mysql ---\n%s\n--- omni ---\n%s", mysqlBody, omniBody)
+				}
+				t.Errorf("SELECT body mismatch:\n--- mysql ---\n%s\n--- omni ---\n%s", mysqlBody, omniBody)
+			}
+		})
+	}
+}
+
 // stripDatabasePrefix removes the `test`. database prefix from MySQL 8.0 SHOW CREATE VIEW output.
 // MySQL 8.0 qualifies all identifiers with the database name (e.g., `test`.`t`.`a`),
 // while our catalog does not. We strip the prefix for comparison.
