@@ -67,6 +67,9 @@ func TestParseErrors(t *testing.T) {
 		{name: "divide no right operand", sql: "SELECT 1 /", wantContains: "syntax error", wantPos: -1},
 		{name: "modulo no right operand", sql: "SELECT 1 %", wantContains: "syntax error", wantPos: -1},
 		{name: "exponent no right operand", sql: "SELECT 1 ^", wantContains: "syntax error", wantPos: -1},
+		// Section 1.3: IS DISTINCT FROM — soft-fail nil checks
+		{name: "IS DISTINCT FROM no right expr", sql: "SELECT 1 IS DISTINCT FROM", wantContains: "syntax error", wantPos: -1},
+		{name: "IS NOT DISTINCT FROM no right expr", sql: "SELECT 1 IS NOT DISTINCT FROM", wantContains: "syntax error", wantPos: -1},
 	}
 
 	for _, tt := range tests {

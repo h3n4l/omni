@@ -397,6 +397,9 @@ func (p *Parser) parseIsPostfix(left nodes.Node) (nodes.Node, error) {
 		if err != nil {
 			return nil, err
 		}
+		if right == nil {
+			return nil, p.syntaxErrorAtCur()
+		}
 		kind := nodes.AEXPR_DISTINCT
 		if negated {
 			kind = nodes.AEXPR_NOT_DISTINCT

@@ -35,8 +35,8 @@ For each: after consuming the operator, `parseAExpr()` can return (nil, nil). Th
 
 ### 1.3 IS DISTINCT FROM
 
-- [ ] `SELECT 1 IS DISTINCT FROM` — DISTINCT FROM consumed, no right expr → syntax error at end of input
-- [ ] `SELECT 1 IS NOT DISTINCT FROM` — NOT DISTINCT FROM consumed, no right expr → syntax error at end of input
+- [x] `SELECT 1 IS DISTINCT FROM` — DISTINCT FROM consumed, no right expr → syntax error at end of input
+- [x] `SELECT 1 IS NOT DISTINCT FROM` — NOT DISTINCT FROM consumed, no right expr → syntax error at end of input
 
 ## Phase 2: expr.go — Pattern Matching & Special Expressions
 
