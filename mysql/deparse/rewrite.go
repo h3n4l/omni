@@ -29,6 +29,16 @@ func rewriteExpr(node ast.ExprNode) ast.ExprNode {
 	case *ast.BinaryExpr:
 		n.Left = rewriteExpr(n.Left)
 		n.Right = rewriteExpr(n.Right)
+		// Boolean context wrapping: AND/OR/XOR operands that are not boolean
+		// expressions get wrapped in (0 <> expr).
+		if n.Op == ast.BinOpAnd || n.Op == ast.BinOpOr || n.Op == ast.BinOpXor {
+			if !isBooleanExpr(n.Left) {
+				n.Left = wrapBooleanContext(n.Left)
+			}
+			if !isBooleanExpr(n.Right) {
+				n.Right = wrapBooleanContext(n.Right)
+			}
+		}
 		return n
 
 	case *ast.ParenExpr:
@@ -58,6 +68,10 @@ func rewriteExpr(node ast.ExprNode) ast.ExprNode {
 
 	case *ast.IsExpr:
 		n.Expr = rewriteExpr(n.Expr)
+		// IS TRUE / IS FALSE on non-boolean: wrap operand in (0 <> expr)
+		if (n.Test == ast.IsTrue || n.Test == ast.IsFalse) && !n.Not && !isBooleanExpr(n.Expr) {
+			n.Expr = wrapBooleanContext(n.Expr)
+		}
 		return n
 
 	case *ast.CaseExpr:
@@ -161,5 +175,54 @@ func rewriteNot(operand ast.ExprNode) ast.ExprNode {
 		Op:    ast.BinOpEq,
 		Left:  &ast.IntLit{Value: 0},
 		Right: operand,
+	}
+}
+
+// isBooleanExpr returns true if the expression is inherently boolean-valued.
+// MySQL's is_bool_func() returns true for: comparisons (=,<>,<,>,<=,>=,<=>),
+// IN, BETWEEN, LIKE, IS NULL/IS NOT NULL, AND, OR, NOT, XOR, EXISTS,
+// TRUE/FALSE literals. Everything else (column refs, arithmetic, functions,
+// CASE, IF, subqueries, literals) is NOT boolean and gets wrapped in (0 <> expr)
+// when used as an operand of AND/OR/XOR.
+func isBooleanExpr(node ast.ExprNode) bool {
+	inner := unwrapParen(node)
+	switch n := inner.(type) {
+	case *ast.BinaryExpr:
+		switch n.Op {
+		case ast.BinOpEq, ast.BinOpNe, ast.BinOpLt, ast.BinOpGt,
+			ast.BinOpLe, ast.BinOpGe, ast.BinOpNullSafeEq,
+			ast.BinOpAnd, ast.BinOpOr, ast.BinOpXor, ast.BinOpSoundsLike:
+			return true
+		}
+		return false
+	case *ast.InExpr:
+		return true
+	case *ast.BetweenExpr:
+		return true
+	case *ast.LikeExpr:
+		return true
+	case *ast.IsExpr:
+		return true
+	case *ast.UnaryExpr:
+		if n.Op == ast.UnaryNot {
+			return true
+		}
+		return false
+	case *ast.ExistsExpr:
+		return true
+	case *ast.BoolLit:
+		return true
+	default:
+		return false
+	}
+}
+
+// wrapBooleanContext wraps a non-boolean expression in (0 <> expr) for
+// boolean context (AND/OR/XOR operands, IS TRUE/IS FALSE operands).
+func wrapBooleanContext(node ast.ExprNode) ast.ExprNode {
+	return &ast.BinaryExpr{
+		Op:    ast.BinOpNe,
+		Left:  &ast.IntLit{Value: 0},
+		Right: node,
 	}
 }

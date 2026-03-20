@@ -2051,6 +2051,8 @@ func binaryOpStr(op BinaryOp) string {
 		return "AND"
 	case BinOpOr:
 		return "OR"
+	case BinOpXor:
+		return "XOR"
 	case BinOpBitAnd:
 		return "&"
 	case BinOpBitOr:

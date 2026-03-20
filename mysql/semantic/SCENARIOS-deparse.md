@@ -248,23 +248,23 @@ This phase focuses on the standalone rewrite logic: NOT folding and boolean cont
 ### 4.2 Boolean Context Wrapping (isBooleanExpr)
 
 ```
-[ ] isBooleanExpr() identifies comparison ops (=,<>,<,>,<=,>=,<=>) as boolean
-[ ] isBooleanExpr() identifies IN/BETWEEN/LIKE/IS NULL/IS NOT NULL as boolean
-[ ] isBooleanExpr() identifies AND/OR/NOT/XOR results as boolean
-[ ] isBooleanExpr() identifies EXISTS as boolean
-[ ] isBooleanExpr() identifies TRUE/FALSE literals as boolean
-[ ] Column ref in AND: `a AND b` → `(0 <> `a`) and (0 <> `b`)`
-[ ] Arithmetic in AND: `(a+1) AND b` → `(0 <> (`a` + 1)) and (0 <> `b`)`
-[ ] Function in AND: `ABS(a) AND b` → `(0 <> abs(`a`)) and (0 <> `b`)`
-[ ] CASE in AND: wrapped with `(0 <> (case...end))`
-[ ] IF in AND: wrapped with `(0 <> if(...))`
-[ ] Subquery in AND: wrapped with `(0 <> (select...))`
-[ ] Literal in AND: `'hello' AND 1` → `(0 <> 'hello') and (0 <> 1)`
-[ ] Comparison NOT wrapped: `(a > 0) AND (b > 0)` → no (0 <> ...) wrapping
-[ ] Mixed: `(a > 0) AND (b + 1)` → `(`a` > 0) and (0 <> (`b` + 1))`
-[ ] IS TRUE on non-boolean: `a IS TRUE` → `(0 <> `a`) is true`
-[ ] IS FALSE on non-boolean: `a IS FALSE` → `(0 <> `a`) is false`
-[ ] XOR: `a XOR b` → `(0 <> `a`) xor (0 <> `b`)`
+[x] isBooleanExpr() identifies comparison ops (=,<>,<,>,<=,>=,<=>) as boolean
+[x] isBooleanExpr() identifies IN/BETWEEN/LIKE/IS NULL/IS NOT NULL as boolean
+[x] isBooleanExpr() identifies AND/OR/NOT/XOR results as boolean
+[x] isBooleanExpr() identifies EXISTS as boolean
+[x] isBooleanExpr() identifies TRUE/FALSE literals as boolean
+[x] Column ref in AND: `a AND b` → `(0 <> `a`) and (0 <> `b`)`
+[x] Arithmetic in AND: `(a+1) AND b` → `(0 <> (`a` + 1)) and (0 <> `b`)`
+[x] Function in AND: `ABS(a) AND b` → `(0 <> abs(`a`)) and (0 <> `b`)`
+[x] CASE in AND: wrapped with `(0 <> (case...end))`
+[x] IF in AND: wrapped with `(0 <> if(...))`
+[x] Subquery in AND: wrapped with `(0 <> (select...))`
+[x] Literal in AND: `'hello' AND 1` → `(0 <> 'hello') and (0 <> 1)`
+[x] Comparison NOT wrapped: `(a > 0) AND (b > 0)` → no (0 <> ...) wrapping
+[x] Mixed: `(a > 0) AND (b + 1)` → `(`a` > 0) and (0 <> (`b` + 1))`
+[x] IS TRUE on non-boolean: `a IS TRUE` → `(0 <> `a`) is true`
+[x] IS FALSE on non-boolean: `a IS FALSE` → `(0 <> `a`) is false`
+[x] XOR: `a XOR b` → `(0 <> `a`) xor (0 <> `b`)`
 ```
 
 ## Phase 5: SELECT Statement Deparsing

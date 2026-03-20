@@ -564,6 +564,7 @@ const (
 	BinOpGe
 	BinOpAnd
 	BinOpOr
+	BinOpXor // logical XOR
 	BinOpBitAnd
 	BinOpBitOr
 	BinOpBitXor

@@ -68,6 +68,10 @@ func deparseExpr(node ast.ExprNode) string {
 		return deparseCollateExpr(n)
 	case *ast.FuncCallExpr:
 		return deparseFuncCallExpr(n)
+	case *ast.ExistsExpr:
+		return deparseExistsExpr(n)
+	case *ast.SubqueryExpr:
+		return deparseSubqueryExpr(n)
 	default:
 		return fmt.Sprintf("/* unsupported: %T */", node)
 	}
@@ -179,6 +183,8 @@ func binaryOpToString(op ast.BinaryOp) string {
 		return "and"
 	case ast.BinOpOr:
 		return "or"
+	case ast.BinOpXor:
+		return "xor"
 	case ast.BinOpBitAnd:
 		return "&"
 	case ast.BinOpBitOr:
@@ -607,6 +613,21 @@ func deparseWindowFrameBound(fb *ast.WindowFrameBound) string {
 	default:
 		return "/* unknown bound */"
 	}
+}
+
+// deparseExistsExpr formats an EXISTS expression.
+// MySQL 8.0 format: exists(select ...)
+func deparseExistsExpr(n *ast.ExistsExpr) string {
+	// Minimal: we only need to know it's exists(...) for boolean identification.
+	// Full SELECT deparsing is a Phase 5 concern.
+	return "exists(/* subquery */)"
+}
+
+// deparseSubqueryExpr formats a subquery expression.
+// MySQL 8.0 format: (select ...)
+func deparseSubqueryExpr(n *ast.SubqueryExpr) string {
+	// Minimal: full SELECT deparsing is a Phase 5 concern.
+	return "(/* subquery */)"
 }
 
 // deparseGroupConcat handles GROUP_CONCAT with its special syntax:

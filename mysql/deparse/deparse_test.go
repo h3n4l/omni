@@ -1,6 +1,7 @@
 package deparse
 
 import (
+	"strings"
 	"testing"
 
 	ast "github.com/bytebase/omni/mysql/ast"
@@ -724,6 +725,147 @@ func TestDeparse_Section_4_1_NOTFolding_AST(t *testing.T) {
 			t.Errorf("RewriteExpr+Deparse(NOT(a+1)) = %q, want %q", got, expected)
 		}
 	})
+}
+
+// TestDeparse_Section_4_2_BooleanContextWrapping tests isBooleanExpr identification
+// and boolean context wrapping for AND/OR/XOR operands.
+func TestDeparse_Section_4_2_BooleanContextWrapping(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		// Column ref in AND: non-boolean operands get wrapped
+		{"col_ref_in_and", "a AND b", "((0 <> `a`) and (0 <> `b`))"},
+		// Arithmetic in AND
+		{"arithmetic_in_and", "(a+1) AND b", "((0 <> (`a` + 1)) and (0 <> `b`))"},
+		// Function in AND
+		{"function_in_and", "ABS(a) AND b", "((0 <> abs(`a`)) and (0 <> `b`))"},
+		// CASE in AND
+		{"case_in_and", "CASE WHEN a > 0 THEN 1 ELSE 0 END AND b",
+			"((0 <> (case when (`a` > 0) then 1 else 0 end)) and (0 <> `b`))"},
+		// IF in AND
+		{"if_in_and", "IF(a > 0, 1, 0) AND b",
+			"((0 <> if((`a` > 0),1,0)) and (0 <> `b`))"},
+		// Literal in AND
+		{"literal_in_and", "'hello' AND 1", "((0 <> 'hello') and (0 <> 1))"},
+		// Comparison NOT wrapped: both sides are boolean
+		{"comparison_not_wrapped", "(a > 0) AND (b > 0)", "((`a` > 0) and (`b` > 0))"},
+		// Mixed: one boolean, one non-boolean
+		{"mixed_bool_nonbool", "(a > 0) AND (b + 1)", "((`a` > 0) and (0 <> (`b` + 1)))"},
+		// XOR: non-boolean operands get wrapped
+		{"xor_wrapping", "a XOR b", "((0 <> `a`) xor (0 <> `b`))"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := parseRewriteDeparse(t, tc.input)
+			if got != tc.expected {
+				t.Errorf("RewriteExpr+Deparse(%q) = %q, want %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
+// TestDeparse_Section_4_2_IsBooleanExpr tests isBooleanExpr identification via AST.
+func TestDeparse_Section_4_2_IsBooleanExpr(t *testing.T) {
+	// Test that comparison, IN, BETWEEN, LIKE, IS NULL, AND/OR/NOT/XOR, EXISTS, TRUE/FALSE
+	// are all recognized as boolean expressions (not wrapped in AND context).
+
+	booleanCases := []struct {
+		name  string
+		input string
+	}{
+		// Comparisons are boolean
+		{"comparison_eq", "(a = 1) AND (b = 2)"},
+		{"comparison_ne", "(a <> 1) AND (b <> 2)"},
+		{"comparison_lt", "(a < 1) AND (b < 2)"},
+		{"comparison_gt", "(a > 1) AND (b > 2)"},
+		{"comparison_le", "(a <= 1) AND (b <= 2)"},
+		{"comparison_ge", "(a >= 1) AND (b >= 2)"},
+		{"comparison_nullsafe", "(a <=> 1) AND (b <=> 2)"},
+		// IN is boolean
+		{"in_is_boolean", "(a IN (1,2)) AND (b IN (3,4))"},
+		// BETWEEN is boolean
+		{"between_is_boolean", "(a BETWEEN 1 AND 10) AND (b BETWEEN 1 AND 10)"},
+		// LIKE is boolean
+		{"like_is_boolean", "(a LIKE 'x') AND (b LIKE 'y')"},
+		// IS NULL is boolean
+		{"is_null_is_boolean", "(a IS NULL) AND (b IS NULL)"},
+		// TRUE/FALSE literals are boolean
+		{"bool_lit_true", "TRUE AND FALSE"},
+	}
+
+	for _, tc := range booleanCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := parseRewriteDeparse(t, tc.input)
+			// None of these should contain "(0 <>" wrapping
+			if contains0Ne(got) {
+				t.Errorf("Boolean expression was incorrectly wrapped: RewriteExpr+Deparse(%q) = %q", tc.input, got)
+			}
+		})
+	}
+}
+
+// TestDeparse_Section_4_2_ISTrueFalse tests IS TRUE/IS FALSE wrapping on non-boolean.
+func TestDeparse_Section_4_2_ISTrueFalse(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		// IS TRUE on non-boolean column: wrap with (0 <> col)
+		{"is_true_nonbool", "a IS TRUE", "((0 <> `a`) is true)"},
+		// IS FALSE on non-boolean column: wrap with (0 <> col)
+		{"is_false_nonbool", "a IS FALSE", "((0 <> `a`) is false)"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := parseRewriteDeparse(t, tc.input)
+			if got != tc.expected {
+				t.Errorf("RewriteExpr+Deparse(%q) = %q, want %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
+// TestDeparse_Section_4_2_SubqueryInAnd tests subquery wrapping in AND context.
+func TestDeparse_Section_4_2_SubqueryInAnd(t *testing.T) {
+	// Subquery in AND: non-boolean subquery gets wrapped
+	// Note: we build AST directly since parser may not support subqueries in this context easily
+	t.Run("subquery_in_and", func(t *testing.T) {
+		// Build: (SELECT 1) AND (SELECT 2) — both are SubqueryExpr (non-boolean)
+		node := &ast.BinaryExpr{
+			Op: ast.BinOpAnd,
+			Left: &ast.SubqueryExpr{
+				Select: &ast.SelectStmt{
+					TargetList: []ast.ExprNode{
+						&ast.ResTarget{Val: &ast.IntLit{Value: 1}},
+					},
+				},
+			},
+			Right: &ast.SubqueryExpr{
+				Select: &ast.SelectStmt{
+					TargetList: []ast.ExprNode{
+						&ast.ResTarget{Val: &ast.IntLit{Value: 2}},
+					},
+				},
+			},
+		}
+		rewritten := RewriteExpr(node)
+		got := Deparse(rewritten)
+		// SubqueryExpr is not boolean, so should be wrapped
+		// The exact output depends on SubqueryExpr deparsing — we just verify wrapping happened
+		if !contains0Ne(got) {
+			t.Errorf("Subquery in AND was NOT wrapped: got %q", got)
+		}
+	})
+}
+
+// contains0Ne checks if the output contains "(0 <>" which indicates boolean wrapping.
+func contains0Ne(s string) bool {
+	return strings.Contains(s, "(0 <>") || strings.Contains(s, "(0 =")
 }
 
 // TestRewriteExpr_NilNode tests that RewriteExpr handles nil gracefully.

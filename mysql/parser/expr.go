@@ -150,7 +150,7 @@ func (p *Parser) infixPrecedence() (int, nodes.BinaryOp, bool) {
 	case kwOR:
 		return precOr, nodes.BinOpOr, true
 	case kwXOR:
-		return precXor, nodes.BinOpBitXor, true
+		return precXor, nodes.BinOpXor, true
 	case kwAND:
 		return precAnd, nodes.BinOpAnd, true
 
