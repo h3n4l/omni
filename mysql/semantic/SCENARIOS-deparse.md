@@ -421,8 +421,8 @@ Depends on Phase 4-5. Requires Catalog access.
 ### 6.5 CAST Charset from Catalog
 
 ```
-[ ] CAST to CHAR uses database default charset (not hardcoded utf8mb4)
-[ ] Database with latin1 charset: CAST adds `charset latin1`
+[x] CAST to CHAR uses database default charset (not hardcoded utf8mb4)
+[x] Database with latin1 charset: CAST adds `charset latin1`
 ```
 
 ## Phase 7: Integration — SHOW CREATE VIEW

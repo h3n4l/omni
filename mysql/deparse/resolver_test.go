@@ -67,7 +67,14 @@ func resolveAndDeparse(t *testing.T, cat *catalog.Catalog, sql string) string {
 	// Apply rewrites first (NOT folding, boolean context), then resolve
 	rewriteSelectStmt(sel)
 
-	resolver := &Resolver{Lookup: catalogLookup(cat)}
+	// Get the database default charset for the resolver
+	defaultCharset := ""
+	db := cat.GetDatabase(cat.CurrentDatabase())
+	if db != nil {
+		defaultCharset = db.Charset
+	}
+
+	resolver := &Resolver{Lookup: catalogLookup(cat), DefaultCharset: defaultCharset}
 	resolved := resolver.Resolve(sel)
 	return DeparseSelect(resolved)
 }
@@ -424,6 +431,80 @@ func TestResolver_Section_6_4_JoinNormalization(t *testing.T) {
 		expected := "select `t1`.`a` AS `a`,`t2`.`d` AS `d` from (`t1` join `t2`)"
 		if got != expected {
 			t.Errorf("Implicit cross join:\n  got:  %q\n  want: %q", got, expected)
+		}
+	})
+}
+
+// setupCatalogWithCharset creates a catalog with a database using the given charset.
+func setupCatalogWithCharset(t *testing.T, charset string) *catalog.Catalog {
+	t.Helper()
+	c := catalog.New()
+	createDB := "CREATE DATABASE testdb"
+	if charset != "" {
+		createDB += " CHARACTER SET " + charset
+	}
+	sqls := []string{
+		createDB,
+		"USE testdb",
+		"CREATE TABLE t (a INT, b VARCHAR(100))",
+	}
+	for _, sql := range sqls {
+		_, err := c.Exec(sql, nil)
+		if err != nil {
+			t.Fatalf("catalog setup failed on %q: %v", sql, err)
+		}
+	}
+	return c
+}
+
+func TestResolver_Section_6_5_CastCharsetFromCatalog(t *testing.T) {
+	t.Run("cast_char_uses_database_default_charset_utf8mb4", func(t *testing.T) {
+		// Default database charset is utf8mb4 — CAST to CHAR should use charset utf8mb4
+		cat := setupCatalog(t) // uses default charset (utf8mb4)
+		got := resolveAndDeparse(t, cat, "SELECT CAST(a AS CHAR) FROM t")
+		expected := "select cast(`t`.`a` as char charset utf8mb4) AS `cast(a as char charset utf8mb4)` from `t`"
+		if got != expected {
+			t.Errorf("CAST CHAR utf8mb4:\n  got:  %q\n  want: %q", got, expected)
+		}
+	})
+
+	t.Run("cast_char_latin1_database", func(t *testing.T) {
+		// Database with latin1 charset — CAST to CHAR should use charset latin1
+		cat := setupCatalogWithCharset(t, "latin1")
+		got := resolveAndDeparse(t, cat, "SELECT CAST(a AS CHAR) FROM t")
+		expected := "select cast(`t`.`a` as char charset latin1) AS `cast(a as char charset latin1)` from `t`"
+		if got != expected {
+			t.Errorf("CAST CHAR latin1:\n  got:  %q\n  want: %q", got, expected)
+		}
+	})
+
+	t.Run("cast_char_n_latin1_database", func(t *testing.T) {
+		// Database with latin1 charset — CAST to CHAR(10) should use charset latin1
+		cat := setupCatalogWithCharset(t, "latin1")
+		got := resolveAndDeparse(t, cat, "SELECT CAST(a AS CHAR(10)) FROM t")
+		expected := "select cast(`t`.`a` as char(10) charset latin1) AS `cast(a as char(10) charset latin1)` from `t`"
+		if got != expected {
+			t.Errorf("CAST CHAR(10) latin1:\n  got:  %q\n  want: %q", got, expected)
+		}
+	})
+
+	t.Run("cast_binary_unaffected", func(t *testing.T) {
+		// CAST to BINARY should always use charset binary, regardless of database charset
+		cat := setupCatalogWithCharset(t, "latin1")
+		got := resolveAndDeparse(t, cat, "SELECT CAST(a AS BINARY) FROM t")
+		expected := "select cast(`t`.`a` as char charset binary) AS `cast(a as char charset binary)` from `t`"
+		if got != expected {
+			t.Errorf("CAST BINARY (latin1 db):\n  got:  %q\n  want: %q", got, expected)
+		}
+	})
+
+	t.Run("convert_type_latin1_database", func(t *testing.T) {
+		// CONVERT(expr, CHAR) — rewritten to CAST, should use database charset
+		cat := setupCatalogWithCharset(t, "latin1")
+		got := resolveAndDeparse(t, cat, "SELECT CONVERT(a, CHAR) FROM t")
+		expected := "select cast(`t`.`a` as char charset latin1) AS `cast(a as char charset latin1)` from `t`"
+		if got != expected {
+			t.Errorf("CONVERT CHAR latin1:\n  got:  %q\n  want: %q", got, expected)
 		}
 	})
 }

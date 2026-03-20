@@ -402,6 +402,13 @@ func deparseExprAlias(node ast.ExprNode) string {
 		return name + "(" + strings.Join(args, ",") + ")"
 	case *ast.ParenExpr:
 		return deparseExprAlias(n.Expr)
+	case *ast.CastExpr:
+		return "cast(" + deparseExprAlias(n.Expr) + " as " + deparseDataType(n.TypeName) + ")"
+	case *ast.ConvertExpr:
+		if n.Charset != "" {
+			return "convert(" + deparseExprAlias(n.Expr) + " using " + strings.ToLower(n.Charset) + ")"
+		}
+		return "cast(" + deparseExprAlias(n.Expr) + " as " + deparseDataType(n.TypeName) + ")"
 	default:
 		// Fallback: use the regular deparsed text
 		return deparseExpr(node)

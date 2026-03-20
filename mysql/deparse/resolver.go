@@ -41,6 +41,10 @@ type TableLookup func(tableName string) *ResolverTable
 // Resolver resolves column references in a SelectStmt using catalog metadata.
 type Resolver struct {
 	Lookup TableLookup
+	// DefaultCharset is the database's default character set (e.g., "utf8mb4", "latin1").
+	// Used to populate CAST(... AS CHAR) charset when not explicitly specified.
+	// If empty, defaults to "utf8mb4".
+	DefaultCharset string
 }
 
 // scope maps table alias/name → *ResolverTable for the current FROM clause.
@@ -171,6 +175,10 @@ func (r *Resolver) resolveTarget(target ast.ExprNode, sc *scope, position int) [
 		return r.expandStar(sc)
 	}
 
+	// Apply CAST/CONVERT charset resolution before computing auto-alias.
+	// This ensures the auto-alias includes the database charset (e.g., "charset latin1").
+	r.resolveCastCharsets(expr)
+
 	// Compute auto-alias from the pre-resolution expression when no explicit alias.
 	// MySQL 8.0 uses the original (unqualified) expression text for auto-aliases,
 	// so we must derive it before column qualification changes the expression.
@@ -179,8 +187,9 @@ func (r *Resolver) resolveTarget(target ast.ExprNode, sc *scope, position int) [
 		explicitAlias = autoAlias(expr, exprStr, position)
 	}
 
-	// Resolve the expression
+	// Resolve the expression (column qualification, etc.)
 	resolved := r.resolveExpr(expr, sc)
+
 	if isRT {
 		rt.Val = resolved
 		rt.Name = explicitAlias
@@ -320,9 +329,11 @@ func (r *Resolver) resolveExpr(node ast.ExprNode, sc *scope) ast.ExprNode {
 		return n
 	case *ast.CastExpr:
 		n.Expr = r.resolveExpr(n.Expr, sc)
+		r.resolveCastCharset(n.TypeName)
 		return n
 	case *ast.ConvertExpr:
 		n.Expr = r.resolveExpr(n.Expr, sc)
+		r.resolveCastCharset(n.TypeName)
 		return n
 	case *ast.CollateExpr:
 		n.Expr = r.resolveExpr(n.Expr, sc)
@@ -568,6 +579,56 @@ func buildColumnEqualityChain(columns []string, leftName, rightName string) ast.
 		}
 	}
 	return result
+}
+
+// resolveCastCharsets walks the expression tree and sets charset on CAST/CONVERT DataTypes.
+func (r *Resolver) resolveCastCharsets(node ast.ExprNode) {
+	if node == nil {
+		return
+	}
+	switch n := node.(type) {
+	case *ast.CastExpr:
+		r.resolveCastCharset(n.TypeName)
+		r.resolveCastCharsets(n.Expr)
+	case *ast.ConvertExpr:
+		r.resolveCastCharset(n.TypeName)
+		r.resolveCastCharsets(n.Expr)
+	case *ast.BinaryExpr:
+		r.resolveCastCharsets(n.Left)
+		r.resolveCastCharsets(n.Right)
+	case *ast.UnaryExpr:
+		r.resolveCastCharsets(n.Operand)
+	case *ast.ParenExpr:
+		r.resolveCastCharsets(n.Expr)
+	case *ast.FuncCallExpr:
+		for _, arg := range n.Args {
+			r.resolveCastCharsets(arg)
+		}
+	case *ast.CaseExpr:
+		r.resolveCastCharsets(n.Operand)
+		for _, w := range n.Whens {
+			r.resolveCastCharsets(w.Cond)
+			r.resolveCastCharsets(w.Result)
+		}
+		r.resolveCastCharsets(n.Default)
+	}
+}
+
+// resolveCastCharset sets the charset on a CAST/CONVERT DataType for CHAR types.
+// MySQL adds "charset <db_default>" when no charset is explicitly specified.
+// The resolver uses DefaultCharset (from the catalog's database charset).
+func (r *Resolver) resolveCastCharset(dt *ast.DataType) {
+	if dt == nil {
+		return
+	}
+	name := strings.ToLower(dt.Name)
+	if name == "char" && dt.Charset == "" {
+		charset := r.DefaultCharset
+		if charset == "" {
+			charset = "utf8mb4"
+		}
+		dt.Charset = charset
+	}
 }
 
 // AmbiguousColumnError is returned when a column reference matches multiple tables.
