@@ -100,11 +100,11 @@ Rewrites (!=→<>, MOD→%, +a dropped) are applied here — oracle tests verify
 ### 2.4 Precedence & Parenthesization
 
 ```
-[ ] Higher precedence preserved: `a + b * c` → `(`a` + (`b` * `c`))`
-[ ] Lower precedence grouping: `(a + b) * c` → `((`a` + `b`) * `c`)`
-[ ] Mixed precedence: `a * b + c` → `((`a` * `b`) + `c`)`
-[ ] Deeply nested: `a + b + c + a + b + c` → `(((((`a` + `b`) + `c`) + `a`) + `b`) + `c`)`
-[ ] Parenthesized expression passthrough: `(a + b)` → `(`a` + `b`)` (outer parens from BinaryExpr)
+[x] Higher precedence preserved: `a + b * c` → `(`a` + (`b` * `c`))`
+[x] Lower precedence grouping: `(a + b) * c` → `((`a` + `b`) * `c`)`
+[x] Mixed precedence: `a * b + c` → `((`a` * `b`) + `c`)`
+[x] Deeply nested: `a + b + c + a + b + c` → `(((((`a` + `b`) + `c`) + `a`) + `b`) + `c`)`
+[x] Parenthesized expression passthrough: `(a + b)` → `(`a` + `b`)` (outer parens from BinaryExpr)
 ```
 
 ### 2.5 Comparison Predicates

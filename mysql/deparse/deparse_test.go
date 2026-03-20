@@ -268,6 +268,35 @@ func TestDeparse_Section_2_3_BitwiseNotAST(t *testing.T) {
 	}
 }
 
+func TestDeparse_Section_2_4_PrecedenceParenthesization(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		// Higher precedence preserved: * binds tighter than +
+		{"higher_prec_preserved", "a + b * c", "(`a` + (`b` * `c`))"},
+		// Lower precedence grouping: explicit parens force + before *
+		{"lower_prec_grouping", "(a + b) * c", "((`a` + `b`) * `c`)"},
+		// Mixed precedence: * first, then +
+		{"mixed_precedence", "a * b + c", "((`a` * `b`) + `c`)"},
+		// Deeply nested left-associative chaining
+		{"deeply_nested", "a + b + c + a + b + c", "(((((`a` + `b`) + `c`) + `a`) + `b`) + `c`)"},
+		// Parenthesized expression passthrough — ParenExpr unwrapped, BinaryExpr provides outer parens
+		{"paren_passthrough", "(a + b)", "(`a` + `b`)"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			node := parseExpr(t, tc.input)
+			got := Deparse(node)
+			if got != tc.expected {
+				t.Errorf("Deparse(%q) = %q, want %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
 func TestDeparse_NilNode(t *testing.T) {
 	got := Deparse(nil)
 	if got != "" {
