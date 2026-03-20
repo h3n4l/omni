@@ -270,6 +270,9 @@ func (p *Parser) parseSimpleSelectCore() (*nodes.SelectStmt, error) {
 		if err != nil {
 			return nil, err
 		}
+		if !p.collectMode() && stmt.WhereClause == nil {
+			return nil, p.syntaxErrorAtCur()
+		}
 		if p.collectMode() {
 			for _, t := range []int{
 				GROUP_P, HAVING, WINDOW,
@@ -1955,12 +1958,18 @@ func (p *Parser) parseGroupByList() (*nodes.List, error) {
 	if err != nil {
 		return nil, err
 	}
+	if !p.collectMode() && first == nil {
+		return nil, p.syntaxErrorAtCur()
+	}
 	items := []nodes.Node{first}
 	for p.cur.Type == ',' {
 		p.advance()
 		item, err := p.parseGroupByItem()
 		if err != nil {
 			return nil, err
+		}
+		if !p.collectMode() && item == nil {
+			return nil, p.syntaxErrorAtCur()
 		}
 		items = append(items, item)
 	}

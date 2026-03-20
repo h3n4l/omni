@@ -101,11 +101,11 @@ After consuming JOIN keyword(s), `parseTableRefPrimary()` can return (nil, nil).
 
 ### 4.2 GROUP BY, WHERE & Aggregation
 
-- [ ] `SELECT * FROM t WHERE` — WHERE consumed, no condition → syntax error at end of input
-- [ ] `SELECT 1 FROM t GROUP BY 1,` — comma consumed, no next group expr → syntax error at end of input
-- [ ] `SELECT 1 FROM t GROUP BY CUBE(` — CUBE and ( consumed, no expr list → syntax error at end of input
-- [ ] `SELECT 1 FROM t GROUP BY ROLLUP(` — ROLLUP and ( consumed, no expr list → syntax error at end of input
-- [ ] `SELECT 1 FROM t GROUP BY GROUPING SETS(` — GROUPING SETS and ( consumed, no content → syntax error at end of input
+- [x] `SELECT * FROM t WHERE` — WHERE consumed, no condition → syntax error at end of input
+- [x] `SELECT 1 FROM t GROUP BY 1,` — comma consumed, no next group expr → syntax error at end of input
+- [x] `SELECT 1 FROM t GROUP BY CUBE(` — CUBE and ( consumed, no expr list → syntax error at end of input
+- [x] `SELECT 1 FROM t GROUP BY ROLLUP(` — ROLLUP and ( consumed, no expr list → syntax error at end of input
+- [x] `SELECT 1 FROM t GROUP BY GROUPING SETS(` — GROUPING SETS and ( consumed, no content → syntax error at end of input
 
 ## Phase 5: DDL — Constraints & ALTER
 

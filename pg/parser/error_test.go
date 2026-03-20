@@ -113,6 +113,12 @@ func TestParseErrors(t *testing.T) {
 		{name: "RIGHT JOIN no right table", sql: "SELECT * FROM t RIGHT JOIN", wantContains: "syntax error", wantPos: -1},
 		{name: "FULL JOIN no right table", sql: "SELECT * FROM t FULL JOIN", wantContains: "syntax error", wantPos: -1},
 		{name: "NATURAL JOIN no right table", sql: "SELECT * FROM t NATURAL JOIN", wantContains: "syntax error", wantPos: -1},
+		// Section 4.2: GROUP BY, WHERE & Aggregation — soft-fail nil checks
+		{name: "WHERE no condition", sql: "SELECT * FROM t WHERE", wantContains: "syntax error", wantPos: -1},
+		{name: "GROUP BY trailing comma", sql: "SELECT 1 FROM t GROUP BY 1,", wantContains: "syntax error", wantPos: -1},
+		{name: "GROUP BY CUBE no expr list", sql: "SELECT 1 FROM t GROUP BY CUBE(", wantContains: "syntax error", wantPos: -1},
+		{name: "GROUP BY ROLLUP no expr list", sql: "SELECT 1 FROM t GROUP BY ROLLUP(", wantContains: "syntax error", wantPos: -1},
+		{name: "GROUP BY GROUPING SETS no content", sql: "SELECT 1 FROM t GROUP BY GROUPING SETS(", wantContains: "syntax error", wantPos: -1},
 	}
 
 	for _, tt := range tests {
