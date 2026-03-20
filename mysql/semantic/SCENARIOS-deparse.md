@@ -145,8 +145,8 @@ Rewrites (!=→<>, MOD→%, +a dropped) are applied here — oracle tests verify
 ### 2.7 Other Expressions
 
 ```
-[ ] INTERVAL: `INTERVAL 1 DAY + a` → `(`a` + interval 1 day)` — operand order may swap
-[ ] COLLATE: `a COLLATE utf8mb4_bin` → `(`a` collate utf8mb4_bin)`
+[x] INTERVAL: `INTERVAL 1 DAY + a` → `(`a` + interval 1 day)` — operand order may swap
+[x] COLLATE: `a COLLATE utf8mb4_bin` → `(`a` collate utf8mb4_bin)`
 ```
 
 ## Phase 3: Functions

@@ -62,6 +62,10 @@ func deparseExpr(node ast.ExprNode) string {
 		return deparseCastExpr(n)
 	case *ast.ConvertExpr:
 		return deparseConvertExpr(n)
+	case *ast.IntervalExpr:
+		return deparseIntervalExpr(n)
+	case *ast.CollateExpr:
+		return deparseCollateExpr(n)
 	default:
 		return fmt.Sprintf("/* unsupported: %T */", node)
 	}
@@ -104,10 +108,18 @@ func deparseBitLit(n *ast.BitLit) string {
 }
 
 func deparseBinaryExpr(n *ast.BinaryExpr) string {
-	left := deparseExpr(n.Left)
-	right := deparseExpr(n.Right)
+	left := n.Left
+	right := n.Right
+	// MySQL normalizes INTERVAL + expr to expr + INTERVAL (interval on the right)
+	if _, ok := left.(*ast.IntervalExpr); ok {
+		if _, ok2 := right.(*ast.IntervalExpr); !ok2 {
+			left, right = right, left
+		}
+	}
+	leftStr := deparseExpr(left)
+	rightStr := deparseExpr(right)
 	op := binaryOpToString(n.Op)
-	return "(" + left + " " + op + " " + right + ")"
+	return "(" + leftStr + " " + op + " " + rightStr + ")"
 }
 
 func deparseColumnRef(n *ast.ColumnRef) string {
@@ -362,5 +374,15 @@ func deparseDataType(dt *ast.DataType) string {
 	default:
 		return name
 	}
+}
+
+func deparseIntervalExpr(n *ast.IntervalExpr) string {
+	val := deparseExpr(n.Value)
+	return "interval " + val + " " + strings.ToLower(n.Unit)
+}
+
+func deparseCollateExpr(n *ast.CollateExpr) string {
+	expr := deparseExpr(n.Expr)
+	return "(" + expr + " collate " + n.Collation + ")"
 }
 

@@ -393,6 +393,29 @@ func TestDeparse_Section_2_6_CaseCastConvert(t *testing.T) {
 	}
 }
 
+func TestDeparse_Section_2_7_OtherExpressions(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		// INTERVAL: INTERVAL 1 DAY + a → (`a` + interval 1 day) — operand order swapped
+		{"interval_add", "INTERVAL 1 DAY + a", "(`a` + interval 1 day)"},
+		// COLLATE: a COLLATE utf8mb4_bin → (`a` collate utf8mb4_bin)
+		{"collate", "a COLLATE utf8mb4_bin", "(`a` collate utf8mb4_bin)"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			node := parseExpr(t, tc.input)
+			got := Deparse(node)
+			if got != tc.expected {
+				t.Errorf("Deparse(%q) = %q, want %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
 func TestDeparse_NilNode(t *testing.T) {
 	got := Deparse(nil)
 	if got != "" {
