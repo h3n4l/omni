@@ -35,7 +35,10 @@ func (p *Parser) parseCreateFunctionStmt(isReplace bool) (*nodes.CreateFunctionS
 	funcname := p.parseFuncNameForCreate()
 
 	// func_args_with_defaults
-	params := p.parseFuncArgsWithDefaults()
+	params, err := p.parseFuncArgsWithDefaults()
+	if err != nil {
+		return nil, err
+	}
 
 	stmt := &nodes.CreateFunctionStmt{
 		IsOrReplace: isReplace,
@@ -50,7 +53,11 @@ func (p *Parser) parseCreateFunctionStmt(isReplace bool) (*nodes.CreateFunctionS
 			return nil, err
 		}
 		stmt.Options = opts
-		stmt.SqlBody = p.parseOptRoutineBody()
+		sqlBody, err := p.parseOptRoutineBody()
+		if err != nil {
+			return nil, err
+		}
+		stmt.SqlBody = sqlBody
 		// Add isProcedure marker
 		procDef := &nodes.DefElem{
 			Defname: "isProcedure",
@@ -106,7 +113,11 @@ func (p *Parser) parseCreateFunctionStmt(isReplace bool) (*nodes.CreateFunctionS
 		return nil, err
 	}
 	stmt.Options = opts
-	stmt.SqlBody = p.parseOptRoutineBody()
+	sqlBody, err := p.parseOptRoutineBody()
+	if err != nil {
+		return nil, err
+	}
+	stmt.SqlBody = sqlBody
 	return stmt, nil
 }
 
@@ -124,16 +135,19 @@ func (p *Parser) parseFuncNameForCreate() *nodes.List {
 //	func_args_with_defaults:
 //	    '(' func_args_with_defaults_list ')'
 //	    | '(' ')'
-func (p *Parser) parseFuncArgsWithDefaults() *nodes.List {
+func (p *Parser) parseFuncArgsWithDefaults() (*nodes.List, error) {
 	p.expect('(')
 	if p.cur.Type == ')' {
 		p.advance()
-		return nil
+		return nil, nil
 	}
 
-	args := p.parseFuncArgsWithDefaultsList()
+	args, err := p.parseFuncArgsWithDefaultsList()
+	if err != nil {
+		return nil, err
+	}
 	p.expect(')')
-	return args
+	return args, nil
 }
 
 // parseFuncArgsWithDefaultsList parses a comma-separated list of function args.
@@ -141,14 +155,21 @@ func (p *Parser) parseFuncArgsWithDefaults() *nodes.List {
 //	func_args_with_defaults_list:
 //	    func_arg_with_default
 //	    | func_args_with_defaults_list ',' func_arg_with_default
-func (p *Parser) parseFuncArgsWithDefaultsList() *nodes.List {
-	arg := p.parseFuncArgWithDefault()
+func (p *Parser) parseFuncArgsWithDefaultsList() (*nodes.List, error) {
+	arg, err := p.parseFuncArgWithDefault()
+	if err != nil {
+		return nil, err
+	}
 	items := []nodes.Node{arg}
 	for p.cur.Type == ',' {
 		p.advance()
-		items = append(items, p.parseFuncArgWithDefault())
+		nextArg, err := p.parseFuncArgWithDefault()
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, nextArg)
 	}
-	return &nodes.List{Items: items}
+	return &nodes.List{Items: items}, nil
 }
 
 // parseFuncArgWithDefault parses a function argument with optional default.
@@ -157,16 +178,30 @@ func (p *Parser) parseFuncArgsWithDefaultsList() *nodes.List {
 //	    func_arg
 //	    | func_arg DEFAULT a_expr
 //	    | func_arg '=' a_expr
-func (p *Parser) parseFuncArgWithDefault() *nodes.FunctionParameter {
+func (p *Parser) parseFuncArgWithDefault() (*nodes.FunctionParameter, error) {
 	fp := p.parseFuncArg()
 	if p.cur.Type == DEFAULT {
 		p.advance()
-		fp.Defexpr, _ = p.parseAExpr(0)
+		expr, err := p.parseAExpr(0)
+		if err != nil {
+			return nil, err
+		}
+		if expr == nil {
+			return nil, p.syntaxErrorAtCur()
+		}
+		fp.Defexpr = expr
 	} else if p.cur.Type == '=' {
 		p.advance()
-		fp.Defexpr, _ = p.parseAExpr(0)
+		expr, err := p.parseAExpr(0)
+		if err != nil {
+			return nil, err
+		}
+		if expr == nil {
+			return nil, p.syntaxErrorAtCur()
+		}
+		fp.Defexpr = expr
 	}
-	return fp
+	return fp, nil
 }
 
 // parseFuncArg parses a function argument.
@@ -557,11 +592,17 @@ func (p *Parser) parseCommonFuncOptItem() *nodes.DefElem {
 //	    ReturnStmt
 //	    | BEGIN_P ATOMIC routine_body_stmt_list END_P
 //	    | /* EMPTY */
-func (p *Parser) parseOptRoutineBody() nodes.Node {
+func (p *Parser) parseOptRoutineBody() (nodes.Node, error) {
 	if p.cur.Type == RETURN {
 		p.advance()
-		expr, _ := p.parseAExpr(0)
-		return &nodes.ReturnStmt{Returnval: expr}
+		expr, err := p.parseAExpr(0)
+		if err != nil {
+			return nil, err
+		}
+		if expr == nil {
+			return nil, p.syntaxErrorAtCur()
+		}
+		return &nodes.ReturnStmt{Returnval: expr}, nil
 	}
 	if p.cur.Type == BEGIN_P {
 		p.advance() // consume BEGIN
@@ -591,7 +632,7 @@ func (p *Parser) parseOptRoutineBody() nodes.Node {
 		// Yacc wraps the stmt list in makeList(stmtList):
 		// a single-element list containing the statement list
 		stmtList := &nodes.List{Items: stmts}
-		return &nodes.List{Items: []nodes.Node{stmtList}}
+		return &nodes.List{Items: []nodes.Node{stmtList}}, nil
 	}
-	return nil
+	return nil, nil
 }

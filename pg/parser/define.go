@@ -1085,7 +1085,10 @@ func (p *Parser) parseAlterDefaultPrivilegesStmt() (nodes.Node, error) {
 }
 
 func (p *Parser) parseDefACLGrantAction() (*nodes.GrantStmt, error) {
-	privs := p.parsePrivileges()
+	privs, err := p.parsePrivileges()
+	if err != nil {
+		return nil, err
+	}
 	if _, err := p.expect(ON); err != nil {
 		return nil, err
 	}
@@ -1125,7 +1128,10 @@ func (p *Parser) parseDefACLRevokeAction() (*nodes.GrantStmt, error) {
 		}
 		grantOption = true
 	}
-	privs := p.parsePrivileges()
+	privs, err := p.parsePrivileges()
+	if err != nil {
+		return nil, err
+	}
 	if _, err := p.expect(ON); err != nil {
 		return nil, err
 	}

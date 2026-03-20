@@ -127,6 +127,15 @@ func TestParseErrors(t *testing.T) {
 		{name: "CHECK no check expr", sql: "CREATE TABLE t (a int CHECK (", wantContains: "syntax error", wantPos: -1},
 		{name: "COMPRESSION no method", sql: "CREATE TABLE t (a int COMPRESSION", wantContains: "syntax error", wantPos: -1},
 		{name: "STORAGE no mode", sql: "CREATE TABLE t (a int STORAGE", wantContains: "syntax error", wantPos: -1},
+		// Section 5.2: ALTER TABLE, GRANT, CREATE FUNCTION — soft-fail nil checks
+		{name: "ALTER TABLE OF no type name", sql: "ALTER TABLE t OF", wantContains: "syntax error", wantPos: -1},
+		{name: "ALTER TABLE INHERIT no parent", sql: "ALTER TABLE t INHERIT", wantContains: "syntax error", wantPos: -1},
+		{name: "ALTER TABLE SET DATA TYPE no type", sql: "ALTER TABLE t ALTER COLUMN a SET DATA TYPE", wantContains: "syntax error", wantPos: -1},
+		{name: "ALTER TABLE RENAME COLUMN no name", sql: "ALTER TABLE t RENAME COLUMN", wantContains: "syntax error", wantPos: -1},
+		{name: "GRANT SELECT( no column", sql: "GRANT SELECT(", wantContains: "syntax error", wantPos: -1},
+		{name: "CREATE FUNCTION RETURN no expr", sql: "CREATE FUNCTION f() RETURNS int LANGUAGE sql RETURN", wantContains: "syntax error", wantPos: -1},
+		{name: "CREATE FUNCTION DEFAULT no expr", sql: "CREATE FUNCTION f(a int DEFAULT", wantContains: "syntax error", wantPos: -1},
+		{name: "CREATE FUNCTION = no expr", sql: "CREATE FUNCTION f(a int =", wantContains: "syntax error", wantPos: -1},
 	}
 
 	for _, tt := range tests {
@@ -188,7 +197,7 @@ func TestParseErrors_NameType(t *testing.T) {
 		{
 			name:         "invalid national type",
 			sql:          "CREATE TABLE t (id NATIONAL 123);",
-			wantContains: `syntax error at or near "123"`,
+			wantContains: `expected CHARACTER or CHAR after NATIONAL`,
 			wantPos:      28,
 		},
 		{

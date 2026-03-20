@@ -121,11 +121,11 @@ After consuming JOIN keyword(s), `parseTableRefPrimary()` can return (nil, nil).
 
 ### 5.2 ALTER TABLE, GRANT, CREATE FUNCTION
 
-- [ ] `ALTER TABLE t OF` — OF consumed, no type name → syntax error at end of input
-- [ ] `ALTER TABLE t INHERIT` — INHERIT consumed, no parent table → syntax error at end of input
-- [ ] `ALTER TABLE t ALTER COLUMN a SET DATA TYPE` — TYPE consumed, no type name → syntax error at end of input
-- [ ] `ALTER TABLE t RENAME COLUMN` — COLUMN consumed, no column name → syntax error at end of input
-- [ ] `GRANT SELECT(` — ( consumed in privilege column list, no column → syntax error at end of input
-- [ ] `CREATE FUNCTION f() RETURNS int LANGUAGE sql RETURN` — RETURN consumed, no expr → syntax error at end of input
-- [ ] `CREATE FUNCTION f(a DEFAULT` — DEFAULT consumed, no default expr → syntax error at end of input
-- [ ] `CREATE FUNCTION f(a =` — = consumed, no default expr → syntax error at end of input
+- [x] `ALTER TABLE t OF` — OF consumed, no type name → syntax error at end of input
+- [x] `ALTER TABLE t INHERIT` — INHERIT consumed, no parent table → syntax error at end of input
+- [x] `ALTER TABLE t ALTER COLUMN a SET DATA TYPE` — TYPE consumed, no type name → syntax error at end of input
+- [x] `ALTER TABLE t RENAME COLUMN` — COLUMN consumed, no column name → syntax error at end of input
+- [x] `GRANT SELECT(` — ( consumed in privilege column list, no column → syntax error at end of input
+- [x] `CREATE FUNCTION f() RETURNS int LANGUAGE sql RETURN` — RETURN consumed, no expr → syntax error at end of input
+- [x] `CREATE FUNCTION f(a DEFAULT` — DEFAULT consumed, no default expr → syntax error at end of input
+- [x] `CREATE FUNCTION f(a =` — = consumed, no default expr → syntax error at end of input

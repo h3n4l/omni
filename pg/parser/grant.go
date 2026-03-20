@@ -27,14 +27,20 @@ func (p *Parser) parseGrantStmt() (nodes.Node, error) {
 		return nil, nil
 	case SELECT, INSERT, UPDATE, DELETE_P, TRUNCATE, REFERENCES, TRIGGER,
 		CREATE, TEMPORARY, TEMP, EXECUTE:
-		privs := p.parsePrivilegeList()
+		privs, err := p.parsePrivilegeList()
+		if err != nil {
+			return nil, err
+		}
 		if p.cur.Type == ON {
 			p.advance()
 			return p.finishGrantOnObject(false, privs)
 		}
 		return p.finishGrantRole(true, privs)
 	default:
-		privs := p.parsePrivilegeList()
+		privs, err := p.parsePrivilegeList()
+		if err != nil {
+			return nil, err
+		}
 		if p.cur.Type == ON {
 			p.advance()
 			return p.finishGrantOnObject(false, privs)
@@ -87,14 +93,20 @@ func (p *Parser) parseRevokeStmt() (nodes.Node, error) {
 		return nil, nil
 	case SELECT, INSERT, UPDATE, DELETE_P, TRUNCATE, REFERENCES, TRIGGER,
 		CREATE, TEMPORARY, TEMP, EXECUTE:
-		privs := p.parsePrivilegeList()
+		privs, err := p.parsePrivilegeList()
+		if err != nil {
+			return nil, err
+		}
 		if p.cur.Type == ON {
 			p.advance()
 			return p.finishRevokeOnObject(grantOptionFor, privs)
 		}
 		return p.finishRevokeRole(privs, adminOptionFor)
 	default:
-		privs := p.parsePrivilegeList()
+		privs, err := p.parsePrivilegeList()
+		if err != nil {
+			return nil, err
+		}
 		if p.cur.Type == ON {
 			p.advance()
 			return p.finishRevokeOnObject(grantOptionFor, privs)
@@ -381,35 +393,41 @@ func (p *Parser) parseGrantFuncArg() (nodes.Node, error) {
 	return p.parseTypename()
 }
 
-func (p *Parser) parsePrivileges() *nodes.List {
+func (p *Parser) parsePrivileges() (*nodes.List, error) {
 	if p.cur.Type == ALL {
 		p.advance()
 		if p.cur.Type == PRIVILEGES {
 			p.advance()
 		}
-		return nil
+		return nil, nil
 	}
 	return p.parsePrivilegeList()
 }
 
-func (p *Parser) parsePrivilegeList() *nodes.List {
-	priv := p.parsePrivilege()
+func (p *Parser) parsePrivilegeList() (*nodes.List, error) {
+	priv, err := p.parsePrivilege()
+	if err != nil {
+		return nil, err
+	}
 	if priv == nil {
-		return nil
+		return nil, nil
 	}
 	result := &nodes.List{Items: []nodes.Node{priv}}
 	for p.cur.Type == ',' {
 		p.advance()
-		priv = p.parsePrivilege()
+		priv, err = p.parsePrivilege()
+		if err != nil {
+			return nil, err
+		}
 		if priv == nil {
 			break
 		}
 		result.Items = append(result.Items, priv)
 	}
-	return result
+	return result, nil
 }
 
-func (p *Parser) parsePrivilege() *nodes.AccessPriv {
+func (p *Parser) parsePrivilege() (*nodes.AccessPriv, error) {
 	var privName string
 	switch p.cur.Type {
 	case SELECT:
@@ -448,12 +466,15 @@ func (p *Parser) parsePrivilege() *nodes.AccessPriv {
 	default:
 		name, err := p.parseColId()
 		if err != nil {
-			return nil
+			return nil, nil
 		}
 		privName = name
 	}
-	cols := p.parseOptColumnList()
-	return &nodes.AccessPriv{PrivName: privName, Cols: cols}
+	cols, err := p.parseOptColumnList()
+	if err != nil {
+		return nil, err
+	}
+	return &nodes.AccessPriv{PrivName: privName, Cols: cols}, nil
 }
 
 func (p *Parser) parseGranteeList() *nodes.List {

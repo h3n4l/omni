@@ -529,7 +529,7 @@ func (p *Parser) parseColConstraintElem() (nodes.Node, error) {
 			return nil, p.syntaxErrorAtCur()
 		}
 		refRv := makeRangeVarFromNames(refNames)
-		pkAttrs := p.parseOptColumnList()
+		pkAttrs, _ := p.parseOptColumnList()
 		matchType := p.parseKeyMatch()
 		updAction, delAction, delSetCols := p.parseKeyActions()
 		attrs := p.parseConstraintAttributeSpec()
@@ -781,7 +781,7 @@ func (p *Parser) parseConstraintElem() *nodes.Constraint {
 		p.expect(REFERENCES)
 		refNames, _ := p.parseQualifiedName()
 		refRv := makeRangeVarFromNames(refNames)
-		pkAttrs := p.parseOptColumnList()
+		pkAttrs, _ := p.parseOptColumnList()
 		matchType := p.parseKeyMatch()
 		updAction, delAction, delSetCols := p.parseKeyActions()
 		attrs := p.parseConstraintAttributeSpec()
@@ -1098,14 +1098,19 @@ func splitColQualList(qualList *nodes.List, coldef *nodes.ColumnDef) {
 // parseOptColumnList parses opt_column_list.
 //
 //	opt_column_list: '(' columnList ')' | /* EMPTY */
-func (p *Parser) parseOptColumnList() *nodes.List {
+func (p *Parser) parseOptColumnList() (*nodes.List, error) {
 	if p.cur.Type != '(' {
-		return nil
+		return nil, nil
 	}
 	p.advance()
 	list := p.parseColumnList()
-	p.expect(')')
-	return list
+	if list == nil {
+		return nil, p.syntaxErrorAtCur()
+	}
+	if _, err := p.expect(')'); err != nil {
+		return nil, err
+	}
+	return list, nil
 }
 
 // parseColumnList parses a comma-separated list of column names.
@@ -1196,14 +1201,14 @@ func (p *Parser) parseKeyActionType(setCols **nodes.List) byte {
 		if p.cur.Type == NULL_P {
 			p.advance()
 			if setCols != nil {
-				*setCols = p.parseOptColumnList()
+				*setCols, _ = p.parseOptColumnList()
 			}
 			return 'n'
 		}
 		// SET DEFAULT
 		p.expect(DEFAULT)
 		if setCols != nil {
-			*setCols = p.parseOptColumnList()
+			*setCols, _ = p.parseOptColumnList()
 		}
 		return 'd'
 	default:

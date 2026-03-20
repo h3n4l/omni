@@ -19,7 +19,7 @@ func (p *Parser) parseCopyStmt() (nodes.Node, error) {
 	}
 	optBin := p.parseCopyOptBinary()
 	rel, _ := p.parseRelationExpr()
-	attlist := p.parseOptColumnList()
+	attlist, _ := p.parseOptColumnList()
 	isFrom := p.parseCopyFrom()
 	isProgram := p.parseCopyOptProgram()
 	filename := p.parseCopyFileName()

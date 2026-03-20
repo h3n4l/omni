@@ -55,7 +55,7 @@ func (p *Parser) parseViewStmt(replace bool) (*nodes.ViewStmt, error) {
 		}
 	} else {
 		// opt_column_list
-		aliases = p.parseOptColumnList()
+		aliases, _ = p.parseOptColumnList()
 	}
 
 	// opt_reloptions
@@ -230,7 +230,7 @@ func (p *Parser) parseCreateAsTarget() (*nodes.IntoClause, error) {
 	}
 	rv := makeRangeVarFromAnyName(names)
 
-	colNames := p.parseOptColumnList()
+	colNames, _ := p.parseOptColumnList()
 	accessMethod := p.parseOptAccessMethod()
 	options := p.parseOptWith()
 	onCommit := p.parseOnCommitOption()
@@ -311,7 +311,7 @@ func (p *Parser) parseCreateMvTarget() (*nodes.IntoClause, error) {
 	}
 	rv := makeRangeVarFromAnyName(names)
 
-	colNames := p.parseOptColumnList()
+	colNames, _ := p.parseOptColumnList()
 	accessMethod := p.parseOptAccessMethod()
 	options := p.parseOptReloptions()
 	tableSpace := p.parseOptTableSpace()

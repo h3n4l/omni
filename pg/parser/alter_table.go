@@ -68,7 +68,7 @@ func (p *Parser) parseAlterTable() (nodes.Node, error) {
 
 	// Check for RENAME (produces RenameStmt, not AlterTableStmt)
 	if p.cur.Type == RENAME {
-		return p.parseAlterTableRename(rel, missingOk), nil
+		return p.parseAlterTableRename(rel, missingOk)
 	}
 
 	// Check for SET SCHEMA (produces AlterObjectSchemaStmt)
@@ -426,7 +426,7 @@ func (p *Parser) parseAlterForeignTable() (nodes.Node, error) {
 
 	// Check for RENAME
 	if p.cur.Type == RENAME {
-		return p.parseAlterTableRename(rel, missingOk), nil
+		return p.parseAlterTableRename(rel, missingOk)
 	}
 
 	// Check for SET SCHEMA (produces AlterObjectSchemaStmt)
@@ -490,7 +490,7 @@ func (p *Parser) parseAlterTableMoveAll(objType int) *nodes.AlterTableMoveAllStm
 }
 
 // parseAlterTableRename parses ALTER TABLE ... RENAME ...
-func (p *Parser) parseAlterTableRename(rel *nodes.RangeVar, missingOk bool) *nodes.RenameStmt {
+func (p *Parser) parseAlterTableRename(rel *nodes.RangeVar, missingOk bool) (*nodes.RenameStmt, error) {
 	p.advance() // consume RENAME
 
 	switch p.cur.Type {
@@ -503,12 +503,20 @@ func (p *Parser) parseAlterTableRename(rel *nodes.RangeVar, missingOk bool) *nod
 			Relation:   rel,
 			Newname:    newname,
 			MissingOk:  missingOk,
-		}
+		}, nil
 	case COLUMN:
 		// RENAME COLUMN colname TO newname
 		p.advance() // consume COLUMN
-		oldname, _ := p.parseColId()
-		p.expect(TO)
+		oldname, err := p.parseColId()
+		if err != nil {
+			return nil, err
+		}
+		if oldname == "" {
+			return nil, p.syntaxErrorAtCur()
+		}
+		if _, err := p.expect(TO); err != nil {
+			return nil, err
+		}
 		newname, _ := p.parseName()
 		return &nodes.RenameStmt{
 			RenameType:   nodes.OBJECT_COLUMN,
@@ -517,7 +525,7 @@ func (p *Parser) parseAlterTableRename(rel *nodes.RangeVar, missingOk bool) *nod
 			Subname:      oldname,
 			Newname:      newname,
 			MissingOk:    missingOk,
-		}
+		}, nil
 	case CONSTRAINT:
 		// RENAME CONSTRAINT oldname TO newname
 		p.advance() // consume CONSTRAINT
@@ -531,7 +539,7 @@ func (p *Parser) parseAlterTableRename(rel *nodes.RangeVar, missingOk bool) *nod
 			Subname:      oldname,
 			Newname:      newname,
 			MissingOk:    missingOk,
-		}
+		}, nil
 	default:
 		// RENAME colname TO newname (implicit column rename, no COLUMN keyword)
 		oldname, _ := p.parseColId()
@@ -544,7 +552,7 @@ func (p *Parser) parseAlterTableRename(rel *nodes.RangeVar, missingOk bool) *nod
 			Subname:      oldname,
 			Newname:      newname,
 			MissingOk:    missingOk,
-		}
+		}, nil
 	}
 }
 
@@ -596,7 +604,7 @@ func (p *Parser) parseAlterTableCmd() (*nodes.AlterTableCmd, error) {
 	case VALIDATE:
 		return p.parseAlterTableValidate(), nil
 	case INHERIT:
-		return p.parseAlterTableInherit(), nil
+		return p.parseAlterTableInherit()
 	case NO:
 		return p.parseAlterTableNo(), nil
 	case ATTACH:
@@ -618,7 +626,7 @@ func (p *Parser) parseAlterTableCmd() (*nodes.AlterTableCmd, error) {
 	case REPLICA:
 		return p.parseAlterTableReplica(), nil
 	case OF:
-		return p.parseAlterTableOf(), nil
+		return p.parseAlterTableOf()
 	case NOT:
 		return p.parseAlterTableNot(), nil
 	case OPTIONS:
@@ -1043,6 +1051,9 @@ func (p *Parser) parseAlterColumnTypeInner(colname string) (*nodes.AlterTableCmd
 	if err != nil {
 		return nil, err
 	}
+	if tn == nil {
+		return nil, p.syntaxErrorAtCur()
+	}
 	coldef := &nodes.ColumnDef{TypeName: tn}
 
 	// opt_collate_clause
@@ -1121,14 +1132,20 @@ func (p *Parser) parseAlterTableValidate() *nodes.AlterTableCmd {
 }
 
 // parseAlterTableInherit handles INHERIT qualified_name.
-func (p *Parser) parseAlterTableInherit() *nodes.AlterTableCmd {
+func (p *Parser) parseAlterTableInherit() (*nodes.AlterTableCmd, error) {
 	p.advance() // consume INHERIT
-	names, _ := p.parseQualifiedName()
+	names, err := p.parseQualifiedName()
+	if err != nil {
+		return nil, err
+	}
+	if names == nil {
+		return nil, p.syntaxErrorAtCur()
+	}
 	rv := makeRangeVarFromAnyName(names)
 	return &nodes.AlterTableCmd{
 		Subtype: int(nodes.AT_AddInherit),
 		Def:     rv,
-	}
+	}, nil
 }
 
 // parseAlterTableNo handles NO INHERIT and NO FORCE ROW LEVEL SECURITY.
@@ -1440,14 +1457,20 @@ func (p *Parser) parseAlterTableReplica() *nodes.AlterTableCmd {
 }
 
 // parseAlterTableOf handles OF any_name.
-func (p *Parser) parseAlterTableOf() *nodes.AlterTableCmd {
+func (p *Parser) parseAlterTableOf() (*nodes.AlterTableCmd, error) {
 	p.advance() // consume OF
-	names, _ := p.parseAnyName()
+	names, err := p.parseAnyName()
+	if err != nil {
+		return nil, err
+	}
+	if names == nil {
+		return nil, p.syntaxErrorAtCur()
+	}
 	tn := makeTypeNameFromNameList(names)
 	return &nodes.AlterTableCmd{
 		Subtype: int(nodes.AT_AddOf),
 		Def:     tn,
-	}
+	}, nil
 }
 
 // parseAlterTableNot handles NOT OF.

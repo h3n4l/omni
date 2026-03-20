@@ -187,7 +187,7 @@ func (p *Parser) parsePublicationObjSpec() *nodes.PublicationObjSpec {
 	if p.cur.Type == TABLE {
 		p.advance() // consume TABLE
 		rel, _ := p.parseRelationExpr()
-		cols := p.parseOptColumnList()
+		cols, _ := p.parseOptColumnList()
 		where := p.parseOptWhereClausePub()
 		pt := &nodes.PublicationTable{
 			Relation: rel,
@@ -232,7 +232,7 @@ func (p *Parser) parsePublicationObjSpec() *nodes.PublicationObjSpec {
 
 	// CONTINUATION: relation_expr opt_column_list OptWhereClause
 	rel, _ := p.parseRelationExpr()
-	cols := p.parseOptColumnList()
+	cols, _ := p.parseOptColumnList()
 	where := p.parseOptWhereClausePub()
 	pt := &nodes.PublicationTable{
 		Relation: rel,

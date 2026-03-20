@@ -142,7 +142,7 @@ func (p *Parser) parseVacuumRelation() *nodes.VacuumRelation {
 		return nil
 	}
 	rv := makeRangeVarFromNames(names)
-	cols := p.parseOptColumnList()
+	cols, _ := p.parseOptColumnList()
 	return &nodes.VacuumRelation{
 		Relation: rv,
 		VaCols:   cols,
