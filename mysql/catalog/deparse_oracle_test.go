@@ -193,3 +193,97 @@ func TestDeparse_Section_3_2_Oracle(t *testing.T) {
 		})
 	}
 }
+
+// extractSelectBody extracts the SELECT body from SHOW CREATE VIEW output.
+// MySQL 8.0 format:
+//
+//	CREATE ALGORITHM=... VIEW `test`.`v` AS select ...
+//
+// Our catalog format:
+//
+//	CREATE ALGORITHM=... VIEW `v` AS select ...
+//
+// We extract everything after " AS " (the first occurrence after VIEW).
+func extractSelectBody(showCreate string) string {
+	// Find "VIEW " to locate the view name portion, then find " AS " after that.
+	viewIdx := strings.Index(showCreate, "VIEW ")
+	if viewIdx < 0 {
+		return showCreate
+	}
+	rest := showCreate[viewIdx:]
+	asIdx := strings.Index(rest, " AS ")
+	if asIdx < 0 {
+		return showCreate
+	}
+	return rest[asIdx+len(" AS "):]
+}
+
+// TestDeparse_Section_7_2_SimpleViews verifies that our catalog's SHOW CREATE VIEW
+// output matches MySQL 8.0's output for simple view definitions.
+// For each view, we compare the SELECT body portion (after "AS ").
+func TestDeparse_Section_7_2_SimpleViews(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	// Setup: create base table on MySQL 8.0
+	if err := oracle.execSQLDirect("CREATE TABLE IF NOT EXISTS t (a INT, b INT, c INT)"); err != nil {
+		t.Fatalf("failed to create table on MySQL: %v", err)
+	}
+
+	cases := []struct {
+		name     string
+		createAs string // the SELECT portion after CREATE VIEW v AS
+	}{
+		{"select_constant", "SELECT 1"},
+		{"select_column", "SELECT a FROM t"},
+		{"select_alias", "SELECT a AS col1 FROM t"},
+		{"select_multi_columns", "SELECT a, b FROM t"},
+		{"select_where", "SELECT a FROM t WHERE a > 0"},
+		{"select_orderby_limit", "SELECT a FROM t ORDER BY a LIMIT 10"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			viewName := "v_" + tc.name
+
+			// --- MySQL 8.0 side ---
+			oracle.execSQLDirect("DROP VIEW IF EXISTS " + viewName)
+			createSQL := fmt.Sprintf("CREATE VIEW %s AS %s", viewName, tc.createAs)
+			if err := oracle.execSQLDirect(createSQL); err != nil {
+				t.Fatalf("CREATE VIEW on MySQL failed: %v", err)
+			}
+			mysqlOutput, err := oracle.showCreateView(viewName)
+			if err != nil {
+				t.Fatalf("SHOW CREATE VIEW on MySQL failed: %v", err)
+			}
+			mysqlBody := extractSelectBody(mysqlOutput)
+
+			// --- Our catalog side ---
+			cat := New()
+			cat.Exec("CREATE DATABASE test", nil)
+			cat.SetCurrentDatabase("test")
+			cat.Exec("CREATE TABLE t (a INT, b INT, c INT)", nil)
+			results, _ := cat.Exec(fmt.Sprintf("CREATE VIEW %s AS %s", viewName, tc.createAs), nil)
+			if results[0].Error != nil {
+				t.Fatalf("CREATE VIEW on catalog failed: %v", results[0].Error)
+			}
+			omniOutput := cat.ShowCreateView("test", viewName)
+			if omniOutput == "" {
+				t.Fatal("ShowCreateView returned empty")
+			}
+			omniBody := extractSelectBody(omniOutput)
+
+			t.Logf("MySQL full:  %s", mysqlOutput)
+			t.Logf("Omni full:   %s", omniOutput)
+			t.Logf("MySQL body:  %s", mysqlBody)
+			t.Logf("Omni body:   %s", omniBody)
+
+			if mysqlBody != omniBody {
+				t.Errorf("SELECT body mismatch:\n--- mysql ---\n%s\n--- omni ---\n%s", mysqlBody, omniBody)
+			}
+		})
+	}
+}

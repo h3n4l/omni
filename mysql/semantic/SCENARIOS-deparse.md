@@ -440,12 +440,12 @@ Depends on all previous phases. End-to-end oracle testing against MySQL 8.0.
 ### 7.2 Simple Views (oracle match)
 
 ```
-[ ] SELECT constant: `CREATE VIEW v AS SELECT 1`
-[ ] SELECT column: `CREATE VIEW v AS SELECT a FROM t`
-[ ] SELECT with alias: `CREATE VIEW v AS SELECT a AS col1 FROM t`
-[ ] SELECT multiple columns: `CREATE VIEW v AS SELECT a, b FROM t`
-[ ] SELECT with WHERE: `CREATE VIEW v AS SELECT a FROM t WHERE a > 0`
-[ ] SELECT with ORDER BY and LIMIT: `SELECT a FROM t ORDER BY a LIMIT 10`
+[x] SELECT constant: `CREATE VIEW v AS SELECT 1`
+[x] SELECT column: `CREATE VIEW v AS SELECT a FROM t`
+[x] SELECT with alias: `CREATE VIEW v AS SELECT a AS col1 FROM t`
+[x] SELECT multiple columns: `CREATE VIEW v AS SELECT a, b FROM t`
+[x] SELECT with WHERE: `CREATE VIEW v AS SELECT a FROM t WHERE a > 0`
+[x] SELECT with ORDER BY and LIMIT: `SELECT a FROM t ORDER BY a LIMIT 10`
 ```
 
 ### 7.3 Expression Views (oracle match)
