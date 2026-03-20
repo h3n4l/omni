@@ -397,14 +397,14 @@ Depends on Phase 4-5. Requires Catalog access.
 ### 6.3 Auto-Alias Generation
 
 ```
-[ ] Column ref: `SELECT a FROM t` → `` `a` AS `a` `` — alias = column name
-[ ] Qualified column: `SELECT t.a FROM t` → alias = unqualified name `a`
-[ ] Expression: auto-alias from original expression text
-[ ] Literal: `SELECT 1` → `` 1 AS `1` ``
-[ ] String literal: `SELECT 'hello'` → `` 'hello' AS `hello` ``
-[ ] NULL: `SELECT NULL` → `` NULL AS `NULL` ``
-[ ] Complex expression: long expressions get `Name_exp_N` auto-alias
-[ ] Explicit alias preserved: `SELECT a AS x` → AS `x` not overwritten
+[x] Column ref: `SELECT a FROM t` → `` `a` AS `a` `` — alias = column name
+[x] Qualified column: `SELECT t.a FROM t` → alias = unqualified name `a`
+[x] Expression: auto-alias from original expression text
+[x] Literal: `SELECT 1` → `` 1 AS `1` ``
+[x] String literal: `SELECT 'hello'` → `` 'hello' AS `hello` ``
+[x] NULL: `SELECT NULL` → `` NULL AS `NULL` ``
+[x] Complex expression: long expressions get `Name_exp_N` auto-alias
+[x] Explicit alias preserved: `SELECT a AS x` → AS `x` not overwritten
 ```
 
 ### 6.4 JOIN Normalization (Schema-Aware)

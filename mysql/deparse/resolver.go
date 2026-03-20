@@ -171,10 +171,19 @@ func (r *Resolver) resolveTarget(target ast.ExprNode, sc *scope, position int) [
 		return r.expandStar(sc)
 	}
 
+	// Compute auto-alias from the pre-resolution expression when no explicit alias.
+	// MySQL 8.0 uses the original (unqualified) expression text for auto-aliases,
+	// so we must derive it before column qualification changes the expression.
+	if explicitAlias == "" {
+		exprStr := deparseExpr(expr)
+		explicitAlias = autoAlias(expr, exprStr, position)
+	}
+
 	// Resolve the expression
 	resolved := r.resolveExpr(expr, sc)
 	if isRT {
 		rt.Val = resolved
+		rt.Name = explicitAlias
 		return []ast.ExprNode{rt}
 	}
 	return []ast.ExprNode{&ast.ResTarget{Name: explicitAlias, Val: resolved}}

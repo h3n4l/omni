@@ -256,5 +256,66 @@ func TestResolver_Section_6_2_SelectStarExpansion(t *testing.T) {
 	}
 }
 
+func TestResolver_Section_6_3_AutoAliasGeneration(t *testing.T) {
+	cat := setupCatalog(t)
+
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			"column_ref",
+			"SELECT a FROM t",
+			"select `t`.`a` AS `a` from `t`",
+		},
+		{
+			"qualified_column",
+			"SELECT t.a FROM t",
+			"select `t`.`a` AS `a` from `t`",
+		},
+		{
+			"expression_auto_alias",
+			"SELECT a + b FROM t",
+			"select (`t`.`a` + `t`.`b`) AS `a + b` from `t`",
+		},
+		{
+			"literal_int",
+			"SELECT 1",
+			"select 1 AS `1`",
+		},
+		{
+			"literal_string",
+			"SELECT 'hello'",
+			"select 'hello' AS `hello`",
+		},
+		{
+			"literal_null",
+			"SELECT NULL",
+			"select NULL AS `NULL`",
+		},
+		{
+			"complex_expression_name_exp",
+			// Expression alias > 64 chars triggers Name_exp_N pattern
+			"SELECT CONCAT(CONCAT(CONCAT(CONCAT(CONCAT(CONCAT(CONCAT(a, b), c), a), b), c), a), b) FROM t",
+			"select concat(concat(concat(concat(concat(concat(concat(`t`.`a`,`t`.`b`),`t`.`c`),`t`.`a`),`t`.`b`),`t`.`c`),`t`.`a`),`t`.`b`) AS `Name_exp_1` from `t`",
+		},
+		{
+			"explicit_alias_preserved",
+			"SELECT a AS x FROM t",
+			"select `t`.`a` AS `x` from `t`",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := resolveAndDeparse(t, cat, tc.input)
+			if got != tc.expected {
+				t.Errorf("resolveAndDeparse(%q) =\n  %q\nwant:\n  %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
 // Ensure the Resolver handles an unused import gracefully.
 var _ = strings.ToLower
