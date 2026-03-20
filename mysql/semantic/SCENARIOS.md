@@ -570,13 +570,13 @@ Every error must match MySQL's errno, SQLSTATE, and message format.
 ### 5.3 User/Role Management
 
 ```
-[ ] CREATE USER 'user'@'host'
-[ ] DROP USER
-[ ] ALTER USER
-[ ] CREATE ROLE
-[ ] DROP ROLE
-[ ] GRANT privileges
-[ ] REVOKE privileges
+[~] CREATE USER 'user'@'host' — parsed and accepted (no-op); catalog does not store users
+[~] DROP USER — parsed and accepted (no-op); catalog does not store users
+[~] ALTER USER — parsed and accepted (no-op); catalog does not store users
+[~] CREATE ROLE — parsed and accepted (no-op); catalog does not store roles
+[~] DROP ROLE — parsed and accepted (no-op); catalog does not store roles
+[~] GRANT privileges — parsed and accepted (no-op); catalog does not track privileges
+[~] REVOKE privileges — parsed and accepted (no-op); catalog does not track privileges
 ```
 
 ---

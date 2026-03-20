@@ -5899,3 +5899,102 @@ func TestOracle_Section_5_2_SetVariables(t *testing.T) {
 		}
 	})
 }
+
+// TestOracle_Section_5_3_UserRoleManagement verifies that user/role management
+// statements are accepted by both MySQL and omni without error.
+// These are marked [~] partial because the in-memory catalog does not actually
+// store users, roles, or privileges — it just silently accepts them.
+func TestOracle_Section_5_3_UserRoleManagement(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	cases := []struct {
+		name    string
+		setup   string // SQL to run before the main statement (on oracle only)
+		sql     string // main statement to test
+		cleanup string // SQL to run after the test (on oracle only)
+	}{
+		{
+			"create_user",
+			"",
+			"CREATE USER 'testuser53'@'localhost' IDENTIFIED BY 'Password123!'",
+			"DROP USER IF EXISTS 'testuser53'@'localhost'",
+		},
+		{
+			"drop_user",
+			"CREATE USER IF NOT EXISTS 'dropme53'@'localhost' IDENTIFIED BY 'Password123!'",
+			"DROP USER 'dropme53'@'localhost'",
+			"",
+		},
+		{
+			"alter_user",
+			"CREATE USER IF NOT EXISTS 'alterme53'@'localhost' IDENTIFIED BY 'Password123!'",
+			"ALTER USER 'alterme53'@'localhost' IDENTIFIED BY 'NewPassword456!'",
+			"DROP USER IF EXISTS 'alterme53'@'localhost'",
+		},
+		{
+			"create_role",
+			"",
+			"CREATE ROLE 'app_role53'",
+			"DROP ROLE IF EXISTS 'app_role53'",
+		},
+		{
+			"drop_role",
+			"CREATE ROLE IF NOT EXISTS 'droprole53'",
+			"DROP ROLE 'droprole53'",
+			"",
+		},
+		{
+			"grant_privileges",
+			"CREATE USER IF NOT EXISTS 'grantee53'@'localhost' IDENTIFIED BY 'Password123!'",
+			"GRANT SELECT, INSERT ON test.* TO 'grantee53'@'localhost'",
+			"DROP USER IF EXISTS 'grantee53'@'localhost'",
+		},
+		{
+			"revoke_privileges",
+			"CREATE USER IF NOT EXISTS 'revokee53'@'localhost' IDENTIFIED BY 'Password123!'; GRANT SELECT ON test.* TO 'revokee53'@'localhost'",
+			"REVOKE SELECT ON test.* FROM 'revokee53'@'localhost'",
+			"DROP USER IF EXISTS 'revokee53'@'localhost'",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup on oracle
+			if tc.setup != "" {
+				if err := oracle.execSQL(tc.setup); err != nil {
+					t.Fatalf("oracle setup: %v", err)
+				}
+			}
+
+			// Run on oracle — must succeed
+			oracleErr := oracle.execSQL(tc.sql)
+			if oracleErr != nil {
+				t.Fatalf("oracle exec: %v", oracleErr)
+			}
+
+			// Cleanup on oracle
+			if tc.cleanup != "" {
+				_ = oracle.execSQL(tc.cleanup)
+			}
+
+			// Run on omni — must parse and not return a parse error.
+			// The catalog silently accepts these (no-op) since it doesn't
+			// track users/roles/privileges, which is expected behavior
+			// for an in-memory DDL catalog.
+			c := New()
+			c.Exec("CREATE DATABASE test", nil)
+			c.SetCurrentDatabase("test")
+			results, err := c.Exec(tc.sql, nil)
+			if err != nil {
+				t.Fatalf("omni parse error: %v", err)
+			}
+			if len(results) > 0 && results[0].Error != nil {
+				t.Fatalf("omni exec error: %v", results[0].Error)
+			}
+		})
+	}
+}
