@@ -254,7 +254,7 @@ func (p *Parser) parseStmt() nodes.StmtNode {
 			if p.cur.Type == kwKEY {
 				p.advance() // consume KEY
 			}
-			stmt := p.parseBackupServiceMasterKeyStmt()
+			stmt, _ := p.parseBackupServiceMasterKeyStmt()
 			stmt.Loc.Start = loc
 			return stmt
 		}
@@ -264,7 +264,8 @@ func (p *Parser) parseStmt() nodes.StmtNode {
 			stmt, _ := p.parseBackupCertificateStmt()
 			return stmt
 		}
-		return p.parseBackupStmt()
+		stmt, _ := p.parseBackupStmt()
+		return stmt
 	case kwRESTORE:
 		// Check for RESTORE MASTER KEY / RESTORE SYMMETRIC KEY / RESTORE SERVICE MASTER KEY
 		next := p.peekNext()
@@ -286,11 +287,12 @@ func (p *Parser) parseStmt() nodes.StmtNode {
 			if p.cur.Type == kwKEY {
 				p.advance() // consume KEY
 			}
-			stmt := p.parseRestoreServiceMasterKeyStmt()
+			stmt, _ := p.parseRestoreServiceMasterKeyStmt()
 			stmt.Loc.Start = loc
 			return stmt
 		}
-		return p.parseRestoreStmt()
+		stmt, _ := p.parseRestoreStmt()
+		return stmt
 	case kwCHECKPOINT:
 		stmt, _ := p.parseCheckpointStmt()
 		return stmt
@@ -875,7 +877,7 @@ func (p *Parser) parseCreateStmt() nodes.StmtNode {
 			}
 			if p.cur.Type == kwROLE || (p.isIdentLike() && matchesKeywordCI(p.cur.Str, "ROLE")) {
 				p.advance() // consume ROLE
-				stmt := p.parseCreateServerRoleStmt()
+				stmt, _ := p.parseCreateServerRoleStmt()
 				stmt.Loc.Start = loc
 				return stmt
 			}
@@ -1275,14 +1277,14 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 			if next.Type == kwROLE || (next.Str != "" && matchesKeywordCI(next.Str, "ROLE")) {
 				p.advance() // consume SERVER
 				p.advance() // consume ROLE
-				stmt := p.parseAlterServerRoleStmt()
+				stmt, _ := p.parseAlterServerRoleStmt()
 				stmt.Loc.Start = loc
 				return stmt
 			}
 			if next.Str != "" && matchesKeywordCI(next.Str, "CONFIGURATION") {
 				p.advance() // consume SERVER
 				p.advance() // consume CONFIGURATION
-				stmt := p.parseAlterServerConfigurationStmt()
+				stmt, _ := p.parseAlterServerConfigurationStmt()
 				stmt.Loc.Start = loc
 				return stmt
 			}
@@ -1312,7 +1314,7 @@ func (p *Parser) parseAlterStmt() nodes.StmtNode {
 				if p.cur.Type == kwKEY {
 					p.advance() // consume KEY
 				}
-				stmt := p.parseAlterServiceMasterKeyStmt()
+				stmt, _ := p.parseAlterServiceMasterKeyStmt()
 				stmt.Loc.Start = loc
 				return stmt
 			}
@@ -1616,7 +1618,7 @@ func (p *Parser) parseDropOrSecurityStmt() nodes.StmtNode {
 			}
 			if p.cur.Type == kwROLE || (p.isIdentLike() && matchesKeywordCI(p.cur.Str, "ROLE")) {
 				p.advance() // consume ROLE
-				stmt := p.parseDropServerRoleStmt()
+				stmt, _ := p.parseDropServerRoleStmt()
 				stmt.Loc.Start = loc
 				return stmt
 			}

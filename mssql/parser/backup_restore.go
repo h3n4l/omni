@@ -82,7 +82,7 @@ import (
 //	backupEncryptor:
 //	    dekEncryptorType EqualsSign identifier
 //	    ;
-func (p *Parser) parseBackupStmt() *nodes.BackupStmt {
+func (p *Parser) parseBackupStmt() (*nodes.BackupStmt, error) {
 	loc := p.pos()
 	p.advance() // consume BACKUP
 
@@ -114,13 +114,13 @@ func (p *Parser) parseBackupStmt() *nodes.BackupStmt {
 
 	// backupFileListOpt: FILE = ..., FILEGROUP = ..., READ_WRITE_FILEGROUPS (only for DATABASE)
 	if stmt.Type == "DATABASE" {
-		stmt.FileSpecs = p.parseBackupRestoreFileList()
+		stmt.FileSpecs, _ = p.parseBackupRestoreFileList()
 	}
 
 	// TO devList [ MIRROR TO devList ]*
 	if p.cur.Type == kwTO {
 		p.advance() // consume TO
-		stmt.Devices = p.parseDeviceList()
+		stmt.Devices, _ = p.parseDeviceList()
 		// Extract first device path for backward compat Target field
 		if stmt.Devices != nil && len(stmt.Devices.Items) > 0 {
 			if s, ok := stmt.Devices.Items[0].(*nodes.String); ok {
@@ -136,7 +136,7 @@ func (p *Parser) parseBackupStmt() *nodes.BackupStmt {
 			if p.cur.Type == kwTO {
 				p.advance() // consume TO
 			}
-			mirrorDevs := p.parseDeviceList()
+			mirrorDevs, _ := p.parseDeviceList()
 			if stmt.MirrorDevice == "" && mirrorDevs != nil && len(mirrorDevs.Items) > 0 {
 				if s, ok := mirrorDevs.Items[0].(*nodes.String); ok {
 					stmt.MirrorDevice = extractDevicePath(s.Str)
@@ -148,11 +148,11 @@ func (p *Parser) parseBackupStmt() *nodes.BackupStmt {
 	// WITH options — structured parsing
 	if p.cur.Type == kwWITH {
 		p.advance() // consume WITH
-		stmt.Options = p.parseBackupRestoreOptions()
+		stmt.Options, _ = p.parseBackupRestoreOptions()
 	}
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseRestoreStmt parses a RESTORE DATABASE / LOG / HEADERONLY / FILELISTONLY statement.
@@ -214,7 +214,7 @@ func (p *Parser) parseBackupStmt() *nodes.BackupStmt {
 //	    ;
 //
 //	-- Also: RESTORE DATABASE db FROM DATABASE_SNAPSHOT = snapshot_name
-func (p *Parser) parseRestoreStmt() *nodes.RestoreStmt {
+func (p *Parser) parseRestoreStmt() (*nodes.RestoreStmt, error) {
 	loc := p.pos()
 	p.advance() // consume RESTORE
 
@@ -267,7 +267,7 @@ func (p *Parser) parseRestoreStmt() *nodes.RestoreStmt {
 
 	// File/filegroup list for DATABASE/LOG restores
 	if stmt.Type == "DATABASE" || stmt.Type == "LOG" {
-		stmt.FileSpecs = p.parseBackupRestoreFileList()
+		stmt.FileSpecs, _ = p.parseBackupRestoreFileList()
 	}
 
 	// FROM clause
@@ -285,7 +285,7 @@ func (p *Parser) parseRestoreStmt() *nodes.RestoreStmt {
 			}
 		} else {
 			// devList: deviceInfo [ , deviceInfo ]*
-			stmt.Devices = p.parseDeviceList()
+			stmt.Devices, _ = p.parseDeviceList()
 			if stmt.Devices != nil && len(stmt.Devices.Items) > 0 {
 				if s, ok := stmt.Devices.Items[0].(*nodes.String); ok {
 					stmt.Source = extractDevicePath(s.Str)
@@ -297,11 +297,11 @@ func (p *Parser) parseRestoreStmt() *nodes.RestoreStmt {
 	// WITH options — structured parsing
 	if p.cur.Type == kwWITH {
 		p.advance() // consume WITH
-		stmt.Options = p.parseBackupRestoreOptions()
+		stmt.Options, _ = p.parseBackupRestoreOptions()
 	}
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseBackupRestoreFileList parses the optional file/filegroup list.
@@ -311,7 +311,7 @@ func (p *Parser) parseRestoreStmt() *nodes.RestoreStmt {
 //	    | Identifier /* FILEGROUP | PAGE */ = ( stringOrVariable | backupRestoreFileNameList )
 //	    | Identifier /* READ_WRITE_FILEGROUPS */
 //	    ;
-func (p *Parser) parseBackupRestoreFileList() *nodes.List {
+func (p *Parser) parseBackupRestoreFileList() (*nodes.List, error) {
 	var specs []nodes.Node
 
 	for {
@@ -363,9 +363,9 @@ func (p *Parser) parseBackupRestoreFileList() *nodes.List {
 	}
 
 	if len(specs) == 0 {
-		return nil
+		return nil, nil
 	}
-	return &nodes.List{Items: specs}
+	return &nodes.List{Items: specs}, nil
 }
 
 // parseFileSpecValue parses the value after FILE= / FILEGROUP= / PAGE=.
@@ -417,7 +417,7 @@ func (p *Parser) parseFileSpecValue() string {
 //	deviceInfo:
 //	    identifierOrVariable
 //	    | Identifier /* DISK | TAPE | URL | VIRTUAL_DEVICE */ EqualsSign stringOrVariable
-func (p *Parser) parseDeviceList() *nodes.List {
+func (p *Parser) parseDeviceList() (*nodes.List, error) {
 	var devs []nodes.Node
 
 	for {
@@ -435,9 +435,9 @@ func (p *Parser) parseDeviceList() *nodes.List {
 	}
 
 	if len(devs) == 0 {
-		return nil
+		return nil, nil
 	}
-	return &nodes.List{Items: devs}
+	return &nodes.List{Items: devs}, nil
 }
 
 // parseOneDevice parses a single device entry.
@@ -531,7 +531,7 @@ func extractDevicePath(dev string) string {
 //	  | ENCRYPTION ( ALGORITHM = alg, SERVER { CERTIFICATE | ASYMMETRIC KEY } = name )
 //	  | MOVE 'logical_file_name' TO 'os_file_name'
 //	  | FILESTREAM ( DIRECTORY_NAME = directory_name )
-func (p *Parser) parseBackupRestoreOptions() *nodes.List {
+func (p *Parser) parseBackupRestoreOptions() (*nodes.List, error) {
 	var opts []nodes.Node
 
 	for {
@@ -539,7 +539,7 @@ func (p *Parser) parseBackupRestoreOptions() *nodes.List {
 			break
 		}
 
-		opt := p.parseOneBackupRestoreOption()
+		opt, _ := p.parseOneBackupRestoreOption()
 		if opt != nil {
 			opts = append(opts, opt)
 		}
@@ -552,9 +552,9 @@ func (p *Parser) parseBackupRestoreOptions() *nodes.List {
 	}
 
 	if len(opts) == 0 {
-		return nil
+		return nil, nil
 	}
-	return &nodes.List{Items: opts}
+	return &nodes.List{Items: opts}, nil
 }
 
 // backupRestoreFlagOptions lists option names that take no value (bare flags).
@@ -592,9 +592,9 @@ var backupRestoreKVOptions = map[string]bool{
 }
 
 // parseOneBackupRestoreOption parses a single BACKUP/RESTORE WITH option.
-func (p *Parser) parseOneBackupRestoreOption() *nodes.BackupRestoreOption {
+func (p *Parser) parseOneBackupRestoreOption() (*nodes.BackupRestoreOption, error) {
 	if !p.isIdentLike() {
-		return nil
+		return nil, nil
 	}
 
 	optLoc := p.pos()
@@ -602,17 +602,20 @@ func (p *Parser) parseOneBackupRestoreOption() *nodes.BackupRestoreOption {
 
 	// ENCRYPTION ( ALGORITHM = ..., SERVER CERTIFICATE|ASYMMETRIC KEY = ... )
 	if name == "ENCRYPTION" {
-		return p.parseBackupEncryptionOption()
+		opt, err := p.parseBackupEncryptionOption()
+		return opt, err
 	}
 
 	// MOVE 'logical' TO 'physical'
 	if name == "MOVE" {
-		return p.parseRestoreMoveOption()
+		opt, err := p.parseRestoreMoveOption()
+		return opt, err
 	}
 
 	// FILESTREAM ( DIRECTORY_NAME = directory_name )
 	if name == "FILESTREAM" {
-		return p.parseRestoreFilestreamOption()
+		opt, err := p.parseRestoreFilestreamOption()
+		return opt, err
 	}
 
 	// STATS [ = percentage ] — special: '=' is optional
@@ -631,7 +634,7 @@ func (p *Parser) parseOneBackupRestoreOption() *nodes.BackupRestoreOption {
 			}
 		}
 		opt.Loc.End = p.pos()
-		return opt
+		return opt, nil
 	}
 
 	// Flag options (no value)
@@ -640,7 +643,7 @@ func (p *Parser) parseOneBackupRestoreOption() *nodes.BackupRestoreOption {
 		return &nodes.BackupRestoreOption{
 			Name: name,
 			Loc:  nodes.Loc{Start: optLoc, End: p.pos()},
-		}
+		}, nil
 	}
 
 	// Key = value options
@@ -671,7 +674,7 @@ func (p *Parser) parseOneBackupRestoreOption() *nodes.BackupRestoreOption {
 			}
 		}
 		opt.Loc.End = p.pos()
-		return opt
+		return opt, nil
 	}
 
 	// Unknown option — consume name and optional = value structurally
@@ -692,14 +695,14 @@ func (p *Parser) parseOneBackupRestoreOption() *nodes.BackupRestoreOption {
 		}
 	}
 	opt.Loc.End = p.pos()
-	return opt
+	return opt, nil
 }
 
 // parseBackupEncryptionOption parses the ENCRYPTION option.
 //
 //	ENCRYPTION ( ALGORITHM = { AES_128 | AES_192 | AES_256 | TRIPLE_DES_3KEY },
 //	    SERVER CERTIFICATE = cert_name | SERVER ASYMMETRIC KEY = key_name )
-func (p *Parser) parseBackupEncryptionOption() *nodes.BackupRestoreOption {
+func (p *Parser) parseBackupEncryptionOption() (*nodes.BackupRestoreOption, error) {
 	optLoc := p.pos()
 	p.advance() // consume ENCRYPTION
 
@@ -710,7 +713,7 @@ func (p *Parser) parseBackupEncryptionOption() *nodes.BackupRestoreOption {
 
 	if p.cur.Type != '(' {
 		opt.Loc.End = p.pos()
-		return opt
+		return opt, nil
 	}
 	p.advance() // consume (
 
@@ -762,11 +765,11 @@ func (p *Parser) parseBackupEncryptionOption() *nodes.BackupRestoreOption {
 	}
 
 	opt.Loc.End = p.pos()
-	return opt
+	return opt, nil
 }
 
 // parseRestoreMoveOption parses MOVE 'logical_file_name' TO 'os_file_name'.
-func (p *Parser) parseRestoreMoveOption() *nodes.BackupRestoreOption {
+func (p *Parser) parseRestoreMoveOption() (*nodes.BackupRestoreOption, error) {
 	optLoc := p.pos()
 	p.advance() // consume MOVE
 
@@ -793,11 +796,11 @@ func (p *Parser) parseRestoreMoveOption() *nodes.BackupRestoreOption {
 	}
 
 	opt.Loc.End = p.pos()
-	return opt
+	return opt, nil
 }
 
 // parseRestoreFilestreamOption parses FILESTREAM ( DIRECTORY_NAME = directory_name ).
-func (p *Parser) parseRestoreFilestreamOption() *nodes.BackupRestoreOption {
+func (p *Parser) parseRestoreFilestreamOption() (*nodes.BackupRestoreOption, error) {
 	optLoc := p.pos()
 	p.advance() // consume FILESTREAM
 
@@ -808,7 +811,7 @@ func (p *Parser) parseRestoreFilestreamOption() *nodes.BackupRestoreOption {
 
 	if p.cur.Type != '(' {
 		opt.Loc.End = p.pos()
-		return opt
+		return opt, nil
 	}
 	p.advance() // consume (
 
@@ -831,5 +834,5 @@ func (p *Parser) parseRestoreFilestreamOption() *nodes.BackupRestoreOption {
 	}
 
 	opt.Loc.End = p.pos()
-	return opt
+	return opt, nil
 }

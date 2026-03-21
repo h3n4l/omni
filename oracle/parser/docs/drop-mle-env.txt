@@ -1,0 +1,124 @@
+# drop-mle-env
+# Source: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/drop-mle-env.html
+
+DROP MLE ENV
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+    
+    
+  
+    
+   
+      
+
+         Previous
+         Next
+          JavaScript must be enabled to correctly display this content
+        
+      
+
+      
+         
+         
+         
+DROP MLE ENV
+
+         
+
+            
+
+               
+
+                  
+Purpose
+
+                  
+Drop an exisiting environment with DROP MLE ENV.
+                  
+
+               
+
+               
+
+                  
+Prerequisites
+
+                  
+You must have the DROP ANY MLE privilege to drop an environment in schemas other than your own. No privilege is needed to drop an environment in your own schema.
+                  
+
+               
+
+               
+
+                  
+Syntax
+
+                  
+
+Description of the illustration drop_mle_env.eps
+
+               
+
+               
+
+                  
+Semantics
+
+                  
+Specify IF EXISTS to drop an existing MLE environment.
+                  
+
+                  
+Specifying IF NOT EXISTS with DROP results in ORA-11544: Incorrect IF EXISTS clause for ALTER/DROP statement.
+                  
+
+               
+
+               
+
+                  
+
+                     
+See Also:
+
+                     
+                        
+
+                           
+CREATE MLE ENV
+
+                        
+                        
+
+                           
+ALTER MLE ENV
+
+                        
+                        
+
+                           
+CREATE MLE MODULE

@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Omni Parser Dashboard</title>
+<meta name="viewport" content="width=1024">
+<style>
+:root {
+  --bg: #0a0e14; --surface: #161b22; --border: #30363d;
+  --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff;
+  --green: #3fb950; --yellow: #d29922; --red: #f85149; --blue: #58a6ff;
+  --purple: #bc8cff;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  background: var(--bg); color: var(--text);
+  height: 100vh; overflow: hidden;
+  display: flex; flex-direction: column;
+}
+
+/* Header */
+.header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 20px; border-bottom: 1px solid var(--border);
+  background: var(--surface); flex-shrink: 0;
+}
+.header-left { display: flex; align-items: center; gap: 16px; }
+.header h1 { font-size: 18px; font-weight: 600; }
+.header-progress {
+  display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted);
+}
+.header-progress-bar {
+  width: 120px; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;
+}
+.header-progress-fill {
+  height: 100%; background: var(--green); border-radius: 3px; transition: width 0.5s;
+}
+.header-right { display: flex; align-items: center; gap: 12px; }
+.timestamp { color: var(--muted); font-size: 12px; }
+
+/* Layout */
+.layout {
+  display: flex; flex: 1; overflow: hidden;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 200px; flex-shrink: 0; border-right: 1px solid var(--border);
+  background: var(--surface); display: flex; flex-direction: column;
+  padding: 12px 0;
+}
+.sidebar-title {
+  font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase;
+  letter-spacing: 0.5px; padding: 8px 16px 6px;
+}
+.engine-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; cursor: pointer; border-left: 3px solid transparent;
+  transition: background 0.15s;
+}
+.engine-item:hover { background: rgba(255,255,255,0.04); }
+.engine-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); }
+.engine-name { font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+.engine-pct { font-size: 13px; font-weight: 600; }
+.phase-dot {
+  width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0;
+}
+.phase-dot-building { background: var(--yellow); animation: pulse 2s infinite; }
+.phase-dot-auditing { background: var(--purple); animation: pulse 2s infinite; }
+.phase-dot-verifying { background: var(--blue); animation: pulse 2s infinite; }
+.phase-dot-complete { background: var(--green); }
+.phase-dot-idle { background: var(--muted); }
+
+/* Main panel */
+.main {
+  flex: 1; overflow-y: auto; padding: 20px; min-height: 0;
+}
+
+/* Activity feed */
+.activity {
+  width: 280px; flex-shrink: 0; border-left: 1px solid var(--border);
+  background: var(--surface); display: flex; flex-direction: column; overflow: hidden;
+}
+.activity-header {
+  font-size: 13px; font-weight: 600; padding: 12px 16px;
+  border-bottom: 1px solid var(--border); color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0;
+}
+.activity-list {
+  flex: 1; overflow-y: auto; padding: 8px 0;
+}
+.activity-item {
+  display: flex; gap: 10px; padding: 8px 16px; font-size: 12px;
+  animation: fadeIn 0.3s ease;
+}
+.activity-dot-wrap {
+  display: flex; flex-direction: column; align-items: center; padding-top: 2px;
+}
+.activity-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.activity-line {
+  width: 1px; flex: 1; background: var(--border); margin-top: 4px;
+}
+.activity-dot-done { background: var(--green); }
+.activity-dot-in_progress { background: var(--yellow); }
+.activity-dot-failed { background: var(--red); }
+.activity-dot-pending { background: var(--muted); }
+.activity-content { flex: 1; min-width: 0; }
+.activity-time { color: var(--muted); margin-bottom: 2px; }
+.activity-text { color: var(--text); line-height: 1.4; }
+.activity-engine {
+  display: inline-block; font-size: 10px; font-weight: 600; padding: 1px 5px;
+  border-radius: 3px; background: rgba(88,166,255,0.15); color: var(--accent);
+  text-transform: uppercase; margin-right: 4px;
+}
+.activity-empty { color: var(--muted); padding: 20px 16px; font-size: 13px; }
+
+/* Overview cards */
+.overview-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
+}
+.overview-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 20px; cursor: pointer; transition: border-color 0.15s;
+}
+.overview-card:hover { border-color: var(--accent); }
+.ov-header {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+}
+.ov-title { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.ov-phase {
+  font-size: 11px; padding: 2px 10px; border-radius: 12px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.ov-phase-building { background: rgba(210,153,34,0.2); color: var(--yellow); }
+.ov-phase-auditing { background: rgba(188,140,255,0.2); color: var(--purple); }
+.ov-phase-verifying { background: rgba(88,166,255,0.2); color: var(--blue); }
+.ov-phase-complete { background: rgba(63,185,80,0.2); color: var(--green); }
+.ov-phase-idle { background: rgba(139,148,158,0.15); color: var(--muted); }
+.ov-stats {
+  display: flex; gap: 12px; font-size: 13px; color: var(--muted); margin-bottom: 12px;
+}
+.ov-stat-val { font-weight: 600; }
+.ov-progress {
+  height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;
+  display: flex;
+}
+.ov-progress-done { background: var(--green); transition: width 0.5s; }
+.ov-progress-prog { background: var(--yellow); transition: width 0.5s; }
+.ov-progress-fail { background: var(--red); transition: width 0.5s; }
+.ov-pct {
+  text-align: right; font-size: 12px; color: var(--muted); margin-top: 6px;
+}
+.ov-mini-batches {
+  display: flex; flex-wrap: wrap; gap: 2px; margin-top: 12px;
+}
+.ov-mini-batch {
+  width: 8px; height: 8px; border-radius: 2px;
+}
+
+/* Engine detail */
+.engine-detail { max-width: 960px; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+.ed-header {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+}
+.ed-back {
+  background: none; border: 1px solid var(--border); color: var(--muted);
+  border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer;
+}
+.ed-back:hover { border-color: var(--accent); color: var(--text); }
+.ed-title { font-size: 20px; font-weight: 600; }
+.ed-stats-row {
+  display: flex; gap: 16px; margin-bottom: 16px;
+}
+.ed-stat {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 20px; text-align: center; flex: 1;
+}
+.ed-stat-num { font-size: 28px; font-weight: 700; }
+.ed-stat-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.ed-progress {
+  height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;
+  display: flex; margin-bottom: 20px;
+}
+.ed-progress-done { background: var(--green); transition: width 0.5s; }
+.ed-progress-prog { background: var(--yellow); transition: width 0.5s; }
+.ed-progress-fail { background: var(--red); transition: width 0.5s; }
+
+/* Search + filter bar */
+.toolbar {
+  display: flex; gap: 8px; margin-bottom: 16px; align-items: center;
+}
+.search-input {
+  flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px 12px; color: var(--text); font-size: 13px; outline: none;
+}
+.search-input:focus { border-color: var(--accent); }
+.search-input::placeholder { color: var(--muted); }
+.filter-btn {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  padding: 6px 12px; font-size: 12px; color: var(--muted); cursor: pointer;
+  font-weight: 500;
+}
+.filter-btn:hover { border-color: var(--accent); color: var(--text); }
+.filter-btn.active { background: rgba(88,166,255,0.1); border-color: var(--accent); color: var(--accent); }
+
+/* Tabs */
+.tabs {
+  display: flex; gap: 0; margin-bottom: 16px; border-bottom: 1px solid var(--border);
+}
+.tab {
+  padding: 8px 16px; font-size: 13px; font-weight: 500; color: var(--muted);
+  cursor: pointer; border-bottom: 2px solid transparent; transition: color 0.15s;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* Batch grid */
+.batch-section-title {
+  font-size: 14px; font-weight: 600; margin-bottom: 10px; color: var(--muted);
+}
+.batches { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.batch {
+  width: 32px; height: 32px; border-radius: 4px; display: flex; align-items: center;
+  justify-content: center; font-size: 11px; font-weight: 600; cursor: default;
+  transition: transform 0.15s, box-shadow 0.15s; position: relative;
+}
+.batch:hover { transform: scale(1.3); z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+.batch-done { background: var(--green); color: #fff; }
+.batch-in_progress { background: var(--yellow); color: #000; animation: pulse 2s infinite; }
+.batch-pending { background: var(--border); color: var(--muted); }
+.batch-failed { background: var(--red); color: #fff; }
+
+/* Tooltip (fixed below grid) */
+.batch-tooltip {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 16px; font-size: 13px; min-height: 60px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.bt-name { font-weight: 600; margin-bottom: 4px; }
+.bt-desc { color: var(--muted); margin-bottom: 4px; }
+.bt-file { color: var(--muted); font-size: 12px; }
+.bt-error { color: var(--red); margin-top: 4px; font-size: 12px; }
+.bt-placeholder { color: var(--muted); font-style: italic; }
+
+/* Scrollable tab content */
+.tab-content { flex: 1; overflow-y: auto; min-height: 0; }
+
+/* Statement list */
+.stmt-list { display: flex; flex-direction: column; gap: 2px; }
+.stmt-item {
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+  border-radius: 4px; cursor: pointer; font-size: 13px;
+  transition: background 0.1s;
+}
+.stmt-item:hover { background: rgba(255,255,255,0.04); }
+.stmt-dot {
+  width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0;
+}
+.stmt-dot-bnf_done { background: var(--green); }
+.stmt-dot-url_ok { background: var(--border); }
+.stmt-dot-bnf_failed { background: var(--red); }
+.stmt-dot-no_doc { background: rgba(88,166,255,0.5); }
+.stmt-dot-url_404 { background: rgba(248,81,73,0.4); }
+.stmt-name { flex: 1; }
+.stmt-status { font-size: 11px; color: var(--muted); }
+.stmt-expand {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px 14px; margin: 4px 0 4px 18px; font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-word;
+  max-height: 300px; overflow-y: auto;
+}
+.stmt-loading { color: var(--muted); font-style: italic; padding: 8px 18px; font-size: 12px; }
+
+/* Notification panel */
+.notify-panel {
+  position: absolute; top: 48px; right: 20px; z-index: 100;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 16px; min-width: 240px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.notify-title { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+.notify-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 0; font-size: 13px;
+}
+.notify-engine { font-weight: 500; }
+.notify-toggles { display: flex; gap: 8px; align-items: center; }
+.toggle {
+  position: relative; display: inline-block; width: 32px; height: 18px;
+}
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; cursor: pointer; inset: 0;
+  background: var(--border); border-radius: 9px; transition: 0.3s;
+}
+.toggle-slider:before {
+  content: ""; position: absolute; height: 14px; width: 14px; left: 2px; bottom: 2px;
+  background: var(--muted); border-radius: 50%; transition: 0.3s;
+}
+.toggle input:checked + .toggle-slider { background: rgba(63,185,80,0.4); }
+.toggle input:checked + .toggle-slider:before { transform: translateX(14px); background: var(--green); }
+.toggle-label { font-size: 10px; color: var(--muted); }
+.notify-hint { font-size: 11px; color: var(--muted); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+
+/* Misc */
+.color-green { color: var(--green); }
+.color-yellow { color: var(--yellow); }
+.color-red { color: var(--red); }
+.color-muted { color: var(--muted); }
+.color-accent { color: var(--accent); }
+.color-purple { color: var(--purple); }
+
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+import { h, render } from 'https://esm.sh/preact@10.25.4';
+import { useState, useEffect, useRef, useCallback } from 'https://esm.sh/preact@10.25.4/hooks';
+import htm from 'https://esm.sh/htm@3.1.1';
+
+const html = htm.bind(h);
+
+// ── State helpers ──
+
+function loadNotifyPrefs() {
+  try { return JSON.parse(localStorage.getItem('notifyEnabled') || '{}'); } catch(e) { return {}; }
+}
+
+// ── Notification ──
+
+function requestNotifyPerm() {
+  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+}
+
+function sendNotification(engine, title, body) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  new Notification(title, { body, tag: 'omni-' + engine });
+}
+
+// ── App ──
+
+function App() {
+  const [data, setData] = useState(null);
+  const [activities, setActivities] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [search, setSearch] = useState('');
+  const [batchFilter, setBatchFilter] = useState('all');
+  const [tab, setTab] = useState('batches');
+  const [hoveredBatch, setHoveredBatch] = useState(null);
+  const [expandedStmt, setExpandedStmt] = useState(null);
+  const [stmtContent, setStmtContent] = useState({});
+  const [showNotify, setShowNotify] = useState(false);
+  const [notifyPrefs, setNotifyPrefs] = useState(loadNotifyPrefs());
+  const [barkState, setBarkState] = useState({});
+  const prevPhasesRef = useRef({});
+
+  const toggleNotify = useCallback((engine) => {
+    setNotifyPrefs(p => {
+      const next = { ...p, [engine]: !p[engine] };
+      localStorage.setItem('notifyEnabled', JSON.stringify(next));
+      requestNotifyPerm();
+      return next;
+    });
+  }, []);
+
+  const toggleBark = useCallback(async (engine) => {
+    try {
+      const r = await fetch('/api/bark?engine=' + engine, { method: 'POST' });
+      const d = await r.json();
+      setBarkState(p => ({ ...p, [engine]: d.enabled }));
+    } catch(e) { console.error('bark error:', e); }
+  }, []);
+
+  // Phase transition notifications
+  const checkPhaseTransitions = useCallback((engs) => {
+    engs.forEach(e => {
+      const prev = prevPhasesRef.current[e.key];
+      const curr = e.phase;
+      if (prev && prev !== curr && notifyPrefs[e.key]) {
+        if (curr === 'complete') sendNotification(e.key, e.name + ' Complete', 'All ' + e.total + ' batches done.');
+        else if (curr === 'idle' && ['building','auditing','verifying'].indexOf(prev) >= 0)
+          sendNotification(e.key, e.name + ' Idle', e.done + '/' + e.total + ' done, ' + e.pending + ' pending.');
+      }
+      prevPhasesRef.current[e.key] = curr;
+    });
+  }, [notifyPrefs]);
+
+  useEffect(() => {
+    async function poll() {
+      try {
+        const [sr, ar] = await Promise.all([fetch('/api/status'), fetch('/api/activity')]);
+        const [sd, ad] = await Promise.all([sr.json(), ar.json()]);
+        setData(sd);
+        setActivities(ad || []);
+        checkPhaseTransitions(sd.engines || []);
+      } catch(e) { console.error(e); }
+    }
+    poll();
+    const id = setInterval(poll, 3000);
+    return () => clearInterval(id);
+  }, [checkPhaseTransitions]);
+
+  useEffect(() => {
+    fetch('/api/bark').then(r => r.json()).then(d => setBarkState(d.engines || {})).catch(() => {});
+  }, []);
+
+  if (!data) return html`<div style="padding:40px;color:var(--muted)">Loading...</div>`;
+
+  const engs = data.engines || [];
+  const totalAll = engs.reduce((s,e) => s + e.total, 0);
+  const doneAll = engs.reduce((s,e) => s + e.done, 0);
+  const pctAll = totalAll ? Math.round(doneAll * 100 / totalAll) : 0;
+
+  const selectedEngine = selected ? engs.find(e => e.key === selected) : null;
+  const selectedBnf = selected ? (data.bnf || []).find(b => b.key === selected) : null;
+
+  async function loadBnfContent(engine, slug) {
+    const key = engine + '/' + slug;
+    if (stmtContent[key]) return;
+    setStmtContent(p => ({ ...p, [key]: '...' }));
+    try {
+      const r = await fetch('/api/bnf?engine=' + encodeURIComponent(engine) + '&slug=' + encodeURIComponent(slug));
+      const d = await r.json();
+      setStmtContent(p => ({ ...p, [key]: d.error || d.content || 'Empty' }));
+    } catch(e) {
+      setStmtContent(p => ({ ...p, [key]: 'Error: ' + e.message }));
+    }
+  }
+
+  function handleStmtClick(engine, slug) {
+    const key = engine + '/' + slug;
+    if (expandedStmt === key) { setExpandedStmt(null); return; }
+    setExpandedStmt(key);
+    loadBnfContent(engine, slug);
+  }
+
+  return html`
+    <div class="header">
+      <div class="header-left">
+        <h1>Omni Parser Dashboard</h1>
+        <div class="header-progress">
+          <div class="header-progress-bar">
+            <div class="header-progress-fill" style=${{ width: pctAll + '%' }}></div>
+          </div>
+          <span>${doneAll}/${totalAll} (${pctAll}%)</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <span class="timestamp">${data.timestamp}</span>
+        <button class="ed-back" style="position:relative" onClick=${() => setShowNotify(p => !p)}>Notifications</button>
+        ${showNotify && html`<${NotifyPanel} engines=${engs} notifyPrefs=${notifyPrefs}
+          barkState=${barkState}
+          onToggleNotify=${toggleNotify} onToggleBark=${toggleBark}
+          onClose=${() => setShowNotify(false)} />`}
+      </div>
+    </div>
+    <div class="layout">
+      <div class="sidebar">
+        <div class="sidebar-title">Engines</div>
+        <div class="engine-item ${!selected ? 'active' : ''}" onClick=${() => { setSelected(null); setSearch(''); setBatchFilter('all'); setTab('batches'); }}>
+          <span class="engine-name">Overview</span>
+        </div>
+        ${engs.map(e => html`
+          <div class="engine-item ${selected === e.key ? 'active' : ''}"
+               onClick=${() => { setSelected(e.key); setSearch(''); setBatchFilter('all'); setTab('batches'); setHoveredBatch(null); setExpandedStmt(null); }}>
+            <span class="engine-name">
+              <span class="phase-dot phase-dot-${e.phase}"></span>
+              ${e.name}
+            </span>
+            <span class="engine-pct" style=${{ color: e.percent === 100 ? 'var(--green)' : 'var(--muted)' }}>${e.percent}%</span>
+          </div>
+        `)}
+      </div>
+      <div class="main">
+        ${!selected
+          ? html`<${OverviewView} engines=${engs} onSelect=${(k) => { setSelected(k); setTab('batches'); }} />`
+          : html`<${EngineView} engine=${selectedEngine} bnf=${selectedBnf} search=${search}
+              batchFilter=${batchFilter} tab=${tab} hoveredBatch=${hoveredBatch}
+              expandedStmt=${expandedStmt} stmtContent=${stmtContent}
+              onBack=${() => setSelected(null)} onSearch=${setSearch}
+              onBatchFilter=${setBatchFilter} onTab=${setTab}
+              onHoverBatch=${setHoveredBatch} onStmtClick=${handleStmtClick} />`
+        }
+      </div>
+      <${ActivityFeed} activities=${activities} />
+    </div>
+  `;
+}
+
+// ── Overview ──
+
+function OverviewView({ engines, onSelect }) {
+  return html`
+    <div class="overview-grid">
+      ${engines.map(e => {
+        const t = e.total || 1;
+        return html`
+          <div class="overview-card" onClick=${() => onSelect(e.key)}>
+            <div class="ov-header">
+              <span class="ov-title">${e.name}</span>
+              <span class="ov-phase ov-phase-${e.phase}">${e.phase}</span>
+            </div>
+            <div class="ov-stats">
+              <span><span class="ov-stat-val color-green">${e.done}</span> done</span>
+              ${e.in_progress > 0 && html`<span><span class="ov-stat-val color-yellow">${e.in_progress}</span> running</span>`}
+              ${e.failed > 0 && html`<span><span class="ov-stat-val color-red">${e.failed}</span> failed</span>`}
+              <span><span class="ov-stat-val color-muted">${e.pending}</span> pending</span>
+            </div>
+            <div class="ov-progress">
+              <div class="ov-progress-done" style=${{ width: (e.done*100/t)+'%' }}></div>
+              <div class="ov-progress-prog" style=${{ width: (e.in_progress*100/t)+'%' }}></div>
+              <div class="ov-progress-fail" style=${{ width: (e.failed*100/t)+'%' }}></div>
+            </div>
+            <div class="ov-pct">${e.percent}% (${e.done}/${e.total}) · Audit round ${e.audit_round}</div>
+            <div class="ov-mini-batches">
+              ${(e.batches || []).map(b => html`
+                <div class="ov-mini-batch" style=${{ background: b.status==='done'?'var(--green)':b.status==='in_progress'?'var(--yellow)':b.status==='failed'?'var(--red)':'var(--border)' }}></div>
+              `)}
+            </div>
+          </div>`;
+      })}
+    </div>
+  `;
+}
+
+// ── Engine Detail ──
+
+function EngineView({ engine, bnf, search, batchFilter, tab, hoveredBatch, expandedStmt, stmtContent,
+                       onBack, onSearch, onBatchFilter, onTab, onHoverBatch, onStmtClick }) {
+  if (!engine) return null;
+  const e = engine;
+  const t = e.total || 1;
+  const q = search.toLowerCase();
+
+  // Filter batches
+  let batches = e.batches || [];
+  if (batchFilter !== 'all') batches = batches.filter(b => b.status === batchFilter);
+  if (q) batches = batches.filter(b =>
+    b.name.toLowerCase().indexOf(q) >= 0 || (b.description||'').toLowerCase().indexOf(q) >= 0 || String(b.id).indexOf(q) >= 0
+  );
+
+  // Filter statements
+  let stmts = (bnf && bnf.statements) || [];
+  if (q) stmts = stmts.filter(s => s.name.toLowerCase().indexOf(q) >= 0);
+
+  const hb = hoveredBatch ? (e.batches || []).find(b => b.id === hoveredBatch) : null;
+
+  const hasBnf = bnf && bnf.total > 0;
+
+  return html`
+    <div class="engine-detail">
+      <div class="ed-header">
+        <button class="ed-back" onClick=${onBack}>Back</button>
+        <span class="ed-title">${e.name}</span>
+        <span class="ov-phase ov-phase-${e.phase}">${e.phase}</span>
+        <span class="timestamp" style="margin-left:auto">Updated ${e.last_updated || 'N/A'} · Audit round ${e.audit_round}</span>
+      </div>
+
+      <div class="ed-stats-row">
+        <div class="ed-stat"><div class="ed-stat-num color-accent">${e.total}</div><div class="ed-stat-label">Total</div></div>
+        <div class="ed-stat"><div class="ed-stat-num color-green">${e.done}</div><div class="ed-stat-label">Done</div></div>
+        <div class="ed-stat"><div class="ed-stat-num color-yellow">${e.in_progress}</div><div class="ed-stat-label">Running</div></div>
+        <div class="ed-stat"><div class="ed-stat-num color-muted">${e.pending}</div><div class="ed-stat-label">Pending</div></div>
+        <div class="ed-stat"><div class="ed-stat-num color-red">${e.failed}</div><div class="ed-stat-label">Failed</div></div>
+      </div>
+
+      <div class="ed-progress">
+        <div class="ed-progress-done" style=${{ width: (e.done*100/t)+'%' }}></div>
+        <div class="ed-progress-prog" style=${{ width: (e.in_progress*100/t)+'%' }}></div>
+        <div class="ed-progress-fail" style=${{ width: (e.failed*100/t)+'%' }}></div>
+      </div>
+
+      ${hasBnf && html`
+        <div class="tabs">
+          <div class="tab ${tab==='batches'?'active':''}" onClick=${() => onTab('batches')}>Batches</div>
+          <div class="tab ${tab==='statements'?'active':''}" onClick=${() => onTab('statements')}>
+            BNF Statements (${bnf.done}/${bnf.total})
+          </div>
+        </div>
+      `}
+
+      <div class="toolbar">
+        <input class="search-input" type="text" placeholder=${tab==='batches' ? 'Search batches...' : 'Search statements...'}
+               value=${search} onInput=${(ev) => onSearch(ev.target.value)} />
+        ${tab === 'batches' && html`
+          ${['all','done','pending','failed','in_progress'].map(f => html`
+            <button class="filter-btn ${batchFilter===f?'active':''}" onClick=${() => onBatchFilter(f)}>
+              ${f === 'all' ? 'All' : f === 'in_progress' ? 'Running' : f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          `)}
+        `}
+      </div>
+
+      <div class="tab-content">
+      ${tab === 'batches' && html`
+        <div class="batches">
+          ${batches.map(b => html`
+            <div class="batch batch-${b.status}"
+                 onMouseEnter=${() => onHoverBatch(b.id)}
+                 onMouseLeave=${() => onHoverBatch(null)}>
+              ${b.id}
+            </div>
+          `)}
+        </div>
+        <div class="batch-tooltip">
+          ${hb ? html`
+            <div class="bt-name">#${hb.id} ${hb.name}</div>
+            <div class="bt-desc">${hb.description || ''}</div>
+            ${hb.file && html`<div class="bt-file">File: ${hb.file}</div>`}
+            ${hb.error && html`<div class="bt-error">${hb.error}</div>`}
+          ` : html`<div class="bt-placeholder">Hover a batch to see details</div>`}
+        </div>
+      `}
+
+      ${tab === 'statements' && html`
+        <div class="stmt-list">
+          ${stmts.map(s => {
+            const key = e.key + '/' + s.slug;
+            const isExpanded = expandedStmt === key;
+            return html`
+              <div>
+                <div class="stmt-item" onClick=${() => s.status === 'bnf_done' && onStmtClick(e.key, s.slug)}>
+                  <div class="stmt-dot stmt-dot-${s.status}"></div>
+                  <span class="stmt-name">${s.name}</span>
+                  <span class="stmt-status">${s.status}${s.status === 'bnf_done' ? ' >' : ''}</span>
+                </div>
+                ${isExpanded && html`
+                  ${stmtContent[key] === '...'
+                    ? html`<div class="stmt-loading">Loading...</div>`
+                    : html`<pre class="stmt-expand">${stmtContent[key]}</pre>`
+                  }
+                `}
+              </div>
+            `;
+          })}
+          ${stmts.length === 0 && html`<div style="color:var(--muted);padding:8px">No matching statements</div>`}
+        </div>
+      `}
+      </div>
+    </div>
+  `;
+}
+
+// ── Activity Feed ──
+
+function ActivityFeed({ activities }) {
+  return html`
+    <div class="activity">
+      <div class="activity-header">Activity</div>
+      <div class="activity-list">
+        ${activities.length === 0 && html`<div class="activity-empty">No activity yet. Events appear when batch statuses change.</div>`}
+        ${activities.map((a, i) => html`
+          <div class="activity-item">
+            <div class="activity-dot-wrap">
+              <div class="activity-dot activity-dot-${a.new_status}"></div>
+              ${i < activities.length - 1 && html`<div class="activity-line"></div>`}
+            </div>
+            <div class="activity-content">
+              <div class="activity-time">${a.timestamp}</div>
+              <div class="activity-text">
+                <span class="activity-engine">${a.engine}</span>
+                #${a.batch_id} ${a.batch_name}
+                <span style="color:var(--muted)"> · ${a.old_status || 'new'} → ${a.new_status}</span>
+              </div>
+            </div>
+          </div>
+        `)}
+      </div>
+    </div>
+  `;
+}
+
+// ── Notification Panel ──
+
+function NotifyPanel({ engines, notifyPrefs, barkState, onToggleNotify, onToggleBark, onClose }) {
+  useEffect(() => {
+    function handleClick(e) {
+      if (!e.target.closest('.notify-panel') && !e.target.closest('.ed-back')) onClose();
+    }
+    document.addEventListener('click', handleClick, true);
+    return () => document.removeEventListener('click', handleClick, true);
+  }, [onClose]);
+
+  return html`
+    <div class="notify-panel">
+      <div class="notify-title">Notifications</div>
+      ${engines.map(e => html`
+        <div class="notify-row">
+          <span class="notify-engine">${e.name}</span>
+          <div class="notify-toggles">
+            <label class="toggle" title="Browser">
+              <input type="checkbox" checked=${!!notifyPrefs[e.key]} onChange=${() => onToggleNotify(e.key)} />
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="toggle-label">Browser</span>
+            <label class="toggle" title="Bark">
+              <input type="checkbox" checked=${!!barkState[e.key]} onChange=${() => onToggleBark(e.key)} />
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="toggle-label">Bark</span>
+          </div>
+        </div>
+      `)}
+      <div class="notify-hint">Notifications fire on phase transitions (building/auditing → idle/complete).</div>
+    </div>
+  `;
+}
+
+// ── Mount ──
+
+render(html`<${App} />`, document.getElementById('app'));
+</script>
+</body>
+</html>

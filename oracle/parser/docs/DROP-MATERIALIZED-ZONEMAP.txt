@@ -1,0 +1,159 @@
+# DROP-MATERIALIZED-ZONEMAP
+# Source: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/DROP-MATERIALIZED-ZONEMAP.html
+
+DROP MATERIALIZED ZONEMAP
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+    
+    
+  
+    
+   
+      
+
+         Previous
+         Next
+          JavaScript must be enabled to correctly display this content
+        
+      
+
+      
+         
+         
+         
+DROP MATERIALIZED ZONEMAP
+
+         
+
+            
+
+               
+
+                  
+Purpose
+
+                  
+Use the DROP MATERIALIZED ZONEMAP statement to remove an existing zone map from the database.
+                  
+
+               
+
+               
+
+                  
+Prerequisites
+
+                  
+The zone map must be in your own schema or you must have the DROP ANY MATERIALIZED VIEW system privilege. You must also have the privileges to drop the internal table and indexes that the database uses to maintain the zone map data.
+                  
+
+                  
+
+                     
+See Also:
+
+                     
+DROP TABLE and DROP INDEX for information on privileges required to drop objects that the database uses to maintain the zone map
+                     
+
+                  
+
+               
+
+               
+
+                  
+Syntax
+
+               
+
+               
+
+                  
+drop_materialized_zonemap::=
+                  
+
+                  
+
+Description of the illustration drop_materialized_zonemap.eps
+
+               
+
+               
+
+                  
+Semantics
+
+               
+
+               
+
+                  
+IF EXISTS
+
+                  
+Specify IF EXISTS to drop an existing object.
+                  
+
+                  
+Specifying IF NOT EXISTS with DROP results in ORA-11544: Incorrect IF EXISTS clause for ALTER/DROP statement.
+                  
+
+               
+
+               
+
+                  
+schema
+
+                  
+Specify the schema containing the zone map. If you omit schema, then Oracle Database assumes the zone map is in your own schema. 
+                  
+
+               
+
+               
+
+                  
+zonemap_name
+
+                  
+Specify the name of the existing zone map to be dropped.
+
+               
+
+               
+
+                  
+Example
+
+                  
+Dropping a Zone Map: Examples
+
+                  
+The following statement drops the zone map sales_zmap:
+                  
+DROP MATERIALIZED ZONEMAP sales_zmap;

@@ -1,0 +1,115 @@
+# drop-mle-module
+# Source: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/drop-mle-module.html
+
+DROP MLE MODULE
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+    
+    
+  
+    
+   
+      
+
+         Previous
+         Next
+          JavaScript must be enabled to correctly display this content
+        
+      
+
+      
+         
+         
+         
+DROP MLE MODULE
+
+         
+
+            
+
+               
+
+                  
+Purpose
+
+                  
+You can drop a previously deployed MLE module using DROP MLE MODULE .
+                  
+
+               
+
+               
+
+                  
+Syntax
+
+                  
+
+Description of the illustration drop_mle_module.eps
+
+               
+
+               
+
+                  
+Semantics
+
+                  
+Specify IF EXISTS to drop an existing MLE module. 
+                  
+
+                  
+Specifying IF NOT EXISTS with DROP results in ORA-11544: Incorrect IF EXISTS clause for ALTER/DROP statement.
+                  
+
+                  
+schema Specify the schema containing the MLE module. If you do not specify the schema, then Oracle Database assumes that the module is in your own schema.
+                  
+
+                  
+module_name refers to the module name.
+                  
+
+               
+
+               
+
+                  
+
+                     
+See Also:
+
+                     
+                        
+
+                           
+CREATE MLE MODULE
+
+                        
+                        
+
+                           
+ALTER MLE MODULE

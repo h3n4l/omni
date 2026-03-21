@@ -1,0 +1,14 @@
+# JSON Relational Duality View
+# NOT_FOUND in standard sqlrf docs. Syntax is in the JSON Duality Developer's Guide.
+# Do NOT attempt to WebFetch this URL — it will 404.
+#
+# Basic syntax (from Oracle 26 JSON Duality Guide):
+#
+# CREATE [OR REPLACE] JSON [RELATIONAL] DUALITY VIEW [schema.]view_name AS
+#   SELECT JSON { field_name : column_reference, ... }
+#   FROM underlying_table WITH [UPDATE] [INSERT] [DELETE] [CHECK] [NOCHECK];
+#
+# ALTER JSON [RELATIONAL] DUALITY VIEW [schema.]view_name ...;
+# DROP JSON [RELATIONAL] DUALITY VIEW [IF EXISTS] [schema.]view_name;
+#
+# Implement based on the batch description and existing code patterns.

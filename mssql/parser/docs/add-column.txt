@@ -1,0 +1,4 @@
+# add-column
+# NOT_FOUND: This document does not exist in official documentation.
+# Do NOT attempt to WebFetch this URL — it will 404.
+# Implement based on the batch description and existing code patterns.

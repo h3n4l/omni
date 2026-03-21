@@ -14,7 +14,7 @@ import (
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/create-server-role-transact-sql
 //
 //	CREATE SERVER ROLE role_name [ AUTHORIZATION server_principal ]
-func (p *Parser) parseCreateServerRoleStmt() *nodes.SecurityStmt {
+func (p *Parser) parseCreateServerRoleStmt() (*nodes.SecurityStmt, error) {
 	loc := p.pos()
 	stmt := &nodes.SecurityStmt{
 		Action:     "CREATE",
@@ -39,7 +39,7 @@ func (p *Parser) parseCreateServerRoleStmt() *nodes.SecurityStmt {
 	}
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseAlterServerRoleStmt parses ALTER SERVER ROLE.
@@ -52,7 +52,7 @@ func (p *Parser) parseCreateServerRoleStmt() *nodes.SecurityStmt {
 //	  | [ DROP MEMBER server_principal ]
 //	  | [ WITH NAME = new_server_role_name ]
 //	}
-func (p *Parser) parseAlterServerRoleStmt() *nodes.SecurityStmt {
+func (p *Parser) parseAlterServerRoleStmt() (*nodes.SecurityStmt, error) {
 	loc := p.pos()
 	stmt := &nodes.SecurityStmt{
 		Action:     "ALTER",
@@ -114,7 +114,7 @@ func (p *Parser) parseAlterServerRoleStmt() *nodes.SecurityStmt {
 	}
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseDropServerRoleStmt parses DROP SERVER ROLE.
@@ -122,7 +122,7 @@ func (p *Parser) parseAlterServerRoleStmt() *nodes.SecurityStmt {
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-server-role-transact-sql
 //
 //	DROP SERVER ROLE role_name
-func (p *Parser) parseDropServerRoleStmt() *nodes.SecurityStmt {
+func (p *Parser) parseDropServerRoleStmt() (*nodes.SecurityStmt, error) {
 	loc := p.pos()
 	stmt := &nodes.SecurityStmt{
 		Action:     "DROP",
@@ -135,7 +135,7 @@ func (p *Parser) parseDropServerRoleStmt() *nodes.SecurityStmt {
 	}
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseAlterServerConfigurationStmt parses ALTER SERVER CONFIGURATION SET <optionspec>.
@@ -178,7 +178,7 @@ func (p *Parser) parseDropServerRoleStmt() *nodes.SecurityStmt {
 //
 //	<size_spec> ::=
 //	    { size [ KB | MB | GB ] }
-func (p *Parser) parseAlterServerConfigurationStmt() *nodes.AlterServerConfigurationStmt {
+func (p *Parser) parseAlterServerConfigurationStmt() (*nodes.AlterServerConfigurationStmt, error) {
 	loc := p.pos()
 	// ALTER, SERVER, CONFIGURATION already consumed by caller
 	// Consume SET
@@ -199,14 +199,14 @@ func (p *Parser) parseAlterServerConfigurationStmt() *nodes.AlterServerConfigura
 			p.advance() // consume AFFINITY
 		}
 		stmt.OptionType = "PROCESS AFFINITY"
-		opts = p.parseServerConfigProcessAffinity()
+		opts, _ = p.parseServerConfigProcessAffinity()
 	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "DIAGNOSTICS") {
 		p.advance() // consume DIAGNOSTICS
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LOG") {
 			p.advance() // consume LOG
 		}
 		stmt.OptionType = "DIAGNOSTICS LOG"
-		opts = p.parseServerConfigDiagnosticsLog()
+		opts, _ = p.parseServerConfigDiagnosticsLog()
 	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "FAILOVER") {
 		p.advance() // consume FAILOVER
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CLUSTER") {
@@ -216,7 +216,7 @@ func (p *Parser) parseAlterServerConfigurationStmt() *nodes.AlterServerConfigura
 			p.advance() // consume PROPERTY
 		}
 		stmt.OptionType = "FAILOVER CLUSTER PROPERTY"
-		opts = p.parseServerConfigFailoverClusterProperty()
+		opts, _ = p.parseServerConfigFailoverClusterProperty()
 	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "HADR") {
 		p.advance() // consume HADR
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CLUSTER") {
@@ -226,7 +226,7 @@ func (p *Parser) parseAlterServerConfigurationStmt() *nodes.AlterServerConfigura
 			p.advance() // consume CONTEXT
 		}
 		stmt.OptionType = "HADR CLUSTER CONTEXT"
-		opts = p.parseServerConfigHadrCluster()
+		opts, _ = p.parseServerConfigHadrCluster()
 	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "BUFFER") {
 		p.advance() // consume BUFFER
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "POOL") {
@@ -236,30 +236,30 @@ func (p *Parser) parseAlterServerConfigurationStmt() *nodes.AlterServerConfigura
 			p.advance() // consume EXTENSION
 		}
 		stmt.OptionType = "BUFFER POOL EXTENSION"
-		opts = p.parseServerConfigBufferPoolExtension()
+		opts, _ = p.parseServerConfigBufferPoolExtension()
 	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SOFTNUMA") {
 		p.advance() // consume SOFTNUMA
 		stmt.OptionType = "SOFTNUMA"
-		opts = p.parseServerConfigOnOff()
+		opts, _ = p.parseServerConfigOnOff()
 	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "MEMORY_OPTIMIZED") {
 		p.advance() // consume MEMORY_OPTIMIZED
 		stmt.OptionType = "MEMORY_OPTIMIZED"
-		opts = p.parseServerConfigMemoryOptimized()
+		opts, _ = p.parseServerConfigMemoryOptimized()
 	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "HARDWARE_OFFLOAD") {
 		p.advance() // consume HARDWARE_OFFLOAD
 		stmt.OptionType = "HARDWARE_OFFLOAD"
-		opts = p.parseServerConfigOnOff()
+		opts, _ = p.parseServerConfigOnOff()
 	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "EXTERNAL") {
 		p.advance() // consume EXTERNAL
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AUTHENTICATION") {
 			p.advance() // consume AUTHENTICATION
 		}
 		stmt.OptionType = "EXTERNAL AUTHENTICATION"
-		opts = p.parseServerConfigExternalAuthentication()
+		opts, _ = p.parseServerConfigExternalAuthentication()
 	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SUSPEND_FOR_SNAPSHOT_BACKUP") {
 		p.advance() // consume SUSPEND_FOR_SNAPSHOT_BACKUP
 		stmt.OptionType = "SUSPEND_FOR_SNAPSHOT_BACKUP"
-		opts = p.parseServerConfigSuspendForSnapshotBackup()
+		opts, _ = p.parseServerConfigSuspendForSnapshotBackup()
 	} else {
 		// Unknown option type - record the keyword and skip to statement boundary
 		if p.isIdentLike() {
@@ -279,7 +279,7 @@ func (p *Parser) parseAlterServerConfigurationStmt() *nodes.AlterServerConfigura
 	}
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseServerConfigProcessAffinity parses PROCESS AFFINITY options.
@@ -287,12 +287,12 @@ func (p *Parser) parseAlterServerConfigurationStmt() *nodes.AlterServerConfigura
 //	PROCESS AFFINITY { CPU = { AUTO | <CPU_range_spec> } | NUMANODE = <NUMA_node_range_spec> }
 //	<CPU_range_spec> ::= { CPU_ID | CPU_ID TO CPU_ID } [ ,...n ]
 //	<NUMA_node_range_spec> ::= { NUMA_node_ID | NUMA_node_ID TO NUMA_node_ID } [ ,...n ]
-func (p *Parser) parseServerConfigProcessAffinity() []nodes.Node {
+func (p *Parser) parseServerConfigProcessAffinity() ([]nodes.Node, error) {
 	var opts []nodes.Node
 
 	// Expect CPU or NUMANODE
 	if !p.isIdentLike() {
-		return opts
+		return opts, nil
 	}
 
 	optLoc := p.pos()
@@ -308,7 +308,7 @@ func (p *Parser) parseServerConfigProcessAffinity() []nodes.Node {
 	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AUTO") {
 		p.advance()
 		opts = append(opts, &nodes.ServerConfigOption{Name: key, Value: "AUTO", Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
-		return opts
+		return opts, nil
 	}
 
 	// Parse range spec: { ID | ID TO ID } [ ,...n ]
@@ -342,13 +342,13 @@ func (p *Parser) parseServerConfigProcessAffinity() []nodes.Node {
 	}
 
 	opts = append(opts, &nodes.ServerConfigOption{Name: key, Value: sb.String(), Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
-	return opts
+	return opts, nil
 }
 
 // parseServerConfigDiagnosticsLog parses DIAGNOSTICS LOG options.
 //
 //	DIAGNOSTICS LOG { ON | OFF | PATH = { 'os_file_path' | DEFAULT } | MAX_SIZE = { 'log_max_size' MB | DEFAULT } | MAX_FILES = { 'max_file_count' | DEFAULT } }
-func (p *Parser) parseServerConfigDiagnosticsLog() []nodes.Node {
+func (p *Parser) parseServerConfigDiagnosticsLog() ([]nodes.Node, error) {
 	var opts []nodes.Node
 
 	// ON / OFF
@@ -356,18 +356,18 @@ func (p *Parser) parseServerConfigDiagnosticsLog() []nodes.Node {
 		optLoc := p.pos()
 		p.advance()
 		opts = append(opts, &nodes.ServerConfigOption{Name: "ON", Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
-		return opts
+		return opts, nil
 	}
 	if p.cur.Type == kwOFF {
 		optLoc := p.pos()
 		p.advance()
 		opts = append(opts, &nodes.ServerConfigOption{Name: "OFF", Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
-		return opts
+		return opts, nil
 	}
 
 	// PATH / MAX_SIZE / MAX_FILES
 	if !p.isIdentLike() {
-		return opts
+		return opts, nil
 	}
 
 	optLoc := p.pos()
@@ -383,7 +383,7 @@ func (p *Parser) parseServerConfigDiagnosticsLog() []nodes.Node {
 	if p.cur.Type == kwDEFAULT {
 		p.advance()
 		opts = append(opts, &nodes.ServerConfigOption{Name: key, Value: "DEFAULT", Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
-		return opts
+		return opts, nil
 	}
 
 	// String constant (for PATH)
@@ -391,7 +391,7 @@ func (p *Parser) parseServerConfigDiagnosticsLog() []nodes.Node {
 		val := "'" + p.cur.Str + "'"
 		p.advance()
 		opts = append(opts, &nodes.ServerConfigOption{Name: key, Value: val, Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
-		return opts
+		return opts, nil
 	}
 
 	// Integer (for MAX_SIZE or MAX_FILES)
@@ -404,10 +404,10 @@ func (p *Parser) parseServerConfigDiagnosticsLog() []nodes.Node {
 			p.advance()
 		}
 		opts = append(opts, &nodes.ServerConfigOption{Name: key, Value: val, Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
-		return opts
+		return opts, nil
 	}
 
-	return opts
+	return opts, nil
 }
 
 // parseServerConfigFailoverClusterProperty parses FAILOVER CLUSTER PROPERTY <resource_property>.
@@ -422,11 +422,11 @@ func (p *Parser) parseServerConfigDiagnosticsLog() []nodes.Node {
 //	  | HealthCheckTimeout = { 'health_check_time-out' | DEFAULT }
 //	  | ClusterConnectionOptions = '<key_value_pairs>[;...]'
 //	}
-func (p *Parser) parseServerConfigFailoverClusterProperty() []nodes.Node {
+func (p *Parser) parseServerConfigFailoverClusterProperty() ([]nodes.Node, error) {
 	var opts []nodes.Node
 
 	if !p.isIdentLike() {
-		return opts
+		return opts, nil
 	}
 
 	optLoc := p.pos()
@@ -442,7 +442,7 @@ func (p *Parser) parseServerConfigFailoverClusterProperty() []nodes.Node {
 	if p.cur.Type == kwDEFAULT {
 		p.advance()
 		opts = append(opts, &nodes.ServerConfigOption{Name: key, Value: "DEFAULT", Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
-		return opts
+		return opts, nil
 	}
 
 	// String constant
@@ -450,7 +450,7 @@ func (p *Parser) parseServerConfigFailoverClusterProperty() []nodes.Node {
 		val := "'" + p.cur.Str + "'"
 		p.advance()
 		opts = append(opts, &nodes.ServerConfigOption{Name: key, Value: val, Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
-		return opts
+		return opts, nil
 	}
 
 	// Integer constant
@@ -458,14 +458,14 @@ func (p *Parser) parseServerConfigFailoverClusterProperty() []nodes.Node {
 		val := p.cur.Str
 		p.advance()
 		opts = append(opts, &nodes.ServerConfigOption{Name: key, Value: val, Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
-		return opts
+		return opts, nil
 	}
 
-	return opts
+	return opts, nil
 }
 
 // parseServerConfigHadrCluster parses HADR CLUSTER CONTEXT = { 'remote_windows_cluster' | LOCAL }.
-func (p *Parser) parseServerConfigHadrCluster() []nodes.Node {
+func (p *Parser) parseServerConfigHadrCluster() ([]nodes.Node, error) {
 	var opts []nodes.Node
 
 	optLoc := p.pos()
@@ -484,21 +484,21 @@ func (p *Parser) parseServerConfigHadrCluster() []nodes.Node {
 		opts = append(opts, &nodes.ServerConfigOption{Name: "CONTEXT", Value: "LOCAL", Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
 	}
 
-	return opts
+	return opts, nil
 }
 
 // parseServerConfigBufferPoolExtension parses BUFFER POOL EXTENSION options.
 //
 //	BUFFER POOL EXTENSION { ON ( FILENAME = 'path', SIZE = <size_spec> ) | OFF }
 //	<size_spec> ::= { size [ KB | MB | GB ] }
-func (p *Parser) parseServerConfigBufferPoolExtension() []nodes.Node {
+func (p *Parser) parseServerConfigBufferPoolExtension() ([]nodes.Node, error) {
 	var opts []nodes.Node
 
 	if p.cur.Type == kwOFF {
 		optLoc := p.pos()
 		p.advance()
 		opts = append(opts, &nodes.ServerConfigOption{Name: "OFF", Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
-		return opts
+		return opts, nil
 	}
 
 	if p.cur.Type == kwON {
@@ -555,11 +555,11 @@ func (p *Parser) parseServerConfigBufferPoolExtension() []nodes.Node {
 		}
 	}
 
-	return opts
+	return opts, nil
 }
 
 // parseServerConfigOnOff parses a simple ON/OFF option (SOFTNUMA, HARDWARE_OFFLOAD).
-func (p *Parser) parseServerConfigOnOff() []nodes.Node {
+func (p *Parser) parseServerConfigOnOff() ([]nodes.Node, error) {
 	var opts []nodes.Node
 	if p.cur.Type == kwON {
 		optLoc := p.pos()
@@ -570,13 +570,13 @@ func (p *Parser) parseServerConfigOnOff() []nodes.Node {
 		p.advance()
 		opts = append(opts, &nodes.ServerConfigOption{Name: "OFF", Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
 	}
-	return opts
+	return opts, nil
 }
 
 // parseServerConfigMemoryOptimized parses MEMORY_OPTIMIZED options.
 //
 //	MEMORY_OPTIMIZED { ON | OFF | TEMPDB_METADATA = { ON [(RESOURCE_POOL='pool')] | OFF } | HYBRID_BUFFER_POOL = { ON | OFF } }
-func (p *Parser) parseServerConfigMemoryOptimized() []nodes.Node {
+func (p *Parser) parseServerConfigMemoryOptimized() ([]nodes.Node, error) {
 	var opts []nodes.Node
 
 	// Direct ON/OFF
@@ -584,18 +584,18 @@ func (p *Parser) parseServerConfigMemoryOptimized() []nodes.Node {
 		optLoc := p.pos()
 		p.advance()
 		opts = append(opts, &nodes.ServerConfigOption{Name: "ON", Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
-		return opts
+		return opts, nil
 	}
 	if p.cur.Type == kwOFF {
 		optLoc := p.pos()
 		p.advance()
 		opts = append(opts, &nodes.ServerConfigOption{Name: "OFF", Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
-		return opts
+		return opts, nil
 	}
 
 	// TEMPDB_METADATA or HYBRID_BUFFER_POOL
 	if !p.isIdentLike() {
-		return opts
+		return opts, nil
 	}
 
 	optLoc := p.pos()
@@ -635,13 +635,13 @@ func (p *Parser) parseServerConfigMemoryOptimized() []nodes.Node {
 		opts = append(opts, &nodes.ServerConfigOption{Name: key, Value: "OFF", Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
 	}
 
-	return opts
+	return opts, nil
 }
 
 // parseServerConfigSuspendForSnapshotBackup parses SUSPEND_FOR_SNAPSHOT_BACKUP options.
 //
 //	SUSPEND_FOR_SNAPSHOT_BACKUP = { ON | OFF } [ ( GROUP = ( <database>,...n ) [ , MODE = COPY_ONLY ] ) ]
-func (p *Parser) parseServerConfigSuspendForSnapshotBackup() []nodes.Node {
+func (p *Parser) parseServerConfigSuspendForSnapshotBackup() ([]nodes.Node, error) {
 	var opts []nodes.Node
 
 	// Consume =
@@ -657,7 +657,7 @@ func (p *Parser) parseServerConfigSuspendForSnapshotBackup() []nodes.Node {
 		optLoc := p.pos()
 		p.advance()
 		opts = append(opts, &nodes.ServerConfigOption{Name: "OFF", Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
-		return opts
+		return opts, nil
 	}
 
 	// Optional ( GROUP = ( db1, db2 ) [ , MODE = COPY_ONLY ] )
@@ -716,13 +716,13 @@ func (p *Parser) parseServerConfigSuspendForSnapshotBackup() []nodes.Node {
 		}
 	}
 
-	return opts
+	return opts, nil
 }
 
 // parseServerConfigExternalAuthentication parses EXTERNAL AUTHENTICATION options.
 //
 //	EXTERNAL AUTHENTICATION { ON | OFF } [ ( USE_IDENTITY | CREDENTIAL_NAME = 'name' ) ]
-func (p *Parser) parseServerConfigExternalAuthentication() []nodes.Node {
+func (p *Parser) parseServerConfigExternalAuthentication() ([]nodes.Node, error) {
 	var opts []nodes.Node
 
 	// ON / OFF
@@ -734,7 +734,7 @@ func (p *Parser) parseServerConfigExternalAuthentication() []nodes.Node {
 		optLoc := p.pos()
 		p.advance()
 		opts = append(opts, &nodes.ServerConfigOption{Name: "OFF", Loc: nodes.Loc{Start: optLoc, End: p.pos()}})
-		return opts
+		return opts, nil
 	}
 
 	// Optional ( USE_IDENTITY | CREDENTIAL_NAME = 'name' )
@@ -770,7 +770,7 @@ func (p *Parser) parseServerConfigExternalAuthentication() []nodes.Node {
 		}
 	}
 
-	return opts
+	return opts, nil
 }
 
 // parseAlterServiceMasterKeyStmt parses ALTER SERVICE MASTER KEY.
@@ -787,7 +787,7 @@ func (p *Parser) parseServerConfigExternalAuthentication() []nodes.Node {
 //	    { WITH OLD_ACCOUNT = 'account_name' , OLD_PASSWORD = 'password' }
 //	    |
 //	    { WITH NEW_ACCOUNT = 'account_name' , NEW_PASSWORD = 'password' }
-func (p *Parser) parseAlterServiceMasterKeyStmt() *nodes.SecurityKeyStmt {
+func (p *Parser) parseAlterServiceMasterKeyStmt() (*nodes.SecurityKeyStmt, error) {
 	loc := p.pos()
 	// SERVICE MASTER KEY already consumed by caller
 	stmt := &nodes.SecurityKeyStmt{
@@ -799,7 +799,7 @@ func (p *Parser) parseAlterServiceMasterKeyStmt() *nodes.SecurityKeyStmt {
 	p.parseSecurityKeyOptions(stmt)
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseBackupServiceMasterKeyStmt parses BACKUP SERVICE MASTER KEY.
@@ -808,7 +808,7 @@ func (p *Parser) parseAlterServiceMasterKeyStmt() *nodes.SecurityKeyStmt {
 //
 //	BACKUP SERVICE MASTER KEY TO FILE = 'path_to_file'
 //	    ENCRYPTION BY PASSWORD = 'password'
-func (p *Parser) parseBackupServiceMasterKeyStmt() *nodes.SecurityKeyStmt {
+func (p *Parser) parseBackupServiceMasterKeyStmt() (*nodes.SecurityKeyStmt, error) {
 	loc := p.pos()
 	// BACKUP already consumed, SERVICE MASTER KEY consumed by caller
 	stmt := &nodes.SecurityKeyStmt{
@@ -820,7 +820,7 @@ func (p *Parser) parseBackupServiceMasterKeyStmt() *nodes.SecurityKeyStmt {
 	p.parseSecurityKeyOptions(stmt)
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }
 
 // parseRestoreServiceMasterKeyStmt parses RESTORE SERVICE MASTER KEY.
@@ -829,7 +829,7 @@ func (p *Parser) parseBackupServiceMasterKeyStmt() *nodes.SecurityKeyStmt {
 //
 //	RESTORE SERVICE MASTER KEY FROM FILE = 'path_to_file'
 //	    DECRYPTION BY PASSWORD = 'password' [FORCE]
-func (p *Parser) parseRestoreServiceMasterKeyStmt() *nodes.SecurityKeyStmt {
+func (p *Parser) parseRestoreServiceMasterKeyStmt() (*nodes.SecurityKeyStmt, error) {
 	loc := p.pos()
 	// RESTORE already consumed, SERVICE MASTER KEY consumed by caller
 	stmt := &nodes.SecurityKeyStmt{
@@ -841,5 +841,5 @@ func (p *Parser) parseRestoreServiceMasterKeyStmt() *nodes.SecurityKeyStmt {
 	p.parseSecurityKeyOptions(stmt)
 
 	stmt.Loc.End = p.pos()
-	return stmt
+	return stmt, nil
 }

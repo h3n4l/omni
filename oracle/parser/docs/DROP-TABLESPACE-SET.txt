@@ -1,0 +1,164 @@
+# DROP-TABLESPACE-SET
+# Source: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/DROP-TABLESPACE-SET.html
+
+DROP TABLESPACE SET
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+    
+    
+  
+    
+   
+      
+
+         Previous
+         Next
+          JavaScript must be enabled to correctly display this content
+        
+      
+
+      
+         
+         
+         
+DROP TABLESPACE SET
+
+         
+
+            
+
+               
+
+                  
+
+                     
+Note:
+
+                     
+This SQL statement is valid only if you are using Oracle Sharding. For more information on Oracle Sharding, refer to Oracle Database Administrator’s Guide.
+                     
+
+                  
+
+               
+
+               
+
+                  
+Purpose
+
+                  
+Use the DROP TABLESPACE SET statement to drop a tablespace set from a shardgroup.
+                  
+
+                  
+When you drop a tablespace set, Oracle Database does not place it in the recycle bin. Therefore, you cannot subsequently either purge or undrop the tablespace set.
+
+                  
+
+                     
+See Also:
+
+                     
+CREATE TABLESPACE SET and ALTER TABLESPACE SET
+
+                  
+
+               
+
+               
+
+                  
+Prerequisites
+
+                  
+You must be connected to a shard catalog database as an SDB user.
+
+                  
+You must have the DROP TABLESPACE system privilege. You cannot drop a tablespace set if its tablespaces contain any rollback segments holding active transactions.
+                  
+
+               
+
+               
+
+                  
+Syntax
+
+               
+
+               
+
+                  
+drop_tablespace_set::=
+                  
+
+                  
+
+Description of the illustration drop_tablespace_set.eps
+
+               
+
+               
+
+                  
+Semantics
+
+               
+
+               
+
+                  
+tablespace_set
+
+                  
+Specify the name of the tablespace set to be dropped.
+
+               
+
+               
+
+                  
+INCLUDING CONTENTS
+
+                  
+This clause lets you specify how the database manages objects and datafiles associated with the tablespaces in the tablespace set during the drop operation. The INCLUDING CONTENTS clause has the same semantics here as for the DROP TABLESPACE statement. See INCLUDING CONTENTS for the full semantics of this clause.
+                  
+
+               
+
+               
+
+                  
+Examples
+
+                  
+Dropping a Tablespace Set: Example
+
+                  
+The following statement drops the tablespace set ts1:
+                  
+DROP TABLESPACE SET ts1;

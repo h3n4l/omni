@@ -1,0 +1,143 @@
+# DROP-ANALYTIC-VIEW
+# Source: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/DROP-ANALYTIC-VIEW.html
+
+DROP ANALYTIC VIEW
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+    
+    
+  
+    
+   
+      
+
+         Previous
+         Next
+          JavaScript must be enabled to correctly display this content
+        
+      
+
+      
+         
+         
+         
+DROP ANALYTIC VIEW
+
+         
+
+            
+
+               
+
+                  
+Purpose 
+
+                  
+Use the DROP ANALYTIC VIEW statement to drop an analytic view. An ANALYTIC VIEW object is a component of analytic views.
+                  
+
+               
+
+               
+
+                  
+Prerequisites
+
+                  
+To drop an analytic view in your own schema, you must have the DROP ANALYTIC VIEW system privilege. To drop an analytic view in another user's schema, you must have the DROP ANY ANALYTIC VIEW system privilege.
+                  
+
+               
+
+               
+
+                  
+Syntax
+
+               
+
+               
+
+                  
+drop_analytic_view::=
+                  
+
+                  
+
+Description of the illustration drop_analytic_view.eps
+
+               
+
+               
+
+                  
+Semantics
+
+               
+
+               
+
+                  
+IF EXISTS
+
+                  
+Specify IF EXISTS to drop an existing analytic view.
+                  
+
+                  
+Specifying IF NOT EXISTS with DROP results in ORA-11544: Incorrect IF EXISTS clause for ALTER/DROP statement.
+                  
+
+               
+
+               
+
+                  
+schema
+
+                  
+Specify the schema in which the analytic view exists. If you do not specify a schema, then the database looks for the analytic view in your own schema.
+
+               
+
+               
+
+                  
+analytic_view_name
+
+                  
+Specify the name of the analytic view to drop.
+
+               
+
+               
+
+                  
+Example
+
+                  
+The following statement drops the specified analytic view object:
+DROP ANALYTIC VIEW sales_av;
