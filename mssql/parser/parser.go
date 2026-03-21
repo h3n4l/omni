@@ -107,37 +107,51 @@ func (p *Parser) parseStmt() nodes.StmtNode {
 		stmt, _ := p.parseTruncateStmt()
 		return stmt
 	case kwIF:
-		return p.parseIfStmt()
+		stmt, _ := p.parseIfStmt()
+		return stmt
 	case kwWHILE:
-		return p.parseWhileStmt()
+		stmt, _ := p.parseWhileStmt()
+		return stmt
 	case kwBEGIN:
-		return p.parseBeginStmt()
+		stmt, _ := p.parseBeginStmt()
+		return stmt
 	case kwRETURN:
-		return p.parseReturnStmt()
+		stmt, _ := p.parseReturnStmt()
+		return stmt
 	case kwBREAK:
-		return p.parseBreakStmt()
+		stmt, _ := p.parseBreakStmt()
+		return stmt
 	case kwCONTINUE:
-		return p.parseContinueStmt()
+		stmt, _ := p.parseContinueStmt()
+		return stmt
 	case kwGOTO:
-		return p.parseGotoStmt()
+		stmt, _ := p.parseGotoStmt()
+		return stmt
 	case kwWAITFOR:
-		return p.parseWaitForStmt()
+		stmt, _ := p.parseWaitForStmt()
+		return stmt
 	case kwDECLARE:
 		// Check if this is DECLARE cursor_name CURSOR (named cursor declaration).
 		// Named cursors use a plain identifier (not @variable) after DECLARE.
 		next := p.peekNext()
 		if next.Type != tokVARIABLE {
-			return p.parseDeclareCursorStmt()
+			stmt, _ := p.parseDeclareCursorStmt()
+			return stmt
 		}
-		return p.parseDeclareStmt()
+		stmt, _ := p.parseDeclareStmt()
+		return stmt
 	case kwSET:
-		return p.parseSetStmt()
+		stmt, _ := p.parseSetStmt()
+		return stmt
 	case kwCOMMIT:
-		return p.parseCommitStmt()
+		stmt, _ := p.parseCommitStmt()
+		return stmt
 	case kwROLLBACK:
-		return p.parseRollbackStmt()
+		stmt, _ := p.parseRollbackStmt()
+		return stmt
 	case kwSAVE:
-		return p.parseSaveTransStmt()
+		stmt, _ := p.parseSaveTransStmt()
+		return stmt
 	case kwEXEC, kwEXECUTE:
 		// Check for EXECUTE AS (context switching) vs EXEC proc
 		if p.cur.Type == kwEXECUTE {
@@ -147,7 +161,8 @@ func (p *Parser) parseStmt() nodes.StmtNode {
 				return stmt
 			}
 		}
-		return p.parseExecStmt()
+		stmt, _ := p.parseExecStmt()
+		return stmt
 	case kwGRANT:
 		stmt, _ := p.parseGrantStmt()
 		return stmt
@@ -192,9 +207,11 @@ func (p *Parser) parseStmt() nodes.StmtNode {
 			stmt, _ := p.parseOpenMasterKeyStmt()
 			return stmt
 		}
-		return p.parseOpenCursorStmt()
+		stmt, _ := p.parseOpenCursorStmt()
+		return stmt
 	case kwFETCH:
-		return p.parseFetchCursorStmt()
+		stmt, _ := p.parseFetchCursorStmt()
+		return stmt
 	case kwCLOSE:
 		// Check for CLOSE SYMMETRIC KEY / CLOSE ALL SYMMETRIC KEYS / CLOSE MASTER KEY vs CLOSE cursor
 		next := p.peekNext()
@@ -207,9 +224,11 @@ func (p *Parser) parseStmt() nodes.StmtNode {
 			stmt, _ := p.parseCloseSymmetricKeyStmt()
 			return stmt
 		}
-		return p.parseCloseCursorStmt()
+		stmt, _ := p.parseCloseCursorStmt()
+		return stmt
 	case kwDEALLOCATE:
-		return p.parseDeallocateCursorStmt()
+		stmt, _ := p.parseDeallocateCursorStmt()
+		return stmt
 	case kwGO:
 		stmt, _ := p.parseGoStmt()
 		return stmt
