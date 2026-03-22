@@ -398,7 +398,7 @@ func (p *Parser) parseCollateExpr(expr nodes.ExprNode) (nodes.ExprNode, error) {
 		collation = p.cur.Str
 		p.advance()
 	} else {
-		return expr, nil
+		return nil, p.unexpectedToken()
 	}
 	node := &nodes.CollateExpr{
 		Expr:      expr,
@@ -431,6 +431,9 @@ func (p *Parser) parseAtTimeZoneExpr(expr nodes.ExprNode) (nodes.ExprNode, error
 	tz, err := p.parseMultiplication()
 	if err != nil {
 		return nil, err
+	}
+	if tz == nil {
+		return nil, p.unexpectedToken()
 	}
 	node := &nodes.AtTimeZoneExpr{
 		Expr:     expr,
