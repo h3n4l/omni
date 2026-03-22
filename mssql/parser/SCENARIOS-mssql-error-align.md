@@ -224,16 +224,16 @@ After dual return is in place, add nil checks after advance+parse patterns. Each
 
 ### 2.7 DML: INSERT, UPDATE, DELETE, MERGE Truncations
 
-- [ ] `INSERT INTO` — INTO consumed, no table name → error
-- [ ] `INSERT INTO t VALUES (` — VALUES ( consumed, no values → error
-- [ ] `INSERT INTO t (` — column list ( consumed, no columns → error
-- [ ] `UPDATE` — UPDATE with no table → error
-- [ ] `UPDATE t SET` — SET consumed, no assignments → error
-- [ ] `UPDATE t SET a =` — = consumed, no value → error
-- [ ] `DELETE FROM` — DELETE FROM consumed, no table → error
-- [ ] `MERGE INTO` — MERGE INTO consumed, no target table → error
-- [ ] `MERGE INTO t USING` — USING consumed, no source → error
-- [ ] `MERGE INTO t USING s ON` — ON consumed, no condition → error
+- [x] `INSERT INTO` — INTO consumed, no table name → error
+- [x] `INSERT INTO t VALUES (` — VALUES ( consumed, no values → error
+- [x] `INSERT INTO t (` — column list ( consumed, no columns → error
+- [x] `UPDATE` — UPDATE with no table → error
+- [x] `UPDATE t SET` — SET consumed, no assignments → error
+- [x] `UPDATE t SET a =` — = consumed, no value → error
+- [x] `DELETE FROM` — DELETE FROM consumed, no table → error
+- [x] `MERGE INTO` — MERGE INTO consumed, no target table → error
+- [x] `MERGE INTO t USING` — USING consumed, no source → error
+- [x] `MERGE INTO t USING s ON` — ON consumed, no condition → error
 
 ### 2.8 DDL: CREATE TABLE Truncations
 

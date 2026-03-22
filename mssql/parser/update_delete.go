@@ -69,6 +69,9 @@ func (p *Parser) parseUpdateStmt() (*nodes.UpdateStmt, error) {
 	if err != nil {
 		return nil, err
 	}
+	if rel == nil {
+		return nil, &ParseError{Message: "expected table name after UPDATE", Position: p.cur.Loc}
+	}
 	stmt.Relation = rel
 
 	// Optional WITH ( <Table_Hint_Limited> ) on target
@@ -85,6 +88,9 @@ func (p *Parser) parseUpdateStmt() (*nodes.UpdateStmt, error) {
 		setList, err := p.parseSetClauseList()
 		if err != nil {
 			return nil, err
+		}
+		if setList == nil || len(setList.Items) == 0 {
+			return nil, &ParseError{Message: "expected assignment after SET", Position: p.cur.Loc}
 		}
 		stmt.SetClause = setList
 	}
@@ -180,6 +186,9 @@ func (p *Parser) parseDeleteStmt() (*nodes.DeleteStmt, error) {
 	rel, err := p.parseTableRef()
 	if err != nil {
 		return nil, err
+	}
+	if rel == nil {
+		return nil, &ParseError{Message: "expected table name after DELETE", Position: p.cur.Loc}
 	}
 	stmt.Relation = rel
 
@@ -374,6 +383,9 @@ func (p *Parser) parseSetClause() (*nodes.SetExpr, error) {
 	val, err := p.parseExpr()
 	if err != nil {
 		return nil, err
+	}
+	if val == nil {
+		return nil, &ParseError{Message: "expected expression after =", Position: p.cur.Loc}
 	}
 	se.Value = val
 	se.Loc.End = p.pos()
