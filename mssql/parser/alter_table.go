@@ -101,6 +101,9 @@ func (p *Parser) parseAlterTableStmt() (*nodes.AlterTableStmt, error) {
 	if err != nil {
 		return nil, err
 	}
+	if stmt.Name == nil {
+		return nil, p.unexpectedToken()
+	}
 
 	// Parse optional WITH { CHECK | NOCHECK } prefix
 	withCheck := ""
@@ -249,6 +252,9 @@ func (p *Parser) parseAlterTableAdd() ([]nodes.Node, error) {
 			if err != nil {
 				return nil, err
 			}
+			if action.Column == nil {
+				return nil, p.unexpectedToken()
+			}
 		}
 
 		action.Loc.End = p.pos()
@@ -353,7 +359,10 @@ func (p *Parser) parseAlterTableDrop() ([]nodes.Node, error) {
 				IfExists: ifExists,
 				Loc:      nodes.Loc{Start: loc},
 			}
-			name, _ := p.parseIdentifier()
+			name, nameOK := p.parseIdentifier()
+			if !nameOK {
+				return nil, p.unexpectedToken()
+			}
 			action.ColName = name
 			action.Loc.End = p.pos()
 			actions = append(actions, action)
@@ -466,7 +475,10 @@ func (p *Parser) parseAlterTableAlterColumn() (*nodes.AlterTableAction, error) {
 		p.advance() // consume COLUMN
 	}
 
-	name, _ := p.parseIdentifier()
+	name, nameOK := p.parseIdentifier()
+	if !nameOK {
+		return nil, p.unexpectedToken()
+	}
 
 	// Check if this is ADD/DROP form (alter column attribute)
 	if p.cur.Type == kwADD || p.cur.Type == kwDROP {
@@ -484,6 +496,9 @@ func (p *Parser) parseAlterTableAlterColumn() (*nodes.AlterTableAction, error) {
 	action.DataType, err = p.parseDataType()
 	if err != nil {
 		return nil, err
+	}
+	if action.DataType == nil {
+		return nil, p.unexpectedToken()
 	}
 
 	// COLLATE collation_name

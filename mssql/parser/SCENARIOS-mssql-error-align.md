@@ -250,15 +250,15 @@ After dual return is in place, add nil checks after advance+parse patterns. Each
 
 ### 2.9 DDL: ALTER TABLE, CREATE INDEX Truncations
 
-- [ ] `ALTER TABLE` — ALTER TABLE with no name → error
-- [ ] `ALTER TABLE t ADD` — ADD consumed, no column/constraint → error
-- [ ] `ALTER TABLE t DROP COLUMN` — DROP COLUMN consumed, no name → error
-- [ ] `ALTER TABLE t ALTER COLUMN` — ALTER COLUMN consumed, no name → error
-- [ ] `ALTER TABLE t ALTER COLUMN a` — column name, no type → error
-- [ ] `CREATE INDEX` — CREATE INDEX with no name → error
-- [ ] `CREATE INDEX ix ON` — ON consumed, no table → error
-- [ ] `CREATE INDEX ix ON t (` — ( consumed, no columns → error
-- [ ] `CREATE UNIQUE INDEX` — no name → error
+- [x] `ALTER TABLE` — ALTER TABLE with no name → error
+- [x] `ALTER TABLE t ADD` — ADD consumed, no column/constraint → error
+- [x] `ALTER TABLE t DROP COLUMN` — DROP COLUMN consumed, no name → error
+- [x] `ALTER TABLE t ALTER COLUMN` — ALTER COLUMN consumed, no name → error
+- [x] `ALTER TABLE t ALTER COLUMN a` — column name, no type → error
+- [x] `CREATE INDEX` — CREATE INDEX with no name → error
+- [x] `CREATE INDEX ix ON` — ON consumed, no table → error
+- [x] `CREATE INDEX ix ON t (` — ( consumed, no columns → error
+- [x] `CREATE UNIQUE INDEX` — no name → error
 
 ### 2.10 Control Flow & Declaration Truncations
 

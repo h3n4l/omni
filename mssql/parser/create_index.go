@@ -62,7 +62,10 @@ func (p *Parser) parseCreateIndexStmt(unique bool) (*nodes.CreateIndexStmt, erro
 	p.match(kwINDEX)
 
 	// Index name
-	name, _ := p.parseIdentifier()
+	name, nameOK := p.parseIdentifier()
+	if !nameOK {
+		return nil, p.unexpectedToken()
+	}
 	stmt.Name = name
 
 	// ON table
@@ -71,6 +74,9 @@ func (p *Parser) parseCreateIndexStmt(unique bool) (*nodes.CreateIndexStmt, erro
 		stmt.Table, err = p.parseTableRef()
 		if err != nil {
 			return nil, err
+		}
+		if stmt.Table == nil {
+			return nil, p.unexpectedToken()
 		}
 	}
 
@@ -186,7 +192,9 @@ func (p *Parser) parseIndexColumnList() (*nodes.List, error) {
 			break
 		}
 	}
-	_, _ = p.expect(')')
+	if _, err := p.expect(')'); err != nil {
+		return nil, err
+	}
 	return &nodes.List{Items: items}, nil
 }
 
