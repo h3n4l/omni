@@ -54,6 +54,9 @@ func (p *Parser) parseMergeStmt() (*nodes.MergeStmt, error) {
 	if err != nil {
 		return nil, err
 	}
+	if target == nil {
+		return nil, &ParseError{Message: "expected target table after MERGE", Position: p.cur.Loc}
+	}
 	stmt.Target = target
 
 	// Optional WITH ( <merge_hint> ) on target
@@ -81,6 +84,9 @@ func (p *Parser) parseMergeStmt() (*nodes.MergeStmt, error) {
 	if err != nil {
 		return nil, err
 	}
+	if source == nil {
+		return nil, &ParseError{Message: "expected source table after USING", Position: p.cur.Loc}
+	}
 	stmt.Source = source
 
 	// Source alias
@@ -94,6 +100,9 @@ func (p *Parser) parseMergeStmt() (*nodes.MergeStmt, error) {
 		cond, err := p.parseExpr()
 		if err != nil {
 			return nil, err
+		}
+		if cond == nil {
+			return nil, &ParseError{Message: "expected condition after ON", Position: p.cur.Loc}
 		}
 		stmt.OnCondition = cond
 	}

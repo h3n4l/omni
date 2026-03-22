@@ -56,6 +56,9 @@ func (p *Parser) parseInsertStmt() (*nodes.InsertStmt, error) {
 	if err != nil {
 		return nil, err
 	}
+	if rel == nil {
+		return nil, &ParseError{Message: "expected table name after INSERT", Position: p.cur.Loc}
+	}
 	stmt.Relation = rel
 
 	// Optional WITH ( <Table_Hint_Limited> ) on target
