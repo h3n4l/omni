@@ -625,12 +625,18 @@ func (p *Parser) parseCast() (nodes.ExprNode, error) {
 	if err != nil {
 		return nil, err
 	}
+	if expr == nil {
+		return nil, p.unexpectedToken()
+	}
 	if _, err := p.expect(kwAS); err != nil {
 		return nil, err
 	}
 	dt, err := p.parseDataType()
 	if err != nil {
 		return nil, err
+	}
+	if dt == nil {
+		return nil, p.unexpectedToken()
 	}
 	_, _ = p.expect(')')
 	return &nodes.CastExpr{
@@ -655,12 +661,18 @@ func (p *Parser) parseTryCast() (nodes.ExprNode, error) {
 	if err != nil {
 		return nil, err
 	}
+	if expr == nil {
+		return nil, p.unexpectedToken()
+	}
 	if _, err := p.expect(kwAS); err != nil {
 		return nil, err
 	}
 	dt, err := p.parseDataType()
 	if err != nil {
 		return nil, err
+	}
+	if dt == nil {
+		return nil, p.unexpectedToken()
 	}
 	_, _ = p.expect(')')
 	return &nodes.TryCastExpr{
@@ -684,6 +696,9 @@ func (p *Parser) parseConvert() (nodes.ExprNode, error) {
 	dt, err := p.parseDataType()
 	if err != nil {
 		return nil, err
+	}
+	if dt == nil {
+		return nil, p.unexpectedToken()
 	}
 	if _, err := p.expect(','); err != nil {
 		return nil, err
@@ -722,6 +737,9 @@ func (p *Parser) parseTryConvert() (nodes.ExprNode, error) {
 	dt, err := p.parseDataType()
 	if err != nil {
 		return nil, err
+	}
+	if dt == nil {
+		return nil, p.unexpectedToken()
 	}
 	if _, err := p.expect(','); err != nil {
 		return nil, err
@@ -773,12 +791,18 @@ func (p *Parser) parseCaseExpr() (nodes.ExprNode, error) {
 		if err != nil {
 			return nil, err
 		}
+		if cond == nil {
+			return nil, p.unexpectedToken()
+		}
 		if _, err := p.expect(kwTHEN); err != nil {
 			break
 		}
 		result, err := p.parseExpr()
 		if err != nil {
 			return nil, err
+		}
+		if result == nil {
+			return nil, p.unexpectedToken()
 		}
 		whenList = append(whenList, &nodes.CaseWhen{
 			Condition: cond,
@@ -823,6 +847,9 @@ func (p *Parser) parseCoalesce() (nodes.ExprNode, error) {
 		if err != nil {
 			return nil, err
 		}
+		if arg == nil {
+			return nil, p.unexpectedToken()
+		}
 		args = append(args, arg)
 		if _, ok := p.match(','); !ok {
 			break
@@ -849,6 +876,9 @@ func (p *Parser) parseNullif() (nodes.ExprNode, error) {
 	left, err := p.parseExpr()
 	if err != nil {
 		return nil, err
+	}
+	if left == nil {
+		return nil, p.unexpectedToken()
 	}
 	if _, err := p.expect(','); err != nil {
 		return nil, err
@@ -879,6 +909,9 @@ func (p *Parser) parseIif() (nodes.ExprNode, error) {
 	cond, err := p.parseExpr()
 	if err != nil {
 		return nil, err
+	}
+	if cond == nil {
+		return nil, p.unexpectedToken()
 	}
 	if _, err := p.expect(','); err != nil {
 		return nil, err
@@ -917,6 +950,9 @@ func (p *Parser) parseExists() (nodes.ExprNode, error) {
 	query, err := p.parseStmt()
 	if err != nil {
 		return nil, err
+	}
+	if query == nil {
+		return nil, p.unexpectedToken()
 	}
 	_, _ = p.expect(')')
 	return &nodes.ExistsExpr{

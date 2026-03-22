@@ -81,68 +81,68 @@ Migrate all parse functions from returning single values to `(T, error)` tuples.
 
 ### 1.9 Security: grant.go, security_principals.go, security_misc.go, security_keys.go, security_audit.go
 
-- [ ] grant.go — `parseGrantStmt`, `parseRevokeStmt`, `parseDenyStmt`, `parsePrivilegeList`, `parsePrincipalList` return dual
-- [ ] security_principals.go — all 9 functions return dual
-- [ ] security_misc.go — all 10 functions return dual
-- [ ] security_keys.go — all 14 functions return dual
-- [ ] security_audit.go — all 12 functions return dual
-- [ ] All cross-file callers updated
-- [ ] Build passes after 1.9
+- [x] grant.go — `parseGrantStmt`, `parseRevokeStmt`, `parseDenyStmt`, `parsePrivilegeList`, `parsePrincipalList` return dual
+- [x] security_principals.go — all 9 functions return dual
+- [x] security_misc.go — all 10 functions return dual
+- [x] security_keys.go — all 14 functions return dual
+- [x] security_audit.go — all 12 functions return dual
+- [x] All cross-file callers updated
+- [x] Build passes after 1.9
 
 ### 1.10 Control Flow: control_flow.go, cursor.go, transaction.go, declare_set.go, execute.go
 
-- [ ] control_flow.go — `parseIfStmt`, `parseWhileStmt`, `parseBeginStmt`, `parseTryCatchStmt`, `parseReturnStmt`, `parseBreakStmt`, `parseContinueStmt`, `parseGotoStmt`, `parseWaitForStmt` return dual
-- [ ] cursor.go — all 6 functions return dual
-- [ ] transaction.go — all 5 functions return dual
-- [ ] declare_set.go — `parseDeclareStmt`, `parseVariableDecl`, `parseSetStmt`, `parseSetOptionStmt` return dual
-- [ ] execute.go — all 7 functions return dual
-- [ ] All cross-file callers updated
-- [ ] Build passes after 1.10
+- [x] control_flow.go — `parseIfStmt`, `parseWhileStmt`, `parseBeginStmt`, `parseTryCatchStmt`, `parseReturnStmt`, `parseBreakStmt`, `parseContinueStmt`, `parseGotoStmt`, `parseWaitForStmt` return dual
+- [x] cursor.go — all 6 functions return dual
+- [x] transaction.go — all 5 functions return dual
+- [x] declare_set.go — `parseDeclareStmt`, `parseVariableDecl`, `parseSetStmt`, `parseSetOptionStmt` return dual
+- [x] execute.go — all 7 functions return dual
+- [x] All cross-file callers updated
+- [x] Build passes after 1.10
 
 ### 1.11 Server/Admin: server.go, backup_restore.go
 
-- [ ] server.go — all 16 functions return dual
-- [ ] backup_restore.go — all 11 functions return dual
-- [ ] All cross-file callers updated
-- [ ] Build passes after 1.11
+- [x] server.go — all 16 functions return dual
+- [x] backup_restore.go — all 11 functions return dual
+- [x] All cross-file callers updated
+- [x] Build passes after 1.11
 
 ### 1.12 Server/Admin: service_broker.go, resource_governor.go, availability.go, endpoint.go
 
-- [ ] service_broker.go — all 26 functions return dual
-- [ ] resource_governor.go — all 19 functions return dual
-- [ ] availability.go — all 6 functions return dual
-- [ ] endpoint.go — all 11 functions return dual
-- [ ] All cross-file callers updated
-- [ ] Build passes after 1.12
+- [x] service_broker.go — all 26 functions return dual
+- [x] resource_governor.go — all 19 functions return dual
+- [x] availability.go — all 6 functions return dual
+- [x] endpoint.go — all 11 functions return dual
+- [x] All cross-file callers updated
+- [x] Build passes after 1.12
 
 ### 1.13 Other: drop.go, utility.go, fulltext.go, external.go, assembly.go, partition.go, xml_schema.go, dbcc.go, bulk_insert.go, go_batch.go, rowset_functions.go, event.go
 
-- [ ] drop.go — `parseDropStmt` returns dual
-- [ ] utility.go — all 34 functions return dual
-- [ ] fulltext.go — all 11 functions return dual
-- [ ] external.go — all 21 functions return dual
-- [ ] assembly.go — 2 functions return dual
-- [ ] partition.go — 4 functions return dual
-- [ ] xml_schema.go — 2 functions return dual
-- [ ] dbcc.go — `parseDbccStmt` returns dual
-- [ ] bulk_insert.go — 2 functions return dual
-- [ ] go_batch.go — `parseGoStmt` returns dual
-- [ ] rowset_functions.go — `parseRowsetFunction`, `parseRowsetWithClause` return dual
-- [ ] event.go — all 13 functions return dual
-- [ ] All cross-file callers updated
-- [ ] Build passes after 1.13
+- [x] drop.go — `parseDropStmt` returns dual
+- [x] utility.go — all 34 functions return dual
+- [x] fulltext.go — all 11 functions return dual
+- [x] external.go — all 21 functions return dual
+- [x] assembly.go — 2 functions return dual
+- [x] partition.go — 4 functions return dual
+- [x] xml_schema.go — 2 functions return dual
+- [x] dbcc.go — `parseDbccStmt` returns dual
+- [x] bulk_insert.go — 2 functions return dual
+- [x] go_batch.go — `parseGoStmt` returns dual
+- [x] rowset_functions.go — `parseRowsetFunction`, `parseRowsetWithClause` return dual
+- [x] event.go — all 13 functions return dual
+- [x] All cross-file callers updated
+- [x] Build passes after 1.13
 
 ### 1.14 Top-level: parser.go
 
-- [ ] `parseStmt` returns `(nodes.StmtNode, error)` — main dispatch updated
-- [ ] `parseCreateStmt` returns `(nodes.StmtNode, error)`
-- [ ] `parseAlterStmt` returns `(nodes.StmtNode, error)`
-- [ ] `parseDropOrSecurityStmt` returns `(nodes.StmtNode, error)`
-- [ ] `parseAddStmt` returns `(nodes.StmtNode, error)`
-- [ ] `parseLabelStmt` returns dual
-- [ ] `Parse()` top-level loop updated to propagate errors from `parseStmt`
-- [ ] All existing tests pass
-- [ ] Build passes after 1.14
+- [x] `parseStmt` returns `(nodes.StmtNode, error)` — main dispatch updated
+- [x] `parseCreateStmt` returns `(nodes.StmtNode, error)`
+- [x] `parseAlterStmt` returns `(nodes.StmtNode, error)`
+- [x] `parseDropOrSecurityStmt` returns `(nodes.StmtNode, error)`
+- [x] `parseAddStmt` returns `(nodes.StmtNode, error)`
+- [x] `parseLabelStmt` returns dual
+- [x] `Parse()` top-level loop updated to propagate errors from `parseStmt`
+- [x] All existing tests pass
+- [x] Build passes after 1.14
 
 ---
 
@@ -179,17 +179,17 @@ After dual return is in place, add nil checks after advance+parse patterns. Each
 
 ### 2.3 expr.go — CAST, CONVERT & Function Calls
 
-- [ ] `SELECT CAST(` — CAST( consumed, no expression → error
-- [ ] `SELECT CAST(1 AS` — AS consumed, no type → error
-- [ ] `SELECT TRY_CAST(` — TRY_CAST( consumed, no expression → error
-- [ ] `SELECT CONVERT(` — CONVERT( consumed, no type → error
-- [ ] `SELECT TRY_CONVERT(` — TRY_CONVERT( consumed, no type → error
-- [ ] `SELECT COALESCE(` — COALESCE( consumed, no expression → error
-- [ ] `SELECT NULLIF(` — NULLIF( consumed, no expression → error
-- [ ] `SELECT IIF(` — IIF( consumed, no condition → error
-- [ ] `SELECT CASE WHEN` — CASE WHEN consumed, no condition → error
-- [ ] `SELECT CASE WHEN 1=1 THEN` — THEN consumed, no result → error
-- [ ] `SELECT EXISTS (` — EXISTS ( consumed, no subquery → error
+- [x] `SELECT CAST(` — CAST( consumed, no expression → error
+- [x] `SELECT CAST(1 AS` — AS consumed, no type → error
+- [x] `SELECT TRY_CAST(` — TRY_CAST( consumed, no expression → error
+- [x] `SELECT CONVERT(` — CONVERT( consumed, no type → error
+- [x] `SELECT TRY_CONVERT(` — TRY_CONVERT( consumed, no type → error
+- [x] `SELECT COALESCE(` — COALESCE( consumed, no expression → error
+- [x] `SELECT NULLIF(` — NULLIF( consumed, no expression → error
+- [x] `SELECT IIF(` — IIF( consumed, no condition → error
+- [x] `SELECT CASE WHEN` — CASE WHEN consumed, no condition → error
+- [x] `SELECT CASE WHEN 1=1 THEN` — THEN consumed, no result → error
+- [x] `SELECT EXISTS (` — EXISTS ( consumed, no subquery → error
 
 ### 2.4 expr.go — Collate, AT TIME ZONE, Unary
 
