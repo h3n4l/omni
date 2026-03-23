@@ -166,19 +166,21 @@ type AlterTableStmt struct {
 	Cmds       *List     // list of subcommands (AlterTableCmd)
 	ObjType    int       // type of object (ObjectType)
 	Missing_ok bool      // skip error if table missing
+	Loc        Loc       // token location
 }
 
 func (n *AlterTableStmt) Tag() NodeTag { return T_AlterTableStmt }
 
 // AlterTableCmd represents a subcommand of ALTER TABLE.
 type AlterTableCmd struct {
-	Subtype   int    // Type of table alteration to apply
-	Name      string // column, constraint, or trigger to act on
-	Num       int16  // attribute number for columns referenced by number
-	Newowner  *RoleSpec
-	Def       Node   // definition of new column, index, constraint, etc.
-	Behavior  int    // RESTRICT or CASCADE for DROP cases
+	Subtype    int    // Type of table alteration to apply
+	Name       string // column, constraint, or trigger to act on
+	Num        int16  // attribute number for columns referenced by number
+	Newowner   *RoleSpec
+	Def        Node   // definition of new column, index, constraint, etc.
+	Behavior   int    // RESTRICT or CASCADE for DROP cases
 	Missing_ok bool
+	Loc        Loc // token location
 }
 
 func (n *AlterTableCmd) Tag() NodeTag { return T_AlterTableCmd }
@@ -190,6 +192,7 @@ type AlterTableMoveAllStmt struct {
 	Roles              *List  // List of roles to move objects of
 	NewTablespacename  string // target tablespace
 	Nowait             bool
+	Loc                Loc // token location
 }
 
 func (n *AlterTableMoveAllStmt) Tag() NodeTag { return T_AlterTableMoveAllStmt }
@@ -521,6 +524,7 @@ type PartitionCmd struct {
 	Name       *RangeVar           // partition to attach/detach
 	Bound      *PartitionBoundSpec // FOR VALUES, if attaching
 	Concurrent bool
+	Loc        Loc // token location
 }
 
 func (n *PartitionCmd) Tag() NodeTag { return T_PartitionCmd }
@@ -976,6 +980,7 @@ type AlterSeqStmt struct {
 	Options     *List     // list of DefElem
 	ForIdentity bool      // for GENERATED ... AS IDENTITY
 	MissingOk   bool      // skip if sequence doesn't exist?
+	Loc         Loc       // token location
 }
 
 func (n *AlterSeqStmt) Tag() NodeTag { return T_AlterSeqStmt }
@@ -1273,14 +1278,15 @@ func (n *SortGroupClause) Tag() NodeTag { return T_SortGroupClause }
 
 // RenameStmt represents ALTER ... RENAME statement.
 type RenameStmt struct {
-	RenameType   ObjectType // OBJECT_TABLE, OBJECT_COLUMN, etc
-	RelationType ObjectType // if column, what's the relation type?
-	Relation     *RangeVar  // in case it's a table
-	Object       Node       // qualified name of object
-	Subname      string     // name of contained object (column, rule, etc)
-	Newname      string     // new name
+	RenameType   ObjectType   // OBJECT_TABLE, OBJECT_COLUMN, etc
+	RelationType ObjectType   // if column, what's the relation type?
+	Relation     *RangeVar    // in case it's a table
+	Object       Node         // qualified name of object
+	Subname      string       // name of contained object (column, rule, etc)
+	Newname      string       // new name
 	Behavior     DropBehavior // RESTRICT or CASCADE
-	MissingOk    bool       // skip error if missing?
+	MissingOk    bool         // skip error if missing?
+	Loc          Loc          // token location
 }
 
 func (n *RenameStmt) Tag() NodeTag { return T_RenameStmt }

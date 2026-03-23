@@ -157,6 +157,20 @@ func NodeLoc(n Node) Loc {
 	case *PublicationObjSpec:
 		return v.Loc
 
+	// --- Section 3.2: ALTER TABLE nodes ---
+	case *AlterTableStmt:
+		return v.Loc
+	case *AlterTableCmd:
+		return v.Loc
+	case *AlterSeqStmt:
+		return v.Loc
+	case *AlterTableMoveAllStmt:
+		return v.Loc
+	case *PartitionCmd:
+		return v.Loc
+	case *RenameStmt:
+		return v.Loc
+
 	default:
 		return NoLoc()
 	}
