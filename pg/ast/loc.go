@@ -333,6 +333,36 @@ func NodeLoc(n Node) Loc {
 
 	// --- Section 4.6: Maintenance & SET nodes ---
 
+	// --- Section 3.2: ALTER TABLE nodes ---
+	case *AlterTableStmt:
+		return v.Loc
+	case *AlterTableCmd:
+		return v.Loc
+	case *AlterSeqStmt:
+		return v.Loc
+	case *AlterTableMoveAllStmt:
+		return v.Loc
+	case *PartitionCmd:
+		return v.Loc
+	case *RenameStmt:
+		return v.Loc
+
+	// --- Section 3.3: Grant & role nodes ---
+
+	// --- Section 3.4: Publication & subscription nodes ---
+
+	// --- Section 4.1: Database & schema nodes ---
+
+	// --- Section 4.2: Sequence, function & domain nodes ---
+
+	// --- Section 4.3: Trigger, index & view nodes ---
+
+	// --- Section 4.4: Utility statement nodes ---
+
+	// --- Section 4.5: Cursor, prepare & IO nodes ---
+
+	// --- Section 4.6: Maintenance & SET nodes ---
+
 	// --- Section 5.1: Investigation nodes ---
 
 	default:
