@@ -157,6 +157,34 @@ func NodeLoc(n Node) Loc {
 	case *PublicationObjSpec:
 		return v.Loc
 
+	// --- Section 4.6: Maintenance & SET nodes ---
+	case *VacuumStmt:
+		return v.Loc
+	case *VacuumRelation:
+		return v.Loc
+	case *ClusterStmt:
+		return v.Loc
+	case *ReindexStmt:
+		return v.Loc
+	case *VariableSetStmt:
+		return v.Loc
+	case *VariableShowStmt:
+		return v.Loc
+	case *AlterSystemStmt:
+		return v.Loc
+	case *ConstraintsSetStmt:
+		return v.Loc
+	case *DropStmt:
+		return v.Loc
+	case *DropOwnedStmt:
+		return v.Loc
+	case *DropSubscriptionStmt:
+		return v.Loc
+	case *DropTableSpaceStmt:
+		return v.Loc
+	case *TruncateStmt:
+		return v.Loc
+
 	default:
 		return NoLoc()
 	}
