@@ -1615,6 +1615,7 @@ type RuleStmt struct {
 	Instead     bool      // is a DO INSTEAD rule?
 	Actions     *List     // the action statements
 	Replace     bool      // OR REPLACE
+	Loc         Loc       // token location
 }
 
 func (n *RuleStmt) Tag() NodeTag { return T_RuleStmt }
@@ -1822,6 +1823,7 @@ type CreatePublicationStmt struct {
 	Options      *List  // list of DefElem nodes
 	Pubobjects   *List  // list of PublicationObjSpec
 	ForAllTables bool   // FOR ALL TABLES
+	Loc          Loc    // token location
 }
 
 func (n *CreatePublicationStmt) Tag() NodeTag { return T_CreatePublicationStmt }
@@ -1833,6 +1835,7 @@ type AlterPublicationStmt struct {
 	Pubobjects   *List         // list of PublicationObjSpec
 	ForAllTables bool          // FOR ALL TABLES
 	Action       DefElemAction // SET, ADD, DROP
+	Loc          Loc           // token location
 }
 
 func (n *AlterPublicationStmt) Tag() NodeTag { return T_AlterPublicationStmt }
@@ -1852,6 +1855,7 @@ type PublicationTable struct {
 	Relation    *RangeVar // relation to publish
 	WhereClause Node      // WHERE clause for row filter
 	Columns     *List     // column list filter
+	Loc         Loc       // token location
 }
 
 func (n *PublicationTable) Tag() NodeTag { return T_PublicationTable }
@@ -1862,6 +1866,7 @@ type CreateSubscriptionStmt struct {
 	Conninfo    string // connection string
 	Publication *List  // list of publication names (String nodes)
 	Options     *List  // list of DefElem
+	Loc         Loc    // token location
 }
 
 func (n *CreateSubscriptionStmt) Tag() NodeTag { return T_CreateSubscriptionStmt }
@@ -1873,6 +1878,7 @@ type AlterSubscriptionStmt struct {
 	Conninfo    string                // connection string
 	Publication *List                 // list of publication names
 	Options     *List                 // list of DefElem
+	Loc         Loc                   // token location
 }
 
 func (n *AlterSubscriptionStmt) Tag() NodeTag { return T_AlterSubscriptionStmt }

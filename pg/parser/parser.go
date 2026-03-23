@@ -323,6 +323,7 @@ func (p *Parser) parseStmt() (nodes.Node, error) {
 // The current token is CREATE. We peek at the next token to determine which
 // CREATE sub-statement to parse.
 func (p *Parser) parseCreateDispatch() (nodes.Node, error) {
+	createLoc := p.pos() // byte offset of CREATE keyword
 	// In collect mode, check if the next token is at/past cursor.
 	// We need to peek ahead because CREATE has not been consumed yet.
 	if p.completing && !p.collecting {
@@ -363,7 +364,7 @@ func (p *Parser) parseCreateDispatch() (nodes.Node, error) {
 		case TRUSTED, PROCEDURAL, LANGUAGE:
 			return p.parseCreatePLangStmt(true)
 		case RULE:
-			return p.parseCreateRuleStmt(true)
+			return p.parseCreateRuleStmt(true, createLoc)
 		case AGGREGATE:
 			return p.parseDefineStmtAggregate(true)
 		case TRANSFORM:
@@ -522,7 +523,7 @@ func (p *Parser) parseCreateDispatch() (nodes.Node, error) {
 	case RULE:
 		// CREATE RULE ...
 		p.advance() // consume CREATE
-		return p.parseCreateRuleStmt(false)
+		return p.parseCreateRuleStmt(false, createLoc)
 	case EXTENSION:
 		// CREATE EXTENSION ...
 		p.advance() // consume CREATE

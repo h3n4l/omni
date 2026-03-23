@@ -157,6 +157,20 @@ func NodeLoc(n Node) Loc {
 	case *PublicationObjSpec:
 		return v.Loc
 
+	// --- Section 3.4: Publication & subscription nodes ---
+	case *CreatePublicationStmt:
+		return v.Loc
+	case *AlterPublicationStmt:
+		return v.Loc
+	case *CreateSubscriptionStmt:
+		return v.Loc
+	case *AlterSubscriptionStmt:
+		return v.Loc
+	case *PublicationTable:
+		return v.Loc
+	case *RuleStmt:
+		return v.Loc
+
 	default:
 		return NoLoc()
 	}
