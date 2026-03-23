@@ -15,6 +15,7 @@ import (
 //	json_value_expr:
 //	    a_expr json_format_clause_opt
 func (p *Parser) parseJsonValueExpr() (*nodes.JsonValueExpr, error) {
+	loc := p.pos()
 	expr, err := p.parseAExpr(0)
 	if err != nil {
 		return nil, err
@@ -27,6 +28,7 @@ func (p *Parser) parseJsonValueExpr() (*nodes.JsonValueExpr, error) {
 	}
 	return &nodes.JsonValueExpr{
 		RawExpr: expr,
+		Loc:     nodes.Loc{Start: loc, End: p.prev.End},
 	}, nil
 }
 
@@ -68,6 +70,7 @@ func (p *Parser) parseJsonReturningClauseOpt() (*nodes.JsonOutput, error) {
 	if p.cur.Type != RETURNING {
 		return nil, nil
 	}
+	loc := p.pos()
 	p.advance() // consume RETURNING
 	tn, err := p.parseTypename()
 	if err != nil {
@@ -78,6 +81,7 @@ func (p *Parser) parseJsonReturningClauseOpt() (*nodes.JsonOutput, error) {
 	}
 	return &nodes.JsonOutput{
 		TypeName: tn,
+		Loc:      nodes.Loc{Start: loc, End: p.prev.End},
 	}, nil
 }
 
@@ -432,6 +436,7 @@ func (p *Parser) parseJsonNameAndValueList() (*nodes.List, error) {
 // Since we cannot easily distinguish c_expr VALUE_P from a_expr in an LL parser,
 // we parse as a_expr and check for VALUE_P or ':'.
 func (p *Parser) parseJsonNameAndValue() (*nodes.JsonKeyValue, error) {
+	loc := p.pos()
 	key, err := p.parseAExpr(0)
 
 	if p.cur.Type == VALUE_P {
@@ -440,7 +445,7 @@ func (p *Parser) parseJsonNameAndValue() (*nodes.JsonKeyValue, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &nodes.JsonKeyValue{Key: key, Value: val}, nil
+		return &nodes.JsonKeyValue{Key: key, Value: val, Loc: nodes.Loc{Start: loc, End: p.prev.End}}, nil
 	}
 
 	if p.cur.Type == ':' {
@@ -449,7 +454,7 @@ func (p *Parser) parseJsonNameAndValue() (*nodes.JsonKeyValue, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &nodes.JsonKeyValue{Key: key, Value: val}, nil
+		return &nodes.JsonKeyValue{Key: key, Value: val, Loc: nodes.Loc{Start: loc, End: p.prev.End}}, nil
 	}
 
 	// Fallback: treat as key VALUE expr
@@ -457,7 +462,7 @@ func (p *Parser) parseJsonNameAndValue() (*nodes.JsonKeyValue, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &nodes.JsonKeyValue{Key: key, Value: val}, nil
+	return &nodes.JsonKeyValue{Key: key, Value: val, Loc: nodes.Loc{Start: loc, End: p.prev.End}}, nil
 }
 
 // parseJsonValueExprList parses a comma-separated list of json_value_expr.
@@ -511,6 +516,7 @@ func (p *Parser) parseJsonArguments() (*nodes.List, error) {
 
 // parseJsonArgument parses json_value_expr AS ColLabel.
 func (p *Parser) parseJsonArgument() (*nodes.JsonArgument, error) {
+	loc := p.pos()
 	val, err := p.parseJsonValueExpr()
 	if err != nil {
 		return nil, err
@@ -525,6 +531,7 @@ func (p *Parser) parseJsonArgument() (*nodes.JsonArgument, error) {
 	return &nodes.JsonArgument{
 		Val:  val,
 		Name: name,
+		Loc:  nodes.Loc{Start: loc, End: p.prev.End},
 	}, nil
 }
 
@@ -573,6 +580,7 @@ func (p *Parser) parseJsonObjectExpr() (nodes.Node, error) {
 	// Otherwise, it's legacy (func_arg_list).
 
 	// Save position for potential backtrack (we can't easily backtrack, so we parse first expr)
+	firstExprLoc := p.pos()
 	firstExpr, err := p.parseAExpr(0)
 	if err != nil {
 		return nil, err
@@ -585,7 +593,7 @@ func (p *Parser) parseJsonObjectExpr() (nodes.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		firstKV := &nodes.JsonKeyValue{Key: firstExpr, Value: firstVal}
+		firstKV := &nodes.JsonKeyValue{Key: firstExpr, Value: firstVal, Loc: nodes.Loc{Start: firstExprLoc, End: p.prev.End}}
 		items := []nodes.Node{firstKV}
 		for p.cur.Type == ',' {
 			p.advance()
@@ -621,7 +629,7 @@ func (p *Parser) parseJsonObjectExpr() (nodes.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		firstKV := &nodes.JsonKeyValue{Key: firstExpr, Value: firstVal}
+		firstKV := &nodes.JsonKeyValue{Key: firstExpr, Value: firstVal, Loc: nodes.Loc{Start: firstExprLoc, End: p.prev.End}}
 		items := []nodes.Node{firstKV}
 		for p.cur.Type == ',' {
 			p.advance()
@@ -959,6 +967,7 @@ func (p *Parser) parseJsonValueFuncExpr() (nodes.Node, error) {
 //
 // After parsing, FILTER and OVER clauses are handled by the caller.
 func (p *Parser) parseJsonObjectAgg() (nodes.Node, error) {
+	loc := p.pos()
 	p.advance() // consume JSON_OBJECTAGG
 	if _, err := p.expect('('); err != nil {
 		return nil, err
@@ -992,6 +1001,7 @@ func (p *Parser) parseJsonObjectAgg() (nodes.Node, error) {
 		return nil, err
 	}
 
+	agg.Loc = nodes.Loc{Start: loc, End: p.prev.End}
 	return agg, nil
 }
 
@@ -1002,6 +1012,7 @@ func (p *Parser) parseJsonObjectAgg() (nodes.Node, error) {
 //	    json_array_constructor_null_clause_opt
 //	    json_returning_clause_opt ')'
 func (p *Parser) parseJsonArrayAgg() (nodes.Node, error) {
+	loc := p.pos()
 	p.advance() // consume JSON_ARRAYAGG
 	if _, err := p.expect('('); err != nil {
 		return nil, err
@@ -1035,6 +1046,7 @@ func (p *Parser) parseJsonArrayAgg() (nodes.Node, error) {
 		return nil, err
 	}
 
+	agg.Loc = nodes.Loc{Start: loc, End: p.prev.End}
 	return agg, nil
 }
 

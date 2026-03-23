@@ -167,6 +167,20 @@ func NodeLoc(n Node) Loc {
 	case *IntoClause:
 		return v.Loc
 
+	// --- Section 1.3: JSON nodes ---
+	case *JsonValueExpr:
+		return v.Loc
+	case *JsonOutput:
+		return v.Loc
+	case *JsonArgument:
+		return v.Loc
+	case *JsonKeyValue:
+		return v.Loc
+	case *JsonObjectAgg:
+		return v.Loc
+	case *JsonArrayAgg:
+		return v.Loc
+
 	// Publication
 	case *PublicationObjSpec:
 		return v.Loc
