@@ -153,6 +153,10 @@ func NodeLoc(n Node) Loc {
 	case *JsonIsPredicate:
 		return v.Loc
 
+	// Publication
+	case *PublicationObjSpec:
+		return v.Loc
+
 	// --- Section 1.1: FROM/Join nodes ---
 	case *JoinExpr:
 		return v.Loc
@@ -166,26 +170,6 @@ func NodeLoc(n Node) Loc {
 		return v.Loc
 	case *IntoClause:
 		return v.Loc
-
-	// --- Section 1.3: JSON nodes ---
-	case *JsonValueExpr:
-		return v.Loc
-	case *JsonOutput:
-		return v.Loc
-	case *JsonArgument:
-		return v.Loc
-	case *JsonKeyValue:
-		return v.Loc
-	case *JsonObjectAgg:
-		return v.Loc
-	case *JsonArrayAgg:
-		return v.Loc
-
-	// Publication
-	case *PublicationObjSpec:
-		return v.Loc
-
-	// --- Section 1.1: FROM/Join nodes ---
 
 	// --- Section 1.2: Expression helper nodes ---
 	case *A_Indices:
@@ -202,6 +186,18 @@ func NodeLoc(n Node) Loc {
 		return v.Loc
 
 	// --- Section 1.3: JSON nodes ---
+	case *JsonValueExpr:
+		return v.Loc
+	case *JsonOutput:
+		return v.Loc
+	case *JsonArgument:
+		return v.Loc
+	case *JsonKeyValue:
+		return v.Loc
+	case *JsonObjectAgg:
+		return v.Loc
+	case *JsonArrayAgg:
+		return v.Loc
 
 	// --- Section 2.1: Type & operator definitions ---
 	case *DefineStmt:
@@ -270,26 +266,6 @@ func NodeLoc(n Node) Loc {
 		return v.Loc
 
 	// --- Section 3.1: General ALTER nodes ---
-
-	// --- Section 3.2: ALTER TABLE nodes ---
-
-	// --- Section 3.3: Grant & role nodes ---
-
-	// --- Section 3.4: Publication & subscription nodes ---
-
-	// --- Section 4.1: Database & schema nodes ---
-
-	// --- Section 4.2: Sequence, function & domain nodes ---
-
-	// --- Section 4.3: Trigger, index & view nodes ---
-
-	// --- Section 4.4: Utility statement nodes ---
-
-	// --- Section 4.5: Cursor, prepare & IO nodes ---
-
-	// --- Section 4.6: Maintenance & SET nodes ---
-
-	// --- Section 3.1: General ALTER nodes ---
 	case *AlterCollationStmt:
 		return v.Loc
 	case *AlterDomainStmt:
@@ -316,24 +292,6 @@ func NodeLoc(n Node) Loc {
 		return v.Loc
 
 	// --- Section 3.2: ALTER TABLE nodes ---
-
-	// --- Section 3.3: Grant & role nodes ---
-
-	// --- Section 3.4: Publication & subscription nodes ---
-
-	// --- Section 4.1: Database & schema nodes ---
-
-	// --- Section 4.2: Sequence, function & domain nodes ---
-
-	// --- Section 4.3: Trigger, index & view nodes ---
-
-	// --- Section 4.4: Utility statement nodes ---
-
-	// --- Section 4.5: Cursor, prepare & IO nodes ---
-
-	// --- Section 4.6: Maintenance & SET nodes ---
-
-	// --- Section 3.2: ALTER TABLE nodes ---
 	case *AlterTableStmt:
 		return v.Loc
 	case *AlterTableCmd:
@@ -348,6 +306,24 @@ func NodeLoc(n Node) Loc {
 		return v.Loc
 
 	// --- Section 3.3: Grant & role nodes ---
+	case *GrantStmt:
+		return v.Loc
+	case *GrantRoleStmt:
+		return v.Loc
+	case *CreateRoleStmt:
+		return v.Loc
+	case *AlterRoleStmt:
+		return v.Loc
+	case *AlterRoleSetStmt:
+		return v.Loc
+	case *AlterPolicyStmt:
+		return v.Loc
+	case *CreatePolicyStmt:
+		return v.Loc
+	case *DropRoleStmt:
+		return v.Loc
+	case *AccessPriv:
+		return v.Loc
 
 	// --- Section 3.4: Publication & subscription nodes ---
 

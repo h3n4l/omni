@@ -1123,6 +1123,7 @@ type GrantStmt struct {
 	GrantOption bool       // grant or revoke grant option
 	Grantor     *RoleSpec  // set grantor to other than current role
 	Behavior    DropBehavior // drop behavior (RESTRICT/CASCADE)
+	Loc         Loc        // token location
 }
 
 // GrantTargetType represents grant target type.
@@ -1140,6 +1141,7 @@ func (n *GrantStmt) Tag() NodeTag { return T_GrantStmt }
 type AccessPriv struct {
 	PrivName string // privilege name, NULL for ALL PRIVILEGES
 	Cols     *List  // list of String
+	Loc      Loc    // token location
 }
 
 func (n *AccessPriv) Tag() NodeTag { return T_AccessPriv }
@@ -1475,6 +1477,7 @@ type CreateRoleStmt struct {
 	StmtType RoleStmtType // ROLESTMT_ROLE, ROLESTMT_USER, ROLESTMT_GROUP
 	Role     string       // role name
 	Options  *List        // list of DefElem
+	Loc      Loc          // token location
 }
 
 func (n *CreateRoleStmt) Tag() NodeTag { return T_CreateRoleStmt }
@@ -1484,6 +1487,7 @@ type AlterRoleStmt struct {
 	Role    *RoleSpec // role specification
 	Options *List     // list of DefElem
 	Action  int       // +1 = add, -1 = drop
+	Loc     Loc       // token location
 }
 
 func (n *AlterRoleStmt) Tag() NodeTag { return T_AlterRoleStmt }
@@ -1493,6 +1497,7 @@ type AlterRoleSetStmt struct {
 	Role     *RoleSpec        // role, or NULL for ALL
 	Database string           // database name, or empty
 	Setstmt  *VariableSetStmt // SET/RESET statement
+	Loc      Loc              // token location
 }
 
 func (n *AlterRoleSetStmt) Tag() NodeTag { return T_AlterRoleSetStmt }
@@ -1501,6 +1506,7 @@ func (n *AlterRoleSetStmt) Tag() NodeTag { return T_AlterRoleSetStmt }
 type DropRoleStmt struct {
 	Roles     *List // list of RoleSpec nodes
 	MissingOk bool  // skip error if role is missing?
+	Loc       Loc   // token location
 }
 
 func (n *DropRoleStmt) Tag() NodeTag { return T_DropRoleStmt }
@@ -1513,6 +1519,7 @@ type GrantRoleStmt struct {
 	Opt          *List        // grant options (list of DefElem), PG17+
 	Grantor      *RoleSpec    // set grantor to other than current role
 	Behavior     DropBehavior // drop behavior for REVOKE
+	Loc          Loc          // token location
 }
 
 func (n *GrantRoleStmt) Tag() NodeTag { return T_GrantRoleStmt }
@@ -1846,6 +1853,7 @@ type CreatePolicyStmt struct {
 	Roles      *List     // list of roles (RoleSpec)
 	Qual       Node      // USING qualification
 	WithCheck  Node      // WITH CHECK qualification
+	Loc        Loc       // token location
 }
 
 func (n *CreatePolicyStmt) Tag() NodeTag { return T_CreatePolicyStmt }
@@ -1857,6 +1865,7 @@ type AlterPolicyStmt struct {
 	Roles      *List     // list of roles (RoleSpec)
 	Qual       Node      // USING qualification
 	WithCheck  Node      // WITH CHECK qualification
+	Loc        Loc       // token location
 }
 
 func (n *AlterPolicyStmt) Tag() NodeTag { return T_AlterPolicyStmt }
