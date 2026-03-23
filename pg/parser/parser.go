@@ -352,8 +352,9 @@ func (p *Parser) parseCreateDispatch() (nodes.Node, error) {
 	switch next.Type {
 	case OR:
 		// CREATE OR REPLACE VIEW/FUNCTION/PROCEDURE/TRIGGER ...
-		p.advance() // consume CREATE
-		p.advance() // consume OR
+		createLoc := p.pos() // position of CREATE
+		p.advance()          // consume CREATE
+		p.advance()          // consume OR
 		p.expect(REPLACE)
 		switch p.cur.Type {
 		case FUNCTION, PROCEDURE:
@@ -367,7 +368,7 @@ func (p *Parser) parseCreateDispatch() (nodes.Node, error) {
 		case AGGREGATE:
 			return p.parseDefineStmtAggregate(true)
 		case TRANSFORM:
-			return p.parseCreateTransformStmt(true)
+			return p.parseCreateTransformStmt(true, createLoc)
 		default:
 			return p.parseViewStmt(true)
 		}
@@ -537,8 +538,9 @@ func (p *Parser) parseCreateDispatch() (nodes.Node, error) {
 		return p.parseCreateCastStmt()
 	case TRANSFORM:
 		// CREATE TRANSFORM ...
-		p.advance() // consume CREATE
-		return p.parseCreateTransformStmt(false)
+		createLoc := p.pos() // position of CREATE
+		p.advance()          // consume CREATE
+		return p.parseCreateTransformStmt(false, createLoc)
 	case CONVERSION_P:
 		// CREATE CONVERSION ...
 		p.advance() // consume CREATE

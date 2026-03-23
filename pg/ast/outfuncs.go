@@ -89,6 +89,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeViewStmt(sb, n)
 	case *RawStmt:
 		writeRawStmt(sb, n)
+	// --- Section 2.2: Extension nodes ---
+	// (no dedicated write functions; handled by generic default)
 	default:
 		// Generic fallback for unhandled node types
 		sb.WriteString("{")

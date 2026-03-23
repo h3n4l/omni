@@ -157,6 +157,20 @@ func NodeLoc(n Node) Loc {
 	case *PublicationObjSpec:
 		return v.Loc
 
+	// --- Section 2.2: Extension nodes ---
+	case *CreateExtensionStmt:
+		return v.Loc
+	case *AlterExtensionStmt:
+		return v.Loc
+	case *AlterExtensionContentsStmt:
+		return v.Loc
+	case *CreateAmStmt:
+		return v.Loc
+	case *CreateCastStmt:
+		return v.Loc
+	case *CreateTransformStmt:
+		return v.Loc
+
 	default:
 		return NoLoc()
 	}
