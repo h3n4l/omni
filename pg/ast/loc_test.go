@@ -36,9 +36,9 @@ func TestNodeLocKnownTypes(t *testing.T) {
 }
 
 func TestNodeLocUnknownType(t *testing.T) {
-	got := NodeLoc(&DropStmt{})
+	got := NodeLoc(&FromExpr{})
 	if got != NoLoc() {
-		t.Errorf("NodeLoc(DropStmt) = %+v, want NoLoc", got)
+		t.Errorf("NodeLoc(FromExpr) = %+v, want NoLoc", got)
 	}
 }
 
