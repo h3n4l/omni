@@ -157,6 +157,40 @@ func NodeLoc(n Node) Loc {
 	case *PublicationObjSpec:
 		return v.Loc
 
+	// --- Section 1.1: FROM/Join nodes ---
+
+	// --- Section 1.2: Expression helper nodes ---
+
+	// --- Section 1.3: JSON nodes ---
+
+	// --- Section 2.1: Type & operator definitions ---
+
+	// --- Section 2.2: Extension nodes ---
+
+	// --- Section 2.3: Foreign data wrapper nodes ---
+
+	// --- Section 3.1: General ALTER nodes ---
+
+	// --- Section 3.2: ALTER TABLE nodes ---
+
+	// --- Section 3.3: Grant & role nodes ---
+
+	// --- Section 3.4: Publication & subscription nodes ---
+
+	// --- Section 4.1: Database & schema nodes ---
+
+	// --- Section 4.2: Sequence, function & domain nodes ---
+
+	// --- Section 4.3: Trigger, index & view nodes ---
+
+	// --- Section 4.4: Utility statement nodes ---
+
+	// --- Section 4.5: Cursor, prepare & IO nodes ---
+
+	// --- Section 4.6: Maintenance & SET nodes ---
+
+	// --- Section 5.1: Investigation nodes ---
+
 	default:
 		return NoLoc()
 	}
