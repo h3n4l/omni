@@ -2209,6 +2209,7 @@ type JsonValueExpr struct {
 	RawExpr       Node
 	FormattedExpr Node
 	Format        *JsonFormat
+	Loc           Loc
 }
 
 func (n *JsonValueExpr) Tag() NodeTag { return T_JsonValueExpr }
@@ -2217,6 +2218,7 @@ func (n *JsonValueExpr) Tag() NodeTag { return T_JsonValueExpr }
 type JsonOutput struct {
 	TypeName  *TypeName
 	Returning *JsonReturning
+	Loc       Loc
 }
 
 func (n *JsonOutput) Tag() NodeTag { return T_JsonOutput }
@@ -2225,6 +2227,7 @@ func (n *JsonOutput) Tag() NodeTag { return T_JsonOutput }
 type JsonArgument struct {
 	Val  *JsonValueExpr
 	Name string
+	Loc  Loc
 }
 
 func (n *JsonArgument) Tag() NodeTag { return T_JsonArgument }
@@ -2356,6 +2359,7 @@ func (n *JsonTable) Tag() NodeTag { return T_JsonTable }
 type JsonKeyValue struct {
 	Key   Node
 	Value *JsonValueExpr
+	Loc   Loc
 }
 
 func (n *JsonKeyValue) Tag() NodeTag { return T_JsonKeyValue }
@@ -2437,6 +2441,7 @@ type JsonObjectAgg struct {
 	Arg          *JsonKeyValue
 	AbsentOnNull bool
 	UniqueKeys   bool
+	Loc          Loc
 }
 
 func (n *JsonObjectAgg) Tag() NodeTag { return T_JsonObjectAgg }
@@ -2446,6 +2451,7 @@ type JsonArrayAgg struct {
 	Constructor  *JsonAggConstructor
 	Arg          *JsonValueExpr
 	AbsentOnNull bool
+	Loc          Loc
 }
 
 func (n *JsonArrayAgg) Tag() NodeTag { return T_JsonArrayAgg }
