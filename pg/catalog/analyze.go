@@ -3577,6 +3577,19 @@ func resolveCollation(args ...AnalyzedExpr) uint32 {
 	return 0
 }
 
+// AnalyzeSelectStmt transforms a raw SelectStmt AST node into a semantically
+// analyzed Query. The catalog must already contain the schema (tables, types,
+// functions) referenced by the query — load it via Exec() beforehand.
+//
+// The returned Query contains resolved column references (VarExpr), type
+// information, and provenance tracking (TargetEntry.ResOrigTbl/ResOrigCol)
+// that can be used to extract column lineage.
+//
+// pg: src/backend/parser/analyze.c — transformSelectStmt
+func (c *Catalog) AnalyzeSelectStmt(stmt *nodes.SelectStmt) (*Query, error) {
+	return c.analyzeSelectStmt(stmt)
+}
+
 // AnalyzeExprNoContext analyzes a raw expression node without any range table
 // context. Used for function parameter default expressions.
 //
