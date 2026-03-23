@@ -203,6 +203,7 @@ type CreateSchemaStmt struct {
 	Authrole    *RoleSpec // the owner of the created schema
 	SchemaElts  *List     // schema components (list of parsetrees)
 	IfNotExists bool      // just do nothing if schema already exists?
+	Loc         Loc       // token location
 }
 
 func (n *CreateSchemaStmt) Tag() NodeTag { return T_CreateSchemaStmt }
@@ -972,6 +973,7 @@ type CommentStmt struct {
 	Objtype ObjectType // object kind
 	Object  Node       // qualified name of object
 	Comment string     // comment to insert, or NULL to drop
+	Loc     Loc        // token location
 }
 
 func (n *CommentStmt) Tag() NodeTag { return T_CommentStmt }
@@ -1468,6 +1470,7 @@ type SecLabelStmt struct {
 	Object   Node       // qualified name of object
 	Provider string     // security label provider
 	Label    string     // new security label, or empty to drop
+	Loc      Loc        // token location
 }
 
 func (n *SecLabelStmt) Tag() NodeTag { return T_SecLabelStmt }
@@ -1528,6 +1531,7 @@ func (n *GrantRoleStmt) Tag() NodeTag { return T_GrantRoleStmt }
 type CreatedbStmt struct {
 	Dbname  string
 	Options *List // list of DefElem
+	Loc     Loc   // token location
 }
 
 func (n *CreatedbStmt) Tag() NodeTag { return T_CreatedbStmt }
@@ -1536,6 +1540,7 @@ func (n *CreatedbStmt) Tag() NodeTag { return T_CreatedbStmt }
 type AlterDatabaseStmt struct {
 	Dbname  string
 	Options *List
+	Loc     Loc // token location
 }
 
 func (n *AlterDatabaseStmt) Tag() NodeTag { return T_AlterDatabaseStmt }
@@ -1544,6 +1549,7 @@ func (n *AlterDatabaseStmt) Tag() NodeTag { return T_AlterDatabaseStmt }
 type AlterDatabaseSetStmt struct {
 	Dbname  string
 	Setstmt *VariableSetStmt
+	Loc     Loc // token location
 }
 
 func (n *AlterDatabaseSetStmt) Tag() NodeTag { return T_AlterDatabaseSetStmt }
@@ -1553,6 +1559,7 @@ type DropdbStmt struct {
 	Dbname    string
 	MissingOk bool
 	Options   *List
+	Loc       Loc // token location
 }
 
 func (n *DropdbStmt) Tag() NodeTag { return T_DropdbStmt }
@@ -1813,6 +1820,7 @@ type CreateTableSpaceStmt struct {
 	Owner          *RoleSpec // owner of the tablespace
 	Location       string    // directory path for tablespace
 	Options        *List     // WITH clause options
+	Loc            Loc       // token location
 }
 
 func (n *CreateTableSpaceStmt) Tag() NodeTag { return T_CreateTableSpaceStmt }

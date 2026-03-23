@@ -120,11 +120,21 @@ func (p *Parser) parseStmt() (nodes.Node, error) {
 	case CREATE:
 		return p.parseCreateDispatch()
 	case COMMENT:
+		commentLoc := p.pos()
 		p.advance() // consume COMMENT
-		return p.parseCommentStmt()
+		n, err := p.parseCommentStmt()
+		if cs, ok := n.(*nodes.CommentStmt); ok && err == nil {
+			cs.Loc = nodes.Loc{Start: commentLoc, End: p.prev.End}
+		}
+		return n, err
 	case SECURITY:
+		secLoc := p.pos()
 		p.advance() // consume SECURITY
-		return p.parseSecLabelStmt()
+		n, err := p.parseSecLabelStmt()
+		if sl, ok := n.(*nodes.SecLabelStmt); ok && err == nil {
+			sl.Loc = nodes.Loc{Start: secLoc, End: p.prev.End}
+		}
+		return n, err
 	case ALTER:
 		alterLoc := p.pos() // capture ALTER position before consuming
 		p.advance()         // consume ALTER
@@ -144,7 +154,7 @@ func (p *Parser) parseStmt() (nodes.Node, error) {
 		}
 		switch p.cur.Type {
 		case DATABASE:
-			return p.parseAlterDatabaseDispatch()
+			return p.parseAlterDatabaseDispatch(alterLoc)
 		case ROLE:
 			return p.parseAlterRoleStmt()
 		case USER:
@@ -243,6 +253,7 @@ func (p *Parser) parseStmt() (nodes.Node, error) {
 		p.advance() // consume REVOKE
 		return p.parseRevokeStmt()
 	case DROP:
+		dropLoc := p.pos()
 		p.advance() // consume DROP
 		if p.collectMode() {
 			dropTokens := []int{
@@ -260,7 +271,7 @@ func (p *Parser) parseStmt() (nodes.Node, error) {
 			}
 			return nil, errCollecting
 		}
-		return p.parseDropStmt()
+		return p.parseDropStmt(dropLoc)
 	case TRUNCATE:
 		p.advance() // consume TRUNCATE
 		return p.parseTruncateStmt()
@@ -453,7 +464,7 @@ func (p *Parser) parseCreateDispatch() (nodes.Node, error) {
 	case DATABASE:
 		// CREATE DATABASE ...
 		p.advance() // consume CREATE
-		return p.parseCreatedbStmt()
+		return p.parseCreatedbStmt(createLoc)
 	case ROLE:
 		// CREATE ROLE ...
 		p.advance() // consume CREATE
@@ -557,11 +568,11 @@ func (p *Parser) parseCreateDispatch() (nodes.Node, error) {
 	case TABLESPACE:
 		// CREATE TABLESPACE ...
 		p.advance() // consume CREATE
-		return p.parseCreateTableSpaceStmt()
+		return p.parseCreateTableSpaceStmt(createLoc)
 	case SCHEMA:
 		// CREATE SCHEMA ...
 		p.advance() // consume CREATE
-		return p.parseCreateSchemaStmt()
+		return p.parseCreateSchemaStmt(createLoc)
 	default:
 		return nil, nil
 	}
