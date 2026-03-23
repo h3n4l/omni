@@ -20,6 +20,7 @@ func (p *Parser) parseCreateFdwStmt() (nodes.Node, error) {
 		Fdwname:     name,
 		FuncOptions: funcOptions,
 		Options:     options,
+		Loc:         nodes.Loc{Start: p.stmtStart, End: p.prev.End},
 	}, nil
 }
 
@@ -67,11 +68,13 @@ func (p *Parser) parseAlterFdwStmt() (nodes.Node, error) {
 			Fdwname:     name,
 			FuncOptions: funcOptions,
 			Options:     options,
+			Loc:         nodes.Loc{Start: p.stmtStart, End: p.prev.End},
 		}, nil
 	}
 	return &nodes.AlterFdwStmt{
 		Fdwname:     name,
 		FuncOptions: funcOptions,
+		Loc:         nodes.Loc{Start: p.stmtStart, End: p.prev.End},
 	}, nil
 }
 
@@ -192,6 +195,7 @@ func (p *Parser) parseCreateForeignServerStmt() (nodes.Node, error) {
 		Fdwname:     fdwname,
 		IfNotExists: ifNotExists,
 		Options:     options,
+		Loc:         nodes.Loc{Start: p.stmtStart, End: p.prev.End},
 	}, nil
 }
 
@@ -240,6 +244,7 @@ func (p *Parser) parseAlterForeignServerStmt() (nodes.Node, error) {
 		Version:    version,
 		Options:    options,
 		HasVersion: hasVersion,
+		Loc:        nodes.Loc{Start: p.stmtStart, End: p.prev.End},
 	}, nil
 }
 
@@ -333,6 +338,7 @@ func (p *Parser) parseCreateForeignTableStmt() (nodes.Node, error) {
 			},
 			Servername: servername,
 			Options:    options,
+			Loc:        nodes.Loc{Start: p.stmtStart, End: p.prev.End},
 		}, nil
 	}
 
@@ -365,6 +371,7 @@ func (p *Parser) parseCreateForeignTableStmt() (nodes.Node, error) {
 		},
 		Servername: servername,
 		Options:    options,
+		Loc:        nodes.Loc{Start: p.stmtStart, End: p.prev.End},
 	}, nil
 }
 
@@ -421,6 +428,7 @@ func (p *Parser) parseImportForeignSchemaStmt() (nodes.Node, error) {
 		ListType:     listType,
 		TableList:    tableList,
 		Options:      options,
+		Loc:          nodes.Loc{Start: p.stmtStart, End: p.prev.End},
 	}, nil
 }
 
@@ -457,6 +465,7 @@ func (p *Parser) parseCreateUserMappingIfNotExistsStmt() (nodes.Node, error) {
 		Servername:  servername,
 		Options:     options,
 		IfNotExists: ifNotExists,
+		Loc:         nodes.Loc{Start: p.stmtStart, End: p.prev.End},
 	}, nil
 }
 
@@ -481,6 +490,7 @@ func (p *Parser) parseAlterUserMappingStmt() (nodes.Node, error) {
 		User:       user,
 		Servername: servername,
 		Options:    options,
+		Loc:        nodes.Loc{Start: p.stmtStart, End: p.prev.End},
 	}, nil
 }
 
@@ -512,6 +522,7 @@ func (p *Parser) parseDropUserMappingStmt() (nodes.Node, error) {
 		User:       user,
 		Servername: servername,
 		MissingOk:  missingOk,
+		Loc:        nodes.Loc{Start: p.stmtStart, End: p.prev.End},
 	}, nil
 }
 
@@ -561,5 +572,6 @@ func (p *Parser) parseCreatePLangStmt(replace bool) (nodes.Node, error) {
 			}
 		}
 	}
+	stmt.Loc = nodes.Loc{Start: p.stmtStart, End: p.prev.End}
 	return stmt, nil
 }

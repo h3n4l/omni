@@ -26,6 +26,7 @@ type Parser struct {
 	collecting   bool          // true once cursor position is reached
 	collectDepth int           // recursion depth in collect mode
 	maxCollect   int           // max exploration depth
+	stmtStart    int           // byte offset of the current statement's first token
 }
 
 // Parse parses a SQL string into an AST list.
@@ -49,6 +50,7 @@ func Parse(sql string) (*nodes.List, error) {
 			return nil, p.lexerError()
 		}
 		stmtStart := p.pos()
+		p.stmtStart = stmtStart
 		stmt, err := p.parseStmt()
 		if err != nil {
 			return nil, err

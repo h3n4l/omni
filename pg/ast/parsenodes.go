@@ -1640,6 +1640,7 @@ type CreatePLangStmt struct {
 	Plinline    *List  // optional inline handler function (qual. name)
 	Plvalidator *List  // optional validator function (qual. name)
 	Pltrusted   bool   // PL is trusted
+	Loc         Loc    // token location
 }
 
 func (n *CreatePLangStmt) Tag() NodeTag { return T_CreatePLangStmt }
@@ -1658,6 +1659,7 @@ type CreateFdwStmt struct {
 	Fdwname     string // foreign-data wrapper name
 	FuncOptions *List  // HANDLER, VALIDATOR, etc.
 	Options     *List  // generic options to FDW
+	Loc         Loc    // token location
 }
 
 func (n *CreateFdwStmt) Tag() NodeTag { return T_CreateFdwStmt }
@@ -1667,6 +1669,7 @@ type AlterFdwStmt struct {
 	Fdwname     string // foreign-data wrapper name
 	FuncOptions *List  // HANDLER, VALIDATOR, etc.
 	Options     *List  // generic options to FDW
+	Loc         Loc    // token location
 }
 
 func (n *AlterFdwStmt) Tag() NodeTag { return T_AlterFdwStmt }
@@ -1679,6 +1682,7 @@ type CreateForeignServerStmt struct {
 	Fdwname     string // FDW name
 	IfNotExists bool   // just do nothing if it already exists?
 	Options     *List  // generic options to server
+	Loc         Loc    // token location
 }
 
 func (n *CreateForeignServerStmt) Tag() NodeTag { return T_CreateForeignServerStmt }
@@ -1689,6 +1693,7 @@ type AlterForeignServerStmt struct {
 	Version    string // optional server version
 	Options    *List  // generic options to server
 	HasVersion bool   // version was specified
+	Loc        Loc    // token location
 }
 
 func (n *AlterForeignServerStmt) Tag() NodeTag { return T_AlterForeignServerStmt }
@@ -1698,6 +1703,7 @@ type CreateForeignTableStmt struct {
 	Base       CreateStmt // base CREATE TABLE fields
 	Servername string     // server name
 	Options    *List      // generic options to foreign table
+	Loc        Loc        // token location
 }
 
 func (n *CreateForeignTableStmt) Tag() NodeTag { return T_CreateForeignTableStmt }
@@ -1708,6 +1714,7 @@ type CreateUserMappingStmt struct {
 	Servername  string    // server name
 	IfNotExists bool      // just do nothing if it already exists?
 	Options     *List     // generic options to user mapping
+	Loc         Loc       // token location
 }
 
 func (n *CreateUserMappingStmt) Tag() NodeTag { return T_CreateUserMappingStmt }
@@ -1717,6 +1724,7 @@ type AlterUserMappingStmt struct {
 	User       *RoleSpec // user role
 	Servername string    // server name
 	Options    *List     // generic options to user mapping
+	Loc        Loc       // token location
 }
 
 func (n *AlterUserMappingStmt) Tag() NodeTag { return T_AlterUserMappingStmt }
@@ -1726,6 +1734,7 @@ type DropUserMappingStmt struct {
 	User       *RoleSpec // user role
 	Servername string    // server name
 	MissingOk  bool      // skip error if missing?
+	Loc        Loc       // token location
 }
 
 func (n *DropUserMappingStmt) Tag() NodeTag { return T_DropUserMappingStmt }
@@ -1738,6 +1747,7 @@ type ImportForeignSchemaStmt struct {
 	ListType     ImportForeignSchemaType // type of table list filter
 	TableList    *List                  // list of tables to import or exclude
 	Options      *List                  // generic options
+	Loc          Loc                    // token location
 }
 
 func (n *ImportForeignSchemaStmt) Tag() NodeTag { return T_ImportForeignSchemaStmt }

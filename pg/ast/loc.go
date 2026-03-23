@@ -208,6 +208,26 @@ func NodeLoc(n Node) Loc {
 	// --- Section 2.2: Extension nodes ---
 
 	// --- Section 2.3: Foreign data wrapper nodes ---
+	case *CreateFdwStmt:
+		return v.Loc
+	case *CreateForeignServerStmt:
+		return v.Loc
+	case *CreateForeignTableStmt:
+		return v.Loc
+	case *CreatePLangStmt:
+		return v.Loc
+	case *CreateUserMappingStmt:
+		return v.Loc
+	case *AlterFdwStmt:
+		return v.Loc
+	case *AlterForeignServerStmt:
+		return v.Loc
+	case *AlterUserMappingStmt:
+		return v.Loc
+	case *DropUserMappingStmt:
+		return v.Loc
+	case *ImportForeignSchemaStmt:
+		return v.Loc
 
 	// --- Section 3.1: General ALTER nodes ---
 
