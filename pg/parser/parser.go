@@ -126,7 +126,8 @@ func (p *Parser) parseStmt() (nodes.Node, error) {
 		p.advance() // consume SECURITY
 		return p.parseSecLabelStmt()
 	case ALTER:
-		p.advance() // consume ALTER
+		alterLoc := p.pos() // capture ALTER position before consuming
+		p.advance()         // consume ALTER
 		if p.collectMode() {
 			alterTokens := []int{
 				DATABASE, ROLE, USER, SERVER, GROUP_P, POLICY,
@@ -163,13 +164,13 @@ func (p *Parser) parseStmt() (nodes.Node, error) {
 		case SUBSCRIPTION:
 			return p.parseAlterSubscriptionStmt()
 		case STATISTICS:
-			return p.parseAlterStatisticsStmt()
+			return p.parseAlterStatisticsStmt(alterLoc)
 		case OPERATOR:
-			return p.parseAlterOperatorStmt()
+			return p.parseAlterOperatorStmt(alterLoc)
 		case SCHEMA:
 			return p.parseAlterSchemaOwner()
 		case DEFAULT:
-			return p.parseAlterDefaultPrivilegesStmt()
+			return p.parseAlterDefaultPrivilegesStmt(alterLoc)
 		case FUNCTION, PROCEDURE, ROUTINE:
 			return p.parseAlterFunctionStmt()
 		case TYPE_P:
@@ -350,6 +351,7 @@ func (p *Parser) parseCreateDispatch() (nodes.Node, error) {
 		}
 		return nil, errCollecting
 	}
+	createLoc := p.pos() // capture CREATE position before consuming
 	next := p.peekNext()
 	switch next.Type {
 	case OR:
@@ -367,7 +369,7 @@ func (p *Parser) parseCreateDispatch() (nodes.Node, error) {
 		case RULE:
 			return p.parseCreateRuleStmt(true)
 		case AGGREGATE:
-			return p.parseDefineStmtAggregate(true)
+			return p.parseDefineStmtAggregate(true, createLoc)
 		case TRANSFORM:
 			return p.parseCreateTransformStmt(true)
 		default:
@@ -418,27 +420,27 @@ func (p *Parser) parseCreateDispatch() (nodes.Node, error) {
 	case TYPE_P:
 		// CREATE TYPE ... (base, composite, enum, range, shell)
 		p.advance() // consume CREATE
-		return p.parseDefineStmtType()
+		return p.parseDefineStmtType(createLoc)
 	case AGGREGATE:
 		// CREATE AGGREGATE ...
 		p.advance() // consume CREATE
-		return p.parseDefineStmtAggregate(false)
+		return p.parseDefineStmtAggregate(false, createLoc)
 	case OPERATOR:
 		// CREATE OPERATOR ... / CREATE OPERATOR CLASS ... / CREATE OPERATOR FAMILY ...
 		p.advance() // consume CREATE
-		return p.parseDefineStmtOperator()
+		return p.parseDefineStmtOperator(createLoc)
 	case TEXT_P:
 		// CREATE TEXT SEARCH ...
 		p.advance() // consume CREATE
-		return p.parseDefineStmtTextSearch()
+		return p.parseDefineStmtTextSearch(createLoc)
 	case COLLATION:
 		// CREATE COLLATION ...
 		p.advance() // consume CREATE
-		return p.parseDefineStmtCollation()
+		return p.parseDefineStmtCollation(createLoc)
 	case STATISTICS:
 		// CREATE STATISTICS ...
 		p.advance() // consume CREATE
-		return p.parseCreateStatsStmt()
+		return p.parseCreateStatsStmt(createLoc)
 	case FUNCTION:
 		// CREATE FUNCTION ...
 		p.advance() // consume CREATE
@@ -544,12 +546,12 @@ func (p *Parser) parseCreateDispatch() (nodes.Node, error) {
 	case CONVERSION_P:
 		// CREATE CONVERSION ...
 		p.advance() // consume CREATE
-		return p.parseCreateConversionStmt(false)
+		return p.parseCreateConversionStmt(false, createLoc)
 	case DEFAULT:
 		// CREATE DEFAULT CONVERSION ...
 		p.advance() // consume CREATE
 		p.advance() // consume DEFAULT
-		return p.parseCreateConversionStmt(true)
+		return p.parseCreateConversionStmt(true, createLoc)
 	case TABLESPACE:
 		// CREATE TABLESPACE ...
 		p.advance() // consume CREATE

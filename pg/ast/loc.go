@@ -204,6 +204,34 @@ func NodeLoc(n Node) Loc {
 	// --- Section 1.3: JSON nodes ---
 
 	// --- Section 2.1: Type & operator definitions ---
+	case *DefineStmt:
+		return v.Loc
+	case *CompositeTypeStmt:
+		return v.Loc
+	case *CreateEnumStmt:
+		return v.Loc
+	case *CreateRangeStmt:
+		return v.Loc
+	case *CreateOpClassStmt:
+		return v.Loc
+	case *CreateOpFamilyStmt:
+		return v.Loc
+	case *CreateOpClassItem:
+		return v.Loc
+	case *CreateConversionStmt:
+		return v.Loc
+	case *CreateStatsStmt:
+		return v.Loc
+	case *AlterDefaultPrivilegesStmt:
+		return v.Loc
+	case *AlterOpFamilyStmt:
+		return v.Loc
+	case *AlterOperatorStmt:
+		return v.Loc
+	case *AlterStatsStmt:
+		return v.Loc
+	case *StatsElem:
+		return v.Loc
 
 	// --- Section 2.2: Extension nodes ---
 

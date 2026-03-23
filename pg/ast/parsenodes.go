@@ -1045,6 +1045,7 @@ func (n *DoStmt) Tag() NodeTag { return T_DoStmt }
 type CreateEnumStmt struct {
 	TypeName *List // qualified name (list of String)
 	Vals     *List // enum values (list of String)
+	Loc      Loc   // token location
 }
 
 func (n *CreateEnumStmt) Tag() NodeTag { return T_CreateEnumStmt }
@@ -1562,6 +1563,7 @@ type DefineStmt struct {
 	Definition  *List      // definition (list of DefElem)
 	IfNotExists bool       // IF NOT EXISTS
 	Replace     bool       // OR REPLACE
+	Loc         Loc        // token location
 }
 
 func (n *DefineStmt) Tag() NodeTag { return T_DefineStmt }
@@ -1570,6 +1572,7 @@ func (n *DefineStmt) Tag() NodeTag { return T_DefineStmt }
 type CompositeTypeStmt struct {
 	Typevar    *RangeVar // type name as RangeVar
 	Coldeflist *List     // list of ColumnDef
+	Loc        Loc       // token location
 }
 
 func (n *CompositeTypeStmt) Tag() NodeTag { return T_CompositeTypeStmt }
@@ -1578,6 +1581,7 @@ func (n *CompositeTypeStmt) Tag() NodeTag { return T_CompositeTypeStmt }
 type CreateRangeStmt struct {
 	TypeName *List // qualified name (list of String)
 	Params   *List // list of DefElem
+	Loc      Loc   // token location
 }
 
 func (n *CreateRangeStmt) Tag() NodeTag { return T_CreateRangeStmt }
@@ -1924,6 +1928,7 @@ func (n *AlterObjectDependsStmt) Tag() NodeTag { return T_AlterObjectDependsStmt
 type AlterOperatorStmt struct {
 	Opername *ObjectWithArgs // operator name and argument types
 	Options  *List           // list of DefElem
+	Loc      Loc             // token location
 }
 
 func (n *AlterOperatorStmt) Tag() NodeTag { return T_AlterOperatorStmt }
@@ -1940,6 +1945,7 @@ func (n *AlterTypeStmt) Tag() NodeTag { return T_AlterTypeStmt }
 type AlterDefaultPrivilegesStmt struct {
 	Options *List      // list of DefElem
 	Action  *GrantStmt // the GRANT/REVOKE action
+	Loc     Loc        // token location
 }
 
 func (n *AlterDefaultPrivilegesStmt) Tag() NodeTag { return T_AlterDefaultPrivilegesStmt }
@@ -1973,6 +1979,7 @@ type CreateStatsStmt struct {
 	Relations   *List  // FROM clause (list of RangeVar)
 	Stxcomment  string // comment
 	IfNotExists bool   // IF NOT EXISTS
+	Loc         Loc    // token location
 }
 
 func (n *CreateStatsStmt) Tag() NodeTag { return T_CreateStatsStmt }
@@ -1981,6 +1988,7 @@ func (n *CreateStatsStmt) Tag() NodeTag { return T_CreateStatsStmt }
 type StatsElem struct {
 	Name string // column name, or NULL
 	Expr Node   // expression, or NULL
+	Loc  Loc    // token location
 }
 
 func (n *StatsElem) Tag() NodeTag { return T_StatsElem }
@@ -1990,6 +1998,7 @@ type AlterStatsStmt struct {
 	Defnames      *List // qualified name
 	MissingOk     bool  // IF EXISTS
 	Stxstattarget int   // new statistics target
+	Loc           Loc   // token location
 }
 
 func (n *AlterStatsStmt) Tag() NodeTag { return T_AlterStatsStmt }
@@ -2002,18 +2011,20 @@ type CreateOpClassStmt struct {
 	Datatype     *TypeName // datatype of indexed column
 	Items        *List     // list of CreateOpClassItem
 	IsDefault    bool      // DEFAULT
+	Loc          Loc       // token location
 }
 
 func (n *CreateOpClassStmt) Tag() NodeTag { return T_CreateOpClassStmt }
 
 // CreateOpClassItem represents an item in CREATE OPERATOR CLASS.
 type CreateOpClassItem struct {
-	Itemtype   int             // see OPCLASS_ITEM_* constants
-	Name       *ObjectWithArgs // operator or function
-	Number     int             // strategy number or support proc number
-	OrderFamily *List          // opfamily for ordering
-	ClassArgs  *List           // type arguments
-	Storedtype *TypeName       // storage type
+	Itemtype    int             // see OPCLASS_ITEM_* constants
+	Name        *ObjectWithArgs // operator or function
+	Number      int             // strategy number or support proc number
+	OrderFamily *List           // opfamily for ordering
+	ClassArgs   *List           // type arguments
+	Storedtype  *TypeName       // storage type
+	Loc         Loc             // token location
 }
 
 func (n *CreateOpClassItem) Tag() NodeTag { return T_CreateOpClassItem }
@@ -2022,6 +2033,7 @@ func (n *CreateOpClassItem) Tag() NodeTag { return T_CreateOpClassItem }
 type CreateOpFamilyStmt struct {
 	Opfamilyname *List  // qualified name
 	Amname       string // access method name
+	Loc          Loc    // token location
 }
 
 func (n *CreateOpFamilyStmt) Tag() NodeTag { return T_CreateOpFamilyStmt }
@@ -2032,6 +2044,7 @@ type AlterOpFamilyStmt struct {
 	Amname       string // access method name
 	IsDrop       bool   // true for DROP, false for ADD
 	Items        *List  // list of CreateOpClassItem
+	Loc          Loc    // token location
 }
 
 func (n *AlterOpFamilyStmt) Tag() NodeTag { return T_AlterOpFamilyStmt }
@@ -2065,6 +2078,7 @@ type CreateConversionStmt struct {
 	ToEncodingName  string // target encoding
 	FuncName        *List  // function name
 	Def             bool   // DEFAULT?
+	Loc             Loc    // token location
 }
 
 func (n *CreateConversionStmt) Tag() NodeTag { return T_CreateConversionStmt }
