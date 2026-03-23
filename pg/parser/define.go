@@ -10,7 +10,8 @@ import (
 
 // parseDefineStmtAggregate parses CREATE [OR REPLACE] AGGREGATE ...
 // CREATE has already been consumed. Current token is AGGREGATE.
-func (p *Parser) parseDefineStmtAggregate(replace bool) (nodes.Node, error) {
+// stmtLoc is the byte offset of CREATE.
+func (p *Parser) parseDefineStmtAggregate(replace bool, stmtLoc int) (nodes.Node, error) {
 	p.advance() // consume AGGREGATE
 	defnames, err := p.parseFuncName()
 	if err != nil {
@@ -40,6 +41,7 @@ func (p *Parser) parseDefineStmtAggregate(replace bool) (nodes.Node, error) {
 			Defnames:   defnames,
 			Args:       args,
 			Definition: def,
+			Loc:        nodes.Loc{Start: stmtLoc, End: p.prev.End},
 		}, nil
 	}
 
@@ -63,18 +65,20 @@ func (p *Parser) parseDefineStmtAggregate(replace bool) (nodes.Node, error) {
 		Replace:    replace,
 		Defnames:   defnames,
 		Definition: def,
+		Loc:        nodes.Loc{Start: stmtLoc, End: p.prev.End},
 	}, nil
 }
 
 // parseDefineStmtOperator parses CREATE OPERATOR ...
 // CREATE has already been consumed. Current token is OPERATOR.
-func (p *Parser) parseDefineStmtOperator() (nodes.Node, error) {
+// stmtLoc is the byte offset of CREATE.
+func (p *Parser) parseDefineStmtOperator(stmtLoc int) (nodes.Node, error) {
 	p.advance() // consume OPERATOR
 	if p.cur.Type == CLASS {
-		return p.parseCreateOpClassStmt()
+		return p.parseCreateOpClassStmt(stmtLoc)
 	}
 	if p.cur.Type == FAMILY {
-		return p.parseCreateOpFamilyStmt()
+		return p.parseCreateOpFamilyStmt(stmtLoc)
 	}
 	opname, err := p.parseAnyOperator()
 	if err != nil {
@@ -88,12 +92,14 @@ func (p *Parser) parseDefineStmtOperator() (nodes.Node, error) {
 		Kind:       nodes.OBJECT_OPERATOR,
 		Defnames:   opname,
 		Definition: def,
+		Loc:        nodes.Loc{Start: stmtLoc, End: p.prev.End},
 	}, nil
 }
 
 // parseDefineStmtType parses CREATE TYPE ...
 // CREATE has already been consumed. Current token is TYPE.
-func (p *Parser) parseDefineStmtType() (nodes.Node, error) {
+// stmtLoc is the byte offset of CREATE.
+func (p *Parser) parseDefineStmtType(stmtLoc int) (nodes.Node, error) {
 	p.advance() // consume TYPE
 	typeName, err := p.parseAnyName()
 	if err != nil {
@@ -113,14 +119,14 @@ func (p *Parser) parseDefineStmtType() (nodes.Node, error) {
 			if _, err := p.expect(')'); err != nil {
 				return nil, err
 			}
-			return &nodes.CreateEnumStmt{TypeName: typeName, Vals: vals}, nil
+			return &nodes.CreateEnumStmt{TypeName: typeName, Vals: vals, Loc: nodes.Loc{Start: stmtLoc, End: p.prev.End}}, nil
 		case RANGE:
 			p.advance()
 			params, err := p.parseDefinition()
 			if err != nil {
 				return nil, err
 			}
-			return &nodes.CreateRangeStmt{TypeName: typeName, Params: params}, nil
+			return &nodes.CreateRangeStmt{TypeName: typeName, Params: params, Loc: nodes.Loc{Start: stmtLoc, End: p.prev.End}}, nil
 		default:
 			// CompositeTypeStmt
 			if _, err := p.expect('('); err != nil {
@@ -139,6 +145,7 @@ func (p *Parser) parseDefineStmtType() (nodes.Node, error) {
 			return &nodes.CompositeTypeStmt{
 				Typevar:    makeRangeVarFromAnyName(typeName),
 				Coldeflist: coldeflist,
+				Loc:        nodes.Loc{Start: stmtLoc, End: p.prev.End},
 			}, nil
 		}
 	case '(':
@@ -146,15 +153,16 @@ func (p *Parser) parseDefineStmtType() (nodes.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &nodes.DefineStmt{Kind: nodes.OBJECT_TYPE, Defnames: typeName, Definition: def}, nil
+		return &nodes.DefineStmt{Kind: nodes.OBJECT_TYPE, Defnames: typeName, Definition: def, Loc: nodes.Loc{Start: stmtLoc, End: p.prev.End}}, nil
 	default:
-		return &nodes.DefineStmt{Kind: nodes.OBJECT_TYPE, Defnames: typeName}, nil
+		return &nodes.DefineStmt{Kind: nodes.OBJECT_TYPE, Defnames: typeName, Loc: nodes.Loc{Start: stmtLoc, End: p.prev.End}}, nil
 	}
 }
 
 // parseDefineStmtTextSearch parses CREATE TEXT SEARCH ...
 // CREATE has already been consumed. Current token is TEXT.
-func (p *Parser) parseDefineStmtTextSearch() (nodes.Node, error) {
+// stmtLoc is the byte offset of CREATE.
+func (p *Parser) parseDefineStmtTextSearch(stmtLoc int) (nodes.Node, error) {
 	p.advance() // consume TEXT
 	if _, err := p.expect(SEARCH); err != nil {
 		return nil, err
@@ -181,12 +189,13 @@ func (p *Parser) parseDefineStmtTextSearch() (nodes.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &nodes.DefineStmt{Kind: kind, Defnames: defnames, Definition: def}, nil
+	return &nodes.DefineStmt{Kind: kind, Defnames: defnames, Definition: def, Loc: nodes.Loc{Start: stmtLoc, End: p.prev.End}}, nil
 }
 
 // parseDefineStmtCollation parses CREATE COLLATION ...
 // CREATE has already been consumed. Current token is COLLATION.
-func (p *Parser) parseDefineStmtCollation() (nodes.Node, error) {
+// stmtLoc is the byte offset of CREATE.
+func (p *Parser) parseDefineStmtCollation(stmtLoc int) (nodes.Node, error) {
 	p.advance() // consume COLLATION
 	ifNotExists := false
 	if p.cur.Type == IF_P {
@@ -214,6 +223,7 @@ func (p *Parser) parseDefineStmtCollation() (nodes.Node, error) {
 			Defnames:    defnames,
 			Definition:  &nodes.List{Items: []nodes.Node{makeDefElem("from", fromName)}},
 			IfNotExists: ifNotExists,
+			Loc:         nodes.Loc{Start: stmtLoc, End: p.prev.End},
 		}, nil
 	}
 	def, err := p.parseDefinition()
@@ -225,6 +235,7 @@ func (p *Parser) parseDefineStmtCollation() (nodes.Node, error) {
 		Defnames:    defnames,
 		Definition:  def,
 		IfNotExists: ifNotExists,
+		Loc:         nodes.Loc{Start: stmtLoc, End: p.prev.End},
 	}, nil
 }
 
@@ -454,7 +465,7 @@ func (p *Parser) parseTableFuncElementList() (*nodes.List, error) {
 // CreateOpClassStmt
 // ---------------------------------------------------------------------------
 
-func (p *Parser) parseCreateOpClassStmt() (nodes.Node, error) {
+func (p *Parser) parseCreateOpClassStmt(stmtLoc int) (nodes.Node, error) {
 	p.advance() // consume CLASS
 	opclassname, err := p.parseAnyName()
 	if err != nil {
@@ -504,6 +515,7 @@ func (p *Parser) parseCreateOpClassStmt() (nodes.Node, error) {
 		Amname:       amname,
 		Opfamilyname: opfamilyname,
 		Items:        items,
+		Loc:          nodes.Loc{Start: stmtLoc, End: p.prev.End},
 	}, nil
 }
 
@@ -525,6 +537,7 @@ func (p *Parser) parseOpclassItemList() (*nodes.List, error) {
 }
 
 func (p *Parser) parseOpclassItem() (nodes.Node, error) {
+	itemLoc := p.pos()
 	switch p.cur.Type {
 	case OPERATOR:
 		p.advance()
@@ -556,6 +569,7 @@ func (p *Parser) parseOpclassItem() (nodes.Node, error) {
 			Name:        owa,
 			Number:      number,
 			OrderFamily: orderFamily,
+			Loc:         nodes.Loc{Start: itemLoc, End: p.prev.End},
 		}, nil
 	case FUNCTION:
 		p.advance()
@@ -583,6 +597,7 @@ func (p *Parser) parseOpclassItem() (nodes.Node, error) {
 			Name:      fwa,
 			Number:    number,
 			ClassArgs: classArgs,
+			Loc:       nodes.Loc{Start: itemLoc, End: p.prev.End},
 		}, nil
 	case STORAGE:
 		p.advance()
@@ -593,6 +608,7 @@ func (p *Parser) parseOpclassItem() (nodes.Node, error) {
 		return &nodes.CreateOpClassItem{
 			Itemtype:   nodes.OPCLASS_ITEM_STORAGETYPE,
 			Storedtype: storedtype,
+			Loc:        nodes.Loc{Start: itemLoc, End: p.prev.End},
 		}, nil
 	default:
 		return nil, nil
@@ -625,7 +641,7 @@ func (p *Parser) parseOpclassPurpose() (*nodes.List, error) {
 // CreateOpFamilyStmt
 // ---------------------------------------------------------------------------
 
-func (p *Parser) parseCreateOpFamilyStmt() (nodes.Node, error) {
+func (p *Parser) parseCreateOpFamilyStmt(stmtLoc int) (nodes.Node, error) {
 	p.advance() // consume FAMILY
 	opfamilyname, err := p.parseAnyName()
 	if err != nil {
@@ -638,7 +654,7 @@ func (p *Parser) parseCreateOpFamilyStmt() (nodes.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &nodes.CreateOpFamilyStmt{Opfamilyname: opfamilyname, Amname: amname}, nil
+	return &nodes.CreateOpFamilyStmt{Opfamilyname: opfamilyname, Amname: amname, Loc: nodes.Loc{Start: stmtLoc, End: p.prev.End}}, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -648,7 +664,7 @@ func (p *Parser) parseCreateOpFamilyStmt() (nodes.Node, error) {
 // handled by alter_misc.go's parseAlterOperatorClassOrFamily.
 // ---------------------------------------------------------------------------
 
-func (p *Parser) parseAlterOpFamilyAddDrop(names *nodes.List, amname string) (nodes.Node, error) {
+func (p *Parser) parseAlterOpFamilyAddDrop(names *nodes.List, amname string, stmtLoc int) (nodes.Node, error) {
 	if p.cur.Type == ADD_P {
 		p.advance()
 		items, err := p.parseOpclassItemList()
@@ -660,6 +676,7 @@ func (p *Parser) parseAlterOpFamilyAddDrop(names *nodes.List, amname string) (no
 			Amname:       amname,
 			IsDrop:       false,
 			Items:        items,
+			Loc:          nodes.Loc{Start: stmtLoc, End: p.prev.End},
 		}, nil
 	}
 	if _, err := p.expect(DROP); err != nil {
@@ -674,6 +691,7 @@ func (p *Parser) parseAlterOpFamilyAddDrop(names *nodes.List, amname string) (no
 		Amname:       amname,
 		IsDrop:       true,
 		Items:        items,
+		Loc:          nodes.Loc{Start: stmtLoc, End: p.prev.End},
 	}, nil
 }
 
@@ -695,6 +713,7 @@ func (p *Parser) parseOpclassDropList() (*nodes.List, error) {
 }
 
 func (p *Parser) parseOpclassDrop() (nodes.Node, error) {
+	itemLoc := p.pos()
 	var itemtype int
 	switch p.cur.Type {
 	case OPERATOR:
@@ -721,6 +740,7 @@ func (p *Parser) parseOpclassDrop() (nodes.Node, error) {
 		Itemtype:  itemtype,
 		Number:    number,
 		ClassArgs: classArgs,
+		Loc:       nodes.Loc{Start: itemLoc, End: p.prev.End},
 	}, nil
 }
 
@@ -728,7 +748,7 @@ func (p *Parser) parseOpclassDrop() (nodes.Node, error) {
 // CreateStatsStmt
 // ---------------------------------------------------------------------------
 
-func (p *Parser) parseCreateStatsStmt() (nodes.Node, error) {
+func (p *Parser) parseCreateStatsStmt(stmtLoc int) (nodes.Node, error) {
 	p.advance() // consume STATISTICS
 	if p.cur.Type == IF_P {
 		p.advance()
@@ -763,6 +783,7 @@ func (p *Parser) parseCreateStatsStmt() (nodes.Node, error) {
 		return &nodes.CreateStatsStmt{
 			Defnames: defnames, StatTypes: statTypes,
 			Exprs: exprs, Relations: relations, IfNotExists: true,
+			Loc: nodes.Loc{Start: stmtLoc, End: p.prev.End},
 		}, nil
 	}
 	var defnames *nodes.List
@@ -794,6 +815,7 @@ func (p *Parser) parseCreateStatsStmt() (nodes.Node, error) {
 	return &nodes.CreateStatsStmt{
 		Defnames: defnames, StatTypes: statTypes,
 		Exprs: exprs, Relations: relations, IfNotExists: false,
+		Loc: nodes.Loc{Start: stmtLoc, End: p.prev.End},
 	}, nil
 }
 
@@ -830,6 +852,7 @@ func (p *Parser) parseStatsParams() (*nodes.List, error) {
 }
 
 func (p *Parser) parseStatsParam() (nodes.Node, error) {
+	elemLoc := p.pos()
 	if p.cur.Type == '(' {
 		p.advance()
 		expr, err := p.parseAExpr(0)
@@ -839,20 +862,20 @@ func (p *Parser) parseStatsParam() (nodes.Node, error) {
 		if _, err := p.expect(')'); err != nil {
 			return nil, err
 		}
-		return &nodes.StatsElem{Expr: expr}, nil
+		return &nodes.StatsElem{Expr: expr, Loc: nodes.Loc{Start: elemLoc, End: p.prev.End}}, nil
 	}
 	if p.isColId() && p.peekNext().Type != '(' {
 		name, err := p.parseColId()
 		if err != nil {
 			return nil, err
 		}
-		return &nodes.StatsElem{Name: name}, nil
+		return &nodes.StatsElem{Name: name, Loc: nodes.Loc{Start: elemLoc, End: p.prev.End}}, nil
 	}
 	expr, err := p.parseFuncExprWindowless()
 	if err != nil {
 		return nil, err
 	}
-	return &nodes.StatsElem{Expr: expr}, nil
+	return &nodes.StatsElem{Expr: expr, Loc: nodes.Loc{Start: elemLoc, End: p.prev.End}}, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -1033,7 +1056,8 @@ func extractArgTypes(args *nodes.List) *nodes.List {
 
 // parseAlterDefaultPrivilegesStmt parses ALTER DEFAULT PRIVILEGES ...
 // ALTER has already been consumed. Current token is DEFAULT.
-func (p *Parser) parseAlterDefaultPrivilegesStmt() (nodes.Node, error) {
+// stmtLoc is the byte offset of ALTER.
+func (p *Parser) parseAlterDefaultPrivilegesStmt(stmtLoc int) (nodes.Node, error) {
 	p.advance() // consume DEFAULT
 	if _, err := p.expect(PRIVILEGES); err != nil {
 		return nil, err
@@ -1081,7 +1105,7 @@ func (p *Parser) parseAlterDefaultPrivilegesStmt() (nodes.Node, error) {
 			return nil, err
 		}
 	}
-	return &nodes.AlterDefaultPrivilegesStmt{Options: options, Action: action}, nil
+	return &nodes.AlterDefaultPrivilegesStmt{Options: options, Action: action, Loc: nodes.Loc{Start: stmtLoc, End: p.prev.End}}, nil
 }
 
 func (p *Parser) parseDefACLGrantAction() (*nodes.GrantStmt, error) {
@@ -1184,7 +1208,7 @@ func (p *Parser) parseDefACLPrivilegeTarget() int {
 //	ALTER STATISTICS name SET SCHEMA new_schema
 //	ALTER STATISTICS name SET STATISTICS target
 //	ALTER STATISTICS IF EXISTS name SET STATISTICS target
-func (p *Parser) parseAlterStatisticsStmt() (nodes.Node, error) {
+func (p *Parser) parseAlterStatisticsStmt(stmtLoc int) (nodes.Node, error) {
 	p.advance() // consume STATISTICS
 
 	// IF EXISTS only applies to SET STATISTICS variant
@@ -1258,12 +1282,13 @@ func (p *Parser) parseAlterStatisticsStmt() (nodes.Node, error) {
 		val := p.parseSignedIconst()
 		stmt.Stxstattarget = int(val)
 	}
+	stmt.Loc = nodes.Loc{Start: stmtLoc, End: p.prev.End}
 	return stmt, nil
 }
 
 // parseAlterOperatorStmt parses ALTER OPERATOR ...
 // ALTER has already been consumed. Current token is OPERATOR.
-func (p *Parser) parseAlterOperatorStmt() (nodes.Node, error) {
+func (p *Parser) parseAlterOperatorStmt(stmtLoc int) (nodes.Node, error) {
 	p.advance() // consume OPERATOR
 	if p.cur.Type == CLASS || p.cur.Type == FAMILY {
 		// ALTER OPERATOR CLASS/FAMILY ... (SET SCHEMA, OWNER, RENAME, or ADD/DROP)
@@ -1282,7 +1307,7 @@ func (p *Parser) parseAlterOperatorStmt() (nodes.Node, error) {
 		}
 		// Check for ADD/DROP (AlterOpFamilyStmt) vs SET/OWNER/RENAME
 		if !isClass && (p.cur.Type == ADD_P || p.cur.Type == DROP) {
-			return p.parseAlterOpFamilyAddDrop(names, amName)
+			return p.parseAlterOpFamilyAddDrop(names, amName, stmtLoc)
 		}
 		// Handle SET SCHEMA, OWNER TO, RENAME TO
 		var objtype nodes.ObjectType
@@ -1367,6 +1392,7 @@ func (p *Parser) parseAlterOperatorStmt() (nodes.Node, error) {
 		return &nodes.AlterOperatorStmt{
 			Opername: owa,
 			Options:  opts,
+			Loc:      nodes.Loc{Start: stmtLoc, End: p.prev.End},
 		}, nil
 	case OWNER:
 		p.advance()
@@ -1429,7 +1455,7 @@ func (p *Parser) parseOperatorDefElem() (*nodes.DefElem, error) {
 //
 //	CREATE [ DEFAULT ] CONVERSION name
 //	    FOR source_encoding TO dest_encoding FROM function_name
-func (p *Parser) parseCreateConversionStmt(isDef bool) (nodes.Node, error) {
+func (p *Parser) parseCreateConversionStmt(isDef bool, stmtLoc int) (nodes.Node, error) {
 	p.advance() // consume CONVERSION_P
 
 	convName, err := p.parseAnyName()
@@ -1464,5 +1490,6 @@ func (p *Parser) parseCreateConversionStmt(isDef bool) (nodes.Node, error) {
 		ToEncodingName:  dstEnc,
 		FuncName:        funcName,
 		Def:             isDef,
+		Loc:             nodes.Loc{Start: stmtLoc, End: p.prev.End},
 	}, nil
 }
