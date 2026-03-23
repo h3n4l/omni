@@ -157,6 +157,18 @@ func NodeLoc(n Node) Loc {
 	case *PublicationObjSpec:
 		return v.Loc
 
+	// --- Section 4.2: Sequence, function & domain nodes ---
+	case *CreateSeqStmt:
+		return v.Loc
+	case *CreateDomainStmt:
+		return v.Loc
+	case *CreateFunctionStmt:
+		return v.Loc
+	case *FunctionParameter:
+		return v.Loc
+	case *ReturnStmt:
+		return v.Loc
+
 	default:
 		return NoLoc()
 	}

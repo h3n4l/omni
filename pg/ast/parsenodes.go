@@ -966,6 +966,8 @@ type CreateSeqStmt struct {
 	OwnerId     Oid       // owner's OID (if specified)
 	ForIdentity bool      // for GENERATED ... AS IDENTITY
 	IfNotExists bool      // just do nothing if it already exists?
+
+	Loc Loc // source location range
 }
 
 func (n *CreateSeqStmt) Tag() NodeTag { return T_CreateSeqStmt }
@@ -988,6 +990,8 @@ type CreateFunctionStmt struct {
 	ReturnType  *TypeName  // return type (NULL if void)
 	Options     *List      // list of DefElem
 	SqlBody     Node       // SQL body, or NULL
+
+	Loc Loc // source location range
 }
 
 func (n *CreateFunctionStmt) Tag() NodeTag { return T_CreateFunctionStmt }
@@ -995,6 +999,8 @@ func (n *CreateFunctionStmt) Tag() NodeTag { return T_CreateFunctionStmt }
 // ReturnStmt represents a RETURN statement in SQL-standard function bodies.
 type ReturnStmt struct {
 	Returnval Node // return value expression
+
+	Loc Loc // source location range
 }
 
 func (n *ReturnStmt) Tag() NodeTag { return T_ReturnStmt }
@@ -1005,6 +1011,8 @@ type FunctionParameter struct {
 	ArgType *TypeName        // type name
 	Mode    FunctionParameterMode // IN/OUT/etc
 	Defexpr Node             // default value, or NULL
+
+	Loc Loc // source location range
 }
 
 // FunctionParameterMode represents the mode of a function parameter.
@@ -1054,6 +1062,8 @@ type CreateDomainStmt struct {
 	Typname     *TypeName    // base type
 	CollClause  *CollateClause // collation clause
 	Constraints *List        // list of Constraint nodes
+
+	Loc Loc // source location range
 }
 
 func (n *CreateDomainStmt) Tag() NodeTag { return T_CreateDomainStmt }

@@ -352,12 +352,13 @@ func (p *Parser) parseCreateDispatch() (nodes.Node, error) {
 	switch next.Type {
 	case OR:
 		// CREATE OR REPLACE VIEW/FUNCTION/PROCEDURE/TRIGGER ...
+		loc := p.pos()
 		p.advance() // consume CREATE
 		p.advance() // consume OR
 		p.expect(REPLACE)
 		switch p.cur.Type {
 		case FUNCTION, PROCEDURE:
-			return p.parseCreateFunctionStmt(true)
+			return p.parseCreateFunctionStmt(loc, true)
 		case TRIGGER, CONSTRAINT:
 			return p.parseCreateTrigStmt(true)
 		case TRUSTED, PROCEDURAL, LANGUAGE:
@@ -407,12 +408,14 @@ func (p *Parser) parseCreateDispatch() (nodes.Node, error) {
 		return p.parseIndexStmt()
 	case SEQUENCE:
 		// CREATE SEQUENCE ...
+		loc := p.pos()
 		p.advance() // consume CREATE
-		return p.parseCreateSeqStmt(byte(nodes.RELPERSISTENCE_PERMANENT))
+		return p.parseCreateSeqStmt(loc, byte(nodes.RELPERSISTENCE_PERMANENT))
 	case DOMAIN_P:
 		// CREATE DOMAIN ...
+		loc := p.pos()
 		p.advance() // consume CREATE
-		return p.parseCreateDomainStmt()
+		return p.parseCreateDomainStmt(loc)
 	case TYPE_P:
 		// CREATE TYPE ... (base, composite, enum, range, shell)
 		p.advance() // consume CREATE
@@ -439,12 +442,14 @@ func (p *Parser) parseCreateDispatch() (nodes.Node, error) {
 		return p.parseCreateStatsStmt()
 	case FUNCTION:
 		// CREATE FUNCTION ...
+		loc := p.pos()
 		p.advance() // consume CREATE
-		return p.parseCreateFunctionStmt(false)
+		return p.parseCreateFunctionStmt(loc, false)
 	case PROCEDURE:
 		// CREATE PROCEDURE ...
+		loc := p.pos()
 		p.advance() // consume CREATE
-		return p.parseCreateFunctionStmt(false)
+		return p.parseCreateFunctionStmt(loc, false)
 	case DATABASE:
 		// CREATE DATABASE ...
 		p.advance() // consume CREATE
@@ -566,6 +571,7 @@ func (p *Parser) parseCreateDispatch() (nodes.Node, error) {
 //
 // We need to look past OptTemp to see if it's TABLE or VIEW.
 func (p *Parser) parseCreateTempDispatch() (nodes.Node, error) {
+	loc := p.pos()
 	p.advance() // consume CREATE
 	relpersistence := p.parseOptTemp()
 
@@ -583,7 +589,7 @@ func (p *Parser) parseCreateTempDispatch() (nodes.Node, error) {
 
 	if p.cur.Type == SEQUENCE {
 		// CREATE TEMP SEQUENCE ...
-		return p.parseCreateSeqStmt(relpersistence)
+		return p.parseCreateSeqStmt(loc, relpersistence)
 	}
 
 	// CREATE TEMP TABLE ...
