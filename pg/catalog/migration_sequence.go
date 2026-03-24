@@ -58,7 +58,7 @@ func generateSequenceDDL(from, to *Catalog, diff *SchemaDiff) []MigrationOp {
 
 	// Deterministic ordering: drops first, then creates, then alters; within each group by (schema, name).
 	sort.Slice(ops, func(i, j int) bool {
-		oi, oj := opTypeOrder(ops[i].Type), opTypeOrder(ops[j].Type)
+		oi, oj := seqOpOrder(ops[i].Type), seqOpOrder(ops[j].Type)
 		if oi != oj {
 			return oi < oj
 		}
@@ -71,8 +71,8 @@ func generateSequenceDDL(from, to *Catalog, diff *SchemaDiff) []MigrationOp {
 	return ops
 }
 
-// opTypeOrder returns a sort key: drops < creates < alters.
-func opTypeOrder(t MigrationOpType) int {
+// seqOpOrder returns a sort key: drops < creates < alters.
+func seqOpOrder(t MigrationOpType) int {
 	switch t {
 	case OpDropSequence:
 		return 0

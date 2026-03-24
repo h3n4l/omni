@@ -24,11 +24,6 @@ func generatePartitionDDL(from, to *Catalog, diff *SchemaDiff) []MigrationOp {
 				ops = append(ops, generatePartitionChildDDL(to, entry)...)
 			}
 
-			// View with CHECK OPTION: generate CREATE VIEW ... WITH CHECK OPTION
-			if entry.To.RelKind == 'v' && entry.To.CheckOption != 0 {
-				ops = append(ops, generateViewWithCheckOption(to, entry)...)
-			}
-
 		case DiffModify:
 			if entry.From == nil || entry.To == nil {
 				continue
@@ -162,36 +157,6 @@ func generateReplicaIdentityDDL(c *Catalog, entry RelationDiffEntry) []Migration
 		SchemaName:    entry.SchemaName,
 		ObjectName:    entry.Name,
 		SQL:           fmt.Sprintf("ALTER TABLE %s REPLICA IDENTITY %s", qn, clause),
-		Transactional: true,
-	}}
-}
-
-// generateViewWithCheckOption generates CREATE VIEW ... WITH [LOCAL|CASCADED] CHECK OPTION.
-func generateViewWithCheckOption(c *Catalog, entry RelationDiffEntry) []MigrationOp {
-	rel := entry.To
-
-	def, err := c.GetViewDefinition(entry.SchemaName, rel.Name)
-	if err != nil || def == "" {
-		return nil
-	}
-
-	qn := migrationQualifiedName(entry.SchemaName, rel.Name)
-
-	var checkClause string
-	switch rel.CheckOption {
-	case 'l':
-		checkClause = " WITH LOCAL CHECK OPTION"
-	case 'c':
-		checkClause = " WITH CASCADED CHECK OPTION"
-	}
-
-	sql := fmt.Sprintf("CREATE VIEW %s AS %s%s", qn, def, checkClause)
-
-	return []MigrationOp{{
-		Type:          OpCreateView,
-		SchemaName:    entry.SchemaName,
-		ObjectName:    entry.Name,
-		SQL:           sql,
 		Transactional: true,
 	}}
 }
