@@ -99,6 +99,49 @@ func TestParseError_NoPosition(t *testing.T) {
 	}
 }
 
+func TestParseError_Section_1_2_StmtDispatch(t *testing.T) {
+	// Section 1.2: Verify that truncated dispatch calls in stmt.go return errors.
+	// All 10 sub-parsers already return proper errors (never nil,nil),
+	// so these tests serve as regression guards.
+	cases := []struct {
+		name     string
+		sql      string
+		contains string
+	}{
+		// parseChangeMasterStmtInner — truncated after MASTER (needs TO + options)
+		{"change_master_trunc", "CHANGE MASTER TO", "expected identifier"},
+		// parseStartReplicaStmt — truncated mid-clause (FOR without CHANNEL name)
+		{"start_replica_for_trunc", "START REPLICA FOR", "expected identifier"},
+		// parseStartGroupReplicationStmt — valid as standalone; test CHANGE REPLICATION with no target
+		{"change_replication_trunc", "CHANGE REPLICATION", "expected SOURCE or FILTER"},
+		// parseStopReplicaStmt — truncated mid-clause (FOR without CHANNEL name)
+		{"stop_replica_for_trunc", "STOP REPLICA FOR", "expected identifier"},
+		// parseStopGroupReplicationStmt is always valid; test STOP without valid keyword
+		{"stop_no_keyword", "STOP", "expected REPLICA"},
+		// parseLoadIndexIntoCacheStmt — truncated after CACHE (needs table ref)
+		{"load_index_trunc", "LOAD INDEX INTO CACHE", "expected identifier"},
+		// parseCreateResourceGroupStmt — truncated after GROUP (needs name)
+		{"create_resource_group_trunc", "CREATE RESOURCE GROUP", "expected identifier"},
+		// parseAlterResourceGroupStmt — truncated after GROUP (needs name)
+		{"alter_resource_group_trunc", "ALTER RESOURCE GROUP", "expected identifier"},
+		// parseDropSpatialRefSysStmt — truncated after SPATIAL (needs REFERENCE SYSTEM)
+		{"drop_spatial_trunc", "DROP SPATIAL", "expected REFERENCE"},
+		// parseDropResourceGroupStmt — truncated after GROUP (needs name)
+		{"drop_resource_group_trunc", "DROP RESOURCE GROUP", "expected identifier"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := Parse(tc.sql)
+			if err == nil {
+				t.Fatalf("expected error for %q, got nil", tc.sql)
+			}
+			if !strings.Contains(err.Error(), tc.contains) {
+				t.Errorf("error %q does not contain %q (sql: %q)", err.Error(), tc.contains, tc.sql)
+			}
+		})
+	}
+}
+
 func TestLineCol(t *testing.T) {
 	p := &Parser{lexer: NewLexer("SELECT\n  1 + 2")}
 	// offset 0 -> line 1, col 1
