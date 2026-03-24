@@ -117,6 +117,12 @@ func compareRelation(fromCat, toCat *Catalog, key relKey, from, to *Relation) (R
 		changed = true
 	}
 
+	// Trigger sub-diff.
+	trigDiffs := diffTriggers(fromCat, toCat, from.OID, to.OID)
+	if len(trigDiffs) > 0 {
+		changed = true
+	}
+
 	if !changed {
 		return RelationDiffEntry{}, false
 	}
@@ -130,5 +136,6 @@ func compareRelation(fromCat, toCat *Catalog, key relKey, from, to *Relation) (R
 		Columns:     cols,
 		Constraints: conDiffs,
 		Indexes:     idxDiffs,
+		Triggers:    trigDiffs,
 	}, true
 }
