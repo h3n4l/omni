@@ -166,6 +166,14 @@ func GenerateMigration(from, to *Catalog, diff *SchemaDiff) *MigrationPlan {
 	ops = append(ops, generateConstraintDDL(from, to, diff)...)
 	ops = append(ops, generateIndexDDL(from, to, diff)...)
 	ops = append(ops, generatePartitionDDL(from, to, diff)...)
+	ops = append(ops, generateSequenceDDL(from, to, diff)...)
+	ops = append(ops, generateFunctionDDL(from, to, diff)...)
+	ops = append(ops, generateEnumDDL(from, to, diff)...)
+	ops = append(ops, generateDomainDDL(from, to, diff)...)
+	ops = append(ops, generateTriggerDDL(from, to, diff)...)
+	ops = append(ops, generateViewDDL(from, to, diff)...)
+	ops = append(ops, generateRangeDDL(from, to, diff)...)
+	ops = append(ops, generateExtensionDDL(from, to, diff)...)
 
 	return &MigrationPlan{Ops: ops}
 }
