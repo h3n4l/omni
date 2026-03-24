@@ -1,0 +1,261 @@
+package catalog
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+)
+
+// generatePartitionDDL produces DDL operations for partition-related features,
+// replica identity changes, view check options, and table inheritance.
+// It supplements generateTableDDL which handles basic CREATE/DROP TABLE.
+func generatePartitionDDL(from, to *Catalog, diff *SchemaDiff) []MigrationOp {
+	var ops []MigrationOp
+
+	for _, entry := range diff.Relations {
+		switch entry.Action {
+		case DiffAdd:
+			if entry.To == nil {
+				continue
+			}
+
+			// Partition child: generate CREATE TABLE ... PARTITION OF ... FOR VALUES ...
+			if entry.To.PartitionBound != nil && entry.To.PartitionOf != 0 {
+				ops = append(ops, generatePartitionChildDDL(to, entry)...)
+			}
+
+			// View with CHECK OPTION: generate CREATE VIEW ... WITH CHECK OPTION
+			if entry.To.RelKind == 'v' && entry.To.CheckOption != 0 {
+				ops = append(ops, generateViewWithCheckOption(to, entry)...)
+			}
+
+		case DiffModify:
+			if entry.From == nil || entry.To == nil {
+				continue
+			}
+
+			// Replica identity changed.
+			if entry.From.ReplicaIdentity != entry.To.ReplicaIdentity {
+				ops = append(ops, generateReplicaIdentityDDL(to, entry)...)
+			}
+		}
+	}
+
+	// Deterministic ordering.
+	sort.Slice(ops, func(i, j int) bool {
+		if ops[i].Type != ops[j].Type {
+			return ops[i].Type < ops[j].Type
+		}
+		if ops[i].SchemaName != ops[j].SchemaName {
+			return ops[i].SchemaName < ops[j].SchemaName
+		}
+		return ops[i].ObjectName < ops[j].ObjectName
+	})
+
+	return ops
+}
+
+// generatePartitionChildDDL generates CREATE TABLE ... PARTITION OF ... FOR VALUES ...
+func generatePartitionChildDDL(c *Catalog, entry RelationDiffEntry) []MigrationOp {
+	rel := entry.To
+	parentRel := c.GetRelationByOID(rel.PartitionOf)
+	if parentRel == nil {
+		return nil
+	}
+
+	qn := migrationQualifiedName(entry.SchemaName, rel.Name)
+
+	var parentSchema string
+	if parentRel.Schema != nil {
+		parentSchema = parentRel.Schema.Name
+	} else {
+		parentSchema = entry.SchemaName
+	}
+	parentQN := migrationQualifiedName(parentSchema, parentRel.Name)
+
+	var b strings.Builder
+	b.WriteString("CREATE TABLE ")
+	b.WriteString(qn)
+	b.WriteString(" PARTITION OF ")
+	b.WriteString(parentQN)
+
+	bound := rel.PartitionBound
+	if bound.IsDefault {
+		b.WriteString(" DEFAULT")
+	} else {
+		switch bound.Strategy {
+		case 'l': // LIST
+			b.WriteString(" FOR VALUES IN (")
+			for i, v := range bound.ListValues {
+				if i > 0 {
+					b.WriteString(", ")
+				}
+				b.WriteString(formatPartitionValue(v))
+			}
+			b.WriteString(")")
+		case 'r': // RANGE
+			b.WriteString(" FOR VALUES FROM (")
+			for i, v := range bound.LowerBound {
+				if i > 0 {
+					b.WriteString(", ")
+				}
+				b.WriteString(formatPartitionValue(v))
+			}
+			b.WriteString(") TO (")
+			for i, v := range bound.UpperBound {
+				if i > 0 {
+					b.WriteString(", ")
+				}
+				b.WriteString(formatPartitionValue(v))
+			}
+			b.WriteString(")")
+		case 'h': // HASH
+			b.WriteString(fmt.Sprintf(" FOR VALUES WITH (MODULUS %d, REMAINDER %d)", bound.Modulus, bound.Remainder))
+		}
+	}
+
+	return []MigrationOp{{
+		Type:          OpCreateTable,
+		SchemaName:    entry.SchemaName,
+		ObjectName:    entry.Name,
+		SQL:           b.String(),
+		Transactional: true,
+	}}
+}
+
+// formatPartitionValue formats a single partition bound value.
+// Values that look like special keywords (MINVALUE, MAXVALUE) are passed through.
+// String values are single-quoted; numeric values are passed through.
+func formatPartitionValue(v string) string {
+	upper := strings.ToUpper(v)
+	if upper == "MINVALUE" || upper == "MAXVALUE" {
+		return upper
+	}
+	return "'" + strings.ReplaceAll(v, "'", "''") + "'"
+}
+
+// generateReplicaIdentityDDL generates ALTER TABLE ... REPLICA IDENTITY ...
+func generateReplicaIdentityDDL(c *Catalog, entry RelationDiffEntry) []MigrationOp {
+	qn := migrationQualifiedName(entry.SchemaName, entry.Name)
+
+	var clause string
+	switch entry.To.ReplicaIdentity {
+	case 'f':
+		clause = "FULL"
+	case 'n':
+		clause = "NOTHING"
+	case 'i':
+		clause = "USING INDEX" // would need index name, handled as best-effort
+		// Try to find the replica identity index.
+		for _, idx := range c.IndexesOf(entry.To.OID) {
+			if idx.IsReplicaIdent {
+				clause = "USING INDEX " + quoteIdentAlways(idx.Name)
+				break
+			}
+		}
+	default: // 'd' or anything else
+		clause = "DEFAULT"
+	}
+
+	return []MigrationOp{{
+		Type:          OpAlterTable,
+		SchemaName:    entry.SchemaName,
+		ObjectName:    entry.Name,
+		SQL:           fmt.Sprintf("ALTER TABLE %s REPLICA IDENTITY %s", qn, clause),
+		Transactional: true,
+	}}
+}
+
+// generateViewWithCheckOption generates CREATE VIEW ... WITH [LOCAL|CASCADED] CHECK OPTION.
+func generateViewWithCheckOption(c *Catalog, entry RelationDiffEntry) []MigrationOp {
+	rel := entry.To
+
+	def, err := c.GetViewDefinition(entry.SchemaName, rel.Name)
+	if err != nil || def == "" {
+		return nil
+	}
+
+	qn := migrationQualifiedName(entry.SchemaName, rel.Name)
+
+	var checkClause string
+	switch rel.CheckOption {
+	case 'l':
+		checkClause = " WITH LOCAL CHECK OPTION"
+	case 'c':
+		checkClause = " WITH CASCADED CHECK OPTION"
+	}
+
+	sql := fmt.Sprintf("CREATE VIEW %s AS %s%s", qn, def, checkClause)
+
+	return []MigrationOp{{
+		Type:          OpCreateView,
+		SchemaName:    entry.SchemaName,
+		ObjectName:    entry.Name,
+		SQL:           sql,
+		Transactional: true,
+	}}
+}
+
+// formatPartitionByClause formats a PARTITION BY clause for a partitioned table.
+// This is appended to the CREATE TABLE statement generated by FormatCreateTable.
+func formatPartitionByClause(rel *Relation) string {
+	if rel.PartitionInfo == nil {
+		return ""
+	}
+
+	pi := rel.PartitionInfo
+	var strategy string
+	switch pi.Strategy {
+	case 'r':
+		strategy = "RANGE"
+	case 'l':
+		strategy = "LIST"
+	case 'h':
+		strategy = "HASH"
+	default:
+		return ""
+	}
+
+	// Resolve key column names from attnums.
+	keyCols := columnAttnumsToQuotedNames(rel, pi.KeyAttNums)
+	if len(keyCols) == 0 {
+		return ""
+	}
+
+	return fmt.Sprintf(" PARTITION BY %s (%s)", strategy, strings.Join(keyCols, ", "))
+}
+
+// formatInheritsClause formats an INHERITS clause for table inheritance.
+func formatInheritsClause(c *Catalog, rel *Relation) string {
+	if len(rel.InhParents) == 0 {
+		return ""
+	}
+
+	// Only emit INHERITS for regular inheritance (not partition children).
+	if rel.IsPartition || rel.PartitionOf != 0 {
+		return ""
+	}
+
+	var parents []string
+	for _, parentOID := range rel.InhParents {
+		parentRel := c.GetRelationByOID(parentOID)
+		if parentRel == nil {
+			continue
+		}
+		var schema string
+		if parentRel.Schema != nil {
+			schema = parentRel.Schema.Name
+		}
+		if schema != "" {
+			parents = append(parents, migrationQualifiedName(schema, parentRel.Name))
+		} else {
+			parents = append(parents, quoteIdentAlways(parentRel.Name))
+		}
+	}
+
+	if len(parents) == 0 {
+		return ""
+	}
+
+	return " INHERITS (" + strings.Join(parents, ", ") + ")"
+}

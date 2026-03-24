@@ -31,6 +31,10 @@ func generateTableDDL(from, to *Catalog, diff *SchemaDiff) []MigrationOp {
 			if rk != 'r' && rk != 'p' {
 				continue
 			}
+			// Skip partition children — handled by generatePartitionDDL.
+			if entry.To.PartitionBound != nil && entry.To.PartitionOf != 0 {
+				continue
+			}
 			ddl := FormatCreateTable(to, entry.SchemaName, entry.To)
 			ops = append(ops, MigrationOp{
 				Type:          OpCreateTable,
@@ -131,6 +135,12 @@ func FormatCreateTable(c *Catalog, schemaName string, rel *Relation) string {
 	}
 
 	b.WriteString("\n)")
+
+	// Append PARTITION BY clause for partitioned tables.
+	b.WriteString(formatPartitionByClause(rel))
+
+	// Append INHERITS clause for table inheritance.
+	b.WriteString(formatInheritsClause(c, rel))
 
 	return b.String()
 }

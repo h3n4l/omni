@@ -170,5 +170,3 @@ func GenerateMigration(from, to *Catalog, diff *SchemaDiff) *MigrationPlan {
 	return &MigrationPlan{Ops: ops}
 }
 
-// Stub generators — will be implemented in subsequent sections.
-func generatePartitionDDL(from, to *Catalog, diff *SchemaDiff) []MigrationOp { return nil }
