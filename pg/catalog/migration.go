@@ -175,10 +175,8 @@ func GenerateMigration(from, to *Catalog, diff *SchemaDiff) *MigrationPlan {
 // ---------------------------------------------------------------------------
 
 func generateSchemaDDL(from, to *Catalog, diff *SchemaDiff) []MigrationOp { return nil }
-func generateTableDDL(from, to *Catalog, diff *SchemaDiff) []MigrationOp  { return nil }
-func generateColumnDDL(from, to *Catalog, diff *SchemaDiff) []MigrationOp { return nil }
-func generateConstraintDDL(from, to *Catalog, diff *SchemaDiff) []MigrationOp {
-	return nil
-}
-func generateIndexDDL(from, to *Catalog, diff *SchemaDiff) []MigrationOp     { return nil }
+// generateTableDDL is implemented in migration_table.go.
+// generateColumnDDL is implemented in migration_column.go.
+// generateConstraintDDL is implemented in migration_constraint.go.
+// generateIndexDDL is implemented in migration_index.go.
 func generatePartitionDDL(from, to *Catalog, diff *SchemaDiff) []MigrationOp { return nil }
