@@ -38,6 +38,7 @@ const (
 	OpAlterView       MigrationOpType = "AlterView"
 	OpCreateExtension MigrationOpType = "CreateExtension"
 	OpDropExtension   MigrationOpType = "DropExtension"
+	OpAlterExtension  MigrationOpType = "AlterExtension"
 	OpCreatePolicy    MigrationOpType = "CreatePolicy"
 	OpDropPolicy      MigrationOpType = "DropPolicy"
 	OpAlterPolicy     MigrationOpType = "AlterPolicy"
@@ -161,6 +162,7 @@ func GenerateMigration(from, to *Catalog, diff *SchemaDiff) *MigrationPlan {
 	// Phase 4: Metadata
 
 	ops = append(ops, generateSchemaDDL(from, to, diff)...)
+	ops = append(ops, generateExtensionDDL(from, to, diff)...)
 	ops = append(ops, generateTableDDL(from, to, diff)...)
 	ops = append(ops, generateColumnDDL(from, to, diff)...)
 	ops = append(ops, generateConstraintDDL(from, to, diff)...)
@@ -173,7 +175,6 @@ func GenerateMigration(from, to *Catalog, diff *SchemaDiff) *MigrationPlan {
 	ops = append(ops, generateTriggerDDL(from, to, diff)...)
 	ops = append(ops, generateViewDDL(from, to, diff)...)
 	ops = append(ops, generateRangeDDL(from, to, diff)...)
-	ops = append(ops, generateExtensionDDL(from, to, diff)...)
 
 	return &MigrationPlan{Ops: ops}
 }
