@@ -19,9 +19,20 @@ func generateConstraintDDL(from, to *Catalog, diff *SchemaDiff) []MigrationOp {
 			// are handled by generateTableDDL. FK constraints should be deferred
 			// here so they are emitted after all tables are created.
 			if rel.To != nil {
+				// First check diff entry's constraint slice (may be empty for new tables).
+				fkFound := false
 				for _, ce := range rel.Constraints {
 					if ce.Action == DiffAdd && ce.To != nil && ce.To.Type == ConstraintFK {
 						ops = append(ops, buildAddConstraintOp(to, rel.SchemaName, rel.Name, ce.To))
+						fkFound = true
+					}
+				}
+				// If no FKs in diff entry, look up from the catalog directly.
+				if !fkFound {
+					for _, con := range to.ConstraintsOf(rel.To.OID) {
+						if con.Type == ConstraintFK {
+							ops = append(ops, buildAddConstraintOp(to, rel.SchemaName, rel.Name, con))
+						}
 					}
 				}
 			}
