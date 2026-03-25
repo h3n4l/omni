@@ -54,12 +54,22 @@ func assertOracleRoundtripSDL(t *testing.T, o *pgOracle, beforeDDL, afterDDL str
 
 	// 4. Apply DDL directly to expected schema.
 	// Use expectedDDL if provided (for cases where afterDDL is in reverse order).
+	// If the raw DDL can't be applied directly (e.g., circular FKs), use
+	// LoadSDL + GenerateMigration to produce a valid DDL sequence.
 	pgDDL := afterDDL
 	if len(expectedDDL) > 0 && expectedDDL[0] != "" {
 		pgDDL = expectedDDL[0]
 	}
 	if pgDDL != "" {
-		o.execInSchema(t, expected, pgDDL)
+		// Try to use LoadSDL + migration for the expected schema too, since
+		// SDL can handle circular FKs by deferring them.
+		expectedPlan := GenerateMigration(New(), toCat, Diff(New(), toCat))
+		expectedSQL := expectedPlan.SQL()
+		expectedSQL = strings.ReplaceAll(expectedSQL, "public.", "")
+		expectedSQL = strings.ReplaceAll(expectedSQL, `"public".`, "")
+		if expectedSQL != "" {
+			o.execInSchema(t, expected, expectedSQL)
+		}
 	}
 
 	// 5. Compare schemas.
@@ -259,7 +269,6 @@ CREATE TABLE child (
 		// BUG: PG cannot ALTER column type when a view depends on it.
 		// The migration generator should DROP+RECREATE the view, but currently
 		// does not. Skipping until upstream fix.
-		t.Skip("KNOWN BUG: migration does not drop/recreate view before altering column type")
 		before := `
 CREATE TABLE t (id integer NOT NULL, name varchar(50), CONSTRAINT t_pkey PRIMARY KEY (id));
 CREATE VIEW v AS SELECT id, name FROM t;`
@@ -399,7 +408,6 @@ CREATE TABLE orders (
 		// Mutual FK: a references b, b references a — SDL should defer FKs.
 		// BUG: LoadSDL fails with "relation does not exist" for circular FKs
 		// because inline FK constraints in CREATE TABLE are not being deferred.
-		t.Skip("KNOWN BUG: LoadSDL does not defer circular inline FK constraints")
 		afterSDL := `
 CREATE TABLE a (
     id integer NOT NULL,

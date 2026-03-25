@@ -18,6 +18,11 @@ func generateSequenceDDL(from, to *Catalog, diff *SchemaDiff) []MigrationOp {
 			if entry.To == nil {
 				continue
 			}
+			// Skip creating sequences that are owned by identity columns.
+			// ADD GENERATED AS IDENTITY automatically creates the sequence.
+			if isIdentitySequence(to, entry.SchemaName, entry.Name) {
+				continue
+			}
 			ops = append(ops, MigrationOp{
 				Type:          OpCreateSequence,
 				SchemaName:    entry.SchemaName,
@@ -28,6 +33,11 @@ func generateSequenceDDL(from, to *Catalog, diff *SchemaDiff) []MigrationOp {
 
 		case DiffDrop:
 			if entry.From == nil {
+				continue
+			}
+			// Skip dropping sequences that are owned by identity columns.
+			// DROP IDENTITY automatically drops the identity sequence.
+			if isIdentitySequence(from, entry.SchemaName, entry.Name) {
 				continue
 			}
 			qn := migrationQualifiedName(entry.SchemaName, entry.Name)
@@ -83,6 +93,30 @@ func seqOpOrder(t MigrationOpType) int {
 	default:
 		return 3
 	}
+}
+
+// isIdentitySequence checks whether a sequence is the implicit backing sequence
+// for an identity column. Identity columns create sequences named "{table}_{column}_seq"
+// and the column's Default references nextval('{seqname}'::regclass).
+func isIdentitySequence(c *Catalog, schemaName, seqName string) bool {
+	if c == nil {
+		return false
+	}
+	schema := c.schemaByName[schemaName]
+	if schema == nil {
+		return false
+	}
+	for _, rel := range schema.Relations {
+		for _, col := range rel.Columns {
+			if col.Identity != 0 {
+				expectedSeqName := fmt.Sprintf("%s_%s_seq", rel.Name, col.Name)
+				if expectedSeqName == seqName {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 // formatCreateSequence builds a CREATE SEQUENCE statement with all options.

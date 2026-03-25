@@ -514,9 +514,16 @@ func extractRefs(stmt nodes.Node, declared map[string]bool) (refs []string, fkRe
 						}
 					}
 				}
+				// Standalone FK constraint in TableElts (pgparser puts table-level
+				// CONSTRAINT ... FOREIGN KEY nodes here).
+				if cons, ok := elt.(*nodes.Constraint); ok {
+					if cons.Contype == nodes.CONSTR_FOREIGN && cons.Pktable != nil {
+						addFKRef(qualifiedRangeVar(cons.Pktable))
+					}
+				}
 			}
 		}
-		// Table-level constraints: FK deps go to fkRefs.
+		// Table-level constraints in Constraints list: FK deps go to fkRefs.
 		if s.Constraints != nil {
 			for _, item := range s.Constraints.Items {
 				if cons, ok := item.(*nodes.Constraint); ok {
@@ -800,7 +807,7 @@ func topoSort(stmts []nodes.Node, declared map[string]bool, deps []dep) ([]nodes
 func extractForeignKeys(cs *nodes.CreateStmt) (*nodes.CreateStmt, []*nodes.Constraint) {
 	var fks []*nodes.Constraint
 
-	// Check table-level constraints.
+	// Check table-level constraints in Constraints list.
 	if cs.Constraints != nil {
 		var kept []nodes.Node
 		for _, item := range cs.Constraints.Items {
@@ -818,6 +825,31 @@ func extractForeignKeys(cs *nodes.CreateStmt) (*nodes.CreateStmt, []*nodes.Const
 			} else {
 				clone.Constraints = &nodes.List{Items: kept}
 			}
+			cs = &clone
+		}
+	}
+
+	// Check standalone Constraint nodes in TableElts (pgparser puts table-level
+	// constraints like CONSTRAINT ... FOREIGN KEY here, not in cs.Constraints).
+	if cs.TableElts != nil {
+		needCloneForTableElts := false
+		for _, elt := range cs.TableElts.Items {
+			if cons, ok := elt.(*nodes.Constraint); ok && cons.Contype == nodes.CONSTR_FOREIGN {
+				needCloneForTableElts = true
+				break
+			}
+		}
+		if needCloneForTableElts {
+			clone := *cs
+			var newElts []nodes.Node
+			for _, elt := range cs.TableElts.Items {
+				if cons, ok := elt.(*nodes.Constraint); ok && cons.Contype == nodes.CONSTR_FOREIGN {
+					fks = append(fks, cons)
+				} else {
+					newElts = append(newElts, elt)
+				}
+			}
+			clone.TableElts = &nodes.List{Items: newElts}
 			cs = &clone
 		}
 	}

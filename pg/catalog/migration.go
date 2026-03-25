@@ -167,10 +167,17 @@ func GenerateMigration(from, to *Catalog, diff *SchemaDiff) *MigrationPlan {
 	ops = append(ops, generateDomainDDL(from, to, diff)...)
 	ops = append(ops, generateRangeDDL(from, to, diff)...)
 	ops = append(ops, generateSequenceDDL(from, to, diff)...)
+
+	// Split function DDL: functions that are referenced by table CHECK constraints
+	// must be created before the tables. Functions that reference tables (e.g.,
+	// RETURNS SETOF table, or body references table) must come after tables.
+	funcOps := generateFunctionDDL(from, to, diff)
+	earlyFuncOps, lateFuncOps := splitFunctionOps(to, diff, funcOps)
+	ops = append(ops, earlyFuncOps...)
 	ops = append(ops, generateTableDDL(from, to, diff)...)
 	ops = append(ops, generateColumnDDL(from, to, diff)...)
 	ops = append(ops, generateConstraintDDL(from, to, diff)...)
-	ops = append(ops, generateFunctionDDL(from, to, diff)...)
+	ops = append(ops, lateFuncOps...)
 	ops = append(ops, generateViewDDL(from, to, diff)...)
 	ops = append(ops, generateIndexDDL(from, to, diff)...)
 	ops = append(ops, generatePartitionDDL(from, to, diff)...)
@@ -179,6 +186,186 @@ func GenerateMigration(from, to *Catalog, diff *SchemaDiff) *MigrationPlan {
 	ops = append(ops, generateCommentDDL(from, to, diff)...)
 	ops = append(ops, generateGrantDDL(from, to, diff)...)
 
+	// Post-processing: wrap ALTER COLUMN TYPE ops with DROP VIEW / CREATE VIEW
+	// for dependent views. PG cannot ALTER a column type when a view depends on it.
+	ops = wrapColumnTypeChangesWithViewOps(from, to, diff, ops)
+
 	return &MigrationPlan{Ops: ops}
+}
+
+// splitFunctionOps separates function DDL into two groups:
+// - early: functions that are needed by table CHECK/DEFAULT constraints (must be created before tables)
+// - late: all other functions (may reference tables, so created after tables)
+func splitFunctionOps(to *Catalog, diff *SchemaDiff, funcOps []MigrationOp) (early, late []MigrationOp) {
+	// Collect function names referenced by CHECK constraints and DEFAULTs
+	// in tables being added or modified.
+	neededByTables := make(map[string]bool)
+	for _, rel := range diff.Relations {
+		if rel.Action != DiffAdd {
+			continue
+		}
+		if rel.To == nil {
+			continue
+		}
+		// Check constraints on the table.
+		cons := to.ConstraintsOf(rel.To.OID)
+		for _, c := range cons {
+			if c.Type == ConstraintCheck && c.CheckExpr != "" {
+				// Extract function references from CHECK expression.
+				// Simple heuristic: look for qualified function calls.
+				for _, fn := range diff.Functions {
+					if fn.Action == DiffAdd && fn.To != nil {
+						// Check if function name appears in the CHECK expression.
+						funcName := fn.To.Name
+						if strings.Contains(c.CheckExpr, funcName+"(") || strings.Contains(c.CheckExpr, funcName+" (") {
+							neededByTables[fn.Identity] = true
+						}
+					}
+				}
+			}
+		}
+		// Also check column defaults.
+		for _, col := range rel.To.Columns {
+			if col.HasDefault && col.Default != "" {
+				for _, fn := range diff.Functions {
+					if fn.Action == DiffAdd && fn.To != nil {
+						funcName := fn.To.Name
+						if strings.Contains(col.Default, funcName+"(") || strings.Contains(col.Default, funcName+" (") {
+							neededByTables[fn.Identity] = true
+						}
+					}
+				}
+			}
+		}
+	}
+
+	for _, op := range funcOps {
+		// Only CREATE operations can be early; DROP/ALTER operations must be late
+		// because they may depend on tables being dropped first (e.g., triggers).
+		if op.Type == OpCreateFunction && neededByTables[op.ObjectName] {
+			early = append(early, op)
+		} else {
+			late = append(late, op)
+		}
+	}
+	return early, late
+}
+
+// wrapColumnTypeChangesWithViewOps detects ALTER COLUMN TYPE operations and
+// inserts DROP VIEW before and CREATE VIEW after them for any views that
+// depend on the modified table. PG cannot alter a column type if a view
+// references that table.
+func wrapColumnTypeChangesWithViewOps(from, to *Catalog, diff *SchemaDiff, ops []MigrationOp) []MigrationOp {
+	// Find all tables that have column type changes.
+	tablesWithTypeChange := make(map[string]bool) // "schema.table"
+	for _, rel := range diff.Relations {
+		if rel.Action != DiffModify {
+			continue
+		}
+		for _, col := range rel.Columns {
+			if col.Action != DiffModify || col.From == nil || col.To == nil {
+				continue
+			}
+			oldType := from.FormatType(col.From.TypeOID, col.From.TypeMod)
+			newType := to.FormatType(col.To.TypeOID, col.To.TypeMod)
+			if oldType != newType {
+				tablesWithTypeChange[rel.SchemaName+"."+rel.Name] = true
+			}
+		}
+	}
+	if len(tablesWithTypeChange) == 0 {
+		return ops
+	}
+
+	// Find views that depend on these tables.
+	type viewInfo struct {
+		schema string
+		name   string
+	}
+	var viewsToDrop []viewInfo
+	seen := make(map[string]bool)
+	for tableKey := range tablesWithTypeChange {
+		parts := strings.SplitN(tableKey, ".", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		tableName := parts[1]
+		for _, s := range to.UserSchemas() {
+			for _, rel := range s.Relations {
+				if rel.RelKind != 'v' {
+					continue
+				}
+				viewKey := s.Name + "." + rel.Name
+				if seen[viewKey] {
+					continue
+				}
+				def, err := to.GetViewDefinition(s.Name, rel.Name)
+				if err != nil {
+					continue
+				}
+				if strings.Contains(def, quoteIdentAlways(tableName)) || strings.Contains(def, tableName) {
+					viewsToDrop = append(viewsToDrop, viewInfo{schema: s.Name, name: rel.Name})
+					seen[viewKey] = true
+				}
+			}
+		}
+	}
+	if len(viewsToDrop) == 0 {
+		return ops
+	}
+
+	// Sort views for determinism.
+	sort.Slice(viewsToDrop, func(i, j int) bool {
+		if viewsToDrop[i].schema != viewsToDrop[j].schema {
+			return viewsToDrop[i].schema < viewsToDrop[j].schema
+		}
+		return viewsToDrop[i].name < viewsToDrop[j].name
+	})
+
+	// Build drop and create ops.
+	var dropOps, createOps []MigrationOp
+	for _, v := range viewsToDrop {
+		qn := migrationQualifiedName(v.schema, v.name)
+		dropOps = append(dropOps, MigrationOp{
+			Type:          OpDropView,
+			SchemaName:    v.schema,
+			ObjectName:    v.name,
+			SQL:           fmt.Sprintf("DROP VIEW IF EXISTS %s", qn),
+			Transactional: true,
+		})
+
+		def, _ := to.GetViewDefinition(v.schema, v.name)
+		createOps = append(createOps, MigrationOp{
+			Type:          OpCreateView,
+			SchemaName:    v.schema,
+			ObjectName:    v.name,
+			SQL:           fmt.Sprintf("CREATE VIEW %s AS %s", qn, strings.TrimRight(def, " \t\n\r;")),
+			Transactional: true,
+		})
+	}
+
+	// Filter out any existing view ops for these views (avoid duplicates).
+	var filteredOps []MigrationOp
+	for _, op := range ops {
+		skip := false
+		if op.Type == OpDropView || op.Type == OpCreateView || op.Type == OpAlterView {
+			for _, v := range viewsToDrop {
+				if op.SchemaName == v.schema && op.ObjectName == v.name {
+					skip = true
+					break
+				}
+			}
+		}
+		if !skip {
+			filteredOps = append(filteredOps, op)
+		}
+	}
+
+	// Insert: dropOps at the beginning, createOps at the end.
+	var result []MigrationOp
+	result = append(result, dropOps...)
+	result = append(result, filteredOps...)
+	result = append(result, createOps...)
+	return result
 }
 

@@ -469,7 +469,6 @@ CREATE VIEW active_items AS SELECT id, name FROM items WHERE in_stock = true;
 		// Two tables with mutual foreign keys — SDL must defer FK creation.
 		// BUG: LoadSDL fails with "relation does not exist" for circular FKs
 		// because inline FK constraints in CREATE TABLE are not being deferred.
-		t.Skip("KNOWN BUG: LoadSDL does not defer circular inline FK constraints")
 		afterSDL := `
 CREATE TABLE team (
     id integer NOT NULL,
@@ -492,7 +491,6 @@ CREATE TABLE member (
 		// BUG: Migration generator creates table before function, but table's
 		// CHECK constraint references the function. The migration should create
 		// functions before tables that depend on them via CHECK constraints.
-		t.Skip("KNOWN BUG: migration generator does not order functions before tables with CHECK constraints that reference them")
 		afterSDL := `
 CREATE FUNCTION is_valid(val integer) RETURNS boolean
     LANGUAGE sql IMMUTABLE AS 'SELECT val > 0';

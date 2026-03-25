@@ -103,13 +103,31 @@ func buildAddConstraintOp(to *Catalog, schemaName, tableName string, con *Constr
 	switch con.Type {
 	case ConstraintPK:
 		colNames := resolveAttnumsToNames(to, con.RelOID, con.Columns)
-		sql = fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s PRIMARY KEY (%s)",
+		clause := fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s PRIMARY KEY (%s)",
 			qualifiedTable, quoteIdentifier(con.Name), joinQuoted(colNames))
+		if con.Deferrable {
+			clause += " DEFERRABLE"
+			if con.Deferred {
+				clause += " INITIALLY DEFERRED"
+			} else {
+				clause += " INITIALLY IMMEDIATE"
+			}
+		}
+		sql = clause
 
 	case ConstraintUnique:
 		colNames := resolveAttnumsToNames(to, con.RelOID, con.Columns)
-		sql = fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s UNIQUE (%s)",
+		clause := fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s UNIQUE (%s)",
 			qualifiedTable, quoteIdentifier(con.Name), joinQuoted(colNames))
+		if con.Deferrable {
+			clause += " DEFERRABLE"
+			if con.Deferred {
+				clause += " INITIALLY DEFERRED"
+			} else {
+				clause += " INITIALLY IMMEDIATE"
+			}
+		}
+		sql = clause
 
 	case ConstraintCheck:
 		sql = fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s CHECK (%s)",
@@ -153,8 +171,24 @@ func buildAddConstraintOp(to *Catalog, schemaName, tableName string, con *Constr
 			}
 			parts = append(parts, fmt.Sprintf("%s WITH %s", quoteIdentifier(colName), op))
 		}
-		sql = fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s EXCLUDE (%s)",
-			qualifiedTable, quoteIdentifier(con.Name), strings.Join(parts, ", "))
+		// Determine the index access method from the backing index.
+		method := "gist" // default for EXCLUDE constraints
+		if con.IndexOID != 0 {
+			if idx := to.GetIndexByOID(con.IndexOID); idx != nil && idx.AccessMethod != "" {
+				method = idx.AccessMethod
+			}
+		}
+		clause := fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s EXCLUDE USING %s (%s)",
+			qualifiedTable, quoteIdentifier(con.Name), method, strings.Join(parts, ", "))
+		if con.Deferrable {
+			clause += " DEFERRABLE"
+			if con.Deferred {
+				clause += " INITIALLY DEFERRED"
+			} else {
+				clause += " INITIALLY IMMEDIATE"
+			}
+		}
+		sql = clause
 
 	default:
 		sql = fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s /* unsupported type %c */",

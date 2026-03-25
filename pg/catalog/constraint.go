@@ -109,6 +109,8 @@ func (c *Catalog) addPKConstraint(schema *Schema, rel *Relation, def ConstraintD
 		Namespace:  schema.OID,
 		Columns:    attnums,
 		IndexOID:   idx.OID,
+		Deferrable: def.Deferrable,
+		Deferred:   def.Deferred,
 		Validated:  true,
 		ConIsLocal: true,
 	}
@@ -150,6 +152,8 @@ func (c *Catalog) addUniqueConstraint(schema *Schema, rel *Relation, def Constra
 		Namespace:  schema.OID,
 		Columns:    attnums,
 		IndexOID:   idx.OID,
+		Deferrable: def.Deferrable,
+		Deferred:   def.Deferred,
 		Validated:  true,
 		ConIsLocal: true,
 	}
@@ -477,6 +481,8 @@ func (c *Catalog) addExcludeConstraint(schema *Schema, rel *Relation, def Constr
 		Columns:    attnums,
 		IndexOID:   idx.OID,
 		ExclOps:    def.ExclOps,
+		Deferrable: def.Deferrable,
+		Deferred:   def.Deferred,
 		Validated:  true,
 		ConIsLocal: true,
 	}

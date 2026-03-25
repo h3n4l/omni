@@ -62,6 +62,23 @@ func commentObjectTarget(c *Catalog, objType byte, objDescription string, subID 
 	switch objType {
 	case 'r': // relation (table, view, matview)
 		if subID != 0 {
+			// Resolve the column name from the catalog using the attnum (subID).
+			colName := ""
+			parts := strings.SplitN(objDescription, ".", 2)
+			if len(parts) == 2 && c != nil {
+				rel := c.GetRelation(parts[0], parts[1])
+				if rel != nil {
+					for _, col := range rel.Columns {
+						if col.AttNum == subID {
+							colName = col.Name
+							break
+						}
+					}
+				}
+			}
+			if colName != "" {
+				return fmt.Sprintf("COLUMN %s.%s", formatQualifiedDescription(objDescription), quoteIdentAlways(colName))
+			}
 			return fmt.Sprintf("COLUMN %s", formatQualifiedDescription(objDescription))
 		}
 		// Determine relation kind from the catalog.
