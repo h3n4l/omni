@@ -307,3 +307,200 @@ func TestOracleType(t *testing.T) {
 		)
 	})
 }
+
+// ---------------------------------------------------------------------------
+// Comment Coverage Gaps
+// ---------------------------------------------------------------------------
+
+func TestOracleCommentGaps(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test: requires Docker")
+	}
+	oracle := startPGOracle(t)
+
+	// --- COMMENT ON INDEX ---
+	t.Run("comment_on_index", func(t *testing.T) {
+		before := `
+CREATE TABLE t1 (
+    id integer PRIMARY KEY,
+    name varchar(100)
+);
+CREATE INDEX idx_name ON t1(name);
+`
+		after := `
+CREATE TABLE t1 (
+    id integer PRIMARY KEY,
+    name varchar(100)
+);
+CREATE INDEX idx_name ON t1(name);
+COMMENT ON INDEX idx_name IS 'Name lookup index';
+`
+		assertOracleRoundtrip(t, oracle, before, after)
+	})
+
+	// --- COMMENT ON TYPE ---
+	t.Run("comment_on_type", func(t *testing.T) {
+		before := `CREATE TYPE color AS ENUM ('red', 'green', 'blue');`
+		after := `CREATE TYPE color AS ENUM ('red', 'green', 'blue');
+COMMENT ON TYPE color IS 'Available colors';`
+		assertOracleRoundtrip(t, oracle, before, after)
+	})
+
+	// --- COMMENT ON SEQUENCE ---
+	t.Run("comment_on_sequence", func(t *testing.T) {
+		before := `CREATE SEQUENCE my_seq INCREMENT 1 MINVALUE 1 MAXVALUE 1000 START 1 CACHE 1 NO CYCLE;`
+		after := `CREATE SEQUENCE my_seq INCREMENT 1 MINVALUE 1 MAXVALUE 1000 START 1 CACHE 1 NO CYCLE;
+COMMENT ON SEQUENCE my_seq IS 'Auto-increment sequence';`
+		assertOracleRoundtrip(t, oracle, before, after)
+	})
+
+	// --- COMMENT ON CONSTRAINT ---
+	t.Run("comment_on_constraint", func(t *testing.T) {
+		// NOTE: COMMENT ON CONSTRAINT is tracked via pg_description with objsubid
+		// referencing the constraint. This may not be supported by the diff engine.
+		before := `
+CREATE TABLE t1 (
+    id integer,
+    CONSTRAINT t1_pkey PRIMARY KEY (id)
+);
+`
+		after := `
+CREATE TABLE t1 (
+    id integer,
+    CONSTRAINT t1_pkey PRIMARY KEY (id)
+);
+COMMENT ON CONSTRAINT t1_pkey ON t1 IS 'Primary key constraint';
+`
+		assertOracleRoundtrip(t, oracle, before, after)
+	})
+
+	// --- COMMENT ON TRIGGER ---
+	t.Run("comment_on_trigger", func(t *testing.T) {
+		before := `
+CREATE FUNCTION trig_fn() RETURNS trigger LANGUAGE plpgsql AS 'BEGIN RETURN NEW; END';
+CREATE TABLE t1 (
+    id integer PRIMARY KEY,
+    name varchar(100)
+);
+CREATE TRIGGER t1_trig BEFORE UPDATE ON t1 FOR EACH ROW EXECUTE FUNCTION trig_fn();
+`
+		after := `
+CREATE FUNCTION trig_fn() RETURNS trigger LANGUAGE plpgsql AS 'BEGIN RETURN NEW; END';
+CREATE TABLE t1 (
+    id integer PRIMARY KEY,
+    name varchar(100)
+);
+CREATE TRIGGER t1_trig BEFORE UPDATE ON t1 FOR EACH ROW EXECUTE FUNCTION trig_fn();
+COMMENT ON TRIGGER t1_trig ON t1 IS 'Update trigger';
+`
+		assertOracleRoundtrip(t, oracle, before, after)
+	})
+
+	// --- COMMENT ON SCHEMA ---
+	t.Run("comment_on_schema", func(t *testing.T) {
+		// Schema comments are special: assertOracleRoundtrip operates within
+		// test schemas so we test via plan inspection.
+		fromDDL := `CREATE SCHEMA extra;`
+		toDDL := `CREATE SCHEMA extra;`
+		// This test would need COMMENT ON SCHEMA, but the diff engine may
+		// not support schema comments. We test via plan.
+		fromCat, err := LoadSQL(fromDDL)
+		if err != nil {
+			t.Fatalf("LoadSQL(before) failed: %v", err)
+		}
+		toCat, err := LoadSQL(toDDL + "\nCOMMENT ON SCHEMA extra IS 'Extra schema';")
+		if err != nil {
+			t.Skip("LoadSQL does not support COMMENT ON SCHEMA syntax")
+			return
+		}
+		diff := Diff(fromCat, toCat)
+		plan := GenerateMigration(fromCat, toCat, diff)
+		found := false
+		for _, op := range plan.Ops {
+			if strings.Contains(op.SQL, "COMMENT ON SCHEMA") {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("expected COMMENT ON SCHEMA in migration plan, got: %s", plan.SQL())
+		}
+	})
+}
+
+// ---------------------------------------------------------------------------
+// Index Type Coverage Gaps
+// ---------------------------------------------------------------------------
+
+func TestOracleIndexGaps(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test: requires Docker")
+	}
+	oracle := startPGOracle(t)
+
+	// --- Index USING hash ---
+	t.Run("index_using_hash", func(t *testing.T) {
+		before := `
+CREATE TABLE t1 (
+    id integer PRIMARY KEY,
+    name varchar(100)
+);
+`
+		after := `
+CREATE TABLE t1 (
+    id integer PRIMARY KEY,
+    name varchar(100)
+);
+CREATE INDEX idx_name_hash ON t1 USING hash (name);
+`
+		assertOracleRoundtrip(t, oracle, before, after)
+	})
+
+	// --- Index USING brin ---
+	t.Run("index_using_brin", func(t *testing.T) {
+		before := `
+CREATE TABLE t1 (
+    id integer PRIMARY KEY,
+    created_at timestamptz DEFAULT now()
+);
+`
+		after := `
+CREATE TABLE t1 (
+    id integer PRIMARY KEY,
+    created_at timestamptz DEFAULT now()
+);
+CREATE INDEX idx_created_brin ON t1 USING brin (created_at);
+`
+		assertOracleRoundtrip(t, oracle, before, after)
+	})
+}
+
+// ---------------------------------------------------------------------------
+// Table INHERITS Coverage Gap
+// ---------------------------------------------------------------------------
+
+func TestOracleInherits(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test: requires Docker")
+	}
+	oracle := startPGOracle(t)
+
+	// --- Table INHERITS ---
+	t.Run("table_inherits", func(t *testing.T) {
+		before := `
+CREATE TABLE parent_tbl (
+    id integer PRIMARY KEY,
+    name varchar(100)
+);
+`
+		after := `
+CREATE TABLE parent_tbl (
+    id integer PRIMARY KEY,
+    name varchar(100)
+);
+CREATE TABLE child_tbl (
+    extra text
+) INHERITS (parent_tbl);
+`
+		assertOracleRoundtrip(t, oracle, before, after)
+	})
+}

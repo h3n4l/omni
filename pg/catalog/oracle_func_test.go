@@ -92,6 +92,45 @@ COMMENT ON PROCEDURE do_log() IS 'Logs a message';`
 }
 
 // ---------------------------------------------------------------------------
+// 2.4b Function Parameter Gaps
+// ---------------------------------------------------------------------------
+
+func TestOracleFuncParams(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test: requires Docker")
+	}
+	oracle := startPGOracle(t)
+
+	// --- Function with OUT parameter ---
+	t.Run("function_with_out_param", func(t *testing.T) {
+		before := ``
+		after := `CREATE FUNCTION f_out(IN x integer, OUT y integer) RETURNS integer LANGUAGE sql AS 'SELECT x * 2';`
+		assertOracleRoundtrip(t, oracle, before, after)
+	})
+
+	// --- Function with INOUT parameter ---
+	t.Run("function_with_inout_param", func(t *testing.T) {
+		before := ``
+		after := `CREATE FUNCTION f_inout(INOUT x integer) LANGUAGE plpgsql AS 'BEGIN x := x * 2; END';`
+		assertOracleRoundtrip(t, oracle, before, after)
+	})
+
+	// --- Function with VARIADIC parameter ---
+	t.Run("function_with_variadic_param", func(t *testing.T) {
+		before := ``
+		after := `CREATE FUNCTION f_variadic(VARIADIC args integer[]) RETURNS integer LANGUAGE sql AS 'SELECT array_length(args, 1)';`
+		assertOracleRoundtrip(t, oracle, before, after)
+	})
+
+	// --- DROP function with OUT params (modify function that has OUT) ---
+	t.Run("drop_function_with_out_params", func(t *testing.T) {
+		before := `CREATE FUNCTION f_out(IN x integer, OUT y integer) RETURNS integer LANGUAGE sql AS 'SELECT x * 2';`
+		after := `CREATE FUNCTION f_out(IN x integer, OUT y integer) RETURNS integer LANGUAGE sql AS 'SELECT x * 3';`
+		assertOracleRoundtrip(t, oracle, before, after)
+	})
+}
+
+// ---------------------------------------------------------------------------
 // 2.5 View/MatView Changes
 // ---------------------------------------------------------------------------
 
