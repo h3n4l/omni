@@ -152,7 +152,7 @@ type constraintRow struct {
 
 type functionRow struct {
 	name       string
-	resultType string
+	resultType sql.NullString
 	argTypes   string
 	body       sql.NullString
 	language   string
@@ -550,15 +550,23 @@ func (o *pgOracle) compareSchemas(t *testing.T, schemaA, schemaB string) []strin
 		func(r tableRow) string { return r.name },
 		func(r tableRow) string { return fmt.Sprintf("%s (kind=%s)", r.name, r.relkind) })...)
 
-	// Compare columns
+	// Compare columns (with schema name normalization in defaults)
 	colsA := o.queryColumns(t, schemaA)
 	colsB := o.queryColumns(t, schemaB)
-	diffs = append(diffs, compareSlices("columns", colsA, colsB,
+	normalizeCol := func(r columnRow, schema string) string {
+		defVal := r.defVal
+		if defVal.Valid {
+			s := defVal.String
+			s = strings.ReplaceAll(s, fmt.Sprintf("%q.", schema), "")
+			s = strings.ReplaceAll(s, schema+".", "")
+			defVal = sql.NullString{String: s, Valid: true}
+		}
+		return fmt.Sprintf("%s.%s type=%s nullable=%s default=%v identity=%v generated=%v pos=%d",
+			r.table, r.name, r.dataType, r.nullable, defVal, r.identity, r.generated, r.position)
+	}
+	diffs = append(diffs, compareColumnSlices("columns", schemaA, schemaB, colsA, colsB,
 		func(r columnRow) string { return fmt.Sprintf("%s.%s", r.table, r.name) },
-		func(r columnRow) string {
-			return fmt.Sprintf("%s.%s type=%s nullable=%s default=%v identity=%v generated=%v pos=%d",
-				r.table, r.name, r.dataType, r.nullable, r.defVal, r.identity, r.generated, r.position)
-		})...)
+		normalizeCol)...)
 
 	// Compare indexes
 	idxA := o.queryIndexes(t, schemaA)
@@ -577,13 +585,7 @@ func (o *pgOracle) compareSchemas(t *testing.T, schemaA, schemaB string) []strin
 	// Compare functions
 	funcsA := o.queryFunctions(t, schemaA)
 	funcsB := o.queryFunctions(t, schemaB)
-	diffs = append(diffs, compareSlices("functions", funcsA, funcsB,
-		func(r functionRow) string { return fmt.Sprintf("%s(%s)", r.name, r.argTypes) },
-		func(r functionRow) string {
-			return fmt.Sprintf("%s(%s) returns=%s lang=%s vol=%s strict=%v sec=%s leak=%v par=%s body=%v",
-				r.name, r.argTypes, r.resultType, r.language, r.volatility,
-				r.strict, r.security, r.leakproof, r.parallel, r.body)
-		})...)
+	diffs = append(diffs, compareFunctions(schemaA, schemaB, funcsA, funcsB)...)
 
 	// Compare triggers
 	trigsA := o.queryTriggers(t, schemaA)
@@ -607,10 +609,25 @@ func (o *pgOracle) compareSchemas(t *testing.T, schemaA, schemaB string) []strin
 		func(r enumRow) string { return r.name },
 		func(r enumRow) string { return fmt.Sprintf("%s values=[%s]", r.name, r.values) })...)
 
-	// Compare views
+	// Compare views (with schema name normalization in definitions)
 	viewsA := o.queryViews(t, schemaA)
 	viewsB := o.queryViews(t, schemaB)
-	diffs = append(diffs, compareSlices("views", viewsA, viewsB,
+	normalizeViewDef := func(def, schema string) string {
+		def = strings.ReplaceAll(def, fmt.Sprintf("%q.", schema), "")
+		def = strings.ReplaceAll(def, schema+".", "")
+		return def
+	}
+	normViewA := make([]viewRow, len(viewsA))
+	copy(normViewA, viewsA)
+	for i := range normViewA {
+		normViewA[i].definition = normalizeViewDef(normViewA[i].definition, schemaA)
+	}
+	normViewB := make([]viewRow, len(viewsB))
+	copy(normViewB, viewsB)
+	for i := range normViewB {
+		normViewB[i].definition = normalizeViewDef(normViewB[i].definition, schemaB)
+	}
+	diffs = append(diffs, compareSlices("views", normViewA, normViewB,
 		func(r viewRow) string { return r.name },
 		func(r viewRow) string {
 			return fmt.Sprintf("%s def=%s check=%v", r.name, r.definition, r.checkOption)
@@ -662,6 +679,47 @@ func compareSlices[T any](category string, a, b []T, keyFn func(T) string, detai
 		allKeys[k] = true
 	}
 	for _, k := range keysB {
+		allKeys[k] = true
+	}
+	sorted := make([]string, 0, len(allKeys))
+	for k := range allKeys {
+		sorted = append(sorted, k)
+	}
+	sort.Strings(sorted)
+
+	for _, k := range sorted {
+		dA, okA := mapA[k]
+		dB, okB := mapB[k]
+		if okA && !okB {
+			diffs = append(diffs, fmt.Sprintf("%s: only in schemaA: %s", category, dA))
+		} else if !okA && okB {
+			diffs = append(diffs, fmt.Sprintf("%s: only in schemaB: %s", category, dB))
+		} else if dA != dB {
+			diffs = append(diffs, fmt.Sprintf("%s: differ:\n  A: %s\n  B: %s", category, dA, dB))
+		}
+	}
+	return diffs
+}
+
+// compareColumnSlices compares columns with per-schema normalization of detail strings.
+func compareColumnSlices(category, schemaA, schemaB string, a, b []columnRow, keyFn func(columnRow) string, detailFn func(columnRow, string) string) []string {
+	var diffs []string
+	mapA := make(map[string]string, len(a))
+	mapB := make(map[string]string, len(b))
+	for _, r := range a {
+		k := keyFn(r)
+		mapA[k] = detailFn(r, schemaA)
+	}
+	for _, r := range b {
+		k := keyFn(r)
+		mapB[k] = detailFn(r, schemaB)
+	}
+
+	allKeys := make(map[string]bool)
+	for k := range mapA {
+		allKeys[k] = true
+	}
+	for k := range mapB {
 		allKeys[k] = true
 	}
 	sorted := make([]string, 0, len(allKeys))
@@ -771,6 +829,62 @@ func compareTriggers(schemaA, schemaB string, a, b []triggerRow) []string {
 			diffs = append(diffs, fmt.Sprintf("triggers: only in schemaB: %s = %s", k, dB))
 		} else if dA != dB {
 			diffs = append(diffs, fmt.Sprintf("triggers: differ:\n  A: %s = %s\n  B: %s = %s", k, dA, k, dB))
+		}
+	}
+	return diffs
+}
+
+// compareFunctions compares functions, normalizing schema names in result types and arg types.
+func compareFunctions(schemaA, schemaB string, a, b []functionRow) []string {
+	normalize := func(s, schema string) string {
+		s = strings.ReplaceAll(s, fmt.Sprintf("%q.", schema), "")
+		s = strings.ReplaceAll(s, schema+".", "")
+		return s
+	}
+	detail := func(r functionRow, schema string) string {
+		rt := normalize(r.resultType.String, schema)
+		at := normalize(r.argTypes, schema)
+		return fmt.Sprintf("%s(%s) returns=%s lang=%s vol=%s strict=%v sec=%s leak=%v par=%s body=%v",
+			r.name, at, rt, r.language, r.volatility,
+			r.strict, r.security, r.leakproof, r.parallel, r.body)
+	}
+	key := func(r functionRow, schema string) string {
+		return fmt.Sprintf("%s(%s)", r.name, normalize(r.argTypes, schema))
+	}
+	var diffs []string
+	mapA := make(map[string]string, len(a))
+	mapB := make(map[string]string, len(b))
+	for _, r := range a {
+		k := key(r, schemaA)
+		mapA[k] = detail(r, schemaA)
+	}
+	for _, r := range b {
+		k := key(r, schemaB)
+		mapB[k] = detail(r, schemaB)
+	}
+
+	allKeys := make(map[string]bool)
+	for k := range mapA {
+		allKeys[k] = true
+	}
+	for k := range mapB {
+		allKeys[k] = true
+	}
+	sorted := make([]string, 0, len(allKeys))
+	for k := range allKeys {
+		sorted = append(sorted, k)
+	}
+	sort.Strings(sorted)
+
+	for _, k := range sorted {
+		dA, okA := mapA[k]
+		dB, okB := mapB[k]
+		if okA && !okB {
+			diffs = append(diffs, fmt.Sprintf("functions: only in schemaA: %s", dA))
+		} else if !okA && okB {
+			diffs = append(diffs, fmt.Sprintf("functions: only in schemaB: %s", dB))
+		} else if dA != dB {
+			diffs = append(diffs, fmt.Sprintf("functions: differ:\n  A: %s\n  B: %s", dA, dB))
 		}
 	}
 	return diffs
