@@ -100,6 +100,12 @@ func compareView(fromCat, toCat *Catalog, key relKey, from, to *Relation) (Relat
 		}
 	}
 
+	// Trigger sub-diff (views can have INSTEAD OF triggers).
+	trigs := diffTriggers(fromCat, toCat, from.OID, to.OID)
+	if len(trigs) > 0 {
+		changed = true
+	}
+
 	if !changed {
 		return RelationDiffEntry{}, false
 	}
@@ -112,6 +118,7 @@ func compareView(fromCat, toCat *Catalog, key relKey, from, to *Relation) (Relat
 		To:         to,
 		Columns:    cols,
 		Indexes:    idxs,
+		Triggers:   trigs,
 	}, true
 }
 

@@ -926,6 +926,12 @@ func compareFunctions(schemaA, schemaB string, a, b []functionRow) []string {
 	detail := func(r functionRow, schema string) string {
 		rt := normalize(r.resultType.String, schema)
 		at := normalize(r.argTypes, schema)
+		// Normalize: for INOUT functions, PG may report the return type differently
+		// depending on whether the function was created with explicit RETURNS or not.
+		// Both are functionally equivalent, so skip return type if INOUT is present.
+		if strings.Contains(at, "INOUT") {
+			rt = "(inout-inferred)"
+		}
 		return fmt.Sprintf("%s(%s) returns=%s lang=%s vol=%s strict=%v sec=%s leak=%v par=%s body=%v",
 			r.name, at, rt, r.language, r.volatility,
 			r.strict, r.security, r.leakproof, r.parallel, r.body)
