@@ -79,11 +79,16 @@ func buildCreateFunctionOp(c *Catalog, entry FunctionDiffEntry) MigrationOp {
 
 	// Return type (functions only).
 	if proc.Kind != 'p' {
-		b.WriteString("\nRETURNS ")
-		if proc.RetSet {
-			b.WriteString("SETOF ")
+		if hasTableReturn(proc) {
+			b.WriteString("\nRETURNS ")
+			b.WriteString(formatReturnsTable(c, proc))
+		} else {
+			b.WriteString("\nRETURNS ")
+			if proc.RetSet {
+				b.WriteString("SETOF ")
+			}
+			b.WriteString(c.FormatType(proc.RetType, -1))
 		}
-		b.WriteString(c.FormatType(proc.RetType, -1))
 	}
 
 	// Language.
@@ -119,11 +124,16 @@ func buildReplaceeFunctionOp(c *Catalog, entry FunctionDiffEntry) MigrationOp {
 	b.WriteString(formatFuncParams(c, proc))
 	b.WriteString(")")
 
-	b.WriteString("\nRETURNS ")
-	if proc.RetSet {
-		b.WriteString("SETOF ")
+	if hasTableReturn(proc) {
+		b.WriteString("\nRETURNS ")
+		b.WriteString(formatReturnsTable(c, proc))
+	} else {
+		b.WriteString("\nRETURNS ")
+		if proc.RetSet {
+			b.WriteString("SETOF ")
+		}
+		b.WriteString(c.FormatType(proc.RetType, -1))
 	}
-	b.WriteString(c.FormatType(proc.RetType, -1))
 
 	b.WriteString("\nLANGUAGE ")
 	b.WriteString(proc.Language)
@@ -181,6 +191,11 @@ func formatFuncParams(c *Catalog, proc *UserProc) string {
 
 	var parts []string
 	for i, toid := range argTypes {
+		// Skip TABLE mode params — they go in RETURNS TABLE(...).
+		if proc.ArgModes != nil && i < len(proc.ArgModes) && proc.ArgModes[i] == 't' {
+			continue
+		}
+
 		var param strings.Builder
 
 		// Mode prefix.
@@ -334,7 +349,42 @@ func signatureChanged(fromCat *Catalog, from *UserProc, toCat *Catalog, to *User
 			return true
 		}
 	}
+	// Check arg names — PG doesn't allow renaming params via CREATE OR REPLACE.
+	if len(from.ArgNames) != len(to.ArgNames) {
+		return true
+	}
+	for i := range from.ArgNames {
+		if from.ArgNames[i] != to.ArgNames[i] {
+			return true
+		}
+	}
 	return false
+}
+
+// hasTableReturn returns true if the function uses RETURNS TABLE mode.
+func hasTableReturn(proc *UserProc) bool {
+	for _, m := range proc.ArgModes {
+		if m == 't' {
+			return true
+		}
+	}
+	return false
+}
+
+// formatReturnsTable formats a RETURNS TABLE(...) clause.
+func formatReturnsTable(c *Catalog, proc *UserProc) string {
+	var cols []string
+	for i, mode := range proc.ArgModes {
+		if mode == 't' {
+			name := ""
+			if i < len(proc.ArgNames) {
+				name = proc.ArgNames[i]
+			}
+			typeName := c.FormatType(proc.AllArgTypes[i], -1)
+			cols = append(cols, fmt.Sprintf("%s %s", quoteIdentAlways(name), typeName))
+		}
+	}
+	return "TABLE(" + strings.Join(cols, ", ") + ")"
 }
 
 // dollarQuote wraps a function body in dollar-quoting.

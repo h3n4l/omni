@@ -21,6 +21,8 @@ type Trigger struct {
 	OldTransitionName string   // OLD TABLE AS name (transition tables)
 	NewTransitionName string   // NEW TABLE AS name (transition tables)
 	IsConstraint      bool     // constraint trigger (pg: tgconstraint != 0)
+	Deferrable        bool     // constraint trigger is DEFERRABLE
+	Initdeferred      bool     // constraint trigger is INITIALLY DEFERRED
 	ConstraintRelOID  uint32   // referenced relation for FK constraint triggers
 	Args              []string // trigger function arguments
 }
@@ -307,6 +309,8 @@ func (c *Catalog) CreateTriggerStmt(stmt *nodes.CreateTrigStmt) error {
 		OldTransitionName: oldTransName,
 		NewTransitionName: newTransName,
 		IsConstraint:      isConstraint,
+		Deferrable:        stmt.Deferrable,
+		Initdeferred:      stmt.Initdeferred,
 		ConstraintRelOID:  constraintRelOID,
 		Args:              trigArgs,
 	}

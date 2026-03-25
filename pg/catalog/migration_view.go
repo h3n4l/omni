@@ -55,7 +55,20 @@ func generateViewDDL(from, to *Catalog, diff *SchemaDiff) []MigrationOp {
 			}
 			switch entry.To.RelKind {
 			case 'v':
-				ops = append(ops, buildModifyViewOps(from, to, entry)...)
+				if viewColumnsChanged(entry) {
+					// Column order/names changed — can't use CREATE OR REPLACE.
+					qn := migrationQualifiedName(entry.SchemaName, entry.Name)
+					ops = append(ops, MigrationOp{
+						Type:          OpDropView,
+						SchemaName:    entry.SchemaName,
+						ObjectName:    entry.Name,
+						SQL:           fmt.Sprintf("DROP VIEW %s", qn),
+						Transactional: true,
+					})
+					ops = append(ops, buildCreateViewOp(to, entry))
+				} else {
+					ops = append(ops, buildModifyViewOps(from, to, entry)...)
+				}
 			case 'm':
 				ops = append(ops, buildModifyMatViewOps(to, entry)...)
 			}
@@ -236,4 +249,25 @@ func findDependentViews(c *Catalog, schemaName, viewName string) []viewRef {
 	}
 
 	return deps
+}
+
+// viewColumnsChanged returns true if existing columns were renamed, removed,
+// or reordered. Adding new columns at the end is safe for CREATE OR REPLACE.
+func viewColumnsChanged(entry RelationDiffEntry) bool {
+	if entry.From == nil || entry.To == nil {
+		return false
+	}
+	fromCols := entry.From.Columns
+	toCols := entry.To.Columns
+	// Fewer columns in target means columns were removed.
+	if len(toCols) < len(fromCols) {
+		return true
+	}
+	// Check that existing columns kept their names and order.
+	for i := range fromCols {
+		if fromCols[i].Name != toCols[i].Name {
+			return true
+		}
+	}
+	return false
 }

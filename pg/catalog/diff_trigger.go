@@ -103,6 +103,17 @@ func triggersChanged(fromCat, toCat *Catalog, a, b *Trigger) bool {
 		return true
 	}
 
+	// Compare constraint trigger properties.
+	if a.IsConstraint != b.IsConstraint {
+		return true
+	}
+	if a.Deferrable != b.Deferrable {
+		return true
+	}
+	if a.Initdeferred != b.Initdeferred {
+		return true
+	}
+
 	return false
 }
 

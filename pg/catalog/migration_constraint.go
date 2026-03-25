@@ -58,6 +58,11 @@ func constraintOpsForRelation(to *Catalog, rel RelationDiffEntry) []MigrationOp 
 	var ops []MigrationOp
 
 	for _, ce := range rel.Constraints {
+		// Skip constraint-trigger constraints — they are handled by trigger DDL.
+		if (ce.To != nil && ce.To.Type == ConstraintTrigger) ||
+			(ce.From != nil && ce.From.Type == ConstraintTrigger) {
+			continue
+		}
 		switch ce.Action {
 		case DiffAdd:
 			if ce.To == nil {

@@ -89,7 +89,11 @@ func buildCreateTriggerOp(c *Catalog, schemaName, tableName string, trig *Trigge
 	qualifiedTable := migrationQualifiedName(schemaName, tableName)
 
 	var b strings.Builder
-	b.WriteString("CREATE TRIGGER ")
+	if trig.IsConstraint {
+		b.WriteString("CREATE CONSTRAINT TRIGGER ")
+	} else {
+		b.WriteString("CREATE TRIGGER ")
+	}
 	b.WriteString(quoteIdentAlways(trig.Name))
 	b.WriteString(" ")
 
@@ -144,6 +148,14 @@ func buildCreateTriggerOp(c *Catalog, schemaName, tableName string, trig *Trigge
 	// ON table.
 	b.WriteString(" ON ")
 	b.WriteString(qualifiedTable)
+
+	// DEFERRABLE / INITIALLY DEFERRED (constraint triggers only, after ON table).
+	if trig.IsConstraint && trig.Deferrable {
+		b.WriteString(" DEFERRABLE")
+		if trig.Initdeferred {
+			b.WriteString(" INITIALLY DEFERRED")
+		}
+	}
 
 	// REFERENCING transition tables.
 	if trig.OldTransitionName != "" || trig.NewTransitionName != "" {
