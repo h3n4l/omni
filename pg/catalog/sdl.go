@@ -350,6 +350,27 @@ func extractRefs(stmt nodes.Node, declared map[string]bool) []string {
 		}
 	}
 
+	// addExprDeps is a helper that collects expression-level deps and adds matching ones.
+	addExprDeps := func(funcRefs, relRefs, typeRefs []string) {
+		for _, fr := range funcRefs {
+			// For function refs, try matching with "()" suffix for no-arg functions.
+			addRef(fr + "()")
+			// Also try matching the bare qualified name against declared set
+			// in case the function identity matches with args.
+			for d := range declared {
+				if strings.HasPrefix(d, fr+"(") {
+					addRef(d)
+				}
+			}
+		}
+		for _, rr := range relRefs {
+			addRef(rr)
+		}
+		for _, tr := range typeRefs {
+			addRef(tr)
+		}
+	}
+
 	switch s := stmt.(type) {
 	case *nodes.CreateStmt:
 		// Column types.
@@ -390,17 +411,22 @@ func extractRefs(stmt nodes.Node, declared map[string]bool) []string {
 				}
 			}
 		}
+		// Expression deps from defaults and CHECK constraints.
+		fr, rr, tr := collectExprDepsFromCreateStmt(s)
+		addExprDeps(fr, rr, tr)
 
 	case *nodes.ViewStmt:
-		// Extract top-level RangeVar from the SelectStmt's FromClause.
-		if sel, ok := s.Query.(*nodes.SelectStmt); ok {
-			extractSelectRefs(sel, declared, &refs)
-		}
+		// Expression deps from the view query (replaces old extractSelectRefs).
+		fr, rr, tr := collectExprDepsFromViewStmt(s)
+		addExprDeps(fr, rr, tr)
 
 	case *nodes.IndexStmt:
 		if s.Relation != nil {
 			addRef(qualifiedRangeVar(s.Relation))
 		}
+		// Expression deps from index expressions and WHERE clause.
+		fr, rr, tr := collectExprDepsFromIndexStmt(s)
+		addExprDeps(fr, rr, tr)
 
 	case *nodes.CreateTrigStmt:
 		if s.Relation != nil {
@@ -412,11 +438,37 @@ func extractRefs(stmt nodes.Node, declared map[string]bool) []string {
 			// Try the no-arg version first.
 			addRef(funcName + "()")
 		}
+		// Expression deps from WHEN clause.
+		fr, rr, tr := collectExprDepsFromTriggerStmt(s)
+		addExprDeps(fr, rr, tr)
 
 	case *nodes.CreatePolicyStmt:
 		if s.Table != nil {
 			addRef(qualifiedRangeVar(s.Table))
 		}
+		// Expression deps from USING and WITH CHECK.
+		fr, rr, tr := collectExprDepsFromPolicyStmt(s)
+		addExprDeps(fr, rr, tr)
+
+	case *nodes.CreateDomainStmt:
+		// Expression deps from CHECK constraints and base type.
+		fr, rr, tr := collectExprDepsFromDomainStmt(s)
+		addExprDeps(fr, rr, tr)
+
+	case *nodes.CreateFunctionStmt:
+		// Structural deps from parameter types, return type, param defaults.
+		fr, rr, tr := collectStructuralDepsFromFunctionStmt(s)
+		addExprDeps(fr, rr, tr)
+
+	case *nodes.CompositeTypeStmt:
+		// Structural deps from column types.
+		fr, rr, tr := collectStructuralDepsFromCompositeType(s)
+		addExprDeps(fr, rr, tr)
+
+	case *nodes.CreateRangeStmt:
+		// Structural deps from subtype.
+		fr, rr, tr := collectStructuralDepsFromRangeType(s)
+		addExprDeps(fr, rr, tr)
 
 	case *nodes.AlterSeqStmt:
 		// OWNED BY: look for "owned_by" in options.
