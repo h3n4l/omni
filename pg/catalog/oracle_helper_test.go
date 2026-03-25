@@ -503,6 +503,35 @@ func (o *pgOracle) queryComments(t *testing.T, schema string) []commentRow {
 	return result
 }
 
+func (o *pgOracle) queryColumnComments(t *testing.T, schema string) []commentRow {
+	t.Helper()
+	rows, err := o.db.QueryContext(o.ctx, `
+		SELECT 'COLUMN' AS object_type,
+		       c.relname || '.' || a.attname AS object_name,
+		       d.description
+		FROM pg_description d
+		JOIN pg_class c ON d.objoid = c.oid
+		JOIN pg_namespace n ON n.oid = c.relnamespace
+		JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = d.objsubid
+		WHERE n.nspname = $1
+		  AND d.classoid = 'pg_class'::regclass
+		  AND d.objsubid > 0
+		ORDER BY c.relname, a.attnum`, schema)
+	if err != nil {
+		t.Fatalf("queryColumnComments: %v", err)
+	}
+	defer rows.Close()
+	var result []commentRow
+	for rows.Next() {
+		var r commentRow
+		if err := rows.Scan(&r.objectType, &r.objectName, &r.comment); err != nil {
+			t.Fatalf("queryColumnComments scan: %v", err)
+		}
+		result = append(result, r)
+	}
+	return result
+}
+
 func (o *pgOracle) queryPolicies(t *testing.T, schema string) []policyRow {
 	t.Helper()
 	rows, err := o.db.QueryContext(o.ctx, `
@@ -561,8 +590,10 @@ func (o *pgOracle) compareSchemas(t *testing.T, schemaA, schemaB string) []strin
 			s = strings.ReplaceAll(s, schema+".", "")
 			defVal = sql.NullString{String: s, Valid: true}
 		}
-		return fmt.Sprintf("%s.%s type=%s nullable=%s default=%v identity=%v generated=%v pos=%d",
-			r.table, r.name, r.dataType, r.nullable, defVal, r.identity, r.generated, r.position)
+		// Note: ordinal_position is excluded from comparison because PG preserves
+		// original positions after DROP COLUMN, creating unavoidable mismatches.
+		return fmt.Sprintf("%s.%s type=%s nullable=%s default=%v identity=%v generated=%v",
+			r.table, r.name, r.dataType, r.nullable, defVal, r.identity, r.generated)
 	}
 	diffs = append(diffs, compareColumnSlices("columns", schemaA, schemaB, colsA, colsB,
 		func(r columnRow) string { return fmt.Sprintf("%s.%s", r.table, r.name) },
@@ -573,14 +604,10 @@ func (o *pgOracle) compareSchemas(t *testing.T, schemaA, schemaB string) []strin
 	idxB := o.queryIndexes(t, schemaB)
 	diffs = append(diffs, compareIndexes(schemaA, schemaB, idxA, idxB)...)
 
-	// Compare constraints
+	// Compare constraints (with schema name normalization in definitions)
 	consA := o.queryConstraints(t, schemaA)
 	consB := o.queryConstraints(t, schemaB)
-	diffs = append(diffs, compareSlices("constraints", consA, consB,
-		func(r constraintRow) string { return fmt.Sprintf("%s.%s", r.table, r.name) },
-		func(r constraintRow) string {
-			return fmt.Sprintf("%s.%s type=%s def=%s", r.table, r.name, r.conType, r.definition)
-		})...)
+	diffs = append(diffs, compareConstraints(schemaA, schemaB, consA, consB)...)
 
 	// Compare functions
 	funcsA := o.queryFunctions(t, schemaA)
@@ -637,6 +664,15 @@ func (o *pgOracle) compareSchemas(t *testing.T, schemaA, schemaB string) []strin
 	cmtsA := o.queryComments(t, schemaA)
 	cmtsB := o.queryComments(t, schemaB)
 	diffs = append(diffs, compareSlices("comments", cmtsA, cmtsB,
+		func(r commentRow) string { return fmt.Sprintf("%s.%s", r.objectType, r.objectName) },
+		func(r commentRow) string {
+			return fmt.Sprintf("%s %s: %s", r.objectType, r.objectName, r.comment)
+		})...)
+
+	// Compare column comments
+	colCmtsA := o.queryColumnComments(t, schemaA)
+	colCmtsB := o.queryColumnComments(t, schemaB)
+	diffs = append(diffs, compareSlices("column_comments", colCmtsA, colCmtsB,
 		func(r commentRow) string { return fmt.Sprintf("%s.%s", r.objectType, r.objectName) },
 		func(r commentRow) string {
 			return fmt.Sprintf("%s %s: %s", r.objectType, r.objectName, r.comment)
@@ -829,6 +865,52 @@ func compareTriggers(schemaA, schemaB string, a, b []triggerRow) []string {
 			diffs = append(diffs, fmt.Sprintf("triggers: only in schemaB: %s = %s", k, dB))
 		} else if dA != dB {
 			diffs = append(diffs, fmt.Sprintf("triggers: differ:\n  A: %s = %s\n  B: %s = %s", k, dA, k, dB))
+		}
+	}
+	return diffs
+}
+
+// compareConstraints compares constraints, normalizing schema names in definitions.
+func compareConstraints(schemaA, schemaB string, a, b []constraintRow) []string {
+	normalize := func(def, schema string) string {
+		def = strings.ReplaceAll(def, fmt.Sprintf("%q.", schema), "")
+		def = strings.ReplaceAll(def, schema+".", "")
+		return def
+	}
+	var diffs []string
+	mapA := make(map[string]string, len(a))
+	mapB := make(map[string]string, len(b))
+	for _, r := range a {
+		k := fmt.Sprintf("%s.%s", r.table, r.name)
+		mapA[k] = fmt.Sprintf("%s.%s type=%s def=%s", r.table, r.name, r.conType, normalize(r.definition, schemaA))
+	}
+	for _, r := range b {
+		k := fmt.Sprintf("%s.%s", r.table, r.name)
+		mapB[k] = fmt.Sprintf("%s.%s type=%s def=%s", r.table, r.name, r.conType, normalize(r.definition, schemaB))
+	}
+
+	allKeys := make(map[string]bool)
+	for k := range mapA {
+		allKeys[k] = true
+	}
+	for k := range mapB {
+		allKeys[k] = true
+	}
+	sorted := make([]string, 0, len(allKeys))
+	for k := range allKeys {
+		sorted = append(sorted, k)
+	}
+	sort.Strings(sorted)
+
+	for _, k := range sorted {
+		dA, okA := mapA[k]
+		dB, okB := mapB[k]
+		if okA && !okB {
+			diffs = append(diffs, fmt.Sprintf("constraints: only in schemaA: %s", dA))
+		} else if !okA && okB {
+			diffs = append(diffs, fmt.Sprintf("constraints: only in schemaB: %s", dB))
+		} else if dA != dB {
+			diffs = append(diffs, fmt.Sprintf("constraints: differ:\n  A: %s\n  B: %s", dA, dB))
 		}
 	}
 	return diffs
