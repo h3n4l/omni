@@ -17,6 +17,11 @@ func generateColumnDDL(from, to *Catalog, diff *SchemaDiff) []MigrationOp {
 		if len(rel.Columns) == 0 {
 			continue
 		}
+		// Skip views and materialized views — column changes are handled by
+		// view DDL (CREATE OR REPLACE VIEW / DROP+CREATE MATERIALIZED VIEW).
+		if rel.To != nil && (rel.To.RelKind == 'v' || rel.To.RelKind == 'm') {
+			continue
+		}
 
 		tableName := fmt.Sprintf("%s.%s", quoteIdentifier(rel.SchemaName), quoteIdentifier(rel.Name))
 

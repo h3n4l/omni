@@ -91,6 +91,15 @@ func compareView(fromCat, toCat *Catalog, key relKey, from, to *Relation) (Relat
 		changed = true
 	}
 
+	// Index sub-diff (materialized views can have indexes).
+	var idxs []IndexDiffEntry
+	if from.RelKind == 'm' {
+		idxs = diffIndexes(fromCat, toCat, from.OID, to.OID)
+		if len(idxs) > 0 {
+			changed = true
+		}
+	}
+
 	if !changed {
 		return RelationDiffEntry{}, false
 	}
@@ -102,6 +111,7 @@ func compareView(fromCat, toCat *Catalog, key relKey, from, to *Relation) (Relat
 		From:       from,
 		To:         to,
 		Columns:    cols,
+		Indexes:    idxs,
 	}, true
 }
 
