@@ -601,6 +601,14 @@ func (p *Parser) parseSelectExprList() ([]nodes.ExprNode, error) {
 	var list []nodes.ExprNode
 
 	for {
+		// Completion: at the start of each select expression, offer column/function candidates.
+		p.checkCursor()
+		if p.collectMode() {
+			p.addRuleCandidate("columnref")
+			p.addRuleCandidate("func_name")
+			return nil, &ParseError{Message: "collecting"}
+		}
+
 		target, err := p.parseSelectExpr()
 		if err != nil {
 			return nil, err

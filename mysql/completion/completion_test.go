@@ -550,3 +550,94 @@ func TestResolve_2_2_NilCatalogSafety(t *testing.T) {
 		t.Error("func_name should return built-in functions even with nil catalog")
 	}
 }
+
+// --- Section 3.1: SELECT Target List ---
+
+func TestComplete_3_1_SelectTargetList(t *testing.T) {
+	cat := catalog.New()
+	mustExec(t, cat, "CREATE DATABASE test")
+	cat.SetCurrentDatabase("test")
+	mustExec(t, cat, "CREATE TABLE t (a INT, b INT, c INT)")
+	mustExec(t, cat, "CREATE TABLE t1 (x INT, y INT)")
+
+	cases := []struct {
+		name       string
+		sql        string
+		cursor     int
+		wantCol    string // expected column candidate (or "" to skip)
+		wantFunc   bool   // expect function candidates
+		wantKW     string // expected keyword candidate (or "" to skip)
+		absentType CandidateType
+		absentText string
+	}{
+		{
+			name:     "select_pipe_columnref",
+			sql:      "SELECT ",
+			cursor:   7,
+			wantCol:  "a",
+			wantFunc: true,
+			wantKW:   "DISTINCT",
+		},
+		{
+			name:     "select_after_comma",
+			sql:      "SELECT a, ",
+			cursor:   10,
+			wantCol:  "a",
+			wantFunc: true,
+		},
+		{
+			name:     "select_after_two_commas",
+			sql:      "SELECT a, b, ",
+			cursor:   13,
+			wantCol:  "c",
+			wantFunc: true,
+		},
+		{
+			name:     "select_subquery",
+			sql:      "SELECT * FROM t WHERE a > (SELECT ",
+			cursor:   34,
+			wantCol:  "a",
+			wantFunc: true,
+		},
+		{
+			name:     "select_distinct_pipe",
+			sql:      "SELECT DISTINCT ",
+			cursor:   16,
+			wantCol:  "a",
+			wantFunc: true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			candidates := Complete(tc.sql, tc.cursor, cat)
+			if len(candidates) == 0 {
+				t.Fatal("expected candidates, got none")
+			}
+
+			if tc.wantCol != "" {
+				if !containsCandidate(candidates, tc.wantCol, CandidateColumn) {
+					t.Errorf("missing column candidate %q; got %v", tc.wantCol, candidates)
+				}
+			}
+
+			if tc.wantFunc {
+				if !containsCandidate(candidates, "COUNT", CandidateFunction) {
+					t.Errorf("missing function candidate COUNT; got %v", candidates)
+				}
+			}
+
+			if tc.wantKW != "" {
+				if !containsCandidate(candidates, tc.wantKW, CandidateKeyword) {
+					t.Errorf("missing keyword candidate %q; got %v", tc.wantKW, candidates)
+				}
+			}
+
+			if tc.absentText != "" {
+				if containsCandidate(candidates, tc.absentText, tc.absentType) {
+					t.Errorf("unexpected candidate %q of type %d", tc.absentText, tc.absentType)
+				}
+			}
+		})
+	}
+}

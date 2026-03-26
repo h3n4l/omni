@@ -105,11 +105,11 @@ so that Phase 3+ instrumentation can be tested end-to-end.
 ### 3.1 SELECT Target List
 
 ```
-[ ] `SELECT |` → columnref, func_name, literal keywords (DISTINCT, ALL, *)
-[ ] `SELECT a, |` → columnref, func_name after comma
-[ ] `SELECT a, b, |` → columnref after multiple commas
-[ ] `SELECT * FROM t WHERE a > (SELECT |)` → columnref in subquery
-[ ] `SELECT DISTINCT |` → columnref after DISTINCT
+[x] `SELECT |` → columnref, func_name, literal keywords (DISTINCT, ALL, *)
+[x] `SELECT a, |` → columnref, func_name after comma
+[x] `SELECT a, b, |` → columnref after multiple commas
+[x] `SELECT * FROM t WHERE a > (SELECT |)` → columnref in subquery
+[x] `SELECT DISTINCT |` → columnref after DISTINCT
 ```
 
 ### 3.2 FROM Clause
