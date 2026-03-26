@@ -1,5 +1,22 @@
 package parser
 
+import "strings"
+
+// TokenName returns the SQL keyword string for a token type, or "" if not a keyword.
+func TokenName(tokenType int) string {
+	// Single-char tokens (e.g., '(' ')' ',' ';')
+	if tokenType > 0 && tokenType < 256 {
+		return string(rune(tokenType))
+	}
+	// Search keyword table (reverse lookup)
+	for name, tok := range keywords {
+		if tok == tokenType {
+			return strings.ToUpper(name)
+		}
+	}
+	return ""
+}
+
 // CandidateSet holds the token and rule candidates collected during a
 // completion-mode parse.
 type CandidateSet struct {
@@ -94,8 +111,8 @@ func Collect(sql string, cursorOffset int) *CandidateSet {
 		}
 		p.parseStmt() //nolint:errcheck
 		// After parseStmt returns (either normally or with collecting error),
-		// if we've reached EOF, stop.
-		if p.cur.Type == tokEOF {
+		// if we've reached EOF or we've finished collecting, stop.
+		if p.cur.Type == tokEOF || p.collectMode() {
 			break
 		}
 	}
