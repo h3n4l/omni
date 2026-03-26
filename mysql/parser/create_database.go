@@ -29,6 +29,13 @@ func (p *Parser) parseCreateDatabaseStmt() (*nodes.CreateDatabaseStmt, error) {
 		stmt.IfNotExists = true
 	}
 
+	// Completion: after CREATE DATABASE [IF NOT EXISTS], identifier context.
+	p.checkCursor()
+	if p.collectMode() {
+		// No specific candidates — user defines a new database name.
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	// Database name
 	name, _, err := p.parseIdentifier()
 	if err != nil {
@@ -105,6 +112,13 @@ func (p *Parser) parseDropDatabaseStmt() (*nodes.DropDatabaseStmt, error) {
 		p.advance()
 		p.match(kwEXISTS_KW)
 		stmt.IfExists = true
+	}
+
+	// Completion: after DROP DATABASE [IF EXISTS], offer database_ref.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("database_ref")
+		return nil, &ParseError{Message: "collecting"}
 	}
 
 	// Database name

@@ -33,6 +33,13 @@ func (p *Parser) parseCreateTableStmt(temporary bool) (*nodes.CreateTableStmt, e
 		stmt.IfNotExists = true
 	}
 
+	// Completion: after CREATE TABLE, identifier context (no specific candidates).
+	p.checkCursor()
+	if p.collectMode() {
+		// No specific candidates for table name — user defines a new name.
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	// Table name
 	ref, err := p.parseTableRef()
 	if err != nil {
@@ -43,6 +50,12 @@ func (p *Parser) parseCreateTableStmt(temporary bool) (*nodes.CreateTableStmt, e
 	// CREATE TABLE ... LIKE
 	if p.cur.Type == kwLIKE {
 		p.advance()
+		// Completion: after LIKE, offer table_ref.
+		p.checkCursor()
+		if p.collectMode() {
+			p.addRuleCandidate("table_ref")
+			return nil, &ParseError{Message: "collecting"}
+		}
 		likeRef, err := p.parseTableRef()
 		if err != nil {
 			return nil, err
@@ -177,6 +190,15 @@ func (p *Parser) parseCreateDefinitions(stmt *nodes.CreateTableStmt) error {
 			break
 		}
 
+		// Completion: at start of a column/constraint definition, offer constraint keywords.
+		p.checkCursor()
+		if p.collectMode() {
+			for _, t := range []int{kwPRIMARY, kwUNIQUE, kwINDEX, kwKEY, kwFOREIGN, kwCHECK, kwCONSTRAINT} {
+				p.addTokenCandidate(t)
+			}
+			return &ParseError{Message: "collecting"}
+		}
+
 		// Table-level constraints: PRIMARY KEY, UNIQUE, INDEX, KEY, FULLTEXT, SPATIAL, FOREIGN KEY, CONSTRAINT, CHECK
 		if p.isTableConstraintStart() {
 			constr, err := p.parseTableConstraint()
@@ -231,6 +253,13 @@ func (p *Parser) parseColumnDef() (*nodes.ColumnDef, error) {
 		Name: name,
 	}
 
+	// Completion: after column name, offer type candidates.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("type_name")
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	// Data type (optional for generated columns with GENERATED ALWAYS AS)
 	if p.cur.Type != kwGENERATED && !p.isColumnConstraintStart() {
 		dt, err := p.parseDataType()
@@ -275,6 +304,15 @@ func (p *Parser) isColumnConstraintStart() bool {
 // parseColumnOption parses a single column option/constraint.
 // Returns false if no option was found.
 func (p *Parser) parseColumnOption(col *nodes.ColumnDef) (bool, error) {
+	// Completion: offer column option keywords.
+	p.checkCursor()
+	if p.collectMode() {
+		for _, t := range []int{kwNOT, kwNULL, kwDEFAULT, kwAUTO_INCREMENT, kwPRIMARY, kwUNIQUE, kwCOMMENT, kwCOLLATE, kwREFERENCES, kwCHECK, kwGENERATED} {
+			p.addTokenCandidate(t)
+		}
+		return false, &ParseError{Message: "collecting"}
+	}
+
 	start := p.pos()
 
 	switch p.cur.Type {
@@ -584,6 +622,13 @@ func (p *Parser) parseDefaultValue() (nodes.ExprNode, error) {
 func (p *Parser) parseReferenceDefinition(start int) (*nodes.ColumnConstraint, error) {
 	p.advance() // consume REFERENCES
 
+	// Completion: after REFERENCES, offer table_ref.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("table_ref")
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	constr := &nodes.ColumnConstraint{
 		Loc:  nodes.Loc{Start: start},
 		Type: nodes.ColConstrReferences,
@@ -677,6 +722,13 @@ func (p *Parser) parseGeneratedColumn() (*nodes.GeneratedColumn, error) {
 	if _, err := p.expect('('); err != nil {
 		return nil, err
 	}
+	// Completion: inside GENERATED ALWAYS AS (...), offer expression context.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("columnref")
+		p.addRuleCandidate("func_name")
+		return nil, &ParseError{Message: "collecting"}
+	}
 	expr, err := p.parseExpr()
 	if err != nil {
 		return nil, err
@@ -710,6 +762,13 @@ func (p *Parser) parseGeneratedColumnShorthand() (*nodes.GeneratedColumn, error)
 	// (expr)
 	if _, err := p.expect('('); err != nil {
 		return nil, err
+	}
+	// Completion: inside AS (...), offer expression context.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("columnref")
+		p.addRuleCandidate("func_name")
+		return nil, &ParseError{Message: "collecting"}
 	}
 	expr, err := p.parseExpr()
 	if err != nil {
@@ -804,6 +863,12 @@ func (p *Parser) parseTableConstraint() (*nodes.Constraint, error) {
 		// REFERENCES
 		if p.cur.Type == kwREFERENCES {
 			p.advance()
+			// Completion: after FOREIGN KEY (...) REFERENCES, offer table_ref.
+			p.checkCursor()
+			if p.collectMode() {
+				p.addRuleCandidate("table_ref")
+				return nil, &ParseError{Message: "collecting"}
+			}
 			ref, err := p.parseTableRef()
 			if err != nil {
 				return nil, err
@@ -949,12 +1014,27 @@ func (p *Parser) parseIndexTypeClause(constr *nodes.Constraint) {
 //	KEY_BLOCK_SIZE [=] value
 //	And many more...
 func (p *Parser) parseTableOption() (*nodes.TableOption, bool, error) {
+	// Completion: offer table option keywords.
+	p.checkCursor()
+	if p.collectMode() {
+		for _, t := range []int{kwENGINE, kwDEFAULT, kwCHARSET, kwCOLLATE, kwCOMMENT, kwAUTO_INCREMENT, kwROW_FORMAT, kwPARTITION} {
+			p.addTokenCandidate(t)
+		}
+		return nil, false, &ParseError{Message: "collecting"}
+	}
+
 	start := p.pos()
 
 	switch p.cur.Type {
 	case kwENGINE:
 		p.advance()
 		p.match('=')
+		// Completion: after ENGINE=, offer engine candidates.
+		p.checkCursor()
+		if p.collectMode() {
+			p.addRuleCandidate("engine")
+			return nil, false, &ParseError{Message: "collecting"}
+		}
 		val, err := p.consumeOptionValue()
 		if err != nil {
 			return nil, false, err

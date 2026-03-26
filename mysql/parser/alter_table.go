@@ -39,6 +39,13 @@ func (p *Parser) parseAlterTableStmt() (*nodes.AlterTableStmt, error) {
 	start := p.pos()
 	p.advance() // consume TABLE
 
+	// Completion: after ALTER TABLE, offer table_ref.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("table_ref")
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	stmt := &nodes.AlterTableStmt{
 		Loc: nodes.Loc{Start: start},
 	}
@@ -74,6 +81,15 @@ func (p *Parser) parseAlterTableStmt() (*nodes.AlterTableStmt, error) {
 
 // parseAlterTableCmd parses a single ALTER TABLE operation.
 func (p *Parser) parseAlterTableCmd() (*nodes.AlterTableCmd, error) {
+	// Completion: offer ALTER TABLE operation keywords.
+	p.checkCursor()
+	if p.collectMode() {
+		for _, t := range []int{kwADD, kwDROP, kwMODIFY, kwCHANGE, kwRENAME, kwALTER, kwCONVERT, kwENGINE, kwDEFAULT, kwORDER, kwALGORITHM, kwLOCK, kwFORCE} {
+			p.addTokenCandidate(t)
+		}
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	start := p.pos()
 	cmd := &nodes.AlterTableCmd{Loc: nodes.Loc{Start: start}}
 
@@ -102,6 +118,14 @@ func (p *Parser) parseAlterTableCmd() (*nodes.AlterTableCmd, error) {
 	case kwALGORITHM:
 		p.advance()
 		p.match('=')
+		// Completion: after ALGORITHM=, offer algorithm keywords.
+		p.checkCursor()
+		if p.collectMode() {
+			p.addTokenCandidate(kwDEFAULT)
+			// INPLACE, COPY, INSTANT are identifiers, not keywords, but we add them via a rule
+			// that the completion module will handle. For now, add DEFAULT as keyword.
+			return nil, &ParseError{Message: "collecting"}
+		}
 		cmd.Type = nodes.ATAlgorithm
 		val, err := p.consumeOptionValue()
 		if err != nil {
@@ -331,6 +355,15 @@ func (p *Parser) parseAlterTableCmd() (*nodes.AlterTableCmd, error) {
 func (p *Parser) parseAlterAdd(cmd *nodes.AlterTableCmd) (*nodes.AlterTableCmd, error) {
 	p.advance() // consume ADD
 
+	// Completion: after ADD, offer what can be added.
+	p.checkCursor()
+	if p.collectMode() {
+		for _, t := range []int{kwCOLUMN, kwINDEX, kwKEY, kwUNIQUE, kwPRIMARY, kwFOREIGN, kwCONSTRAINT, kwCHECK, kwPARTITION, kwSPATIAL, kwFULLTEXT} {
+			p.addTokenCandidate(t)
+		}
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	// ADD PARTITION (partition_definition, ...)
 	if p.cur.Type == kwPARTITION {
 		p.advance()
@@ -375,6 +408,13 @@ func (p *Parser) parseAlterAdd(cmd *nodes.AlterTableCmd) (*nodes.AlterTableCmd, 
 	cmd.Type = nodes.ATAddColumn
 	p.match(kwCOLUMN)
 
+	// Completion: after ADD COLUMN, identifier context (no specific candidates).
+	p.checkCursor()
+	if p.collectMode() {
+		// No specific candidates — user defines a new column name.
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	// ADD (col1 INT, col2 INT, ...) — multi-column form
 	if p.cur.Type == '(' {
 		p.advance()
@@ -415,6 +455,15 @@ func (p *Parser) parseAlterAdd(cmd *nodes.AlterTableCmd) (*nodes.AlterTableCmd, 
 func (p *Parser) parseAlterDrop(cmd *nodes.AlterTableCmd) (*nodes.AlterTableCmd, error) {
 	p.advance() // consume DROP
 
+	// Completion: after DROP, offer what can be dropped.
+	p.checkCursor()
+	if p.collectMode() {
+		for _, t := range []int{kwCOLUMN, kwINDEX, kwKEY, kwFOREIGN, kwPRIMARY, kwCHECK, kwCONSTRAINT, kwPARTITION} {
+			p.addTokenCandidate(t)
+		}
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	switch p.cur.Type {
 	case kwPARTITION:
 		// DROP PARTITION partition_names
@@ -441,6 +490,12 @@ func (p *Parser) parseAlterDrop(cmd *nodes.AlterTableCmd) (*nodes.AlterTableCmd,
 		// DROP {INDEX | KEY} index_name
 		p.advance()
 		cmd.Type = nodes.ATDropIndex
+		// Completion: after DROP INDEX, offer index_ref.
+		p.checkCursor()
+		if p.collectMode() {
+			p.addRuleCandidate("index_ref")
+			return nil, &ParseError{Message: "collecting"}
+		}
 		name, _, err := p.parseIdentifier()
 		if err != nil {
 			return nil, err
@@ -454,6 +509,12 @@ func (p *Parser) parseAlterDrop(cmd *nodes.AlterTableCmd) (*nodes.AlterTableCmd,
 		p.advance()
 		p.match(kwKEY)
 		cmd.Type = nodes.ATDropConstraint
+		// Completion: after DROP FOREIGN KEY, offer constraint_ref.
+		p.checkCursor()
+		if p.collectMode() {
+			p.addRuleCandidate("constraint_ref")
+			return nil, &ParseError{Message: "collecting"}
+		}
 		name, _, err := p.parseIdentifier()
 		if err != nil {
 			return nil, err
@@ -478,6 +539,12 @@ func (p *Parser) parseAlterDrop(cmd *nodes.AlterTableCmd) (*nodes.AlterTableCmd,
 		// DROP CONSTRAINT symbol
 		p.advance()
 		cmd.Type = nodes.ATDropConstraint
+		// Completion: after DROP CONSTRAINT, offer constraint_ref.
+		p.checkCursor()
+		if p.collectMode() {
+			p.addRuleCandidate("constraint_ref")
+			return nil, &ParseError{Message: "collecting"}
+		}
 		name, _, err := p.parseIdentifier()
 		if err != nil {
 			return nil, err
@@ -490,6 +557,12 @@ func (p *Parser) parseAlterDrop(cmd *nodes.AlterTableCmd) (*nodes.AlterTableCmd,
 		// DROP [COLUMN] [IF EXISTS] col_name
 		cmd.Type = nodes.ATDropColumn
 		p.match(kwCOLUMN)
+		// Completion: after DROP COLUMN, offer columnref.
+		p.checkCursor()
+		if p.collectMode() {
+			p.addRuleCandidate("columnref")
+			return nil, &ParseError{Message: "collecting"}
+		}
 		if p.cur.Type == kwIF {
 			p.advance()
 			if _, err := p.expect(kwEXISTS_KW); err != nil {
@@ -513,6 +586,13 @@ func (p *Parser) parseAlterModify(cmd *nodes.AlterTableCmd) (*nodes.AlterTableCm
 	cmd.Type = nodes.ATModifyColumn
 	p.match(kwCOLUMN)
 
+	// Completion: after MODIFY [COLUMN], offer columnref.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("columnref")
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	col, err := p.parseColumnDef()
 	if err != nil {
 		return nil, err
@@ -533,6 +613,13 @@ func (p *Parser) parseAlterChange(cmd *nodes.AlterTableCmd) (*nodes.AlterTableCm
 	p.advance() // consume CHANGE
 	cmd.Type = nodes.ATChangeColumn
 	p.match(kwCOLUMN)
+
+	// Completion: after CHANGE [COLUMN], offer columnref (old name).
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("columnref")
+		return nil, &ParseError{Message: "collecting"}
+	}
 
 	// Old column name
 	oldName, _, err := p.parseIdentifier()
@@ -692,11 +779,24 @@ func (p *Parser) parseAlterColumn(cmd *nodes.AlterTableCmd) (*nodes.AlterTableCm
 func (p *Parser) parseAlterRename(cmd *nodes.AlterTableCmd) (*nodes.AlterTableCmd, error) {
 	p.advance() // consume RENAME
 
+	// Completion: after RENAME, no specific rule needed — identifier context for table rename.
+	p.checkCursor()
+	if p.collectMode() {
+		// No specific candidates — user defines a new name.
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	switch p.cur.Type {
 	case kwCOLUMN:
 		// RENAME COLUMN old_col_name TO new_col_name
 		p.advance()
 		cmd.Type = nodes.ATRenameColumn
+		// Completion: after RENAME COLUMN, offer columnref.
+		p.checkCursor()
+		if p.collectMode() {
+			p.addRuleCandidate("columnref")
+			return nil, &ParseError{Message: "collecting"}
+		}
 		oldName, _, err := p.parseIdentifier()
 		if err != nil {
 			return nil, err
@@ -713,6 +813,12 @@ func (p *Parser) parseAlterRename(cmd *nodes.AlterTableCmd) (*nodes.AlterTableCm
 		// RENAME {INDEX | KEY} old_index_name TO new_index_name
 		p.advance()
 		cmd.Type = nodes.ATRenameIndex
+		// Completion: after RENAME INDEX, offer index_ref.
+		p.checkCursor()
+		if p.collectMode() {
+			p.addRuleCandidate("index_ref")
+			return nil, &ParseError{Message: "collecting"}
+		}
 		oldName, _, err := p.parseIdentifier()
 		if err != nil {
 			return nil, err
@@ -748,6 +854,13 @@ func (p *Parser) parseAlterConvert(cmd *nodes.AlterTableCmd) (*nodes.AlterTableC
 	p.match(kwTO)
 	p.match(kwCHARACTER)
 	p.match(kwSET)
+
+	// Completion: after CONVERT TO CHARACTER SET, offer charset candidates.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("charset")
+		return nil, &ParseError{Message: "collecting"}
+	}
 
 	charset, err := p.consumeOptionValue()
 	if err != nil {

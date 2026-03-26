@@ -802,6 +802,13 @@ func (p *Parser) parseDefinerValue() string {
 	p.advance() // consume DEFINER
 	p.match('=')
 
+	// Completion: after DEFINER=, offer CURRENT_USER keyword.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addTokenCandidate(kwCURRENT_USER)
+		return ""
+	}
+
 	// Parse user part: identifier, string literal, or CURRENT_USER
 	var user string
 	if p.cur.Type == tokSCONST {

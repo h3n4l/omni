@@ -98,6 +98,13 @@ func (p *Parser) parseAlterViewStmt() (*nodes.AlterViewStmt, error) {
 		return nil, err
 	}
 
+	// Completion: after AS, offer SELECT keyword.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addTokenCandidate(kwSELECT)
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	// SELECT statement — capture raw text
 	selectStart := p.pos()
 	sel, err := p.parseSelectStmt()

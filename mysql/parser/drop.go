@@ -26,6 +26,13 @@ func (p *Parser) parseDropTableStmt(temporary bool) (*nodes.DropTableStmt, error
 		stmt.IfExists = true
 	}
 
+	// Completion: after DROP TABLE [IF EXISTS], offer table_ref.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("table_ref")
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	// Table list
 	for {
 		ref, err := p.parseTableRef()
@@ -60,6 +67,13 @@ func (p *Parser) parseDropIndexStmt() (*nodes.DropIndexStmt, error) {
 	start := p.pos()
 	p.advance() // consume INDEX
 
+	// Completion: after DROP INDEX, offer index_ref.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("index_ref")
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	stmt := &nodes.DropIndexStmt{Loc: nodes.Loc{Start: start}}
 
 	// Index name
@@ -72,6 +86,12 @@ func (p *Parser) parseDropIndexStmt() (*nodes.DropIndexStmt, error) {
 	// ON table
 	if _, err := p.expect(kwON); err != nil {
 		return nil, err
+	}
+	// Completion: after DROP INDEX idx ON, offer table_ref.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("table_ref")
+		return nil, &ParseError{Message: "collecting"}
 	}
 	ref, err := p.parseTableRef()
 	if err != nil {
@@ -116,6 +136,13 @@ func (p *Parser) parseDropViewStmt() (*nodes.DropViewStmt, error) {
 		stmt.IfExists = true
 	}
 
+	// Completion: after DROP VIEW [IF EXISTS], offer view_ref.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("view_ref")
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	// View list
 	for {
 		ref, err := p.parseTableRef()
@@ -152,6 +179,13 @@ func (p *Parser) parseTruncateStmt() (*nodes.TruncateStmt, error) {
 	// Optional TABLE keyword
 	p.match(kwTABLE)
 
+	// Completion: after TRUNCATE [TABLE], offer table_ref.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("table_ref")
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	ref, err := p.parseTableRef()
 	if err != nil {
 		return nil, err
@@ -174,6 +208,13 @@ func (p *Parser) parseRenameTableStmt() (*nodes.RenameTableStmt, error) {
 	// Already consumed RENAME
 	p.match(kwTABLE)
 
+	// Completion: after RENAME TABLE, offer table_ref.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("table_ref")
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	stmt := &nodes.RenameTableStmt{Loc: nodes.Loc{Start: start}}
 
 	for {
@@ -184,6 +225,12 @@ func (p *Parser) parseRenameTableStmt() (*nodes.RenameTableStmt, error) {
 		}
 		if _, err := p.expect(kwTO); err != nil {
 			return nil, err
+		}
+		// Completion: after RENAME TABLE t TO, identifier context (new name).
+		p.checkCursor()
+		if p.collectMode() {
+			// No specific candidates — user defines a new name.
+			return nil, &ParseError{Message: "collecting"}
 		}
 		newRef, err := p.parseTableRef()
 		if err != nil {

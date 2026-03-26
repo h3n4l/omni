@@ -235,62 +235,62 @@ so that Phase 3+ instrumentation can be tested end-to-end.
 ### 5.1 CREATE TABLE
 
 ```
-[ ] `CREATE TABLE |` → identifier context (no specific candidates)
-[ ] `CREATE TABLE t (a INT, |)` → keyword candidates for column/constraint start (PRIMARY, UNIQUE, INDEX, KEY, FOREIGN, CHECK, CONSTRAINT)
-[ ] `CREATE TABLE t (a INT |)` → keyword candidates for column options (NOT, NULL, DEFAULT, AUTO_INCREMENT, PRIMARY, UNIQUE, COMMENT, COLLATE, REFERENCES, CHECK, GENERATED)
-[ ] `CREATE TABLE t (a INT) |` → keyword candidates for table options (ENGINE, DEFAULT, CHARSET, COLLATE, COMMENT, AUTO_INCREMENT, ROW_FORMAT, PARTITION)
-[ ] `CREATE TABLE t (a INT) ENGINE=|` → keyword candidates for engines (InnoDB, MyISAM, MEMORY, etc.)
-[ ] `CREATE TABLE t (a |)` → type candidates (INT, VARCHAR, TEXT, BLOB, DATE, DATETIME, DECIMAL, etc.)
-[ ] `CREATE TABLE t (FOREIGN KEY (a) REFERENCES |)` → table_ref
-[ ] `CREATE TABLE t LIKE |` → table_ref
-[ ] `CREATE TABLE t (a INT GENERATED ALWAYS AS (|))` → expression context (columnref, func_name)
+[x] `CREATE TABLE |` → identifier context (no specific candidates)
+[x] `CREATE TABLE t (a INT, |)` → keyword candidates for column/constraint start (PRIMARY, UNIQUE, INDEX, KEY, FOREIGN, CHECK, CONSTRAINT)
+[x] `CREATE TABLE t (a INT |)` → keyword candidates for column options (NOT, NULL, DEFAULT, AUTO_INCREMENT, PRIMARY, UNIQUE, COMMENT, COLLATE, REFERENCES, CHECK, GENERATED)
+[x] `CREATE TABLE t (a INT) |` → keyword candidates for table options (ENGINE, DEFAULT, CHARSET, COLLATE, COMMENT, AUTO_INCREMENT, ROW_FORMAT, PARTITION)
+[x] `CREATE TABLE t (a INT) ENGINE=|` → keyword candidates for engines (InnoDB, MyISAM, MEMORY, etc.)
+[x] `CREATE TABLE t (a |)` → type candidates (INT, VARCHAR, TEXT, BLOB, DATE, DATETIME, DECIMAL, etc.)
+[x] `CREATE TABLE t (FOREIGN KEY (a) REFERENCES |)` → table_ref
+[x] `CREATE TABLE t LIKE |` → table_ref
+[x] `CREATE TABLE t (a INT GENERATED ALWAYS AS (|))` → expression context (columnref, func_name)
 ```
 
 ### 5.2 ALTER TABLE
 
 ```
-[ ] `ALTER TABLE |` → table_ref
-[ ] `ALTER TABLE t |` → keyword candidates (ADD, DROP, MODIFY, CHANGE, RENAME, ALTER, CONVERT, ENGINE, DEFAULT, ORDER, ALGORITHM, LOCK, FORCE, ADD PARTITION, DROP PARTITION)
-[ ] `ALTER TABLE t ADD |` → keyword candidates (COLUMN, INDEX, KEY, UNIQUE, PRIMARY, FOREIGN, CONSTRAINT, CHECK, PARTITION, SPATIAL, FULLTEXT)
-[ ] `ALTER TABLE t ADD COLUMN |` → identifier context
-[ ] `ALTER TABLE t DROP |` → keyword candidates (COLUMN, INDEX, KEY, FOREIGN, PRIMARY, CHECK, CONSTRAINT, PARTITION)
-[ ] `ALTER TABLE t DROP COLUMN |` → columnref for table t
-[ ] `ALTER TABLE t DROP INDEX |` → index_ref for table t
-[ ] `ALTER TABLE t DROP FOREIGN KEY |` → constraint_ref
-[ ] `ALTER TABLE t DROP CONSTRAINT |` → constraint_ref (generic, MySQL 8.0.16+)
-[ ] `ALTER TABLE t MODIFY |` → columnref
-[ ] `ALTER TABLE t MODIFY COLUMN |` → columnref
-[ ] `ALTER TABLE t CHANGE |` → columnref (old name)
-[ ] `ALTER TABLE t RENAME TO |` → identifier context
-[ ] `ALTER TABLE t RENAME COLUMN |` → columnref
-[ ] `ALTER TABLE t RENAME INDEX |` → index_ref
-[ ] `ALTER TABLE t ADD INDEX idx (|)` → columnref
-[ ] `ALTER TABLE t CONVERT TO CHARACTER SET |` → charset candidates
-[ ] `ALTER TABLE t ALGORITHM=|` → keyword candidates (DEFAULT, INPLACE, COPY, INSTANT)
+[x] `ALTER TABLE |` → table_ref
+[x] `ALTER TABLE t |` → keyword candidates (ADD, DROP, MODIFY, CHANGE, RENAME, ALTER, CONVERT, ENGINE, DEFAULT, ORDER, ALGORITHM, LOCK, FORCE, ADD PARTITION, DROP PARTITION)
+[x] `ALTER TABLE t ADD |` → keyword candidates (COLUMN, INDEX, KEY, UNIQUE, PRIMARY, FOREIGN, CONSTRAINT, CHECK, PARTITION, SPATIAL, FULLTEXT)
+[x] `ALTER TABLE t ADD COLUMN |` → identifier context
+[x] `ALTER TABLE t DROP |` → keyword candidates (COLUMN, INDEX, KEY, FOREIGN, PRIMARY, CHECK, CONSTRAINT, PARTITION)
+[x] `ALTER TABLE t DROP COLUMN |` → columnref for table t
+[x] `ALTER TABLE t DROP INDEX |` → index_ref for table t
+[x] `ALTER TABLE t DROP FOREIGN KEY |` → constraint_ref
+[x] `ALTER TABLE t DROP CONSTRAINT |` → constraint_ref (generic, MySQL 8.0.16+)
+[x] `ALTER TABLE t MODIFY |` → columnref
+[x] `ALTER TABLE t MODIFY COLUMN |` → columnref
+[x] `ALTER TABLE t CHANGE |` → columnref (old name)
+[x] `ALTER TABLE t RENAME TO |` → identifier context
+[x] `ALTER TABLE t RENAME COLUMN |` → columnref
+[x] `ALTER TABLE t RENAME INDEX |` → index_ref
+[x] `ALTER TABLE t ADD INDEX idx (|)` → columnref
+[x] `ALTER TABLE t CONVERT TO CHARACTER SET |` → charset candidates
+[x] `ALTER TABLE t ALGORITHM=|` → keyword candidates (DEFAULT, INPLACE, COPY, INSTANT)
 ```
 
 ### 5.3 CREATE/DROP Index, View, Database
 
 ```
-[ ] `CREATE INDEX idx ON |` → table_ref
-[ ] `CREATE INDEX idx ON t (|)` → columnref for table t
-[ ] `CREATE UNIQUE INDEX idx ON |` → table_ref
-[ ] `DROP INDEX |` → index_ref
-[ ] `DROP INDEX idx ON |` → table_ref
-[ ] `CREATE VIEW |` → identifier context
-[ ] `CREATE VIEW v AS |` → keyword candidate (SELECT)
-[ ] `CREATE DEFINER=|` → keyword candidate (CURRENT_USER) + user context
-[ ] `ALTER VIEW v AS |` → keyword candidate (SELECT)
-[ ] `DROP VIEW |` → view_ref
-[ ] `CREATE DATABASE |` → identifier context
-[ ] `DROP DATABASE |` → database_ref
-[ ] `DROP TABLE |` → table_ref
-[ ] `DROP TABLE IF EXISTS |` → table_ref
-[ ] `TRUNCATE TABLE |` → table_ref
-[ ] `RENAME TABLE |` → table_ref
-[ ] `RENAME TABLE t TO |` → identifier context
-[ ] `DESCRIBE |` → table_ref
-[ ] `DESC |` → table_ref
+[x] `CREATE INDEX idx ON |` → table_ref
+[x] `CREATE INDEX idx ON t (|)` → columnref for table t
+[x] `CREATE UNIQUE INDEX idx ON |` → table_ref
+[x] `DROP INDEX |` → index_ref
+[x] `DROP INDEX idx ON |` → table_ref
+[x] `CREATE VIEW |` → identifier context
+[x] `CREATE VIEW v AS |` → keyword candidate (SELECT)
+[x] `CREATE DEFINER=|` → keyword candidate (CURRENT_USER) + user context
+[x] `ALTER VIEW v AS |` → keyword candidate (SELECT)
+[x] `DROP VIEW |` → view_ref
+[x] `CREATE DATABASE |` → identifier context
+[x] `DROP DATABASE |` → database_ref
+[x] `DROP TABLE |` → table_ref
+[x] `DROP TABLE IF EXISTS |` → table_ref
+[x] `TRUNCATE TABLE |` → table_ref
+[x] `RENAME TABLE |` → table_ref
+[x] `RENAME TABLE t TO |` → identifier context
+[x] `DESCRIBE |` → table_ref
+[x] `DESC |` → table_ref
 ```
 
 ## Phase 6: Routine/Trigger/Event Instrumentation

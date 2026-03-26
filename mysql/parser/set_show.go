@@ -1327,6 +1327,12 @@ func (p *Parser) parseExplainStmt() (*nodes.ExplainStmt, error) {
 	stmt := &nodes.ExplainStmt{Loc: nodes.Loc{Start: start}}
 
 	if isDescribe {
+		// Completion: after DESCRIBE/DESC, offer table_ref.
+		p.checkCursor()
+		if p.collectMode() {
+			p.addRuleCandidate("table_ref")
+			return nil, &ParseError{Message: "collecting"}
+		}
 		// DESCRIBE tbl_name [col_name]
 		ref, err := p.parseTableRef()
 		if err != nil {

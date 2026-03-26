@@ -136,6 +136,8 @@ func resolveRule(rule string, cat *catalog.Catalog, sql string, cursorOffset int
 		return resolveEventRef(cat)
 	case "view_ref":
 		return resolveViewRef(cat)
+	case "constraint_ref":
+		return resolveConstraintRef(cat)
 	case "charset":
 		return resolveCharset()
 	case "engine":
@@ -369,6 +371,28 @@ func resolveViewRef(cat *catalog.Catalog) []Candidate {
 	var result []Candidate
 	for _, v := range db.Views {
 		result = append(result, Candidate{Text: v.Name, Type: CandidateView})
+	}
+	return result
+}
+
+// resolveConstraintRef returns constraint names from all tables in the current database.
+func resolveConstraintRef(cat *catalog.Catalog) []Candidate {
+	if cat == nil {
+		return nil
+	}
+	db := currentDB(cat)
+	if db == nil {
+		return nil
+	}
+	seen := make(map[string]bool)
+	var result []Candidate
+	for _, t := range db.Tables {
+		for _, c := range t.Constraints {
+			if c.Name != "" && !seen[c.Name] {
+				seen[c.Name] = true
+				result = append(result, Candidate{Text: c.Name, Type: CandidateIndex})
+			}
+		}
 	}
 	return result
 }

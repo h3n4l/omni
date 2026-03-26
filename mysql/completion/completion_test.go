@@ -1644,3 +1644,462 @@ func TestComplete_4_3_DeleteLoadCall(t *testing.T) {
 		}
 	})
 }
+
+// ──────────────────────────────────────────────────────────────
+// Section 5.1: CREATE TABLE
+// ──────────────────────────────────────────────────────────────
+
+func TestComplete_5_1_CreateTable(t *testing.T) {
+	cat := catalog.New()
+	mustExec(t, cat, "CREATE DATABASE testdb")
+	cat.SetCurrentDatabase("testdb")
+	mustExec(t, cat, "CREATE TABLE t (a INT, b INT, c INT)")
+	mustExec(t, cat, "CREATE TABLE t1 (a INT, b INT)")
+	mustExec(t, cat, "CREATE TABLE t2 (x INT, y INT)")
+
+	// Scenario 1: CREATE TABLE | → identifier context (no specific candidates from catalog)
+	t.Run("create_table_identifier_context", func(t *testing.T) {
+		candidates := Complete("CREATE TABLE ", 13, cat)
+		// Should not contain table names (user is defining a new name)
+		if containsCandidate(candidates, "t", CandidateTable) {
+			t.Errorf("should not suggest existing table 't' for new table name; got %v", candidates)
+		}
+	})
+
+	// Scenario 2: CREATE TABLE t (a INT, |) → constraint/column keywords
+	t.Run("create_table_column_constraint_keywords", func(t *testing.T) {
+		candidates := Complete("CREATE TABLE t (a INT, ", 22, cat)
+		for _, kw := range []string{"PRIMARY", "UNIQUE", "INDEX", "KEY", "FOREIGN", "CHECK", "CONSTRAINT"} {
+			if !containsCandidate(candidates, kw, CandidateKeyword) {
+				t.Errorf("missing keyword %q; got %v", kw, candidates)
+			}
+		}
+	})
+
+	// Scenario 3: CREATE TABLE t (a INT |) → column option keywords
+	t.Run("create_table_column_options", func(t *testing.T) {
+		sql := "CREATE TABLE t (a INT "
+		candidates := Complete(sql, len(sql), cat)
+		for _, kw := range []string{"NOT", "NULL", "DEFAULT", "AUTO_INCREMENT", "PRIMARY", "UNIQUE", "COMMENT", "COLLATE", "REFERENCES", "CHECK", "GENERATED"} {
+			if !containsCandidate(candidates, kw, CandidateKeyword) {
+				t.Errorf("missing keyword %q; got %v", kw, candidates)
+			}
+		}
+	})
+
+	// Scenario 4: CREATE TABLE t (a INT) | → table option keywords
+	t.Run("create_table_table_options", func(t *testing.T) {
+		candidates := Complete("CREATE TABLE t (a INT) ", 23, cat)
+		for _, kw := range []string{"ENGINE", "DEFAULT", "CHARSET", "COLLATE", "COMMENT", "AUTO_INCREMENT", "ROW_FORMAT", "PARTITION"} {
+			if !containsCandidate(candidates, kw, CandidateKeyword) {
+				t.Errorf("missing keyword %q; got %v", kw, candidates)
+			}
+		}
+	})
+
+	// Scenario 5: CREATE TABLE t (a INT) ENGINE=| → engine candidates
+	t.Run("create_table_engine_candidates", func(t *testing.T) {
+		candidates := Complete("CREATE TABLE t (a INT) ENGINE=", 30, cat)
+		for _, eng := range []string{"InnoDB", "MyISAM", "MEMORY"} {
+			if !containsCandidate(candidates, eng, CandidateEngine) {
+				t.Errorf("missing engine %q; got %v", eng, candidates)
+			}
+		}
+	})
+
+	// Scenario 6: CREATE TABLE t (a |) → type candidates
+	t.Run("create_table_type_candidates", func(t *testing.T) {
+		candidates := Complete("CREATE TABLE t (a ", 18, cat)
+		for _, typ := range []string{"INT", "VARCHAR", "TEXT", "BLOB", "DATE", "DATETIME", "DECIMAL"} {
+			if !containsCandidate(candidates, typ, CandidateType_) {
+				t.Errorf("missing type %q; got %v", typ, candidates)
+			}
+		}
+	})
+
+	// Scenario 7: CREATE TABLE t (FOREIGN KEY (a) REFERENCES |) → table_ref
+	t.Run("create_table_references_table_ref", func(t *testing.T) {
+		sql := "CREATE TABLE t3 (FOREIGN KEY (a) REFERENCES "
+		candidates := Complete(sql, len(sql), cat)
+		if !containsCandidate(candidates, "t", CandidateTable) {
+			t.Errorf("missing table 't'; got %v", candidates)
+		}
+		if !containsCandidate(candidates, "t1", CandidateTable) {
+			t.Errorf("missing table 't1'; got %v", candidates)
+		}
+	})
+
+	// Scenario 8: CREATE TABLE t LIKE | → table_ref
+	t.Run("create_table_like_table_ref", func(t *testing.T) {
+		candidates := Complete("CREATE TABLE t3 LIKE ", 21, cat)
+		if !containsCandidate(candidates, "t", CandidateTable) {
+			t.Errorf("missing table 't'; got %v", candidates)
+		}
+	})
+
+	// Scenario 9: CREATE TABLE t (a INT GENERATED ALWAYS AS (|)) → expression context
+	t.Run("create_table_generated_expr_context", func(t *testing.T) {
+		candidates := Complete("CREATE TABLE t3 (a INT GENERATED ALWAYS AS (", 44, cat)
+		hasCol := containsCandidate(candidates, "a", CandidateColumn) ||
+			containsCandidate(candidates, "b", CandidateColumn)
+		hasFunc := false
+		for _, c := range candidates {
+			if c.Type == CandidateFunction {
+				hasFunc = true
+				break
+			}
+		}
+		if !hasCol && !hasFunc {
+			t.Errorf("expected columnref or func_name candidates; got %v", candidates)
+		}
+	})
+}
+
+// ──────────────────────────────────────────────────────────────
+// Section 5.2: ALTER TABLE
+// ──────────────────────────────────────────────────────────────
+
+func TestComplete_5_2_AlterTable(t *testing.T) {
+	cat := catalog.New()
+	mustExec(t, cat, "CREATE DATABASE testdb")
+	cat.SetCurrentDatabase("testdb")
+	mustExec(t, cat, "CREATE TABLE t (a INT, b INT, c INT, INDEX idx_a (a), CONSTRAINT fk_b FOREIGN KEY (b) REFERENCES t (a))")
+	mustExec(t, cat, "CREATE TABLE t1 (a INT, b INT)")
+	mustExec(t, cat, "CREATE TABLE t2 (x INT, y INT)")
+
+	// Scenario 1: ALTER TABLE | → table_ref
+	t.Run("alter_table_table_ref", func(t *testing.T) {
+		candidates := Complete("ALTER TABLE ", 12, cat)
+		if !containsCandidate(candidates, "t", CandidateTable) {
+			t.Errorf("missing table 't'; got %v", candidates)
+		}
+		if !containsCandidate(candidates, "t1", CandidateTable) {
+			t.Errorf("missing table 't1'; got %v", candidates)
+		}
+	})
+
+	// Scenario 2: ALTER TABLE t | → operation keywords
+	t.Run("alter_table_operation_keywords", func(t *testing.T) {
+		candidates := Complete("ALTER TABLE t ", 14, cat)
+		for _, kw := range []string{"ADD", "DROP", "MODIFY", "CHANGE", "RENAME", "ALTER", "CONVERT", "ENGINE", "DEFAULT", "ORDER", "ALGORITHM", "LOCK", "FORCE"} {
+			if !containsCandidate(candidates, kw, CandidateKeyword) {
+				t.Errorf("missing keyword %q; got %v", kw, candidates)
+			}
+		}
+	})
+
+	// Scenario 3: ALTER TABLE t ADD | → ADD keywords
+	t.Run("alter_table_add_keywords", func(t *testing.T) {
+		candidates := Complete("ALTER TABLE t ADD ", 18, cat)
+		for _, kw := range []string{"COLUMN", "INDEX", "KEY", "UNIQUE", "PRIMARY", "FOREIGN", "CONSTRAINT", "CHECK", "PARTITION", "SPATIAL", "FULLTEXT"} {
+			if !containsCandidate(candidates, kw, CandidateKeyword) {
+				t.Errorf("missing keyword %q; got %v", kw, candidates)
+			}
+		}
+	})
+
+	// Scenario 4: ALTER TABLE t ADD COLUMN | → identifier context
+	t.Run("alter_table_add_column_identifier", func(t *testing.T) {
+		candidates := Complete("ALTER TABLE t ADD COLUMN ", 24, cat)
+		// Should not suggest column names — user defines new column name
+		if containsCandidate(candidates, "a", CandidateColumn) {
+			t.Errorf("should not suggest existing column 'a' for new column name; got %v", candidates)
+		}
+	})
+
+	// Scenario 5: ALTER TABLE t DROP | → DROP keywords
+	t.Run("alter_table_drop_keywords", func(t *testing.T) {
+		candidates := Complete("ALTER TABLE t DROP ", 19, cat)
+		for _, kw := range []string{"COLUMN", "INDEX", "KEY", "FOREIGN", "PRIMARY", "CHECK", "CONSTRAINT", "PARTITION"} {
+			if !containsCandidate(candidates, kw, CandidateKeyword) {
+				t.Errorf("missing keyword %q; got %v", kw, candidates)
+			}
+		}
+	})
+
+	// Scenario 6: ALTER TABLE t DROP COLUMN | → columnref
+	t.Run("alter_table_drop_column_columnref", func(t *testing.T) {
+		sql := "ALTER TABLE t DROP COLUMN "
+		candidates := Complete(sql, len(sql), cat)
+		if !containsCandidate(candidates, "a", CandidateColumn) {
+			t.Errorf("missing column 'a'; got %v", candidates)
+		}
+		if !containsCandidate(candidates, "b", CandidateColumn) {
+			t.Errorf("missing column 'b'; got %v", candidates)
+		}
+	})
+
+	// Scenario 7: ALTER TABLE t DROP INDEX | → index_ref
+	t.Run("alter_table_drop_index_ref", func(t *testing.T) {
+		sql := "ALTER TABLE t DROP INDEX "
+		candidates := Complete(sql, len(sql), cat)
+		if !containsCandidate(candidates, "idx_a", CandidateIndex) {
+			t.Errorf("missing index 'idx_a'; got %v", candidates)
+		}
+	})
+
+	// Scenario 8: ALTER TABLE t DROP FOREIGN KEY | → constraint_ref
+	t.Run("alter_table_drop_fk_constraint_ref", func(t *testing.T) {
+		sql := "ALTER TABLE t DROP FOREIGN KEY "
+		candidates := Complete(sql, len(sql), cat)
+		if !containsCandidate(candidates, "fk_b", CandidateIndex) {
+			t.Errorf("missing constraint 'fk_b'; got %v", candidates)
+		}
+	})
+
+	// Scenario 9: ALTER TABLE t DROP CONSTRAINT | → constraint_ref
+	t.Run("alter_table_drop_constraint_ref", func(t *testing.T) {
+		sql := "ALTER TABLE t DROP CONSTRAINT "
+		candidates := Complete(sql, len(sql), cat)
+		if !containsCandidate(candidates, "fk_b", CandidateIndex) {
+			t.Errorf("missing constraint 'fk_b'; got %v", candidates)
+		}
+	})
+
+	// Scenario 10: ALTER TABLE t MODIFY | → columnref
+	t.Run("alter_table_modify_columnref", func(t *testing.T) {
+		candidates := Complete("ALTER TABLE t MODIFY ", 21, cat)
+		if !containsCandidate(candidates, "a", CandidateColumn) {
+			t.Errorf("missing column 'a'; got %v", candidates)
+		}
+	})
+
+	// Scenario 11: ALTER TABLE t MODIFY COLUMN | → columnref
+	t.Run("alter_table_modify_column_columnref", func(t *testing.T) {
+		candidates := Complete("ALTER TABLE t MODIFY COLUMN ", 28, cat)
+		if !containsCandidate(candidates, "a", CandidateColumn) {
+			t.Errorf("missing column 'a'; got %v", candidates)
+		}
+	})
+
+	// Scenario 12: ALTER TABLE t CHANGE | → columnref
+	t.Run("alter_table_change_columnref", func(t *testing.T) {
+		candidates := Complete("ALTER TABLE t CHANGE ", 21, cat)
+		if !containsCandidate(candidates, "a", CandidateColumn) {
+			t.Errorf("missing column 'a'; got %v", candidates)
+		}
+	})
+
+	// Scenario 13: ALTER TABLE t RENAME TO | → identifier context
+	t.Run("alter_table_rename_to_identifier", func(t *testing.T) {
+		candidates := Complete("ALTER TABLE t RENAME TO ", 24, cat)
+		// Should not suggest table names — user defines a new name
+		if containsCandidate(candidates, "t", CandidateTable) {
+			t.Errorf("should not suggest existing table 't' for rename target; got %v", candidates)
+		}
+	})
+
+	// Scenario 14: ALTER TABLE t RENAME COLUMN | → columnref
+	t.Run("alter_table_rename_column_columnref", func(t *testing.T) {
+		candidates := Complete("ALTER TABLE t RENAME COLUMN ", 28, cat)
+		if !containsCandidate(candidates, "a", CandidateColumn) {
+			t.Errorf("missing column 'a'; got %v", candidates)
+		}
+	})
+
+	// Scenario 15: ALTER TABLE t RENAME INDEX | → index_ref
+	t.Run("alter_table_rename_index_ref", func(t *testing.T) {
+		candidates := Complete("ALTER TABLE t RENAME INDEX ", 27, cat)
+		if !containsCandidate(candidates, "idx_a", CandidateIndex) {
+			t.Errorf("missing index 'idx_a'; got %v", candidates)
+		}
+	})
+
+	// Scenario 16: ALTER TABLE t ADD INDEX idx (|) → columnref
+	t.Run("alter_table_add_index_columnref", func(t *testing.T) {
+		candidates := Complete("ALTER TABLE t ADD INDEX idx (", 28, cat)
+		if !containsCandidate(candidates, "a", CandidateColumn) {
+			t.Errorf("missing column 'a'; got %v", candidates)
+		}
+	})
+
+	// Scenario 17: ALTER TABLE t CONVERT TO CHARACTER SET | → charset
+	t.Run("alter_table_convert_charset", func(t *testing.T) {
+		candidates := Complete("ALTER TABLE t CONVERT TO CHARACTER SET ", 39, cat)
+		if !containsCandidate(candidates, "utf8mb4", CandidateCharset) {
+			t.Errorf("missing charset 'utf8mb4'; got %v", candidates)
+		}
+		if !containsCandidate(candidates, "latin1", CandidateCharset) {
+			t.Errorf("missing charset 'latin1'; got %v", candidates)
+		}
+	})
+
+	// Scenario 18: ALTER TABLE t ALGORITHM=| → algorithm keywords
+	t.Run("alter_table_algorithm_keywords", func(t *testing.T) {
+		candidates := Complete("ALTER TABLE t ALGORITHM=", 24, cat)
+		if !containsCandidate(candidates, "DEFAULT", CandidateKeyword) {
+			t.Errorf("missing keyword 'DEFAULT'; got %v", candidates)
+		}
+	})
+}
+
+// ──────────────────────────────────────────────────────────────
+// Section 5.3: CREATE/DROP Index, View, Database & misc
+// ──────────────────────────────────────────────────────────────
+
+func TestComplete_5_3_CreateDropMisc(t *testing.T) {
+	cat := catalog.New()
+	mustExec(t, cat, "CREATE DATABASE testdb")
+	cat.SetCurrentDatabase("testdb")
+	mustExec(t, cat, "CREATE TABLE t (a INT, b INT, c INT, INDEX idx_a (a))")
+	mustExec(t, cat, "CREATE TABLE t1 (a INT, b INT)")
+	mustExec(t, cat, "CREATE VIEW v AS SELECT a, b FROM t")
+
+	// Scenario 1: CREATE INDEX idx ON | → table_ref
+	t.Run("create_index_on_table_ref", func(t *testing.T) {
+		candidates := Complete("CREATE INDEX idx ON ", 20, cat)
+		if !containsCandidate(candidates, "t", CandidateTable) {
+			t.Errorf("missing table 't'; got %v", candidates)
+		}
+	})
+
+	// Scenario 2: CREATE INDEX idx ON t (|) → columnref
+	t.Run("create_index_columns_columnref", func(t *testing.T) {
+		candidates := Complete("CREATE INDEX idx ON t (", 22, cat)
+		if !containsCandidate(candidates, "a", CandidateColumn) {
+			t.Errorf("missing column 'a'; got %v", candidates)
+		}
+		if !containsCandidate(candidates, "b", CandidateColumn) {
+			t.Errorf("missing column 'b'; got %v", candidates)
+		}
+	})
+
+	// Scenario 3: CREATE UNIQUE INDEX idx ON | → table_ref
+	t.Run("create_unique_index_on_table_ref", func(t *testing.T) {
+		candidates := Complete("CREATE UNIQUE INDEX idx ON ", 27, cat)
+		if !containsCandidate(candidates, "t", CandidateTable) {
+			t.Errorf("missing table 't'; got %v", candidates)
+		}
+	})
+
+	// Scenario 4: DROP INDEX | → index_ref
+	t.Run("drop_index_ref", func(t *testing.T) {
+		candidates := Complete("DROP INDEX ", 11, cat)
+		if !containsCandidate(candidates, "idx_a", CandidateIndex) {
+			t.Errorf("missing index 'idx_a'; got %v", candidates)
+		}
+	})
+
+	// Scenario 5: DROP INDEX idx ON | → table_ref
+	t.Run("drop_index_on_table_ref", func(t *testing.T) {
+		candidates := Complete("DROP INDEX idx_a ON ", 20, cat)
+		if !containsCandidate(candidates, "t", CandidateTable) {
+			t.Errorf("missing table 't'; got %v", candidates)
+		}
+	})
+
+	// Scenario 6: CREATE VIEW | → identifier context
+	t.Run("create_view_identifier", func(t *testing.T) {
+		candidates := Complete("CREATE VIEW ", 12, cat)
+		// Should not suggest view names — user defines a new name
+		if containsCandidate(candidates, "v", CandidateView) {
+			t.Errorf("should not suggest existing view 'v' for new view name; got %v", candidates)
+		}
+	})
+
+	// Scenario 7: CREATE VIEW v AS | → SELECT keyword
+	t.Run("create_view_as_select", func(t *testing.T) {
+		candidates := Complete("CREATE VIEW v2 AS ", 18, cat)
+		if !containsCandidate(candidates, "SELECT", CandidateKeyword) {
+			t.Errorf("missing keyword 'SELECT'; got %v", candidates)
+		}
+	})
+
+	// Scenario 8: CREATE DEFINER=| → CURRENT_USER keyword
+	t.Run("create_definer_current_user", func(t *testing.T) {
+		candidates := Complete("CREATE DEFINER=", 15, cat)
+		if !containsCandidate(candidates, "CURRENT_USER", CandidateKeyword) {
+			t.Errorf("missing keyword 'CURRENT_USER'; got %v", candidates)
+		}
+	})
+
+	// Scenario 9: ALTER VIEW v AS | → SELECT keyword
+	t.Run("alter_view_as_select", func(t *testing.T) {
+		candidates := Complete("ALTER VIEW v AS ", 16, cat)
+		if !containsCandidate(candidates, "SELECT", CandidateKeyword) {
+			t.Errorf("missing keyword 'SELECT'; got %v", candidates)
+		}
+	})
+
+	// Scenario 10: DROP VIEW | → view_ref
+	t.Run("drop_view_ref", func(t *testing.T) {
+		candidates := Complete("DROP VIEW ", 10, cat)
+		if !containsCandidate(candidates, "v", CandidateView) {
+			t.Errorf("missing view 'v'; got %v", candidates)
+		}
+	})
+
+	// Scenario 11: CREATE DATABASE | → identifier context
+	t.Run("create_database_identifier", func(t *testing.T) {
+		candidates := Complete("CREATE DATABASE ", 16, cat)
+		// Should not suggest database names — user defines a new name
+		if containsCandidate(candidates, "testdb", CandidateDatabase) {
+			t.Errorf("should not suggest existing database for new database name; got %v", candidates)
+		}
+	})
+
+	// Scenario 12: DROP DATABASE | → database_ref
+	t.Run("drop_database_ref", func(t *testing.T) {
+		candidates := Complete("DROP DATABASE ", 14, cat)
+		if !containsCandidate(candidates, "testdb", CandidateDatabase) {
+			t.Errorf("missing database 'testdb'; got %v", candidates)
+		}
+	})
+
+	// Scenario 13: DROP TABLE | → table_ref
+	t.Run("drop_table_ref", func(t *testing.T) {
+		candidates := Complete("DROP TABLE ", 11, cat)
+		if !containsCandidate(candidates, "t", CandidateTable) {
+			t.Errorf("missing table 't'; got %v", candidates)
+		}
+	})
+
+	// Scenario 14: DROP TABLE IF EXISTS | → table_ref
+	t.Run("drop_table_if_exists_ref", func(t *testing.T) {
+		candidates := Complete("DROP TABLE IF EXISTS ", 21, cat)
+		if !containsCandidate(candidates, "t", CandidateTable) {
+			t.Errorf("missing table 't'; got %v", candidates)
+		}
+	})
+
+	// Scenario 15: TRUNCATE TABLE | → table_ref
+	t.Run("truncate_table_ref", func(t *testing.T) {
+		candidates := Complete("TRUNCATE TABLE ", 15, cat)
+		if !containsCandidate(candidates, "t", CandidateTable) {
+			t.Errorf("missing table 't'; got %v", candidates)
+		}
+	})
+
+	// Scenario 16: RENAME TABLE | → table_ref
+	t.Run("rename_table_ref", func(t *testing.T) {
+		candidates := Complete("RENAME TABLE ", 13, cat)
+		if !containsCandidate(candidates, "t", CandidateTable) {
+			t.Errorf("missing table 't'; got %v", candidates)
+		}
+	})
+
+	// Scenario 17: RENAME TABLE t TO | → identifier context
+	t.Run("rename_table_to_identifier", func(t *testing.T) {
+		candidates := Complete("RENAME TABLE t TO ", 18, cat)
+		// Should not suggest table names — user defines a new name
+		if containsCandidate(candidates, "t", CandidateTable) {
+			t.Errorf("should not suggest existing table 't' for rename target; got %v", candidates)
+		}
+	})
+
+	// Scenario 18: DESCRIBE | → table_ref
+	t.Run("describe_table_ref", func(t *testing.T) {
+		candidates := Complete("DESCRIBE ", 9, cat)
+		if !containsCandidate(candidates, "t", CandidateTable) {
+			t.Errorf("missing table 't'; got %v", candidates)
+		}
+	})
+
+	// Scenario 18b: DESC | → table_ref
+	t.Run("desc_table_ref", func(t *testing.T) {
+		candidates := Complete("DESC ", 5, cat)
+		if !containsCandidate(candidates, "t", CandidateTable) {
+			t.Errorf("missing table 't'; got %v", candidates)
+		}
+	})
+}

@@ -54,6 +54,12 @@ func (p *Parser) parseCreateIndexStmt(unique bool, fulltext bool, spatial bool) 
 	if _, err := p.expect(kwON); err != nil {
 		return nil, err
 	}
+	// Completion: after ON, offer table_ref.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("table_ref")
+		return nil, &ParseError{Message: "collecting"}
+	}
 	tbl, err := p.parseTableRef()
 	if err != nil {
 		return nil, err
@@ -123,6 +129,13 @@ func (p *Parser) parseCreateIndexStmt(unique bool, fulltext bool, spatial bool) 
 //	    col_name [(length)] [ASC | DESC]
 //	  | (expr) [ASC | DESC]
 func (p *Parser) parseIndexKeyPart() (*nodes.IndexColumn, error) {
+	// Completion: offer columnref for index column position.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("columnref")
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	start := p.pos()
 	col := &nodes.IndexColumn{
 		Loc: nodes.Loc{Start: start},

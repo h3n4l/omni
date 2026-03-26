@@ -66,6 +66,13 @@ func (p *Parser) parseCreateViewStmt(orReplace bool) (*nodes.CreateViewStmt, err
 		return nil, err
 	}
 
+	// Completion: after CREATE VIEW, identifier context (no specific candidates).
+	p.checkCursor()
+	if p.collectMode() {
+		// No specific candidates — user defines a new view name.
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	// View name
 	ref, err := p.parseTableRef()
 	if err != nil {
@@ -85,6 +92,13 @@ func (p *Parser) parseCreateViewStmt(orReplace bool) (*nodes.CreateViewStmt, err
 	// AS
 	if _, err := p.expect(kwAS); err != nil {
 		return nil, err
+	}
+
+	// Completion: after AS, offer SELECT keyword.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addTokenCandidate(kwSELECT)
+		return nil, &ParseError{Message: "collecting"}
 	}
 
 	// SELECT statement — capture raw text
