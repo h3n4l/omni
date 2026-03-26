@@ -2172,6 +2172,36 @@ func TestDeparseOracle_Section_6_2_CTEPatterns(t *testing.T) {
 			"WITH cte AS (SELECT a FROM t) SELECT * FROM cte UNION SELECT * FROM cte",
 			false,
 		},
+		{
+			"recursive_cte_multi_col",
+			"WITH RECURSIVE cte AS (SELECT 1 AS n, 'a' AS s UNION ALL SELECT n + 1, CONCAT(s, 'a') FROM cte WHERE n < 5) SELECT * FROM cte",
+			false,
+		},
+		{
+			"recursive_cte_join_base",
+			"WITH RECURSIVE cte AS (SELECT a, 1 AS depth FROM t WHERE a = 1 UNION ALL SELECT t.a, cte.depth + 1 FROM t JOIN cte ON t.b = cte.a WHERE cte.depth < 5) SELECT * FROM cte",
+			false,
+		},
+		{
+			"cte_references_cte",
+			"WITH c1 AS (SELECT a FROM t), c2 AS (SELECT * FROM c1 WHERE a > 0) SELECT * FROM c2",
+			false,
+		},
+		{
+			"cte_with_aggregation",
+			"WITH cte AS (SELECT a, COUNT(*) AS cnt FROM t GROUP BY a) SELECT * FROM cte",
+			false,
+		},
+		{
+			"cte_with_inner_union",
+			"WITH cte AS (SELECT a FROM t UNION SELECT b FROM t) SELECT * FROM cte",
+			false,
+		},
+		{
+			"cte_with_complex_expr",
+			"WITH cte AS (SELECT a + b AS sum_val, CASE WHEN a > 0 THEN 'pos' ELSE 'neg' END AS label FROM t) SELECT * FROM cte",
+			false,
+		},
 	}
 
 	for _, tc := range cases {
