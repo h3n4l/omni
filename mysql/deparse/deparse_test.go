@@ -1183,7 +1183,7 @@ func TestDeparseSelect_Section_5_6_Subqueries(t *testing.T) {
 			"select `a` AS `a` from `t` where `a` in (select `a` from `t`)"},
 		// EXISTS in WHERE
 		{"exists_subquery", "SELECT a FROM t WHERE EXISTS (SELECT 1 FROM t)",
-			"select `a` AS `a` from `t` where exists(select 1 AS `1` from `t`)"},
+			"select `a` AS `a` from `t` where exists(select 1 from `t`)"},
 	}
 
 	for _, tc := range cases {

@@ -471,6 +471,10 @@ func deparseExprAlias(node ast.ExprNode) string {
 			if binExpr, ok := unwrapParen(n.Operand).(*ast.BinaryExpr); ok && binExpr.Op == ast.BinOpRegexp {
 				return deparseExprAlias(binExpr.Left) + " NOT REGEXP " + deparseExprAlias(binExpr.Right)
 			}
+			// MySQL 8.0 preserves ! vs NOT in auto-alias.
+			if n.OriginalOp == "!" {
+				return "!" + operand
+			}
 			return "NOT " + operand
 		case ast.UnaryBitNot:
 			return "~" + operand
@@ -621,6 +625,13 @@ func deparseExprAlias(node ast.ExprNode) string {
 			result += " ESCAPE " + deparseExprAlias(n.Escape)
 		}
 		return result
+	case *ast.ExistsExpr:
+		// MySQL 8.0 auto-alias for EXISTS: "EXISTS(SELECT 1 FROM t WHERE a > 0)" — uppercase keywords,
+		// unqualified column names, no backtick quoting, no column aliases.
+		if n.Select != nil {
+			return "EXISTS(" + deparseSelectStmtAlias(n.Select) + ")"
+		}
+		return "EXISTS(/* subquery */)"
 	case *ast.SubqueryExpr:
 		// MySQL 8.0 auto-alias for subquery: "(SELECT MAX(a) FROM t)" — uppercase keywords,
 		// unqualified column names, no backtick quoting, no column aliases.
@@ -1542,10 +1553,10 @@ func deparseWindowFrameBound(fb *ast.WindowFrameBound) string {
 }
 
 // deparseExistsExpr formats an EXISTS expression.
-// MySQL 8.0 format: exists(select ...)
+// MySQL 8.0 format: exists(select ...) — column aliases are omitted inside EXISTS.
 func deparseExistsExpr(n *ast.ExistsExpr) string {
 	if n.Select != nil {
-		return "exists(" + deparseSelectStmt(n.Select) + ")"
+		return "exists(" + deparseSelectStmtNoAlias(n.Select) + ")"
 	}
 	return "exists(/* subquery */)"
 }

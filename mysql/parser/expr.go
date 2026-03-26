@@ -253,7 +253,13 @@ func (p *Parser) parsePrefixExpr() (nodes.ExprNode, error) {
 	case '~':
 		return p.parseUnaryExpr(nodes.UnaryBitNot)
 	case '!':
-		return p.parseUnaryExpr(nodes.UnaryNot)
+		expr, err := p.parseUnaryExpr(nodes.UnaryNot)
+		if err == nil {
+			if ue, ok := expr.(*nodes.UnaryExpr); ok {
+				ue.OriginalOp = "!"
+			}
+		}
+		return expr, err
 	case kwNOT:
 		return p.parseUnaryExpr(nodes.UnaryNot)
 	case kwEXISTS_KW:

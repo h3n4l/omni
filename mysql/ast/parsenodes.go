@@ -605,9 +605,10 @@ const (
 
 // UnaryExpr represents a unary expression (op expr).
 type UnaryExpr struct {
-	Loc     Loc
-	Op      UnaryOp
-	Operand ExprNode
+	Loc        Loc
+	Op         UnaryOp
+	Operand    ExprNode
+	OriginalOp string // Original operator text (e.g., "!" vs "NOT") for alias generation.
 }
 
 func (e *UnaryExpr) nodeTag()  {}

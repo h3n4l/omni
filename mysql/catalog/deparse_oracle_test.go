@@ -1300,3 +1300,80 @@ func TestDeparseOracle_3_1_BooleanContextWrapping(t *testing.T) {
 		})
 	}
 }
+
+// TestDeparseOracle_3_2_NotFoldingNoDoubleWrap verifies NOT folding and
+// no-double-wrapping of boolean expressions against MySQL 8.0.
+// Section 3.2 scenarios:
+//   - NOT(comparison) folds into inverted operator
+//   - NOT(non-boolean) becomes (0 = ...)
+//   - ! is same as NOT
+//   - comparisons in AND are NOT double-wrapped
+//   - predicates (IN, BETWEEN) in AND are NOT wrapped
+//   - IS/LIKE in AND are NOT wrapped
+//   - EXISTS in AND is NOT wrapped
+func TestDeparseOracle_3_2_NotFoldingNoDoubleWrap(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	// Setup: create base table on MySQL 8.0
+	if err := oracle.execSQLDirect("CREATE TABLE IF NOT EXISTS t (a INT, b INT, c INT)"); err != nil {
+		t.Fatalf("failed to create table on MySQL: %v", err)
+	}
+
+	cases := []struct {
+		name     string
+		viewName string
+		viewSQL  string
+	}{
+		{"not_folds_into_le", "v_s32_not_fold", "CREATE VIEW v_s32_not_fold AS SELECT NOT (a > 0) FROM t"},
+		{"not_non_boolean", "v_s32_not_nb", "CREATE VIEW v_s32_not_nb AS SELECT NOT (a + 1) FROM t"},
+		{"bang_col", "v_s32_bang", "CREATE VIEW v_s32_bang AS SELECT !a FROM t"},
+		{"cmp_not_double_wrapped", "v_s32_cmp_ndw", "CREATE VIEW v_s32_cmp_ndw AS SELECT (a = b) AND (a > 0) FROM t"},
+		{"predicates_not_wrapped", "v_s32_pred_nw", "CREATE VIEW v_s32_pred_nw AS SELECT (a IN (1, 2, 3)) AND (b BETWEEN 1 AND 10) FROM t"},
+		{"is_like_not_wrapped", "v_s32_islike_nw", "CREATE VIEW v_s32_islike_nw AS SELECT (a IS NULL) AND (b LIKE 'x%') FROM t"},
+		{"exists_not_wrapped", "v_s32_exists_nw", "CREATE VIEW v_s32_exists_nw AS SELECT EXISTS(SELECT 1 FROM t WHERE a > 0) AND (b > 0) FROM t"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// --- MySQL 8.0 side ---
+			oracle.execSQLDirect("DROP VIEW IF EXISTS " + tc.viewName)
+			if err := oracle.execSQLDirect(tc.viewSQL); err != nil {
+				t.Fatalf("CREATE VIEW on MySQL failed: %v", err)
+			}
+			mysqlOutput, err := oracle.showCreateView(tc.viewName)
+			if err != nil {
+				t.Fatalf("SHOW CREATE VIEW on MySQL failed: %v", err)
+			}
+			mysqlBody := stripDatabasePrefix(extractSelectBody(mysqlOutput))
+
+			// --- Omni catalog side ---
+			cat := New()
+			cat.Exec("CREATE DATABASE test", nil)
+			cat.SetCurrentDatabase("test")
+			cat.Exec("CREATE TABLE t (a INT, b INT, c INT)", nil)
+			results, _ := cat.Exec(tc.viewSQL, nil)
+			if len(results) == 0 {
+				t.Fatalf("CREATE VIEW on catalog returned no results")
+			}
+			if results[0].Error != nil {
+				t.Fatalf("CREATE VIEW on catalog failed: %v", results[0].Error)
+			}
+			omniOutput := cat.ShowCreateView("test", tc.viewName)
+			if omniOutput == "" {
+				t.Fatal("ShowCreateView returned empty")
+			}
+			omniBody := extractSelectBody(omniOutput)
+
+			t.Logf("MySQL body:  %s", mysqlBody)
+			t.Logf("Omni body:   %s", omniBody)
+
+			if mysqlBody != omniBody {
+				t.Errorf("SELECT body mismatch:\n--- mysql ---\n%s\n--- omni ---\n%s", mysqlBody, omniBody)
+			}
+		})
+	}
+}

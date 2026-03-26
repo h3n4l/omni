@@ -139,13 +139,13 @@ Status legend: `[ ]` pending, `[x]` passing, `[~]` partial
 ### 3.2 NOT Folding & No-Double-Wrapping
 
 ```
-[ ] `SELECT NOT (a > 0) FROM t` — NOT folds into <=
-[ ] `SELECT NOT (a + 1) FROM t` — NOT non-boolean → (0 = ...)
-[ ] `SELECT !a FROM t` — ! same as NOT
-[ ] `SELECT (a = b) AND (a > 0) FROM t` — comparisons NOT double-wrapped
-[ ] `SELECT (a IN (1,2,3)) AND (b BETWEEN 1 AND 10) FROM t` — predicates NOT wrapped
-[ ] `SELECT (a IS NULL) AND (b LIKE 'x%') FROM t` — IS/LIKE NOT wrapped
-[ ] `SELECT EXISTS(SELECT 1 FROM t WHERE a > 0) AND (b > 0) FROM t` — EXISTS NOT wrapped
+[x] `SELECT NOT (a > 0) FROM t` — NOT folds into <=
+[x] `SELECT NOT (a + 1) FROM t` — NOT non-boolean → (0 = ...)
+[x] `SELECT !a FROM t` — ! same as NOT
+[x] `SELECT (a = b) AND (a > 0) FROM t` — comparisons NOT double-wrapped
+[x] `SELECT (a IN (1,2,3)) AND (b BETWEEN 1 AND 10) FROM t` — predicates NOT wrapped
+[x] `SELECT (a IS NULL) AND (b LIKE 'x%') FROM t` — IS/LIKE NOT wrapped
+[x] `SELECT EXISTS(SELECT 1 FROM t WHERE a > 0) AND (b > 0) FROM t` — EXISTS NOT wrapped
 ```
 
 ### 3.3 Complex Precedence
