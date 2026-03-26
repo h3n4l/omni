@@ -252,6 +252,8 @@ func deparseExprNode(n nodes.Node) string {
 		return deparseSubLink(v)
 	case *nodes.List:
 		return deparseListExpr(v)
+	case *nodes.SQLValueFunction:
+		return deparseSQLValueFunction(v)
 	case *nodes.String:
 		return v.Str
 	case *nodes.Integer:
@@ -682,5 +684,44 @@ func isSerialType(tn *nodes.TypeName) byte {
 		return 8
 	default:
 		return 0
+	}
+}
+
+// deparseSQLValueFunction converts a SQLValueFunction AST node to its SQL text.
+// These are SQL-standard functions like CURRENT_TIMESTAMP, CURRENT_USER, etc.
+func deparseSQLValueFunction(v *nodes.SQLValueFunction) string {
+	switch v.Op {
+	case nodes.SVFOP_CURRENT_DATE:
+		return "CURRENT_DATE"
+	case nodes.SVFOP_CURRENT_TIME:
+		return "CURRENT_TIME"
+	case nodes.SVFOP_CURRENT_TIME_N:
+		return fmt.Sprintf("CURRENT_TIME(%d)", v.Typmod)
+	case nodes.SVFOP_CURRENT_TIMESTAMP:
+		return "CURRENT_TIMESTAMP"
+	case nodes.SVFOP_CURRENT_TIMESTAMP_N:
+		return fmt.Sprintf("CURRENT_TIMESTAMP(%d)", v.Typmod)
+	case nodes.SVFOP_LOCALTIME:
+		return "LOCALTIME"
+	case nodes.SVFOP_LOCALTIME_N:
+		return fmt.Sprintf("LOCALTIME(%d)", v.Typmod)
+	case nodes.SVFOP_LOCALTIMESTAMP:
+		return "LOCALTIMESTAMP"
+	case nodes.SVFOP_LOCALTIMESTAMP_N:
+		return fmt.Sprintf("LOCALTIMESTAMP(%d)", v.Typmod)
+	case nodes.SVFOP_CURRENT_ROLE:
+		return "CURRENT_ROLE"
+	case nodes.SVFOP_CURRENT_USER:
+		return "CURRENT_USER"
+	case nodes.SVFOP_USER:
+		return "USER"
+	case nodes.SVFOP_SESSION_USER:
+		return "SESSION_USER"
+	case nodes.SVFOP_CURRENT_CATALOG:
+		return "CURRENT_CATALOG"
+	case nodes.SVFOP_CURRENT_SCHEMA:
+		return "CURRENT_SCHEMA"
+	default:
+		return "CURRENT_TIMESTAMP"
 	}
 }
