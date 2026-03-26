@@ -6,6 +6,31 @@ import (
 
 // parseStmt parses a single SQL statement.
 func (p *Parser) parseStmt() (nodes.Node, error) {
+	// Completion: check if cursor has been reached.
+	p.checkCursor()
+
+	if p.collectMode() {
+		// Add all top-level statement-starting keywords as candidates.
+		stmtTokens := []int{
+			kwSELECT, kwINSERT, kwUPDATE, kwDELETE,
+			kwCREATE, kwALTER, kwDROP, kwTRUNCATE, kwRENAME,
+			kwWITH, kwTABLE, kwVALUES, kwREPLACE,
+			kwSET, kwSHOW, kwUSE,
+			kwDESCRIBE, kwDESC, kwEXPLAIN,
+			kwBEGIN, kwSTART, kwCOMMIT, kwROLLBACK, kwSAVEPOINT, kwRELEASE,
+			kwLOCK, kwUNLOCK,
+			kwGRANT, kwREVOKE,
+			kwLOAD, kwPREPARE, kwEXECUTE, kwDEALLOCATE,
+			kwANALYZE, kwOPTIMIZE, kwCHECK, kwREPAIR,
+			kwFLUSH, kwRESET, kwKILL, kwDO,
+			kwXA, kwCALL, kwHELP,
+		}
+		for _, t := range stmtTokens {
+			p.addTokenCandidate(t)
+		}
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	switch p.cur.Type {
 	case kwWITH:
 		return p.parseWithStmt()

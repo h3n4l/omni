@@ -13,6 +13,13 @@ type Parser struct {
 	prev    Token // previous token (for error reporting)
 	nextBuf Token // buffered next token for 2-token lookahead
 	hasNext bool  // whether nextBuf is valid
+
+	// Completion mode fields.
+	completing bool          // true when collecting completion candidates
+	cursorOff  int           // byte offset of the cursor in source
+	candidates *CandidateSet // collected candidates
+	collecting bool          // true once cursor position is reached
+	maxCollect int           // max exploration depth
 }
 
 // Parse parses a SQL string into an AST list.
