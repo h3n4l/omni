@@ -89,13 +89,13 @@ Status legend: `[ ]` pending, `[x]` passing, `[~]` partial
 ### 2.3 Special Functions
 
 ```
-[ ] `SELECT TRIM(a) FROM t` — simple TRIM
-[ ] `SELECT TRIM(LEADING 'x' FROM a) FROM t` — directional TRIM
-[ ] `SELECT TRIM(TRAILING 'x' FROM a) FROM t`
-[ ] `SELECT TRIM(BOTH 'x' FROM a) FROM t`
-[ ] `SELECT GROUP_CONCAT(a ORDER BY a SEPARATOR ',') FROM t` — GROUP_CONCAT basic
-[ ] `SELECT GROUP_CONCAT(DISTINCT a ORDER BY a DESC SEPARATOR ';') FROM t` — GROUP_CONCAT full
-[ ] `SELECT CASE a WHEN 1 THEN 'one' WHEN 2 THEN 'two' ELSE 'other' END FROM t` — simple CASE (distinct from searched CASE)
+[x] `SELECT TRIM(a) FROM t` — simple TRIM
+[x] `SELECT TRIM(LEADING 'x' FROM a) FROM t` — directional TRIM
+[x] `SELECT TRIM(TRAILING 'x' FROM a) FROM t`
+[x] `SELECT TRIM(BOTH 'x' FROM a) FROM t`
+[x] `SELECT GROUP_CONCAT(a ORDER BY a SEPARATOR ',') FROM t` — GROUP_CONCAT basic
+[x] `SELECT GROUP_CONCAT(DISTINCT a ORDER BY a DESC SEPARATOR ';') FROM t` — GROUP_CONCAT full
+[x] `SELECT CASE a WHEN 1 THEN 'one' WHEN 2 THEN 'two' ELSE 'other' END FROM t` — simple CASE (distinct from searched CASE)
 ```
 
 ### 2.4 CAST, CONVERT & Operator-to-Function Rewrites

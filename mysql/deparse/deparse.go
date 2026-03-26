@@ -466,6 +466,29 @@ func deparseExprAlias(node ast.ExprNode) string {
 	case *ast.FuncCallExpr:
 		// MySQL 8.0 auto-alias preserves original function name case (uppercase from parser).
 		name := n.Name
+		upperName := strings.ToUpper(name)
+
+		// Handle TRIM directional forms: TRIM_LEADING → TRIM(LEADING 'x' FROM a)
+		switch upperName {
+		case "TRIM_LEADING":
+			if len(n.Args) == 2 {
+				return "TRIM(LEADING " + deparseExprAlias(n.Args[0]) + " FROM " + deparseExprAlias(n.Args[1]) + ")"
+			}
+		case "TRIM_TRAILING":
+			if len(n.Args) == 2 {
+				return "TRIM(TRAILING " + deparseExprAlias(n.Args[0]) + " FROM " + deparseExprAlias(n.Args[1]) + ")"
+			}
+		case "TRIM_BOTH":
+			if len(n.Args) == 2 {
+				return "TRIM(BOTH " + deparseExprAlias(n.Args[0]) + " FROM " + deparseExprAlias(n.Args[1]) + ")"
+			}
+		}
+
+		// Handle GROUP_CONCAT: alias includes ORDER BY and SEPARATOR
+		if upperName == "GROUP_CONCAT" {
+			return deparseGroupConcatAlias(n)
+		}
+
 		if n.Star {
 			// COUNT(*) → alias "COUNT(*)" — keep *, not 0.
 			result := name + "(*)"
@@ -1465,6 +1488,52 @@ func deparseSubqueryExpr(n *ast.SubqueryExpr) string {
 		return "(" + deparseSelectStmt(n.Select) + ")"
 	}
 	return "(/* subquery */)"
+}
+
+// deparseGroupConcatAlias generates the MySQL 8.0 auto-alias for GROUP_CONCAT.
+// MySQL 8.0 alias format: GROUP_CONCAT(DISTINCT a ORDER BY a DESC SEPARATOR ';')
+// Uses uppercase keywords and original column names (not table-qualified).
+func deparseGroupConcatAlias(n *ast.FuncCallExpr) string {
+	var b strings.Builder
+	b.WriteString("GROUP_CONCAT(")
+
+	// DISTINCT
+	if n.Distinct {
+		b.WriteString("DISTINCT ")
+	}
+
+	// Arguments
+	for i, arg := range n.Args {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(deparseExprAlias(arg))
+	}
+
+	// ORDER BY — MySQL 8.0 alias omits ASC (default), only shows DESC
+	if len(n.OrderBy) > 0 {
+		b.WriteString(" ORDER BY ")
+		for i, item := range n.OrderBy {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString(deparseExprAlias(item.Expr))
+			if item.Desc {
+				b.WriteString(" DESC")
+			}
+		}
+	}
+
+	// SEPARATOR
+	b.WriteString(" SEPARATOR ")
+	if n.Separator != nil {
+		b.WriteString(deparseExprAlias(n.Separator))
+	} else {
+		b.WriteString("','")
+	}
+
+	b.WriteString(")")
+	return b.String()
 }
 
 // deparseGroupConcat handles GROUP_CONCAT with its special syntax:

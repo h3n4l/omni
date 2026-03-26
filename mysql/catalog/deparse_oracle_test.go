@@ -1046,3 +1046,80 @@ func TestDeparseOracle_2_2_RegularFunctionsAggregates(t *testing.T) {
 		})
 	}
 }
+
+// TestDeparseOracle_2_3_SpecialFunctions verifies TRIM, GROUP_CONCAT, and simple CASE
+// against MySQL 8.0 SHOW CREATE VIEW output.
+func TestDeparseOracle_2_3_SpecialFunctions(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	// Setup: create base tables on MySQL 8.0
+	if err := oracle.execSQLDirect("CREATE TABLE IF NOT EXISTS t (a INT, b INT, c INT)"); err != nil {
+		t.Fatalf("failed to create table t on MySQL: %v", err)
+	}
+	if err := oracle.execSQLDirect("CREATE TABLE IF NOT EXISTS tv (a VARCHAR(50), b VARCHAR(50), c INT)"); err != nil {
+		t.Fatalf("failed to create table tv on MySQL: %v", err)
+	}
+
+	cases := []struct {
+		name     string
+		viewName string
+		viewSQL  string
+		tables   string // extra CREATE TABLE for omni catalog (beyond t)
+	}{
+		{"trim_simple", "v_trim_simple", "CREATE VIEW v_trim_simple AS SELECT TRIM(a) FROM tv", "CREATE TABLE tv (a VARCHAR(50), b VARCHAR(50), c INT)"},
+		{"trim_leading", "v_trim_leading", "CREATE VIEW v_trim_leading AS SELECT TRIM(LEADING 'x' FROM a) FROM tv", "CREATE TABLE tv (a VARCHAR(50), b VARCHAR(50), c INT)"},
+		{"trim_trailing", "v_trim_trailing", "CREATE VIEW v_trim_trailing AS SELECT TRIM(TRAILING 'x' FROM a) FROM tv", "CREATE TABLE tv (a VARCHAR(50), b VARCHAR(50), c INT)"},
+		{"trim_both", "v_trim_both", "CREATE VIEW v_trim_both AS SELECT TRIM(BOTH 'x' FROM a) FROM tv", "CREATE TABLE tv (a VARCHAR(50), b VARCHAR(50), c INT)"},
+		{"group_concat_basic", "v_gc_basic", "CREATE VIEW v_gc_basic AS SELECT GROUP_CONCAT(a ORDER BY a SEPARATOR ',') FROM t", ""},
+		{"group_concat_full", "v_gc_full", "CREATE VIEW v_gc_full AS SELECT GROUP_CONCAT(DISTINCT a ORDER BY a DESC SEPARATOR ';') FROM t", ""},
+		{"simple_case", "v_simple_case", "CREATE VIEW v_simple_case AS SELECT CASE a WHEN 1 THEN 'one' WHEN 2 THEN 'two' ELSE 'other' END FROM t", ""},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// --- MySQL 8.0 side ---
+			oracle.execSQLDirect("DROP VIEW IF EXISTS " + tc.viewName)
+			if err := oracle.execSQLDirect(tc.viewSQL); err != nil {
+				t.Skipf("MySQL 8.0 rejected: %v", err)
+				return
+			}
+			mysqlOutput, err := oracle.showCreateView(tc.viewName)
+			if err != nil {
+				t.Fatalf("SHOW CREATE VIEW on MySQL failed: %v", err)
+			}
+			mysqlBody := stripDatabasePrefix(extractSelectBody(mysqlOutput))
+
+			// --- Omni catalog side ---
+			cat := New()
+			cat.Exec("CREATE DATABASE test", nil)
+			cat.SetCurrentDatabase("test")
+			cat.Exec("CREATE TABLE t (a INT, b INT, c INT)", nil)
+			if tc.tables != "" {
+				cat.Exec(tc.tables, nil)
+			}
+			results, _ := cat.Exec(tc.viewSQL, nil)
+			if len(results) == 0 {
+				t.Fatalf("CREATE VIEW on catalog returned no results")
+			}
+			if results[0].Error != nil {
+				t.Fatalf("CREATE VIEW on catalog failed: %v", results[0].Error)
+			}
+			omniOutput := cat.ShowCreateView("test", tc.viewName)
+			if omniOutput == "" {
+				t.Fatal("ShowCreateView returned empty")
+			}
+			omniBody := extractSelectBody(omniOutput)
+
+			t.Logf("MySQL body:  %s", mysqlBody)
+			t.Logf("Omni body:   %s", omniBody)
+
+			if mysqlBody != omniBody {
+				t.Errorf("SELECT body mismatch:\n--- mysql ---\n%s\n--- omni ---\n%s", mysqlBody, omniBody)
+			}
+		})
+	}
+}
