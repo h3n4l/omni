@@ -158,6 +158,16 @@ func (p *Parser) parseSelectStmt() (*nodes.SelectStmt, error) {
 
 	p.advance() // consume SELECT
 
+	// Completion: after SELECT keyword, offer select-expression candidates.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addTokenCandidate(kwDISTINCT)
+		p.addTokenCandidate(kwALL)
+		p.addRuleCandidate("columnref")
+		p.addRuleCandidate("func_name")
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	stmt := &nodes.SelectStmt{Loc: nodes.Loc{Start: start}, CTEs: ctes}
 
 	// Parse SELECT options
@@ -384,6 +394,16 @@ func (p *Parser) parseSelectStmtBase() (*nodes.SelectStmt, error) {
 	}
 
 	p.advance() // consume SELECT
+
+	// Completion: after SELECT keyword, offer select-expression candidates.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addTokenCandidate(kwDISTINCT)
+		p.addTokenCandidate(kwALL)
+		p.addRuleCandidate("columnref")
+		p.addRuleCandidate("func_name")
+		return nil, &ParseError{Message: "collecting"}
+	}
 
 	stmt := &nodes.SelectStmt{Loc: nodes.Loc{Start: start}, CTEs: ctes}
 

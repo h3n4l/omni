@@ -30,12 +30,12 @@ Status legend: `[ ]` pending, `[x]` passing, `[~]` partial
 ### 1.2 Basic Keyword Collection
 
 ```
-[ ] Empty input → keyword candidates for all top-level statements
-[ ] After semicolon → keyword candidates for new statement
-[ ] `SELECT |` → keyword candidates for select expressions (DISTINCT, ALL) + rule candidates (columnref, func_name)
-[ ] `CREATE |` → keyword candidates for object types (TABLE, INDEX, VIEW, DATABASE, FUNCTION, PROCEDURE, TRIGGER, EVENT)
-[ ] `ALTER |` → keyword candidates (TABLE, DATABASE, VIEW, FUNCTION, PROCEDURE, EVENT)
-[ ] `DROP |` → keyword candidates (TABLE, INDEX, VIEW, DATABASE, FUNCTION, PROCEDURE, TRIGGER, EVENT, IF)
+[x] Empty input → keyword candidates for all top-level statements
+[x] After semicolon → keyword candidates for new statement
+[x] `SELECT |` → keyword candidates for select expressions (DISTINCT, ALL) + rule candidates (columnref, func_name)
+[x] `CREATE |` → keyword candidates for object types (TABLE, INDEX, VIEW, DATABASE, FUNCTION, PROCEDURE, TRIGGER, EVENT)
+[x] `ALTER |` → keyword candidates (TABLE, DATABASE, VIEW, FUNCTION, PROCEDURE, EVENT)
+[x] `DROP |` → keyword candidates (TABLE, INDEX, VIEW, DATABASE, FUNCTION, PROCEDURE, TRIGGER, EVENT, IF)
 ```
 
 ## Phase 2: Completion Module (API & Resolution)

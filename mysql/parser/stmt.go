@@ -392,6 +392,15 @@ func (p *Parser) parseCreateDispatch() (nodes.Node, error) {
 	start := p.pos()
 	p.advance() // consume CREATE
 
+	// Completion: after CREATE keyword, offer object type candidates.
+	p.checkCursor()
+	if p.collectMode() {
+		for _, t := range []int{kwTABLE, kwINDEX, kwVIEW, kwDATABASE, kwFUNCTION, kwPROCEDURE, kwTRIGGER, kwEVENT} {
+			p.addTokenCandidate(t)
+		}
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	orReplace := false
 	temporary := false
 
@@ -577,6 +586,15 @@ func (p *Parser) parseAlterDispatch() (nodes.Node, error) {
 	start := p.pos()
 	p.advance() // consume ALTER
 
+	// Completion: after ALTER keyword, offer object type candidates.
+	p.checkCursor()
+	if p.collectMode() {
+		for _, t := range []int{kwTABLE, kwDATABASE, kwVIEW, kwFUNCTION, kwPROCEDURE, kwEVENT} {
+			p.addTokenCandidate(t)
+		}
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	// UNDO TABLESPACE
 	if p.cur.Type == kwUNDO {
 		p.advance()
@@ -683,6 +701,15 @@ func (p *Parser) parseAlterDispatch() (nodes.Node, error) {
 func (p *Parser) parseDropDispatch() (nodes.Node, error) {
 	start := p.pos()
 	p.advance() // consume DROP
+
+	// Completion: after DROP keyword, offer object type candidates.
+	p.checkCursor()
+	if p.collectMode() {
+		for _, t := range []int{kwTABLE, kwINDEX, kwVIEW, kwDATABASE, kwFUNCTION, kwPROCEDURE, kwTRIGGER, kwEVENT, kwIF} {
+			p.addTokenCandidate(t)
+		}
+		return nil, &ParseError{Message: "collecting"}
+	}
 
 	// UNDO TABLESPACE
 	if p.cur.Type == kwUNDO {
