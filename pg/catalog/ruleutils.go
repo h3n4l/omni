@@ -621,6 +621,32 @@ func (d *deparseCtx) getRuleExpr(expr AnalyzedExpr, showImplicit bool) {
 	case *CoerceToDomainValueExpr:
 		// pg: src/backend/utils/adt/ruleutils.c — get_domaincheck_expr
 		d.buf.WriteString("VALUE")
+	case *SubscriptingRefExpr:
+		d.getSubscriptingRef(v)
+	case *NamedArgExprQ:
+		d.getNamedArgExpr(v)
+	case *ArrayCoerceExprQ:
+		d.getArrayCoerceExpr(v, showImplicit)
+	case *CaseTestExprQ:
+		// pg: CaseTestExpr is not emitted directly by ruleutils
+		// It's an internal placeholder; nothing to output.
+	case *CoerceToDomainExpr:
+		// pg: CoerceToDomain — deparse the inner arg (domain coercion is implicit)
+		d.getRuleExpr(v.Arg, showImplicit)
+	case *RowCompareExprQ:
+		d.getRowCompareExpr(v)
+	case *ParamExpr:
+		fmt.Fprintf(d.buf, "$%d", v.ParamNum)
+	case *SetToDefaultExpr:
+		d.buf.WriteString("DEFAULT")
+	case *NextValueExprQ:
+		// pg: deparse as nextval('seqname'::regclass)
+		fmt.Fprintf(d.buf, "nextval('%s'::regclass)", v.SeqName)
+	case *ConvertRowtypeExprQ:
+		// pg: ConvertRowtypeExpr — deparse the inner arg (conversion is implicit)
+		d.getRuleExpr(v.Arg, showImplicit)
+	case *FieldStoreExprQ:
+		d.getFieldStore(v)
 	default:
 		d.buf.WriteString("???")
 	}
@@ -1567,6 +1593,99 @@ func (d *deparseCtx) getSortGroupClause(sgc *SortGroupClause, tlist []*TargetEnt
 	}
 }
 
+// getSubscriptingRef deparses an array subscript expression.
+//
+// pg: src/backend/utils/adt/ruleutils.c — SubscriptingRef case
+func (d *deparseCtx) getSubscriptingRef(s *SubscriptingRefExpr) {
+	d.getRuleExpr(s.ContainerExpr, true)
+	if s.IsSlice {
+		d.buf.WriteByte('[')
+		if len(s.LowerExprs) > 0 && s.LowerExprs[0] != nil {
+			d.getRuleExpr(s.LowerExprs[0], false)
+		}
+		d.buf.WriteByte(':')
+		if len(s.SubscriptExprs) > 0 && s.SubscriptExprs[0] != nil {
+			d.getRuleExpr(s.SubscriptExprs[0], false)
+		}
+		d.buf.WriteByte(']')
+	} else {
+		for _, sub := range s.SubscriptExprs {
+			d.buf.WriteByte('[')
+			d.getRuleExpr(sub, false)
+			d.buf.WriteByte(']')
+		}
+	}
+}
+
+// getNamedArgExpr deparses a named argument expression.
+//
+// pg: src/backend/utils/adt/ruleutils.c — NamedArgExpr case
+func (d *deparseCtx) getNamedArgExpr(n *NamedArgExprQ) {
+	d.buf.WriteString(quoteIdentifier(n.Name))
+	d.buf.WriteString(" => ")
+	d.getRuleExpr(n.Arg, true)
+}
+
+// getArrayCoerceExpr deparses an array coercion expression.
+//
+// pg: src/backend/utils/adt/ruleutils.c — ArrayCoerceExpr case
+func (d *deparseCtx) getArrayCoerceExpr(a *ArrayCoerceExprQ, showImplicit bool) {
+	if a.Format == 'i' && !showImplicit {
+		d.getRuleExprParen(a.Arg, false, a)
+		return
+	}
+	d.getCoercionExpr(a.Arg, a.ResultType, -1, a)
+}
+
+// getRowCompareExpr deparses a row comparison expression.
+//
+// pg: src/backend/utils/adt/ruleutils.c — RowCompareExpr case
+func (d *deparseCtx) getRowCompareExpr(r *RowCompareExprQ) {
+	if !d.prettyParen {
+		d.buf.WriteByte('(')
+	}
+	// Left row.
+	d.buf.WriteByte('(')
+	for i, arg := range r.LArgs {
+		if i > 0 {
+			d.buf.WriteString(", ")
+		}
+		d.getRuleExpr(arg, true)
+	}
+	d.buf.WriteString(") ")
+
+	// Operator.
+	d.buf.WriteString(rowCompareOpName(r.RCType))
+	d.buf.WriteByte(' ')
+
+	// Right row.
+	d.buf.WriteByte('(')
+	for i, arg := range r.RArgs {
+		if i > 0 {
+			d.buf.WriteString(", ")
+		}
+		d.getRuleExpr(arg, true)
+	}
+	d.buf.WriteByte(')')
+	if !d.prettyParen {
+		d.buf.WriteByte(')')
+	}
+}
+
+// getFieldStore deparses a composite field store expression.
+//
+// pg: src/backend/utils/adt/ruleutils.c — FieldStore case
+func (d *deparseCtx) getFieldStore(f *FieldStoreExprQ) {
+	d.buf.WriteString("ROW(")
+	for i, val := range f.NewVals {
+		if i > 0 {
+			d.buf.WriteString(", ")
+		}
+		d.getRuleExpr(val, true)
+	}
+	d.buf.WriteByte(')')
+}
+
 // getRuleExprParen wraps expression in parentheses if needed.
 //
 // pg: src/backend/utils/adt/ruleutils.c — get_rule_expr_paren
@@ -1590,12 +1709,14 @@ func isSimpleNode(expr AnalyzedExpr, parent AnalyzedExpr, prettyParen bool) bool
 	}
 
 	switch e := expr.(type) {
-	case *VarExpr, *ConstExpr, *CoerceToDomainValueExpr, *SQLValueFuncExpr:
+	case *VarExpr, *ConstExpr, *CoerceToDomainValueExpr, *SQLValueFuncExpr,
+		*ParamExpr, *SetToDefaultExpr, *CaseTestExprQ:
 		// single words: always simple
 		return true
 
 	case *ArrayExprQ, *RowExprQ, *CoalesceExprQ, *MinMaxExprQ,
-		*NullIfExprQ, *AggExpr, *WindowFuncExpr, *FuncCallExpr:
+		*NullIfExprQ, *AggExpr, *WindowFuncExpr, *FuncCallExpr,
+		*SubscriptingRefExpr, *NextValueExprQ:
 		// function-like: name(..) or name[..] — always simple
 		return true
 
@@ -1615,6 +1736,15 @@ func isSimpleNode(expr AnalyzedExpr, parent AnalyzedExpr, prettyParen bool) bool
 
 	case *CoerceViaIOExpr:
 		// pg: maybe simple, check args
+		return isSimpleNode(e.Arg, expr, prettyParen)
+
+	case *ArrayCoerceExprQ:
+		return isSimpleNode(e.Arg, expr, prettyParen)
+
+	case *CoerceToDomainExpr:
+		return isSimpleNode(e.Arg, expr, prettyParen)
+
+	case *ConvertRowtypeExprQ:
 		return isSimpleNode(e.Arg, expr, prettyParen)
 
 	case *OpExpr:

@@ -247,7 +247,6 @@ func TestOracleExprCheck(t *testing.T) {
 	})
 
 	t.Run("array_subscript", func(t *testing.T) {
-		t.Skip("BUG: SubscriptingRef not supported — tags[1] deparsed as NULL::unknown")
 		assertOracleRoundtrip(t, oracle,
 			`CREATE TABLE t (id int PRIMARY KEY, tags text[]);`,
 			`CREATE TABLE t (id int PRIMARY KEY, tags text[], CONSTRAINT chk CHECK (tags[1] IS NOT NULL));`,
@@ -582,5 +581,64 @@ func TestOracleExprSemanticEquivalence(t *testing.T) {
 		if !diff.IsEmpty() {
 			t.Errorf("identical schemas with CHECK constraint should produce empty diff, got: %+v", diff)
 		}
+	})
+}
+
+// ---------------------------------------------------------------------------
+// Phase 1 Core Expression Types (ruleutils completion)
+// ---------------------------------------------------------------------------
+
+func TestOracleExprPhase1CoreTypes(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test: requires Docker")
+	}
+	oracle := startPGOracle(t)
+
+	// SubscriptingRef: array subscript in generated column
+	t.Run("subscript_in_generated", func(t *testing.T) {
+		assertOracleRoundtrip(t, oracle,
+			`CREATE TABLE t (id int PRIMARY KEY, tags text[]);`,
+			`CREATE TABLE t (id int PRIMARY KEY, tags text[], first_tag text GENERATED ALWAYS AS (tags[1]) STORED);`,
+		)
+	})
+
+	// SubscriptingRef: array subscript in CHECK
+	t.Run("subscript_in_check", func(t *testing.T) {
+		assertOracleRoundtrip(t, oracle,
+			`CREATE TABLE t (id int PRIMARY KEY, tags text[]);`,
+			`CREATE TABLE t (id int PRIMARY KEY, tags text[], CONSTRAINT chk CHECK (tags[1] IS NOT NULL));`,
+		)
+	})
+
+	// SubscriptingRef: multi-dimensional subscript
+	t.Run("subscript_multi_dim", func(t *testing.T) {
+		assertOracleRoundtrip(t, oracle,
+			`CREATE TABLE t (id int PRIMARY KEY, matrix int[][]);`,
+			`CREATE TABLE t (id int PRIMARY KEY, matrix int[][], CONSTRAINT chk CHECK (matrix[1][1] > 0));`,
+		)
+	})
+
+	// RowCompareExpr: (a,b) < (c,d)
+	t.Run("row_compare_lt", func(t *testing.T) {
+		assertOracleRoundtrip(t, oracle,
+			`CREATE TABLE t (id int PRIMARY KEY, a int, b int, c int, d int);`,
+			`CREATE TABLE t (id int PRIMARY KEY, a int, b int, c int, d int, CONSTRAINT chk CHECK ((a, b) < (c, d)));`,
+		)
+	})
+
+	// RowCompareExpr: (a,b) = (c,d)
+	t.Run("row_compare_eq", func(t *testing.T) {
+		assertOracleRoundtrip(t, oracle,
+			`CREATE TABLE t (id int PRIMARY KEY, a int, b int, c int, d int);`,
+			`CREATE TABLE t (id int PRIMARY KEY, a int, b int, c int, d int, CONSTRAINT chk CHECK ((a, b) = (c, d)));`,
+		)
+	})
+
+	// ParamRef: $1 in function body (domain check with function using $1)
+	t.Run("param_ref_in_function", func(t *testing.T) {
+		assertOracleRoundtrip(t, oracle,
+			``,
+			`CREATE FUNCTION is_positive(int) RETURNS boolean LANGUAGE sql IMMUTABLE AS 'SELECT $1 > 0';`,
+		)
 	})
 }

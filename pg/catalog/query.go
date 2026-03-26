@@ -760,6 +760,173 @@ func (c *Catalog) resolveReturnType(proc *BuiltinProc, argTypes []uint32) uint32
 	return TEXTOID
 }
 
+// SubscriptingRefExpr represents an array subscript expression (arr[1]).
+//
+// pg: src/include/nodes/primnodes.h — SubscriptingRef
+type SubscriptingRefExpr struct {
+	ContainerExpr  AnalyzedExpr   // the array expression
+	SubscriptExprs []AnalyzedExpr // subscript expressions
+	ResultType     uint32         // element type OID
+	IsSlice        bool           // true for arr[1:3]
+	LowerExprs     []AnalyzedExpr // lower bounds for slice (nil entries = open)
+}
+
+func (s *SubscriptingRefExpr) exprType() uint32      { return s.ResultType }
+func (s *SubscriptingRefExpr) exprTypMod() int32      { return -1 }
+func (s *SubscriptingRefExpr) exprCollation() uint32 {
+	if s.ContainerExpr != nil {
+		return s.ContainerExpr.exprCollation()
+	}
+	return 0
+}
+
+// NamedArgExprQ represents a named argument in a function call (arg_name => value).
+//
+// pg: src/include/nodes/primnodes.h — NamedArgExpr
+type NamedArgExprQ struct {
+	Name   string       // argument name
+	Arg    AnalyzedExpr // the argument expression
+	ArgNum int          // argument number in positional notation
+}
+
+func (n *NamedArgExprQ) exprType() uint32      { return n.Arg.exprType() }
+func (n *NamedArgExprQ) exprTypMod() int32     { return n.Arg.exprTypMod() }
+func (n *NamedArgExprQ) exprCollation() uint32 { return n.Arg.exprCollation() }
+
+// ArrayCoerceExprQ represents array element type coercion.
+//
+// pg: src/include/nodes/primnodes.h — ArrayCoerceExpr
+type ArrayCoerceExprQ struct {
+	Arg        AnalyzedExpr
+	ResultType uint32
+	ElemExpr   AnalyzedExpr // per-element coercion expression
+	Format     byte         // 'e'=explicit, 'i'=implicit
+}
+
+func (a *ArrayCoerceExprQ) exprType() uint32      { return a.ResultType }
+func (a *ArrayCoerceExprQ) exprTypMod() int32      { return -1 }
+func (a *ArrayCoerceExprQ) exprCollation() uint32 {
+	if a.Arg != nil {
+		return a.Arg.exprCollation()
+	}
+	return 0
+}
+
+// CaseTestExprQ represents the internal CASE test placeholder.
+//
+// pg: src/include/nodes/primnodes.h — CaseTestExpr
+type CaseTestExprQ struct {
+	TypeOID uint32
+	TypeMod int32
+}
+
+func (c *CaseTestExprQ) exprType() uint32      { return c.TypeOID }
+func (c *CaseTestExprQ) exprTypMod() int32     { return c.TypeMod }
+func (c *CaseTestExprQ) exprCollation() uint32 { return 0 }
+
+// CoerceToDomainExpr represents a coercion to a domain type.
+//
+// pg: src/include/nodes/primnodes.h — CoerceToDomain
+type CoerceToDomainExpr struct {
+	Arg        AnalyzedExpr
+	ResultType uint32
+	TypeMod    int32
+}
+
+func (c *CoerceToDomainExpr) exprType() uint32      { return c.ResultType }
+func (c *CoerceToDomainExpr) exprTypMod() int32     { return c.TypeMod }
+func (c *CoerceToDomainExpr) exprCollation() uint32 {
+	if c.Arg != nil {
+		return c.Arg.exprCollation()
+	}
+	return 0
+}
+
+// RowCompareExprQ represents a row comparison like (a,b) < (c,d).
+//
+// pg: src/include/nodes/primnodes.h — RowCompareExpr
+type RowCompareExprQ struct {
+	RCType int              // comparison type: 1=<, 2=<=, 3=>=, 4=>, 5==, 6=<>
+	LArgs  []AnalyzedExpr   // left-side expressions
+	RArgs  []AnalyzedExpr   // right-side expressions
+	OpNos  []uint32         // operator OIDs per column
+}
+
+func (r *RowCompareExprQ) exprType() uint32      { return BOOLOID }
+func (r *RowCompareExprQ) exprTypMod() int32     { return -1 }
+func (r *RowCompareExprQ) exprCollation() uint32 { return 0 }
+
+// RowCompare type constants matching PG's RowCompareType.
+const (
+	RowCompareLT int = 1 // <
+	RowCompareLE int = 2 // <=
+	RowCompareEQ int = 3 // =
+	RowCompareGE int = 4 // >=
+	RowCompareGT int = 5 // >
+	RowCompareNE int = 6 // <>
+)
+
+// ParamExpr represents a $N parameter placeholder.
+//
+// pg: src/include/nodes/primnodes.h — Param
+type ParamExpr struct {
+	ParamNum  int
+	ParamType uint32
+}
+
+func (p *ParamExpr) exprType() uint32      { return p.ParamType }
+func (p *ParamExpr) exprTypMod() int32     { return -1 }
+func (p *ParamExpr) exprCollation() uint32 { return 0 }
+
+// SetToDefaultExpr represents the DEFAULT keyword in expression context.
+//
+// pg: src/include/nodes/primnodes.h — SetToDefault
+type SetToDefaultExpr struct {
+	TypeOID uint32
+}
+
+func (s *SetToDefaultExpr) exprType() uint32      { return s.TypeOID }
+func (s *SetToDefaultExpr) exprTypMod() int32     { return -1 }
+func (s *SetToDefaultExpr) exprCollation() uint32 { return 0 }
+
+// NextValueExprQ represents nextval for IDENTITY columns.
+//
+// pg: src/include/nodes/primnodes.h — NextValueExpr
+type NextValueExprQ struct {
+	SeqOID  uint32
+	SeqName string // for deparse
+}
+
+func (n *NextValueExprQ) exprType() uint32      { return INT8OID }
+func (n *NextValueExprQ) exprTypMod() int32     { return -1 }
+func (n *NextValueExprQ) exprCollation() uint32 { return 0 }
+
+// ConvertRowtypeExprQ represents a row type conversion between compatible composite types.
+//
+// pg: src/include/nodes/primnodes.h — ConvertRowtypeExpr
+type ConvertRowtypeExprQ struct {
+	Arg        AnalyzedExpr
+	ResultType uint32
+}
+
+func (c *ConvertRowtypeExprQ) exprType() uint32      { return c.ResultType }
+func (c *ConvertRowtypeExprQ) exprTypMod() int32     { return -1 }
+func (c *ConvertRowtypeExprQ) exprCollation() uint32 { return 0 }
+
+// FieldStoreExprQ represents a composite field store (updating a field of a composite value).
+//
+// pg: src/include/nodes/primnodes.h — FieldStore
+type FieldStoreExprQ struct {
+	Arg        AnalyzedExpr
+	FieldNums  []int
+	NewVals    []AnalyzedExpr
+	ResultType uint32
+}
+
+func (f *FieldStoreExprQ) exprType() uint32      { return f.ResultType }
+func (f *FieldStoreExprQ) exprTypMod() int32     { return -1 }
+func (f *FieldStoreExprQ) exprCollation() uint32 { return 0 }
+
 // isPolymorphic returns true if the given OID is a polymorphic pseudo-type.
 func isPolymorphic(oid uint32) bool {
 	switch oid {

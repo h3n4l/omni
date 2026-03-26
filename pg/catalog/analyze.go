@@ -1026,6 +1026,12 @@ func (ac *analyzeCtx) transformExpr(n nodes.Node) (AnalyzedExpr, error) {
 		return ac.transformAConst(&nodes.A_Const{Val: v})
 	case *nodes.Boolean:
 		return ac.transformAConst(&nodes.A_Const{Val: v})
+	case *nodes.A_Indirection:
+		return ac.transformIndirection(v)
+	case *nodes.NamedArgExpr:
+		return ac.transformNamedArgExpr(v)
+	case *nodes.ParamRef:
+		return ac.transformParamRef(v)
 	default:
 		return &ConstExpr{TypeOID: UNKNOWNOID, TypeMod: -1, IsNull: true}, nil
 	}
@@ -1380,6 +1386,36 @@ func (ac *analyzeCtx) transformAExpr(ae *nodes.A_Expr) (AnalyzedExpr, error) {
 		return nil, err
 	}
 	rightOID := right.exprType()
+
+	// Row comparison: (a,b) op (c,d) → RowCompareExpr.
+	// pg: src/backend/parser/parse_expr.c — make_row_comparison_op
+	if leftRow, lok := left.(*RowExprQ); lok {
+		if rightRow, rok := right.(*RowExprQ); rok {
+			rcType := opNameToRowCompareType(opName)
+			if rcType != 0 {
+				// Resolve operators per-column.
+				var opNos []uint32
+				for i := range leftRow.Args {
+					if i >= len(rightRow.Args) {
+						break
+					}
+					lType := leftRow.Args[i].exprType()
+					rType := rightRow.Args[i].exprType()
+					colOp, _, _, err := ac.catalog.resolveOperator(opName, lType, rType, false)
+					if err != nil {
+						return nil, err
+					}
+					opNos = append(opNos, colOp.OID)
+				}
+				return &RowCompareExprQ{
+					RCType: rcType,
+					LArgs:  leftRow.Args,
+					RArgs:  rightRow.Args,
+					OpNos:  opNos,
+				}, nil
+			}
+		}
+	}
 
 	isPrefix := ae.Lexpr == nil
 
@@ -2530,6 +2566,115 @@ func (ac *analyzeCtx) transformRowExpr(re *nodes.RowExpr) (AnalyzedExpr, error) 
 	}, nil
 }
 
+// transformIndirection transforms an A_Indirection node into either
+// a FieldSelectExprQ (for field access like rec.field) or a SubscriptingRefExpr
+// (for array subscript like arr[1]).
+//
+// pg: src/backend/parser/parse_expr.c — transformIndirection
+func (ac *analyzeCtx) transformIndirection(ind *nodes.A_Indirection) (AnalyzedExpr, error) {
+	// Transform the base expression.
+	result, err := ac.transformExpr(ind.Arg)
+	if err != nil {
+		return nil, err
+	}
+
+	if ind.Indirection == nil {
+		return result, nil
+	}
+
+	for _, item := range ind.Indirection.Items {
+		switch idx := item.(type) {
+		case *nodes.A_Indices:
+			// Array subscript: arr[expr] or arr[lower:upper]
+			containerType := result.exprType()
+			// Determine element type.
+			elemType := ac.catalog.getArrayElementType(containerType)
+			if elemType == 0 {
+				elemType = containerType // fallback
+			}
+
+			if idx.IsSlice {
+				// Slice: arr[lower:upper]
+				var lower, upper AnalyzedExpr
+				if idx.Lidx != nil {
+					lower, err = ac.transformExpr(idx.Lidx)
+					if err != nil {
+						return nil, err
+					}
+				}
+				if idx.Uidx != nil {
+					upper, err = ac.transformExpr(idx.Uidx)
+					if err != nil {
+						return nil, err
+					}
+				}
+				result = &SubscriptingRefExpr{
+					ContainerExpr:  result,
+					SubscriptExprs: []AnalyzedExpr{upper},
+					LowerExprs:     []AnalyzedExpr{lower},
+					ResultType:     containerType, // slice returns array type
+					IsSlice:        true,
+				}
+			} else {
+				// Simple subscript: arr[expr]
+				sub, err := ac.transformExpr(idx.Uidx)
+				if err != nil {
+					return nil, err
+				}
+				result = &SubscriptingRefExpr{
+					ContainerExpr:  result,
+					SubscriptExprs: []AnalyzedExpr{sub},
+					ResultType:     elemType,
+					IsSlice:        false,
+				}
+			}
+		case *nodes.String:
+			// Field access: rec.field — already handled as FieldSelectExprQ
+			fieldName := idx.Str
+			resultType := result.exprType()
+			// Try to resolve the field from composite type.
+			fieldType, fieldTypMod, fieldColl, fieldNum := ac.catalog.resolveCompositeField(resultType, fieldName)
+			result = &FieldSelectExprQ{
+				Arg:        result,
+				FieldNum:   int16(fieldNum),
+				FieldName:  fieldName,
+				ResultType: fieldType,
+				TypeMod:    fieldTypMod,
+				Collation:  fieldColl,
+			}
+		default:
+			// A_Star or other — skip
+		}
+	}
+
+	return result, nil
+}
+
+// transformNamedArgExpr transforms a named argument expression (arg_name => value).
+//
+// pg: src/backend/parser/parse_expr.c — transformExprRecurse (NamedArgExpr case)
+func (ac *analyzeCtx) transformNamedArgExpr(nae *nodes.NamedArgExpr) (AnalyzedExpr, error) {
+	arg, err := ac.transformExpr(nae.Arg)
+	if err != nil {
+		return nil, err
+	}
+	return &NamedArgExprQ{
+		Name:   nae.Name,
+		Arg:    arg,
+		ArgNum: nae.Argnumber,
+	}, nil
+}
+
+// transformParamRef transforms a $N parameter reference.
+//
+// pg: src/backend/parser/parse_param.c — variable_paramref_hook
+func (ac *analyzeCtx) transformParamRef(pr *nodes.ParamRef) (AnalyzedExpr, error) {
+	return &ParamExpr{
+		ParamNum:  pr.Number,
+		ParamType: UNKNOWNOID,
+	}, nil
+}
+
 // transformCollateClause transforms a COLLATE clause.
 //
 // pg: src/backend/parser/parse_expr.c — transformCollateClause
@@ -2843,6 +2988,92 @@ func (c *Catalog) findArrayType(elemType uint32) uint32 {
 		return bt.Array
 	}
 	return 0
+}
+
+// opNameToRowCompareType maps operator names to RowCompare type constants.
+func opNameToRowCompareType(opName string) int {
+	switch opName {
+	case "<":
+		return RowCompareLT
+	case "<=":
+		return RowCompareLE
+	case "=":
+		return RowCompareEQ
+	case ">=":
+		return RowCompareGE
+	case ">":
+		return RowCompareGT
+	case "<>", "!=":
+		return RowCompareNE
+	default:
+		return 0
+	}
+}
+
+// rowCompareOpName returns the operator name for a RowCompare type.
+func rowCompareOpName(rcType int) string {
+	switch rcType {
+	case RowCompareLT:
+		return "<"
+	case RowCompareLE:
+		return "<="
+	case RowCompareEQ:
+		return "="
+	case RowCompareGE:
+		return ">="
+	case RowCompareGT:
+		return ">"
+	case RowCompareNE:
+		return "<>"
+	default:
+		return "="
+	}
+}
+
+// getArrayElementType returns the element type OID for an array type, or 0 if not an array.
+func (c *Catalog) getArrayElementType(arrayType uint32) uint32 {
+	bt := c.typeByOID[arrayType]
+	if bt == nil {
+		return 0
+	}
+	if bt.Category == 'A' && bt.Elem != 0 {
+		return bt.Elem
+	}
+	return 0
+}
+
+// resolveCompositeField resolves a field name within a composite type.
+// Returns the field's type OID, type modifier, collation, and field number (1-based).
+// If the composite type or field cannot be resolved, returns UNKNOWNOID with reasonable defaults.
+func (c *Catalog) resolveCompositeField(compositeType uint32, fieldName string) (uint32, int32, uint32, int) {
+	// Look up composite type's relation.
+	bt := c.typeByOID[compositeType]
+	if bt == nil {
+		return UNKNOWNOID, -1, 0, 0
+	}
+	// Find the relation that defines this composite type.
+	rel := c.typeRelation(compositeType)
+	if rel == nil {
+		return UNKNOWNOID, -1, 0, 0
+	}
+	for i, col := range rel.Columns {
+		if col.Name == fieldName {
+			return col.TypeOID, col.TypeMod, col.Collation, i + 1
+		}
+	}
+	return UNKNOWNOID, -1, 0, 0
+}
+
+// typeRelation looks up the relation that defines a composite type.
+func (c *Catalog) typeRelation(typeOID uint32) *Relation {
+	for _, s := range c.schemas {
+		for _, r := range s.Relations {
+			if r.RowTypeOID == typeOID {
+				return r
+			}
+		}
+	}
+	return nil
 }
 
 // --- Helper functions ---
