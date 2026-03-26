@@ -225,11 +225,11 @@ Status legend: `[ ]` pending, `[x]` passing, `[~]` partial
 ### 6.1 Subquery Patterns
 
 ```
-[ ] `SELECT (SELECT MAX(a) FROM t) FROM t` — scalar subquery in SELECT
-[ ] `SELECT * FROM t WHERE a IN (SELECT a FROM t WHERE a > 0)` — IN subquery
-[ ] `SELECT * FROM t WHERE EXISTS (SELECT 1 FROM t WHERE a > 0)` — EXISTS subquery
-[ ] `SELECT a, (SELECT COUNT(*) FROM t t2 WHERE t2.a = t1.a) FROM t t1` — correlated subquery
-[ ] `SELECT * FROM t WHERE a IN (SELECT a FROM t WHERE b IN (SELECT b FROM t WHERE c > 0))` — nested subqueries (2 levels)
+[x] `SELECT (SELECT MAX(a) FROM t) FROM t` — scalar subquery in SELECT
+[x] `SELECT * FROM t WHERE a IN (SELECT a FROM t WHERE a > 0)` — IN subquery
+[x] `SELECT * FROM t WHERE EXISTS (SELECT 1 FROM t WHERE a > 0)` — EXISTS subquery
+[x] `SELECT a, (SELECT COUNT(*) FROM t t2 WHERE t2.a = t1.a) FROM t t1` — correlated subquery
+[x] `SELECT * FROM t WHERE a IN (SELECT a FROM t WHERE b IN (SELECT b FROM t WHERE c > 0))` — nested subqueries (2 levels)
 ```
 
 ### 6.2 CTE Patterns

@@ -1932,3 +1932,112 @@ func TestDeparseOracle_5_3_ColumnAliasPatterns(t *testing.T) {
 		})
 	}
 }
+
+// TestDeparseOracle_Section_6_1_SubqueryPatterns verifies that subquery patterns
+// in views match MySQL 8.0 SHOW CREATE VIEW output.
+func TestDeparseOracle_Section_6_1_SubqueryPatterns(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	// Setup: create base tables on MySQL 8.0
+	if err := oracle.execSQLDirect("CREATE TABLE IF NOT EXISTS t (a INT, b INT, c INT)"); err != nil {
+		t.Fatalf("failed to create table t on MySQL: %v", err)
+	}
+	if err := oracle.execSQLDirect("CREATE TABLE IF NOT EXISTS t1 (a INT, b INT)"); err != nil {
+		t.Fatalf("failed to create table t1 on MySQL: %v", err)
+	}
+
+	cases := []struct {
+		name     string
+		createAs string
+		partial  bool
+	}{
+		{
+			"scalar_subquery_in_select",
+			"SELECT (SELECT MAX(a) FROM t) FROM t",
+			false,
+		},
+		{
+			"in_subquery",
+			"SELECT * FROM t WHERE a IN (SELECT a FROM t WHERE a > 0)",
+			false,
+		},
+		{
+			"exists_subquery",
+			"SELECT * FROM t WHERE EXISTS (SELECT 1 FROM t WHERE a > 0)",
+			false,
+		},
+		{
+			"correlated_subquery",
+			"SELECT a, (SELECT COUNT(*) FROM t t2 WHERE t2.a = t1.a) FROM t t1",
+			false,
+		},
+		{
+			"nested_subqueries_2_levels",
+			"SELECT * FROM t WHERE a IN (SELECT a FROM t WHERE b IN (SELECT b FROM t WHERE c > 0))",
+			false,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			viewName := "v_" + tc.name
+
+			// --- MySQL 8.0 side ---
+			oracle.execSQLDirect("DROP VIEW IF EXISTS " + viewName)
+			createSQL := fmt.Sprintf("CREATE VIEW %s AS %s", viewName, tc.createAs)
+			if err := oracle.execSQLDirect(createSQL); err != nil {
+				if tc.partial {
+					t.Skipf("MySQL 8.0 rejected (expected partial): %v", err)
+				}
+				t.Fatalf("CREATE VIEW on MySQL failed: %v", err)
+			}
+			mysqlOutput, err := oracle.showCreateView(viewName)
+			if err != nil {
+				t.Fatalf("SHOW CREATE VIEW on MySQL failed: %v", err)
+			}
+			mysqlBody := stripDatabasePrefix(extractSelectBody(mysqlOutput))
+
+			// --- Our catalog side ---
+			cat := New()
+			cat.Exec("CREATE DATABASE test", nil)
+			cat.SetCurrentDatabase("test")
+			cat.Exec("CREATE TABLE t (a INT, b INT, c INT)", nil)
+			cat.Exec("CREATE TABLE t1 (a INT, b INT)", nil)
+			results, _ := cat.Exec(fmt.Sprintf("CREATE VIEW %s AS %s", viewName, tc.createAs), nil)
+			if len(results) == 0 {
+				if tc.partial {
+					t.Skipf("CREATE VIEW on catalog returned no results (expected partial)")
+				}
+				t.Fatalf("CREATE VIEW on catalog returned no results")
+			}
+			if results[0].Error != nil {
+				if tc.partial {
+					t.Skipf("CREATE VIEW on catalog failed (expected partial): %v", results[0].Error)
+				}
+				t.Fatalf("CREATE VIEW on catalog failed: %v", results[0].Error)
+			}
+			omniOutput := cat.ShowCreateView("test", viewName)
+			if omniOutput == "" {
+				if tc.partial {
+					t.Skip("ShowCreateView returned empty (expected partial)")
+				}
+				t.Fatal("ShowCreateView returned empty")
+			}
+			omniBody := extractSelectBody(omniOutput)
+
+			t.Logf("MySQL body:  %s", mysqlBody)
+			t.Logf("Omni body:   %s", omniBody)
+
+			if mysqlBody != omniBody {
+				if tc.partial {
+					t.Skipf("SELECT body mismatch (expected partial):\n--- mysql ---\n%s\n--- omni ---\n%s", mysqlBody, omniBody)
+				}
+				t.Errorf("SELECT body mismatch:\n--- mysql ---\n%s\n--- omni ---\n%s", mysqlBody, omniBody)
+			}
+		})
+	}
+}

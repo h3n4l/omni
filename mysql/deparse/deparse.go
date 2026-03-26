@@ -719,6 +719,9 @@ func deparseSelectStmtAlias(stmt *ast.SelectStmt) string {
 func deparseTableExprAlias(tbl ast.TableExpr) string {
 	switch t := tbl.(type) {
 	case *ast.TableRef:
+		if t.Alias != "" {
+			return t.Name + " " + t.Alias
+		}
 		return t.Name
 	default:
 		return deparseExprAlias(tbl.(ast.ExprNode))
