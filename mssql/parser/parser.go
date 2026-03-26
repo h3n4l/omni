@@ -5,6 +5,7 @@
 package parser
 
 import (
+	"fmt"
 	"strings"
 
 	nodes "github.com/bytebase/omni/mssql/ast"
@@ -13,10 +14,11 @@ import (
 // Parser is a recursive descent parser for T-SQL.
 type Parser struct {
 	lexer   *Lexer
-	cur     Token // current token
-	prev    Token // previous token (for error reporting)
-	nextBuf Token // buffered next token for 2-token lookahead
-	hasNext bool  // whether nextBuf is valid
+	source  string // original SQL input (for error context extraction)
+	cur     Token  // current token
+	prev    Token  // previous token (for error reporting)
+	nextBuf Token  // buffered next token for 2-token lookahead
+	hasNext bool   // whether nextBuf is valid
 }
 
 // Parse parses a T-SQL string into an AST list.
@@ -24,7 +26,8 @@ type Parser struct {
 // implemented incrementally across batches.
 func Parse(sql string) (*nodes.List, error) {
 	p := &Parser{
-		lexer: NewLexer(sql),
+		lexer:  NewLexer(sql),
+		source: sql,
 	}
 	p.advance()
 
@@ -35,9 +38,17 @@ func Parse(sql string) (*nodes.List, error) {
 			p.advance()
 			continue
 		}
+		// Check for lexer errors before parsing statement.
+		if p.lexer.Err != nil {
+			return nil, p.lexerError()
+		}
 		stmt, err := p.parseStmt()
 		if err != nil {
 			return nil, err
+		}
+		// Check for lexer errors after parsing statement.
+		if p.lexer.Err != nil {
+			return nil, p.lexerError()
 		}
 		if stmt == nil {
 			if p.cur.Type != tokEOF {
@@ -2454,6 +2465,60 @@ func (p *Parser) pos() int {
 func (p *Parser) unexpectedToken() error {
 	return &ParseError{
 		Message:  "unexpected token",
+		Position: p.cur.Loc,
+	}
+}
+
+// tokenText extracts the source text for a token. It uses the token's Str
+// field if available, otherwise falls back to the single-character representation
+// for operator tokens. Returns "" for EOF or unknown tokens.
+func (p *Parser) tokenText(tok Token) string {
+	if tok.Type == tokEOF {
+		return ""
+	}
+	if tok.Str != "" {
+		return tok.Str
+	}
+	// For single-char operator tokens (e.g. '+', '-', '*', '/', etc.)
+	if tok.Type > 0 && tok.Type < 256 {
+		return string(rune(tok.Type))
+	}
+	return ""
+}
+
+// lexerError wraps the lexer's error (p.lexer.Err) into a ParseError with
+// position information from the current token.
+func (p *Parser) lexerError() *ParseError {
+	msg := "lexer error"
+	if p.lexer.Err != nil {
+		msg = p.lexer.Err.Error()
+	}
+	return &ParseError{
+		Message:  msg,
+		Position: p.cur.Loc,
+	}
+}
+
+// syntaxErrorAtCur returns a ParseError with "at or near" context for the
+// current token, or "at end of input" if the current token is EOF.
+func (p *Parser) syntaxErrorAtCur() *ParseError {
+	text := p.tokenText(p.cur)
+	var msg string
+	if text == "" {
+		msg = "syntax error at end of input"
+	} else {
+		msg = fmt.Sprintf("syntax error at or near \"%s\"", text)
+	}
+	return &ParseError{
+		Message:  msg,
+		Position: p.cur.Loc,
+	}
+}
+
+// syntaxErrorAtEnd returns a ParseError for unexpected end-of-input.
+func (p *Parser) syntaxErrorAtEnd() *ParseError {
+	return &ParseError{
+		Message:  "syntax error at end of input",
 		Position: p.cur.Loc,
 	}
 }

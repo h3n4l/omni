@@ -279,12 +279,12 @@ After dual return is in place, add nil checks after advance+parse patterns. Each
 
 ### 3.1 Parser Infrastructure
 
-- [ ] Add `source string` field to Parser struct, populated in `Parse()`
-- [ ] Add `lexerError()` method that wraps `p.lexer.Err` with position
-- [ ] Add lexer error check in main parse loop (before and after each statement)
-- [ ] `syntaxErrorAtCur()` helper returns `ParseError` with "at or near" context
-- [ ] `syntaxErrorAtEnd()` helper returns `ParseError` for end-of-input
-- [ ] Build passes after 3.1
+- [x] Add `source string` field to Parser struct, populated in `Parse()`
+- [x] Add `lexerError()` method that wraps `p.lexer.Err` with position
+- [x] Add lexer error check in main parse loop (before and after each statement)
+- [x] `syntaxErrorAtCur()` helper returns `ParseError` with "at or near" context
+- [x] `syntaxErrorAtEnd()` helper returns `ParseError` for end-of-input
+- [x] Build passes after 3.1
 
 ### 3.2 ParseError Enhancement
 
