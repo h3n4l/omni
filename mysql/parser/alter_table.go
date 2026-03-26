@@ -103,7 +103,11 @@ func (p *Parser) parseAlterTableCmd() (*nodes.AlterTableCmd, error) {
 		p.advance()
 		p.match('=')
 		cmd.Type = nodes.ATAlgorithm
-		cmd.Name = p.consumeOptionValue()
+		val, err := p.consumeOptionValue()
+		if err != nil {
+			return nil, err
+		}
+		cmd.Name = val
 		cmd.Loc.End = p.pos()
 		return cmd, nil
 
@@ -111,7 +115,11 @@ func (p *Parser) parseAlterTableCmd() (*nodes.AlterTableCmd, error) {
 		p.advance()
 		p.match('=')
 		cmd.Type = nodes.ATLock
-		cmd.Name = p.consumeOptionValue()
+		val, err := p.consumeOptionValue()
+		if err != nil {
+			return nil, err
+		}
+		cmd.Name = val
 		cmd.Loc.End = p.pos()
 		return cmd, nil
 
@@ -302,7 +310,10 @@ func (p *Parser) parseAlterTableCmd() (*nodes.AlterTableCmd, error) {
 			}
 		}
 		// Try table options: ENGINE, CHARSET, etc.
-		opt, ok := p.parseTableOption()
+		opt, ok, err := p.parseTableOption()
+		if err != nil {
+			return nil, err
+		}
 		if ok {
 			cmd.Type = nodes.ATTableOption
 			cmd.Option = opt
@@ -738,11 +749,18 @@ func (p *Parser) parseAlterConvert(cmd *nodes.AlterTableCmd) (*nodes.AlterTableC
 	p.match(kwCHARACTER)
 	p.match(kwSET)
 
-	charset := p.consumeOptionValue()
+	charset, err := p.consumeOptionValue()
+	if err != nil {
+		return nil, err
+	}
 	cmd.Name = charset
 
 	if _, ok := p.match(kwCOLLATE); ok {
-		cmd.NewName = p.consumeOptionValue()
+		collation, err := p.consumeOptionValue()
+		if err != nil {
+			return nil, err
+		}
+		cmd.NewName = collation
 	}
 
 	cmd.Loc.End = p.pos()

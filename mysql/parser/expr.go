@@ -131,7 +131,7 @@ func (p *Parser) parseExprPrec(minPrec int) (nodes.ExprNode, error) {
 		}
 
 		left = &nodes.BinaryExpr{
-			Loc:   nodes.Loc{Start: opStart},
+			Loc:   nodes.Loc{Start: opStart, End: p.pos()},
 			Op:    binOp,
 			Left:  left,
 			Right: right,
@@ -273,7 +273,7 @@ func (p *Parser) parseUnaryExpr(op nodes.UnaryOp) (nodes.ExprNode, error) {
 	}
 
 	return &nodes.UnaryExpr{
-		Loc:     nodes.Loc{Start: start},
+		Loc:     nodes.Loc{Start: start, End: p.pos()},
 		Op:      op,
 		Operand: operand,
 	}, nil
@@ -284,23 +284,23 @@ func (p *Parser) parsePrimaryExpr() (nodes.ExprNode, error) {
 	switch p.cur.Type {
 	case tokICONST:
 		tok := p.advance()
-		return &nodes.IntLit{Loc: nodes.Loc{Start: tok.Loc}, Value: tok.Ival}, nil
+		return &nodes.IntLit{Loc: nodes.Loc{Start: tok.Loc, End: p.pos()}, Value: tok.Ival}, nil
 
 	case tokFCONST:
 		tok := p.advance()
-		return &nodes.FloatLit{Loc: nodes.Loc{Start: tok.Loc}, Value: tok.Str}, nil
+		return &nodes.FloatLit{Loc: nodes.Loc{Start: tok.Loc, End: p.pos()}, Value: tok.Str}, nil
 
 	case tokSCONST:
 		tok := p.advance()
-		return &nodes.StringLit{Loc: nodes.Loc{Start: tok.Loc}, Value: tok.Str}, nil
+		return &nodes.StringLit{Loc: nodes.Loc{Start: tok.Loc, End: p.pos()}, Value: tok.Str}, nil
 
 	case tokXCONST:
 		tok := p.advance()
-		return &nodes.HexLit{Loc: nodes.Loc{Start: tok.Loc}, Value: tok.Str}, nil
+		return &nodes.HexLit{Loc: nodes.Loc{Start: tok.Loc, End: p.pos()}, Value: tok.Str}, nil
 
 	case tokBCONST:
 		tok := p.advance()
-		return &nodes.BitLit{Loc: nodes.Loc{Start: tok.Loc}, Value: tok.Str}, nil
+		return &nodes.BitLit{Loc: nodes.Loc{Start: tok.Loc, End: p.pos()}, Value: tok.Str}, nil
 
 	case kwTRUE:
 		tok := p.advance()
@@ -347,7 +347,7 @@ func (p *Parser) parsePrimaryExpr() (nodes.ExprNode, error) {
 
 	case '*':
 		tok := p.advance()
-		return &nodes.StarExpr{Loc: nodes.Loc{Start: tok.Loc}}, nil
+		return &nodes.StarExpr{Loc: nodes.Loc{Start: tok.Loc, End: p.pos()}}, nil
 
 	case '(':
 		return p.parseParenExpr()

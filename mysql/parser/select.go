@@ -689,14 +689,15 @@ func (p *Parser) parseTableReference() (nodes.TableExpr, error) {
 		}
 
 		// ON or USING condition
+		condStart := p.pos()
 		if _, ok := p.match(kwON); ok {
-			condStart := p.pos()
+			condStart = p.pos()
 			cond, err := p.parseExpr()
 			if err != nil {
 				return nil, err
 			}
 			join.Condition = &nodes.OnCondition{
-				Loc:  nodes.Loc{Start: condStart},
+				Loc:  nodes.Loc{Start: condStart, End: p.pos()},
 				Expr: cond,
 			}
 		} else if _, ok := p.match(kwUSING); ok {
@@ -704,7 +705,7 @@ func (p *Parser) parseTableReference() (nodes.TableExpr, error) {
 			if err != nil {
 				return nil, err
 			}
-			join.Condition = &nodes.UsingCondition{Columns: cols}
+			join.Condition = &nodes.UsingCondition{Loc: nodes.Loc{Start: condStart, End: p.pos()}, Columns: cols}
 		}
 
 		join.Loc.End = p.pos()

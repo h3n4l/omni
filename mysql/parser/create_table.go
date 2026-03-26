@@ -119,7 +119,10 @@ func (p *Parser) parseCreateTableStmt(temporary bool) (*nodes.CreateTableStmt, e
 
 	// Table options
 	for {
-		opt, ok := p.parseTableOption()
+		opt, ok, err := p.parseTableOption()
+		if err != nil {
+			return nil, err
+		}
 		if !ok {
 			break
 		}
@@ -945,21 +948,27 @@ func (p *Parser) parseIndexTypeClause(constr *nodes.Constraint) {
 //	ROW_FORMAT [=] format
 //	KEY_BLOCK_SIZE [=] value
 //	And many more...
-func (p *Parser) parseTableOption() (*nodes.TableOption, bool) {
+func (p *Parser) parseTableOption() (*nodes.TableOption, bool, error) {
 	start := p.pos()
 
 	switch p.cur.Type {
 	case kwENGINE:
 		p.advance()
 		p.match('=')
-		val := p.consumeOptionValue()
-		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "ENGINE", Value: val}, true
+		val, err := p.consumeOptionValue()
+		if err != nil {
+			return nil, false, err
+		}
+		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "ENGINE", Value: val}, true, nil
 
 	case kwAUTO_INCREMENT:
 		p.advance()
 		p.match('=')
-		val := p.consumeOptionValue()
-		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "AUTO_INCREMENT", Value: val}, true
+		val, err := p.consumeOptionValue()
+		if err != nil {
+			return nil, false, err
+		}
+		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "AUTO_INCREMENT", Value: val}, true, nil
 
 	case kwDEFAULT:
 		// DEFAULT CHARSET or DEFAULT CHARACTER SET or DEFAULT COLLATE
@@ -968,28 +977,37 @@ func (p *Parser) parseTableOption() (*nodes.TableOption, bool) {
 			p.advance() // consume DEFAULT
 			return p.parseTableOption()
 		}
-		return nil, false
+		return nil, false, nil
 
 	case kwCHARSET:
 		p.advance()
 		p.match('=')
-		val := p.consumeOptionValue()
-		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "CHARSET", Value: val}, true
+		val, err := p.consumeOptionValue()
+		if err != nil {
+			return nil, false, err
+		}
+		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "CHARSET", Value: val}, true, nil
 
 	case kwCHARACTER:
 		p.advance()
 		if _, ok := p.match(kwSET); ok {
 			p.match('=')
-			val := p.consumeOptionValue()
-			return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "CHARACTER SET", Value: val}, true
+			val, err := p.consumeOptionValue()
+			if err != nil {
+				return nil, false, err
+			}
+			return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "CHARACTER SET", Value: val}, true, nil
 		}
-		return nil, false
+		return nil, false, nil
 
 	case kwCOLLATE:
 		p.advance()
 		p.match('=')
-		val := p.consumeOptionValue()
-		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "COLLATE", Value: val}, true
+		val, err := p.consumeOptionValue()
+		if err != nil {
+			return nil, false, err
+		}
+		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "COLLATE", Value: val}, true, nil
 
 	case kwCOMMENT:
 		p.advance()
@@ -999,13 +1017,16 @@ func (p *Parser) parseTableOption() (*nodes.TableOption, bool) {
 			val = p.cur.Str
 			p.advance()
 		}
-		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "COMMENT", Value: val}, true
+		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "COMMENT", Value: val}, true, nil
 
 	case kwROW_FORMAT:
 		p.advance()
 		p.match('=')
-		val := p.consumeOptionValue()
-		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "ROW_FORMAT", Value: val}, true
+		val, err := p.consumeOptionValue()
+		if err != nil {
+			return nil, false, err
+		}
+		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "ROW_FORMAT", Value: val}, true, nil
 
 	case kwCONNECTION:
 		p.advance()
@@ -1015,7 +1036,7 @@ func (p *Parser) parseTableOption() (*nodes.TableOption, bool) {
 			val = p.cur.Str
 			p.advance()
 		}
-		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "CONNECTION", Value: val}, true
+		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "CONNECTION", Value: val}, true, nil
 
 	case kwPASSWORD:
 		p.advance()
@@ -1025,50 +1046,65 @@ func (p *Parser) parseTableOption() (*nodes.TableOption, bool) {
 			val = p.cur.Str
 			p.advance()
 		}
-		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "PASSWORD", Value: val}, true
+		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "PASSWORD", Value: val}, true, nil
 
 	case kwSTORAGE:
 		p.advance()
 		p.match('=')
-		val := p.consumeOptionValue()
-		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "STORAGE", Value: val}, true
+		val, err := p.consumeOptionValue()
+		if err != nil {
+			return nil, false, err
+		}
+		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "STORAGE", Value: val}, true, nil
 
 	case kwSTART:
 		// START TRANSACTION (used for versioned tables)
 		if next := p.peekNext(); next.Type == kwTRANSACTION {
 			p.advance() // consume START
 			p.advance() // consume TRANSACTION
-			return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "START TRANSACTION", Value: ""}, true
+			return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "START TRANSACTION", Value: ""}, true, nil
 		}
-		return nil, false
+		return nil, false, nil
 
 	case kwCHECKSUM:
 		// CHECKSUM [=] {0 | 1}
 		p.advance()
 		p.match('=')
-		val := p.consumeOptionValue()
-		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "CHECKSUM", Value: val}, true
+		val, err := p.consumeOptionValue()
+		if err != nil {
+			return nil, false, err
+		}
+		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "CHECKSUM", Value: val}, true, nil
 
 	case kwTABLESPACE:
 		// TABLESPACE tablespace_name [STORAGE {DISK | MEMORY}]
 		p.advance()
 		p.match('=')
-		val := p.consumeOptionValue()
+		val, err := p.consumeOptionValue()
+		if err != nil {
+			return nil, false, err
+		}
 		opt := &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "TABLESPACE", Value: val}
 		if p.cur.Type == kwSTORAGE {
 			p.advance()
-			storageVal := p.consumeOptionValue()
+			storageVal, err := p.consumeOptionValue()
+			if err != nil {
+				return nil, false, err
+			}
 			opt.Storage = storageVal
 		}
 		opt.Loc.End = p.pos()
-		return opt, true
+		return opt, true, nil
 
 	case kwENCRYPTION:
 		// ENCRYPTION [=] {'Y' | 'N'}
 		p.advance()
 		p.match('=')
-		val := p.consumeOptionValue()
-		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "ENCRYPTION", Value: val}, true
+		val, err := p.consumeOptionValue()
+		if err != nil {
+			return nil, false, err
+		}
+		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "ENCRYPTION", Value: val}, true, nil
 
 	case kwUNION:
 		// UNION [=] (tbl_name[,tbl_name]...)
@@ -1078,11 +1114,14 @@ func (p *Parser) parseTableOption() (*nodes.TableOption, bool) {
 			names, err := p.parseParenIdentList()
 			if err == nil {
 				val := strings.Join(names, ",")
-				return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "UNION", Value: val}, true
+				return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "UNION", Value: val}, true, nil
 			}
 		}
-		val := p.consumeOptionValue()
-		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "UNION", Value: val}, true
+		val, err := p.consumeOptionValue()
+		if err != nil {
+			return nil, false, err
+		}
+		return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "UNION", Value: val}, true, nil
 
 	case kwINDEX:
 		// INDEX DIRECTORY [=] 'path' (as table option)
@@ -1090,10 +1129,13 @@ func (p *Parser) parseTableOption() (*nodes.TableOption, bool) {
 			p.advance() // consume INDEX
 			p.advance() // consume DIRECTORY
 			p.match('=')
-			val := p.consumeOptionValue()
-			return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "INDEX DIRECTORY", Value: val}, true
+			val, err := p.consumeOptionValue()
+			if err != nil {
+				return nil, false, err
+			}
+			return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "INDEX DIRECTORY", Value: val}, true, nil
 		}
-		return nil, false
+		return nil, false, nil
 
 	case kwDATA:
 		// DATA DIRECTORY [=] 'path'
@@ -1101,10 +1143,13 @@ func (p *Parser) parseTableOption() (*nodes.TableOption, bool) {
 			p.advance() // consume DATA
 			p.advance() // consume DIRECTORY
 			p.match('=')
-			val := p.consumeOptionValue()
-			return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "DATA DIRECTORY", Value: val}, true
+			val, err := p.consumeOptionValue()
+			if err != nil {
+				return nil, false, err
+			}
+			return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "DATA DIRECTORY", Value: val}, true, nil
 		}
-		return nil, false
+		return nil, false, nil
 	}
 
 	// Handle identifier-based options: KEY_BLOCK_SIZE, STATS_AUTO_RECALC, etc.
@@ -1128,21 +1173,24 @@ func (p *Parser) parseTableOption() (*nodes.TableOption, bool) {
 			eqFold(optName, "engine_attribute"):
 			p.advance()
 			p.match('=')
-			val := p.consumeOptionValue()
-			return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: optName, Value: val}, true
+			val, err := p.consumeOptionValue()
+			if err != nil {
+				return nil, false, err
+			}
+			return &nodes.TableOption{Loc: nodes.Loc{Start: start, End: p.pos()}, Name: optName, Value: val}, true, nil
 		}
 	}
 
-	return nil, false
+	return nil, false, nil
 }
 
 // consumeOptionValue reads the next token as an option value string.
-func (p *Parser) consumeOptionValue() string {
+func (p *Parser) consumeOptionValue() (string, error) {
 	switch p.cur.Type {
 	case tokSCONST:
 		val := p.cur.Str
 		p.advance()
-		return val
+		return val, nil
 	case tokICONST:
 		val := p.cur.Str
 		if val == "" {
@@ -1150,13 +1198,16 @@ func (p *Parser) consumeOptionValue() string {
 			val = string(rune('0' + p.cur.Ival))
 		}
 		p.advance()
-		return val
+		return val, nil
 	default:
 		if p.isIdentToken() {
-			name, _, _ := p.parseIdentifier()
-			return name
+			name, _, err := p.parseIdentifier()
+			if err != nil {
+				return "", err
+			}
+			return name, nil
 		}
-		return ""
+		return "", nil
 	}
 }
 
@@ -1464,7 +1515,10 @@ func (p *Parser) parsePartitionDef() (*nodes.PartitionDef, error) {
 
 	// Optional table options for partition
 	for {
-		opt, ok := p.parseTableOption()
+		opt, ok, err := p.parseTableOption()
+		if err != nil {
+			return nil, err
+		}
 		if !ok {
 			break
 		}
@@ -1514,7 +1568,10 @@ func (p *Parser) parseSubPartitionDef() (*nodes.SubPartitionDef, error) {
 		Name: name,
 	}
 	for {
-		opt, ok := p.parseTableOption()
+		opt, ok, err := p.parseTableOption()
+		if err != nil {
+			return nil, err
+		}
 		if !ok {
 			break
 		}

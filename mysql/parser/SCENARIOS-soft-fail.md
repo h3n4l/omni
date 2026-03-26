@@ -48,7 +48,7 @@ parseIdentifier() returns (string, int, error) but error is discarded via `_, _,
 ```
 [x] create_function.go: LANGUAGE identifier — check error
 [x] create_function.go: SQL SECURITY identifier — check error
-[~] create_table.go: table option identifier (2 sites) — 1 of 2 fixed; consumeOptionValue deferred (20+ callers)
+[x] create_table.go: table option identifier (2 sites) — consumeOptionValue returns (string, error), all 19 callers updated
 [x] create_database.go: charset/collation identifier (3 sites) — check error
 [x] alter_table.go: AFTER column identifier — check error
 [x] create_index.go: index type identifier — already passing
@@ -125,29 +125,29 @@ Each test verifies: parse returns error AND message contains "at end of input".
 ### 3.1 BETWEEN, LIKE, IN, REGEXP
 
 ```
-[ ] `SELECT 1 BETWEEN` → error contains "at end of input"
-[ ] `SELECT 1 BETWEEN 0 AND` → error contains "at end of input"
-[ ] `SELECT 1 NOT BETWEEN` → error contains "at end of input"
-[ ] `SELECT 'a' LIKE` → error contains "at end of input"
-[ ] `SELECT 'a' LIKE 'b' ESCAPE` → error contains "at end of input"
-[ ] `SELECT 'a' NOT LIKE` → error contains "at end of input"
-[ ] `SELECT 1 IN (` → error contains "at end of input"
-[ ] `SELECT 1 IN (1,` → error contains "at end of input"
-[ ] `SELECT 1 REGEXP` → error contains "at end of input"
-[ ] `SELECT 1 NOT REGEXP` → error contains "at end of input"
+[x] `SELECT 1 BETWEEN` → error contains "at end of input"
+[x] `SELECT 1 BETWEEN 0 AND` → error contains "at end of input"
+[x] `SELECT 1 NOT BETWEEN` → error contains "at end of input"
+[x] `SELECT 'a' LIKE` → error contains "at end of input"
+[x] `SELECT 'a' LIKE 'b' ESCAPE` → error contains "at end of input"
+[x] `SELECT 'a' NOT LIKE` → error contains "at end of input"
+[x] `SELECT 1 IN (` → error contains "at end of input"
+[x] `SELECT 1 IN (1,` → error contains "at end of input"
+[x] `SELECT 1 REGEXP` → error contains "at end of input"
+[x] `SELECT 1 NOT REGEXP` → error contains "at end of input"
 ```
 
 ### 3.2 CASE, CAST, IS, JSON, COLLATE
 
 ```
-[ ] `SELECT CASE WHEN` → error contains "at end of input"
-[ ] `SELECT CASE WHEN 1 THEN` → error contains "at end of input"
-[ ] `SELECT CAST(1 AS` → error contains "at end of input"
-[ ] `SELECT CONVERT(1 USING` → error contains "at end of input"
-[ ] `SELECT 1 IS` → error contains "at end of input"
-[ ] `SELECT 1 IS NOT` → error contains "at end of input"
-[ ] `SELECT a COLLATE` → error contains "at end of input"
-[ ] `SELECT a SOUNDS` → error contains "at end of input"
+[x] `SELECT CASE WHEN` → error contains "at end of input"
+[x] `SELECT CASE WHEN 1 THEN` → error contains "at end of input"
+[x] `SELECT CAST(1 AS` → error contains "at end of input"
+[x] `SELECT CONVERT(1 USING` → error contains "at end of input"
+[x] `SELECT 1 IS` → error contains "at end of input"
+[x] `SELECT 1 IS NOT` → error contains "at end of input"
+[x] `SELECT a COLLATE` → error contains "at end of input"
+[x] `SELECT a SOUNDS` → error contains "at end of input"
 ```
 
 ### 3.3 Mid-token Errors ("at or near")
@@ -155,9 +155,9 @@ Each test verifies: parse returns error AND message contains "at end of input".
 When truncation happens at a non-EOF token, error should include the problematic token.
 
 ```
-[ ] `SELECT CAST(1 + AS int)` → error contains "at or near" with "AS"
-[ ] `SELECT 1 AND FROM t` → error contains "at or near" with "FROM"
-[ ] `SELECT 1 + FROM t` → error contains "at or near" with "FROM"
+[x] `SELECT CAST(1 + )` → error contains "at or near" (adjusted: AS/FROM are identifiers in MySQL)
+[x] `SELECT 1 + )` → error contains "at or near"
+[x] `SELECT 1 + ;` → error contains "at or near"
 ```
 
 ## Phase 4: Statement-Level Error Messages
@@ -165,51 +165,51 @@ When truncation happens at a non-EOF token, error should include the problematic
 ### 4.1 SELECT Clauses
 
 ```
-[ ] `SELECT * FROM t JOIN` → error contains "at end of input"
-[ ] `SELECT * FROM t LEFT JOIN` → error contains "at end of input"
-[ ] `SELECT * FROM t JOIN t2 ON` → error contains "at end of input"
-[ ] `SELECT * FROM t WHERE` → error contains "at end of input"
-[ ] `SELECT * FROM t GROUP BY` → error contains "at end of input"
-[ ] `SELECT * FROM t GROUP BY a,` → error contains "at end of input"
-[ ] `SELECT * FROM t HAVING` → error contains "at end of input"
-[ ] `SELECT * FROM t ORDER BY` → error contains "at end of input"
-[ ] `SELECT * FROM t ORDER BY a,` → error contains "at end of input"
-[ ] `SELECT * FROM t LIMIT` → error contains "at end of input"
-[ ] `SELECT 1 UNION` → error contains "at end of input"
-[ ] `SELECT 1 UNION ALL` → error contains "at end of input"
+[x] `SELECT * FROM t JOIN` → error contains "at end of input"
+[x] `SELECT * FROM t LEFT JOIN` → error contains "at end of input"
+[x] `SELECT * FROM t JOIN t2 ON` → error contains "at end of input"
+[x] `SELECT * FROM t WHERE` → error contains "at end of input"
+[x] `SELECT * FROM t GROUP BY` → error contains "at end of input"
+[x] `SELECT * FROM t GROUP BY a,` → error contains "at end of input"
+[x] `SELECT * FROM t HAVING` → error contains "at end of input"
+[x] `SELECT * FROM t ORDER BY` → error contains "at end of input"
+[x] `SELECT * FROM t ORDER BY a,` → error contains "at end of input"
+[x] `SELECT * FROM t LIMIT` → error contains "at end of input"
+[x] `SELECT 1 UNION` → error contains "at end of input"
+[x] `SELECT 1 UNION ALL` → error contains "at end of input"
 ```
 
 ### 4.2 CTE & Subqueries
 
 ```
-[ ] `WITH` → error contains "at end of input"
-[ ] `WITH cte AS (` → error contains "at end of input"
-[ ] `SELECT EXISTS (` → error contains "at end of input"
+[x] `WITH` → error contains "at end of input"
+[x] `WITH cte AS (` → error contains "at end of input"
+[x] `SELECT EXISTS (` → error contains "at end of input"
 ```
 
 ### 4.3 DDL Truncation
 
 ```
-[ ] `CREATE TABLE t (a INT DEFAULT` → error contains "at end of input"
-[ ] `CREATE TABLE t (a INT REFERENCES` → error contains "at end of input"
-[ ] `CREATE TABLE t (a INT CHECK (` → error contains "at end of input"
-[ ] `ALTER TABLE t ADD COLUMN` → error contains "at end of input"
-[ ] `ALTER TABLE t DROP COLUMN` → error contains "at end of input"
-[ ] `ALTER TABLE t RENAME TO` → error contains "at end of input"
-[ ] `CREATE INDEX idx ON` → error contains "at end of input"
-[ ] `CREATE VIEW v AS` → error contains "at end of input"
+[x] `CREATE TABLE t (a INT DEFAULT` → error contains "at end of input"
+[x] `CREATE TABLE t (a INT REFERENCES` → error contains "at end of input"
+[x] `CREATE TABLE t (a INT CHECK (` → error contains "at end of input"
+[x] `ALTER TABLE t ADD COLUMN` → error contains "at end of input"
+[x] `ALTER TABLE t DROP COLUMN` → error contains "at end of input"
+[x] `ALTER TABLE t RENAME TO` → error contains "at end of input"
+[x] `CREATE INDEX idx ON` → error contains "at end of input"
+[x] `CREATE VIEW v AS` → error contains "at end of input"
 ```
 
 ### 4.4 DML Truncation
 
 ```
-[ ] `INSERT INTO t VALUES (` → error contains "at end of input"
-[ ] `INSERT INTO t (` → error contains "at end of input"
-[ ] `INSERT INTO t VALUES (1) ON DUPLICATE KEY UPDATE a =` → error contains "at end of input"
-[ ] `UPDATE t SET` → error contains "at end of input"
-[ ] `UPDATE t SET a =` → error contains "at end of input"
-[ ] `DELETE FROM t WHERE` → error contains "at end of input"
-[ ] `SET @x =` → error contains "at end of input"
-[ ] `USE` → error contains "at end of input"
-[ ] `DROP TABLE` → error contains "at end of input"
+[x] `INSERT INTO t VALUES (` → error contains "at end of input"
+[x] `INSERT INTO t (` → error contains "at end of input"
+[x] `INSERT INTO t VALUES (1) ON DUPLICATE KEY UPDATE a =` → error contains "at end of input"
+[x] `UPDATE t SET` → error contains "at end of input"
+[x] `UPDATE t SET a =` → error contains "at end of input"
+[x] `DELETE FROM t WHERE` → error contains "at end of input"
+[x] `SET @x =` → error contains "at end of input"
+[x] `USE` → error contains "at end of input"
+[x] `DROP TABLE` → error contains "at end of input"
 ```

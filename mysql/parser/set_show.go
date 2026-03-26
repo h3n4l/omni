@@ -41,9 +41,9 @@ func (p *Parser) parseSetStmt() (nodes.Node, error) {
 		}
 		// Build assignment: NAMES = charset
 		stmt.Assignments = append(stmt.Assignments, &nodes.Assignment{
-			Loc:    nodes.Loc{Start: charsetLoc},
-			Column: &nodes.ColumnRef{Loc: nodes.Loc{Start: charsetLoc}, Column: "NAMES"},
-			Value:  &nodes.StringLit{Loc: nodes.Loc{Start: charsetLoc}, Value: charset},
+			Loc:    nodes.Loc{Start: charsetLoc, End: p.pos()},
+			Column: &nodes.ColumnRef{Loc: nodes.Loc{Start: charsetLoc, End: p.pos()}, Column: "NAMES"},
+			Value:  &nodes.StringLit{Loc: nodes.Loc{Start: charsetLoc, End: p.pos()}, Value: charset},
 		})
 		// Optional COLLATE (not valid with DEFAULT, but we parse it anyway)
 		if _, ok := p.match(kwCOLLATE); ok {
@@ -52,9 +52,9 @@ func (p *Parser) parseSetStmt() (nodes.Node, error) {
 				return nil, err
 			}
 			stmt.Assignments = append(stmt.Assignments, &nodes.Assignment{
-				Loc:    nodes.Loc{Start: collLoc},
-				Column: &nodes.ColumnRef{Loc: nodes.Loc{Start: collLoc}, Column: "COLLATE"},
-				Value:  &nodes.StringLit{Loc: nodes.Loc{Start: collLoc}, Value: collation},
+				Loc:    nodes.Loc{Start: collLoc, End: p.pos()},
+				Column: &nodes.ColumnRef{Loc: nodes.Loc{Start: collLoc, End: p.pos()}, Column: "COLLATE"},
+				Value:  &nodes.StringLit{Loc: nodes.Loc{Start: collLoc, End: p.pos()}, Value: collation},
 			})
 		}
 		stmt.Loc.End = p.pos()
@@ -83,9 +83,9 @@ func (p *Parser) parseSetStmt() (nodes.Node, error) {
 				}
 			}
 			stmt.Assignments = append(stmt.Assignments, &nodes.Assignment{
-				Loc:    nodes.Loc{Start: charsetLoc},
-				Column: &nodes.ColumnRef{Loc: nodes.Loc{Start: charsetLoc}, Column: "CHARACTER SET"},
-				Value:  &nodes.StringLit{Loc: nodes.Loc{Start: charsetLoc}, Value: charset},
+				Loc:    nodes.Loc{Start: charsetLoc, End: p.pos()},
+				Column: &nodes.ColumnRef{Loc: nodes.Loc{Start: charsetLoc, End: p.pos()}, Column: "CHARACTER SET"},
+				Value:  &nodes.StringLit{Loc: nodes.Loc{Start: charsetLoc, End: p.pos()}, Value: charset},
 			})
 			stmt.Loc.End = p.pos()
 			return stmt, nil
