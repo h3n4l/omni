@@ -103,10 +103,7 @@ func (p *Parser) parseExecStmt() (*nodes.ExecStmt, error) {
 		return nil, err
 	}
 	if name == nil {
-		return nil, &ParseError{
-			Message:  "expected procedure name after EXEC",
-			Position: p.cur.Loc,
-		}
+		return nil, p.newParseError(p.cur.Loc, "expected procedure name after EXEC")
 	}
 	stmt.Name = name
 

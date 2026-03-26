@@ -288,12 +288,12 @@ After dual return is in place, add nil checks after advance+parse patterns. Each
 
 ### 3.2 ParseError Enhancement
 
-- [ ] `ParseError` struct gains `Source string` field for original SQL
-- [ ] `ParseError.Error()` includes "at or near" text extracted from source
-- [ ] `ParseError.Error()` distinguishes end-of-input ("at end of input") vs mid-input ("at or near 'X'")
-- [ ] Position information is accurate for multi-line SQL
-- [ ] `expect()` uses enhanced `ParseError` with context
-- [ ] Error messages for truncated `SELECT 1 OR` say "at end of input"
-- [ ] Error messages for invalid token mid-statement say "at or near" with the token text
-- [ ] All existing tests still pass with new error format
-- [ ] Build passes after 3.2
+- [x] `ParseError` struct gains `Source string` field for original SQL
+- [x] `ParseError.Error()` includes "at or near" text extracted from source
+- [x] `ParseError.Error()` distinguishes end-of-input ("at end of input") vs mid-input ("at or near 'X'")
+- [x] Position information is accurate for multi-line SQL
+- [x] `expect()` uses enhanced `ParseError` with context
+- [x] Error messages for truncated `SELECT 1 OR` say "at end of input"
+- [x] Error messages for invalid token mid-statement say "at or near" with the token text
+- [x] All existing tests still pass with new error format
+- [x] Build passes after 3.2

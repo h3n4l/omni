@@ -46,10 +46,7 @@ func (p *Parser) parsePrintStmt() (*nodes.PrintStmt, error) {
 		return nil, err
 	}
 	if expr == nil {
-		return nil, &ParseError{
-			Message:  "expected expression after PRINT",
-			Position: p.cur.Loc,
-		}
+		return nil, p.newParseError(p.cur.Loc, "expected expression after PRINT")
 	}
 	stmt.Expr = expr
 

@@ -28,10 +28,7 @@ func (p *Parser) parseIfStmt() (*nodes.IfStmt, error) {
 		return nil, err
 	}
 	if cond == nil {
-		return nil, &ParseError{
-			Message:  "expected condition after IF",
-			Position: p.cur.Loc,
-		}
+		return nil, p.newParseError(p.cur.Loc, "expected condition after IF")
 	}
 	stmt.Condition = cond
 	then, err := p.parseStmt()
@@ -39,10 +36,7 @@ func (p *Parser) parseIfStmt() (*nodes.IfStmt, error) {
 		return nil, err
 	}
 	if then == nil {
-		return nil, &ParseError{
-			Message:  "expected statement after IF condition",
-			Position: p.cur.Loc,
-		}
+		return nil, p.newParseError(p.cur.Loc, "expected statement after IF condition")
 	}
 	stmt.Then = then
 
@@ -78,10 +72,7 @@ func (p *Parser) parseWhileStmt() (*nodes.WhileStmt, error) {
 		return nil, err
 	}
 	if cond == nil {
-		return nil, &ParseError{
-			Message:  "expected condition after WHILE",
-			Position: p.cur.Loc,
-		}
+		return nil, p.newParseError(p.cur.Loc, "expected condition after WHILE")
 	}
 	stmt.Condition = cond
 	body, err := p.parseStmt()
@@ -89,10 +80,7 @@ func (p *Parser) parseWhileStmt() (*nodes.WhileStmt, error) {
 		return nil, err
 	}
 	if body == nil {
-		return nil, &ParseError{
-			Message:  "expected statement after WHILE condition",
-			Position: p.cur.Loc,
-		}
+		return nil, p.newParseError(p.cur.Loc, "expected statement after WHILE condition")
 	}
 	stmt.Body = body
 

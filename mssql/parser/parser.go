@@ -52,10 +52,7 @@ func Parse(sql string) (*nodes.List, error) {
 		}
 		if stmt == nil {
 			if p.cur.Type != tokEOF {
-				return nil, &ParseError{
-					Message:  "unexpected token in statement",
-					Position: p.cur.Loc,
-				}
+				return nil, p.syntaxErrorAtCur()
 			}
 			break
 		}
@@ -2450,10 +2447,7 @@ func (p *Parser) expect(tokenType int) (Token, error) {
 	if p.cur.Type == tokenType {
 		return p.advance(), nil
 	}
-	return Token{}, &ParseError{
-		Message:  "unexpected token",
-		Position: p.cur.Loc,
-	}
+	return Token{}, p.syntaxErrorAtCur()
 }
 
 // pos returns the byte position of the current token.
@@ -2463,10 +2457,7 @@ func (p *Parser) pos() int {
 
 // unexpectedToken returns a ParseError for the current token position.
 func (p *Parser) unexpectedToken() error {
-	return &ParseError{
-		Message:  "unexpected token",
-		Position: p.cur.Loc,
-	}
+	return p.syntaxErrorAtCur()
 }
 
 // tokenText extracts the source text for a token. It uses the token's Str
@@ -2496,6 +2487,7 @@ func (p *Parser) lexerError() *ParseError {
 	return &ParseError{
 		Message:  msg,
 		Position: p.cur.Loc,
+		Source:   p.source,
 	}
 }
 
@@ -2512,6 +2504,7 @@ func (p *Parser) syntaxErrorAtCur() *ParseError {
 	return &ParseError{
 		Message:  msg,
 		Position: p.cur.Loc,
+		Source:   p.source,
 	}
 }
 
@@ -2520,6 +2513,16 @@ func (p *Parser) syntaxErrorAtEnd() *ParseError {
 	return &ParseError{
 		Message:  "syntax error at end of input",
 		Position: p.cur.Loc,
+		Source:   p.source,
+	}
+}
+
+// newParseError creates a ParseError with Source automatically set from the parser.
+func (p *Parser) newParseError(pos int, msg string) *ParseError {
+	return &ParseError{
+		Message:  msg,
+		Position: pos,
+		Source:   p.source,
 	}
 }
 
@@ -2527,8 +2530,66 @@ func (p *Parser) syntaxErrorAtEnd() *ParseError {
 type ParseError struct {
 	Message  string
 	Position int
+	Source   string // original SQL input (for error context extraction)
 }
 
 func (e *ParseError) Error() string {
+	// If Source is set, generate a contextual error message.
+	if e.Source != "" {
+		if e.Position >= len(e.Source) {
+			return "syntax error at end of input"
+		}
+		// Extract the token text at Position from Source.
+		text := extractNearText(e.Source, e.Position)
+		if text == "" {
+			return "syntax error at end of input"
+		}
+		return fmt.Sprintf("syntax error at or near \"%s\"", text)
+	}
 	return e.Message
 }
+
+// extractNearText extracts a meaningful token near the given byte position in src.
+// It returns the word or operator at that position, or "" if at end/whitespace-only.
+func extractNearText(src string, pos int) string {
+	if pos >= len(src) {
+		return ""
+	}
+	// Skip any leading whitespace at pos.
+	i := pos
+	for i < len(src) && (src[i] == ' ' || src[i] == '\t' || src[i] == '\n' || src[i] == '\r') {
+		i++
+	}
+	if i >= len(src) {
+		return ""
+	}
+	// If it's a letter or underscore, read an identifier/keyword.
+	if isIdentStart(src[i]) {
+		j := i
+		for j < len(src) && isIdentCont(src[j]) {
+			j++
+		}
+		return src[i:j]
+	}
+	// For quoted strings, return the first few chars.
+	if src[i] == '\'' {
+		j := i + 1
+		for j < len(src) && src[j] != '\'' {
+			j++
+		}
+		if j < len(src) {
+			j++ // include closing quote
+		}
+		return src[i:j]
+	}
+	// For operators and punctuation, return single char (or two-char operators).
+	if i+1 < len(src) {
+		two := src[i : i+2]
+		if two == "<>" || two == "<=" || two == ">=" || two == "!=" {
+			return two
+		}
+	}
+	return string(src[i])
+}
+
+// Note: isIdentStart and isIdentCont are defined in lexer.go and reused here.
