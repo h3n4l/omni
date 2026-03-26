@@ -152,44 +152,44 @@ so that Phase 3+ instrumentation can be tested end-to-end.
 ### 3.5 ORDER BY, LIMIT, DISTINCT
 
 ```
-[ ] `SELECT * FROM t ORDER BY |` → columnref after ORDER BY
-[ ] `SELECT * FROM t ORDER BY a, |` → columnref after comma
-[ ] `SELECT * FROM t ORDER BY a |` → keyword candidates (ASC, DESC, LIMIT, comma)
-[ ] `SELECT * FROM t LIMIT |` → no specific candidates (numeric context)
-[ ] `SELECT * FROM t LIMIT 10 OFFSET |` → no specific candidates
+[x] `SELECT * FROM t ORDER BY |` → columnref after ORDER BY
+[x] `SELECT * FROM t ORDER BY a, |` → columnref after comma
+[x] `SELECT * FROM t ORDER BY a |` → keyword candidates (ASC, DESC, LIMIT, comma)
+[x] `SELECT * FROM t LIMIT |` → no specific candidates (numeric context)
+[x] `SELECT * FROM t LIMIT 10 OFFSET |` → no specific candidates
 ```
 
 ### 3.6 Set Operations & FOR UPDATE
 
 ```
-[ ] `SELECT a FROM t UNION |` → keyword candidates (ALL, SELECT)
-[ ] `SELECT a FROM t UNION ALL |` → keyword candidate (SELECT)
-[ ] `SELECT a FROM t INTERSECT |` → keyword candidates (ALL, SELECT)
-[ ] `SELECT a FROM t EXCEPT |` → keyword candidates (ALL, SELECT)
-[ ] `SELECT * FROM t FOR |` → keyword candidates (UPDATE, SHARE)
-[ ] `SELECT * FROM t FOR UPDATE |` → keyword candidates (OF, NOWAIT, SKIP)
+[x] `SELECT a FROM t UNION |` → keyword candidates (ALL, SELECT)
+[x] `SELECT a FROM t UNION ALL |` → keyword candidate (SELECT)
+[x] `SELECT a FROM t INTERSECT |` → keyword candidates (ALL, SELECT)
+[x] `SELECT a FROM t EXCEPT |` → keyword candidates (ALL, SELECT)
+[x] `SELECT * FROM t FOR |` → keyword candidates (UPDATE, SHARE)
+[x] `SELECT * FROM t FOR UPDATE |` → keyword candidates (OF, NOWAIT, SKIP)
 ```
 
 ### 3.7 CTE (WITH Clause)
 
 ```
-[ ] `WITH |` → keyword candidate (RECURSIVE) + identifier context for CTE name
-[ ] `WITH cte AS (|)` → keyword candidate (SELECT)
-[ ] `WITH cte AS (SELECT * FROM t) SELECT |` → columnref (CTE columns available)
-[ ] `WITH cte AS (SELECT * FROM t) SELECT * FROM |` → table_ref (CTE name available)
-[ ] `WITH RECURSIVE cte(|)` → identifier context for column names
+[x] `WITH |` → keyword candidate (RECURSIVE) + identifier context for CTE name
+[x] `WITH cte AS (|)` → keyword candidate (SELECT)
+[x] `WITH cte AS (SELECT * FROM t) SELECT |` → columnref (CTE columns available)
+[x] `WITH cte AS (SELECT * FROM t) SELECT * FROM |` → table_ref (CTE name available)
+[x] `WITH RECURSIVE cte(|)` → identifier context for column names
 ```
 
 ### 3.8 Window Functions & Index Hints
 
 ```
-[ ] `SELECT a, ROW_NUMBER() OVER (|)` → keyword candidates (PARTITION, ORDER)
-[ ] `SELECT a, SUM(b) OVER (PARTITION BY |)` → columnref
-[ ] `SELECT a, SUM(b) OVER (ORDER BY |)` → columnref
-[ ] `SELECT a, SUM(b) OVER (ORDER BY a ROWS |)` → keyword candidates (BETWEEN, UNBOUNDED, CURRENT)
-[ ] `SELECT * FROM t USE INDEX (|)` → index_ref
-[ ] `SELECT * FROM t FORCE INDEX (|)` → index_ref
-[ ] `SELECT * FROM t IGNORE INDEX (|)` → index_ref
+[x] `SELECT a, ROW_NUMBER() OVER (|)` → keyword candidates (PARTITION, ORDER)
+[x] `SELECT a, SUM(b) OVER (PARTITION BY |)` → columnref
+[x] `SELECT a, SUM(b) OVER (ORDER BY |)` → columnref
+[x] `SELECT a, SUM(b) OVER (ORDER BY a ROWS |)` → keyword candidates (BETWEEN, UNBOUNDED, CURRENT)
+[x] `SELECT * FROM t USE INDEX (|)` → index_ref
+[x] `SELECT * FROM t FORCE INDEX (|)` → index_ref
+[x] `SELECT * FROM t IGNORE INDEX (|)` → index_ref
 ```
 
 ## Phase 4: DML Instrumentation

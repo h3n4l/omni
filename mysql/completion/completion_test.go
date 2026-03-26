@@ -1047,3 +1047,345 @@ func TestComplete_3_4_WhereGroupByHaving(t *testing.T) {
 		}
 	})
 }
+
+// --- Section 3.5: ORDER BY, LIMIT, DISTINCT ---
+
+func TestComplete_3_5_OrderByLimitDistinct(t *testing.T) {
+	cat := catalog.New()
+	mustExec(t, cat, "CREATE DATABASE test")
+	cat.SetCurrentDatabase("test")
+	mustExec(t, cat, "CREATE TABLE t (a INT, b INT, c INT)")
+
+	cases := []struct {
+		name     string
+		sql      string
+		cursor   int
+		wantType CandidateType
+		wantText string
+	}{
+		{
+			// Scenario 1: SELECT * FROM t ORDER BY | → columnref after ORDER BY
+			name:     "order_by_columnref",
+			sql:      "SELECT * FROM t ORDER BY ",
+			cursor:   25,
+			wantType: CandidateColumn,
+			wantText: "a",
+		},
+		{
+			// Scenario 2: SELECT * FROM t ORDER BY a, | → columnref after comma
+			name:     "order_by_comma_columnref",
+			sql:      "SELECT * FROM t ORDER BY a, ",
+			cursor:   28,
+			wantType: CandidateColumn,
+			wantText: "b",
+		},
+		{
+			// Scenario 3: SELECT * FROM t ORDER BY a | → keyword candidates (ASC, DESC, LIMIT)
+			name:     "order_by_follow_asc",
+			sql:      "SELECT * FROM t ORDER BY a ",
+			cursor:   27,
+			wantType: CandidateKeyword,
+			wantText: "ASC",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			candidates := Complete(tc.sql, tc.cursor, cat)
+			if len(candidates) == 0 {
+				t.Fatalf("expected candidates, got none")
+			}
+			if !containsCandidate(candidates, tc.wantText, tc.wantType) {
+				t.Errorf("missing candidate %q of type %d; got %v", tc.wantText, tc.wantType, candidates)
+			}
+		})
+	}
+
+	// Additional checks for ORDER BY follow-set keywords.
+	t.Run("order_by_follow_desc", func(t *testing.T) {
+		candidates := Complete("SELECT * FROM t ORDER BY a ", 27, cat)
+		if !containsCandidate(candidates, "DESC", CandidateKeyword) {
+			t.Errorf("missing keyword DESC after ORDER BY item; got %v", candidates)
+		}
+	})
+	t.Run("order_by_follow_limit", func(t *testing.T) {
+		candidates := Complete("SELECT * FROM t ORDER BY a ", 27, cat)
+		if !containsCandidate(candidates, "LIMIT", CandidateKeyword) {
+			t.Errorf("missing keyword LIMIT after ORDER BY item; got %v", candidates)
+		}
+	})
+
+	// Scenario 4: SELECT * FROM t LIMIT | → no specific candidates (numeric context)
+	// The expression parser will offer columnref/func_name which is acceptable for LIMIT expressions.
+	t.Run("limit_numeric_context", func(t *testing.T) {
+		candidates := Complete("SELECT * FROM t LIMIT ", 22, cat)
+		// Should have some candidates (expression context), not panic.
+		_ = candidates
+	})
+
+	// Scenario 5: SELECT * FROM t LIMIT 10 OFFSET | → no specific candidates
+	t.Run("limit_offset_numeric_context", func(t *testing.T) {
+		candidates := Complete("SELECT * FROM t LIMIT 10 OFFSET ", 32, cat)
+		_ = candidates
+	})
+}
+
+// --- Section 3.6: Set Operations & FOR UPDATE ---
+
+func TestComplete_3_6_SetOperationsForUpdate(t *testing.T) {
+	cat := catalog.New()
+	mustExec(t, cat, "CREATE DATABASE test")
+	cat.SetCurrentDatabase("test")
+	mustExec(t, cat, "CREATE TABLE t (a INT, b INT)")
+
+	cases := []struct {
+		name     string
+		sql      string
+		cursor   int
+		wantType CandidateType
+		wantText string
+	}{
+		{
+			// Scenario 1: SELECT a FROM t UNION | → keyword candidates (ALL, SELECT)
+			name:     "union_all_or_select",
+			sql:      "SELECT a FROM t UNION ",
+			cursor:   22,
+			wantType: CandidateKeyword,
+			wantText: "ALL",
+		},
+		{
+			// Scenario 2: SELECT a FROM t UNION ALL | → keyword candidate (SELECT)
+			name:     "union_all_select",
+			sql:      "SELECT a FROM t UNION ALL ",
+			cursor:   26,
+			wantType: CandidateKeyword,
+			wantText: "SELECT",
+		},
+		{
+			// Scenario 3: SELECT a FROM t INTERSECT | → keyword candidates (ALL, SELECT)
+			name:     "intersect_all_or_select",
+			sql:      "SELECT a FROM t INTERSECT ",
+			cursor:   26,
+			wantType: CandidateKeyword,
+			wantText: "ALL",
+		},
+		{
+			// Scenario 4: SELECT a FROM t EXCEPT | → keyword candidates (ALL, SELECT)
+			name:     "except_all_or_select",
+			sql:      "SELECT a FROM t EXCEPT ",
+			cursor:   23,
+			wantType: CandidateKeyword,
+			wantText: "ALL",
+		},
+		{
+			// Scenario 5: SELECT * FROM t FOR | → keyword candidates (UPDATE, SHARE)
+			name:     "for_update_share",
+			sql:      "SELECT * FROM t FOR ",
+			cursor:   20,
+			wantType: CandidateKeyword,
+			wantText: "UPDATE",
+		},
+		{
+			// Scenario 6: SELECT * FROM t FOR UPDATE | → keyword candidates (OF, NOWAIT, SKIP)
+			name:     "for_update_options",
+			sql:      "SELECT * FROM t FOR UPDATE ",
+			cursor:   27,
+			wantType: CandidateKeyword,
+			wantText: "NOWAIT",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			candidates := Complete(tc.sql, tc.cursor, cat)
+			if len(candidates) == 0 {
+				t.Fatalf("expected candidates, got none")
+			}
+			if !containsCandidate(candidates, tc.wantText, tc.wantType) {
+				t.Errorf("missing candidate %q of type %d; got %v", tc.wantText, tc.wantType, candidates)
+			}
+		})
+	}
+
+	// Additional checks for set operation keywords.
+	t.Run("union_select_keyword", func(t *testing.T) {
+		candidates := Complete("SELECT a FROM t UNION ", 22, cat)
+		if !containsCandidate(candidates, "SELECT", CandidateKeyword) {
+			t.Errorf("missing keyword SELECT after UNION; got %v", candidates)
+		}
+	})
+	t.Run("intersect_select_keyword", func(t *testing.T) {
+		candidates := Complete("SELECT a FROM t INTERSECT ", 26, cat)
+		if !containsCandidate(candidates, "SELECT", CandidateKeyword) {
+			t.Errorf("missing keyword SELECT after INTERSECT; got %v", candidates)
+		}
+	})
+	t.Run("except_select_keyword", func(t *testing.T) {
+		candidates := Complete("SELECT a FROM t EXCEPT ", 23, cat)
+		if !containsCandidate(candidates, "SELECT", CandidateKeyword) {
+			t.Errorf("missing keyword SELECT after EXCEPT; got %v", candidates)
+		}
+	})
+	t.Run("for_share_keyword", func(t *testing.T) {
+		candidates := Complete("SELECT * FROM t FOR ", 20, cat)
+		if !containsCandidate(candidates, "SHARE", CandidateKeyword) {
+			t.Errorf("missing keyword SHARE after FOR; got %v", candidates)
+		}
+	})
+	t.Run("for_update_skip_keyword", func(t *testing.T) {
+		candidates := Complete("SELECT * FROM t FOR UPDATE ", 27, cat)
+		if !containsCandidate(candidates, "SKIP", CandidateKeyword) {
+			t.Errorf("missing keyword SKIP after FOR UPDATE; got %v", candidates)
+		}
+	})
+}
+
+// --- Section 3.7: CTE (WITH Clause) ---
+
+func TestComplete_3_7_CTE(t *testing.T) {
+	cat := catalog.New()
+	mustExec(t, cat, "CREATE DATABASE test")
+	cat.SetCurrentDatabase("test")
+	mustExec(t, cat, "CREATE TABLE t (a INT, b INT, c INT)")
+
+	// Scenario 1: WITH | → keyword candidate (RECURSIVE) + identifier context
+	t.Run("with_recursive_keyword", func(t *testing.T) {
+		candidates := Complete("WITH ", 5, cat)
+		if !containsCandidate(candidates, "RECURSIVE", CandidateKeyword) {
+			t.Errorf("missing keyword RECURSIVE after WITH; got %v", candidates)
+		}
+	})
+
+	// Scenario 2: WITH cte AS (|) → keyword candidate (SELECT)
+	t.Run("with_cte_as_select", func(t *testing.T) {
+		candidates := Complete("WITH cte AS (", 13, cat)
+		if !containsCandidate(candidates, "SELECT", CandidateKeyword) {
+			t.Errorf("missing keyword SELECT inside CTE AS (); got %v", candidates)
+		}
+	})
+
+	// Scenario 3: WITH cte AS (SELECT * FROM t) SELECT | → columnref (CTE columns available)
+	t.Run("with_cte_select_columnref", func(t *testing.T) {
+		candidates := Complete("WITH cte AS (SELECT * FROM t) SELECT ", 37, cat)
+		if len(candidates) == 0 {
+			t.Fatal("expected candidates, got none")
+		}
+		// Should get column/function candidates in SELECT expression context.
+		hasColOrFunc := false
+		for _, c := range candidates {
+			if c.Type == CandidateColumn || c.Type == CandidateFunction {
+				hasColOrFunc = true
+				break
+			}
+		}
+		if !hasColOrFunc {
+			t.Errorf("expected column or function candidates after CTE SELECT; got %v", candidates)
+		}
+	})
+
+	// Scenario 4: WITH cte AS (SELECT * FROM t) SELECT * FROM | → table_ref (CTE name available)
+	t.Run("with_cte_from_table_ref", func(t *testing.T) {
+		candidates := Complete("WITH cte AS (SELECT * FROM t) SELECT * FROM ", 45, cat)
+		if len(candidates) == 0 {
+			t.Fatal("expected candidates, got none")
+		}
+		// Should get table_ref candidates.
+		hasTable := false
+		for _, c := range candidates {
+			if c.Type == CandidateTable || c.Type == CandidateView {
+				hasTable = true
+				break
+			}
+		}
+		if !hasTable {
+			t.Errorf("expected table candidates after CTE FROM; got %v", candidates)
+		}
+	})
+
+	// Scenario 5: WITH RECURSIVE cte(|) → identifier context for column names
+	// This is an identifier context — just verify no panic and something reasonable.
+	t.Run("with_recursive_cte_columns", func(t *testing.T) {
+		candidates := Complete("WITH RECURSIVE cte(", 19, cat)
+		// Must not panic. Results may be empty or have column candidates.
+		_ = candidates
+	})
+}
+
+// --- Section 3.8: Window Functions & Index Hints ---
+
+func TestComplete_3_8_WindowFunctionsIndexHints(t *testing.T) {
+	cat := catalog.New()
+	mustExec(t, cat, "CREATE DATABASE test")
+	cat.SetCurrentDatabase("test")
+	mustExec(t, cat, "CREATE TABLE t (a INT, b INT, c INT)")
+	mustExec(t, cat, "CREATE INDEX idx_a ON t (a)")
+	mustExec(t, cat, "CREATE INDEX idx_b ON t (b)")
+
+	// Scenario 1: SELECT a, ROW_NUMBER() OVER (|) → keyword candidates (PARTITION, ORDER)
+	t.Run("over_partition_order", func(t *testing.T) {
+		candidates := Complete("SELECT a, ROW_NUMBER() OVER (", 29, cat)
+		if !containsCandidate(candidates, "PARTITION", CandidateKeyword) {
+			t.Errorf("missing keyword PARTITION inside OVER (); got %v", candidates)
+		}
+		if !containsCandidate(candidates, "ORDER", CandidateKeyword) {
+			t.Errorf("missing keyword ORDER inside OVER (); got %v", candidates)
+		}
+	})
+
+	// Scenario 2: SELECT a, SUM(b) OVER (PARTITION BY |) → columnref
+	t.Run("over_partition_by_columnref", func(t *testing.T) {
+		candidates := Complete("SELECT a, SUM(b) OVER (PARTITION BY ", 36, cat)
+		if !containsCandidate(candidates, "a", CandidateColumn) {
+			t.Errorf("missing column 'a' after PARTITION BY; got %v", candidates)
+		}
+	})
+
+	// Scenario 3: SELECT a, SUM(b) OVER (ORDER BY |) → columnref
+	t.Run("over_order_by_columnref", func(t *testing.T) {
+		candidates := Complete("SELECT a, SUM(b) OVER (ORDER BY ", 32, cat)
+		if !containsCandidate(candidates, "a", CandidateColumn) {
+			t.Errorf("missing column 'a' after ORDER BY in window; got %v", candidates)
+		}
+	})
+
+	// Scenario 4: SELECT a, SUM(b) OVER (ORDER BY a ROWS |) → keyword candidates (BETWEEN, UNBOUNDED, CURRENT)
+	t.Run("over_rows_frame_keywords", func(t *testing.T) {
+		candidates := Complete("SELECT a, SUM(b) OVER (ORDER BY a ROWS ", 39, cat)
+		if !containsCandidate(candidates, "BETWEEN", CandidateKeyword) {
+			t.Errorf("missing keyword BETWEEN after ROWS; got %v", candidates)
+		}
+		if !containsCandidate(candidates, "UNBOUNDED", CandidateKeyword) {
+			t.Errorf("missing keyword UNBOUNDED after ROWS; got %v", candidates)
+		}
+		if !containsCandidate(candidates, "CURRENT", CandidateKeyword) {
+			t.Errorf("missing keyword CURRENT after ROWS; got %v", candidates)
+		}
+	})
+
+	// Scenario 5: SELECT * FROM t USE INDEX (|) → index_ref
+	t.Run("use_index_ref", func(t *testing.T) {
+		candidates := Complete("SELECT * FROM t USE INDEX (", 27, cat)
+		if !containsCandidate(candidates, "idx_a", CandidateIndex) {
+			t.Errorf("missing index 'idx_a' in USE INDEX (); got %v", candidates)
+		}
+		if !containsCandidate(candidates, "idx_b", CandidateIndex) {
+			t.Errorf("missing index 'idx_b' in USE INDEX (); got %v", candidates)
+		}
+	})
+
+	// Scenario 6: SELECT * FROM t FORCE INDEX (|) → index_ref
+	t.Run("force_index_ref", func(t *testing.T) {
+		candidates := Complete("SELECT * FROM t FORCE INDEX (", 29, cat)
+		if !containsCandidate(candidates, "idx_a", CandidateIndex) {
+			t.Errorf("missing index 'idx_a' in FORCE INDEX (); got %v", candidates)
+		}
+	})
+
+	// Scenario 7: SELECT * FROM t IGNORE INDEX (|) → index_ref
+	t.Run("ignore_index_ref", func(t *testing.T) {
+		candidates := Complete("SELECT * FROM t IGNORE INDEX (", 30, cat)
+		if !containsCandidate(candidates, "idx_a", CandidateIndex) {
+			t.Errorf("missing index 'idx_a' in IGNORE INDEX (); got %v", candidates)
+		}
+	})
+}

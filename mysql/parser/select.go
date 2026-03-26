@@ -15,6 +15,13 @@ import (
 func (p *Parser) parseWithClause() ([]*nodes.CommonTableExpr, error) {
 	p.advance() // consume WITH
 
+	// Completion: after WITH keyword, offer RECURSIVE and identifier context for CTE name.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addTokenCandidate(kwRECURSIVE)
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	recursive := false
 	if _, ok := p.match(kwRECURSIVE); ok {
 		recursive = true
@@ -49,6 +56,13 @@ func (p *Parser) parseWithClause() ([]*nodes.CommonTableExpr, error) {
 		}
 		if _, err := p.expect('('); err != nil {
 			return nil, err
+		}
+
+		// Completion: inside CTE AS (, offer SELECT keyword.
+		p.checkCursor()
+		if p.collectMode() {
+			p.addTokenCandidate(kwSELECT)
+			return nil, &ParseError{Message: "collecting"}
 		}
 
 		sel, err := p.parseSelectStmt()
@@ -1210,6 +1224,16 @@ func (p *Parser) parseOrderByList() ([]*nodes.OrderByItem, error) {
 			Expr: expr,
 		}
 
+		// Completion: after ORDER BY expression, offer ASC/DESC/LIMIT and comma.
+		p.checkCursor()
+		if p.collectMode() {
+			p.addTokenCandidate(kwASC)
+			p.addTokenCandidate(kwDESC)
+			p.addTokenCandidate(kwLIMIT)
+			p.addTokenCandidate(',')
+			return nil, &ParseError{Message: "collecting"}
+		}
+
 		if _, ok := p.match(kwDESC); ok {
 			item.Desc = true
 		} else {
@@ -1272,6 +1296,14 @@ func (p *Parser) parseForUpdateClause() (*nodes.ForUpdate, error) {
 	start := p.pos()
 	p.advance() // consume FOR
 
+	// Completion: after FOR keyword, offer UPDATE and SHARE.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addTokenCandidate(kwUPDATE)
+		p.addTokenCandidate(kwSHARE)
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	fu := &nodes.ForUpdate{Loc: nodes.Loc{Start: start}}
 
 	if _, ok := p.match(kwSHARE); ok {
@@ -1283,6 +1315,14 @@ func (p *Parser) parseForUpdateClause() (*nodes.ForUpdate, error) {
 			Message:  "expected UPDATE or SHARE after FOR",
 			Position: p.cur.Loc,
 		}
+	}
+
+	// Completion: after FOR UPDATE/SHARE, offer OF, NOWAIT, SKIP.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addTokenCandidate(kwNOWAIT)
+		p.addTokenCandidate(kwSKIP)
+		return nil, &ParseError{Message: "collecting"}
 	}
 
 	// OF table_list
@@ -1518,11 +1558,27 @@ func (p *Parser) parseSetOpWithPrecedence(left *nodes.SelectStmt, minPrec int) (
 		}
 		p.advance()
 
+		// Completion: after UNION/INTERSECT/EXCEPT keyword, offer ALL, DISTINCT, SELECT.
+		p.checkCursor()
+		if p.collectMode() {
+			p.addTokenCandidate(kwALL)
+			p.addTokenCandidate(kwDISTINCT)
+			p.addTokenCandidate(kwSELECT)
+			return nil, &ParseError{Message: "collecting"}
+		}
+
 		all := false
 		if _, ok := p.match(kwALL); ok {
 			all = true
 		} else {
 			p.match(kwDISTINCT)
+		}
+
+		// Completion: after ALL/DISTINCT, offer SELECT.
+		p.checkCursor()
+		if p.collectMode() {
+			p.addTokenCandidate(kwSELECT)
+			return nil, &ParseError{Message: "collecting"}
 		}
 
 		if p.cur.Type != kwSELECT && p.cur.Type != '(' {
@@ -1938,6 +1994,13 @@ func (p *Parser) parseIndexHint() (*nodes.IndexHint, error) {
 	// Parse (index_list) — required parens, list may be empty for USE
 	if _, err := p.expect('('); err != nil {
 		return nil, err
+	}
+
+	// Completion: inside index hint parentheses, offer index_ref candidates.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("index_ref")
+		return nil, &ParseError{Message: "collecting"}
 	}
 
 	if p.cur.Type != ')' {

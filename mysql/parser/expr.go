@@ -677,6 +677,17 @@ func (p *Parser) parseOverClause() (*nodes.WindowDef, error) {
 	// OVER (window_spec)
 	p.advance() // consume '('
 
+	// Completion: inside OVER (, offer PARTITION BY, ORDER BY, and frame keywords.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addTokenCandidate(kwPARTITION)
+		p.addTokenCandidate(kwORDER)
+		p.addTokenCandidate(kwROWS)
+		p.addTokenCandidate(kwRANGE)
+		p.addTokenCandidate(kwGROUPS)
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	wd := &nodes.WindowDef{Loc: nodes.Loc{Start: start}}
 
 	// Optional window_name reference
@@ -746,6 +757,15 @@ func (p *Parser) parseFrameClause() (*nodes.WindowFrame, error) {
 		frame.Type = nodes.FrameGroups
 	}
 	p.advance()
+
+	// Completion: after ROWS/RANGE/GROUPS, offer frame extent keywords.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addTokenCandidate(kwBETWEEN)
+		p.addTokenCandidate(kwUNBOUNDED)
+		p.addTokenCandidate(kwCURRENT)
+		return nil, &ParseError{Message: "collecting"}
+	}
 
 	// frame_extent: frame_start | BETWEEN frame_start AND frame_end
 	if _, ok := p.match(kwBETWEEN); ok {
