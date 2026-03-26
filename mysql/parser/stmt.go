@@ -282,6 +282,15 @@ func (p *Parser) parseStartDispatch() (nodes.Node, error) {
 	// Fall through to START TRANSACTION (parseBeginStmt expects p.cur is START or BEGIN)
 	// We already consumed START, so we need to handle TRANSACTION here
 	p.match(kwTRANSACTION)
+
+	// Completion: after START TRANSACTION, offer transaction characteristic keywords.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addTokenCandidate(kwWITH)
+		p.addTokenCandidate(kwREAD)
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	stmt := &nodes.BeginStmt{Loc: nodes.Loc{Start: start}}
 	for {
 		if p.cur.Type == kwWITH {

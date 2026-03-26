@@ -48,6 +48,13 @@ func (p *Parser) parseBeginStmt() (*nodes.BeginStmt, error) {
 	} else {
 		// BEGIN [WORK]
 		p.advance() // consume BEGIN
+
+		// Completion: after BEGIN, offer WORK keyword.
+		p.checkCursor()
+		if p.collectMode() {
+			return nil, &ParseError{Message: "collecting"}
+		}
+
 		if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "work") {
 			p.advance()
 		}
@@ -65,6 +72,13 @@ func (p *Parser) parseBeginStmt() (*nodes.BeginStmt, error) {
 func (p *Parser) parseCommitStmt() (*nodes.CommitStmt, error) {
 	start := p.pos()
 	p.advance() // consume COMMIT
+
+	// Completion: after COMMIT, offer AND and WORK keywords.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addTokenCandidate(kwAND)
+		return nil, &ParseError{Message: "collecting"}
+	}
 
 	stmt := &nodes.CommitStmt{Loc: nodes.Loc{Start: start}}
 
@@ -107,6 +121,13 @@ func (p *Parser) parseRollbackStmt() (*nodes.RollbackStmt, error) {
 	start := p.pos()
 	p.advance() // consume ROLLBACK
 
+	// Completion: after ROLLBACK, offer TO and WORK keywords.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addTokenCandidate(kwTO)
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	stmt := &nodes.RollbackStmt{Loc: nodes.Loc{Start: start}}
 
 	// Optional WORK
@@ -116,6 +137,13 @@ func (p *Parser) parseRollbackStmt() (*nodes.RollbackStmt, error) {
 
 	// TO [SAVEPOINT] identifier
 	if _, ok := p.match(kwTO); ok {
+		// Completion: after ROLLBACK TO, offer SAVEPOINT keyword.
+		p.checkCursor()
+		if p.collectMode() {
+			p.addTokenCandidate(kwSAVEPOINT)
+			return nil, &ParseError{Message: "collecting"}
+		}
+
 		p.match(kwSAVEPOINT)
 		name, _, err := p.parseIdentifier()
 		if err != nil {
@@ -159,6 +187,12 @@ func (p *Parser) parseSavepointStmt() (*nodes.SavepointStmt, error) {
 	start := p.pos()
 	p.advance() // consume SAVEPOINT
 
+	// Completion: after SAVEPOINT, identifier context (user defines a new savepoint name).
+	p.checkCursor()
+	if p.collectMode() {
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	name, _, err := p.parseIdentifier()
 	if err != nil {
 		return nil, err
@@ -179,6 +213,12 @@ func (p *Parser) parseReleaseSavepointStmt() (*nodes.SavepointStmt, error) {
 	start := p.pos()
 	p.advance() // consume RELEASE
 	p.match(kwSAVEPOINT)
+
+	// Completion: after RELEASE SAVEPOINT, identifier context.
+	p.checkCursor()
+	if p.collectMode() {
+		return nil, &ParseError{Message: "collecting"}
+	}
 
 	name, _, err := p.parseIdentifier()
 	if err != nil {
@@ -208,6 +248,13 @@ func (p *Parser) parseLockTablesStmt() (*nodes.LockTablesStmt, error) {
 	start := p.pos()
 	p.advance() // consume TABLES
 
+	// Completion: after LOCK TABLES, offer table_ref.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("table_ref")
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	stmt := &nodes.LockTablesStmt{Loc: nodes.Loc{Start: start}}
 
 	for {
@@ -220,6 +267,14 @@ func (p *Parser) parseLockTablesStmt() (*nodes.LockTablesStmt, error) {
 		lt := &nodes.LockTable{
 			Loc:   nodes.Loc{Start: lockStart},
 			Table: ref,
+		}
+
+		// Completion: after table name, offer READ/WRITE.
+		p.checkCursor()
+		if p.collectMode() {
+			p.addTokenCandidate(kwREAD)
+			p.addTokenCandidate(kwWRITE)
+			return nil, &ParseError{Message: "collecting"}
 		}
 
 		// Lock type

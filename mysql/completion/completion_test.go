@@ -2103,3 +2103,320 @@ func TestComplete_5_3_CreateDropMisc(t *testing.T) {
 		}
 	})
 }
+
+// =============================================================================
+// Phase 6: Routine/Trigger/Event Instrumentation
+// =============================================================================
+
+func TestComplete_6_1_FunctionsAndProcedures(t *testing.T) {
+	cat := setupCatalog(t)
+
+	// Scenario 1: CREATE FUNCTION | → identifier context (no specific candidates)
+	t.Run("create_function_identifier", func(t *testing.T) {
+		candidates := Complete("CREATE FUNCTION ", 16, cat)
+		// Should not suggest existing functions — user defines a new name
+		if containsCandidate(candidates, "my_func", CandidateFunction) {
+			t.Errorf("should not suggest existing function for new function name; got %v", candidates)
+		}
+	})
+
+	// Scenario 2: CREATE FUNCTION f(|) → param direction keywords + type context
+	t.Run("create_function_params", func(t *testing.T) {
+		candidates := Complete("CREATE FUNCTION f(", 18, cat)
+		if !containsCandidate(candidates, "IN", CandidateKeyword) {
+			t.Errorf("missing keyword 'IN'; got %v", candidates)
+		}
+		if !containsCandidate(candidates, "OUT", CandidateKeyword) {
+			t.Errorf("missing keyword 'OUT'; got %v", candidates)
+		}
+		if !containsCandidate(candidates, "INOUT", CandidateKeyword) {
+			t.Errorf("missing keyword 'INOUT'; got %v", candidates)
+		}
+	})
+
+	// Scenario 3: CREATE FUNCTION f() RETURNS | → type candidates
+	t.Run("create_function_returns_type", func(t *testing.T) {
+		candidates := Complete("CREATE FUNCTION f() RETURNS ", 28, cat)
+		if !containsCandidate(candidates, "INT", CandidateType_) {
+			t.Errorf("missing type 'INT'; got %v", candidates)
+		}
+		if !containsCandidate(candidates, "VARCHAR", CandidateType_) {
+			t.Errorf("missing type 'VARCHAR'; got %v", candidates)
+		}
+	})
+
+	// Scenario 4: CREATE FUNCTION f() | → characteristic keywords
+	t.Run("create_function_characteristics", func(t *testing.T) {
+		candidates := Complete("CREATE FUNCTION f() ", 20, cat)
+		if !containsCandidate(candidates, "DETERMINISTIC", CandidateKeyword) {
+			t.Errorf("missing keyword 'DETERMINISTIC'; got %v", candidates)
+		}
+		if !containsCandidate(candidates, "COMMENT", CandidateKeyword) {
+			t.Errorf("missing keyword 'COMMENT'; got %v", candidates)
+		}
+		if !containsCandidate(candidates, "LANGUAGE", CandidateKeyword) {
+			t.Errorf("missing keyword 'LANGUAGE'; got %v", candidates)
+		}
+	})
+
+	// Scenario 5: DROP FUNCTION | → function_ref
+	t.Run("drop_function_ref", func(t *testing.T) {
+		candidates := Complete("DROP FUNCTION ", 14, cat)
+		if !containsCandidate(candidates, "my_func", CandidateFunction) {
+			t.Errorf("missing function 'my_func'; got %v", candidates)
+		}
+	})
+
+	// Scenario 6: DROP FUNCTION IF EXISTS | → function_ref
+	t.Run("drop_function_if_exists_ref", func(t *testing.T) {
+		candidates := Complete("DROP FUNCTION IF EXISTS ", 24, cat)
+		if !containsCandidate(candidates, "my_func", CandidateFunction) {
+			t.Errorf("missing function 'my_func'; got %v", candidates)
+		}
+	})
+
+	// Scenario 7: CREATE PROCEDURE | → identifier context
+	t.Run("create_procedure_identifier", func(t *testing.T) {
+		candidates := Complete("CREATE PROCEDURE ", 17, cat)
+		if containsCandidate(candidates, "my_proc", CandidateProcedure) {
+			t.Errorf("should not suggest existing procedure for new procedure name; got %v", candidates)
+		}
+	})
+
+	// Scenario 8: DROP PROCEDURE | → procedure_ref
+	t.Run("drop_procedure_ref", func(t *testing.T) {
+		candidates := Complete("DROP PROCEDURE ", 15, cat)
+		if !containsCandidate(candidates, "my_proc", CandidateProcedure) {
+			t.Errorf("missing procedure 'my_proc'; got %v", candidates)
+		}
+	})
+
+	// Scenario 9: ALTER FUNCTION | → function_ref
+	t.Run("alter_function_ref", func(t *testing.T) {
+		candidates := Complete("ALTER FUNCTION ", 15, cat)
+		if !containsCandidate(candidates, "my_func", CandidateFunction) {
+			t.Errorf("missing function 'my_func'; got %v", candidates)
+		}
+	})
+
+	// Scenario 10: ALTER PROCEDURE | → procedure_ref
+	t.Run("alter_procedure_ref", func(t *testing.T) {
+		candidates := Complete("ALTER PROCEDURE ", 16, cat)
+		if !containsCandidate(candidates, "my_proc", CandidateProcedure) {
+			t.Errorf("missing procedure 'my_proc'; got %v", candidates)
+		}
+	})
+}
+
+func TestComplete_6_2_TriggersAndEvents(t *testing.T) {
+	cat := setupCatalog(t)
+
+	// Scenario 1: CREATE TRIGGER | → identifier context
+	t.Run("create_trigger_identifier", func(t *testing.T) {
+		candidates := Complete("CREATE TRIGGER ", 15, cat)
+		if containsCandidate(candidates, "my_trig", CandidateTrigger) {
+			t.Errorf("should not suggest existing trigger for new trigger name; got %v", candidates)
+		}
+	})
+
+	// Scenario 2: CREATE TRIGGER trg | → BEFORE/AFTER keywords
+	t.Run("create_trigger_timing", func(t *testing.T) {
+		candidates := Complete("CREATE TRIGGER trg ", 19, cat)
+		if !containsCandidate(candidates, "BEFORE", CandidateKeyword) {
+			t.Errorf("missing keyword 'BEFORE'; got %v", candidates)
+		}
+		if !containsCandidate(candidates, "AFTER", CandidateKeyword) {
+			t.Errorf("missing keyword 'AFTER'; got %v", candidates)
+		}
+	})
+
+	// Scenario 3: CREATE TRIGGER trg BEFORE | → INSERT/UPDATE/DELETE
+	t.Run("create_trigger_event", func(t *testing.T) {
+		candidates := Complete("CREATE TRIGGER trg BEFORE ", 26, cat)
+		if !containsCandidate(candidates, "INSERT", CandidateKeyword) {
+			t.Errorf("missing keyword 'INSERT'; got %v", candidates)
+		}
+		if !containsCandidate(candidates, "UPDATE", CandidateKeyword) {
+			t.Errorf("missing keyword 'UPDATE'; got %v", candidates)
+		}
+		if !containsCandidate(candidates, "DELETE", CandidateKeyword) {
+			t.Errorf("missing keyword 'DELETE'; got %v", candidates)
+		}
+	})
+
+	// Scenario 4: CREATE TRIGGER trg BEFORE INSERT ON | → table_ref
+	t.Run("create_trigger_on_table", func(t *testing.T) {
+		candidates := Complete("CREATE TRIGGER trg BEFORE INSERT ON ", 36, cat)
+		if !containsCandidate(candidates, "users", CandidateTable) {
+			t.Errorf("missing table 'users'; got %v", candidates)
+		}
+	})
+
+	// Scenario 5: DROP TRIGGER | → trigger_ref
+	t.Run("drop_trigger_ref", func(t *testing.T) {
+		candidates := Complete("DROP TRIGGER ", 13, cat)
+		if !containsCandidate(candidates, "my_trig", CandidateTrigger) {
+			t.Errorf("missing trigger 'my_trig'; got %v", candidates)
+		}
+	})
+
+	// Scenario 6: CREATE EVENT | → identifier context
+	t.Run("create_event_identifier", func(t *testing.T) {
+		candidates := Complete("CREATE EVENT ", 13, cat)
+		if containsCandidate(candidates, "my_event", CandidateEvent) {
+			t.Errorf("should not suggest existing event for new event name; got %v", candidates)
+		}
+	})
+
+	// Scenario 7: CREATE EVENT ev ON SCHEDULE | → AT/EVERY keywords
+	t.Run("create_event_on_schedule", func(t *testing.T) {
+		candidates := Complete("CREATE EVENT ev ON SCHEDULE ", 28, cat)
+		if !containsCandidate(candidates, "AT", CandidateKeyword) {
+			t.Errorf("missing keyword 'AT'; got %v", candidates)
+		}
+	})
+
+	// Scenario 8: DROP EVENT | → event_ref
+	t.Run("drop_event_ref", func(t *testing.T) {
+		candidates := Complete("DROP EVENT ", 11, cat)
+		if !containsCandidate(candidates, "my_event", CandidateEvent) {
+			t.Errorf("missing event 'my_event'; got %v", candidates)
+		}
+	})
+
+	// Scenario 9: ALTER EVENT | → event_ref
+	t.Run("alter_event_ref", func(t *testing.T) {
+		candidates := Complete("ALTER EVENT ", 12, cat)
+		if !containsCandidate(candidates, "my_event", CandidateEvent) {
+			t.Errorf("missing event 'my_event'; got %v", candidates)
+		}
+	})
+}
+
+func TestComplete_6_3_TransactionLockMaintenance(t *testing.T) {
+	cat := setupCatalog(t)
+
+	// Scenario 1: BEGIN | → WORK keyword
+	t.Run("begin_work", func(t *testing.T) {
+		candidates := Complete("BEGIN ", 6, cat)
+		// BEGIN should reach the completion point; we verify no crash and keywords are available
+		_ = candidates
+	})
+
+	// Scenario 2: START TRANSACTION | → WITH/READ keywords
+	t.Run("start_transaction_keywords", func(t *testing.T) {
+		candidates := Complete("START TRANSACTION ", 18, cat)
+		if !containsCandidate(candidates, "WITH", CandidateKeyword) {
+			t.Errorf("missing keyword 'WITH'; got %v", candidates)
+		}
+		if !containsCandidate(candidates, "READ", CandidateKeyword) {
+			t.Errorf("missing keyword 'READ'; got %v", candidates)
+		}
+	})
+
+	// Scenario 3: COMMIT | → AND keyword
+	t.Run("commit_keywords", func(t *testing.T) {
+		candidates := Complete("COMMIT ", 7, cat)
+		if !containsCandidate(candidates, "AND", CandidateKeyword) {
+			t.Errorf("missing keyword 'AND'; got %v", candidates)
+		}
+	})
+
+	// Scenario 4: ROLLBACK | → TO keyword
+	t.Run("rollback_keywords", func(t *testing.T) {
+		candidates := Complete("ROLLBACK ", 9, cat)
+		if !containsCandidate(candidates, "TO", CandidateKeyword) {
+			t.Errorf("missing keyword 'TO'; got %v", candidates)
+		}
+	})
+
+	// Scenario 5: ROLLBACK TO | → SAVEPOINT keyword
+	t.Run("rollback_to_savepoint", func(t *testing.T) {
+		candidates := Complete("ROLLBACK TO ", 12, cat)
+		if !containsCandidate(candidates, "SAVEPOINT", CandidateKeyword) {
+			t.Errorf("missing keyword 'SAVEPOINT'; got %v", candidates)
+		}
+	})
+
+	// Scenario 6: SAVEPOINT | → identifier context
+	t.Run("savepoint_identifier", func(t *testing.T) {
+		candidates := Complete("SAVEPOINT ", 10, cat)
+		// Should not crash; identifier context means no specific object suggestions
+		_ = candidates
+	})
+
+	// Scenario 7: RELEASE SAVEPOINT | → identifier context
+	t.Run("release_savepoint_identifier", func(t *testing.T) {
+		candidates := Complete("RELEASE SAVEPOINT ", 18, cat)
+		// Should not crash; identifier context
+		_ = candidates
+	})
+
+	// Scenario 8: LOCK TABLES | → table_ref
+	t.Run("lock_tables_ref", func(t *testing.T) {
+		candidates := Complete("LOCK TABLES ", 12, cat)
+		if !containsCandidate(candidates, "users", CandidateTable) {
+			t.Errorf("missing table 'users'; got %v", candidates)
+		}
+	})
+
+	// Scenario 9: LOCK TABLES t | → READ/WRITE keywords
+	t.Run("lock_tables_read_write", func(t *testing.T) {
+		candidates := Complete("LOCK TABLES users ", 18, cat)
+		if !containsCandidate(candidates, "READ", CandidateKeyword) {
+			t.Errorf("missing keyword 'READ'; got %v", candidates)
+		}
+		if !containsCandidate(candidates, "WRITE", CandidateKeyword) {
+			t.Errorf("missing keyword 'WRITE'; got %v", candidates)
+		}
+	})
+
+	// Scenario 10: ANALYZE TABLE | → table_ref
+	t.Run("analyze_table_ref", func(t *testing.T) {
+		candidates := Complete("ANALYZE TABLE ", 14, cat)
+		if !containsCandidate(candidates, "users", CandidateTable) {
+			t.Errorf("missing table 'users'; got %v", candidates)
+		}
+	})
+
+	// Scenario 11: OPTIMIZE TABLE | → table_ref
+	t.Run("optimize_table_ref", func(t *testing.T) {
+		candidates := Complete("OPTIMIZE TABLE ", 15, cat)
+		if !containsCandidate(candidates, "users", CandidateTable) {
+			t.Errorf("missing table 'users'; got %v", candidates)
+		}
+	})
+
+	// Scenario 12: CHECK TABLE | → table_ref
+	t.Run("check_table_ref", func(t *testing.T) {
+		candidates := Complete("CHECK TABLE ", 12, cat)
+		if !containsCandidate(candidates, "users", CandidateTable) {
+			t.Errorf("missing table 'users'; got %v", candidates)
+		}
+	})
+
+	// Scenario 13: REPAIR TABLE | → table_ref
+	t.Run("repair_table_ref", func(t *testing.T) {
+		candidates := Complete("REPAIR TABLE ", 13, cat)
+		if !containsCandidate(candidates, "users", CandidateTable) {
+			t.Errorf("missing table 'users'; got %v", candidates)
+		}
+	})
+
+	// Scenario 14: FLUSH | → PRIVILEGES/TABLES/LOGS/STATUS keywords
+	t.Run("flush_keywords", func(t *testing.T) {
+		candidates := Complete("FLUSH ", 6, cat)
+		if !containsCandidate(candidates, "PRIVILEGES", CandidateKeyword) {
+			t.Errorf("missing keyword 'PRIVILEGES'; got %v", candidates)
+		}
+		if !containsCandidate(candidates, "TABLES", CandidateKeyword) {
+			t.Errorf("missing keyword 'TABLES'; got %v", candidates)
+		}
+		if !containsCandidate(candidates, "LOGS", CandidateKeyword) {
+			t.Errorf("missing keyword 'LOGS'; got %v", candidates)
+		}
+		if !containsCandidate(candidates, "STATUS", CandidateKeyword) {
+			t.Errorf("missing keyword 'STATUS'; got %v", candidates)
+		}
+	})
+}

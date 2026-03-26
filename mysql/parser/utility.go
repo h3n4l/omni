@@ -39,6 +39,13 @@ func (p *Parser) parseAnalyzeTableStmt() (*nodes.AnalyzeTableStmt, error) {
 	// TABLE
 	p.match(kwTABLE)
 
+	// Completion: after ANALYZE [LOCAL] TABLE, offer table_ref.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("table_ref")
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	// Table list
 	for {
 		ref, err := p.parseTableRef()
@@ -146,6 +153,13 @@ func (p *Parser) parseOptimizeTableStmt() (*nodes.OptimizeTableStmt, error) {
 
 	p.match(kwTABLE)
 
+	// Completion: after OPTIMIZE TABLE, offer table_ref.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("table_ref")
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	for {
 		ref, err := p.parseTableRef()
 		if err != nil {
@@ -172,6 +186,13 @@ func (p *Parser) parseCheckTableStmt() (*nodes.CheckTableStmt, error) {
 	p.advance() // consume CHECK
 
 	p.match(kwTABLE)
+
+	// Completion: after CHECK TABLE, offer table_ref.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("table_ref")
+		return nil, &ParseError{Message: "collecting"}
+	}
 
 	stmt := &nodes.CheckTableStmt{Loc: nodes.Loc{Start: start}}
 
@@ -234,6 +255,13 @@ func (p *Parser) parseRepairTableStmt() (*nodes.RepairTableStmt, error) {
 	}
 
 	p.match(kwTABLE)
+
+	// Completion: after REPAIR TABLE, offer table_ref.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("table_ref")
+		return nil, &ParseError{Message: "collecting"}
+	}
 
 	for {
 		ref, err := p.parseTableRef()
@@ -303,6 +331,16 @@ func (p *Parser) parseRepairTableStmt() (*nodes.RepairTableStmt, error) {
 func (p *Parser) parseFlushStmt() (*nodes.FlushStmt, error) {
 	start := p.pos()
 	p.advance() // consume FLUSH
+
+	// Completion: after FLUSH, offer flush option keywords.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addTokenCandidate(kwPRIVILEGES)
+		p.addTokenCandidate(kwTABLES)
+		p.addTokenCandidate(kwLOGS)
+		p.addTokenCandidate(kwSTATUS)
+		return nil, &ParseError{Message: "collecting"}
+	}
 
 	stmt := &nodes.FlushStmt{Loc: nodes.Loc{Start: start}}
 

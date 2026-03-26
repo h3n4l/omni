@@ -84,6 +84,13 @@ func (p *Parser) parseCreateFunctionStmt(isProcedure bool) (*nodes.CreateFunctio
 	start := p.pos()
 	p.advance() // consume FUNCTION or PROCEDURE
 
+	// Completion: after CREATE FUNCTION / CREATE PROCEDURE, identifier context.
+	p.checkCursor()
+	if p.collectMode() {
+		// No specific candidates — user defines a new name.
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	stmt := &nodes.CreateFunctionStmt{
 		Loc:         nodes.Loc{Start: start},
 		IsProcedure: isProcedure,
@@ -114,6 +121,17 @@ func (p *Parser) parseCreateFunctionStmt(isProcedure bool) (*nodes.CreateFunctio
 	if _, err := p.expect('('); err != nil {
 		return nil, err
 	}
+
+	// Completion: inside parameter list, offer param direction keywords + type context.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addTokenCandidate(kwIN)
+		p.addTokenCandidate(kwOUT)
+		p.addTokenCandidate(kwINOUT)
+		p.addRuleCandidate("type_name")
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	if p.cur.Type != ')' {
 		for {
 			param, err := p.parseFuncParam(isProcedure)
@@ -134,11 +152,31 @@ func (p *Parser) parseCreateFunctionStmt(isProcedure bool) (*nodes.CreateFunctio
 	// RETURNS type (functions only)
 	if !isProcedure && p.cur.Type == kwRETURNS {
 		p.advance()
+
+		// Completion: after RETURNS, offer type candidates.
+		p.checkCursor()
+		if p.collectMode() {
+			p.addRuleCandidate("type_name")
+			return nil, &ParseError{Message: "collecting"}
+		}
+
 		dt, err := p.parseDataType()
 		if err != nil {
 			return nil, err
 		}
 		stmt.Returns = dt
+	}
+
+	// Completion: after parameter list (and optional RETURNS), offer characteristics keywords.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addTokenCandidate(kwDETERMINISTIC)
+		p.addTokenCandidate(kwNO)
+		p.addTokenCandidate(kwSQL)
+		p.addTokenCandidate(kwCOMMENT)
+		p.addTokenCandidate(kwLANGUAGE)
+		p.addTokenCandidate(kwRETURNS)
+		return nil, &ParseError{Message: "collecting"}
 	}
 
 	// Characteristics

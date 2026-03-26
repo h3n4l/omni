@@ -19,6 +19,13 @@ func (p *Parser) parseCreateTriggerStmt() (*nodes.CreateTriggerStmt, error) {
 	start := p.pos()
 	p.advance() // consume TRIGGER
 
+	// Completion: after CREATE TRIGGER, identifier context.
+	p.checkCursor()
+	if p.collectMode() {
+		// No specific candidates — user defines a new trigger name.
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	stmt := &nodes.CreateTriggerStmt{Loc: nodes.Loc{Start: start}}
 
 	// IF NOT EXISTS
@@ -36,6 +43,14 @@ func (p *Parser) parseCreateTriggerStmt() (*nodes.CreateTriggerStmt, error) {
 	}
 	stmt.Name = name
 
+	// Completion: after trigger name, offer BEFORE/AFTER.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addTokenCandidate(kwBEFORE)
+		p.addTokenCandidate(kwAFTER)
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	// trigger_time: BEFORE | AFTER
 	if p.cur.Type == kwBEFORE {
 		stmt.Timing = "BEFORE"
@@ -43,6 +58,15 @@ func (p *Parser) parseCreateTriggerStmt() (*nodes.CreateTriggerStmt, error) {
 	} else if p.cur.Type == kwAFTER {
 		stmt.Timing = "AFTER"
 		p.advance()
+	}
+
+	// Completion: after BEFORE/AFTER, offer INSERT/UPDATE/DELETE.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addTokenCandidate(kwINSERT)
+		p.addTokenCandidate(kwUPDATE)
+		p.addTokenCandidate(kwDELETE)
+		return nil, &ParseError{Message: "collecting"}
 	}
 
 	// trigger_event: INSERT | UPDATE | DELETE
@@ -62,6 +86,14 @@ func (p *Parser) parseCreateTriggerStmt() (*nodes.CreateTriggerStmt, error) {
 	if _, err := p.expect(kwON); err != nil {
 		return nil, err
 	}
+
+	// Completion: after ON, offer table_ref.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("table_ref")
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	ref, err := p.parseTableRef()
 	if err != nil {
 		return nil, err
@@ -139,6 +171,13 @@ func (p *Parser) parseCreateEventStmt() (*nodes.CreateEventStmt, error) {
 	start := p.pos()
 	p.advance() // consume EVENT
 
+	// Completion: after CREATE EVENT, identifier context.
+	p.checkCursor()
+	if p.collectMode() {
+		// No specific candidates — user defines a new event name.
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	stmt := &nodes.CreateEventStmt{Loc: nodes.Loc{Start: start}}
 
 	// IF NOT EXISTS
@@ -162,6 +201,13 @@ func (p *Parser) parseCreateEventStmt() (*nodes.CreateEventStmt, error) {
 	}
 	if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "schedule") {
 		p.advance()
+	}
+
+	// Completion: after ON SCHEDULE, offer AT/EVERY keywords.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addTokenCandidate(kwAT)
+		return nil, &ParseError{Message: "collecting"}
 	}
 
 	sched, err := p.parseEventSchedule()

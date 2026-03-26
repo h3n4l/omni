@@ -153,6 +153,13 @@ func (p *Parser) parseAlterEventStmt() (*nodes.AlterEventStmt, error) {
 	start := p.pos()
 	p.advance() // consume EVENT
 
+	// Completion: after ALTER EVENT, offer event_ref.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("event_ref")
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	stmt := &nodes.AlterEventStmt{Loc: nodes.Loc{Start: start}}
 
 	// Event name
@@ -276,6 +283,17 @@ func (p *Parser) parseAlterRoutineStmt(isProcedure bool) (*nodes.AlterRoutineStm
 	start := p.pos()
 	p.advance() // consume FUNCTION or PROCEDURE
 
+	// Completion: after ALTER FUNCTION/PROCEDURE, offer function_ref/procedure_ref.
+	p.checkCursor()
+	if p.collectMode() {
+		if isProcedure {
+			p.addRuleCandidate("procedure_ref")
+		} else {
+			p.addRuleCandidate("function_ref")
+		}
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	stmt := &nodes.AlterRoutineStmt{
 		Loc:         nodes.Loc{Start: start},
 		IsProcedure: isProcedure,
@@ -324,6 +342,17 @@ func (p *Parser) parseDropRoutineStmt(isProcedure bool) (*nodes.DropRoutineStmt,
 		stmt.IfExists = true
 	}
 
+	// Completion: after DROP FUNCTION/PROCEDURE [IF EXISTS], offer function_ref/procedure_ref.
+	p.checkCursor()
+	if p.collectMode() {
+		if isProcedure {
+			p.addRuleCandidate("procedure_ref")
+		} else {
+			p.addRuleCandidate("function_ref")
+		}
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	// Routine name
 	ref, err := p.parseTableRef()
 	if err != nil {
@@ -354,6 +383,13 @@ func (p *Parser) parseDropTriggerStmt() (*nodes.DropTriggerStmt, error) {
 		stmt.IfExists = true
 	}
 
+	// Completion: after DROP TRIGGER [IF EXISTS], offer trigger_ref.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("trigger_ref")
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	// Trigger name (can be schema.trigger_name)
 	ref, err := p.parseTableRef()
 	if err != nil {
@@ -382,6 +418,13 @@ func (p *Parser) parseDropEventStmt() (*nodes.DropEventStmt, error) {
 		p.advance()
 		p.match(kwEXISTS_KW)
 		stmt.IfExists = true
+	}
+
+	// Completion: after DROP EVENT [IF EXISTS], offer event_ref.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("event_ref")
+		return nil, &ParseError{Message: "collecting"}
 	}
 
 	// Event name

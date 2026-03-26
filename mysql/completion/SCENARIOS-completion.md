@@ -298,49 +298,49 @@ so that Phase 3+ instrumentation can be tested end-to-end.
 ### 6.1 Functions & Procedures
 
 ```
-[ ] `CREATE FUNCTION |` → identifier context
-[ ] `CREATE FUNCTION f(|)` → keyword candidates for param direction (IN, OUT, INOUT) + type context
-[ ] `CREATE FUNCTION f() RETURNS |` → type candidates
-[ ] `CREATE FUNCTION f() |` → keyword candidates for characteristics (DETERMINISTIC, NO SQL, READS SQL DATA, MODIFIES SQL DATA, COMMENT, LANGUAGE, SQL SECURITY)
-[ ] `DROP FUNCTION |` → function_ref
-[ ] `DROP FUNCTION IF EXISTS |` → function_ref
-[ ] `CREATE PROCEDURE |` → identifier context
-[ ] `DROP PROCEDURE |` → procedure_ref
-[ ] `ALTER FUNCTION |` → function_ref
-[ ] `ALTER PROCEDURE |` → procedure_ref
+[x] `CREATE FUNCTION |` → identifier context
+[x] `CREATE FUNCTION f(|)` → keyword candidates for param direction (IN, OUT, INOUT) + type context
+[x] `CREATE FUNCTION f() RETURNS |` → type candidates
+[x] `CREATE FUNCTION f() |` → keyword candidates for characteristics (DETERMINISTIC, NO SQL, READS SQL DATA, MODIFIES SQL DATA, COMMENT, LANGUAGE, SQL SECURITY)
+[x] `DROP FUNCTION |` → function_ref
+[x] `DROP FUNCTION IF EXISTS |` → function_ref
+[x] `CREATE PROCEDURE |` → identifier context
+[x] `DROP PROCEDURE |` → procedure_ref
+[x] `ALTER FUNCTION |` → function_ref
+[x] `ALTER PROCEDURE |` → procedure_ref
 ```
 
 ### 6.2 Triggers & Events
 
 ```
-[ ] `CREATE TRIGGER |` → identifier context
-[ ] `CREATE TRIGGER trg |` → keyword candidates (BEFORE, AFTER)
-[ ] `CREATE TRIGGER trg BEFORE |` → keyword candidates (INSERT, UPDATE, DELETE)
-[ ] `CREATE TRIGGER trg BEFORE INSERT ON |` → table_ref
-[ ] `DROP TRIGGER |` → trigger_ref
-[ ] `CREATE EVENT |` → identifier context
-[ ] `CREATE EVENT ev ON SCHEDULE |` → keyword candidates (AT, EVERY)
-[ ] `DROP EVENT |` → event_ref
-[ ] `ALTER EVENT |` → event_ref
+[x] `CREATE TRIGGER |` → identifier context
+[x] `CREATE TRIGGER trg |` → keyword candidates (BEFORE, AFTER)
+[x] `CREATE TRIGGER trg BEFORE |` → keyword candidates (INSERT, UPDATE, DELETE)
+[x] `CREATE TRIGGER trg BEFORE INSERT ON |` → table_ref
+[x] `DROP TRIGGER |` → trigger_ref
+[x] `CREATE EVENT |` → identifier context
+[x] `CREATE EVENT ev ON SCHEDULE |` → keyword candidates (AT, EVERY)
+[x] `DROP EVENT |` → event_ref
+[x] `ALTER EVENT |` → event_ref
 ```
 
 ### 6.3 Transaction, LOCK & Table Maintenance
 
 ```
-[ ] `BEGIN |` → keyword candidates (WORK)
-[ ] `START TRANSACTION |` → keyword candidates (WITH CONSISTENT SNAPSHOT, READ ONLY, READ WRITE)
-[ ] `COMMIT |` → keyword candidates (AND, WORK)
-[ ] `ROLLBACK |` → keyword candidates (TO, WORK)
-[ ] `ROLLBACK TO |` → keyword candidate (SAVEPOINT)
-[ ] `SAVEPOINT |` → identifier context
-[ ] `RELEASE SAVEPOINT |` → identifier context
-[ ] `LOCK TABLES |` → table_ref
-[ ] `LOCK TABLES t |` → keyword candidates (READ, WRITE)
-[ ] `ANALYZE TABLE |` → table_ref
-[ ] `OPTIMIZE TABLE |` → table_ref
-[ ] `CHECK TABLE |` → table_ref
-[ ] `REPAIR TABLE |` → table_ref
-[ ] `FLUSH |` → keyword candidates (PRIVILEGES, TABLES, LOGS, STATUS, HOSTS)
+[x] `BEGIN |` → keyword candidates (WORK)
+[x] `START TRANSACTION |` → keyword candidates (WITH CONSISTENT SNAPSHOT, READ ONLY, READ WRITE)
+[x] `COMMIT |` → keyword candidates (AND, WORK)
+[x] `ROLLBACK |` → keyword candidates (TO, WORK)
+[x] `ROLLBACK TO |` → keyword candidate (SAVEPOINT)
+[x] `SAVEPOINT |` → identifier context
+[x] `RELEASE SAVEPOINT |` → identifier context
+[x] `LOCK TABLES |` → table_ref
+[x] `LOCK TABLES t |` → keyword candidates (READ, WRITE)
+[x] `ANALYZE TABLE |` → table_ref
+[x] `OPTIMIZE TABLE |` → table_ref
+[x] `CHECK TABLE |` → table_ref
+[x] `REPAIR TABLE |` → table_ref
+[x] `FLUSH |` → keyword candidates (PRIVILEGES, TABLES, LOGS, STATUS, HOSTS)
 ```
 
 ## Phase 7: Session/Utility Instrumentation
