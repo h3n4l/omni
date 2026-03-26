@@ -126,15 +126,15 @@ so that Phase 3+ instrumentation can be tested end-to-end.
 ### 3.3 JOIN Clauses
 
 ```
-[ ] `SELECT * FROM t1 JOIN |` → table_ref after JOIN
-[ ] `SELECT * FROM t1 LEFT JOIN |` → table_ref after LEFT JOIN
-[ ] `SELECT * FROM t1 RIGHT JOIN |` → table_ref after RIGHT JOIN
-[ ] `SELECT * FROM t1 CROSS JOIN |` → table_ref after CROSS JOIN
-[ ] `SELECT * FROM t1 NATURAL JOIN |` → table_ref after NATURAL JOIN
-[ ] `SELECT * FROM t1 STRAIGHT_JOIN |` → table_ref after STRAIGHT_JOIN
-[ ] `SELECT * FROM t1 JOIN t2 ON |` → columnref after ON
-[ ] `SELECT * FROM t1 JOIN t2 USING (|)` → columnref after USING (
-[ ] `SELECT * FROM t1 |` → JOIN keywords (JOIN, LEFT, RIGHT, INNER, CROSS, NATURAL, STRAIGHT_JOIN)
+[x] `SELECT * FROM t1 JOIN |` → table_ref after JOIN
+[x] `SELECT * FROM t1 LEFT JOIN |` → table_ref after LEFT JOIN
+[x] `SELECT * FROM t1 RIGHT JOIN |` → table_ref after RIGHT JOIN
+[x] `SELECT * FROM t1 CROSS JOIN |` → table_ref after CROSS JOIN
+[x] `SELECT * FROM t1 NATURAL JOIN |` → table_ref after NATURAL JOIN
+[x] `SELECT * FROM t1 STRAIGHT_JOIN |` → table_ref after STRAIGHT_JOIN
+[x] `SELECT * FROM t1 JOIN t2 ON |` → columnref after ON
+[x] `SELECT * FROM t1 JOIN t2 USING (|)` → columnref after USING (
+[x] `SELECT * FROM t1 |` → JOIN keywords (JOIN, LEFT, RIGHT, INNER, CROSS, NATURAL, STRAIGHT_JOIN)
 ```
 
 ### 3.4 WHERE, GROUP BY, HAVING

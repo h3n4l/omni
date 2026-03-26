@@ -766,3 +766,166 @@ func TestComplete_3_2_FromClause(t *testing.T) {
 		})
 	}
 }
+
+// --- Section 3.3: JOIN Clauses ---
+
+func TestComplete_3_3_JoinClauses(t *testing.T) {
+	cat := catalog.New()
+	mustExec(t, cat, "CREATE DATABASE test")
+	cat.SetCurrentDatabase("test")
+	mustExec(t, cat, "CREATE TABLE t1 (a INT, b INT)")
+	mustExec(t, cat, "CREATE TABLE t2 (a INT, c INT)")
+	mustExec(t, cat, "CREATE TABLE t3 (x INT, y INT)")
+
+	cases := []struct {
+		name       string
+		sql        string
+		cursor     int
+		wantType   CandidateType
+		wantText   string
+		wantAbsent string
+		absentType CandidateType
+	}{
+		{
+			// Scenario 1: SELECT * FROM t1 JOIN | → table_ref after JOIN
+			name:     "join_table_ref",
+			sql:      "SELECT * FROM t1 JOIN ",
+			cursor:   22,
+			wantType: CandidateTable,
+			wantText: "t2",
+		},
+		{
+			// Scenario 2: SELECT * FROM t1 LEFT JOIN | → table_ref after LEFT JOIN
+			name:     "left_join_table_ref",
+			sql:      "SELECT * FROM t1 LEFT JOIN ",
+			cursor:   27,
+			wantType: CandidateTable,
+			wantText: "t2",
+		},
+		{
+			// Scenario 3: SELECT * FROM t1 RIGHT JOIN | → table_ref after RIGHT JOIN
+			name:     "right_join_table_ref",
+			sql:      "SELECT * FROM t1 RIGHT JOIN ",
+			cursor:   28,
+			wantType: CandidateTable,
+			wantText: "t3",
+		},
+		{
+			// Scenario 4: SELECT * FROM t1 CROSS JOIN | → table_ref after CROSS JOIN
+			name:     "cross_join_table_ref",
+			sql:      "SELECT * FROM t1 CROSS JOIN ",
+			cursor:   28,
+			wantType: CandidateTable,
+			wantText: "t2",
+		},
+		{
+			// Scenario 5: SELECT * FROM t1 NATURAL JOIN | → table_ref after NATURAL JOIN
+			name:     "natural_join_table_ref",
+			sql:      "SELECT * FROM t1 NATURAL JOIN ",
+			cursor:   30,
+			wantType: CandidateTable,
+			wantText: "t2",
+		},
+		{
+			// Scenario 6: SELECT * FROM t1 STRAIGHT_JOIN | → table_ref after STRAIGHT_JOIN
+			name:     "straight_join_table_ref",
+			sql:      "SELECT * FROM t1 STRAIGHT_JOIN ",
+			cursor:   31,
+			wantType: CandidateTable,
+			wantText: "t2",
+		},
+		{
+			// Scenario 7: SELECT * FROM t1 JOIN t2 ON | → columnref after ON
+			name:     "join_on_columnref",
+			sql:      "SELECT * FROM t1 JOIN t2 ON ",
+			cursor:   28,
+			wantType: CandidateColumn,
+			wantText: "a",
+		},
+		{
+			// Scenario 8: SELECT * FROM t1 JOIN t2 USING (| → columnref after USING (
+			name:     "join_using_columnref",
+			sql:      "SELECT * FROM t1 JOIN t2 USING (",
+			cursor:   32,
+			wantType: CandidateColumn,
+			wantText: "a",
+		},
+		{
+			// Scenario 9: SELECT * FROM t1 | → JOIN keywords
+			name:     "after_table_join_keywords",
+			sql:      "SELECT * FROM t1 ",
+			cursor:   17,
+			wantType: CandidateKeyword,
+			wantText: "JOIN",
+		},
+		{
+			// Scenario 9 continued: LEFT keyword
+			name:     "after_table_left_keyword",
+			sql:      "SELECT * FROM t1 ",
+			cursor:   17,
+			wantType: CandidateKeyword,
+			wantText: "LEFT",
+		},
+		{
+			// Scenario 9 continued: RIGHT keyword
+			name:     "after_table_right_keyword",
+			sql:      "SELECT * FROM t1 ",
+			cursor:   17,
+			wantType: CandidateKeyword,
+			wantText: "RIGHT",
+		},
+		{
+			// Scenario 9 continued: INNER keyword
+			name:     "after_table_inner_keyword",
+			sql:      "SELECT * FROM t1 ",
+			cursor:   17,
+			wantType: CandidateKeyword,
+			wantText: "INNER",
+		},
+		{
+			// Scenario 9 continued: CROSS keyword
+			name:     "after_table_cross_keyword",
+			sql:      "SELECT * FROM t1 ",
+			cursor:   17,
+			wantType: CandidateKeyword,
+			wantText: "CROSS",
+		},
+		{
+			// Scenario 9 continued: NATURAL keyword
+			name:     "after_table_natural_keyword",
+			sql:      "SELECT * FROM t1 ",
+			cursor:   17,
+			wantType: CandidateKeyword,
+			wantText: "NATURAL",
+		},
+		{
+			// Scenario 9 continued: STRAIGHT_JOIN keyword
+			name:     "after_table_straight_join_keyword",
+			sql:      "SELECT * FROM t1 ",
+			cursor:   17,
+			wantType: CandidateKeyword,
+			wantText: "STRAIGHT_JOIN",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			candidates := Complete(tc.sql, tc.cursor, cat)
+			if len(candidates) == 0 {
+				t.Fatalf("expected candidates, got none")
+			}
+
+			if tc.wantText != "" {
+				if !containsCandidate(candidates, tc.wantText, tc.wantType) {
+					t.Errorf("missing candidate %q of type %d; got %v", tc.wantText, tc.wantType, candidates)
+				}
+			}
+
+			if tc.wantAbsent != "" {
+				if containsCandidate(candidates, tc.wantAbsent, tc.absentType) {
+					t.Errorf("unexpected candidate %q of type %d should not appear", tc.wantAbsent, tc.absentType)
+				}
+			}
+		})
+	}
+}

@@ -732,6 +732,14 @@ func (p *Parser) parseTableReference() (nodes.TableExpr, error) {
 			break
 		}
 
+		// Completion: after JOIN keyword, offer table_ref candidates for the right-side table.
+		p.checkCursor()
+		if p.collectMode() {
+			p.addRuleCandidate("table_ref")
+			p.addRuleCandidate("database_ref")
+			return nil, &ParseError{Message: "collecting"}
+		}
+
 		right, err := p.parseTableFactor()
 		if err != nil {
 			return nil, err
@@ -747,6 +755,12 @@ func (p *Parser) parseTableReference() (nodes.TableExpr, error) {
 		// ON or USING condition
 		condStart := p.pos()
 		if _, ok := p.match(kwON); ok {
+			// Completion: after ON keyword, offer columnref candidates for join condition.
+			p.checkCursor()
+			if p.collectMode() {
+				p.addRuleCandidate("columnref")
+				return nil, &ParseError{Message: "collecting"}
+			}
 			condStart = p.pos()
 			cond, err := p.parseExpr()
 			if err != nil {
@@ -757,8 +771,29 @@ func (p *Parser) parseTableReference() (nodes.TableExpr, error) {
 				Expr: cond,
 			}
 		} else if _, ok := p.match(kwUSING); ok {
-			cols, err := p.parseParenIdentList()
-			if err != nil {
+			// For USING, we manually consume '(' so we can add a completion checkpoint inside.
+			if _, err := p.expect('('); err != nil {
+				return nil, err
+			}
+			// Completion: after USING (, offer columnref candidates for shared columns.
+			p.checkCursor()
+			if p.collectMode() {
+				p.addRuleCandidate("columnref")
+				return nil, &ParseError{Message: "collecting"}
+			}
+			var cols []string
+			for {
+				name, _, err := p.parseIdentifier()
+				if err != nil {
+					return nil, err
+				}
+				cols = append(cols, name)
+				if p.cur.Type != ',' {
+					break
+				}
+				p.advance()
+			}
+			if _, err := p.expect(')'); err != nil {
 				return nil, err
 			}
 			join.Condition = &nodes.UsingCondition{Loc: nodes.Loc{Start: condStart, End: p.pos()}, Columns: cols}
