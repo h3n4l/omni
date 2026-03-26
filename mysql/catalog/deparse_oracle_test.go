@@ -739,3 +739,77 @@ func TestDeparse_Section_7_3_ExpressionViews(t *testing.T) {
 		})
 	}
 }
+// TestDeparseOracle_1_2_LogicalBitwiseIS verifies logical, bitwise, and IS operators
+// against MySQL 8.0 SHOW CREATE VIEW output.
+func TestDeparseOracle_1_2_LogicalBitwiseIS(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	// Setup: create base table on MySQL 8.0
+	if err := oracle.execSQLDirect("CREATE TABLE IF NOT EXISTS t (a INT, b INT, c INT)"); err != nil {
+		t.Fatalf("failed to create table on MySQL: %v", err)
+	}
+
+	cases := []struct {
+		name     string
+		viewName string
+		viewSQL  string
+	}{
+		{"and_or", "v_and_or", "CREATE VIEW v_and_or AS SELECT a AND b, a OR b FROM t"},
+		{"xor", "v_xor", "CREATE VIEW v_xor AS SELECT a XOR b FROM t"},
+		{"not", "v_not", "CREATE VIEW v_not AS SELECT NOT a FROM t"},
+		{"bitwise_ops", "v_bitwise", "CREATE VIEW v_bitwise AS SELECT a | b, a & b, a ^ b FROM t"},
+		{"shifts", "v_shifts", "CREATE VIEW v_shifts AS SELECT a << b, a >> b FROM t"},
+		{"bitwise_not", "v_bitnot", "CREATE VIEW v_bitnot AS SELECT ~a FROM t"},
+		{"is_null", "v_isnull", "CREATE VIEW v_isnull AS SELECT a IS NULL, a IS NOT NULL FROM t"},
+		{"is_true_false", "v_istf", "CREATE VIEW v_istf AS SELECT a IS TRUE, a IS FALSE FROM t"},
+		{"in_not_in", "v_in", "CREATE VIEW v_in AS SELECT a IN (1,2,3), a NOT IN (1,2,3) FROM t"},
+		{"between", "v_between", "CREATE VIEW v_between AS SELECT a BETWEEN 1 AND 10, a NOT BETWEEN 1 AND 10 FROM t"},
+		{"like", "v_like", "CREATE VIEW v_like AS SELECT a LIKE 'foo%', a NOT LIKE 'bar%' FROM t"},
+		{"like_escape", "v_like_esc", "CREATE VIEW v_like_esc AS SELECT a LIKE 'x' ESCAPE '\\\\' FROM t"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// --- MySQL 8.0 side ---
+			oracle.execSQLDirect("DROP VIEW IF EXISTS " + tc.viewName)
+			if err := oracle.execSQLDirect(tc.viewSQL); err != nil {
+				t.Skipf("MySQL 8.0 rejected: %v", err)
+				return
+			}
+			mysqlOutput, err := oracle.showCreateView(tc.viewName)
+			if err != nil {
+				t.Fatalf("SHOW CREATE VIEW on MySQL failed: %v", err)
+			}
+			mysqlBody := stripDatabasePrefix(extractSelectBody(mysqlOutput))
+
+			// --- Omni catalog side ---
+			cat := New()
+			cat.Exec("CREATE DATABASE test", nil)
+			cat.SetCurrentDatabase("test")
+			cat.Exec("CREATE TABLE t (a INT, b INT, c INT)", nil)
+			results, _ := cat.Exec(tc.viewSQL, nil)
+			if len(results) == 0 {
+				t.Fatalf("CREATE VIEW on catalog returned no results")
+			}
+			if results[0].Error != nil {
+				t.Fatalf("CREATE VIEW on catalog failed: %v", results[0].Error)
+			}
+			omniOutput := cat.ShowCreateView("test", tc.viewName)
+			if omniOutput == "" {
+				t.Fatal("ShowCreateView returned empty")
+			}
+			omniBody := extractSelectBody(omniOutput)
+
+			t.Logf("MySQL body:  %s", mysqlBody)
+			t.Logf("Omni body:   %s", omniBody)
+
+			if mysqlBody != omniBody {
+				t.Errorf("SELECT body mismatch:\n--- mysql ---\n%s\n--- omni ---\n%s", mysqlBody, omniBody)
+			}
+		})
+	}
+}

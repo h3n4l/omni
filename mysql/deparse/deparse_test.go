@@ -241,7 +241,7 @@ func TestDeparse_Section_2_3_BitwiseOperators(t *testing.T) {
 		{"bitwise_xor", "a ^ b", "(`a` ^ `b`)"},
 		{"left_shift", "a << b", "(`a` << `b`)"},
 		{"right_shift", "a >> b", "(`a` >> `b`)"},
-		{"bitwise_not", "~a", "~`a`"},
+		{"bitwise_not", "~a", "~(`a`)"},
 	}
 
 	for _, tc := range cases {
@@ -263,7 +263,7 @@ func TestDeparse_Section_2_3_BitwiseNotAST(t *testing.T) {
 		Operand: &ast.ColumnRef{Column: "a"},
 	}
 	got := Deparse(node)
-	expected := "~`a`"
+	expected := "~(`a`)"
 	if got != expected {
 		t.Errorf("Deparse(UnaryBitNot(a)) = %q, want %q", got, expected)
 	}

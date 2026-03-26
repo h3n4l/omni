@@ -30,18 +30,18 @@ Status legend: `[ ]` pending, `[x]` passing, `[~]` partial
 ### 1.2 Logical, Bitwise & IS Operators
 
 ```
-[ ] `SELECT a AND b, a OR b FROM t` — logical with boolean wrapping
-[ ] `SELECT a XOR b FROM t` — XOR with boolean wrapping
-[ ] `SELECT NOT a FROM t` — NOT on non-boolean
-[ ] `SELECT a | b, a & b, a ^ b FROM t` — bitwise ops
-[ ] `SELECT a << b, a >> b FROM t` — shifts
-[ ] `SELECT ~a FROM t` — bitwise NOT
-[ ] `SELECT a IS NULL, a IS NOT NULL FROM t` — NULL tests
-[ ] `SELECT a IS TRUE, a IS FALSE FROM t` — boolean tests on INT
-[ ] `SELECT a IN (1,2,3), a NOT IN (1,2,3) FROM t` — membership
-[ ] `SELECT a BETWEEN 1 AND 10, a NOT BETWEEN 1 AND 10 FROM t` — range
-[ ] `SELECT a LIKE 'foo%', a NOT LIKE 'bar%' FROM t` — pattern matching
-[ ] `SELECT a LIKE 'x' ESCAPE '\\' FROM t` — LIKE with ESCAPE
+[x] `SELECT a AND b, a OR b FROM t` — logical with boolean wrapping
+[x] `SELECT a XOR b FROM t` — XOR with boolean wrapping
+[x] `SELECT NOT a FROM t` — NOT on non-boolean
+[x] `SELECT a | b, a & b, a ^ b FROM t` — bitwise ops
+[x] `SELECT a << b, a >> b FROM t` — shifts
+[x] `SELECT ~a FROM t` — bitwise NOT
+[x] `SELECT a IS NULL, a IS NOT NULL FROM t` — NULL tests
+[x] `SELECT a IS TRUE, a IS FALSE FROM t` — boolean tests on INT
+[x] `SELECT a IN (1,2,3), a NOT IN (1,2,3) FROM t` — membership
+[x] `SELECT a BETWEEN 1 AND 10, a NOT BETWEEN 1 AND 10 FROM t` — range
+[x] `SELECT a LIKE 'foo%', a NOT LIKE 'bar%' FROM t` — pattern matching
+[x] `SELECT a LIKE 'x' ESCAPE '\\' FROM t` — LIKE with ESCAPE
 ```
 
 ### 1.3 Literals & Spacing Rules

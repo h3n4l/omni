@@ -397,7 +397,10 @@ func deparseExprAlias(node ast.ExprNode) string {
 	case *ast.StringLit:
 		// When embedded in an expression, include quotes to match MySQL 8.0's behavior.
 		// The top-level autoAlias handles standalone StringLit without quotes.
-		return "'" + n.Value + "'"
+		// Escape backslashes and single quotes like deparseStringLit does.
+		escaped := strings.ReplaceAll(n.Value, `\`, `\\`)
+		escaped = strings.ReplaceAll(escaped, `'`, `\'`)
+		return "'" + escaped + "'"
 	case *ast.NullLit:
 		return "NULL"
 	case *ast.BoolLit:
@@ -424,7 +427,7 @@ func deparseExprAlias(node ast.ExprNode) string {
 		case ast.UnaryPlus:
 			return operand
 		case ast.UnaryNot:
-			return "NOT (" + operand + ")"
+			return "NOT " + operand
 		case ast.UnaryBitNot:
 			return "~" + operand
 		}
@@ -484,6 +487,66 @@ func deparseExprAlias(node ast.ExprNode) string {
 		}
 		b.WriteString(" END")
 		return b.String()
+	case *ast.IsExpr:
+		expr := deparseExprAlias(n.Expr)
+		switch n.Test {
+		case ast.IsNull:
+			if n.Not {
+				return expr + " IS NOT NULL"
+			}
+			return expr + " IS NULL"
+		case ast.IsTrue:
+			if n.Not {
+				return expr + " IS NOT TRUE"
+			}
+			return expr + " IS TRUE"
+		case ast.IsFalse:
+			if n.Not {
+				return expr + " IS NOT FALSE"
+			}
+			return expr + " IS FALSE"
+		case ast.IsUnknown:
+			if n.Not {
+				return expr + " IS NOT UNKNOWN"
+			}
+			return expr + " IS UNKNOWN"
+		}
+		return deparseExpr(node)
+	case *ast.InExpr:
+		expr := deparseExprAlias(n.Expr)
+		keyword := "IN"
+		if n.Not {
+			keyword = "NOT IN"
+		}
+		if n.Select != nil {
+			return expr + " " + keyword + " (...)"
+		}
+		items := make([]string, len(n.List))
+		for i, item := range n.List {
+			items[i] = deparseExprAlias(item)
+		}
+		return expr + " " + keyword + " (" + strings.Join(items, ",") + ")"
+	case *ast.BetweenExpr:
+		expr := deparseExprAlias(n.Expr)
+		low := deparseExprAlias(n.Low)
+		high := deparseExprAlias(n.High)
+		keyword := "BETWEEN"
+		if n.Not {
+			keyword = "NOT BETWEEN"
+		}
+		return expr + " " + keyword + " " + low + " AND " + high
+	case *ast.LikeExpr:
+		expr := deparseExprAlias(n.Expr)
+		pattern := deparseExprAlias(n.Pattern)
+		keyword := "LIKE"
+		if n.Not {
+			keyword = "NOT LIKE"
+		}
+		result := expr + " " + keyword + " " + pattern
+		if n.Escape != nil {
+			result += " ESCAPE " + deparseExprAlias(n.Escape)
+		}
+		return result
 	default:
 		// Fallback: use the regular deparsed text
 		return deparseExpr(node)
@@ -939,7 +1002,7 @@ func deparseUnaryExpr(n *ast.UnaryExpr) string {
 	case ast.UnaryNot:
 		return "(not(" + operand + "))"
 	case ast.UnaryBitNot:
-		return "~" + operand
+		return "~(" + operand + ")"
 	default:
 		return operand
 	}
@@ -981,15 +1044,15 @@ func deparseBetweenExpr(n *ast.BetweenExpr) string {
 func deparseLikeExpr(n *ast.LikeExpr) string {
 	expr := deparseExpr(n.Expr)
 	pattern := deparseExpr(n.Pattern)
-	keyword := "like"
-	if n.Not {
-		keyword = "not like"
-	}
-	result := "(" + expr + " " + keyword + " " + pattern
+	likeClause := "(" + expr + " like " + pattern
 	if n.Escape != nil {
-		result += " escape " + deparseExpr(n.Escape)
+		likeClause += " escape " + deparseExpr(n.Escape)
 	}
-	return result + ")"
+	likeClause += ")"
+	if n.Not {
+		return "(not(" + likeClause + "))"
+	}
+	return likeClause
 }
 
 func deparseIsExpr(n *ast.IsExpr) string {
