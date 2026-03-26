@@ -191,12 +191,12 @@ Status legend: `[ ]` pending, `[x]` passing, `[~]` partial
 ### 5.1 WHERE, GROUP BY, HAVING, ORDER BY Combined
 
 ```
-[ ] `SELECT a FROM t WHERE a > 1 GROUP BY a HAVING COUNT(*) > 1 ORDER BY a LIMIT 10` — all clauses combined
-[ ] `SELECT a, COUNT(*) cnt FROM t GROUP BY a HAVING COUNT(*) > 1 ORDER BY cnt DESC` — alias in ORDER BY
-[ ] `SELECT DISTINCT a FROM t ORDER BY a DESC` — DISTINCT + ORDER BY
-[ ] `SELECT a FROM t ORDER BY a, b DESC` — multi-column ORDER BY
-[ ] `SELECT a FROM t LIMIT 10 OFFSET 5` — LIMIT with OFFSET
-[ ] `SELECT a + b FROM t GROUP BY a + b` — expression in GROUP BY
+[x] `SELECT a FROM t WHERE a > 1 GROUP BY a HAVING COUNT(*) > 1 ORDER BY a LIMIT 10` — all clauses combined
+[x] `SELECT a, COUNT(*) cnt FROM t GROUP BY a HAVING COUNT(*) > 1 ORDER BY cnt DESC` — alias in ORDER BY
+[x] `SELECT DISTINCT a FROM t ORDER BY a DESC` — DISTINCT + ORDER BY
+[x] `SELECT a FROM t ORDER BY a, b DESC` — multi-column ORDER BY
+[x] `SELECT a FROM t LIMIT 10 OFFSET 5` — LIMIT with OFFSET
+[x] `SELECT a + b FROM t GROUP BY a + b` — expression in GROUP BY
 ```
 
 ### 5.2 Set Operations
