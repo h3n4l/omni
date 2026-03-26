@@ -247,13 +247,13 @@ Status legend: `[ ]` pending, `[x]` passing, `[~]` partial
 ### 7.1 Window Function Patterns
 
 ```
-[ ] `SELECT a, ROW_NUMBER() OVER (ORDER BY a) FROM t` — basic window
-[ ] `SELECT a, SUM(b) OVER (PARTITION BY a ORDER BY b) FROM t` — PARTITION BY + ORDER BY
-[ ] `SELECT a, SUM(b) OVER (PARTITION BY a ORDER BY b ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM t` — ROWS frame
-[ ] `SELECT a, AVG(b) OVER (ORDER BY a RANGE BETWEEN 1 PRECEDING AND 1 FOLLOWING) FROM t` — RANGE frame
-[ ] `SELECT a, RANK() OVER w, DENSE_RANK() OVER w FROM t WINDOW w AS (ORDER BY a)` — named window
-[ ] `SELECT a, ROW_NUMBER() OVER (ORDER BY a), SUM(b) OVER (ORDER BY a) FROM t` — multiple window functions
-[ ] `SELECT a, LAG(a, 1) OVER (ORDER BY a), LEAD(a, 1) OVER (ORDER BY a) FROM t` — LAG/LEAD
+[x] `SELECT a, ROW_NUMBER() OVER (ORDER BY a) FROM t` — basic window
+[x] `SELECT a, SUM(b) OVER (PARTITION BY a ORDER BY b) FROM t` — PARTITION BY + ORDER BY
+[x] `SELECT a, SUM(b) OVER (PARTITION BY a ORDER BY b ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM t` — ROWS frame
+[x] `SELECT a, AVG(b) OVER (ORDER BY a RANGE BETWEEN 1 PRECEDING AND 1 FOLLOWING) FROM t` — RANGE frame
+[x] `SELECT a, RANK() OVER w, DENSE_RANK() OVER w FROM t WINDOW w AS (ORDER BY a)` — named window
+[x] `SELECT a, ROW_NUMBER() OVER (ORDER BY a), SUM(b) OVER (ORDER BY a) FROM t` — multiple window functions
+[x] `SELECT a, LAG(a, 1) OVER (ORDER BY a), LEAD(a, 1) OVER (ORDER BY a) FROM t` — LAG/LEAD
 ```
 
 ## Phase 8: Edge Cases & Advanced

@@ -110,6 +110,22 @@ func deparseSelectStmtCtx(stmt *ast.SelectStmt, suppressAlias bool) string {
 		b.WriteString(deparseExpr(stmt.Having))
 	}
 
+	// WINDOW clause: WINDOW `w` AS (window_spec) [, ...]
+	// MySQL 8.0 appends a trailing space after the window clause.
+	if len(stmt.WindowClause) > 0 {
+		b.WriteString(" window ")
+		for i, wd := range stmt.WindowClause {
+			if i > 0 {
+				b.WriteString(",")
+			}
+			b.WriteString("`")
+			b.WriteString(wd.Name)
+			b.WriteString("` AS ")
+			b.WriteString(deparseWindowBody(wd))
+		}
+		b.WriteString(" ")
+	}
+
 	// ORDER BY clause
 	if len(stmt.OrderBy) > 0 {
 		b.WriteString(" order by ")
@@ -367,9 +383,15 @@ func deparseResTarget(node ast.ExprNode, position int) string {
 	return exprStr + " AS `" + alias + "`"
 }
 
-// hasWindowFunction checks if an expression is or contains a window function (has OVER clause).
+// hasWindowFunction checks if an expression is or contains a window function
+// with an inline OVER (...) clause (not a named window reference like OVER w).
+// MySQL 8.0 uses double-space before AS only for inline window definitions.
 func hasWindowFunction(node ast.ExprNode) bool {
 	if fc, ok := node.(*ast.FuncCallExpr); ok && fc.Over != nil {
+		// Named window reference (OVER w) — no double space
+		if fc.Over.RefName != "" && len(fc.Over.PartitionBy) == 0 && len(fc.Over.OrderBy) == 0 && fc.Over.Frame == nil {
+			return false
+		}
 		return true
 	}
 	return false
@@ -1131,8 +1153,13 @@ func binaryOpToStringAlias(op ast.BinaryOp) string {
 }
 
 // deparseWindowDefAlias formats a window definition for auto-alias purposes.
-// MySQL 8.0 uses: OVER (ORDER BY col) in the alias text.
+// MySQL 8.0 uses: OVER (ORDER BY col) in the alias text, or OVER w for named windows.
 func deparseWindowDefAlias(wd *ast.WindowDef) string {
+	// Named window reference: OVER window_name
+	if wd.RefName != "" && len(wd.PartitionBy) == 0 && len(wd.OrderBy) == 0 && wd.Frame == nil {
+		return "OVER " + wd.RefName
+	}
+
 	var b strings.Builder
 	b.WriteString("OVER (")
 
@@ -1161,6 +1188,13 @@ func deparseWindowDefAlias(wd *ast.WindowDef) string {
 				b.WriteString(" desc")
 			}
 		}
+		needSpace = true
+	}
+	if wd.Frame != nil {
+		if needSpace {
+			b.WriteString(" ")
+		}
+		b.WriteString(deparseWindowFrame(wd.Frame))
 	}
 	b.WriteString(")")
 	return b.String()
@@ -1484,13 +1518,19 @@ func deparseFuncCallExpr(n *ast.FuncCallExpr) string {
 // MySQL 8.0 format: OVER (PARTITION BY ... ORDER BY ... frame_clause )
 // Note: trailing space before closing paren, uppercase keywords.
 func deparseWindowDef(wd *ast.WindowDef) string {
-	// Named window reference: OVER window_name
+	// Named window reference: OVER `window_name`
 	if wd.RefName != "" && len(wd.PartitionBy) == 0 && len(wd.OrderBy) == 0 && wd.Frame == nil {
-		return "OVER " + wd.RefName
+		return "OVER `" + wd.RefName + "`"
 	}
 
+	return "OVER " + deparseWindowBody(wd)
+}
+
+// deparseWindowBody formats the body of a window definition: (PARTITION BY ... ORDER BY ... frame_clause )
+// Used by both OVER clauses and WINDOW named window definitions.
+func deparseWindowBody(wd *ast.WindowDef) string {
 	var b strings.Builder
-	b.WriteString("OVER (")
+	b.WriteString("(")
 
 	needSpace := false
 
@@ -1530,11 +1570,12 @@ func deparseWindowDef(wd *ast.WindowDef) string {
 			b.WriteString(" ")
 		}
 		b.WriteString(deparseWindowFrame(wd.Frame))
-		needSpace = true
+		// When frame clause is present, MySQL 8.0 has no trailing space before )
+		b.WriteString(")")
+	} else {
+		// No frame clause — MySQL 8.0 puts a trailing space before )
+		b.WriteString(" )")
 	}
-
-	// Trailing space before closing paren (MySQL 8.0 format)
-	b.WriteString(" )")
 
 	return b.String()
 }

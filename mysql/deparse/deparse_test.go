@@ -560,11 +560,11 @@ func TestDeparse_Section_3_5_WindowFunctions(t *testing.T) {
 		// Frame clause: ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
 		{"sum_over_frame",
 			"SUM(b) OVER (PARTITION BY a ORDER BY b ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)",
-			"sum(`b`) OVER (PARTITION BY `a` ORDER BY `b` ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW )"},
-		// Named window reference
+			"sum(`b`) OVER (PARTITION BY `a` ORDER BY `b` ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)"},
+		// Named window reference — MySQL 8.0 backtick-quotes window names
 		{"named_window_ref",
 			"ROW_NUMBER() OVER w",
-			"row_number() OVER w"},
+			"row_number() OVER `w`"},
 	}
 
 	for _, tc := range cases {

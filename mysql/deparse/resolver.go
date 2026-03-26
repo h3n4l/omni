@@ -190,6 +190,16 @@ func (r *Resolver) resolveWithCTEs(stmt *ast.SelectStmt, cteTables map[string]*R
 		stmt.Having = r.resolveExpr(stmt.Having, sc)
 	}
 
+	// Resolve WINDOW clause
+	for _, wd := range stmt.WindowClause {
+		for i, expr := range wd.PartitionBy {
+			wd.PartitionBy[i] = r.resolveExpr(expr, sc)
+		}
+		for _, item := range wd.OrderBy {
+			item.Expr = r.resolveExpr(item.Expr, sc)
+		}
+	}
+
 	// Resolve ORDER BY
 	for _, item := range stmt.OrderBy {
 		item.Expr = r.resolveExpr(item.Expr, sc)

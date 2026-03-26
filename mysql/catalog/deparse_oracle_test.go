@@ -597,6 +597,94 @@ func TestDeparse_Section_7_6_Regression(t *testing.T) {
 	}
 }
 
+// TestDeparseOracle_7_1_WindowFunctions verifies window function patterns
+// against MySQL 8.0 SHOW CREATE VIEW output.
+// Covers: ROW_NUMBER, SUM OVER PARTITION BY+ORDER BY, ROWS frame, RANGE frame,
+// named window, multiple window functions, LAG/LEAD.
+func TestDeparseOracle_7_1_WindowFunctions(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	// Setup: create base table on MySQL 8.0
+	if err := oracle.execSQLDirect("CREATE TABLE IF NOT EXISTS t (a INT, b INT, c INT)"); err != nil {
+		t.Fatalf("failed to create table on MySQL: %v", err)
+	}
+
+	cases := []struct {
+		name     string
+		viewName string
+		viewSQL  string
+		partial  bool
+	}{
+		{"row_number_basic", "v_wf_rownum", "CREATE VIEW v_wf_rownum AS SELECT a, ROW_NUMBER() OVER (ORDER BY a) FROM t", false},
+		{"sum_partition_orderby", "v_wf_sum_part", "CREATE VIEW v_wf_sum_part AS SELECT a, SUM(b) OVER (PARTITION BY a ORDER BY b) FROM t", false},
+		{"rows_frame", "v_wf_rows", "CREATE VIEW v_wf_rows AS SELECT a, SUM(b) OVER (PARTITION BY a ORDER BY b ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM t", false},
+		{"range_frame", "v_wf_range", "CREATE VIEW v_wf_range AS SELECT a, AVG(b) OVER (ORDER BY a RANGE BETWEEN 1 PRECEDING AND 1 FOLLOWING) FROM t", false},
+		{"named_window", "v_wf_named", "CREATE VIEW v_wf_named AS SELECT a, RANK() OVER w, DENSE_RANK() OVER w FROM t WINDOW w AS (ORDER BY a)", false},
+		{"multiple_window_funcs", "v_wf_multi", "CREATE VIEW v_wf_multi AS SELECT a, ROW_NUMBER() OVER (ORDER BY a), SUM(b) OVER (ORDER BY a) FROM t", false},
+		{"lag_lead", "v_wf_lagld", "CREATE VIEW v_wf_lagld AS SELECT a, LAG(a, 1) OVER (ORDER BY a), LEAD(a, 1) OVER (ORDER BY a) FROM t", false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// --- MySQL 8.0 side ---
+			oracle.execSQLDirect("DROP VIEW IF EXISTS " + tc.viewName)
+			if err := oracle.execSQLDirect(tc.viewSQL); err != nil {
+				if tc.partial {
+					t.Skipf("MySQL 8.0 rejected (expected partial): %v", err)
+				}
+				t.Skipf("MySQL 8.0 rejected: %v", err)
+				return
+			}
+			mysqlOutput, err := oracle.showCreateView(tc.viewName)
+			if err != nil {
+				t.Fatalf("SHOW CREATE VIEW on MySQL failed: %v", err)
+			}
+			mysqlBody := stripDatabasePrefix(extractSelectBody(mysqlOutput))
+
+			// --- Omni catalog side ---
+			cat := New()
+			cat.Exec("CREATE DATABASE test", nil)
+			cat.SetCurrentDatabase("test")
+			cat.Exec("CREATE TABLE t (a INT, b INT, c INT)", nil)
+			results, _ := cat.Exec(tc.viewSQL, nil)
+			if len(results) == 0 {
+				if tc.partial {
+					t.Skipf("CREATE VIEW on catalog returned no results (expected partial — parser limitation)")
+				}
+				t.Fatalf("CREATE VIEW on catalog returned no results")
+			}
+			if results[0].Error != nil {
+				if tc.partial {
+					t.Skipf("CREATE VIEW on catalog failed (expected partial): %v", results[0].Error)
+				}
+				t.Fatalf("CREATE VIEW on catalog failed: %v", results[0].Error)
+			}
+			omniOutput := cat.ShowCreateView("test", tc.viewName)
+			if omniOutput == "" {
+				if tc.partial {
+					t.Skip("ShowCreateView returned empty (expected partial)")
+				}
+				t.Fatal("ShowCreateView returned empty")
+			}
+			omniBody := extractSelectBody(omniOutput)
+
+			t.Logf("MySQL body:  %s", mysqlBody)
+			t.Logf("Omni body:   %s", omniBody)
+
+			if mysqlBody != omniBody {
+				if tc.partial {
+					t.Skipf("SELECT body mismatch (expected partial):\n--- mysql ---\n%s\n--- omni ---\n%s", mysqlBody, omniBody)
+				}
+				t.Errorf("SELECT body mismatch:\n--- mysql ---\n%s\n--- omni ---\n%s", mysqlBody, omniBody)
+			}
+		})
+	}
+}
+
 // TestDeparseOracle_1_1_ArithmeticComparison verifies arithmetic and comparison operators
 // against MySQL 8.0 SHOW CREATE VIEW output.
 func TestDeparseOracle_1_1_ArithmeticComparison(t *testing.T) {
