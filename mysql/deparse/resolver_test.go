@@ -470,9 +470,10 @@ func TestResolver_Section_6_5_CastCharsetFromCatalog(t *testing.T) {
 
 	t.Run("convert_type_latin1_database", func(t *testing.T) {
 		// CONVERT(expr, CHAR) — rewritten to CAST, should use database charset
+		// MySQL 8.0 auto-alias preserves the original CONVERT(a, CHAR) form.
 		cat := setupCatalogWithCharset(t, "latin1")
 		got := resolveAndDeparse(t, cat, "SELECT CONVERT(a, CHAR) FROM t")
-		expected := "select cast(`t`.`a` as char charset latin1) AS `CAST(a AS CHAR)` from `t`"
+		expected := "select cast(`t`.`a` as char charset latin1) AS `CONVERT(a, CHAR)` from `t`"
 		if got != expected {
 			t.Errorf("CONVERT CHAR latin1:\n  got:  %q\n  want: %q", got, expected)
 		}

@@ -444,6 +444,15 @@ func deparseExprAlias(node ast.ExprNode) string {
 	case *ast.BinaryExpr:
 		left := deparseExprAlias(n.Left)
 		right := deparseExprAlias(n.Right)
+		// Special operator aliases for REGEXP, ->, ->>
+		switch n.Op {
+		case ast.BinOpRegexp:
+			return left + " REGEXP " + right
+		case ast.BinOpJsonExtract:
+			return left + "->" + right
+		case ast.BinOpJsonUnquote:
+			return left + "->>" + right
+		}
 		op := binaryOpToStringAlias(n.Op)
 		// Use original operator text for alias when available (e.g., "MOD" instead of "%", "!=" instead of "<>")
 		if n.OriginalOp != "" {
@@ -458,6 +467,10 @@ func deparseExprAlias(node ast.ExprNode) string {
 		case ast.UnaryPlus:
 			return operand
 		case ast.UnaryNot:
+			// NOT REGEXP → "a NOT REGEXP 'pattern'" (NOT between left and REGEXP)
+			if binExpr, ok := unwrapParen(n.Operand).(*ast.BinaryExpr); ok && binExpr.Op == ast.BinOpRegexp {
+				return deparseExprAlias(binExpr.Left) + " NOT REGEXP " + deparseExprAlias(binExpr.Right)
+			}
 			return "NOT " + operand
 		case ast.UnaryBitNot:
 			return "~" + operand
@@ -526,7 +539,8 @@ func deparseExprAlias(node ast.ExprNode) string {
 		if n.Charset != "" {
 			return "CONVERT(" + deparseExprAlias(n.Expr) + " USING " + strings.ToLower(n.Charset) + ")"
 		}
-		return "CAST(" + deparseExprAlias(n.Expr) + " AS " + deparseDataTypeAlias(n.TypeName) + ")"
+		// MySQL 8.0 auto-alias preserves "CONVERT(a, CHAR)" form (comma-separated).
+		return "CONVERT(" + deparseExprAlias(n.Expr) + ", " + deparseDataTypeAlias(n.TypeName) + ")"
 	case *ast.CaseExpr:
 		// MySQL 8.0 auto-alias: "CASE WHEN a > 0 THEN 'pos' ELSE 'neg' END" — uppercase keywords.
 		var b strings.Builder

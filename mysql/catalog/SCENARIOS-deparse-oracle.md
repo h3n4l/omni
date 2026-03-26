@@ -101,18 +101,18 @@ Status legend: `[ ]` pending, `[x]` passing, `[~]` partial
 ### 2.4 CAST, CONVERT & Operator-to-Function Rewrites
 
 ```
-[ ] `SELECT CAST(a AS CHAR) FROM t` — CAST adds charset
-[ ] `SELECT CAST(a AS CHAR(10)) FROM t` — CAST with length
-[ ] `SELECT CAST(a AS BINARY) FROM t` — BINARY → char charset binary
-[ ] `SELECT CAST(a AS SIGNED), CAST(a AS UNSIGNED) FROM t` — numeric CAST
-[ ] `SELECT CAST(a AS DECIMAL(10,2)) FROM t` — DECIMAL CAST
-[ ] `SELECT CAST(a AS DATE), CAST(a AS DATETIME), CAST(a AS JSON) FROM t` — other CAST types
-[ ] `SELECT CONVERT(a, CHAR) FROM t` — CONVERT → cast
-[ ] `SELECT CONVERT(a USING utf8mb4) FROM t` — CONVERT USING
-[ ] `SELECT a REGEXP 'pattern' FROM t` — REGEXP → regexp_like()
-[ ] `SELECT a NOT REGEXP 'pattern' FROM t` — NOT REGEXP → not(regexp_like())
-[ ] `SELECT a->'$.key' FROM t` — -> → json_extract()
-[ ] `SELECT a->>'$.key' FROM t` — ->> → json_unquote(json_extract())
+[x] `SELECT CAST(a AS CHAR) FROM t` — CAST adds charset
+[x] `SELECT CAST(a AS CHAR(10)) FROM t` — CAST with length
+[x] `SELECT CAST(a AS BINARY) FROM t` — BINARY → char charset binary
+[x] `SELECT CAST(a AS SIGNED), CAST(a AS UNSIGNED) FROM t` — numeric CAST
+[x] `SELECT CAST(a AS DECIMAL(10,2)) FROM t` — DECIMAL CAST
+[x] `SELECT CAST(a AS DATE), CAST(a AS DATETIME), CAST(a AS JSON) FROM t` — other CAST types
+[x] `SELECT CONVERT(a, CHAR) FROM t` — CONVERT → cast
+[x] `SELECT CONVERT(a USING utf8mb4) FROM t` — CONVERT USING
+[x] `SELECT a REGEXP 'pattern' FROM t` — REGEXP → regexp_like()
+[x] `SELECT a NOT REGEXP 'pattern' FROM t` — NOT REGEXP → not(regexp_like())
+[x] `SELECT a->'$.key' FROM t` — -> → json_extract()
+[x] `SELECT a->>'$.key' FROM t` — ->> → json_unquote(json_extract())
 ```
 
 ## Phase 3: Boolean Context & Precedence

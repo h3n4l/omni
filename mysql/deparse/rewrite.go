@@ -158,10 +158,19 @@ func rewriteNot(operand ast.ExprNode) ast.ExprNode {
 		}
 	}
 
-	// Case 2: NOT(LIKE) — keep as not() wrapping (don't fold into the LIKE)
+	// Case 2a: NOT(LIKE) — keep as not() wrapping (don't fold into the LIKE)
 	// The deparsing of UnaryNot already produces (not(...)), which is the correct
 	// MySQL 8.0 output. So we return the UnaryNot as-is.
 	if _, ok := inner.(*ast.LikeExpr); ok {
+		return &ast.UnaryExpr{
+			Op:      ast.UnaryNot,
+			Operand: operand,
+		}
+	}
+
+	// Case 2b: NOT(REGEXP) — keep as not() wrapping.
+	// MySQL 8.0 rewrites NOT REGEXP to (not(regexp_like(...))).
+	if binExpr, ok := inner.(*ast.BinaryExpr); ok && binExpr.Op == ast.BinOpRegexp {
 		return &ast.UnaryExpr{
 			Op:      ast.UnaryNot,
 			Operand: operand,

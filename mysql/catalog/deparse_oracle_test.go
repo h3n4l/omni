@@ -1047,6 +1047,105 @@ func TestDeparseOracle_2_2_RegularFunctionsAggregates(t *testing.T) {
 	}
 }
 
+// TestDeparseOracle_2_4_CastConvertOperatorRewrites verifies CAST, CONVERT,
+// REGEXP→regexp_like, NOT REGEXP, -> (json_extract), ->> (json_unquote(json_extract))
+// against MySQL 8.0 SHOW CREATE VIEW output.
+func TestDeparseOracle_2_4_CastConvertOperatorRewrites(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	// Setup: create base tables on MySQL 8.0
+	if err := oracle.execSQLDirect("CREATE TABLE IF NOT EXISTS t (a INT, b INT, c INT)"); err != nil {
+		t.Fatalf("failed to create table t on MySQL: %v", err)
+	}
+	if err := oracle.execSQLDirect("CREATE TABLE IF NOT EXISTS tj (a JSON, b INT)"); err != nil {
+		t.Fatalf("failed to create table tj on MySQL: %v", err)
+	}
+
+	cases := []struct {
+		name     string
+		viewName string
+		viewSQL  string
+		tables   string // extra CREATE TABLE for omni catalog (beyond t)
+		partial  bool
+	}{
+		{"cast_char", "v_cast_char", "CREATE VIEW v_cast_char AS SELECT CAST(a AS CHAR) FROM t", "", false},
+		{"cast_char10", "v_cast_char10", "CREATE VIEW v_cast_char10 AS SELECT CAST(a AS CHAR(10)) FROM t", "", false},
+		{"cast_binary", "v_cast_binary", "CREATE VIEW v_cast_binary AS SELECT CAST(a AS BINARY) FROM t", "", false},
+		{"cast_signed_unsigned", "v_cast_su", "CREATE VIEW v_cast_su AS SELECT CAST(a AS SIGNED), CAST(a AS UNSIGNED) FROM t", "", false},
+		{"cast_decimal", "v_cast_dec", "CREATE VIEW v_cast_dec AS SELECT CAST(a AS DECIMAL(10,2)) FROM t", "", false},
+		{"cast_date_datetime_json", "v_cast_ddj", "CREATE VIEW v_cast_ddj AS SELECT CAST(a AS DATE), CAST(a AS DATETIME), CAST(a AS JSON) FROM t", "", false},
+		{"convert_char", "v_conv_char", "CREATE VIEW v_conv_char AS SELECT CONVERT(a, CHAR) FROM t", "", false},
+		{"convert_using", "v_conv_using", "CREATE VIEW v_conv_using AS SELECT CONVERT(a USING utf8mb4) FROM t", "", false},
+		{"regexp", "v_regexp", "CREATE VIEW v_regexp AS SELECT a REGEXP 'pattern' FROM t", "", false},
+		{"not_regexp", "v_not_regexp", "CREATE VIEW v_not_regexp AS SELECT a NOT REGEXP 'pattern' FROM t", "", false},
+		{"json_extract", "v_json_ext", "CREATE VIEW v_json_ext AS SELECT a->'$.key' FROM tj", "CREATE TABLE tj (a JSON, b INT)", false},
+		{"json_unquote", "v_json_unq", "CREATE VIEW v_json_unq AS SELECT a->>'$.key' FROM tj", "CREATE TABLE tj (a JSON, b INT)", false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// --- MySQL 8.0 side ---
+			oracle.execSQLDirect("DROP VIEW IF EXISTS " + tc.viewName)
+			if err := oracle.execSQLDirect(tc.viewSQL); err != nil {
+				if tc.partial {
+					t.Skipf("MySQL 8.0 rejected (expected partial): %v", err)
+				}
+				t.Skipf("MySQL 8.0 rejected: %v", err)
+				return
+			}
+			mysqlOutput, err := oracle.showCreateView(tc.viewName)
+			if err != nil {
+				t.Fatalf("SHOW CREATE VIEW on MySQL failed: %v", err)
+			}
+			mysqlBody := stripDatabasePrefix(extractSelectBody(mysqlOutput))
+
+			// --- Omni catalog side ---
+			cat := New()
+			cat.Exec("CREATE DATABASE test", nil)
+			cat.SetCurrentDatabase("test")
+			cat.Exec("CREATE TABLE t (a INT, b INT, c INT)", nil)
+			if tc.tables != "" {
+				cat.Exec(tc.tables, nil)
+			}
+			results, _ := cat.Exec(tc.viewSQL, nil)
+			if len(results) == 0 {
+				if tc.partial {
+					t.Skipf("CREATE VIEW on catalog returned no results (expected partial)")
+				}
+				t.Fatalf("CREATE VIEW on catalog returned no results")
+			}
+			if results[0].Error != nil {
+				if tc.partial {
+					t.Skipf("CREATE VIEW on catalog failed (expected partial): %v", results[0].Error)
+				}
+				t.Fatalf("CREATE VIEW on catalog failed: %v", results[0].Error)
+			}
+			omniOutput := cat.ShowCreateView("test", tc.viewName)
+			if omniOutput == "" {
+				if tc.partial {
+					t.Skip("ShowCreateView returned empty (expected partial)")
+				}
+				t.Fatal("ShowCreateView returned empty")
+			}
+			omniBody := extractSelectBody(omniOutput)
+
+			t.Logf("MySQL body:  %s", mysqlBody)
+			t.Logf("Omni body:   %s", omniBody)
+
+			if mysqlBody != omniBody {
+				if tc.partial {
+					t.Skipf("SELECT body mismatch (expected partial):\n--- mysql ---\n%s\n--- omni ---\n%s", mysqlBody, omniBody)
+				}
+				t.Errorf("SELECT body mismatch:\n--- mysql ---\n%s\n--- omni ---\n%s", mysqlBody, omniBody)
+			}
+		})
+	}
+}
+
 // TestDeparseOracle_2_3_SpecialFunctions verifies TRIM, GROUP_CONCAT, and simple CASE
 // against MySQL 8.0 SHOW CREATE VIEW output.
 func TestDeparseOracle_2_3_SpecialFunctions(t *testing.T) {
