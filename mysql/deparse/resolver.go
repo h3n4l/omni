@@ -84,6 +84,33 @@ func (r *Resolver) resolveWithCTEs(stmt *ast.SelectStmt, cteTables map[string]*R
 		if stmt.Right != nil {
 			r.resolveWithCTEs(stmt.Right, cteTables)
 		}
+		// Resolve ORDER BY ordinals (e.g., ORDER BY 1) to column aliases
+		// from the leftmost SELECT's target list, matching MySQL 8.0 behavior.
+		if len(stmt.OrderBy) > 0 {
+			leftmost := stmt
+			for leftmost.SetOp != ast.SetOpNone && leftmost.Left != nil {
+				leftmost = leftmost.Left
+			}
+			for _, item := range stmt.OrderBy {
+				if lit, ok := item.Expr.(*ast.IntLit); ok {
+					idx := int(lit.Value) - 1 // 1-based to 0-based
+					if idx >= 0 && idx < len(leftmost.TargetList) {
+						if rt, ok := leftmost.TargetList[idx].(*ast.ResTarget); ok {
+							alias := rt.Name
+							if alias == "" {
+								// Derive alias from column ref
+								if cr, ok := rt.Val.(*ast.ColumnRef); ok {
+									alias = cr.Column
+								}
+							}
+							if alias != "" {
+								item.Expr = &ast.ColumnRef{Column: alias}
+							}
+						}
+					}
+				}
+			}
+		}
 		return stmt
 	}
 

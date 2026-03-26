@@ -222,7 +222,39 @@ func deparseSetOperation(stmt *ast.SelectStmt) string {
 		}
 	}
 
-	return ctePrefix + left + " " + op + " " + right
+	var b strings.Builder
+	b.WriteString(ctePrefix)
+	b.WriteString(left)
+	b.WriteString(" ")
+	b.WriteString(op)
+	b.WriteString(" ")
+	b.WriteString(right)
+
+	// ORDER BY clause (applies to the entire set operation)
+	if len(stmt.OrderBy) > 0 {
+		b.WriteString(" order by ")
+		for i, item := range stmt.OrderBy {
+			if i > 0 {
+				b.WriteString(",")
+			}
+			b.WriteString(deparseExpr(item.Expr))
+			if item.Desc {
+				b.WriteString(" desc")
+			}
+		}
+	}
+
+	// LIMIT clause (applies to the entire set operation)
+	if stmt.Limit != nil {
+		b.WriteString(" limit ")
+		if stmt.Limit.Offset != nil {
+			b.WriteString(deparseExpr(stmt.Limit.Offset))
+			b.WriteString(",")
+		}
+		b.WriteString(deparseExpr(stmt.Limit.Count))
+	}
+
+	return b.String()
 }
 
 // extractCTEs walks down the left spine of a set operation tree and extracts

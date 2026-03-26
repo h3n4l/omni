@@ -1441,12 +1441,33 @@ func (p *Parser) parseSetOpWithPrecedence(left *nodes.SelectStmt, minPrec int) (
 			}
 		}
 
+		// Hoist trailing ORDER BY / LIMIT from the right-hand SELECT to the
+		// set-operation node. In MySQL, ORDER BY and LIMIT after a set
+		// operation (without parentheses) apply to the entire combined result,
+		// not just the last SELECT.
+		var orderBy []*nodes.OrderByItem
+		var limit *nodes.Limit
+		rightLeaf := right
+		for rightLeaf.SetOp != nodes.SetOpNone && rightLeaf.Right != nil {
+			rightLeaf = rightLeaf.Right
+		}
+		if len(rightLeaf.OrderBy) > 0 {
+			orderBy = rightLeaf.OrderBy
+			rightLeaf.OrderBy = nil
+		}
+		if rightLeaf.Limit != nil {
+			limit = rightLeaf.Limit
+			rightLeaf.Limit = nil
+		}
+
 		left = &nodes.SelectStmt{
-			Loc:    nodes.Loc{Start: left.Loc.Start, End: right.Loc.End},
-			SetOp:  op,
-			SetAll: all,
-			Left:   left,
-			Right:  right,
+			Loc:     nodes.Loc{Start: left.Loc.Start, End: right.Loc.End},
+			SetOp:   op,
+			SetAll:  all,
+			Left:    left,
+			Right:   right,
+			OrderBy: orderBy,
+			Limit:   limit,
 		}
 	}
 
