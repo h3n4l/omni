@@ -260,6 +260,16 @@ func (p *Parser) parseSelectStmt() (*nodes.SelectStmt, error) {
 		}
 		stmt.GroupBy = groupBy
 
+		// Completion: after GROUP BY list, offer follow-set keywords.
+		p.checkCursor()
+		if p.collectMode() {
+			p.addTokenCandidate(kwHAVING)
+			p.addTokenCandidate(kwORDER)
+			p.addTokenCandidate(kwLIMIT)
+			p.addTokenCandidate(kwWITH)
+			return nil, &ParseError{Message: "collecting"}
+		}
+
 		// WITH ROLLUP
 		if p.cur.Type == kwWITH {
 			p.advance()
@@ -496,6 +506,16 @@ func (p *Parser) parseSelectStmtBase() (*nodes.SelectStmt, error) {
 			return nil, err
 		}
 		stmt.GroupBy = groupBy
+
+		// Completion: after GROUP BY list, offer follow-set keywords.
+		p.checkCursor()
+		if p.collectMode() {
+			p.addTokenCandidate(kwHAVING)
+			p.addTokenCandidate(kwORDER)
+			p.addTokenCandidate(kwLIMIT)
+			p.addTokenCandidate(kwWITH)
+			return nil, &ParseError{Message: "collecting"}
+		}
 
 		// WITH ROLLUP
 		if p.cur.Type == kwWITH {

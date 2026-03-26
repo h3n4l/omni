@@ -929,3 +929,121 @@ func TestComplete_3_3_JoinClauses(t *testing.T) {
 		})
 	}
 }
+
+// --- Section 3.4: WHERE, GROUP BY, HAVING ---
+
+func TestComplete_3_4_WhereGroupByHaving(t *testing.T) {
+	cat := catalog.New()
+	mustExec(t, cat, "CREATE DATABASE test")
+	cat.SetCurrentDatabase("test")
+	mustExec(t, cat, "CREATE TABLE t (a INT, b INT, c INT)")
+	mustExec(t, cat, "CREATE TABLE t1 (x INT, y INT)")
+
+	cases := []struct {
+		name       string
+		sql        string
+		cursor     int
+		wantType   CandidateType
+		wantText   string
+		wantAbsent string
+		absentType CandidateType
+	}{
+		{
+			// Scenario 1: SELECT * FROM t WHERE | → columnref after WHERE
+			name:     "where_columnref",
+			sql:      "SELECT * FROM t WHERE ",
+			cursor:   22,
+			wantType: CandidateColumn,
+			wantText: "a",
+		},
+		{
+			// Scenario 2: SELECT * FROM t WHERE a = 1 AND | → columnref after AND
+			name:     "where_and_columnref",
+			sql:      "SELECT * FROM t WHERE a = 1 AND ",
+			cursor:   32,
+			wantType: CandidateColumn,
+			wantText: "b",
+		},
+		{
+			// Scenario 3: SELECT * FROM t WHERE a = 1 OR | → columnref after OR
+			name:     "where_or_columnref",
+			sql:      "SELECT * FROM t WHERE a = 1 OR ",
+			cursor:   31,
+			wantType: CandidateColumn,
+			wantText: "c",
+		},
+		{
+			// Scenario 4: SELECT * FROM t GROUP BY | → columnref after GROUP BY
+			name:     "group_by_columnref",
+			sql:      "SELECT * FROM t GROUP BY ",
+			cursor:   25,
+			wantType: CandidateColumn,
+			wantText: "a",
+		},
+		{
+			// Scenario 5: SELECT * FROM t GROUP BY a, | → columnref after comma
+			name:     "group_by_comma_columnref",
+			sql:      "SELECT * FROM t GROUP BY a, ",
+			cursor:   28,
+			wantType: CandidateColumn,
+			wantText: "b",
+		},
+		{
+			// Scenario 6: SELECT * FROM t GROUP BY a | → keyword candidates
+			name:     "group_by_follow_having",
+			sql:      "SELECT * FROM t GROUP BY a ",
+			cursor:   27,
+			wantType: CandidateKeyword,
+			wantText: "HAVING",
+		},
+		{
+			// Scenario 7: SELECT * FROM t HAVING | → columnref after HAVING
+			name:     "having_columnref",
+			sql:      "SELECT * FROM t HAVING ",
+			cursor:   23,
+			wantType: CandidateColumn,
+			wantText: "a",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			candidates := Complete(tc.sql, tc.cursor, cat)
+			if len(candidates) == 0 {
+				t.Fatalf("expected candidates, got none")
+			}
+
+			if tc.wantText != "" {
+				if !containsCandidate(candidates, tc.wantText, tc.wantType) {
+					t.Errorf("missing candidate %q of type %d; got %v", tc.wantText, tc.wantType, candidates)
+				}
+			}
+
+			if tc.wantAbsent != "" {
+				if containsCandidate(candidates, tc.wantAbsent, tc.absentType) {
+					t.Errorf("unexpected candidate %q of type %d should not appear", tc.wantAbsent, tc.absentType)
+				}
+			}
+		})
+	}
+
+	// Additional checks for GROUP BY follow-set keywords (ORDER, LIMIT, WITH).
+	t.Run("group_by_follow_order", func(t *testing.T) {
+		candidates := Complete("SELECT * FROM t GROUP BY a ", 27, cat)
+		if !containsCandidate(candidates, "ORDER", CandidateKeyword) {
+			t.Errorf("missing keyword ORDER after GROUP BY list; got %v", candidates)
+		}
+	})
+	t.Run("group_by_follow_limit", func(t *testing.T) {
+		candidates := Complete("SELECT * FROM t GROUP BY a ", 27, cat)
+		if !containsCandidate(candidates, "LIMIT", CandidateKeyword) {
+			t.Errorf("missing keyword LIMIT after GROUP BY list; got %v", candidates)
+		}
+	})
+	t.Run("group_by_follow_with", func(t *testing.T) {
+		candidates := Complete("SELECT * FROM t GROUP BY a ", 27, cat)
+		if !containsCandidate(candidates, "WITH", CandidateKeyword) {
+			t.Errorf("missing keyword WITH (for WITH ROLLUP) after GROUP BY list; got %v", candidates)
+		}
+	})
+}

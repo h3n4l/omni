@@ -140,13 +140,13 @@ so that Phase 3+ instrumentation can be tested end-to-end.
 ### 3.4 WHERE, GROUP BY, HAVING
 
 ```
-[ ] `SELECT * FROM t WHERE |` → columnref after WHERE
-[ ] `SELECT * FROM t WHERE a = 1 AND |` → columnref after AND
-[ ] `SELECT * FROM t WHERE a = 1 OR |` → columnref after OR
-[ ] `SELECT * FROM t GROUP BY |` → columnref after GROUP BY
-[ ] `SELECT * FROM t GROUP BY a, |` → columnref after comma
-[ ] `SELECT * FROM t GROUP BY a |` → keyword candidates (HAVING, ORDER, LIMIT, WITH ROLLUP)
-[ ] `SELECT * FROM t HAVING |` → columnref after HAVING
+[x] `SELECT * FROM t WHERE |` → columnref after WHERE
+[x] `SELECT * FROM t WHERE a = 1 AND |` → columnref after AND
+[x] `SELECT * FROM t WHERE a = 1 OR |` → columnref after OR
+[x] `SELECT * FROM t GROUP BY |` → columnref after GROUP BY
+[x] `SELECT * FROM t GROUP BY a, |` → columnref after comma
+[x] `SELECT * FROM t GROUP BY a |` → keyword candidates (HAVING, ORDER, LIMIT, WITH ROLLUP)
+[x] `SELECT * FROM t HAVING |` → columnref after HAVING
 ```
 
 ### 3.5 ORDER BY, LIMIT, DISTINCT

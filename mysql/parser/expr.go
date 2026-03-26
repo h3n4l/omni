@@ -243,6 +243,14 @@ func (p *Parser) infixPrecedence() (int, nodes.BinaryOp, bool) {
 
 // parsePrefixExpr parses prefix/primary expressions.
 func (p *Parser) parsePrefixExpr() (nodes.ExprNode, error) {
+	// Completion: at the start of any expression, offer column/function candidates.
+	p.checkCursor()
+	if p.collectMode() {
+		p.addRuleCandidate("columnref")
+		p.addRuleCandidate("func_name")
+		return nil, &ParseError{Message: "collecting"}
+	}
+
 	switch p.cur.Type {
 	case '-':
 		return p.parseUnaryExpr(nodes.UnaryMinus)
