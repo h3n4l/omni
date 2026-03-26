@@ -151,13 +151,13 @@ Status legend: `[ ]` pending, `[x]` passing, `[~]` partial
 ### 3.3 Complex Precedence
 
 ```
-[ ] `SELECT a + b + c FROM t` — left-associative arithmetic
-[ ] `SELECT a * b + c FROM t` — multiplication before addition
-[ ] `SELECT a + b * c FROM t` — preserves higher precedence
-[ ] `SELECT (a + b) * c FROM t` — explicit grouping
-[ ] `SELECT a OR b AND c FROM t` — AND before OR with boolean wrapping
-[ ] `SELECT (a OR b) AND c FROM t` — explicit grouping with boolean wrapping
-[ ] `SELECT a > 0 AND b < 10 OR c = 5 FROM t` — mixed comparison/logical
+[x] `SELECT a + b + c FROM t` — left-associative arithmetic
+[x] `SELECT a * b + c FROM t` — multiplication before addition
+[x] `SELECT a + b * c FROM t` — preserves higher precedence
+[x] `SELECT (a + b) * c FROM t` — explicit grouping
+[x] `SELECT a OR b AND c FROM t` — AND before OR with boolean wrapping
+[x] `SELECT (a OR b) AND c FROM t` — explicit grouping with boolean wrapping
+[x] `SELECT a > 0 AND b < 10 OR c = 5 FROM t` — mixed comparison/logical
 ```
 
 ## Phase 4: JOINs & FROM

@@ -1377,3 +1377,73 @@ func TestDeparseOracle_3_2_NotFoldingNoDoubleWrap(t *testing.T) {
 		})
 	}
 }
+
+// TestDeparseOracle_3_3_ComplexPrecedence verifies complex operator precedence
+// against MySQL 8.0 SHOW CREATE VIEW output.
+func TestDeparseOracle_3_3_ComplexPrecedence(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	// Setup: create base table on MySQL 8.0
+	if err := oracle.execSQLDirect("CREATE TABLE IF NOT EXISTS t (a INT, b INT, c INT)"); err != nil {
+		t.Fatalf("failed to create table on MySQL: %v", err)
+	}
+
+	cases := []struct {
+		name     string
+		viewName string
+		viewSQL  string
+	}{
+		{"left_assoc_add", "v_left_add", "CREATE VIEW v_left_add AS SELECT a + b + c FROM t"},
+		{"mul_then_add", "v_mul_add", "CREATE VIEW v_mul_add AS SELECT a * b + c FROM t"},
+		{"add_then_mul", "v_add_mul", "CREATE VIEW v_add_mul AS SELECT a + b * c FROM t"},
+		{"paren_add_mul", "v_paren_mul", "CREATE VIEW v_paren_mul AS SELECT (a + b) * c FROM t"},
+		{"or_and_prec", "v_or_and", "CREATE VIEW v_or_and AS SELECT a OR b AND c FROM t"},
+		{"paren_or_and", "v_paren_or", "CREATE VIEW v_paren_or AS SELECT (a OR b) AND c FROM t"},
+		{"mixed_cmp_logic", "v_mixed", "CREATE VIEW v_mixed AS SELECT a > 0 AND b < 10 OR c = 5 FROM t"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// --- MySQL 8.0 side ---
+			oracle.execSQLDirect("DROP VIEW IF EXISTS " + tc.viewName)
+			if err := oracle.execSQLDirect(tc.viewSQL); err != nil {
+				t.Skipf("MySQL 8.0 rejected: %v", err)
+				return
+			}
+			mysqlOutput, err := oracle.showCreateView(tc.viewName)
+			if err != nil {
+				t.Fatalf("SHOW CREATE VIEW on MySQL failed: %v", err)
+			}
+			mysqlBody := stripDatabasePrefix(extractSelectBody(mysqlOutput))
+
+			// --- Omni catalog side ---
+			cat := New()
+			cat.Exec("CREATE DATABASE test", nil)
+			cat.SetCurrentDatabase("test")
+			cat.Exec("CREATE TABLE t (a INT, b INT, c INT)", nil)
+			results, _ := cat.Exec(tc.viewSQL, nil)
+			if len(results) == 0 {
+				t.Fatalf("CREATE VIEW on catalog returned no results")
+			}
+			if results[0].Error != nil {
+				t.Fatalf("CREATE VIEW on catalog failed: %v", results[0].Error)
+			}
+			omniOutput := cat.ShowCreateView("test", tc.viewName)
+			if omniOutput == "" {
+				t.Fatal("ShowCreateView returned empty")
+			}
+			omniBody := extractSelectBody(omniOutput)
+
+			t.Logf("MySQL body:  %s", mysqlBody)
+			t.Logf("Omni body:   %s", omniBody)
+
+			if mysqlBody != omniBody {
+				t.Errorf("SELECT body mismatch:\n--- mysql ---\n%s\n--- omni ---\n%s", mysqlBody, omniBody)
+			}
+		})
+	}
+}
