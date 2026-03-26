@@ -77,13 +77,13 @@ Status legend: `[ ]` pending, `[x]` passing, `[~]` partial
 ### 2.2 Regular Functions & Aggregates
 
 ```
-[ ] `SELECT CONCAT(a, b), UPPER(a), LOWER(a) FROM t` — string functions lowercase
-[ ] `SELECT IFNULL(a, 0), COALESCE(a, b, 0), NULLIF(a, 0) FROM t` — NULL handling
-[ ] `SELECT IF(a > 0, 'yes', 'no') FROM t` — IF function
-[ ] `SELECT ABS(a), GREATEST(a, b), LEAST(a, b) FROM t` — numeric functions
-[ ] `SELECT SUM(a), AVG(a), MAX(a), MIN(a) FROM t` — aggregates
-[ ] `SELECT CONCAT(UPPER(TRIM(a)), LOWER(b)) FROM t` — nested functions
-[ ] `SELECT COUNT(*), SUM(a), AVG(b), MAX(c) FROM t GROUP BY a` — multiple aggregates
+[x] `SELECT CONCAT(a, b), UPPER(a), LOWER(a) FROM t` — string functions lowercase
+[x] `SELECT IFNULL(a, 0), COALESCE(a, b, 0), NULLIF(a, 0) FROM t` — NULL handling
+[x] `SELECT IF(a > 0, 'yes', 'no') FROM t` — IF function
+[x] `SELECT ABS(a), GREATEST(a, b), LEAST(a, b) FROM t` — numeric functions
+[x] `SELECT SUM(a), AVG(a), MAX(a), MIN(a) FROM t` — aggregates
+[x] `SELECT CONCAT(UPPER(TRIM(a)), LOWER(b)) FROM t` — nested functions
+[x] `SELECT COUNT(*), SUM(a), AVG(b), MAX(c) FROM t GROUP BY a` — multiple aggregates
 ```
 
 ### 2.3 Special Functions

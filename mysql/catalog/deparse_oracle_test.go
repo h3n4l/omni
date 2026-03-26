@@ -976,3 +976,73 @@ func TestDeparseOracle_Section_2_1_FunctionNameRewrites(t *testing.T) {
 		})
 	}
 }
+
+// TestDeparseOracle_2_2_RegularFunctionsAggregates verifies regular functions and aggregates
+// against MySQL 8.0 SHOW CREATE VIEW output.
+func TestDeparseOracle_2_2_RegularFunctionsAggregates(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	// Setup: create base table on MySQL 8.0
+	if err := oracle.execSQLDirect("CREATE TABLE IF NOT EXISTS t (a INT, b INT, c INT)"); err != nil {
+		t.Fatalf("failed to create table on MySQL: %v", err)
+	}
+
+	cases := []struct {
+		name     string
+		viewName string
+		viewSQL  string
+	}{
+		{"concat_upper_lower", "v_str_funcs", "CREATE VIEW v_str_funcs AS SELECT CONCAT(a, b), UPPER(a), LOWER(a) FROM t"},
+		{"ifnull_coalesce_nullif", "v_null_funcs", "CREATE VIEW v_null_funcs AS SELECT IFNULL(a, 0), COALESCE(a, b, 0), NULLIF(a, 0) FROM t"},
+		{"if_function", "v_if_func", "CREATE VIEW v_if_func AS SELECT IF(a > 0, 'yes', 'no') FROM t"},
+		{"abs_greatest_least", "v_num_funcs", "CREATE VIEW v_num_funcs AS SELECT ABS(a), GREATEST(a, b), LEAST(a, b) FROM t"},
+		{"sum_avg_max_min", "v_agg_funcs", "CREATE VIEW v_agg_funcs AS SELECT SUM(a), AVG(a), MAX(a), MIN(a) FROM t"},
+		{"nested_functions", "v_nested_funcs", "CREATE VIEW v_nested_funcs AS SELECT CONCAT(UPPER(TRIM(a)), LOWER(b)) FROM t"},
+		{"multiple_aggregates_groupby", "v_multi_agg", "CREATE VIEW v_multi_agg AS SELECT COUNT(*), SUM(a), AVG(b), MAX(c) FROM t GROUP BY a"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// --- MySQL 8.0 side ---
+			oracle.execSQLDirect("DROP VIEW IF EXISTS " + tc.viewName)
+			if err := oracle.execSQLDirect(tc.viewSQL); err != nil {
+				t.Skipf("MySQL 8.0 rejected: %v", err)
+				return
+			}
+			mysqlOutput, err := oracle.showCreateView(tc.viewName)
+			if err != nil {
+				t.Fatalf("SHOW CREATE VIEW on MySQL failed: %v", err)
+			}
+			mysqlBody := stripDatabasePrefix(extractSelectBody(mysqlOutput))
+
+			// --- Omni catalog side ---
+			cat := New()
+			cat.Exec("CREATE DATABASE test", nil)
+			cat.SetCurrentDatabase("test")
+			cat.Exec("CREATE TABLE t (a INT, b INT, c INT)", nil)
+			results, _ := cat.Exec(tc.viewSQL, nil)
+			if len(results) == 0 {
+				t.Fatalf("CREATE VIEW on catalog returned no results")
+			}
+			if results[0].Error != nil {
+				t.Fatalf("CREATE VIEW on catalog failed: %v", results[0].Error)
+			}
+			omniOutput := cat.ShowCreateView("test", tc.viewName)
+			if omniOutput == "" {
+				t.Fatal("ShowCreateView returned empty")
+			}
+			omniBody := extractSelectBody(omniOutput)
+
+			t.Logf("MySQL body:  %s", mysqlBody)
+			t.Logf("Omni body:   %s", omniBody)
+
+			if mysqlBody != omniBody {
+				t.Errorf("SELECT body mismatch:\n--- mysql ---\n%s\n--- omni ---\n%s", mysqlBody, omniBody)
+			}
+		})
+	}
+}

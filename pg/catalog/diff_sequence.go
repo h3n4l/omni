@@ -1,6 +1,9 @@
 package catalog
 
-import "sort"
+import (
+	"sort"
+	"strings"
+)
 
 // diffSequences compares standalone sequences between two catalogs.
 // Identity key is (schemaName, seqName).
@@ -40,7 +43,7 @@ func diffSequences(from, to *Catalog) []SequenceDiffEntry {
 		if _, ok := toMap[key]; !ok {
 			// Check if the sequence exists in `to` as an owned sequence
 			// (absorbed into SERIAL/IDENTITY). If so, it wasn't truly dropped.
-			if seqExistsAsOwned(to, key.schema, key.name) {
+			if seqIsSerialAbsorbed(to, key.schema, key.name) {
 				continue
 			}
 			result = append(result, SequenceDiffEntry{
@@ -58,7 +61,7 @@ func diffSequences(from, to *Catalog) []SequenceDiffEntry {
 		if !ok {
 			// Check if the sequence exists in `from` as an owned sequence
 			// (was SERIAL/IDENTITY, now standalone). If so, it wasn't truly added.
-			if seqExistsAsOwned(from, key.schema, key.name) {
+			if seqIsSerialAbsorbed(from, key.schema, key.name) {
 				continue
 			}
 			result = append(result, SequenceDiffEntry{
@@ -93,16 +96,31 @@ func diffSequences(from, to *Catalog) []SequenceDiffEntry {
 	return result
 }
 
-// seqExistsAsOwned checks if a sequence with the given name exists in the
-// catalog as an owned sequence (OwnerRelOID != 0). This happens when a SERIAL
-// or IDENTITY column absorbs the sequence into the table definition.
-func seqExistsAsOwned(c *Catalog, schemaName, seqName string) bool {
+// seqIsSerialAbsorbed checks if a sequence exists in the catalog as a
+// SERIAL-absorbed sequence: it's owned by a column AND that column's
+// default references this sequence via nextval(). This distinguishes
+// true SERIAL absorption from explicit ALTER SEQUENCE OWNED BY.
+func seqIsSerialAbsorbed(c *Catalog, schemaName, seqName string) bool {
 	s := c.GetSchema(schemaName)
 	if s == nil {
 		return false
 	}
-	if seq, ok := s.Sequences[seqName]; ok && seq.OwnerRelOID != 0 {
-		return true
+	seq, ok := s.Sequences[seqName]
+	if !ok || seq.OwnerRelOID == 0 {
+		return false
+	}
+
+	// Check that the owning column's default references this sequence
+	rel := c.GetRelationByOID(seq.OwnerRelOID)
+	if rel == nil {
+		return false
+	}
+	for _, col := range rel.Columns {
+		if col.AttNum == seq.OwnerAttNum {
+			// Column must have nextval('seqname') default
+			return col.HasDefault && strings.Contains(col.Default, "nextval(") &&
+				strings.Contains(col.Default, seqName)
+		}
 	}
 	return false
 }
