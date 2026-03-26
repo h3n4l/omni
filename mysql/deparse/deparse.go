@@ -411,6 +411,10 @@ func deparseExprAlias(node ast.ExprNode) string {
 		left := deparseExprAlias(n.Left)
 		right := deparseExprAlias(n.Right)
 		op := binaryOpToStringAlias(n.Op)
+		// Use original operator text for alias when available (e.g., "MOD" instead of "%", "!=" instead of "<>")
+		if n.OriginalOp != "" {
+			op = n.OriginalOp
+		}
 		return left + " " + op + " " + right
 	case *ast.UnaryExpr:
 		operand := deparseExprAlias(n.Operand)

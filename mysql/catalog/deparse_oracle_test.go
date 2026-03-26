@@ -597,6 +597,80 @@ func TestDeparse_Section_7_6_Regression(t *testing.T) {
 	}
 }
 
+// TestDeparseOracle_1_1_ArithmeticComparison verifies arithmetic and comparison operators
+// against MySQL 8.0 SHOW CREATE VIEW output.
+func TestDeparseOracle_1_1_ArithmeticComparison(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping oracle test in short mode")
+	}
+	oracle, cleanup := startOracle(t)
+	defer cleanup()
+
+	// Setup: create base table on MySQL 8.0
+	if err := oracle.execSQLDirect("CREATE TABLE IF NOT EXISTS t (a INT, b INT, c INT)"); err != nil {
+		t.Fatalf("failed to create table on MySQL: %v", err)
+	}
+
+	cases := []struct {
+		name     string
+		viewName string
+		viewSQL  string
+	}{
+		{"addition", "v_add", "CREATE VIEW v_add AS SELECT a + b FROM t"},
+		{"subtraction", "v_sub", "CREATE VIEW v_sub AS SELECT a - b FROM t"},
+		{"multiplication", "v_mul", "CREATE VIEW v_mul AS SELECT a * b FROM t"},
+		{"division", "v_div", "CREATE VIEW v_div AS SELECT a / b FROM t"},
+		{"int_division", "v_intdiv", "CREATE VIEW v_intdiv AS SELECT a DIV b FROM t"},
+		{"mod", "v_mod", "CREATE VIEW v_mod AS SELECT a MOD b FROM t"},
+		{"equals", "v_eq", "CREATE VIEW v_eq AS SELECT a = b FROM t"},
+		{"not_equals_bang", "v_neq", "CREATE VIEW v_neq AS SELECT a != b FROM t"},
+		{"not_equals_ltgt", "v_neq2", "CREATE VIEW v_neq2 AS SELECT a <> b FROM t"},
+		{"comparisons", "v_cmp", "CREATE VIEW v_cmp AS SELECT a > b, a < b, a >= b, a <= b FROM t"},
+		{"null_safe_equals", "v_nseq", "CREATE VIEW v_nseq AS SELECT a <=> b FROM t"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// --- MySQL 8.0 side ---
+			oracle.execSQLDirect("DROP VIEW IF EXISTS " + tc.viewName)
+			if err := oracle.execSQLDirect(tc.viewSQL); err != nil {
+				t.Skipf("MySQL 8.0 rejected: %v", err)
+				return
+			}
+			mysqlOutput, err := oracle.showCreateView(tc.viewName)
+			if err != nil {
+				t.Fatalf("SHOW CREATE VIEW on MySQL failed: %v", err)
+			}
+			mysqlBody := stripDatabasePrefix(extractSelectBody(mysqlOutput))
+
+			// --- Omni catalog side ---
+			cat := New()
+			cat.Exec("CREATE DATABASE test", nil)
+			cat.SetCurrentDatabase("test")
+			cat.Exec("CREATE TABLE t (a INT, b INT, c INT)", nil)
+			results, _ := cat.Exec(tc.viewSQL, nil)
+			if len(results) == 0 {
+				t.Fatalf("CREATE VIEW on catalog returned no results")
+			}
+			if results[0].Error != nil {
+				t.Fatalf("CREATE VIEW on catalog failed: %v", results[0].Error)
+			}
+			omniOutput := cat.ShowCreateView("test", tc.viewName)
+			if omniOutput == "" {
+				t.Fatal("ShowCreateView returned empty")
+			}
+			omniBody := extractSelectBody(omniOutput)
+
+			t.Logf("MySQL body:  %s", mysqlBody)
+			t.Logf("Omni body:   %s", omniBody)
+
+			if mysqlBody != omniBody {
+				t.Errorf("SELECT body mismatch:\n--- mysql ---\n%s\n--- omni ---\n%s", mysqlBody, omniBody)
+			}
+		})
+	}
+}
+
 // TestDeparse_Section_7_3_ExpressionViews verifies that our catalog's SHOW CREATE VIEW
 // output matches MySQL 8.0's output for views with expressions (arithmetic, functions,
 // CASE, CAST, aggregates).

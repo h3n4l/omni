@@ -117,6 +117,14 @@ func (p *Parser) parseExprPrec(minPrec int) (nodes.ExprNode, error) {
 
 		// Regular binary operator
 		opStart := p.pos()
+		// Capture original operator text for auto-alias when it differs from canonical form.
+		var originalOp string
+		switch {
+		case p.cur.Type == kwMOD:
+			originalOp = "MOD"
+		case p.cur.Type == tokNotEq && p.cur.Str == "!=":
+			originalOp = "!="
+		}
 		p.advance() // consume operator
 
 		// Right-associative for assignment
@@ -131,10 +139,11 @@ func (p *Parser) parseExprPrec(minPrec int) (nodes.ExprNode, error) {
 		}
 
 		left = &nodes.BinaryExpr{
-			Loc:   nodes.Loc{Start: opStart, End: p.pos()},
-			Op:    binOp,
-			Left:  left,
-			Right: right,
+			Loc:        nodes.Loc{Start: opStart, End: p.pos()},
+			Op:         binOp,
+			Left:       left,
+			Right:      right,
+			OriginalOp: originalOp,
 		}
 	}
 

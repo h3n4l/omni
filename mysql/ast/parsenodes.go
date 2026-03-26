@@ -582,10 +582,11 @@ const (
 
 // BinaryExpr represents a binary expression (a op b).
 type BinaryExpr struct {
-	Loc   Loc
-	Op    BinaryOp
-	Left  ExprNode
-	Right ExprNode
+	Loc        Loc
+	Op         BinaryOp
+	Left       ExprNode
+	Right      ExprNode
+	OriginalOp string // Original operator text (e.g., "MOD", "!=") when different from canonical form; used for auto-alias generation
 }
 
 func (e *BinaryExpr) nodeTag()  {}
