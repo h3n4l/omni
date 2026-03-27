@@ -2455,6 +2455,11 @@ func (p *Parser) pos() int {
 	return p.cur.Loc
 }
 
+// prevEnd returns the exclusive end offset of the previously consumed token.
+func (p *Parser) prevEnd() int {
+	return p.prev.End
+}
+
 // unexpectedToken returns a ParseError for the current token position.
 func (p *Parser) unexpectedToken() error {
 	return p.syntaxErrorAtCur()
