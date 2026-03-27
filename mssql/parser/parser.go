@@ -74,6 +74,15 @@ func Parse(sql string) (*nodes.List, error) {
 
 // parseStmt dispatches to statement-specific parsers.
 func (p *Parser) parseStmt() (nodes.StmtNode, error) {
+	// Completion: when in collect mode, offer all top-level statement keywords.
+	if p.collectMode() {
+		for _, t := range topLevelKeywords {
+			p.addTokenCandidate(t)
+		}
+		return nil, errCollecting
+	}
+	p.checkCursor()
+
 	switch p.cur.Type {
 	case kwSELECT:
 		return p.parseSelectStmt()

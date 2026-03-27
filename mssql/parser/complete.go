@@ -1,5 +1,53 @@
 package parser
 
+import "strings"
+
+// reverseKeywordMap maps token type → uppercase keyword name.
+// Built once from keywordMap on first call to TokenName.
+var reverseKeywordMap map[int]string
+
+func initReverseKeywordMap() {
+	reverseKeywordMap = make(map[int]string, len(keywordMap))
+	for name, tok := range keywordMap {
+		reverseKeywordMap[tok] = strings.ToUpper(name)
+	}
+}
+
+// TokenName returns the SQL keyword string for a token type, or "" if not a keyword.
+func TokenName(tokenType int) string {
+	// Single-char tokens
+	if tokenType > 0 && tokenType < 256 {
+		return string(rune(tokenType))
+	}
+	// Build reverse map once
+	if reverseKeywordMap == nil {
+		initReverseKeywordMap()
+	}
+	if name, ok := reverseKeywordMap[tokenType]; ok {
+		return name
+	}
+	// Non-keyword tokens (identifiers, literals, operators)
+	switch tokenType {
+	case tokIDENT:
+		return ""
+	case tokICONST, tokFCONST, tokSCONST, tokNSCONST, tokVARIABLE, tokSYSVARIABLE:
+		return ""
+	}
+	return ""
+}
+
+// topLevelKeywords are the statement-starting keywords offered when the cursor
+// is at an empty input or after a semicolon.
+var topLevelKeywords = []int{
+	kwSELECT, kwINSERT, kwUPDATE, kwDELETE, kwCREATE, kwALTER, kwDROP,
+	kwMERGE, kwWITH, kwEXEC, kwEXECUTE, kwDECLARE, kwSET, kwIF, kwWHILE,
+	kwBEGIN, kwPRINT, kwGRANT, kwREVOKE, kwDENY, kwTRUNCATE, kwUSE,
+	kwBACKUP, kwRESTORE, kwRETURN, kwBREAK, kwCONTINUE, kwGOTO, kwWAITFOR,
+	kwCOMMIT, kwROLLBACK, kwSAVE, kwOPEN, kwFETCH, kwCLOSE, kwDEALLOCATE,
+	kwTHROW, kwRAISERROR, kwGO, kwDBCC, kwKILL, kwCHECKPOINT, kwRECONFIGURE,
+	kwSHUTDOWN, kwBULK,
+}
+
 // RuleCandidate represents a grammar rule that is a completion candidate.
 type RuleCandidate struct {
 	Rule string
@@ -89,7 +137,32 @@ func Collect(sql string, cursorOffset int) *CandidateSet {
 		recover() //nolint:errcheck
 	}()
 
-	p.parseStmt() //nolint:errcheck
+	// Parse statements in a loop (like the normal Parse path) so that
+	// completion works after semicolons in multi-statement batches.
+	for p.cur.Type != tokEOF {
+		if p.cur.Type == ';' {
+			p.advance()
+			// After consuming semicolon, check if cursor is now reached.
+			p.checkCursor()
+			continue
+		}
+		prevPos := p.cur.Loc
+		p.parseStmt() //nolint:errcheck
+		// If the parser didn't advance (unrecognized token), skip it to avoid
+		// an infinite loop.
+		if p.cur.Loc == prevPos && p.cur.Type != tokEOF {
+			p.advance()
+		}
+	}
+
+	// If we reached EOF without having collected candidates (or if we were
+	// already in collect mode but parseStmt was never called), add top-level
+	// keywords as a fallback.
+	if len(cs.Tokens) == 0 {
+		for _, t := range topLevelKeywords {
+			p.addTokenCandidate(t)
+		}
+	}
 	return cs
 }
 
