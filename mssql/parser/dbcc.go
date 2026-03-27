@@ -19,7 +19,7 @@ func (p *Parser) parseDbccStmt() (*nodes.DbccStmt, error) {
 	p.advance() // consume DBCC
 
 	stmt := &nodes.DbccStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Parse command name - it may be a keyword or identifier.

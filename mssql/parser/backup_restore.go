@@ -87,7 +87,7 @@ func (p *Parser) parseBackupStmt() (*nodes.BackupStmt, error) {
 	p.advance() // consume BACKUP
 
 	stmt := &nodes.BackupStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// DATABASE or LOG (or identifier like LOG/CERTIFICATE)
@@ -219,7 +219,7 @@ func (p *Parser) parseRestoreStmt() (*nodes.RestoreStmt, error) {
 	p.advance() // consume RESTORE
 
 	stmt := &nodes.RestoreStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Determine restore type
@@ -623,7 +623,7 @@ func (p *Parser) parseOneBackupRestoreOption() (*nodes.BackupRestoreOption, erro
 		p.advance() // consume STATS
 		opt := &nodes.BackupRestoreOption{
 			Name: "STATS",
-			Loc:  nodes.Loc{Start: optLoc},
+			Loc:  nodes.Loc{Start: optLoc, End: -1},
 		}
 		if p.cur.Type == '=' {
 			p.advance()
@@ -651,7 +651,7 @@ func (p *Parser) parseOneBackupRestoreOption() (*nodes.BackupRestoreOption, erro
 		p.advance() // consume option name
 		opt := &nodes.BackupRestoreOption{
 			Name: name,
-			Loc:  nodes.Loc{Start: optLoc},
+			Loc:  nodes.Loc{Start: optLoc, End: -1},
 		}
 		if _, ok := p.match('='); ok {
 			// Value can be string constant, number, or variable
@@ -681,7 +681,7 @@ func (p *Parser) parseOneBackupRestoreOption() (*nodes.BackupRestoreOption, erro
 	p.advance() // consume option name
 	opt := &nodes.BackupRestoreOption{
 		Name: name,
-		Loc:  nodes.Loc{Start: optLoc},
+		Loc:  nodes.Loc{Start: optLoc, End: -1},
 	}
 	if p.cur.Type == '=' {
 		p.advance()
@@ -708,7 +708,7 @@ func (p *Parser) parseBackupEncryptionOption() (*nodes.BackupRestoreOption, erro
 
 	opt := &nodes.BackupRestoreOption{
 		Name: "ENCRYPTION",
-		Loc:  nodes.Loc{Start: optLoc},
+		Loc:  nodes.Loc{Start: optLoc, End: -1},
 	}
 
 	if p.cur.Type != '(' {
@@ -775,7 +775,7 @@ func (p *Parser) parseRestoreMoveOption() (*nodes.BackupRestoreOption, error) {
 
 	opt := &nodes.BackupRestoreOption{
 		Name: "MOVE",
-		Loc:  nodes.Loc{Start: optLoc},
+		Loc:  nodes.Loc{Start: optLoc, End: -1},
 	}
 
 	// 'logical_file_name'
@@ -806,7 +806,7 @@ func (p *Parser) parseRestoreFilestreamOption() (*nodes.BackupRestoreOption, err
 
 	opt := &nodes.BackupRestoreOption{
 		Name: "FILESTREAM",
-		Loc:  nodes.Loc{Start: optLoc},
+		Loc:  nodes.Loc{Start: optLoc, End: -1},
 	}
 
 	if p.cur.Type != '(' {

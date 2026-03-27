@@ -1274,7 +1274,7 @@ func (p *Parser) parseAlterStmt() (nodes.StmtNode, error) {
 					stmtKey := &nodes.SecurityKeyStmt{
 						Action:     "ALTER",
 						ObjectType: "DATABASE SCOPED CREDENTIAL",
-						Loc:        nodes.Loc{Start: loc},
+						Loc:        nodes.Loc{Start: loc, End: -1},
 					}
 					name, _ := p.parseIdentifier()
 					stmtKey.Name = name
@@ -1890,7 +1890,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 		// Let's just handle it inline.
 		dropStmt := &nodes.DropStmt{
 			ObjectType: nodes.DropDatabase,
-			Loc:        nodes.Loc{Start: loc},
+			Loc:        nodes.Loc{Start: loc, End: -1},
 		}
 		if p.cur.Type == kwIF {
 			p.advance()
@@ -2257,7 +2257,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			// We've already consumed DROP + FULLTEXT, so we need to handle inline.
 			// Re-enter the generic drop logic for FULLTEXT INDEX/CATALOG
 			dropStmt := &nodes.DropStmt{
-				Loc: nodes.Loc{Start: loc},
+				Loc: nodes.Loc{Start: loc, End: -1},
 			}
 			if p.cur.Type == kwINDEX {
 				dropStmt.ObjectType = nodes.DropFulltextIndex

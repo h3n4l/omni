@@ -51,7 +51,7 @@ func (p *Parser) parseCreateServerAuditStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "CREATE",
 		ObjectType: "SERVER AUDIT",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// audit_name
@@ -95,7 +95,7 @@ func (p *Parser) parseAlterServerAuditStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "ALTER",
 		ObjectType: "SERVER AUDIT",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// audit_name
@@ -122,7 +122,7 @@ func (p *Parser) parseDropServerAuditStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "DROP",
 		ObjectType: "SERVER AUDIT",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() || p.cur.Type == tokSCONST {
@@ -149,7 +149,7 @@ func (p *Parser) parseCreateServerAuditSpecStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "CREATE",
 		ObjectType: "SERVER AUDIT SPECIFICATION",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() || p.cur.Type == tokSCONST {
@@ -178,7 +178,7 @@ func (p *Parser) parseAlterServerAuditSpecStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "ALTER",
 		ObjectType: "SERVER AUDIT SPECIFICATION",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() || p.cur.Type == tokSCONST {
@@ -201,7 +201,7 @@ func (p *Parser) parseDropServerAuditSpecStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "DROP",
 		ObjectType: "SERVER AUDIT SPECIFICATION",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() || p.cur.Type == tokSCONST {
@@ -232,7 +232,7 @@ func (p *Parser) parseCreateDatabaseAuditSpecStmt() (*nodes.SecurityStmt, error)
 	stmt := &nodes.SecurityStmt{
 		Action:     "CREATE",
 		ObjectType: "DATABASE AUDIT SPECIFICATION",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() || p.cur.Type == tokSCONST {
@@ -258,7 +258,7 @@ func (p *Parser) parseAlterDatabaseAuditSpecStmt() (*nodes.SecurityStmt, error) 
 	stmt := &nodes.SecurityStmt{
 		Action:     "ALTER",
 		ObjectType: "DATABASE AUDIT SPECIFICATION",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() || p.cur.Type == tokSCONST {
@@ -281,7 +281,7 @@ func (p *Parser) parseDropDatabaseAuditSpecStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "DROP",
 		ObjectType: "DATABASE AUDIT SPECIFICATION",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() || p.cur.Type == tokSCONST {
@@ -547,7 +547,7 @@ func (p *Parser) parseAuditSpecAction() *nodes.AuditSpecAction {
 
 	node := &nodes.AuditSpecAction{
 		Action: action,
-		Loc:    nodes.Loc{Start: loc},
+		Loc:    nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.cur.Type != '(' {

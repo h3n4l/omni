@@ -164,7 +164,7 @@ func (p *Parser) parseSecurityKeyStmt(action string) (*nodes.SecurityKeyStmt, er
 	loc := p.pos()
 	stmt := &nodes.SecurityKeyStmt{
 		Action: action,
-		Loc:    nodes.Loc{Start: loc},
+		Loc:    nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Determine object type
@@ -414,7 +414,7 @@ func (p *Parser) parseSecurityKeyStmtColumn(action string) (*nodes.SecurityKeySt
 	loc := p.pos()
 	stmt := &nodes.SecurityKeyStmt{
 		Action: action,
-		Loc:    nodes.Loc{Start: loc},
+		Loc:    nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Determine COLUMN ENCRYPTION KEY or COLUMN MASTER KEY
@@ -506,7 +506,7 @@ func (p *Parser) parseSecurityKeyStmtDatabaseEncryption(action string) (*nodes.S
 	loc := p.pos()
 	stmt := &nodes.SecurityKeyStmt{
 		Action: action,
-		Loc:    nodes.Loc{Start: loc},
+		Loc:    nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.matchIdentCI("ENCRYPTION") {
@@ -547,7 +547,7 @@ func (p *Parser) parseOpenSymmetricKeyStmt() (*nodes.SecurityKeyStmt, error) {
 	p.advance() // consume OPEN
 	stmt := &nodes.SecurityKeyStmt{
 		Action: "OPEN",
-		Loc:    nodes.Loc{Start: loc},
+		Loc:    nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.matchIdentCI("SYMMETRIC") {
@@ -574,7 +574,7 @@ func (p *Parser) parseCloseSymmetricKeyStmt() (*nodes.SecurityKeyStmt, error) {
 	p.advance() // consume CLOSE
 	stmt := &nodes.SecurityKeyStmt{
 		Action: "CLOSE",
-		Loc:    nodes.Loc{Start: loc},
+		Loc:    nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.cur.Type == kwALL {
@@ -620,7 +620,7 @@ func (p *Parser) parseBackupCertificateStmt() (*nodes.SecurityKeyStmt, error) {
 	p.advance() // consume BACKUP
 	stmt := &nodes.SecurityKeyStmt{
 		Action: "BACKUP",
-		Loc:    nodes.Loc{Start: loc},
+		Loc:    nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.matchIdentCI("CERTIFICATE") {
@@ -650,7 +650,7 @@ func (p *Parser) parseOpenMasterKeyStmt() (*nodes.SecurityKeyStmt, error) {
 	stmt := &nodes.SecurityKeyStmt{
 		Action:     "OPEN",
 		ObjectType: "MASTER KEY",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// consume MASTER KEY
@@ -670,7 +670,7 @@ func (p *Parser) parseCloseMasterKeyStmt() (*nodes.SecurityKeyStmt, error) {
 	stmt := &nodes.SecurityKeyStmt{
 		Action:     "CLOSE",
 		ObjectType: "MASTER KEY",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// consume MASTER KEY
@@ -696,7 +696,7 @@ func (p *Parser) parseRestoreMasterKeyStmt() (*nodes.SecurityKeyStmt, error) {
 	stmt := &nodes.SecurityKeyStmt{
 		Action:     "RESTORE",
 		ObjectType: "MASTER KEY",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// consume MASTER KEY
@@ -726,7 +726,7 @@ func (p *Parser) parseRestoreSymmetricKeyStmt() (*nodes.SecurityKeyStmt, error) 
 	stmt := &nodes.SecurityKeyStmt{
 		Action:     "RESTORE",
 		ObjectType: "SYMMETRIC KEY",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// consume SYMMETRIC KEY

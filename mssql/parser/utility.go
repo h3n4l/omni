@@ -16,7 +16,7 @@ func (p *Parser) parseUseStmt() (*nodes.UseStmt, error) {
 	p.advance() // consume USE
 
 	stmt := &nodes.UseStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() {
@@ -38,7 +38,7 @@ func (p *Parser) parsePrintStmt() (*nodes.PrintStmt, error) {
 	p.advance() // consume PRINT
 
 	stmt := &nodes.PrintStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	expr, err := p.parseExpr()
@@ -67,7 +67,7 @@ func (p *Parser) parseRaiseErrorStmt() (*nodes.RaiseErrorStmt, error) {
 	p.advance() // consume RAISERROR
 
 	stmt := &nodes.RaiseErrorStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// RAISERROR can use parens or not: RAISERROR('msg', 16, 1)
@@ -138,7 +138,7 @@ func (p *Parser) parseThrowStmt() (*nodes.ThrowStmt, error) {
 	p.advance() // consume THROW
 
 	stmt := &nodes.ThrowStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// THROW without arguments = rethrow
@@ -175,7 +175,7 @@ func (p *Parser) parseCheckpointStmt() (*nodes.CheckpointStmt, error) {
 	p.advance() // consume CHECKPOINT
 
 	stmt := &nodes.CheckpointStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Optional duration
@@ -197,7 +197,7 @@ func (p *Parser) parseReconfigureStmt() (*nodes.ReconfigureStmt, error) {
 	p.advance() // consume RECONFIGURE
 
 	stmt := &nodes.ReconfigureStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// WITH OVERRIDE
@@ -224,7 +224,7 @@ func (p *Parser) parseShutdownStmt() (*nodes.ShutdownStmt, error) {
 	p.advance() // consume SHUTDOWN
 
 	stmt := &nodes.ShutdownStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// WITH NOWAIT
@@ -268,7 +268,7 @@ func (p *Parser) parseKillStmt() (nodes.StmtNode, error) {
 	}
 
 	stmt := &nodes.KillStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// session_id or UOW
@@ -303,7 +303,7 @@ func (p *Parser) parseKillStatsJobStmt(loc int) (*nodes.KillStatsJobStmt, error)
 	p.advance() // consume JOB
 
 	stmt := &nodes.KillStatsJobStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	stmt.JobID, _ = p.parseExpr()
@@ -327,7 +327,7 @@ func (p *Parser) parseKillQueryNotificationStmt(loc int) (*nodes.KillQueryNotifi
 	}
 
 	stmt := &nodes.KillQueryNotificationStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// { ALL | subscription_id }
@@ -352,7 +352,7 @@ func (p *Parser) parseReadtextStmt() (*nodes.ReadtextStmt, error) {
 	p.advance() // consume READTEXT
 
 	stmt := &nodes.ReadtextStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// table.column - parse as column ref
@@ -407,7 +407,7 @@ func (p *Parser) parseWritetextStmt() (*nodes.WritetextStmt, error) {
 	p.advance() // consume WRITETEXT
 
 	stmt := &nodes.WritetextStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// table.column
@@ -424,12 +424,12 @@ func (p *Parser) parseWritetextStmt() (*nodes.WritetextStmt, error) {
 			stmt.Column = &nodes.ColumnRef{
 				Table:  table,
 				Column: col,
-				Loc:    nodes.Loc{Start: loc},
+				Loc:    nodes.Loc{Start: loc, End: -1},
 			}
 		} else {
 			stmt.Column = &nodes.ColumnRef{
 				Column: table,
-				Loc:    nodes.Loc{Start: loc},
+				Loc:    nodes.Loc{Start: loc, End: -1},
 			}
 		}
 	}
@@ -468,7 +468,7 @@ func (p *Parser) parseUpdatetextStmt() (*nodes.UpdatetextStmt, error) {
 	p.advance() // consume UPDATETEXT
 
 	stmt := &nodes.UpdatetextStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// dest_table.dest_column dest_text_ptr
@@ -485,12 +485,12 @@ func (p *Parser) parseUpdatetextStmt() (*nodes.UpdatetextStmt, error) {
 			stmt.DestColumn = &nodes.ColumnRef{
 				Table:  table,
 				Column: col,
-				Loc:    nodes.Loc{Start: loc},
+				Loc:    nodes.Loc{Start: loc, End: -1},
 			}
 		} else {
 			stmt.DestColumn = &nodes.ColumnRef{
 				Column: table,
-				Loc:    nodes.Loc{Start: loc},
+				Loc:    nodes.Loc{Start: loc, End: -1},
 			}
 		}
 	}
@@ -540,7 +540,7 @@ func (p *Parser) parseTruncateStmt() (*nodes.TruncateStmt, error) {
 	p.match(kwTABLE)
 
 	stmt := &nodes.TruncateStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	stmt.Table , _ = p.parseTableRef()
@@ -593,7 +593,7 @@ func (p *Parser) parseCreateDefaultStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "CREATE",
 		ObjectType: "DEFAULT",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// [ schema_name . ] default_name
@@ -642,7 +642,7 @@ func (p *Parser) parseCreateRuleStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "CREATE",
 		ObjectType: "RULE",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// [ schema_name . ] rule_name
@@ -740,7 +740,7 @@ func (p *Parser) parseAlterDatabaseScopedConfigStmt() (*nodes.SecurityStmt, erro
 	stmt := &nodes.SecurityStmt{
 		Action:     "ALTER",
 		ObjectType: "DATABASE SCOPED CONFIGURATION",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	var opts []nodes.Node
@@ -838,7 +838,7 @@ func (p *Parser) parseEnableDisableTriggerStmt(enable bool) (*nodes.EnableDisabl
 
 	stmt := &nodes.EnableDisableTriggerStmt{
 		Enable: enable,
-		Loc:    nodes.Loc{Start: loc},
+		Loc:    nodes.Loc{Start: loc, End: -1},
 	}
 
 	// { trigger_name [ , ...n ] | ALL }
@@ -903,7 +903,7 @@ func (p *Parser) parseSetuserStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "SETUSER",
 		ObjectType: "USER",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Optional 'username'
@@ -959,7 +959,7 @@ func (p *Parser) parseCopyIntoStmt() (*nodes.CopyIntoStmt, error) {
 	p.matchIdentCI("INTO")
 
 	stmt := &nodes.CopyIntoStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Table name (possibly qualified: schema.table)
@@ -973,7 +973,7 @@ func (p *Parser) parseCopyIntoStmt() (*nodes.CopyIntoStmt, error) {
 			// Each entry is: Column_name [ DEFAULT value ] [ field_number ]
 			if p.isIdentLike() || p.cur.Type == '[' {
 				col := &nodes.CopyIntoColumn{
-					Loc: nodes.Loc{Start: p.pos()},
+					Loc: nodes.Loc{Start: p.pos(), End: -1},
 				}
 				col.Name = p.cur.Str
 				p.advance()
@@ -1121,7 +1121,7 @@ func (p *Parser) parseRenameStmt() (*nodes.RenameStmt, error) {
 	p.advance() // consume RENAME
 
 	stmt := &nodes.RenameStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// OBJECT or DATABASE
@@ -1192,7 +1192,7 @@ func (p *Parser) parseCreateExternalTableAsSelectStmt() (*nodes.CreateExternalTa
 	// EXTERNAL TABLE already consumed by caller
 
 	stmt := &nodes.CreateExternalTableAsSelectStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Table name
@@ -1268,7 +1268,7 @@ func (p *Parser) parseCreateTableCloneStmt(name *nodes.TableRef) (*nodes.CreateT
 
 	stmt := &nodes.CreateTableCloneStmt{
 		Name: name,
-		Loc:  nodes.Loc{Start: loc},
+		Loc:  nodes.Loc{Start: loc, End: -1},
 	}
 
 	// consume CLONE
@@ -1311,7 +1311,7 @@ func (p *Parser) parsePredictStmt() (*nodes.PredictStmt, error) {
 	// PREDICT already consumed by caller
 
 	stmt := &nodes.PredictStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Expect '('
@@ -1411,7 +1411,7 @@ func (p *Parser) parsePredictColumnDef() *nodes.ColumnDef {
 	col := &nodes.ColumnDef{
 		Name:     colName,
 		DataType: dt,
-		Loc:      nodes.Loc{Start: loc},
+		Loc:      nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Optional COLLATE
@@ -1460,7 +1460,7 @@ func (p *Parser) parseCreateRemoteTableAsSelectStmt() (*nodes.CreateRemoteTableA
 	// REMOTE TABLE already consumed by caller
 
 	stmt := &nodes.CreateRemoteTableAsSelectStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Table name: { database_name.schema_name.table_name | schema_name.table_name | table_name }
@@ -1522,7 +1522,7 @@ func (p *Parser) parseCreateRemoteTableAsSelectStmt() (*nodes.CreateRemoteTableA
 //	CREATE FEDERATION federation_name ( distribution_name data_type RANGE )
 func (p *Parser) parseCreateFederationStmt() (*nodes.CreateFederationStmt, error) {
 	stmt := &nodes.CreateFederationStmt{
-		Loc: nodes.Loc{Start: p.pos()},
+		Loc: nodes.Loc{Start: p.pos(), End: -1},
 	}
 
 	// federation_name
@@ -1556,7 +1556,7 @@ func (p *Parser) parseCreateFederationStmt() (*nodes.CreateFederationStmt, error
 //	}
 func (p *Parser) parseAlterFederationStmt() (*nodes.AlterFederationStmt, error) {
 	stmt := &nodes.AlterFederationStmt{
-		Loc: nodes.Loc{Start: p.pos()},
+		Loc: nodes.Loc{Start: p.pos(), End: -1},
 	}
 
 	// federation_name
@@ -1612,7 +1612,7 @@ func (p *Parser) parseAlterFederationStmt() (*nodes.AlterFederationStmt, error) 
 //	DROP FEDERATION federation_name
 func (p *Parser) parseDropFederationStmt() (*nodes.DropFederationStmt, error) {
 	stmt := &nodes.DropFederationStmt{
-		Loc: nodes.Loc{Start: p.pos()},
+		Loc: nodes.Loc{Start: p.pos(), End: -1},
 	}
 
 	if name, ok := p.parseIdentifier(); ok {
@@ -1636,7 +1636,7 @@ func (p *Parser) parseDropFederationStmt() (*nodes.DropFederationStmt, error) {
 //	RESET
 func (p *Parser) parseUseFederationStmt() (*nodes.UseFederationStmt, error) {
 	stmt := &nodes.UseFederationStmt{
-		Loc: nodes.Loc{Start: p.pos()},
+		Loc: nodes.Loc{Start: p.pos(), End: -1},
 	}
 
 	// ROOT or federation_name
@@ -1689,7 +1689,7 @@ func (p *Parser) parseUseFederationStmt() (*nodes.UseFederationStmt, error) {
 //	  [ WITH ( option [ = value ] [ ,...n ] ) ]
 func (p *Parser) parseInsertBulkStmt() (*nodes.InsertBulkStmt, error) {
 	stmt := &nodes.InsertBulkStmt{
-		Loc: nodes.Loc{Start: p.pos()},
+		Loc: nodes.Loc{Start: p.pos(), End: -1},
 	}
 
 	// table name (three-part name)
@@ -1745,7 +1745,7 @@ func (p *Parser) parseInsertBulkStmt() (*nodes.InsertBulkStmt, error) {
 //	column_name data_type [ NULL | NOT NULL ]
 func (p *Parser) parseInsertBulkColumnDef() *nodes.InsertBulkColumnDef {
 	col := &nodes.InsertBulkColumnDef{
-		Loc: nodes.Loc{Start: p.pos()},
+		Loc: nodes.Loc{Start: p.pos(), End: -1},
 	}
 
 	if name, ok := p.parseIdentifier(); ok {
@@ -1780,7 +1780,7 @@ func (p *Parser) parseLinenoStmt() (*nodes.LinenoStmt, error) {
 	p.advance() // consume LINENO
 
 	stmt := &nodes.LinenoStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.cur.Type == tokICONST {

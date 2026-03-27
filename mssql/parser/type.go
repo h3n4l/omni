@@ -35,7 +35,7 @@ func (p *Parser) parseDataType() (*nodes.DataType, error) {
 
 	dt := &nodes.DataType{
 		Name: name,
-		Loc:  nodes.Loc{Start: loc},
+		Loc:  nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Check for schema-qualified type: schema.typename

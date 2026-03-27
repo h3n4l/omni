@@ -31,7 +31,7 @@ func (p *Parser) parseGrantStmt() (*nodes.GrantStmt, error) {
 
 	stmt := &nodes.GrantStmt{
 		StmtType: nodes.GrantTypeGrant,
-		Loc:      nodes.Loc{Start: loc},
+		Loc:      nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Privileges
@@ -89,7 +89,7 @@ func (p *Parser) parseRevokeStmt() (*nodes.GrantStmt, error) {
 
 	stmt := &nodes.GrantStmt{
 		StmtType: nodes.GrantTypeRevoke,
-		Loc:      nodes.Loc{Start: loc},
+		Loc:      nodes.Loc{Start: loc, End: -1},
 	}
 
 	// GRANT OPTION FOR
@@ -152,7 +152,7 @@ func (p *Parser) parseDenyStmt() (*nodes.GrantStmt, error) {
 
 	stmt := &nodes.GrantStmt{
 		StmtType: nodes.GrantTypeDeny,
-		Loc:      nodes.Loc{Start: loc},
+		Loc:      nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Privileges

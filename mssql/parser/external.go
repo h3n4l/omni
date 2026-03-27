@@ -28,7 +28,7 @@ func (p *Parser) parseCreateExternalDataSourceStmt() (*nodes.SecurityStmt, error
 	stmt := &nodes.SecurityStmt{
 		Action:     "CREATE",
 		ObjectType: "EXTERNAL DATA SOURCE",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// data_source_name
@@ -62,7 +62,7 @@ func (p *Parser) parseAlterExternalDataSourceStmt() (*nodes.SecurityStmt, error)
 	stmt := &nodes.SecurityStmt{
 		Action:     "ALTER",
 		ObjectType: "EXTERNAL DATA SOURCE",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// data_source_name
@@ -95,7 +95,7 @@ func (p *Parser) parseDropExternalStmt() (*nodes.SecurityStmt, error) {
 
 	stmt := &nodes.SecurityStmt{
 		Action: "DROP",
-		Loc:    nodes.Loc{Start: loc},
+		Loc:    nodes.Loc{Start: loc, End: -1},
 	}
 
 	// DATA SOURCE | TABLE | FILE FORMAT
@@ -204,7 +204,7 @@ func (p *Parser) parseCreateExternalTableStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "CREATE",
 		ObjectType: "EXTERNAL TABLE",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// table name (possibly qualified: db.schema.table)
@@ -324,7 +324,7 @@ func (p *Parser) parseCreateExternalFileFormatStmt() (*nodes.SecurityStmt, error
 	stmt := &nodes.SecurityStmt{
 		Action:     "CREATE",
 		ObjectType: "EXTERNAL FILE FORMAT",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// file_format_name
@@ -366,7 +366,7 @@ func (p *Parser) parseCreateExternalLibraryStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "CREATE",
 		ObjectType: "EXTERNAL LIBRARY",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() {
@@ -434,7 +434,7 @@ func (p *Parser) parseAlterExternalLibraryStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "ALTER",
 		ObjectType: "EXTERNAL LIBRARY",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() {
@@ -500,7 +500,7 @@ func (p *Parser) parseCreateExternalLanguageStmt() (*nodes.SecurityStmt, error) 
 	stmt := &nodes.SecurityStmt{
 		Action:     "CREATE",
 		ObjectType: "EXTERNAL LANGUAGE",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() {
@@ -568,7 +568,7 @@ func (p *Parser) parseAlterExternalLanguageStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "ALTER",
 		ObjectType: "EXTERNAL LANGUAGE",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() {
@@ -622,7 +622,7 @@ func (p *Parser) parseDropExternalLibraryStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "DROP",
 		ObjectType: "EXTERNAL LIBRARY",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() {
@@ -654,7 +654,7 @@ func (p *Parser) parseDropExternalLanguageStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "DROP",
 		ObjectType: "EXTERNAL LANGUAGE",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() {
@@ -830,7 +830,7 @@ func (p *Parser) parseCreateExternalModelStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "CREATE",
 		ObjectType: "EXTERNAL MODEL",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// external_model_object_name
@@ -874,7 +874,7 @@ func (p *Parser) parseAlterExternalModelStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "ALTER",
 		ObjectType: "EXTERNAL MODEL",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// external_model_object_name
@@ -933,7 +933,7 @@ func (p *Parser) parseDropExternalModelStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "DROP",
 		ObjectType: "EXTERNAL MODEL",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// external_model_object_name
@@ -965,7 +965,7 @@ func (p *Parser) parseCreateExternalStreamStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "CREATE",
 		ObjectType: "EXTERNAL STREAM",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// stream_name
@@ -993,7 +993,7 @@ func (p *Parser) parseCreateExternalStreamingJobStmt() (*nodes.SecurityStmt, err
 	stmt := &nodes.SecurityStmt{
 		Action:     "CREATE",
 		ObjectType: "EXTERNAL STREAMING JOB",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// job_name

@@ -96,7 +96,7 @@ func (p *Parser) parseAlterDatabaseStmt() (*nodes.AlterDatabaseStmt, error) {
 	loc := p.pos()
 
 	stmt := &nodes.AlterDatabaseStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Database name or CURRENT
@@ -804,7 +804,7 @@ func (p *Parser) parseAlterIndexStmt() (*nodes.AlterIndexStmt, error) {
 	loc := p.pos()
 
 	stmt := &nodes.AlterIndexStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Index name or ALL

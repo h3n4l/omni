@@ -92,7 +92,7 @@ func (p *Parser) parseAlterTableStmt() (*nodes.AlterTableStmt, error) {
 	loc := p.pos()
 
 	stmt := &nodes.AlterTableStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Table name
@@ -226,7 +226,7 @@ func (p *Parser) parseAlterTableAdd() ([]nodes.Node, error) {
 	for {
 		loc := p.pos()
 		action := &nodes.AlterTableAction{
-			Loc: nodes.Loc{Start: loc},
+			Loc: nodes.Loc{Start: loc, End: -1},
 		}
 
 		if p.cur.Type == kwCONSTRAINT {
@@ -286,7 +286,7 @@ func (p *Parser) parseAlterTableAddPeriod() ([]nodes.Node, error) {
 
 	action := &nodes.AlterTableAction{
 		Type: nodes.ATAddPeriod,
-		Loc:  nodes.Loc{Start: loc},
+		Loc:  nodes.Loc{Start: loc, End: -1},
 	}
 
 	// ( start_col , end_col )
@@ -333,7 +333,7 @@ func (p *Parser) parseAlterTableDrop() ([]nodes.Node, error) {
 		}
 		action := &nodes.AlterTableAction{
 			Type: nodes.ATDropPeriod,
-			Loc:  nodes.Loc{Start: loc},
+			Loc:  nodes.Loc{Start: loc, End: -1},
 		}
 		action.Loc.End = p.prevEnd()
 		return []nodes.Node{action}, nil
@@ -357,7 +357,7 @@ func (p *Parser) parseAlterTableDrop() ([]nodes.Node, error) {
 			action := &nodes.AlterTableAction{
 				Type:     nodes.ATDropColumn,
 				IfExists: ifExists,
-				Loc:      nodes.Loc{Start: loc},
+				Loc:      nodes.Loc{Start: loc, End: -1},
 			}
 			name, nameOK := p.parseIdentifier()
 			if !nameOK {
@@ -388,10 +388,10 @@ func (p *Parser) parseAlterTableDrop() ([]nodes.Node, error) {
 			action := &nodes.AlterTableAction{
 				Type:     nodes.ATDropConstraint,
 				IfExists: ifExists,
-				Loc:      nodes.Loc{Start: loc},
+				Loc:      nodes.Loc{Start: loc, End: -1},
 			}
 			action.Constraint = &nodes.ConstraintDef{
-				Loc: nodes.Loc{Start: p.pos()},
+				Loc: nodes.Loc{Start: p.pos(), End: -1},
 			}
 			name, _ := p.parseIdentifier()
 			action.Constraint.Name = name
@@ -429,10 +429,10 @@ func (p *Parser) parseAlterTableDrop() ([]nodes.Node, error) {
 		action := &nodes.AlterTableAction{
 			Type:     nodes.ATDropConstraint,
 			IfExists: ifExists,
-			Loc:      nodes.Loc{Start: loc},
+			Loc:      nodes.Loc{Start: loc, End: -1},
 		}
 		action.Constraint = &nodes.ConstraintDef{
-			Loc: nodes.Loc{Start: p.pos()},
+			Loc: nodes.Loc{Start: p.pos(), End: -1},
 		}
 		name, _ := p.parseIdentifier()
 		action.Constraint.Name = name
@@ -489,7 +489,7 @@ func (p *Parser) parseAlterTableAlterColumn() (*nodes.AlterTableAction, error) {
 	action := &nodes.AlterTableAction{
 		Type:    nodes.ATAlterColumn,
 		ColName: name,
-		Loc:     nodes.Loc{Start: loc},
+		Loc:     nodes.Loc{Start: loc, End: -1},
 	}
 
 	var err error
@@ -544,7 +544,7 @@ func (p *Parser) parseAlterColumnAddDrop(loc int, colName string) (*nodes.AlterT
 	action := &nodes.AlterTableAction{
 		Type:    nodes.ATAlterColumnAddDrop,
 		ColName: colName,
-		Loc:     nodes.Loc{Start: loc},
+		Loc:     nodes.Loc{Start: loc, End: -1},
 	}
 
 	addOrDrop := "ADD"
@@ -556,7 +556,7 @@ func (p *Parser) parseAlterColumnAddDrop(loc int, colName string) (*nodes.AlterT
 	optLoc := p.pos()
 	opt := &nodes.AlterColumnOption{
 		Action: addOrDrop,
-		Loc:    nodes.Loc{Start: optLoc},
+		Loc:    nodes.Loc{Start: optLoc, End: -1},
 	}
 
 	// Determine what's being added/dropped
@@ -632,7 +632,7 @@ func (p *Parser) parseAlterColumnAddDrop(loc int, colName string) (*nodes.AlterT
 func (p *Parser) parseAlterTableCheckConstraint(withCheck string, isCheck bool) (*nodes.AlterTableAction, error) {
 	loc := p.pos()
 	action := &nodes.AlterTableAction{
-		Loc:       nodes.Loc{Start: loc},
+		Loc:       nodes.Loc{Start: loc, End: -1},
 		WithCheck: withCheck,
 	}
 
@@ -696,7 +696,7 @@ func (p *Parser) parseAlterTableEnableDisable(enable bool) (*nodes.AlterTableAct
 // parseAlterTableEnableDisableTrigger parses ENABLE/DISABLE TRIGGER { ALL | name [,...n] }.
 func (p *Parser) parseAlterTableEnableDisableTrigger(loc int, enable bool) (*nodes.AlterTableAction, error) {
 	action := &nodes.AlterTableAction{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	if enable {
@@ -729,7 +729,7 @@ func (p *Parser) parseAlterTableEnableDisableTrigger(loc int, enable bool) (*nod
 // parseAlterTableChangeTracking parses ENABLE/DISABLE CHANGE_TRACKING [WITH (...)].
 func (p *Parser) parseAlterTableChangeTracking(loc int, enable bool) (*nodes.AlterTableAction, error) {
 	action := &nodes.AlterTableAction{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	if enable {
@@ -760,7 +760,7 @@ func (p *Parser) parseAlterTableSwitch() (*nodes.AlterTableAction, error) {
 	loc := p.pos()
 	action := &nodes.AlterTableAction{
 		Type: nodes.ATSwitchPartition,
-		Loc:  nodes.Loc{Start: loc},
+		Loc:  nodes.Loc{Start: loc, End: -1},
 	}
 	p.advance() // consume SWITCH
 
@@ -813,7 +813,7 @@ func (p *Parser) parseAlterTableRebuild() (*nodes.AlterTableAction, error) {
 	loc := p.pos()
 	action := &nodes.AlterTableAction{
 		Type: nodes.ATRebuild,
-		Loc:  nodes.Loc{Start: loc},
+		Loc:  nodes.Loc{Start: loc, End: -1},
 	}
 	p.advance() // consume REBUILD
 
@@ -857,7 +857,7 @@ func (p *Parser) parseAlterTableRebuild() (*nodes.AlterTableAction, error) {
 func (p *Parser) parseAlterTableSplitMergeRange(isSplit bool) (*nodes.AlterTableAction, error) {
 	loc := p.pos()
 	action := &nodes.AlterTableAction{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 	if isSplit {
 		action.Type = nodes.ATSplitRange
@@ -899,7 +899,7 @@ func (p *Parser) parseAlterTableSet() (*nodes.AlterTableAction, error) {
 	loc := p.pos()
 	action := &nodes.AlterTableAction{
 		Type: nodes.ATSet,
-		Loc:  nodes.Loc{Start: loc},
+		Loc:  nodes.Loc{Start: loc, End: -1},
 	}
 	p.advance() // consume SET
 
@@ -920,7 +920,7 @@ func (p *Parser) parseAlterTableSet() (*nodes.AlterTableAction, error) {
 //	{ ENABLE | DISABLE } FILETABLE_NAMESPACE
 func (p *Parser) parseAlterTableFiletableNamespace(loc int, enable bool) (*nodes.AlterTableAction, error) {
 	action := &nodes.AlterTableAction{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 	if enable {
 		action.Type = nodes.ATEnableFiletableNamespace

@@ -219,7 +219,7 @@ Migrate `.End = p.pos()` → `.End = p.prevEnd()` across DML and expression file
 - [x] `DELETE FROM t WHERE a = 1` — DeleteStmt Loc spans full statement
 - [x] `MERGE INTO t USING s ON t.id = s.id WHEN MATCHED THEN UPDATE SET a = s.a` — MergeStmt Loc spans full statement
 - [x] `WITH cte AS (SELECT 1) SELECT * FROM cte` — top-level Loc spans full CTE+SELECT
-- [~] `SELECT * FROM t1 JOIN t2 ON t1.id = t2.id` — JoinClause Loc.Start valid, Loc.End not yet accurate
+- [x] `SELECT * FROM t1 JOIN t2 ON t1.id = t2.id` — JoinClause Loc spans join clause
 
 ### 6.2 DDL Loc Verification
 
@@ -235,15 +235,15 @@ Migrate `.End = p.pos()` → `.End = p.prevEnd()` across DML and expression file
 
 ### 6.3 Expression & Sub-node Loc Verification
 
-- [~] `SELECT CAST(1 AS INT)` — CastExpr Loc.Start valid, Loc.End not yet accurate
-- [~] `SELECT CASE WHEN 1=1 THEN 'a' ELSE 'b' END` — CaseExpr Loc.Start valid, Loc.End not yet accurate
-- [~] `SELECT a + b` — BinaryExpr Loc.Start valid, Loc.End not yet accurate
-- [~] `SELECT -x` — UnaryExpr Loc.Start valid, Loc.End not yet accurate
-- [~] `SELECT COALESCE(a, b, c)` — CoalesceExpr Loc.Start valid, Loc.End not yet accurate
-- [~] `SELECT * FROM t WHERE EXISTS (SELECT 1)` — ExistsExpr Loc.Start valid, Loc.End not yet accurate
-- [~] `SELECT CONVERT(INT, '1')` — ConvertExpr Loc.Start valid, Loc.End not yet accurate
-- [~] `SELECT TRY_CAST(1 AS VARCHAR)` — TryCastExpr Loc.Start valid, Loc.End not yet accurate
-- [~] `SELECT TRY_CONVERT(INT, '1')` — TryConvertExpr Loc.Start valid, Loc.End not yet accurate
+- [x] `SELECT CAST(1 AS INT)` — CastExpr Loc spans `CAST(1 AS INT)`
+- [x] `SELECT CASE WHEN 1=1 THEN 'a' ELSE 'b' END` — CaseExpr Loc spans CASE..END
+- [x] `SELECT a + b` — BinaryExpr Loc spans `a + b`
+- [x] `SELECT -x` — UnaryExpr Loc spans `-x`
+- [x] `SELECT COALESCE(a, b, c)` — FuncCall Loc spans full call
+- [x] `SELECT * FROM t WHERE EXISTS (SELECT 1)` — ExistsExpr Loc spans `EXISTS (...)`
+- [x] `SELECT CONVERT(INT, '1')` — ConvertExpr Loc spans full expression
+- [x] `SELECT TRY_CAST(1 AS VARCHAR)` — TryCastExpr Loc spans full expression
+- [x] `SELECT TRY_CONVERT(INT, '1')` — TryConvertExpr Loc spans full expression
 
 ### 6.4 Multi-Statement & Edge Cases
 

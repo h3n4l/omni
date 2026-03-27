@@ -71,7 +71,7 @@ func (p *Parser) parseCreateTriggerStmt(orAlter bool) (*nodes.CreateTriggerStmt,
 
 	stmt := &nodes.CreateTriggerStmt{
 		OrAlter: orAlter,
-		Loc:     nodes.Loc{Start: loc},
+		Loc:     nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Trigger name (possibly schema-qualified)

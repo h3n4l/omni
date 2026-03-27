@@ -28,7 +28,7 @@ func (p *Parser) parseCreateSecurityPolicyStmt() (*nodes.SecurityPolicyStmt, err
 
 	stmt := &nodes.SecurityPolicyStmt{
 		Action: "CREATE",
-		Loc:    nodes.Loc{Start: loc},
+		Loc:    nodes.Loc{Start: loc, End: -1},
 	}
 
 	// [schema_name.] policy_name
@@ -82,7 +82,7 @@ func (p *Parser) parseAlterSecurityPolicyStmt() (*nodes.SecurityPolicyStmt, erro
 
 	stmt := &nodes.SecurityPolicyStmt{
 		Action: "ALTER",
-		Loc:    nodes.Loc{Start: loc},
+		Loc:    nodes.Loc{Start: loc, End: -1},
 	}
 
 	// schema_name.policy_name
@@ -121,7 +121,7 @@ func (p *Parser) parseDropSecurityPolicyStmt() (*nodes.SecurityPolicyStmt, error
 
 	stmt := &nodes.SecurityPolicyStmt{
 		Action: "DROP",
-		Loc:    nodes.Loc{Start: loc},
+		Loc:    nodes.Loc{Start: loc, End: -1},
 	}
 
 	// IF EXISTS
@@ -176,7 +176,7 @@ func (p *Parser) parseSecurityPredicate() *nodes.SecurityPredicate {
 
 	pred := &nodes.SecurityPredicate{
 		Action: action,
-		Loc:    nodes.Loc{Start: loc},
+		Loc:    nodes.Loc{Start: loc, End: -1},
 	}
 
 	// FILTER or BLOCK
@@ -317,7 +317,7 @@ func (p *Parser) parseAddSensitivityClassificationStmt() (*nodes.SensitivityClas
 
 	stmt := &nodes.SensitivityClassificationStmt{
 		Action: "ADD",
-		Loc:    nodes.Loc{Start: loc},
+		Loc:    nodes.Loc{Start: loc, End: -1},
 	}
 
 	// TO
@@ -397,7 +397,7 @@ func (p *Parser) parseDropSensitivityClassificationStmt() (*nodes.SensitivityCla
 
 	stmt := &nodes.SensitivityClassificationStmt{
 		Action: "DROP",
-		Loc:    nodes.Loc{Start: loc},
+		Loc:    nodes.Loc{Start: loc, End: -1},
 	}
 
 	// FROM
@@ -447,7 +447,7 @@ func (p *Parser) parseSignatureStmt(action string) (*nodes.SignatureStmt, error)
 
 	stmt := &nodes.SignatureStmt{
 		Action: action,
-		Loc:    nodes.Loc{Start: loc},
+		Loc:    nodes.Loc{Start: loc, End: -1},
 	}
 
 	// TO (for ADD) or FROM (for DROP)
@@ -529,7 +529,7 @@ func (p *Parser) parseSignatureStmt(action string) (*nodes.SignatureStmt, error)
 //	    | ASYMMETRIC KEY Asym_Key_Name WITH SIGNATURE = signed_blob
 func (p *Parser) parseSignatureCryptoItem() *nodes.CryptoItem {
 	loc := p.pos()
-	item := &nodes.CryptoItem{Loc: nodes.Loc{Start: loc}}
+	item := &nodes.CryptoItem{Loc: nodes.Loc{Start: loc, End: -1}}
 
 	// CERTIFICATE cert_name or ASYMMETRIC KEY key_name
 	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CERTIFICATE") {

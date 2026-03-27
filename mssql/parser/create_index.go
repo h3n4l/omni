@@ -38,7 +38,7 @@ func (p *Parser) parseCreateIndexStmt(unique bool) (*nodes.CreateIndexStmt, erro
 
 	stmt := &nodes.CreateIndexStmt{
 		Unique: unique,
-		Loc:    nodes.Loc{Start: loc},
+		Loc:    nodes.Loc{Start: loc, End: -1},
 	}
 
 	// CLUSTERED / NONCLUSTERED
@@ -186,7 +186,7 @@ func (p *Parser) parseIndexColumnList() (*nodes.List, error) {
 		items = append(items, &nodes.IndexColumn{
 			Name:    name,
 			SortDir: dir,
-			Loc:     nodes.Loc{Start: loc},
+			Loc:     nodes.Loc{Start: loc, End: -1},
 		})
 		if _, ok := p.match(','); !ok {
 			break
@@ -213,7 +213,7 @@ func (p *Parser) parseCreateXmlIndexStmt(primary bool) (*nodes.CreateXmlIndexStm
 	loc := p.pos()
 	stmt := &nodes.CreateXmlIndexStmt{
 		Primary: primary,
-		Loc:     nodes.Loc{Start: loc},
+		Loc:     nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Index name
@@ -277,7 +277,7 @@ func (p *Parser) parseCreateXmlIndexStmt(primary bool) (*nodes.CreateXmlIndexStm
 func (p *Parser) parseCreateSelectiveXmlIndexStmt() (*nodes.CreateSelectiveXmlIndexStmt, error) {
 	loc := p.pos()
 	stmt := &nodes.CreateSelectiveXmlIndexStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Index name
@@ -371,7 +371,7 @@ func (p *Parser) parseCreateSelectiveXmlIndexStmt() (*nodes.CreateSelectiveXmlIn
 func (p *Parser) parseCreateSpatialIndexStmt() (*nodes.CreateSpatialIndexStmt, error) {
 	loc := p.pos()
 	stmt := &nodes.CreateSpatialIndexStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Index name
@@ -443,7 +443,7 @@ func (p *Parser) parseCreateSpatialIndexStmt() (*nodes.CreateSpatialIndexStmt, e
 func (p *Parser) parseCreateAggregateStmt() (*nodes.CreateAggregateStmt, error) {
 	loc := p.pos()
 	stmt := &nodes.CreateAggregateStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// [schema.]aggregate_name
@@ -458,7 +458,7 @@ func (p *Parser) parseCreateAggregateStmt() (*nodes.CreateAggregateStmt, error) 
 		p.advance()
 		var params []nodes.Node
 		for p.cur.Type != ')' && p.cur.Type != tokEOF {
-			param := &nodes.ParamDef{Loc: nodes.Loc{Start: p.pos()}}
+			param := &nodes.ParamDef{Loc: nodes.Loc{Start: p.pos(), End: -1}}
 			// @param_name
 			if p.cur.Type == tokVARIABLE {
 				param.Name = p.cur.Str
@@ -525,7 +525,7 @@ func (p *Parser) parseCreateAggregateStmt() (*nodes.CreateAggregateStmt, error) 
 func (p *Parser) parseDropAggregateStmt() (*nodes.DropAggregateStmt, error) {
 	loc := p.pos()
 	stmt := &nodes.DropAggregateStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// IF EXISTS
@@ -579,7 +579,7 @@ func joinDots(parts []string) string {
 func (p *Parser) parseCreateJsonIndexStmt() (*nodes.CreateJsonIndexStmt, error) {
 	loc := p.pos()
 	stmt := &nodes.CreateJsonIndexStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Index name
@@ -668,7 +668,7 @@ func (p *Parser) parseCreateJsonIndexStmt() (*nodes.CreateJsonIndexStmt, error) 
 func (p *Parser) parseCreateVectorIndexStmt() (*nodes.CreateVectorIndexStmt, error) {
 	loc := p.pos()
 	stmt := &nodes.CreateVectorIndexStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Index name

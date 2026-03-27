@@ -48,7 +48,7 @@ func (p *Parser) parseBulkInsertStmt() (*nodes.BulkInsertStmt, error) {
 	p.matchIdentCI("INSERT")
 
 	stmt := &nodes.BulkInsertStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Table name (possibly qualified: db.schema.table)

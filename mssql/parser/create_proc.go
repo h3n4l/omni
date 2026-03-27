@@ -43,7 +43,7 @@ func (p *Parser) parseCreateProcedureStmt(orAlter bool) (*nodes.CreateProcedureS
 
 	stmt := &nodes.CreateProcedureStmt{
 		OrAlter: orAlter,
-		Loc:     nodes.Loc{Start: loc},
+		Loc:     nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Procedure name
@@ -234,7 +234,7 @@ func (p *Parser) parseCreateFunctionStmt(orAlter bool) (*nodes.CreateFunctionStm
 
 	stmt := &nodes.CreateFunctionStmt{
 		OrAlter: orAlter,
-		Loc:     nodes.Loc{Start: loc},
+		Loc:     nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Function name
@@ -264,7 +264,7 @@ func (p *Parser) parseCreateFunctionStmt(orAlter bool) (*nodes.CreateFunctionStm
 		if p.cur.Type == kwTABLE {
 			p.advance()
 			stmt.ReturnsTable = &nodes.ReturnsTableDef{
-				Loc: nodes.Loc{Start: p.pos()},
+				Loc: nodes.Loc{Start: p.pos(), End: -1},
 			}
 			// Check for table definition (CLR or multi-statement TVF)
 			if p.cur.Type == '(' {
@@ -296,7 +296,7 @@ func (p *Parser) parseCreateFunctionStmt(orAlter bool) (*nodes.CreateFunctionStm
 				p.advance() // consume TABLE
 				stmt.ReturnsTable = &nodes.ReturnsTableDef{
 					Variable: varName,
-					Loc:      nodes.Loc{Start: p.pos()},
+					Loc:      nodes.Loc{Start: p.pos(), End: -1},
 				}
 				if p.cur.Type == '(' {
 					p.advance()
@@ -385,8 +385,8 @@ func (p *Parser) parseCreateFunctionStmt(orAlter bool) (*nodes.CreateFunctionStm
 			p.match(')')
 		}
 		stmt.Body = &nodes.ReturnStmt{
-			Value: &nodes.SubqueryExpr{Query: selectStmt, Loc: nodes.Loc{Start: retLoc}},
-			Loc:   nodes.Loc{Start: retLoc},
+			Value: &nodes.SubqueryExpr{Query: selectStmt, Loc: nodes.Loc{Start: retLoc, End: -1}},
+			Loc:   nodes.Loc{Start: retLoc, End: -1},
 		}
 	} else {
 		body, err := p.parseStmt()
@@ -434,7 +434,7 @@ func (p *Parser) parseParamDef() (*nodes.ParamDef, error) {
 	loc := p.pos()
 	param := &nodes.ParamDef{
 		Name: p.cur.Str,
-		Loc:  nodes.Loc{Start: loc},
+		Loc:  nodes.Loc{Start: loc, End: -1},
 	}
 	p.advance() // consume @param
 

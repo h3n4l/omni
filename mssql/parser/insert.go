@@ -36,7 +36,7 @@ func (p *Parser) parseInsertStmt() (*nodes.InsertStmt, error) {
 	p.advance() // consume INSERT
 
 	stmt := &nodes.InsertStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Optional TOP
@@ -125,7 +125,7 @@ func (p *Parser) parseInsertStmt() (*nodes.InsertStmt, error) {
 		}
 		stmt.Source = &nodes.Literal{
 			Type: nodes.LitDefault,
-			Loc:  nodes.Loc{Start: defLoc},
+			Loc:  nodes.Loc{Start: defLoc, End: -1},
 		}
 	}
 
@@ -150,7 +150,7 @@ func (p *Parser) parseValuesClause() (*nodes.ValuesClause, error) {
 	p.advance() // consume VALUES
 
 	vc := &nodes.ValuesClause{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	var rows []nodes.Node
@@ -185,7 +185,7 @@ func (p *Parser) parseOutputClause() (*nodes.OutputClause, error) {
 	p.advance() // consume OUTPUT
 
 	oc := &nodes.OutputClause{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Parse output targets (comma-separated expressions like inserted.col, deleted.col, $action)

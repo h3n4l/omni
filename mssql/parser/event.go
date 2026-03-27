@@ -23,7 +23,7 @@ func (p *Parser) parseCreateEventNotificationStmt() (*nodes.SecurityStmt, error)
 	stmt := &nodes.SecurityStmt{
 		Action:     "CREATE",
 		ObjectType: "EVENT NOTIFICATION",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// event_notification_name
@@ -52,7 +52,7 @@ func (p *Parser) parseDropEventNotificationStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "DROP",
 		ObjectType: "EVENT NOTIFICATION",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// notification_name [ ,...n ]
@@ -77,7 +77,7 @@ func (p *Parser) parseDropEventNotificationStmt() (*nodes.SecurityStmt, error) {
 func (p *Parser) parseEventNotificationOptions() *nodes.List {
 	loc := p.pos()
 	opt := &nodes.EventNotificationOption{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	for p.cur.Type != ';' && p.cur.Type != tokEOF && p.cur.Type != kwGO {
@@ -200,7 +200,7 @@ func (p *Parser) parseCreateEventSessionStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "CREATE",
 		ObjectType: "EVENT SESSION",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// event_session_name
@@ -244,7 +244,7 @@ func (p *Parser) parseAlterEventSessionStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "ALTER",
 		ObjectType: "EVENT SESSION",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// event_session_name
@@ -273,7 +273,7 @@ func (p *Parser) parseDropEventSessionStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "DROP",
 		ObjectType: "EVENT SESSION",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// event_session_name

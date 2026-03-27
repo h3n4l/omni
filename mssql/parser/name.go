@@ -55,7 +55,7 @@ func (p *Parser) parseTableRef() (*nodes.TableRef, error) {
 
 	ref := &nodes.TableRef{
 		Object: name,
-		Loc:    nodes.Loc{Start: loc},
+		Loc:    nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Collect dot-separated parts
@@ -118,9 +118,9 @@ func (p *Parser) parseIdentExpr() (nodes.ExprNode, error) {
 			p.advance()
 		}
 		mc := &nodes.MethodCallExpr{
-			Type:   &nodes.DataType{Name: name, Loc: nodes.Loc{Start: loc}},
+			Type:   &nodes.DataType{Name: name, Loc: nodes.Loc{Start: loc, End: -1}},
 			Method: method,
-			Loc:    nodes.Loc{Start: loc},
+			Loc:    nodes.Loc{Start: loc, End: -1},
 		}
 		if p.cur.Type == '(' {
 			p.advance() // consume (
@@ -151,7 +151,7 @@ func (p *Parser) parseIdentExpr() (nodes.ExprNode, error) {
 	// Simple column reference
 	return &nodes.ColumnRef{
 		Column: name,
-		Loc:    nodes.Loc{Start: loc},
+		Loc:    nodes.Loc{Start: loc, End: -1},
 	}, nil
 }
 
@@ -174,7 +174,7 @@ func (p *Parser) parseQualifiedRef(first string, loc int) (nodes.ExprNode, error
 			}
 			return &nodes.StarExpr{
 				Qualifier: qualifier,
-				Loc:       nodes.Loc{Start: loc},
+				Loc:       nodes.Loc{Start: loc, End: -1},
 			}, nil
 		}
 
@@ -201,14 +201,14 @@ func (p *Parser) parseQualifiedRef(first string, loc int) (nodes.ExprNode, error
 					method = p.cur.Str
 					p.advance()
 				}
-				dt := &nodes.DataType{Name: partName, Loc: nodes.Loc{Start: loc}}
+				dt := &nodes.DataType{Name: partName, Loc: nodes.Loc{Start: loc, End: -1}}
 				if len(parts) > 0 {
 					dt.Schema = parts[0]
 				}
 				mc := &nodes.MethodCallExpr{
 					Type:   dt,
 					Method: method,
-					Loc:    nodes.Loc{Start: loc},
+					Loc:    nodes.Loc{Start: loc, End: -1},
 				}
 				if p.cur.Type == '(' {
 					p.advance() // consume (
@@ -237,7 +237,7 @@ func (p *Parser) parseQualifiedRef(first string, loc int) (nodes.ExprNode, error
 		}
 	}
 
-	ref := &nodes.ColumnRef{Loc: nodes.Loc{Start: loc}}
+	ref := &nodes.ColumnRef{Loc: nodes.Loc{Start: loc, End: -1}}
 	switch len(parts) {
 	case 1:
 		ref.Column = parts[0]
@@ -269,8 +269,8 @@ func (p *Parser) parseFuncCallWithSchema(schema, funcName string, loc int) (node
 	p.advance() // consume (
 
 	fc := &nodes.FuncCallExpr{
-		Name: &nodes.TableRef{Schema: schema, Object: funcName, Loc: nodes.Loc{Start: loc}},
-		Loc:  nodes.Loc{Start: loc},
+		Name: &nodes.TableRef{Schema: schema, Object: funcName, Loc: nodes.Loc{Start: loc, End: -1}},
+		Loc:  nodes.Loc{Start: loc, End: -1},
 	}
 
 	// COUNT(*) special case

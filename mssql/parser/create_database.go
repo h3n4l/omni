@@ -93,7 +93,7 @@ func (p *Parser) parseCreateDatabaseStmt() (*nodes.CreateDatabaseStmt, error) {
 	loc := p.pos()
 
 	stmt := &nodes.CreateDatabaseStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Database name
@@ -249,7 +249,7 @@ func (p *Parser) parseCreateDatabaseStmt() (*nodes.CreateDatabaseStmt, error) {
 func (p *Parser) parseDatabaseFileSpec() *nodes.DatabaseFileSpec {
 	loc := p.pos()
 	spec := &nodes.DatabaseFileSpec{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	p.match('(') // consume '('
@@ -311,7 +311,7 @@ func (p *Parser) parseDatabaseFileSpec() *nodes.DatabaseFileSpec {
 //
 //	size_value ::= number [ KB | MB | GB | TB | % ]
 func (p *Parser) parseSizeValue() *nodes.SizeValue {
-	sv := &nodes.SizeValue{Loc: nodes.Loc{Start: p.pos()}}
+	sv := &nodes.SizeValue{Loc: nodes.Loc{Start: p.pos(), End: -1}}
 
 	// Read the numeric part
 	if p.cur.Type == tokICONST || p.cur.Type == tokFCONST {
@@ -348,7 +348,7 @@ func (p *Parser) parseSizeValue() *nodes.SizeValue {
 func (p *Parser) parseDatabaseFilegroup() *nodes.DatabaseFilegroup {
 	loc := p.pos()
 	fg := &nodes.DatabaseFilegroup{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	p.advance() // consume FILEGROUP keyword
@@ -462,7 +462,7 @@ func (p *Parser) parseOneDatabaseOption() *nodes.DatabaseOption {
 
 	opt := &nodes.DatabaseOption{
 		Name: key,
-		Loc:  nodes.Loc{Start: optLoc},
+		Loc:  nodes.Loc{Start: optLoc, End: -1},
 	}
 
 	// Parse value: = value or bare ON/OFF
@@ -513,7 +513,7 @@ func (p *Parser) parseDatabaseFilestreamOption() *nodes.DatabaseOption {
 
 	opt := &nodes.DatabaseOption{
 		Name: "FILESTREAM",
-		Loc:  nodes.Loc{Start: optLoc},
+		Loc:  nodes.Loc{Start: optLoc, End: -1},
 	}
 
 	if p.cur.Type == '(' {

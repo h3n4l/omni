@@ -37,7 +37,7 @@ func (p *Parser) parseCreateFulltextIndexStmt() (*nodes.CreateFulltextIndexStmt,
 	// INDEX keyword already consumed by caller
 
 	stmt := &nodes.CreateFulltextIndexStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// ON table_name
@@ -200,7 +200,7 @@ func (p *Parser) parseAlterFulltextIndexStmt() (*nodes.AlterFulltextIndexStmt, e
 	// INDEX keyword already consumed by caller
 
 	stmt := &nodes.AlterFulltextIndexStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// ON table_name
@@ -443,7 +443,7 @@ func (p *Parser) parseCreateFulltextCatalogStmt() (*nodes.CreateFulltextCatalogS
 	// CATALOG keyword already consumed by caller
 
 	stmt := &nodes.CreateFulltextCatalogStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// catalog name
@@ -533,7 +533,7 @@ func (p *Parser) parseCreateFulltextStoplistStmt() (*nodes.CreateFulltextStoplis
 	// STOPLIST keyword already consumed by caller
 
 	stmt := &nodes.CreateFulltextStoplistStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// stoplist_name
@@ -601,7 +601,7 @@ func (p *Parser) parseAlterFulltextStoplistStmt() (*nodes.AlterFulltextStoplistS
 	// STOPLIST keyword already consumed by caller
 
 	stmt := &nodes.AlterFulltextStoplistStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// stoplist_name
@@ -679,7 +679,7 @@ func (p *Parser) parseDropFulltextStoplistStmt() (*nodes.DropFulltextStoplistStm
 	// STOPLIST keyword already consumed by caller
 
 	stmt := &nodes.DropFulltextStoplistStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() {
@@ -703,7 +703,7 @@ func (p *Parser) parseCreateSearchPropertyListStmt() (*nodes.CreateSearchPropert
 	// LIST keyword already consumed by caller
 
 	stmt := &nodes.CreateSearchPropertyListStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// list name
@@ -764,7 +764,7 @@ func (p *Parser) parseAlterSearchPropertyListStmt() (*nodes.AlterSearchPropertyL
 	// LIST keyword already consumed by caller
 
 	stmt := &nodes.AlterSearchPropertyListStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// list name
@@ -848,7 +848,7 @@ func (p *Parser) parseDropSearchPropertyListStmt() (*nodes.DropSearchPropertyLis
 	// LIST keyword already consumed by caller
 
 	stmt := &nodes.DropSearchPropertyListStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() {
@@ -874,7 +874,7 @@ func (p *Parser) parseAlterFulltextCatalogStmt() (*nodes.AlterFulltextCatalogStm
 	// CATALOG keyword already consumed by caller
 
 	stmt := &nodes.AlterFulltextCatalogStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// catalog name

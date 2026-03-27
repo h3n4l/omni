@@ -62,7 +62,7 @@ func (p *Parser) parseDropStmt() (*nodes.DropStmt, error) {
 	p.advance() // consume DROP
 
 	stmt := &nodes.DropStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Object type

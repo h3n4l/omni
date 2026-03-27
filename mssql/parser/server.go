@@ -19,7 +19,7 @@ func (p *Parser) parseCreateServerRoleStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "CREATE",
 		ObjectType: "SERVER ROLE",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// role_name
@@ -57,7 +57,7 @@ func (p *Parser) parseAlterServerRoleStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "ALTER",
 		ObjectType: "SERVER ROLE",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// server_role_name
@@ -127,7 +127,7 @@ func (p *Parser) parseDropServerRoleStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "DROP",
 		ObjectType: "SERVER ROLE",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if name, ok := p.parseIdentifier(); ok {
@@ -187,7 +187,7 @@ func (p *Parser) parseAlterServerConfigurationStmt() (*nodes.AlterServerConfigur
 	}
 
 	stmt := &nodes.AlterServerConfigurationStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Determine the option type by looking at the first keyword(s)
@@ -793,7 +793,7 @@ func (p *Parser) parseAlterServiceMasterKeyStmt() (*nodes.SecurityKeyStmt, error
 	stmt := &nodes.SecurityKeyStmt{
 		Action:     "ALTER",
 		ObjectType: "SERVICE MASTER KEY",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	p.parseSecurityKeyOptions(stmt)
@@ -814,7 +814,7 @@ func (p *Parser) parseBackupServiceMasterKeyStmt() (*nodes.SecurityKeyStmt, erro
 	stmt := &nodes.SecurityKeyStmt{
 		Action:     "BACKUP",
 		ObjectType: "SERVICE MASTER KEY",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	p.parseSecurityKeyOptions(stmt)
@@ -835,7 +835,7 @@ func (p *Parser) parseRestoreServiceMasterKeyStmt() (*nodes.SecurityKeyStmt, err
 	stmt := &nodes.SecurityKeyStmt{
 		Action:     "RESTORE",
 		ObjectType: "SERVICE MASTER KEY",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	p.parseSecurityKeyOptions(stmt)

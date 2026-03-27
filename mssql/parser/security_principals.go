@@ -38,7 +38,7 @@ func (p *Parser) parseSecurityUserStmt(action string) (*nodes.SecurityStmt, erro
 	stmt := &nodes.SecurityStmt{
 		Action:     action,
 		ObjectType: "USER",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// IF EXISTS (DROP only)
@@ -168,7 +168,7 @@ func (p *Parser) parseSecurityLoginStmt(action string) (*nodes.SecurityStmt, err
 	stmt := &nodes.SecurityStmt{
 		Action:     action,
 		ObjectType: "LOGIN",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// login name
@@ -314,7 +314,7 @@ func (p *Parser) parseSecurityRoleStmt(action string) (*nodes.SecurityStmt, erro
 	stmt := &nodes.SecurityStmt{
 		Action:     action,
 		ObjectType: "ROLE",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// IF EXISTS (DROP only)
@@ -410,7 +410,7 @@ func (p *Parser) parseSecurityApplicationRoleStmt(action string) (*nodes.Securit
 	stmt := &nodes.SecurityStmt{
 		Action:     action,
 		ObjectType: "APPLICATION ROLE",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// role name
@@ -463,7 +463,7 @@ func (p *Parser) parseSecurityPrincipalWithOptions() []nodes.Node {
 
 		opt := &nodes.SecurityPrincipalOption{
 			Name: key,
-			Loc:  nodes.Loc{Start: optLoc},
+			Loc:  nodes.Loc{Start: optLoc, End: -1},
 		}
 
 		if p.cur.Type == '=' {
@@ -553,7 +553,7 @@ func (p *Parser) parseExecuteAsStmt() (*nodes.SecurityStmt, error) {
 
 	stmt := &nodes.SecurityStmt{
 		Action: "EXECUTE AS",
-		Loc:    nodes.Loc{Start: loc},
+		Loc:    nodes.Loc{Start: loc, End: -1},
 	}
 
 	// { LOGIN | USER | CALLER | SELF | OWNER }
@@ -630,7 +630,7 @@ func (p *Parser) parseRevertStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "REVERT",
 		ObjectType: "CONTEXT",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// WITH COOKIE = @cookie_variable
@@ -675,7 +675,7 @@ func (p *Parser) parseAlterAuthorizationStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "ALTER AUTHORIZATION",
 		ObjectType: "ALTER AUTHORIZATION",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// ON [ entity_type :: ] entity_name

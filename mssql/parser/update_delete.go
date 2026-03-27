@@ -52,7 +52,7 @@ func (p *Parser) parseUpdateStmt() (*nodes.UpdateStmt, error) {
 	p.advance() // consume UPDATE
 
 	stmt := &nodes.UpdateStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Optional TOP
@@ -167,7 +167,7 @@ func (p *Parser) parseDeleteStmt() (*nodes.DeleteStmt, error) {
 	p.advance() // consume DELETE
 
 	stmt := &nodes.DeleteStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Optional TOP
@@ -333,7 +333,7 @@ func (p *Parser) parseSetClause() (*nodes.SetExpr, error) {
 	loc := p.pos()
 
 	se := &nodes.SetExpr{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.cur.Type == tokVARIABLE {
@@ -403,7 +403,7 @@ func (p *Parser) parseSetTarget() (*nodes.ColumnRef, error) {
 
 	ref := &nodes.ColumnRef{
 		Column: name,
-		Loc:    nodes.Loc{Start: loc},
+		Loc:    nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Check for qualified name: table.column

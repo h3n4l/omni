@@ -28,7 +28,7 @@ func (p *Parser) parseCreateAssemblyStmt() (*nodes.CreateAssemblyStmt, error) {
 	// ASSEMBLY keyword already consumed by caller
 
 	stmt := &nodes.CreateAssemblyStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Name
@@ -115,7 +115,7 @@ func (p *Parser) parseAlterAssemblyStmt() (*nodes.AlterAssemblyStmt, error) {
 	// ASSEMBLY keyword already consumed by caller
 
 	stmt := &nodes.AlterAssemblyStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Name

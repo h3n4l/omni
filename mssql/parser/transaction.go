@@ -25,7 +25,7 @@ func (p *Parser) parseBeginTransStmt() (*nodes.BeginTransStmt, error) {
 	p.match(kwTRANSACTION)
 
 	stmt := &nodes.BeginTransStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Optional transaction name
@@ -67,7 +67,7 @@ func (p *Parser) parseBeginDistributedTransStmt() (*nodes.BeginDistributedTransS
 	p.match(kwTRANSACTION)
 
 	stmt := &nodes.BeginDistributedTransStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Optional transaction name
@@ -100,7 +100,7 @@ func (p *Parser) parseCommitStmt() (*nodes.CommitTransStmt, error) {
 	p.match(kwTRANSACTION)
 
 	stmt := &nodes.CommitTransStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Optional name (but not WITH, which starts the delayed durability clause)
@@ -147,7 +147,7 @@ func (p *Parser) parseRollbackStmt() (*nodes.RollbackTransStmt, error) {
 	p.match(kwTRANSACTION)
 
 	stmt := &nodes.RollbackTransStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Optional name/savepoint
@@ -175,7 +175,7 @@ func (p *Parser) parseSaveTransStmt() (*nodes.SaveTransStmt, error) {
 	p.match(kwTRANSACTION)
 
 	stmt := &nodes.SaveTransStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Name

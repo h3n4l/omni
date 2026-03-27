@@ -33,7 +33,7 @@ func (p *Parser) parseCreateTableStmt() (*nodes.CreateTableStmt, error) {
 	loc := p.pos()
 
 	stmt := &nodes.CreateTableStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Table name
@@ -271,7 +271,7 @@ func (p *Parser) parseOneTableOption() (*nodes.TableOption, error) {
 
 	opt := &nodes.TableOption{
 		Name: name,
-		Loc:  nodes.Loc{Start: loc},
+		Loc:  nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Expect '='
@@ -405,7 +405,7 @@ func (p *Parser) parseColumnDef() (*nodes.ColumnDef, error) {
 
 	col := &nodes.ColumnDef{
 		Name: name,
-		Loc:  nodes.Loc{Start: loc},
+		Loc:  nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Check for computed column: name AS expr [ PERSISTED [ NOT NULL ] ]
@@ -432,7 +432,7 @@ func (p *Parser) parseColumnDef() (*nodes.ColumnDef, error) {
 			Expr:      expr,
 			Persisted: persisted,
 			NotNull:   notNull,
-			Loc:       nodes.Loc{Start: compLoc},
+			Loc:       nodes.Loc{Start: compLoc, End: -1},
 		}
 		// Computed columns can also have column constraints (PK, UNIQUE, etc.)
 		for p.cur.Type == kwCONSTRAINT || p.cur.Type == kwPRIMARY || p.cur.Type == kwUNIQUE ||
@@ -577,7 +577,7 @@ func (p *Parser) parseColumnDef() (*nodes.ColumnDef, error) {
 			if next.Type == kwNULL {
 				p.advance() // NOT
 				p.advance() // NULL
-				col.Nullable = &nodes.NullableSpec{NotNull: true, Loc: nodes.Loc{Start: p.pos()}}
+				col.Nullable = &nodes.NullableSpec{NotNull: true, Loc: nodes.Loc{Start: p.pos(), End: -1}}
 				consumed = true
 			} else if next.Type == kwFOR {
 				p.advance() // NOT
@@ -593,7 +593,7 @@ func (p *Parser) parseColumnDef() (*nodes.ColumnDef, error) {
 		// NULL
 		if p.cur.Type == kwNULL {
 			p.advance()
-			col.Nullable = &nodes.NullableSpec{NotNull: false, Loc: nodes.Loc{Start: p.pos()}}
+			col.Nullable = &nodes.NullableSpec{NotNull: false, Loc: nodes.Loc{Start: p.pos(), End: -1}}
 			consumed = true
 		}
 
@@ -702,7 +702,7 @@ func (p *Parser) parseEncryptedWith() (*nodes.EncryptedWithSpec, error) {
 	p.advance() // ENCRYPTED
 
 	spec := &nodes.EncryptedWithSpec{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.cur.Type != kwWITH {
@@ -766,7 +766,7 @@ func (p *Parser) parseGeneratedAlways() (*nodes.GeneratedAlwaysSpec, error) {
 	p.advance() // GENERATED
 
 	spec := &nodes.GeneratedAlwaysSpec{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// ALWAYS
@@ -812,7 +812,7 @@ func (p *Parser) parseIdentitySpec() (*nodes.IdentitySpec, error) {
 	spec := &nodes.IdentitySpec{
 		Seed:      1,
 		Increment: 1,
-		Loc:       nodes.Loc{Start: loc},
+		Loc:       nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.cur.Type == '(' {
@@ -867,7 +867,7 @@ func (p *Parser) parseInlineConstraint(name string) (*nodes.ConstraintDef, error
 	loc := p.pos()
 	cd := &nodes.ConstraintDef{
 		Name: name,
-		Loc:  nodes.Loc{Start: loc},
+		Loc:  nodes.Loc{Start: loc, End: -1},
 	}
 
 	switch p.cur.Type {
@@ -1028,7 +1028,7 @@ func (p *Parser) parseTableConstraint() (*nodes.ConstraintDef, error) {
 
 	cd := &nodes.ConstraintDef{
 		Name: name,
-		Loc:  nodes.Loc{Start: loc},
+		Loc:  nodes.Loc{Start: loc, End: -1},
 	}
 
 	switch p.cur.Type {
@@ -1262,7 +1262,7 @@ func (p *Parser) parseInlineTableIndex() (*nodes.InlineIndexDef, error) {
 	p.advance() // consume INDEX
 
 	idx := &nodes.InlineIndexDef{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// index_name
@@ -1474,7 +1474,7 @@ func (p *Parser) parseCreateTableAsSelectStmt() (*nodes.CreateTableAsSelectStmt,
 	loc := p.pos()
 
 	stmt := &nodes.CreateTableAsSelectStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Table name
@@ -1569,7 +1569,7 @@ func (p *Parser) parseCTASOption() (*nodes.TableOption, error) {
 			}
 			opt := &nodes.TableOption{
 				Name: "CLUSTERED COLUMNSTORE INDEX",
-				Loc:  nodes.Loc{Start: loc},
+				Loc:  nodes.Loc{Start: loc, End: -1},
 			}
 			// Optional ORDER (col, ...)
 			if p.cur.Type == kwORDER || (p.isIdentLike() && strings.EqualFold(p.cur.Str, "ORDER")) {
@@ -1600,7 +1600,7 @@ func (p *Parser) parseCTASOption() (*nodes.TableOption, error) {
 			p.advance() // consume INDEX
 			opt := &nodes.TableOption{
 				Name: "CLUSTERED INDEX",
-				Loc:  nodes.Loc{Start: loc},
+				Loc:  nodes.Loc{Start: loc, End: -1},
 			}
 			if p.cur.Type == '(' {
 				p.advance()
@@ -1636,7 +1636,7 @@ func (p *Parser) parseCTASOption() (*nodes.TableOption, error) {
 		p.advance()
 		opt := &nodes.TableOption{
 			Name: "HEAP",
-			Loc:  nodes.Loc{Start: loc},
+			Loc:  nodes.Loc{Start: loc, End: -1},
 		}
 		opt.Loc.End = p.prevEnd()
 		return opt, nil
@@ -1647,7 +1647,7 @@ func (p *Parser) parseCTASOption() (*nodes.TableOption, error) {
 		p.advance() // consume PARTITION
 		opt := &nodes.TableOption{
 			Name: "PARTITION",
-			Loc:  nodes.Loc{Start: loc},
+			Loc:  nodes.Loc{Start: loc, End: -1},
 		}
 		if p.cur.Type == '(' {
 			p.advance()
@@ -1714,7 +1714,7 @@ func (p *Parser) parseCTASOption() (*nodes.TableOption, error) {
 		p.advance() // consume DISTRIBUTION
 		opt := &nodes.TableOption{
 			Name: "DISTRIBUTION",
-			Loc:  nodes.Loc{Start: loc},
+			Loc:  nodes.Loc{Start: loc, End: -1},
 		}
 		if p.cur.Type == '=' {
 			p.advance()

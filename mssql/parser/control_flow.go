@@ -20,7 +20,7 @@ func (p *Parser) parseIfStmt() (*nodes.IfStmt, error) {
 	p.advance() // consume IF
 
 	stmt := &nodes.IfStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	cond, err := p.parseExpr()
@@ -64,7 +64,7 @@ func (p *Parser) parseWhileStmt() (*nodes.WhileStmt, error) {
 	p.advance() // consume WHILE
 
 	stmt := &nodes.WhileStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	cond, err := p.parseExpr()
@@ -128,7 +128,7 @@ func (p *Parser) parseBeginStmt() (nodes.StmtNode, error) {
 			if err != nil {
 				return nil, err
 			}
-			stmt.Loc = nodes.Loc{Start: loc}
+			stmt.Loc = nodes.Loc{Start: loc, End: -1}
 			stmt.Loc.End = p.prevEnd()
 			return stmt, nil
 		}
@@ -197,7 +197,7 @@ func (p *Parser) parseTryCatchStmt() (*nodes.TryCatchStmt, error) {
 	p.advance() // consume TRY
 
 	stmt := &nodes.TryCatchStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// TRY block
@@ -262,7 +262,7 @@ func (p *Parser) parseReturnStmt() (*nodes.ReturnStmt, error) {
 	p.advance() // consume RETURN
 
 	stmt := &nodes.ReturnStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Optional return expression
@@ -338,7 +338,7 @@ func (p *Parser) parseWaitForStmt() (*nodes.WaitForStmt, error) {
 	p.advance() // consume WAITFOR
 
 	stmt := &nodes.WaitForStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.cur.Type == kwDELAY {

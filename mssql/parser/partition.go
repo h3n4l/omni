@@ -19,7 +19,7 @@ func (p *Parser) parseCreatePartitionFunctionStmt() (*nodes.CreatePartitionFunct
 	// FUNCTION keyword already consumed by caller
 
 	stmt := &nodes.CreatePartitionFunctionStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Name
@@ -87,7 +87,7 @@ func (p *Parser) parseAlterPartitionFunctionStmt() (*nodes.AlterPartitionFunctio
 	// FUNCTION keyword already consumed by caller
 
 	stmt := &nodes.AlterPartitionFunctionStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Name
@@ -134,7 +134,7 @@ func (p *Parser) parseCreatePartitionSchemeStmt() (*nodes.CreatePartitionSchemeS
 	// SCHEME keyword already consumed by caller
 
 	stmt := &nodes.CreatePartitionSchemeStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Name
@@ -202,7 +202,7 @@ func (p *Parser) parseAlterPartitionSchemeStmt() (*nodes.AlterPartitionSchemeStm
 	// SCHEME keyword already consumed by caller
 
 	stmt := &nodes.AlterPartitionSchemeStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Name

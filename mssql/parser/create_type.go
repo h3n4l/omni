@@ -138,7 +138,7 @@ func (p *Parser) parseCreateTypeStmt() (*nodes.CreateTypeStmt, error) {
 //	    ( column_name [ ASC | DESC ] [ ,...n ] )
 //	    [ INCLUDE ( column_name [ ,...n ] ) ]
 func (p *Parser) parseTableTypeIndex() (*nodes.TableTypeIndex, error) {
-	idx := &nodes.TableTypeIndex{Loc: nodes.Loc{Start: p.pos()}}
+	idx := &nodes.TableTypeIndex{Loc: nodes.Loc{Start: p.pos(), End: -1}}
 
 	p.match(kwINDEX) // consume INDEX keyword
 
@@ -180,7 +180,7 @@ func (p *Parser) parseTableTypeIndex() (*nodes.TableTypeIndex, error) {
 	if _, err := p.expect('('); err == nil {
 		var cols []nodes.Node
 		for p.cur.Type != ')' && p.cur.Type != tokEOF {
-			col := &nodes.IndexColumn{Loc: nodes.Loc{Start: p.pos()}}
+			col := &nodes.IndexColumn{Loc: nodes.Loc{Start: p.pos(), End: -1}}
 			col.Name, _ = p.parseIdentifier()
 			if p.cur.Type == kwASC {
 				col.SortDir = nodes.SortAsc

@@ -53,7 +53,7 @@ func (p *Parser) parseSelectStmt() (*nodes.SelectStmt, error) {
 
 	stmt := &nodes.SelectStmt{
 		WithClause: withClause,
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// ALL | DISTINCT
@@ -192,7 +192,7 @@ func (p *Parser) parseSelectStmt() (*nodes.SelectStmt, error) {
 			}
 			stmt.FetchClause = &nodes.FetchClause{
 				Count: count,
-				Loc:   nodes.Loc{Start: fetchLoc},
+				Loc:   nodes.Loc{Start: fetchLoc, End: -1},
 			}
 		}
 	}
@@ -271,7 +271,7 @@ func (p *Parser) parseWithClause() (*nodes.WithClause, error) {
 	p.advance() // consume WITH
 
 	wc := &nodes.WithClause{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Optional XMLNAMESPACES (...)
@@ -315,7 +315,7 @@ func (p *Parser) parseXmlNamespaces() (*nodes.List, error) {
 	var decls []nodes.Node
 	for p.cur.Type != ')' && p.cur.Type != tokEOF {
 		loc := p.pos()
-		decl := &nodes.XmlNamespaceDecl{Loc: nodes.Loc{Start: loc}}
+		decl := &nodes.XmlNamespaceDecl{Loc: nodes.Loc{Start: loc, End: -1}}
 
 		if _, ok := p.match(kwDEFAULT); ok {
 			// DEFAULT 'uri'
@@ -363,7 +363,7 @@ func (p *Parser) parseCTE() (*nodes.CommonTableExpr, error) {
 
 	cte := &nodes.CommonTableExpr{
 		Name: name,
-		Loc:  nodes.Loc{Start: loc},
+		Loc:  nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Optional column list
@@ -417,7 +417,7 @@ func (p *Parser) parseTopClause() (*nodes.TopClause, error) {
 	p.advance() // consume TOP
 
 	tc := &nodes.TopClause{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// TOP (expr) or TOP literal
@@ -477,7 +477,7 @@ func (p *Parser) parseTargetList() (*nodes.List, error) {
 		}
 		target := &nodes.ResTarget{
 			Val: expr,
-			Loc: nodes.Loc{Start: targetLoc},
+			Loc: nodes.Loc{Start: targetLoc, End: -1},
 		}
 		// Check for alias: AS name or just name (but not keywords that start clauses)
 		if _, ok := p.match(kwAS); ok {
@@ -529,6 +529,7 @@ func (p *Parser) parseTableSource() (nodes.TableExpr, error) {
 
 	// Parse joins
 	for {
+		joinLoc := p.pos()
 		jt, ok := p.matchJoinType()
 		if !ok {
 			break
@@ -544,7 +545,7 @@ func (p *Parser) parseTableSource() (nodes.TableExpr, error) {
 			Type:  jt,
 			Left:  left,
 			Right: right,
-			Loc:   nodes.Loc{Start: p.pos()},
+			Loc:   nodes.Loc{Start: joinLoc, End: -1},
 		}
 		// ON condition (not for CROSS JOIN / CROSS APPLY / OUTER APPLY)
 		if jt != nodes.JoinCross && jt != nodes.JoinCrossApply && jt != nodes.JoinOuterApply {
@@ -558,6 +559,7 @@ func (p *Parser) parseTableSource() (nodes.TableExpr, error) {
 				}
 			}
 		}
+		join.Loc.End = p.prevEnd()
 		left = join
 	}
 
@@ -583,7 +585,7 @@ func (p *Parser) parsePrimaryTableSource() (nodes.TableExpr, error) {
 
 		subExpr := &nodes.SubqueryExpr{
 			Query: sub,
-			Loc:   nodes.Loc{Start: loc},
+			Loc:   nodes.Loc{Start: loc, End: -1},
 		}
 
 		// Alias
@@ -592,7 +594,7 @@ func (p *Parser) parsePrimaryTableSource() (nodes.TableExpr, error) {
 			result := &nodes.AliasedTableRef{
 				Table: subExpr,
 				Alias: alias,
-				Loc:   nodes.Loc{Start: loc},
+				Loc:   nodes.Loc{Start: loc, End: -1},
 			}
 			return p.parsePivotUnpivot(result)
 		}
@@ -685,7 +687,7 @@ func (p *Parser) parsePivotExpr(source nodes.TableExpr) (*nodes.PivotExpr, error
 
 	pivot := &nodes.PivotExpr{
 		Source: source,
-		Loc:    nodes.Loc{Start: loc},
+		Loc:    nodes.Loc{Start: loc, End: -1},
 	}
 
 	if _, err := p.expect('('); err != nil {
@@ -744,7 +746,7 @@ func (p *Parser) parseUnpivotExpr(source nodes.TableExpr) (*nodes.UnpivotExpr, e
 
 	unpivot := &nodes.UnpivotExpr{
 		Source: source,
-		Loc:    nodes.Loc{Start: loc},
+		Loc:    nodes.Loc{Start: loc, End: -1},
 	}
 
 	if _, err := p.expect('('); err != nil {
@@ -800,7 +802,7 @@ func (p *Parser) parseTableSampleClause() (*nodes.TableSampleClause, error) {
 	p.advance() // consume TABLESAMPLE
 
 	ts := &nodes.TableSampleClause{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	if _, err := p.expect('('); err != nil {
@@ -848,7 +850,7 @@ func (p *Parser) parseTableValuedFunction(ref *nodes.TableRef) (nodes.TableExpr,
 
 	fc := &nodes.FuncCallExpr{
 		Name: ref,
-		Loc:  nodes.Loc{Start: loc},
+		Loc:  nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.cur.Type != ')' {
@@ -874,12 +876,12 @@ func (p *Parser) parseTableValuedFunction(ref *nodes.TableRef) (nodes.TableExpr,
 		return &nodes.AliasedTableRef{
 			Table: fc,
 			Alias: alias,
-			Loc:   nodes.Loc{Start: loc},
+			Loc:   nodes.Loc{Start: loc, End: -1},
 		}, nil
 	}
 	return &nodes.AliasedTableRef{
 		Table: fc,
-		Loc:   nodes.Loc{Start: loc},
+		Loc:   nodes.Loc{Start: loc, End: -1},
 	}, nil
 }
 
@@ -1005,7 +1007,7 @@ func (p *Parser) parseForClause() (*nodes.ForClause, error) {
 	p.advance() // consume FOR
 
 	fc := &nodes.ForClause{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.cur.Type == kwBROWSE {
@@ -1311,7 +1313,7 @@ func (p *Parser) parseWindowClause() (*nodes.List, error) {
 		}
 		def := &nodes.WindowDef{
 			Name: name,
-			Loc:  nodes.Loc{Start: loc},
+			Loc:  nodes.Loc{Start: loc, End: -1},
 		}
 
 		if _, err := p.expect(kwAS); err != nil {
@@ -1413,7 +1415,7 @@ func (p *Parser) parseOrderByList() (*nodes.List, error) {
 		items = append(items, &nodes.OrderByItem{
 			Expr:    expr,
 			SortDir: dir,
-			Loc:     nodes.Loc{Start: oloc},
+			Loc:     nodes.Loc{Start: oloc, End: -1},
 		})
 		if _, ok := p.match(','); !ok {
 			break
@@ -1489,7 +1491,7 @@ func (p *Parser) parseTableHint() (*nodes.TableHint, error) {
 		p.advance()
 		hint := &nodes.TableHint{
 			Name: "INDEX",
-			Loc:  nodes.Loc{Start: loc},
+			Loc:  nodes.Loc{Start: loc, End: -1},
 		}
 		if _, ok := p.match('='); ok {
 			// INDEX = ( value )
@@ -1557,7 +1559,7 @@ func (p *Parser) parseTableHint() (*nodes.TableHint, error) {
 		p.advance()
 		hint := &nodes.TableHint{
 			Name: "FORCESEEK",
-			Loc:  nodes.Loc{Start: loc},
+			Loc:  nodes.Loc{Start: loc, End: -1},
 		}
 		// Optional: FORCESEEK ( index_value ( col1, col2, ... ) )
 		if p.cur.Type == '(' {
@@ -1596,7 +1598,7 @@ func (p *Parser) parseTableHint() (*nodes.TableHint, error) {
 		p.advance()
 		hint := &nodes.TableHint{
 			Name: "SPATIAL_WINDOW_MAX_CELLS",
-			Loc:  nodes.Loc{Start: loc},
+			Loc:  nodes.Loc{Start: loc, End: -1},
 		}
 		if _, ok := p.match('='); ok {
 			var err error
@@ -1816,7 +1818,7 @@ func (p *Parser) parseQueryHint() (nodes.Node, error) {
 
 	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "MAXDOP"):
 		p.advance()
-		hint := &nodes.QueryHint{Kind: "MAXDOP", Loc: nodes.Loc{Start: loc}}
+		hint := &nodes.QueryHint{Kind: "MAXDOP", Loc: nodes.Loc{Start: loc, End: -1}}
 		if p.cur.Type == tokICONST {
 			var err error
 			hint.Value, err = p.parsePrimary()
@@ -1829,7 +1831,7 @@ func (p *Parser) parseQueryHint() (nodes.Node, error) {
 
 	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "MAXRECURSION"):
 		p.advance()
-		hint := &nodes.QueryHint{Kind: "MAXRECURSION", Loc: nodes.Loc{Start: loc}}
+		hint := &nodes.QueryHint{Kind: "MAXRECURSION", Loc: nodes.Loc{Start: loc, End: -1}}
 		if p.cur.Type == tokICONST {
 			var err error
 			hint.Value, err = p.parsePrimary()
@@ -1842,7 +1844,7 @@ func (p *Parser) parseQueryHint() (nodes.Node, error) {
 
 	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "FAST"):
 		p.advance()
-		hint := &nodes.QueryHint{Kind: "FAST", Loc: nodes.Loc{Start: loc}}
+		hint := &nodes.QueryHint{Kind: "FAST", Loc: nodes.Loc{Start: loc, End: -1}}
 		if p.cur.Type == tokICONST {
 			var err error
 			hint.Value, err = p.parsePrimary()
@@ -1855,7 +1857,7 @@ func (p *Parser) parseQueryHint() (nodes.Node, error) {
 
 	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "QUERYTRACEON"):
 		p.advance()
-		hint := &nodes.QueryHint{Kind: "QUERYTRACEON", Loc: nodes.Loc{Start: loc}}
+		hint := &nodes.QueryHint{Kind: "QUERYTRACEON", Loc: nodes.Loc{Start: loc, End: -1}}
 		if p.cur.Type == tokICONST {
 			var err error
 			hint.Value, err = p.parsePrimary()
@@ -1900,7 +1902,7 @@ func (p *Parser) parseQueryHint() (nodes.Node, error) {
 
 	case p.isIdentLike() && strings.EqualFold(p.cur.Str, "PARAMETERIZATION"):
 		p.advance()
-		hint := &nodes.QueryHint{Kind: "PARAMETERIZATION", Loc: nodes.Loc{Start: loc}}
+		hint := &nodes.QueryHint{Kind: "PARAMETERIZATION", Loc: nodes.Loc{Start: loc, End: -1}}
 		if p.isIdentLike() {
 			hint.StrValue = strings.ToUpper(p.cur.Str)
 			p.advance()
@@ -1912,7 +1914,7 @@ func (p *Parser) parseQueryHint() (nodes.Node, error) {
 		p.advance()
 		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "HINT") {
 			p.advance()
-			hint := &nodes.QueryHint{Kind: "USE HINT", Loc: nodes.Loc{Start: loc}}
+			hint := &nodes.QueryHint{Kind: "USE HINT", Loc: nodes.Loc{Start: loc, End: -1}}
 			if p.cur.Type == '(' {
 				p.advance()
 				var hintNames []nodes.Node
@@ -1934,7 +1936,7 @@ func (p *Parser) parseQueryHint() (nodes.Node, error) {
 			return hint, nil
 		} else if p.cur.Type == kwPLAN {
 			p.advance()
-			hint := &nodes.QueryHint{Kind: "USE PLAN", Loc: nodes.Loc{Start: loc}}
+			hint := &nodes.QueryHint{Kind: "USE PLAN", Loc: nodes.Loc{Start: loc, End: -1}}
 			if p.cur.Type == tokNSCONST || p.cur.Type == tokSCONST {
 				hint.StrValue = p.cur.Str
 				p.advance()
@@ -1957,7 +1959,7 @@ func (p *Parser) parseQueryHint() (nodes.Node, error) {
 		p.advance()
 		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "HINT") {
 			p.advance()
-			hint := &nodes.QueryHint{Kind: "TABLE HINT", Loc: nodes.Loc{Start: loc}}
+			hint := &nodes.QueryHint{Kind: "TABLE HINT", Loc: nodes.Loc{Start: loc, End: -1}}
 			if p.cur.Type == '(' {
 				p.advance()
 				// Parse exposed_object_name as a TableRef
@@ -1995,7 +1997,7 @@ func (p *Parser) parseQueryHint() (nodes.Node, error) {
 		if p.isIdentLike() {
 			name := strings.ToUpper(p.cur.Str)
 			p.advance()
-			hint := &nodes.QueryHint{Kind: name, Loc: nodes.Loc{Start: loc}}
+			hint := &nodes.QueryHint{Kind: name, Loc: nodes.Loc{Start: loc, End: -1}}
 			if p.cur.Type == '=' {
 				p.advance()
 				var err error
@@ -2021,7 +2023,7 @@ func (p *Parser) parseOptimizeForParam() (*nodes.OptimizeForParam, error) {
 	loc := p.pos()
 	param := &nodes.OptimizeForParam{
 		Variable: p.cur.Str,
-		Loc:      nodes.Loc{Start: loc},
+		Loc:      nodes.Loc{Start: loc, End: -1},
 	}
 	p.advance()
 	if p.cur.Type == '=' {

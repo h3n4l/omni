@@ -75,7 +75,7 @@ func (p *Parser) parseCreateAvailabilityGroupStmt() (*nodes.SecurityStmt, error)
 	stmt := &nodes.SecurityStmt{
 		Action:     "CREATE",
 		ObjectType: "AVAILABILITY GROUP",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// group_name
@@ -169,7 +169,7 @@ func (p *Parser) parseAlterAvailabilityGroupStmt() (*nodes.SecurityStmt, error) 
 	stmt := &nodes.SecurityStmt{
 		Action:     "ALTER",
 		ObjectType: "AVAILABILITY GROUP",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// group_name
@@ -198,7 +198,7 @@ func (p *Parser) parseDropAvailabilityGroupStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "DROP",
 		ObjectType: "AVAILABILITY GROUP",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// group_name

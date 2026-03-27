@@ -70,7 +70,7 @@ func (p *Parser) parseExecStmt() (*nodes.ExecStmt, error) {
 	p.advance() // consume EXEC or EXECUTE
 
 	stmt := &nodes.ExecStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Check for EXEC ('string') syntax -- execute character string
@@ -294,7 +294,7 @@ func (p *Parser) parseExecArg() *nodes.ExecArg {
 	loc := p.pos()
 
 	arg := &nodes.ExecArg{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Check for DEFAULT keyword

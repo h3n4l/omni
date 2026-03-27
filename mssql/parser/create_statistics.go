@@ -31,7 +31,7 @@ func (p *Parser) parseCreateStatisticsStmt() (*nodes.CreateStatisticsStmt, error
 	// STATISTICS keyword already consumed by caller
 
 	stmt := &nodes.CreateStatisticsStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Statistics name
@@ -115,7 +115,7 @@ func (p *Parser) parseUpdateStatisticsStmt() (*nodes.UpdateStatisticsStmt, error
 	// STATISTICS keyword already consumed by caller
 
 	stmt := &nodes.UpdateStatisticsStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Table name
@@ -171,7 +171,7 @@ func (p *Parser) parseDropStatisticsStmt() (*nodes.DropStatisticsStmt, error) {
 	// STATISTICS keyword already consumed by caller
 
 	stmt := &nodes.DropStatisticsStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	var names []nodes.Node

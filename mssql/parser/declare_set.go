@@ -22,7 +22,7 @@ func (p *Parser) parseDeclareStmt() (*nodes.DeclareStmt, error) {
 	p.advance() // consume DECLARE
 
 	stmt := &nodes.DeclareStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	var vars []nodes.Node
@@ -60,7 +60,7 @@ func (p *Parser) parseVariableDecl() (*nodes.VariableDecl, error) {
 	loc := p.pos()
 	vd := &nodes.VariableDecl{
 		Name: p.cur.Str,
-		Loc:  nodes.Loc{Start: loc},
+		Loc:  nodes.Loc{Start: loc, End: -1},
 	}
 	p.advance() // consume @var
 
@@ -143,7 +143,7 @@ func (p *Parser) parseSetStmt() (nodes.StmtNode, error) {
 	if p.cur.Type == tokVARIABLE {
 		// SET @var { = | += | -= | *= | /= | %= | &= | ^= | |= } expr
 		stmt := &nodes.SetStmt{
-			Loc: nodes.Loc{Start: loc},
+			Loc: nodes.Loc{Start: loc, End: -1},
 		}
 		stmt.Variable = p.cur.Str
 		p.advance()
@@ -189,7 +189,7 @@ func (p *Parser) parseSetStmt() (nodes.StmtNode, error) {
 //	SET { option_name } { ON | OFF | value }
 func (p *Parser) parseSetOptionStmt(loc int) (*nodes.SetOptionStmt, error) {
 	stmt := &nodes.SetOptionStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// TRANSACTION ISOLATION LEVEL
@@ -261,7 +261,7 @@ func (p *Parser) parseSetOptionStmt(loc int) (*nodes.SetOptionStmt, error) {
 				tableName = tableRef.Object
 			}
 		}
-		stmt.Value = &nodes.ColumnRef{Column: tableName + " " + onoff, Loc: nodes.Loc{Start: valLoc}}
+		stmt.Value = &nodes.ColumnRef{Column: tableName + " " + onoff, Loc: nodes.Loc{Start: valLoc, End: -1}}
 		stmt.Loc.End = p.prevEnd()
 		return stmt, nil
 	}
@@ -296,11 +296,11 @@ func (p *Parser) parseSetOptionStmt(loc int) (*nodes.SetOptionStmt, error) {
 		if p.cur.Type == kwON {
 			onLoc := p.pos()
 			p.advance()
-			stmt.Value = &nodes.ColumnRef{Column: "ON", Loc: nodes.Loc{Start: onLoc}}
+			stmt.Value = &nodes.ColumnRef{Column: "ON", Loc: nodes.Loc{Start: onLoc, End: -1}}
 		} else if p.cur.Type == kwOFF {
 			offLoc := p.pos()
 			p.advance()
-			stmt.Value = &nodes.ColumnRef{Column: "OFF", Loc: nodes.Loc{Start: offLoc}}
+			stmt.Value = &nodes.ColumnRef{Column: "OFF", Loc: nodes.Loc{Start: offLoc, End: -1}}
 		}
 		stmt.Loc.End = p.prevEnd()
 		return stmt, nil
@@ -322,11 +322,11 @@ func (p *Parser) parseSetOptionStmt(loc int) (*nodes.SetOptionStmt, error) {
 		if p.cur.Type == kwON {
 			onLoc := p.pos()
 			p.advance()
-			stmt.Value = &nodes.ColumnRef{Column: "ON", Loc: nodes.Loc{Start: onLoc}}
+			stmt.Value = &nodes.ColumnRef{Column: "ON", Loc: nodes.Loc{Start: onLoc, End: -1}}
 		} else if p.cur.Type == kwOFF {
 			offLoc := p.pos()
 			p.advance()
-			stmt.Value = &nodes.ColumnRef{Column: "OFF", Loc: nodes.Loc{Start: offLoc}}
+			stmt.Value = &nodes.ColumnRef{Column: "OFF", Loc: nodes.Loc{Start: offLoc, End: -1}}
 		} else if p.cur.Type != ';' && p.cur.Type != tokEOF && p.cur.Type != kwGO {
 			// Could be SET ROWCOUNT n, SET LANGUAGE ..., SET DATEFORMAT ..., etc.
 			stmt.Value, _ = p.parseExpr()

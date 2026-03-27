@@ -34,7 +34,7 @@ func (p *Parser) parseMergeStmt() (*nodes.MergeStmt, error) {
 	p.advance() // consume MERGE
 
 	stmt := &nodes.MergeStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Optional TOP
@@ -152,7 +152,7 @@ func (p *Parser) parseMergeWhenClause() (*nodes.MergeWhenClause, error) {
 	p.advance() // consume WHEN
 
 	wc := &nodes.MergeWhenClause{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.cur.Type == kwNOT {
@@ -203,13 +203,13 @@ func (p *Parser) parseMergeWhenClause() (*nodes.MergeWhenClause, error) {
 		}
 		wc.Action = &nodes.MergeUpdateAction{
 			SetClause: setList,
-			Loc:       nodes.Loc{Start: loc},
+			Loc:       nodes.Loc{Start: loc, End: -1},
 		}
 	case p.cur.Type == kwDELETE:
 		delLoc := p.pos()
 		p.advance() // consume DELETE
 		wc.Action = &nodes.MergeDeleteAction{
-			Loc: nodes.Loc{Start: delLoc},
+			Loc: nodes.Loc{Start: delLoc, End: -1},
 		}
 	case p.cur.Type == kwINSERT:
 		action, err := p.parseMergeInsertAction()
@@ -231,7 +231,7 @@ func (p *Parser) parseMergeInsertAction() (*nodes.MergeInsertAction, error) {
 	p.advance() // consume INSERT
 
 	action := &nodes.MergeInsertAction{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Optional column list

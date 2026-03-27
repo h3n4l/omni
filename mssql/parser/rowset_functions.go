@@ -17,8 +17,8 @@ func (p *Parser) parseRowsetFunction() (nodes.TableExpr, error) {
 	// OPENDATASOURCE('provider', 'connstr').db.schema.table - special case
 	if p.cur.Type == '(' {
 		fc := &nodes.FuncCallExpr{
-			Name: &nodes.TableRef{Object: funcName, Loc: nodes.Loc{Start: loc}},
-			Loc:  nodes.Loc{Start: loc},
+			Name: &nodes.TableRef{Object: funcName, Loc: nodes.Loc{Start: loc, End: -1}},
+			Loc:  nodes.Loc{Start: loc, End: -1},
 		}
 		p.advance() // consume (
 
@@ -51,7 +51,7 @@ func (p *Parser) parseRowsetFunction() (nodes.TableExpr, error) {
 		result := &nodes.AliasedTableRef{
 			Table: fc,
 			Alias: alias,
-			Loc:   nodes.Loc{Start: loc},
+			Loc:   nodes.Loc{Start: loc, End: -1},
 		}
 		_ = withClause // WITH clause columns are consumed but not stored in AST for now
 		return result, nil
@@ -60,10 +60,10 @@ func (p *Parser) parseRowsetFunction() (nodes.TableExpr, error) {
 	// Shouldn't happen but handle gracefully
 	return &nodes.AliasedTableRef{
 		Table: &nodes.FuncCallExpr{
-			Name: &nodes.TableRef{Object: funcName, Loc: nodes.Loc{Start: loc}},
-			Loc:  nodes.Loc{Start: loc},
+			Name: &nodes.TableRef{Object: funcName, Loc: nodes.Loc{Start: loc, End: -1}},
+			Loc:  nodes.Loc{Start: loc, End: -1},
 		},
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}, nil
 }
 

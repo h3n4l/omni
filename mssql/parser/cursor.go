@@ -31,7 +31,7 @@ func (p *Parser) parseDeclareCursorStmt() (*nodes.DeclareCursorStmt, error) {
 	p.advance() // consume DECLARE
 
 	stmt := &nodes.DeclareCursorStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Parse cursor name (plain identifier, not @variable)
@@ -169,7 +169,7 @@ func (p *Parser) parseOpenCursorStmt() (*nodes.OpenCursorStmt, error) {
 	p.advance() // consume OPEN
 
 	stmt := &nodes.OpenCursorStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Check for @cursor_variable
@@ -210,7 +210,7 @@ func (p *Parser) parseFetchCursorStmt() (*nodes.FetchCursorStmt, error) {
 	p.advance() // consume FETCH
 
 	stmt := &nodes.FetchCursorStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Try to parse orientation [ FROM ]
@@ -290,7 +290,7 @@ func (p *Parser) parseCloseCursorStmt() (*nodes.CloseCursorStmt, error) {
 	p.advance() // consume CLOSE
 
 	stmt := &nodes.CloseCursorStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Check for @cursor_variable
@@ -323,7 +323,7 @@ func (p *Parser) parseDeallocateCursorStmt() (*nodes.DeallocateCursorStmt, error
 	p.advance() // consume DEALLOCATE
 
 	stmt := &nodes.DeallocateCursorStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Check for @cursor_variable

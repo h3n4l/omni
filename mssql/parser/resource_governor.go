@@ -31,7 +31,7 @@ func (p *Parser) parseCreateWorkloadGroupStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "CREATE",
 		ObjectType: "WORKLOAD GROUP",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// group_name
@@ -66,7 +66,7 @@ func (p *Parser) parseAlterWorkloadGroupStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "ALTER",
 		ObjectType: "WORKLOAD GROUP",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// group_name | [default]
@@ -90,7 +90,7 @@ func (p *Parser) parseDropWorkloadGroupStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "DROP",
 		ObjectType: "WORKLOAD GROUP",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// group_name
@@ -135,7 +135,7 @@ func (p *Parser) parseCreateResourcePoolStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "CREATE",
 		ObjectType: "RESOURCE POOL",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// pool_name
@@ -173,7 +173,7 @@ func (p *Parser) parseAlterResourcePoolStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "ALTER",
 		ObjectType: "RESOURCE POOL",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// pool_name | [default]
@@ -197,7 +197,7 @@ func (p *Parser) parseDropResourcePoolStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "DROP",
 		ObjectType: "RESOURCE POOL",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// pool_name
@@ -226,7 +226,7 @@ func (p *Parser) parseCreateExternalResourcePoolStmt() (*nodes.SecurityStmt, err
 	stmt := &nodes.SecurityStmt{
 		Action:     "CREATE",
 		ObjectType: "EXTERNAL RESOURCE POOL",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// pool_name
@@ -256,7 +256,7 @@ func (p *Parser) parseAlterExternalResourcePoolStmt() (*nodes.SecurityStmt, erro
 	stmt := &nodes.SecurityStmt{
 		Action:     "ALTER",
 		ObjectType: "EXTERNAL RESOURCE POOL",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// pool_name | "default"
@@ -280,7 +280,7 @@ func (p *Parser) parseDropExternalResourcePoolStmt() (*nodes.SecurityStmt, error
 	stmt := &nodes.SecurityStmt{
 		Action:     "DROP",
 		ObjectType: "EXTERNAL RESOURCE POOL",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// pool_name
@@ -311,7 +311,7 @@ func (p *Parser) parseAlterResourceGovernorStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "ALTER",
 		ObjectType: "RESOURCE GOVERNOR",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	stmt.Options = p.parseResourceGovernorOptions()
@@ -563,7 +563,7 @@ func (p *Parser) parseCreateWorkloadClassifierStmt() (*nodes.SecurityStmt, error
 	stmt := &nodes.SecurityStmt{
 		Action:     "CREATE",
 		ObjectType: "WORKLOAD CLASSIFIER",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// classifier_name
@@ -595,7 +595,7 @@ func (p *Parser) parseAlterWorkloadClassifierStmt() (*nodes.SecurityStmt, error)
 	stmt := &nodes.SecurityStmt{
 		Action:     "ALTER",
 		ObjectType: "WORKLOAD CLASSIFIER",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// classifier_name
@@ -619,7 +619,7 @@ func (p *Parser) parseDropWorkloadClassifierStmt() (*nodes.SecurityStmt, error) 
 	stmt := &nodes.SecurityStmt{
 		Action:     "DROP",
 		ObjectType: "WORKLOAD CLASSIFIER",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// classifier_name

@@ -27,7 +27,7 @@ func (p *Parser) parseCreateViewStmt(orAlter bool) (*nodes.CreateViewStmt, error
 
 	stmt := &nodes.CreateViewStmt{
 		OrAlter: orAlter,
-		Loc:     nodes.Loc{Start: loc},
+		Loc:     nodes.Loc{Start: loc, End: -1},
 	}
 
 	// View name
@@ -126,7 +126,7 @@ func (p *Parser) parseCreateMaterializedViewStmt() (*nodes.CreateMaterializedVie
 	loc := p.pos()
 
 	stmt := &nodes.CreateMaterializedViewStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// View name
@@ -218,7 +218,7 @@ func (p *Parser) parseAlterMaterializedViewStmt() (*nodes.AlterMaterializedViewS
 	loc := p.pos()
 
 	stmt := &nodes.AlterMaterializedViewStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// View name

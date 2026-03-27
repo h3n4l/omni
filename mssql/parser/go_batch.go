@@ -14,7 +14,7 @@ func (p *Parser) parseGoStmt() (*nodes.GoStmt, error) {
 
 	stmt := &nodes.GoStmt{
 		Count: 1,
-		Loc:   nodes.Loc{Start: loc},
+		Loc:   nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Optional count

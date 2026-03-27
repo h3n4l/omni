@@ -15,7 +15,7 @@ func (p *Parser) parseCreateXmlSchemaCollectionStmt() (*nodes.CreateXmlSchemaCol
 	// COLLECTION keyword already consumed by caller
 
 	stmt := &nodes.CreateXmlSchemaCollectionStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// relational_schema.sql_identifier
@@ -41,7 +41,7 @@ func (p *Parser) parseAlterXmlSchemaCollectionStmt() (*nodes.AlterXmlSchemaColle
 	// COLLECTION keyword already consumed by caller
 
 	stmt := &nodes.AlterXmlSchemaCollectionStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// relational_schema.sql_identifier

@@ -25,7 +25,7 @@ func (p *Parser) parseCreateMessageTypeStmt() (*nodes.ServiceBrokerStmt, error) 
 	stmt := &nodes.ServiceBrokerStmt{
 		Action:     "CREATE",
 		ObjectType: "MESSAGE TYPE",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() || p.cur.Type == tokSCONST {
@@ -100,7 +100,7 @@ func (p *Parser) parseCreateContractStmt() (*nodes.ServiceBrokerStmt, error) {
 	stmt := &nodes.ServiceBrokerStmt{
 		Action:     "CREATE",
 		ObjectType: "CONTRACT",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() {
@@ -191,7 +191,7 @@ func (p *Parser) parseCreateQueueStmt() (*nodes.ServiceBrokerStmt, error) {
 	stmt := &nodes.ServiceBrokerStmt{
 		Action:     "CREATE",
 		ObjectType: "QUEUE",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Parse possibly schema-qualified queue name
@@ -212,7 +212,7 @@ func (p *Parser) parseCreateQueueStmt() (*nodes.ServiceBrokerStmt, error) {
 		onLoc := p.pos()
 		p.advance()
 		if p.isIdentLike() || p.cur.Type == kwDEFAULT {
-			opts = append(opts, &nodes.ServiceBrokerOption{Name: "ON", Value: strings.ToUpper(p.cur.Str), Loc: nodes.Loc{Start: onLoc}})
+			opts = append(opts, &nodes.ServiceBrokerOption{Name: "ON", Value: strings.ToUpper(p.cur.Str), Loc: nodes.Loc{Start: onLoc, End: -1}})
 			p.advance()
 		}
 	}
@@ -370,7 +370,7 @@ func (p *Parser) parseCreateServiceStmt() (*nodes.ServiceBrokerStmt, error) {
 	stmt := &nodes.ServiceBrokerStmt{
 		Action:     "CREATE",
 		ObjectType: "SERVICE",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() || p.cur.Type == tokSCONST {
@@ -398,7 +398,7 @@ func (p *Parser) parseSendStmt() (*nodes.ServiceBrokerStmt, error) {
 	stmt := &nodes.ServiceBrokerStmt{
 		Action:     "SEND",
 		ObjectType: "CONVERSATION",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// ON CONVERSATION [(]handle [,...n][)]
@@ -477,7 +477,7 @@ func (p *Parser) parseReceiveStmt() (*nodes.ReceiveStmt, error) {
 	p.advance() // consume RECEIVE
 
 	stmt := &nodes.ReceiveStmt{
-		Loc: nodes.Loc{Start: loc},
+		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
 	// TOP (n)
@@ -498,7 +498,7 @@ func (p *Parser) parseReceiveStmt() (*nodes.ReceiveStmt, error) {
 		var cols []nodes.Node
 		for p.cur.Type != kwFROM && p.cur.Type != tokEOF && p.cur.Type != ';' {
 			col := &nodes.ReceiveColumn{
-				Loc: nodes.Loc{Start: p.pos()},
+				Loc: nodes.Loc{Start: p.pos(), End: -1},
 			}
 			// Parse column expression (simple: column_name or expression)
 			if p.isIdentLike() || p.cur.Type == tokVARIABLE {
@@ -581,7 +581,7 @@ func (p *Parser) parseBeginConversationStmt() (*nodes.ServiceBrokerStmt, error) 
 	stmt := &nodes.ServiceBrokerStmt{
 		Action:     "BEGIN",
 		ObjectType: "CONVERSATION",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// optional CONVERSATION keyword
@@ -720,7 +720,7 @@ func (p *Parser) parseEndConversationStmt() (*nodes.ServiceBrokerStmt, error) {
 	stmt := &nodes.ServiceBrokerStmt{
 		Action:     "END",
 		ObjectType: "CONVERSATION",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// conversation handle
@@ -795,7 +795,7 @@ func (p *Parser) parseCreateRouteStmt() (*nodes.ServiceBrokerStmt, error) {
 	stmt := &nodes.ServiceBrokerStmt{
 		Action:     "CREATE",
 		ObjectType: "ROUTE",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// route_name
@@ -868,7 +868,7 @@ func (p *Parser) parseCreateRemoteServiceBindingStmt() (*nodes.ServiceBrokerStmt
 	stmt := &nodes.ServiceBrokerStmt{
 		Action:     "CREATE",
 		ObjectType: "REMOTE SERVICE BINDING",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// binding_name
@@ -957,7 +957,7 @@ func (p *Parser) parseGetConversationGroupStmt() (*nodes.ServiceBrokerStmt, erro
 	stmt := &nodes.ServiceBrokerStmt{
 		Action:     "GET",
 		ObjectType: "CONVERSATION GROUP",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// CONVERSATION GROUP
@@ -1148,7 +1148,7 @@ func (p *Parser) parseAlterQueueStmt() (*nodes.ServiceBrokerStmt, error) {
 	stmt := &nodes.ServiceBrokerStmt{
 		Action:     "ALTER",
 		ObjectType: "QUEUE",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Parse possibly schema-qualified queue name
@@ -1253,7 +1253,7 @@ func (p *Parser) parseAlterServiceStmt() (*nodes.ServiceBrokerStmt, error) {
 	stmt := &nodes.ServiceBrokerStmt{
 		Action:     "ALTER",
 		ObjectType: "SERVICE",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() || p.cur.Type == tokSCONST {
@@ -1334,7 +1334,7 @@ func (p *Parser) parseAlterRouteStmt() (*nodes.ServiceBrokerStmt, error) {
 	stmt := &nodes.ServiceBrokerStmt{
 		Action:     "ALTER",
 		ObjectType: "ROUTE",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() || p.cur.Type == tokSCONST {
@@ -1396,7 +1396,7 @@ func (p *Parser) parseAlterRemoteServiceBindingStmt() (*nodes.ServiceBrokerStmt,
 	stmt := &nodes.ServiceBrokerStmt{
 		Action:     "ALTER",
 		ObjectType: "REMOTE SERVICE BINDING",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() || p.cur.Type == tokSCONST {
@@ -1460,7 +1460,7 @@ func (p *Parser) parseAlterMessageTypeStmt() (*nodes.ServiceBrokerStmt, error) {
 	stmt := &nodes.ServiceBrokerStmt{
 		Action:     "ALTER",
 		ObjectType: "MESSAGE TYPE",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() || p.cur.Type == tokSCONST {
@@ -1529,7 +1529,7 @@ func (p *Parser) parseAlterContractStmt() (*nodes.ServiceBrokerStmt, error) {
 	stmt := &nodes.ServiceBrokerStmt{
 		Action:     "ALTER",
 		ObjectType: "CONTRACT",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() || p.cur.Type == tokSCONST {
@@ -1615,7 +1615,7 @@ func (p *Parser) parseDropServiceBrokerStmt(objectType string) (*nodes.ServiceBr
 	stmt := &nodes.ServiceBrokerStmt{
 		Action:     "DROP",
 		ObjectType: objectType,
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// Parse possibly qualified name
@@ -1651,7 +1651,7 @@ func (p *Parser) parseCreateBrokerPriorityStmt() (*nodes.ServiceBrokerStmt, erro
 	stmt := &nodes.ServiceBrokerStmt{
 		Action:     "CREATE",
 		ObjectType: "BROKER PRIORITY",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() || p.cur.Type == tokSCONST {
@@ -1692,7 +1692,7 @@ func (p *Parser) parseAlterBrokerPriorityStmt() (*nodes.ServiceBrokerStmt, error
 	stmt := &nodes.ServiceBrokerStmt{
 		Action:     "ALTER",
 		ObjectType: "BROKER PRIORITY",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() || p.cur.Type == tokSCONST {
@@ -1770,7 +1770,7 @@ func (p *Parser) parseMoveConversationStmt() (*nodes.ServiceBrokerStmt, error) {
 	stmt := &nodes.ServiceBrokerStmt{
 		Action:     "MOVE",
 		ObjectType: "CONVERSATION",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	// CONVERSATION

@@ -66,7 +66,7 @@ func (p *Parser) parseCreateEndpointStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "CREATE",
 		ObjectType: "ENDPOINT",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() || p.cur.Type == tokSCONST {
@@ -99,7 +99,7 @@ func (p *Parser) parseAlterEndpointStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "ALTER",
 		ObjectType: "ENDPOINT",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() || p.cur.Type == tokSCONST {
@@ -125,7 +125,7 @@ func (p *Parser) parseDropEndpointStmt() (*nodes.SecurityStmt, error) {
 	stmt := &nodes.SecurityStmt{
 		Action:     "DROP",
 		ObjectType: "ENDPOINT",
-		Loc:        nodes.Loc{Start: loc},
+		Loc:        nodes.Loc{Start: loc, End: -1},
 	}
 
 	if p.isIdentLike() || p.cur.Type == tokSCONST {
