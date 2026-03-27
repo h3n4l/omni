@@ -425,6 +425,20 @@ func (p *Parser) parseCreateStmt() (nodes.StmtNode, error) {
 	loc := p.pos()
 	p.advance() // consume CREATE
 
+	// Completion: offer object type keywords after CREATE.
+	if p.collectMode() {
+		for _, kw := range []int{
+			kwTABLE, kwINDEX, kwVIEW, kwPROCEDURE, kwFUNCTION, kwTRIGGER,
+			kwDATABASE, kwSCHEMA, kwTYPE, kwUSER, kwLOGIN, kwROLE, kwSTATISTICS,
+		} {
+			p.addTokenCandidate(kw)
+		}
+		// Context-sensitive identifiers: SEQUENCE, SYNONYM
+		p.addRuleCandidate("SEQUENCE")
+		p.addRuleCandidate("SYNONYM")
+		return nil, errCollecting
+	}
+
 	// OR ALTER
 	orAlter := false
 	if p.cur.Type == kwOR {
@@ -1234,6 +1248,19 @@ func (p *Parser) parseAlterStmt() (nodes.StmtNode, error) {
 	loc := p.pos()
 	p.advance() // consume ALTER
 
+	// Completion: offer object type keywords after ALTER.
+	if p.collectMode() {
+		for _, kw := range []int{
+			kwTABLE, kwINDEX, kwVIEW, kwPROCEDURE, kwFUNCTION, kwTRIGGER,
+			kwDATABASE, kwSCHEMA, kwUSER, kwLOGIN, kwROLE,
+		} {
+			p.addTokenCandidate(kw)
+		}
+		// Context-sensitive identifier: SEQUENCE
+		p.addRuleCandidate("SEQUENCE")
+		return nil, errCollecting
+	}
+
 	switch p.cur.Type {
 	case kwTABLE:
 		p.advance() // consume TABLE
@@ -1857,6 +1884,43 @@ func (p *Parser) parseAlterStmt() (nodes.StmtNode, error) {
 func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 	loc := p.pos()
 	next := p.peekNext()
+
+	// Completion: after DROP, offer object type keywords.
+	// We must advance past DROP to trigger checkCursor, but only return
+	// candidates if we're now in collect mode. Otherwise fall through to
+	// the normal dispatch which expects DROP not yet consumed — so we
+	// only enter this block when we know the cursor is right after DROP.
+	if p.completing && !p.collecting {
+		// Speculatively advance to trigger checkCursor.
+		savedLexerPos := p.lexer.pos
+		savedCur := p.cur
+		savedPrev := p.prev
+		savedNextBuf := p.nextBuf
+		savedHasNext := p.hasNext
+		savedCollecting := p.collecting
+
+		p.advance() // consume DROP — triggers checkCursor
+		if p.collectMode() {
+			for _, kw := range []int{
+				kwTABLE, kwINDEX, kwVIEW, kwPROCEDURE, kwFUNCTION, kwTRIGGER,
+				kwDATABASE, kwSCHEMA, kwTYPE, kwUSER, kwLOGIN, kwROLE,
+				kwSTATISTICS, kwIF,
+			} {
+				p.addTokenCandidate(kw)
+			}
+			// Context-sensitive identifiers: SEQUENCE, SYNONYM
+			p.addRuleCandidate("SEQUENCE")
+			p.addRuleCandidate("SYNONYM")
+			return nil, errCollecting
+		}
+		// Not collecting yet — restore state and let normal dispatch handle it.
+		p.lexer.pos = savedLexerPos
+		p.cur = savedCur
+		p.prev = savedPrev
+		p.nextBuf = savedNextBuf
+		p.hasNext = savedHasNext
+		p.collecting = savedCollecting
+	}
 
 	// Check for DROP DATABASE AUDIT SPECIFICATION — need to match DATABASE + AUDIT
 	// We already have `next` pointing to the token after DROP.

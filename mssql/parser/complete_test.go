@@ -260,3 +260,87 @@ func TestCollect_CursorAtEOF_EmptyString(t *testing.T) {
 		}
 	}
 }
+
+// --- Section 1.3: Statement-Level Dispatch Instrumentation ---
+
+func TestCollect_CreateDispatch(t *testing.T) {
+	sql := "CREATE "
+	cs := Collect(sql, len(sql))
+	if cs == nil {
+		t.Fatal("Collect returned nil")
+	}
+	requiredTokens := []int{
+		kwTABLE, kwINDEX, kwVIEW, kwPROCEDURE, kwFUNCTION, kwTRIGGER,
+		kwDATABASE, kwSCHEMA, kwTYPE, kwUSER, kwLOGIN, kwROLE, kwSTATISTICS,
+	}
+	for _, kw := range requiredTokens {
+		if !cs.HasToken(kw) {
+			t.Errorf("CREATE |: missing token candidate %s", TokenName(kw))
+		}
+	}
+	// Context-sensitive identifiers offered as rule candidates.
+	for _, rule := range []string{"SEQUENCE", "SYNONYM"} {
+		if !cs.HasRule(rule) {
+			t.Errorf("CREATE |: missing rule candidate %s", rule)
+		}
+	}
+}
+
+func TestCollect_AlterDispatch(t *testing.T) {
+	sql := "ALTER "
+	cs := Collect(sql, len(sql))
+	if cs == nil {
+		t.Fatal("Collect returned nil")
+	}
+	requiredTokens := []int{
+		kwTABLE, kwINDEX, kwVIEW, kwPROCEDURE, kwFUNCTION, kwTRIGGER,
+		kwDATABASE, kwSCHEMA, kwUSER, kwLOGIN, kwROLE,
+	}
+	for _, kw := range requiredTokens {
+		if !cs.HasToken(kw) {
+			t.Errorf("ALTER |: missing token candidate %s", TokenName(kw))
+		}
+	}
+	// SEQUENCE as a rule candidate.
+	if !cs.HasRule("SEQUENCE") {
+		t.Error("ALTER |: missing rule candidate SEQUENCE")
+	}
+}
+
+func TestCollect_DropDispatch(t *testing.T) {
+	sql := "DROP "
+	cs := Collect(sql, len(sql))
+	if cs == nil {
+		t.Fatal("Collect returned nil")
+	}
+	requiredTokens := []int{
+		kwTABLE, kwINDEX, kwVIEW, kwPROCEDURE, kwFUNCTION, kwTRIGGER,
+		kwDATABASE, kwSCHEMA, kwTYPE, kwUSER, kwLOGIN, kwROLE,
+		kwSTATISTICS, kwIF,
+	}
+	for _, kw := range requiredTokens {
+		if !cs.HasToken(kw) {
+			t.Errorf("DROP |: missing token candidate %s", TokenName(kw))
+		}
+	}
+	// Context-sensitive identifiers offered as rule candidates.
+	for _, rule := range []string{"SEQUENCE", "SYNONYM"} {
+		if !cs.HasRule(rule) {
+			t.Errorf("DROP |: missing rule candidate %s", rule)
+		}
+	}
+}
+
+func TestCollect_EmptyStillWorks(t *testing.T) {
+	// Verify section 1.2 scenario: empty input still returns top-level keywords.
+	cs := Collect("", 0)
+	if cs == nil {
+		t.Fatal("Collect returned nil")
+	}
+	required := []int{kwSELECT, kwINSERT, kwUPDATE, kwDELETE, kwCREATE, kwALTER, kwDROP}
+	for _, kw := range required {
+		if !cs.HasToken(kw) {
+			t.Errorf("empty |: missing top-level keyword %s", TokenName(kw))
+		}
+	}
+}
