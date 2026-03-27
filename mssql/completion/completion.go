@@ -46,6 +46,9 @@ func Complete(sql string, cursorOffset int, cat interface{}) []Candidate {
 	collectOffset := cursorOffset - len(prefix)
 
 	result := standardComplete(sql, collectOffset, cat)
+	if len(result) == 0 {
+		result = trickyComplete(sql, collectOffset, cat)
+	}
 
 	return filterByPrefix(result, prefix)
 }
@@ -88,6 +91,36 @@ func filterByPrefix(candidates []Candidate, prefix string) []Candidate {
 func standardComplete(sql string, cursorOffset int, cat interface{}) []Candidate {
 	cs := parser.Collect(sql, cursorOffset)
 	return resolve(cs, cat, sql, cursorOffset)
+}
+
+// trickyComplete handles edge cases that the standard C3 approach cannot
+// resolve (e.g., trailing spaces after FROM, truncated keywords, commas, operators).
+// It inserts placeholder tokens to make incomplete SQL parseable, then
+// collects candidates from the patched SQL.
+func trickyComplete(sql string, cursorOffset int, cat interface{}) []Candidate {
+	if cursorOffset > len(sql) {
+		cursorOffset = len(sql)
+	}
+	prefix := sql[:cursorOffset]
+	suffix := ""
+	if cursorOffset < len(sql) {
+		suffix = sql[cursorOffset:]
+	}
+
+	// Try several placeholder strategies to make the SQL parseable.
+	strategies := []string{
+		prefix + " __placeholder__" + suffix,  // add identifier
+		prefix + " __placeholder__ " + suffix, // add identifier with space
+		prefix + " 1" + suffix,                // numeric placeholder
+	}
+
+	for _, patched := range strategies {
+		cs := parser.Collect(patched, cursorOffset)
+		if cs != nil && (len(cs.Tokens) > 0 || len(cs.Rules) > 0) {
+			return resolve(cs, cat, sql, cursorOffset)
+		}
+	}
+	return nil
 }
 
 // resolve, resolveRule, dedup, and related helpers are in resolve.go.

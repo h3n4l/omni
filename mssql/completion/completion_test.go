@@ -120,6 +120,69 @@ func TestCompleteDeduplication(t *testing.T) {
 	}
 }
 
+// --- Tricky completion tests ---
+
+func TestTrickyCompleteTrailingSpace(t *testing.T) {
+	// "SELECT * FROM " with trailing space should produce candidates via placeholder.
+	sql := "SELECT * FROM "
+	result := Complete(sql, len(sql), nil)
+	if len(result) == 0 {
+		t.Fatal("expected candidates for 'SELECT * FROM ' (trailing space)")
+	}
+}
+
+func TestTrickyCompleteTruncatedKeyword(t *testing.T) {
+	// "SELE" at offset 4 should prefix-filter against keywords and include SELECT.
+	result := Complete("SELE", 4, nil)
+	found := false
+	for _, c := range result {
+		if c.Type == CandidateKeyword && c.Text == "SELECT" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected SELECT to match truncated keyword 'SELE'")
+	}
+}
+
+func TestTrickyCompleteAfterComma(t *testing.T) {
+	// "SELECT a," at end should produce candidates (column or keyword).
+	sql := "SELECT a,"
+	result := Complete(sql, len(sql), nil)
+	if len(result) == 0 {
+		t.Fatal("expected candidates after comma in 'SELECT a,'")
+	}
+}
+
+func TestTrickyCompleteAfterOperator(t *testing.T) {
+	// "SELECT * FROM t WHERE a >" at end should produce candidates.
+	sql := "SELECT * FROM t WHERE a >"
+	result := Complete(sql, len(sql), nil)
+	if len(result) == 0 {
+		t.Fatal("expected candidates after operator in 'WHERE a >'")
+	}
+}
+
+func TestTrickyCompleteMultipleStrategies(t *testing.T) {
+	// Ensure trickyComplete tries strategies in order and returns first non-empty.
+	// We test indirectly: if standardComplete fails but trickyComplete succeeds,
+	// Complete should still return results.
+	sql := "INSERT INTO "
+	result := Complete(sql, len(sql), nil)
+	if len(result) == 0 {
+		t.Fatal("expected candidates for 'INSERT INTO ' (trailing space)")
+	}
+}
+
+func TestTrickyCompleteFallbackBestEffort(t *testing.T) {
+	// Even with a difficult pattern, we should get best-effort results or nil.
+	// This just exercises the fallback path — no crash.
+	sql := "EXEC sp_"
+	result := Complete(sql, len(sql), nil)
+	// May or may not return results, but should not panic.
+	_ = result
+}
+
 func TestExtractPrefix(t *testing.T) {
 	tests := []struct {
 		sql    string
