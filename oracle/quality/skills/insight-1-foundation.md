@@ -18,12 +18,12 @@ Your role is to **analyze fix commits, extract patterns, and update prevention r
 - `oracle/quality/insights/stage1-*.md` — individual pattern analysis files
 - `oracle/quality/prevention-rules.md` — updated with new rules
 - `oracle/quality/strategy.md` — updated Known Blind Spots section (if found)
-- `oracle/parser/eval_foundation_test.go` — **append-only**: may add `TestEvalStage1_Adversarial_*` functions
+- `oracle/parser/eval_foundation_adversarial_test.go` — adversarial tests go in this **separate** file (never modify `eval_foundation_test.go`)
 
 ## Rules
 
 1. **Analysis ONLY** — do NOT modify any non-test `.go` implementation file.
-2. Do NOT modify existing test functions — only append new `TestEvalStage1_Adversarial_*` functions.
+2. Do NOT modify existing test functions. Write adversarial tests in `oracle/parser/eval_foundation_adversarial_test.go` (separate file).
 3. Every new test function MUST be named `TestEvalStage1_Adversarial_*`.
 4. Focus on the "why" behind fixes, not just the "what".
 
@@ -116,25 +116,18 @@ For each distinct pattern found, create `oracle/quality/insights/stage1-{pattern
 
 ### Step 4: Update patterns.json
 
-Create or update `oracle/quality/insights/patterns.json`:
+**Append** new patterns to the existing `oracle/quality/insights/patterns.json`. Do NOT overwrite the file — read it first, then add entries to the `patterns` array. If the file does not exist, create it with the canonical schema:
 
 ```json
 {
-  "stage": "1-foundation",
-  "analysis_date": "YYYY-MM-DD",
-  "commits_analyzed": 0,
+  "version": 1,
   "patterns": [
-    {
-      "id": "pattern-id",
-      "category": "category",
-      "description": "short description",
-      "severity": "high|medium|low",
-      "file": "oracle/quality/insights/stage1-pattern-id.md",
-      "prevention_rule": "rule text"
-    }
+    {"name": "pattern-name", "file": "stage1-pattern-name.md", "severity": "high|medium|low", "stage": 1}
   ]
 }
 ```
+
+Each entry in the `patterns` array MUST include a `"stage"` field (integer) indicating which stage discovered it. The root object has only `"version"` and `"patterns"` keys — never a per-stage `"stage"` or `"analysis_date"` at the root level.
 
 ### Step 5: Update Prevention Rules
 
@@ -160,7 +153,7 @@ If blind spots are found, update `oracle/quality/strategy.md` under Stage 1's `#
 
 ### Step 7: Write Adversarial Tests (if applicable)
 
-If the analysis reveals edge cases not covered by eval tests, append new test functions to `oracle/parser/eval_foundation_test.go`:
+If the analysis reveals edge cases not covered by eval tests, write new test functions in `oracle/parser/eval_foundation_adversarial_test.go` (never modify `eval_foundation_test.go`):
 
 - Function names: `TestEvalStage1_Adversarial_*`
 - Focus on edge cases discovered during analysis:
@@ -185,14 +178,19 @@ Update `oracle/quality/coverage/stage1-foundation.json`:
 # Adversarial tests must compile
 cd /Users/rebeliceyang/Github/omni && go build ./oracle/parser/
 
-# All eval tests still pass (existing + adversarial)
-cd /Users/rebeliceyang/Github/omni && go test -v -count=1 ./oracle/parser/ -run "TestEvalStage1"
+# Existing eval tests still pass
+cd /Users/rebeliceyang/Github/omni && go test -v -count=1 ./oracle/parser/ -run "TestEvalStage1" -skip "Adversarial"
+
+# Run adversarial tests separately — failures are expected
+# Report how many fail; the driver will dispatch the impl worker to fix them
+cd /Users/rebeliceyang/Github/omni && go test -v -count=1 ./oracle/parser/ -run "TestEvalStage1_Adversarial" || true
 ```
 
 ## Commit
 
 ```bash
 git add oracle/quality/insights/ oracle/quality/prevention-rules.md oracle/quality/strategy.md oracle/quality/coverage/
+git add oracle/parser/eval_foundation_adversarial_test.go 2>/dev/null || true  # if adversarial tests added
 git commit -m "insight(oracle): stage 1 foundation pattern analysis
 
 Extract patterns from fix commits, update prevention rules,

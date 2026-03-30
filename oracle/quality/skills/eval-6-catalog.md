@@ -308,44 +308,47 @@ SELECT name, type, line, text FROM USER_SOURCE WHERE name = :name ORDER BY line;
 
 ## Coverage Report Format
 
-After writing tests, generate `oracle/quality/coverage/stage6-catalog.json`:
+After writing tests, generate `oracle/quality/coverage/stage6-catalog.json` using the canonical schema:
 
 ```json
 {
-  "stage": "6-catalog",
-  "total_items": 25,
-  "tested_items": 25,
+  "stage": 6,
+  "surface": "catalog",
+  "status": "eval_complete",
   "items": [
-    {"id": "create_table", "test": "TestEvalStage6_CreateTable", "status": "written"},
-    {"id": "alter_table_add", "test": "TestEvalStage6_AlterTableAddColumn", "status": "written"},
-    {"id": "alter_table_drop", "test": "TestEvalStage6_AlterTableDropColumn", "status": "written"},
-    {"id": "alter_table_modify", "test": "TestEvalStage6_AlterTableModifyColumn", "status": "written"},
-    {"id": "drop_table", "test": "TestEvalStage6_DropTable", "status": "written"},
-    {"id": "rename_table", "test": "TestEvalStage6_RenameTable", "status": "written"},
-    {"id": "create_view", "test": "TestEvalStage6_CreateView", "status": "written"},
-    {"id": "drop_view", "test": "TestEvalStage6_DropView", "status": "written"},
-    {"id": "create_index", "test": "TestEvalStage6_CreateIndex", "status": "written"},
-    {"id": "drop_index", "test": "TestEvalStage6_DropIndex", "status": "written"},
-    {"id": "primary_key", "test": "TestEvalStage6_PrimaryKey", "status": "written"},
-    {"id": "foreign_key", "test": "TestEvalStage6_ForeignKey", "status": "written"},
-    {"id": "unique_constraint", "test": "TestEvalStage6_UniqueConstraint", "status": "written"},
-    {"id": "check_constraint", "test": "TestEvalStage6_CheckConstraint", "status": "written"},
-    {"id": "not_null_constraint", "test": "TestEvalStage6_NotNullConstraint", "status": "written"},
-    {"id": "create_sequence", "test": "TestEvalStage6_CreateSequence", "status": "written"},
-    {"id": "alter_sequence", "test": "TestEvalStage6_AlterSequence", "status": "written"},
-    {"id": "drop_sequence", "test": "TestEvalStage6_DropSequence", "status": "written"},
-    {"id": "create_trigger", "test": "TestEvalStage6_CreateTrigger", "status": "written"},
-    {"id": "drop_trigger", "test": "TestEvalStage6_DropTrigger", "status": "written"},
-    {"id": "create_function", "test": "TestEvalStage6_CreateFunction", "status": "written"},
-    {"id": "create_procedure", "test": "TestEvalStage6_CreateProcedure", "status": "written"},
-    {"id": "create_package", "test": "TestEvalStage6_CreatePackage", "status": "written"},
-    {"id": "comment_on_table", "test": "TestEvalStage6_CommentOnTable", "status": "written"},
-    {"id": "pairwise_combinations", "test": "TestEvalStage6_PairwiseCombinations", "status": "written"}
-  ]
+    {"id": "create_table", "description": "CREATE TABLE round-trip", "tested": true},
+    {"id": "alter_table_add", "description": "ALTER TABLE ADD column", "tested": true},
+    {"id": "alter_table_drop", "description": "ALTER TABLE DROP column", "tested": true},
+    {"id": "alter_table_modify", "description": "ALTER TABLE MODIFY column", "tested": true},
+    {"id": "drop_table", "description": "DROP TABLE with CASCADE/PURGE", "tested": true},
+    {"id": "rename_table", "description": "ALTER TABLE RENAME", "tested": true},
+    {"id": "create_view", "description": "CREATE VIEW round-trip", "tested": true},
+    {"id": "drop_view", "description": "DROP VIEW", "tested": true},
+    {"id": "create_index", "description": "CREATE INDEX round-trip", "tested": true},
+    {"id": "drop_index", "description": "DROP INDEX", "tested": true},
+    {"id": "primary_key", "description": "PRIMARY KEY constraint", "tested": true},
+    {"id": "foreign_key", "description": "FOREIGN KEY constraint", "tested": true},
+    {"id": "unique_constraint", "description": "UNIQUE constraint", "tested": true},
+    {"id": "check_constraint", "description": "CHECK constraint", "tested": true},
+    {"id": "not_null_constraint", "description": "NOT NULL constraint", "tested": true},
+    {"id": "create_sequence", "description": "CREATE SEQUENCE round-trip", "tested": true},
+    {"id": "alter_sequence", "description": "ALTER SEQUENCE", "tested": true},
+    {"id": "drop_sequence", "description": "DROP SEQUENCE", "tested": true},
+    {"id": "create_trigger", "description": "CREATE TRIGGER round-trip", "tested": true},
+    {"id": "drop_trigger", "description": "DROP TRIGGER", "tested": true},
+    {"id": "create_function", "description": "CREATE FUNCTION round-trip", "tested": true},
+    {"id": "create_procedure", "description": "CREATE PROCEDURE round-trip", "tested": true},
+    {"id": "create_package", "description": "CREATE PACKAGE round-trip", "tested": true},
+    {"id": "comment_on_table", "description": "COMMENT ON TABLE/COLUMN", "tested": true},
+    {"id": "pairwise_combinations", "description": "Pairwise object x operation tests", "tested": true}
+  ],
+  "total": 25,
+  "tested": 25,
+  "gaps": []
 }
 ```
 
-The `status` field transitions: `"written"` -> `"passing"` (once impl worker makes it pass) -> `"verified"` (once insight worker reviews).
+Each item uses `"tested": true/false` (not a `"status"` string). The `"gaps"` array lists IDs of items where `"tested"` is false.
 
 ## Verification
 
@@ -360,7 +363,7 @@ ls oracle/catalog/ 2>/dev/null
 cd /Users/rebeliceyang/Github/omni && go build ./oracle/...
 
 # Run eval tests to see current state (failures expected before impl)
-cd /Users/rebeliceyang/Github/omni && go test -v -count=1 ./oracle/... -run "TestEvalStage6"
+cd /Users/rebeliceyang/Github/omni && go test -v -count=1 ./oracle/... -run "TestEvalStage6" -timeout 300s
 ```
 
 ## Important Notes

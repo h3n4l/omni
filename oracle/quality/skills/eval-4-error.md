@@ -196,24 +196,27 @@ func stage4AssertNoMutationPanic(t *testing.T, sql string, mutationType string) 
 
 ## Coverage Report Format
 
-After writing tests, generate `oracle/quality/coverage/stage4-error.json`:
+After writing tests, generate `oracle/quality/coverage/stage4-error.json` using the canonical schema:
 
 ```json
 {
-  "stage": "4-error",
-  "total_items": 5,
-  "tested_items": 5,
+  "stage": 4,
+  "surface": "error",
+  "status": "eval_complete",
   "items": [
-    {"id": "truncation", "test": "TestEvalStage4_Truncation", "status": "written"},
-    {"id": "deletion", "test": "TestEvalStage4_Deletion", "status": "written"},
-    {"id": "replacement", "test": "TestEvalStage4_Replacement", "status": "written"},
-    {"id": "duplication", "test": "TestEvalStage4_Duplication", "status": "written"},
-    {"id": "oracle_db_rejection", "test": "TestEvalStage4_OracleDBRejection", "status": "written"}
-  ]
+    {"id": "truncation", "description": "Truncation mutation tests", "tested": true},
+    {"id": "deletion", "description": "Deletion mutation tests", "tested": true},
+    {"id": "replacement", "description": "Replacement mutation tests", "tested": true},
+    {"id": "duplication", "description": "Duplication mutation tests", "tested": true},
+    {"id": "oracle_db_rejection", "description": "Oracle DB rejection cross-validation", "tested": true}
+  ],
+  "total": 5,
+  "tested": 5,
+  "gaps": []
 }
 ```
 
-The `status` field transitions: `"written"` -> `"passing"` (once impl worker makes it pass) -> `"verified"` (once insight worker reviews).
+Each item uses `"tested": true/false` (not a `"status"` string). The `"gaps"` array lists IDs of items where `"tested"` is false.
 
 ## Verification
 
@@ -224,7 +227,7 @@ After writing the test file:
 cd /Users/rebeliceyang/Github/omni && go build ./oracle/parser/
 
 # Run eval tests to see current state (failures expected before impl)
-cd /Users/rebeliceyang/Github/omni && go test -v -count=1 ./oracle/parser/ -run "TestEvalStage4"
+cd /Users/rebeliceyang/Github/omni && go test -v -count=1 ./oracle/parser/ -run "TestEvalStage4" -timeout 300s
 ```
 
 ## Important Notes

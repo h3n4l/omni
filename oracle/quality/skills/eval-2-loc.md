@@ -134,25 +134,25 @@ Use `reflect` in tests to dynamically verify which types have Loc fields if need
 
 ## Coverage Report Format
 
-After writing tests, generate `oracle/quality/coverage/stage2-loc.json`:
+After writing tests, generate `oracle/quality/coverage/stage2-loc.json` using the canonical schema:
 
 ```json
 {
-  "stage": "2-loc",
-  "total_items": 248,
-  "tested_items": 0,
+  "stage": 2,
+  "surface": "loc",
+  "status": "eval_complete",
   "items": [
-    {"node_type": "SelectStmt", "test": "TestEvalStage2_Select_Basic", "status": "written"},
-    {"node_type": "ResTarget", "test": "TestEvalStage2_Select_Basic", "status": "written"},
-    {"node_type": "ColumnRef", "test": "TestEvalStage2_Select_Basic", "status": "written"},
-    ...
-  ]
+    {"id": "SelectStmt", "description": "SelectStmt Loc completeness", "tested": true},
+    {"id": "ResTarget", "description": "ResTarget Loc completeness", "tested": true},
+    {"id": "ColumnRef", "description": "ColumnRef Loc completeness", "tested": true}
+  ],
+  "total": 248,
+  "tested": 0,
+  "gaps": ["untested_node_type_ids"]
 }
 ```
 
-The `status` field transitions: `"untested"` → `"written"` → `"passing"` → `"verified"`.
-
-Update `tested_items` to reflect how many node types have at least one test.
+Each item uses `"tested": true/false` (not a `"status"` string). The `"gaps"` array lists IDs of items where `"tested"` is false. Update `"tested"` count to reflect how many node types have at least one test.
 
 ## Verification
 

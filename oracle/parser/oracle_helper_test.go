@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -101,8 +102,11 @@ func startOracleDB(t *testing.T) *oracleDB {
 
 // canExecute checks whether Oracle DB accepts the given SQL statement.
 // It uses EXPLAIN PLAN to validate the syntax without executing the statement.
-// For DDL statements that cannot be explained, it returns nil optimistically
-// after attempting a lightweight parse via DBMS_SQL-style validation.
+// For DDL statements that cannot be explained, it uses DBMS_SQL.PARSE()
+// to validate syntax without execution, avoiding side effects.
+//
+// NOTE: For DDL that must actually be executed (e.g., Stage 6 catalog tests),
+// use execSQL() with explicit cleanup instead.
 func (o *oracleDB) canExecute(sqlStr string) error {
 	// Try EXPLAIN PLAN first — works for DML (SELECT, INSERT, UPDATE, DELETE, MERGE).
 	explainSQL := fmt.Sprintf("EXPLAIN PLAN FOR %s", sqlStr)
@@ -112,9 +116,21 @@ func (o *oracleDB) canExecute(sqlStr string) error {
 	}
 
 	// For DDL and other statements that EXPLAIN PLAN doesn't support,
-	// attempt direct execution. This is a fallback that actually runs the statement.
-	_, execErr := o.db.ExecContext(o.ctx, sqlStr)
-	return execErr
+	// use DBMS_SQL.PARSE to validate syntax without executing.
+	// DBMS_SQL.PARSE parses the statement and raises an exception on syntax errors,
+	// but does not execute it — no side effects on the database state.
+	parseCheck := fmt.Sprintf(`DECLARE
+  c INTEGER := DBMS_SQL.OPEN_CURSOR;
+BEGIN
+  DBMS_SQL.PARSE(c, '%s', DBMS_SQL.NATIVE);
+  DBMS_SQL.CLOSE_CURSOR(c);
+EXCEPTION
+  WHEN OTHERS THEN
+    DBMS_SQL.CLOSE_CURSOR(c);
+    RAISE;
+END;`, strings.ReplaceAll(sqlStr, "'", "''"))
+	_, parseErr := o.db.ExecContext(o.ctx, parseCheck)
+	return parseErr
 }
 
 // execSQL executes a SQL statement on the Oracle container, failing the test on error.

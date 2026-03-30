@@ -110,7 +110,7 @@ These tests verify that SQL accepted by a real Oracle DB is also accepted by our
 ```go
 func TestEvalStage3_OracleDB_SelectVariants(t *testing.T) {
     db := startOracleDB(t) // from oracle_helper_test.go
-    defer db.Close()
+    // No db.Close() needed — cleanup is handled automatically by the shared container.
 
     sqls := []string{
         "SELECT 1 FROM DUAL",
@@ -121,8 +121,8 @@ func TestEvalStage3_OracleDB_SelectVariants(t *testing.T) {
 
     for _, sql := range sqls {
         t.Run(sql, func(t *testing.T) {
-            // Verify Oracle DB accepts it
-            _, dbErr := db.Exec(sql)
+            // Verify Oracle DB accepts it (canExecute validates syntax without side effects)
+            dbErr := db.canExecute(sql)
             if dbErr != nil {
                 t.Skipf("Oracle DB rejected SQL (expected): %v", dbErr)
                 return
@@ -138,7 +138,13 @@ func TestEvalStage3_OracleDB_SelectVariants(t *testing.T) {
 }
 ```
 
-**Important:** Oracle DB tests require a running Oracle container. Use `startOracleDB(t)` which handles container lifecycle and skips if unavailable.
+**Important:**
+- Oracle DB tests require a running Oracle container. Use `startOracleDB(t)` which handles container lifecycle and skips if unavailable.
+- The `*oracleDB` struct returned by `startOracleDB(t)` has two methods:
+  - `db.canExecute(sql)` — validates syntax without executing (safe, no side effects)
+  - `db.execSQL(t, sql)` — executes the statement (use for DDL setup/teardown)
+- There is NO `Close()` method — cleanup is automatic.
+- Do NOT use `db.Exec()` or `defer db.Close()`.
 
 ## BNF Rule Mapping
 
@@ -175,29 +181,25 @@ For each node type, assert at minimum:
 
 ## Coverage Report Format
 
-After writing tests, generate `oracle/quality/coverage/stage3-ast.json`:
+After writing tests, generate `oracle/quality/coverage/stage3-ast.json` using the canonical schema:
 
 ```json
 {
-  "stage": "3-ast",
-  "total_items": 171,
-  "tested_items": 0,
+  "stage": 3,
+  "surface": "ast",
+  "status": "eval_complete",
   "items": [
-    {"bnf_rule": "SELECT", "test": "TestEvalStage3_Select_Basic", "status": "written"},
-    {"bnf_rule": "INSERT", "test": "TestEvalStage3_Insert_Basic", "status": "written"},
-    {"bnf_rule": "CREATE-TABLE", "test": "TestEvalStage3_CreateTable_Basic", "status": "written"},
-    ...
+    {"id": "SELECT", "description": "SELECT structural assertions", "tested": true},
+    {"id": "INSERT", "description": "INSERT structural assertions", "tested": true},
+    {"id": "CREATE-TABLE", "description": "CREATE TABLE structural assertions", "tested": true}
   ],
-  "oracle_db_tests": [
-    {"test": "TestEvalStage3_OracleDB_SelectVariants", "sql_count": 10, "status": "written"},
-    ...
-  ]
+  "total": 171,
+  "tested": 0,
+  "gaps": ["untested_bnf_rule_ids"]
 }
 ```
 
-The `status` field transitions: `"untested"` → `"written"` → `"passing"` → `"verified"`.
-
-Update `tested_items` to reflect how many BNF rules have at least one test.
+Each item uses `"tested": true/false` (not a `"status"` string). The `"gaps"` array lists IDs of items where `"tested"` is false. Update `"tested"` count to reflect how many BNF rules have at least one test.
 
 ## Verification
 

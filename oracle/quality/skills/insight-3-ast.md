@@ -20,12 +20,12 @@ Your role is to **analyze fix commits, extract patterns, and update prevention r
 - `oracle/quality/insights/stage3-*.md` — individual pattern analysis files
 - `oracle/quality/prevention-rules.md` — updated with new rules
 - `oracle/quality/strategy.md` — updated Known Blind Spots section (if found)
-- `oracle/parser/eval_ast_test.go` — **append-only**: may add `TestEvalStage3_Adversarial_*` functions
+- `oracle/parser/eval_ast_adversarial_test.go` — adversarial tests go in this **separate** file (never modify `eval_ast_test.go`)
 
 ## Rules
 
 1. **Analysis ONLY** — do NOT modify any non-test `.go` implementation file.
-2. Do NOT modify existing test functions — only append new `TestEvalStage3_Adversarial_*` functions.
+2. Do NOT modify existing test functions. Write adversarial tests in `oracle/parser/eval_ast_adversarial_test.go` (separate file).
 3. Every new test function MUST be named `TestEvalStage3_Adversarial_*`.
 4. Focus on the "why" behind fixes, not just the "what".
 
@@ -152,7 +152,7 @@ If blind spots found, update `oracle/quality/strategy.md` under Stage 3's `### K
 
 ### Step 7: Write Adversarial Tests
 
-Append `TestEvalStage3_Adversarial_*` functions for edge cases:
+Write `TestEvalStage3_Adversarial_*` functions in `oracle/parser/eval_ast_adversarial_test.go` for edge cases:
 
 - SQL with every optional clause present vs omitted
 - Deeply nested expressions (10+ levels)
@@ -167,7 +167,16 @@ Append `TestEvalStage3_Adversarial_*` functions for edge cases:
 ### Step 8: Update Coverage and Patterns
 
 - Update `oracle/quality/coverage/stage3-ast.json`: change `"passing"` to `"verified"`.
-- Update `oracle/quality/insights/patterns.json` with Stage 3 entries.
+- **Append** Stage 3 entries to `oracle/quality/insights/patterns.json`. Do NOT overwrite the file — read it first, then add entries to the `patterns` array. The canonical schema is:
+  ```json
+  {
+    "version": 1,
+    "patterns": [
+      {"name": "pattern-name", "file": "stage3-pattern-name.md", "severity": "high|medium|low", "stage": 3}
+    ]
+  }
+  ```
+  Each entry MUST include `"stage": 3`. The root object has only `"version"` and `"patterns"` keys — never a per-stage `"stage"` or `"analysis_date"` at the root level.
 
 ## Verification
 
@@ -175,14 +184,19 @@ Append `TestEvalStage3_Adversarial_*` functions for edge cases:
 # Adversarial tests must compile
 cd /Users/rebeliceyang/Github/omni && go build ./oracle/parser/
 
-# All Stage 3 eval tests still pass (existing + adversarial)
-cd /Users/rebeliceyang/Github/omni && go test -v -count=1 ./oracle/parser/ -run "TestEvalStage3" -skip "OracleDB"
+# Existing eval tests still pass
+cd /Users/rebeliceyang/Github/omni && go test -v -count=1 ./oracle/parser/ -run "TestEvalStage3" -skip "OracleDB|Adversarial"
+
+# Run adversarial tests separately — failures are expected
+# Report how many fail; the driver will dispatch the impl worker to fix them
+cd /Users/rebeliceyang/Github/omni && go test -v -count=1 ./oracle/parser/ -run "TestEvalStage3_Adversarial" || true
 ```
 
 ## Commit
 
 ```bash
-git add oracle/quality/insights/ oracle/quality/prevention-rules.md oracle/quality/strategy.md oracle/quality/coverage/ oracle/parser/eval_ast_test.go
+git add oracle/quality/insights/ oracle/quality/prevention-rules.md oracle/quality/strategy.md oracle/quality/coverage/
+git add oracle/parser/eval_ast_adversarial_test.go 2>/dev/null || true  # if adversarial tests added
 git commit -m "insight(oracle): stage 3 AST correctness pattern analysis
 
 Extract AST fix patterns from commits, update prevention rules,

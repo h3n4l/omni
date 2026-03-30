@@ -19,12 +19,12 @@ Your role is to **analyze fix commits, extract patterns, and update prevention r
 - `oracle/quality/insights/stage5-*.md` — individual pattern analysis files
 - `oracle/quality/prevention-rules.md` — updated with new rules
 - `oracle/quality/strategy.md` — updated Known Blind Spots section (if found)
-- Eval test file — **append-only**: may add `TestEvalStage5_Adversarial_*` functions
+- `eval_completion_adversarial_test.go` — adversarial tests go in this **separate** file (never modify the original eval test file)
 
 ## Rules
 
 1. **Analysis ONLY** — do NOT modify any non-test `.go` implementation file.
-2. Do NOT modify existing test functions — only append new `TestEvalStage5_Adversarial_*` functions.
+2. Do NOT modify existing test functions. Write adversarial tests in a separate `eval_completion_adversarial_test.go` file.
 3. Every new test function MUST be named `TestEvalStage5_Adversarial_*`.
 4. Focus on the "why" behind fixes, not just the "what".
 
@@ -127,7 +127,16 @@ For each distinct pattern found, create `oracle/quality/insights/stage5-{pattern
 
 ### Step 4: Update patterns.json
 
-Update `oracle/quality/insights/patterns.json` to include Stage 5 patterns.
+**Append** Stage 5 entries to `oracle/quality/insights/patterns.json`. Do NOT overwrite the file — read it first, then add entries to the `patterns` array. The canonical schema is:
+```json
+{
+  "version": 1,
+  "patterns": [
+    {"name": "pattern-name", "file": "stage5-pattern-name.md", "severity": "high|medium|low", "stage": 5}
+  ]
+}
+```
+Each entry MUST include `"stage": 5`. The root object has only `"version"` and `"patterns"` keys — never a per-stage `"stage"` or `"analysis_date"` at the root level.
 
 ### Step 5: Update Prevention Rules
 
@@ -174,8 +183,12 @@ Update `oracle/quality/coverage/stage5-completion.json`:
 # Adversarial tests must compile
 cd /Users/rebeliceyang/Github/omni && go build ./oracle/...
 
-# All eval tests still pass (existing + adversarial)
-cd /Users/rebeliceyang/Github/omni && go test -v -count=1 ./oracle/... -run "TestEvalStage5"
+# Existing eval tests still pass
+cd /Users/rebeliceyang/Github/omni && go test -v -count=1 ./oracle/... -run "TestEvalStage5" -skip "Adversarial"
+
+# Run adversarial tests separately — failures are expected
+# Report how many fail; the driver will dispatch the impl worker to fix them
+cd /Users/rebeliceyang/Github/omni && go test -v -count=1 ./oracle/... -run "TestEvalStage5_Adversarial" || true
 ```
 
 ## Commit

@@ -125,29 +125,32 @@ Each item below becomes one `TestEvalStage1_*` function.
 
 ## Coverage Report Format
 
-After writing tests, generate `oracle/quality/coverage/stage1-foundation.json`:
+After writing tests, generate `oracle/quality/coverage/stage1-foundation.json` using the canonical schema:
 
 ```json
 {
-  "stage": "1-foundation",
-  "total_items": 10,
-  "tested_items": 10,
+  "stage": 1,
+  "surface": "foundation",
+  "status": "eval_complete",
   "items": [
-    {"id": "noloc", "test": "TestEvalStage1_NoLoc", "status": "written"},
-    {"id": "loc_sentinel", "test": "TestEvalStage1_LocSentinel", "status": "written"},
-    {"id": "token_end", "test": "TestEvalStage1_TokenEnd", "status": "written"},
-    {"id": "parse_error_severity", "test": "TestEvalStage1_ParseErrorSeverity", "status": "written"},
-    {"id": "parse_error_code", "test": "TestEvalStage1_ParseErrorCode", "status": "written"},
-    {"id": "parse_error_format", "test": "TestEvalStage1_ParseErrorFormat", "status": "written"},
-    {"id": "parser_source", "test": "TestEvalStage1_ParserSource", "status": "written"},
-    {"id": "rawstmt_loc", "test": "TestEvalStage1_RawStmtLoc", "status": "written"},
-    {"id": "nodeloc", "test": "TestEvalStage1_NodeLoc", "status": "written"},
-    {"id": "listspan", "test": "TestEvalStage1_ListSpan", "status": "written"}
-  ]
+    {"id": "noloc", "description": "NoLoc() returns Loc{-1,-1}", "tested": true},
+    {"id": "loc_sentinel", "description": "Loc zero-value vs NoLoc sentinel", "tested": true},
+    {"id": "token_end", "description": "Token.End field exists and is correct", "tested": true},
+    {"id": "parse_error_severity", "description": "ParseError.Severity field", "tested": true},
+    {"id": "parse_error_code", "description": "ParseError.Code field", "tested": true},
+    {"id": "parse_error_format", "description": "ParseError.Error() format", "tested": true},
+    {"id": "parser_source", "description": "Parser.source field stores SQL input", "tested": true},
+    {"id": "rawstmt_loc", "description": "RawStmt uses Loc field", "tested": true},
+    {"id": "nodeloc", "description": "NodeLoc() extracts location from any node", "tested": true},
+    {"id": "listspan", "description": "ListSpan() returns span of list elements", "tested": true}
+  ],
+  "total": 10,
+  "tested": 10,
+  "gaps": []
 }
 ```
 
-The `status` field transitions: `"written"` → `"passing"` (once impl worker makes it pass) → `"verified"` (once insight worker reviews).
+Each item uses `"tested": true/false` (not a `"status"` string). The root `"status"` field transitions: `"eval_complete"` (after eval worker) → `"done"` (after impl + insight workers complete). The `"gaps"` array lists IDs of items where `"tested"` is false.
 
 ## Verification
 

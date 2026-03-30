@@ -210,39 +210,42 @@ func TestEvalStage5_SelectNoInsert(t *testing.T) {
 
 ## Coverage Report Format
 
-After writing tests, generate `oracle/quality/coverage/stage5-completion.json`:
+After writing tests, generate `oracle/quality/coverage/stage5-completion.json` using the canonical schema:
 
 ```json
 {
-  "stage": "5-completion",
-  "total_items": 20,
-  "tested_items": 20,
+  "stage": 5,
+  "surface": "completion",
+  "status": "eval_complete",
   "items": [
-    {"id": "select_keyword", "test": "TestEvalStage5_SelectKeyword", "status": "written"},
-    {"id": "select_columns", "test": "TestEvalStage5_SelectColumns", "status": "written"},
-    {"id": "select_from", "test": "TestEvalStage5_SelectFrom", "status": "written"},
-    {"id": "select_table", "test": "TestEvalStage5_SelectTable", "status": "written"},
-    {"id": "select_where", "test": "TestEvalStage5_SelectWhere", "status": "written"},
-    {"id": "select_where_expr", "test": "TestEvalStage5_SelectWhereExpr", "status": "written"},
-    {"id": "select_order_by", "test": "TestEvalStage5_SelectOrderBy", "status": "written"},
-    {"id": "select_join", "test": "TestEvalStage5_SelectJoin", "status": "written"},
-    {"id": "insert_into", "test": "TestEvalStage5_InsertInto", "status": "written"},
-    {"id": "insert_table", "test": "TestEvalStage5_InsertTable", "status": "written"},
-    {"id": "insert_values", "test": "TestEvalStage5_InsertValues", "status": "written"},
-    {"id": "update_table", "test": "TestEvalStage5_UpdateTable", "status": "written"},
-    {"id": "update_set", "test": "TestEvalStage5_UpdateSet", "status": "written"},
-    {"id": "update_set_col", "test": "TestEvalStage5_UpdateSetCol", "status": "written"},
-    {"id": "delete_from", "test": "TestEvalStage5_DeleteFrom", "status": "written"},
-    {"id": "create_type", "test": "TestEvalStage5_CreateType", "status": "written"},
-    {"id": "create_table_col", "test": "TestEvalStage5_CreateTableCol", "status": "written"},
-    {"id": "alter_table", "test": "TestEvalStage5_AlterTable", "status": "written"},
-    {"id": "oracle_hint", "test": "TestEvalStage5_OracleHint", "status": "written"},
-    {"id": "plsql_block", "test": "TestEvalStage5_PlsqlBlock", "status": "written"}
-  ]
+    {"id": "select_keyword", "description": "Completion at empty input", "tested": true},
+    {"id": "select_columns", "description": "Completion after SELECT", "tested": true},
+    {"id": "select_from", "description": "Completion after SELECT col", "tested": true},
+    {"id": "select_table", "description": "Completion after FROM", "tested": true},
+    {"id": "select_where", "description": "Completion after FROM table", "tested": true},
+    {"id": "select_where_expr", "description": "Completion after WHERE", "tested": true},
+    {"id": "select_order_by", "description": "Completion after ORDER BY", "tested": true},
+    {"id": "select_join", "description": "Completion for JOIN types", "tested": true},
+    {"id": "insert_into", "description": "Completion after INSERT", "tested": true},
+    {"id": "insert_table", "description": "Completion after INSERT INTO", "tested": true},
+    {"id": "insert_values", "description": "Completion after column list", "tested": true},
+    {"id": "update_table", "description": "Completion after UPDATE", "tested": true},
+    {"id": "update_set", "description": "Completion after UPDATE table", "tested": true},
+    {"id": "update_set_col", "description": "Completion after SET", "tested": true},
+    {"id": "delete_from", "description": "Completion after DELETE", "tested": true},
+    {"id": "create_type", "description": "Completion after CREATE", "tested": true},
+    {"id": "create_table_col", "description": "Completion inside CREATE TABLE", "tested": true},
+    {"id": "alter_table", "description": "Completion after ALTER TABLE t", "tested": true},
+    {"id": "oracle_hint", "description": "Completion inside Oracle hint", "tested": true},
+    {"id": "plsql_block", "description": "Completion inside PL/SQL block", "tested": true}
+  ],
+  "total": 20,
+  "tested": 20,
+  "gaps": []
 }
 ```
 
-The `status` field transitions: `"written"` -> `"passing"` (once impl worker makes it pass) -> `"verified"` (once insight worker reviews).
+Each item uses `"tested": true/false` (not a `"status"` string). The `"gaps"` array lists IDs of items where `"tested"` is false.
 
 ## Verification
 
