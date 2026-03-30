@@ -21,7 +21,12 @@ and updated by Insight Workers when blind spots are discovered.
 - 10 infrastructure items — all must have eval tests
 
 ### Known Blind Spots
-(initially empty — updated by Insight Worker)
+- **Loc.End dual-sentinel ambiguity:** The End field comment says "0 means unknown/unset" but NoLoc() uses -1. Stage 2 Loc validation must use -1 only. The End=0 comment in node.go should be corrected.
+- **ParseError call sites omit Severity/Code:** All existing `&ParseError{}` constructions rely on defaults. No test verifies that non-default severity/code values are ever set by the parser in practice.
+- **NodeLoc exhaustive switch maintenance:** No compile-time or test-time check ensures NodeLoc covers all node types. A new type added without a NodeLoc case silently returns NoLoc().
+- **Unicode byte offsets untested:** All eval tests use ASCII input. Loc values are byte offsets, but multi-byte characters (UTF-8 Oracle identifiers) could cause Loc.End to be wrong if the lexer counts characters instead of bytes.
+- **Token.End for whitespace/comment tokens:** The lexer skips whitespace and comments internally. Token.End tracking for comment-spanning tokens is untested.
+- **Parser.source field not verified in Parse():** The eval test checks the field exists via reflect but does not verify Parse() actually sets it (it only constructs a Parser directly).
 
 ---
 

@@ -1,4 +1,9 @@
 {
   "version": 1,
-  "patterns": []
+  "patterns": [
+    {"name": "rawstmt-loc-migration", "file": "stage1-rawstmt-loc-migration.md", "severity": "medium", "stage": 1},
+    {"name": "parseerror-field-defaults", "file": "stage1-parseerror-field-defaults.md", "severity": "low", "stage": 1},
+    {"name": "loc-sentinel-ambiguity", "file": "stage1-loc-sentinel-ambiguity.md", "severity": "high", "stage": 1},
+    {"name": "nodeloc-exhaustive-switch", "file": "stage1-nodeloc-exhaustive-switch.md", "severity": "medium", "stage": 1}
+  ]
 }

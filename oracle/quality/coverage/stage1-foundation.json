@@ -1,7 +1,7 @@
 {
   "stage": 1,
   "surface": "foundation",
-  "status": "eval_complete",
+  "status": "done",
   "items": [
     {"id": "noloc", "description": "NoLoc() returns Loc{-1,-1}", "tested": true},
     {"id": "loc_sentinel", "description": "Loc zero-value vs NoLoc sentinel", "tested": true},
@@ -16,5 +16,7 @@
   ],
   "total": 10,
   "tested": 10,
-  "gaps": []
+  "gaps": [],
+  "adversarial_tests": 16,
+  "adversarial_passing": 16
 }
