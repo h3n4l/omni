@@ -64,6 +64,12 @@ func (p *Parser) parseUpdateStmt() (*nodes.UpdateStmt, error) {
 		stmt.Top = top
 	}
 
+	// Completion: after UPDATE → table_ref
+	if p.collectMode() {
+		p.addRuleCandidate("table_ref")
+		return nil, errCollecting
+	}
+
 	// Table name or @table_variable
 	rel, err := p.parseTableRef()
 	if err != nil {
@@ -85,6 +91,11 @@ func (p *Parser) parseUpdateStmt() (*nodes.UpdateStmt, error) {
 
 	// SET clause
 	if _, err := p.expect(kwSET); err == nil {
+		// Completion: after SET → columnref
+		if p.collectMode() {
+			p.addRuleCandidate("columnref")
+			return nil, errCollecting
+		}
 		setList, err := p.parseSetClauseList()
 		if err != nil {
 			return nil, err
@@ -115,6 +126,12 @@ func (p *Parser) parseUpdateStmt() (*nodes.UpdateStmt, error) {
 
 	// WHERE clause (includes CURRENT OF cursor support)
 	if _, ok := p.match(kwWHERE); ok {
+		// Completion: after WHERE in UPDATE → columnref
+		if p.collectMode() {
+			p.addRuleCandidate("columnref")
+			p.addRuleCandidate("func_name")
+			return nil, errCollecting
+		}
 		wc, err := p.parseWhereClauseBody()
 		if err != nil {
 			return nil, err
@@ -182,6 +199,12 @@ func (p *Parser) parseDeleteStmt() (*nodes.DeleteStmt, error) {
 	// Optional FROM before table name
 	p.match(kwFROM)
 
+	// Completion: after DELETE [FROM] → table_ref
+	if p.collectMode() {
+		p.addRuleCandidate("table_ref")
+		return nil, errCollecting
+	}
+
 	// Table name or @table_variable
 	rel, err := p.parseTableRef()
 	if err != nil {
@@ -221,6 +244,12 @@ func (p *Parser) parseDeleteStmt() (*nodes.DeleteStmt, error) {
 
 	// WHERE clause (includes CURRENT OF cursor support)
 	if _, ok := p.match(kwWHERE); ok {
+		// Completion: after WHERE in DELETE → columnref
+		if p.collectMode() {
+			p.addRuleCandidate("columnref")
+			p.addRuleCandidate("func_name")
+			return nil, errCollecting
+		}
 		wc, err := p.parseWhereClauseBody()
 		if err != nil {
 			return nil, err
@@ -305,6 +334,11 @@ func (p *Parser) isCompoundAssign() string {
 func (p *Parser) parseSetClauseList() (*nodes.List, error) {
 	var items []nodes.Node
 	for {
+		// Completion: at start of SET clause item → columnref
+		if p.collectMode() {
+			p.addRuleCandidate("columnref")
+			return nil, errCollecting
+		}
 		item, err := p.parseSetClause()
 		if err != nil {
 			return nil, err
@@ -315,6 +349,11 @@ func (p *Parser) parseSetClauseList() (*nodes.List, error) {
 		items = append(items, item)
 		if _, ok := p.match(','); !ok {
 			break
+		}
+		// Completion: after comma in SET clause → columnref
+		if p.collectMode() {
+			p.addRuleCandidate("columnref")
+			return nil, errCollecting
 		}
 	}
 	return &nodes.List{Items: items}, nil

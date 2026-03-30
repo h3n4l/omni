@@ -51,6 +51,12 @@ func (p *Parser) parseInsertStmt() (*nodes.InsertStmt, error) {
 	// Optional INTO
 	p.match(kwINTO)
 
+	// Completion: after INSERT [INTO] → table_ref
+	if p.collectMode() {
+		p.addRuleCandidate("table_ref")
+		return nil, errCollecting
+	}
+
 	// Table name or @table_variable
 	rel, err := p.parseTableRef()
 	if err != nil {
@@ -73,6 +79,11 @@ func (p *Parser) parseInsertStmt() (*nodes.InsertStmt, error) {
 	// Optional column list
 	if p.cur.Type == '(' {
 		p.advance()
+		// Completion: inside INSERT column list → columnref
+		if p.collectMode() {
+			p.addRuleCandidate("columnref")
+			return nil, errCollecting
+		}
 		var cols []nodes.Node
 		for p.cur.Type != ')' && p.cur.Type != tokEOF {
 			colName, ok := p.parseIdentifier()
@@ -83,11 +94,26 @@ func (p *Parser) parseInsertStmt() (*nodes.InsertStmt, error) {
 			if _, ok := p.match(','); !ok {
 				break
 			}
+			// Completion: after comma in INSERT column list → columnref
+			if p.collectMode() {
+				p.addRuleCandidate("columnref")
+				return nil, errCollecting
+			}
 		}
 		if _, err := p.expect(')'); err != nil {
 			return nil, err
 		}
 		stmt.Cols = &nodes.List{Items: cols}
+	}
+
+	// Completion: after table/columns in INSERT → source keywords
+	if p.collectMode() {
+		p.addTokenCandidate(kwVALUES)
+		p.addTokenCandidate(kwSELECT)
+		p.addTokenCandidate(kwDEFAULT)
+		p.addTokenCandidate(kwEXEC)
+		p.addTokenCandidate(kwOUTPUT)
+		return nil, errCollecting
 	}
 
 	// OUTPUT clause (before source)
@@ -183,6 +209,12 @@ func (p *Parser) parseValuesClause() (*nodes.ValuesClause, error) {
 func (p *Parser) parseOutputClause() (*nodes.OutputClause, error) {
 	loc := p.pos()
 	p.advance() // consume OUTPUT
+
+	// Completion: after OUTPUT → columnref (for inserted.*, deleted.*)
+	if p.collectMode() {
+		p.addRuleCandidate("columnref")
+		return nil, errCollecting
+	}
 
 	oc := &nodes.OutputClause{
 		Loc: nodes.Loc{Start: loc, End: -1},

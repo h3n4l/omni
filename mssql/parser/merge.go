@@ -49,6 +49,12 @@ func (p *Parser) parseMergeStmt() (*nodes.MergeStmt, error) {
 	// Optional INTO
 	p.match(kwINTO)
 
+	// Completion: after MERGE [INTO] → table_ref
+	if p.collectMode() {
+		p.addRuleCandidate("table_ref")
+		return nil, errCollecting
+	}
+
 	// Target table
 	target, err := p.parseTableRef()
 	if err != nil {
@@ -77,6 +83,11 @@ func (p *Parser) parseMergeStmt() (*nodes.MergeStmt, error) {
 	// USING source (USING is not a reserved keyword)
 	if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "using") {
 		p.advance()
+		// Completion: after USING → table_ref
+		if p.collectMode() {
+			p.addRuleCandidate("table_ref")
+			return nil, errCollecting
+		}
 	}
 
 	// Parse source table
@@ -97,6 +108,12 @@ func (p *Parser) parseMergeStmt() (*nodes.MergeStmt, error) {
 
 	// ON condition
 	if _, ok := p.match(kwON); ok {
+		// Completion: after ON in MERGE → columnref
+		if p.collectMode() {
+			p.addRuleCandidate("columnref")
+			p.addRuleCandidate("func_name")
+			return nil, errCollecting
+		}
 		cond, err := p.parseExpr()
 		if err != nil {
 			return nil, err
@@ -151,6 +168,13 @@ func (p *Parser) parseMergeWhenClause() (*nodes.MergeWhenClause, error) {
 	loc := p.pos()
 	p.advance() // consume WHEN
 
+	// Completion: after WHEN → MATCHED, NOT
+	if p.collectMode() {
+		p.addRuleCandidate("matched_keyword")
+		p.addTokenCandidate(kwNOT)
+		return nil, errCollecting
+	}
+
 	wc := &nodes.MergeWhenClause{
 		Loc: nodes.Loc{Start: loc, End: -1},
 	}
@@ -191,6 +215,19 @@ func (p *Parser) parseMergeWhenClause() (*nodes.MergeWhenClause, error) {
 
 	// THEN
 	p.match(kwTHEN)
+
+	// Completion: after THEN → action keywords based on match type
+	if p.collectMode() {
+		if wc.Matched {
+			// WHEN MATCHED THEN → UPDATE, DELETE
+			p.addTokenCandidate(kwUPDATE)
+			p.addTokenCandidate(kwDELETE)
+		} else {
+			// WHEN NOT MATCHED THEN → INSERT
+			p.addTokenCandidate(kwINSERT)
+		}
+		return nil, errCollecting
+	}
 
 	// Action: UPDATE SET, DELETE, or INSERT
 	switch {
