@@ -76,6 +76,7 @@ func TestVerifyCorpus(t *testing.T) {
 	t.Logf("Parse OK:             %d", stats.parseOK)
 	t.Logf("Parse expected fail:  %d", stats.parseExpectedFail)
 	t.Logf("PARSE VIOLATIONS:     %d (should accept but rejects)", stats.parseViolations)
+	t.Logf("PARSE LENIENT:        %d (should reject but accepts)", stats.parseLenient)
 	t.Logf("Loc clean:            %d (all nodes have valid Loc)", stats.locClean)
 	t.Logf("LOC VIOLATIONS:       %d (nodes with bad/missing Loc)", stats.locViolations)
 	t.Logf("CRASHES:              %d", stats.crashes)
@@ -89,6 +90,7 @@ type corpusVerifyStats struct {
 	parseOK           int
 	parseExpectedFail int
 	parseViolations   int
+	parseLenient      int
 	locClean          int
 	locViolations     int
 	crashes           int
@@ -136,9 +138,11 @@ func verifyCorpusStatement(t *testing.T, stmt corpusStmt) corpusVerifyResult {
 		}
 	case "false":
 		if result.parsed {
+			// Parser accepts invalid SQL — this is informational, not a failure.
 			t.Logf("PARSE LENIENT: @valid: false but parser accepts")
 		}
 		if !result.parsed && result.parseErr != nil {
+			// Verify error has a reasonable position
 			if pe, ok := result.parseErr.(*ParseError); ok {
 				if pe.Position < 0 {
 					t.Errorf("ERROR POSITION: @valid: false, error position = %d (want >= 0)", pe.Position)
@@ -151,7 +155,7 @@ func verifyCorpusStatement(t *testing.T, stmt corpusStmt) corpusVerifyResult {
 
 	// --- Layer 3: Loc check (if parse succeeded) ---
 	if result.parsed && parseResult != nil {
-		violations := checkCorpusLocs(parseResult)
+		violations := checkCorpusLoc(parseResult)
 		result.locViolations = violations
 		if len(violations) > 0 {
 			t.Logf("LOC VIOLATIONS: %d nodes with invalid Loc:", len(violations))
@@ -168,18 +172,16 @@ func verifyCorpusStatement(t *testing.T, stmt corpusStmt) corpusVerifyResult {
 	return result
 }
 
-// checkCorpusLocs runs the Loc walker on parse results and returns violations.
-func checkCorpusLocs(result *ast.List) []LocViolation {
+// checkCorpusLoc runs the Loc walker on parse results and returns violations.
+func checkCorpusLoc(result *ast.List) []LocViolation {
 	var violations []LocViolation
 	if result == nil {
 		return violations
 	}
-
 	for i, item := range result.Items {
 		path := fmt.Sprintf("Items[%d]", i)
 		walkNodeLocs(reflect.ValueOf(item), path, &violations)
 	}
-
 	return violations
 }
 
@@ -197,6 +199,9 @@ func accumulateCorpusStats(stats *corpusVerifyStats, r corpusVerifyResult) {
 			stats.parseViolations++
 		}
 	case "false":
+		if r.parsed {
+			stats.parseLenient++
+		}
 		stats.parseExpectedFail++
 	default:
 		if r.parsed {
@@ -247,7 +252,6 @@ func loadCorpusStatements(t *testing.T, path string) []corpusStmt {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		// Metadata annotations
 		if strings.HasPrefix(line, "-- @name:") {
 			flush()
 			current.name = strings.TrimSpace(strings.TrimPrefix(line, "-- @name:"))
@@ -262,7 +266,6 @@ func loadCorpusStatements(t *testing.T, path string) []corpusStmt {
 			continue
 		}
 
-		// Blank line = statement separator
 		if strings.TrimSpace(line) == "" {
 			if len(lines) > 0 {
 				flush()
@@ -277,12 +280,10 @@ func loadCorpusStatements(t *testing.T, path string) []corpusStmt {
 	return statements
 }
 
-// buildCorpusSQL joins lines into a single SQL string.
 func buildCorpusSQL(lines []string) string {
 	return strings.TrimSpace(strings.Join(lines, "\n"))
 }
 
-// truncateCorpusSQL returns a shortened version of sql for display.
 func truncateCorpusSQL(sql string, maxLen int) string {
 	s := strings.Join(strings.Fields(sql), " ")
 	if len(s) <= maxLen {
