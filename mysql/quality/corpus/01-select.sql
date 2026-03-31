@@ -196,3 +196,62 @@ SELECT 1 + 2
 -- @valid: true
 -- @source: SCENARIOS-mysql-strict.md section 3.2
 SELECT * FROM t WHERE a = 1 AND b = 2
+
+-- ============================================================
+-- Section 3.3: IN/BETWEEN/LIKE expression completeness
+-- ============================================================
+
+-- @name: missing parenthesized list after IN rejected
+-- @valid: false
+-- @source: SCENARIOS-mysql-strict.md section 3.3
+SELECT * FROM t WHERE id IN
+
+-- @name: unclosed IN list rejected
+-- @valid: false
+-- @source: SCENARIOS-mysql-strict.md section 3.3
+SELECT * FROM t WHERE id IN (
+
+-- @name: missing AND in BETWEEN rejected
+-- @valid: false
+-- @source: SCENARIOS-mysql-strict.md section 3.3
+SELECT * FROM t WHERE id BETWEEN 1
+
+-- @name: missing range in BETWEEN rejected
+-- @valid: false
+-- @source: SCENARIOS-mysql-strict.md section 3.3
+SELECT * FROM t WHERE id BETWEEN
+
+-- @name: missing pattern after LIKE rejected
+-- @valid: false
+-- @source: SCENARIOS-mysql-strict.md section 3.3
+SELECT * FROM t WHERE name LIKE
+
+-- @name: missing pattern after REGEXP rejected
+-- @valid: false
+-- @source: SCENARIOS-mysql-strict.md section 3.3
+SELECT * FROM t WHERE name REGEXP
+
+-- @name: IN with value list accepted
+-- @valid: true
+-- @source: SCENARIOS-mysql-strict.md section 3.3
+SELECT * FROM t WHERE id IN (1, 2, 3)
+
+-- @name: BETWEEN with range accepted
+-- @valid: true
+-- @source: SCENARIOS-mysql-strict.md section 3.3
+SELECT * FROM t WHERE id BETWEEN 1 AND 10
+
+-- @name: NOT IN accepted
+-- @valid: true
+-- @source: SCENARIOS-mysql-strict.md section 3.3
+SELECT * FROM t WHERE id NOT IN (1, 2)
+
+-- @name: NOT BETWEEN accepted
+-- @valid: true
+-- @source: SCENARIOS-mysql-strict.md section 3.3
+SELECT * FROM t WHERE id NOT BETWEEN 1 AND 10
+
+-- @name: LIKE with pattern accepted
+-- @valid: true
+-- @source: SCENARIOS-mysql-strict.md section 3.3
+SELECT * FROM t WHERE name LIKE '%foo%'
