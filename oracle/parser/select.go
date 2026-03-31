@@ -97,6 +97,12 @@ func (p *Parser) parseSelectStmt() *nodes.SelectStmt {
 	// Select list
 	sel.TargetList = p.parseSelectList()
 
+	// INTO (PL/SQL SELECT ... INTO variable_list FROM ...)
+	if p.cur.Type == kwINTO {
+		p.advance() // consume INTO
+		sel.IntoVars = p.parseExprList()
+	}
+
 	// FROM
 	if p.cur.Type == kwFROM {
 		p.advance()

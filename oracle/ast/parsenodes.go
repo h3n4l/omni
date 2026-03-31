@@ -338,8 +338,9 @@ func (n *Alias) nodeTag() {}
 
 // BindVariable represents a bind variable (:name or :1).
 type BindVariable struct {
-	Name string // variable name (without colon)
-	Loc  Loc
+	Name   string // variable name (without colon)
+	Member string // optional member access (e.g., :NEW.created_date → Member="created_date")
+	Loc    Loc
 }
 
 func (n *BindVariable) nodeTag()  {}
@@ -880,6 +881,7 @@ type SelectStmt struct {
 	All          bool                // ALL
 	TargetList   *List               // select expressions (list of *ResTarget)
 	Into         *ObjectName         // INTO (PL/SQL)
+	IntoVars     *List               // INTO variable list (PL/SQL SELECT INTO :bind_var)
 	FromClause   *List               // FROM clause
 	WhereClause  ExprNode            // WHERE condition
 	Hierarchical *HierarchicalClause // CONNECT BY / START WITH

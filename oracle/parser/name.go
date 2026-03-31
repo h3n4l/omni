@@ -164,10 +164,19 @@ func (p *Parser) parseBindVariable() *nodes.BindVariable {
 	}
 	start := p.pos()
 	tok := p.advance()
-	return &nodes.BindVariable{
+	bv := &nodes.BindVariable{
 		Name: tok.Str,
 		Loc:  nodes.Loc{Start: start, End: p.pos()},
 	}
+	// Handle :name.member (e.g., :NEW.created_date in trigger bodies)
+	if p.cur.Type == '.' && p.peekNext().Type != '*' {
+		p.advance() // consume '.'
+		if p.isIdentLike() || p.cur.Type == tokQIDENT {
+			bv.Member = p.parseIdentifier()
+			bv.Loc.End = p.pos()
+		}
+	}
+	return bv
 }
 
 // parsePseudoColumn parses an Oracle pseudo-column (ROWID, ROWNUM, LEVEL, SYSDATE, SYSTIMESTAMP, USER).

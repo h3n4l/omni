@@ -71,7 +71,11 @@ func writeNode(sb *strings.Builder, node Node) {
 	case *TypeName:
 		writeTypeName(sb, n)
 	case *BindVariable:
-		sb.WriteString(fmt.Sprintf("{BINDVAR :name %q :loc_start %d :loc_end %d}", n.Name, n.Loc.Start, n.Loc.End))
+		sb.WriteString(fmt.Sprintf("{BINDVAR :name %q", n.Name))
+		if n.Member != "" {
+			sb.WriteString(fmt.Sprintf(" :member %q", n.Member))
+		}
+		sb.WriteString(fmt.Sprintf(" :loc_start %d :loc_end %d}", n.Loc.Start, n.Loc.End))
 	case *PseudoColumn:
 		sb.WriteString(fmt.Sprintf("{PSEUDOCOL :type %d :loc_start %d :loc_end %d}", n.Type, n.Loc.Start, n.Loc.End))
 	case *Hint:
@@ -2166,6 +2170,10 @@ func writeSelectStmt(sb *strings.Builder, n *SelectStmt) {
 	if n.Into != nil {
 		sb.WriteString(" :into ")
 		writeNode(sb, n.Into)
+	}
+	if n.IntoVars != nil {
+		sb.WriteString(" :intoVars ")
+		writeNode(sb, n.IntoVars)
 	}
 	if n.FromClause != nil {
 		sb.WriteString(" :fromClause ")

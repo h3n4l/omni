@@ -349,7 +349,8 @@ func (p *Parser) parsePLSQLStatement() nodes.StmtNode {
 
 	default:
 		// Try assignment: target := expr ;
-		if p.isIdentLike() || p.cur.Type == tokQIDENT {
+		// tokBIND handles :NEW.col := expr in trigger bodies
+		if p.isIdentLike() || p.cur.Type == tokQIDENT || p.cur.Type == tokBIND {
 			return p.parsePLSQLAssignOrCall()
 		}
 		return nil

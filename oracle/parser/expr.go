@@ -308,6 +308,9 @@ func (p *Parser) parsePrimary() nodes.ExprNode {
 	case kwJSON_MERGEPATCH:
 		return p.parseJsonPathFunc("JSON_MERGEPATCH")
 
+	case kwINTERVAL:
+		return p.parseIntervalExpr()
+
 	default:
 		// Pseudo columns
 		if p.isPseudoColumn() {
@@ -320,6 +323,76 @@ func (p *Parser) parsePrimary() nodes.ExprNode {
 		}
 
 		return nil
+	}
+}
+
+// isIntervalField returns true if the current token is an interval date field keyword.
+func (p *Parser) isIntervalField() bool {
+	if !p.isIdentLike() {
+		return false
+	}
+	switch p.cur.Str {
+	case "YEAR", "MONTH", "DAY", "HOUR", "MINUTE", "SECOND":
+		return true
+	}
+	return false
+}
+
+// parseIntervalExpr parses an INTERVAL literal expression.
+//
+// Ref: https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/Literals.html
+//
+//	INTERVAL 'value' { YEAR | MONTH | DAY | HOUR | MINUTE | SECOND }
+//	  [ ( precision ) ] [ TO { YEAR | MONTH | DAY | HOUR | MINUTE | SECOND } [ ( precision ) ] ]
+func (p *Parser) parseIntervalExpr() nodes.ExprNode {
+	start := p.pos()
+	p.advance() // consume INTERVAL
+
+	// Parse the value expression (typically a string literal like '1')
+	value := p.parseExprPrec(precConcat)
+
+	var from, to string
+
+	// Parse the FROM field
+	if p.isIntervalField() {
+		from = p.cur.Str
+		p.advance()
+		// Optional precision: ( n )
+		if p.cur.Type == '(' {
+			p.advance()
+			if p.cur.Type == tokICONST {
+				p.advance()
+			}
+			if p.cur.Type == ')' {
+				p.advance()
+			}
+		}
+	}
+
+	// Optional TO field
+	if p.cur.Type == kwTO {
+		p.advance()
+		if p.isIntervalField() {
+			to = p.cur.Str
+			p.advance()
+			// Optional precision: ( n )
+			if p.cur.Type == '(' {
+				p.advance()
+				if p.cur.Type == tokICONST {
+					p.advance()
+				}
+				if p.cur.Type == ')' {
+					p.advance()
+				}
+			}
+		}
+	}
+
+	return &nodes.IntervalExpr{
+		Value: value,
+		From:  from,
+		To:    to,
+		Loc:   nodes.Loc{Start: start, End: p.pos()},
 	}
 }
 
@@ -1093,15 +1166,25 @@ func (p *Parser) parseInExpr(left nodes.ExprNode, not bool) nodes.ExprNode {
 
 	if p.cur.Type == '(' {
 		p.advance()
-		for p.cur.Type != ')' && p.cur.Type != tokEOF {
-			item := p.parseExpr()
-			if item != nil {
-				list.Items = append(list.Items, item)
+		// IN (SELECT ...) or IN (WITH ...) — subquery
+		if p.cur.Type == kwSELECT || p.cur.Type == kwWITH {
+			sub := p.parseSelectStmt()
+			subExpr := &nodes.SubqueryExpr{
+				Subquery: sub,
+				Loc:      nodes.Loc{Start: start, End: p.pos()},
 			}
-			if p.cur.Type != ',' {
-				break
+			list.Items = append(list.Items, subExpr)
+		} else {
+			for p.cur.Type != ')' && p.cur.Type != tokEOF {
+				item := p.parseExpr()
+				if item != nil {
+					list.Items = append(list.Items, item)
+				}
+				if p.cur.Type != ',' {
+					break
+				}
+				p.advance()
 			}
-			p.advance()
 		}
 		if p.cur.Type == ')' {
 			p.advance()
