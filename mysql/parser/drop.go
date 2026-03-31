@@ -22,7 +22,9 @@ func (p *Parser) parseDropTableStmt(temporary bool) (*nodes.DropTableStmt, error
 	// IF EXISTS
 	if p.cur.Type == kwIF {
 		p.advance()
-		p.match(kwEXISTS_KW)
+		if _, err := p.expect(kwEXISTS_KW); err != nil {
+			return nil, err
+		}
 		stmt.IfExists = true
 	}
 
@@ -132,7 +134,9 @@ func (p *Parser) parseDropViewStmt() (*nodes.DropViewStmt, error) {
 	// IF EXISTS
 	if p.cur.Type == kwIF {
 		p.advance()
-		p.match(kwEXISTS_KW)
+		if _, err := p.expect(kwEXISTS_KW); err != nil {
+			return nil, err
+		}
 		stmt.IfExists = true
 	}
 

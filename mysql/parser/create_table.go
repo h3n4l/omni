@@ -28,8 +28,12 @@ func (p *Parser) parseCreateTableStmt(temporary bool) (*nodes.CreateTableStmt, e
 	// IF NOT EXISTS
 	if p.cur.Type == kwIF {
 		p.advance()
-		p.match(kwNOT)
-		p.match(kwEXISTS_KW)
+		if _, err := p.expect(kwNOT); err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(kwEXISTS_KW); err != nil {
+			return nil, err
+		}
 		stmt.IfNotExists = true
 	}
 
@@ -318,7 +322,9 @@ func (p *Parser) parseColumnOption(col *nodes.ColumnDef) (bool, error) {
 	switch p.cur.Type {
 	case kwNOT:
 		p.advance()
-		p.match(kwNULL)
+		if _, err := p.expect(kwNULL); err != nil {
+			return false, err
+		}
 		col.Constraints = append(col.Constraints, &nodes.ColumnConstraint{
 			Loc:  nodes.Loc{Start: start, End: p.pos()},
 			Type: nodes.ColConstrNotNull,
@@ -367,7 +373,9 @@ func (p *Parser) parseColumnOption(col *nodes.ColumnDef) (bool, error) {
 
 	case kwPRIMARY:
 		p.advance()
-		p.match(kwKEY)
+		if _, err := p.expect(kwKEY); err != nil {
+			return false, err
+		}
 		col.Constraints = append(col.Constraints, &nodes.ColumnConstraint{
 			Loc:  nodes.Loc{Start: start, End: p.pos()},
 			Type: nodes.ColConstrPrimaryKey,

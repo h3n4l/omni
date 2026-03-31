@@ -28,8 +28,12 @@ func (p *Parser) parseCreateIndexStmt(unique bool, fulltext bool, spatial bool) 
 	// IF NOT EXISTS (MySQL 8.0.27+)
 	if p.cur.Type == kwIF {
 		p.advance()
-		p.match(kwNOT)
-		p.match(kwEXISTS_KW)
+		if _, err := p.expect(kwNOT); err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(kwEXISTS_KW); err != nil {
+			return nil, err
+		}
 		stmt.IfNotExists = true
 	}
 

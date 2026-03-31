@@ -24,8 +24,12 @@ func (p *Parser) parseCreateDatabaseStmt() (*nodes.CreateDatabaseStmt, error) {
 	// IF NOT EXISTS
 	if p.cur.Type == kwIF {
 		p.advance()
-		p.match(kwNOT)
-		p.match(kwEXISTS_KW)
+		if _, err := p.expect(kwNOT); err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(kwEXISTS_KW); err != nil {
+			return nil, err
+		}
 		stmt.IfNotExists = true
 	}
 
@@ -110,7 +114,9 @@ func (p *Parser) parseDropDatabaseStmt() (*nodes.DropDatabaseStmt, error) {
 	// IF EXISTS
 	if p.cur.Type == kwIF {
 		p.advance()
-		p.match(kwEXISTS_KW)
+		if _, err := p.expect(kwEXISTS_KW); err != nil {
+			return nil, err
+		}
 		stmt.IfExists = true
 	}
 
