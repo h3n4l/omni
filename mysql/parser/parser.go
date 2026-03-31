@@ -39,7 +39,14 @@ func Parse(sql string) (*nodes.List, error) {
 		}
 		stmt, err := p.parseStmt()
 		if err != nil {
-			return nil, err
+			return nil, p.enrichError(err)
+		}
+		if stmt == nil {
+			// parseStmt returned nil without error — unconsumed tokens remain.
+			if p.cur.Type != tokEOF {
+				return nil, p.syntaxErrorAtCur()
+			}
+			break
 		}
 		stmts = append(stmts, stmt)
 	}

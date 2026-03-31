@@ -226,10 +226,7 @@ func (p *Parser) parseStmt() (nodes.Node, error) {
 		return p.parseSelectStmt()
 
 	default:
-		return nil, &ParseError{
-			Message:  "unexpected token at statement start",
-			Position: p.cur.Loc,
-		}
+		return nil, p.syntaxErrorAtCur()
 	}
 }
 
