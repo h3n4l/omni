@@ -96,7 +96,7 @@ func startOracleDB(t *testing.T) *oracleDB {
 	})
 
 	if oracleInitErr != nil {
-		t.Skipf("Oracle container not available: %v", oracleInitErr)
+		t.Fatalf("Oracle container not available: %v", oracleInitErr)
 	}
 	return oracleInst
 }
