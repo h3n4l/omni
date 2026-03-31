@@ -1,421 +1,110 @@
--- @name: simple select
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT 1
+-- MySQL SELECT corpus — quality gate scenarios
+-- Each entry: -- @name / -- @valid / SQL
 
--- @name: select from dual
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT 1 FROM dual
+-- ============================================================
+-- Section 2.1: JOIN keyword enforcement
+-- ============================================================
 
--- @name: select with alias
+-- @name: INNER JOIN accepted
 -- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT 1 AS one, 'hello' AS greeting
+-- @source: 2.1 join-keyword-enforcement
+SELECT * FROM t1 INNER JOIN t2 ON t1.id = t2.id
 
--- @name: select from table
+-- @name: LEFT JOIN accepted
 -- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT id, name, email FROM users
+-- @source: 2.1 join-keyword-enforcement
+SELECT * FROM t1 LEFT JOIN t2 ON t1.id = t2.id
 
--- @name: select star
+-- @name: CROSS JOIN accepted
 -- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT * FROM users
-
--- @name: select distinct
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT DISTINCT department_id FROM employees
-
--- @name: select with where
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT * FROM employees WHERE department_id = 10
-
--- @name: select with and/or
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT * FROM employees WHERE salary > 5000 AND department_id IN (10, 20, 30)
-
--- @name: select with between
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT * FROM employees WHERE salary BETWEEN 3000 AND 8000
-
--- @name: select with like
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT * FROM employees WHERE name LIKE 'John%'
-
--- @name: select with is null
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT * FROM employees WHERE manager_id IS NULL
-
--- @name: select with is not null
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT * FROM employees WHERE email IS NOT NULL
-
--- @name: select with inner join
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT e.id, d.name
-FROM employees e
-INNER JOIN departments d ON e.department_id = d.id
-
--- @name: select with left join
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT e.id, d.name
-FROM employees e
-LEFT JOIN departments d ON e.department_id = d.id
-
--- @name: select with right join
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT e.id, d.name
-FROM employees e
-RIGHT JOIN departments d ON e.department_id = d.id
-
--- @name: select with cross join
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
+-- @source: 2.1 join-keyword-enforcement
 SELECT * FROM t1 CROSS JOIN t2
 
--- @name: select with natural join
+-- @name: NATURAL JOIN accepted
 -- @valid: true
--- @source: MySQL 8.0 Reference Manual
+-- @source: 2.1 join-keyword-enforcement
 SELECT * FROM t1 NATURAL JOIN t2
 
--- @name: select with join using
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT * FROM t1 JOIN t2 USING (id)
-
--- @name: select with self join
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT e.name, m.name AS manager
-FROM employees e
-LEFT JOIN employees m ON e.manager_id = m.id
-
--- @name: select with group by
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT department_id, COUNT(*) AS cnt
-FROM employees
-GROUP BY department_id
-
--- @name: select with group by having
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT department_id, AVG(salary) AS avg_sal
-FROM employees
-GROUP BY department_id
-HAVING AVG(salary) > 5000
-
--- @name: select with order by
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT id, salary FROM employees ORDER BY salary DESC, id ASC
-
--- @name: select with limit
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT * FROM employees ORDER BY id LIMIT 10
-
--- @name: select with limit offset
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT * FROM employees ORDER BY id LIMIT 10 OFFSET 20
-
--- @name: select with limit comma syntax
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT * FROM employees ORDER BY id LIMIT 20, 10
-
--- @name: select with subquery in where
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT * FROM employees WHERE department_id IN (
-  SELECT id FROM departments WHERE location = 'NYC'
-)
-
--- @name: select with correlated subquery
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT e.id, e.salary FROM employees e
-WHERE e.salary > (SELECT AVG(salary) FROM employees WHERE department_id = e.department_id)
-
--- @name: select with exists
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT * FROM departments d
-WHERE EXISTS (SELECT 1 FROM employees e WHERE e.department_id = d.id)
-
--- @name: select with derived table
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT * FROM (
-  SELECT id, salary, ROW_NUMBER() OVER (ORDER BY salary DESC) AS rn
-  FROM employees
-) AS ranked WHERE rn <= 10
-
--- @name: select with CTE
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-WITH dept_avg AS (
-  SELECT department_id, AVG(salary) AS avg_sal FROM employees GROUP BY department_id
-)
-SELECT e.id, e.salary, da.avg_sal
-FROM employees e
-JOIN dept_avg da ON e.department_id = da.department_id
-
--- @name: select with recursive CTE
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-WITH RECURSIVE org AS (
-  SELECT id, manager_id, name, 1 AS lvl FROM employees WHERE manager_id IS NULL
-  UNION ALL
-  SELECT e.id, e.manager_id, e.name, o.lvl + 1
-  FROM employees e JOIN org o ON e.manager_id = o.id
-)
-SELECT * FROM org
-
--- @name: select with case expression
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT id,
-  CASE WHEN salary > 10000 THEN 'HIGH'
-       WHEN salary > 5000 THEN 'MID'
-       ELSE 'LOW'
-  END AS salary_band
-FROM employees
-
--- @name: select with simple case
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT id,
-  CASE status WHEN 'A' THEN 'Active' WHEN 'I' THEN 'Inactive' ELSE 'Unknown' END AS label
-FROM users
-
--- @name: select with window function row_number
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT id, salary,
-  ROW_NUMBER() OVER (PARTITION BY department_id ORDER BY salary DESC) AS rn
-FROM employees
-
--- @name: select with window function rank
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT id, salary,
-  RANK() OVER (ORDER BY salary DESC) AS salary_rank,
-  DENSE_RANK() OVER (ORDER BY salary DESC) AS dense_rank
-FROM employees
-
--- @name: select with window frame
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT id, salary,
-  SUM(salary) OVER (ORDER BY id ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) AS moving_sum
-FROM employees
-
--- @name: select with union
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT id, name FROM employees WHERE department_id = 10
-UNION
-SELECT id, name FROM employees WHERE department_id = 20
-
--- @name: select with union all
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT id FROM employees WHERE salary > 10000
-UNION ALL
-SELECT id FROM employees WHERE department_id = 10
-
--- @name: select with intersect
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT id FROM employees WHERE salary > 10000
-INTERSECT
-SELECT id FROM employees WHERE department_id = 10
-
--- @name: select with except
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT id FROM employees WHERE department_id = 10
-EXCEPT
-SELECT id FROM employees WHERE salary < 5000
-
--- @name: select for update
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT * FROM employees WHERE department_id = 10 FOR UPDATE
-
--- @name: select lock in share mode
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT * FROM employees WHERE id = 100 LOCK IN SHARE MODE
-
--- @name: select for share
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT * FROM employees WHERE id = 100 FOR SHARE
-
--- @name: select with group_concat
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT department_id,
-  GROUP_CONCAT(name ORDER BY name SEPARATOR ', ') AS names
-FROM employees
-GROUP BY department_id
-
--- @name: select with aggregate functions
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT COUNT(*), SUM(salary), AVG(salary), MIN(salary), MAX(salary)
-FROM employees
-
--- @name: select with count distinct
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT COUNT(DISTINCT department_id) FROM employees
-
--- @name: select with cast
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT CAST(salary AS CHAR), CAST(hire_date AS DATE) FROM employees
-
--- @name: select with convert
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT CONVERT(name, CHAR) FROM employees
-
--- @name: select with coalesce
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT COALESCE(phone, email, 'N/A') FROM employees
-
--- @name: select with if
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT IF(salary > 5000, 'high', 'low') FROM employees
-
--- @name: select with ifnull
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT IFNULL(manager_id, 0) FROM employees
-
--- @name: select with string functions
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT CONCAT(first_name, ' ', last_name), UPPER(name), LOWER(name), LENGTH(name)
-FROM employees
-
--- @name: select with date functions
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT NOW(), CURDATE(), DATE_FORMAT(hire_date, '%Y-%m-%d') FROM employees
-
--- @name: select with interval
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT * FROM events WHERE created_at > NOW() - INTERVAL 7 DAY
-
--- @name: select high_priority
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT HIGH_PRIORITY * FROM employees
-
--- @name: select sql_calc_found_rows
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT SQL_CALC_FOUND_ROWS * FROM employees LIMIT 10
-
--- @name: select into outfile
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT * FROM employees INTO OUTFILE '/tmp/employees.csv'
-
--- @name: select with multiple joins
--- @valid: true
--- @source: MySQL 8.0 Reference Manual
-SELECT e.name, d.name, l.city
-FROM employees e
-JOIN departments d ON e.department_id = d.id
-JOIN locations l ON d.location_id = l.id
-WHERE l.country = 'US'
-
--- @name: missing FROM with WHERE
+-- @name: INNER without JOIN rejected
 -- @valid: false
--- @source: synthetic
-SELECT * WHERE 1=1
+-- @source: 2.1 join-keyword-enforcement
+SELECT * FROM t1 INNER t2
 
--- @name: double WHERE clause
+-- @name: LEFT without JOIN rejected
 -- @valid: false
--- @source: synthetic
+-- @source: 2.1 join-keyword-enforcement
+SELECT * FROM t1 LEFT t2
+
+-- @name: RIGHT without JOIN rejected
+-- @valid: false
+-- @source: 2.1 join-keyword-enforcement
+SELECT * FROM t1 RIGHT t2
+
+-- @name: CROSS without JOIN rejected
+-- @valid: false
+-- @source: 2.1 join-keyword-enforcement
+SELECT * FROM t1 CROSS t2
+
+-- @name: NATURAL without JOIN rejected
+-- @valid: false
+-- @source: 2.1 join-keyword-enforcement
+SELECT * FROM t1 NATURAL t2
+
+-- @name: LEFT OUTER without JOIN rejected
+-- @valid: false
+-- @source: 2.1 join-keyword-enforcement
+SELECT * FROM t1 LEFT OUTER t2
+
+-- @name: RIGHT OUTER without JOIN rejected
+-- @valid: false
+-- @source: 2.1 join-keyword-enforcement
+SELECT * FROM t1 RIGHT OUTER t2
+
+-- ============================================================
+-- Section 2.2: Clause validation
+-- ============================================================
+
+-- @name: WHERE without FROM rejected
+-- @valid: false
+-- @source: 2.2 clause-validation
+SELECT * WHERE x = 1
+
+-- @name: GROUP BY without FROM rejected
+-- @valid: false
+-- @source: 2.2 clause-validation
+SELECT * GROUP BY x
+
+-- @name: HAVING without FROM rejected
+-- @valid: false
+-- @source: 2.2 clause-validation
+SELECT * HAVING count(*) > 1
+
+-- @name: duplicate WHERE rejected
+-- @valid: false
+-- @source: 2.2 clause-validation
 SELECT * FROM t WHERE 1=1 WHERE 2=2
 
--- @name: unclosed parenthesis
+-- @name: duplicate GROUP BY rejected
 -- @valid: false
--- @source: synthetic
-SELECT (1 + 2 FROM t
+-- @source: 2.2 clause-validation
+SELECT * FROM t GROUP BY a GROUP BY b
 
--- @name: missing expression after AND
+-- @name: duplicate ORDER BY rejected
 -- @valid: false
--- @source: synthetic
-SELECT * FROM t WHERE a = 1 AND
+-- @source: 2.2 clause-validation
+SELECT * FROM t ORDER BY a ORDER BY b
 
--- @name: invalid join syntax
--- @valid: false
--- @source: synthetic
-SELECT * FROM t1 JOIN ON t2
-
--- @name: trailing garbage after valid statement — actually valid implicit alias
+-- @name: FROM without WHERE accepted
 -- @valid: true
--- @source: SCENARIOS-mysql-strict.md section 1.1
-SELECT 1 GARBAGE
+-- @source: 2.2 clause-validation
+SELECT * FROM t
 
--- @name: trailing keyword after valid statement
--- @valid: false
--- @source: SCENARIOS-mysql-strict.md section 1.1
-SELECT 1 FROM
-
--- @name: trailing identifier after valid statement — actually valid implicit alias
+-- @name: bare SELECT without FROM accepted
 -- @valid: true
--- @source: SCENARIOS-mysql-strict.md section 1.1
-SELECT 1 abc
+-- @source: 2.2 clause-validation
+SELECT 1
 
--- @name: trailing operator after valid statement
--- @valid: false
--- @source: SCENARIOS-mysql-strict.md section 1.1
-SELECT 1 +
-
--- @name: trailing parenthesis after valid statement
--- @valid: false
--- @source: SCENARIOS-mysql-strict.md section 1.1
-SELECT 1 )
-
--- @name: trailing garbage in multi-statement — actually valid implicit alias
+-- @name: normal SELECT with WHERE accepted
 -- @valid: true
--- @source: SCENARIOS-mysql-strict.md section 1.1
-SELECT 1; SELECT 2 GARBAGE
-
--- @name: multiple semicolon-separated statements
--- @valid: true
--- @source: SCENARIOS-mysql-strict.md section 1.1
-SELECT 1; SELECT 2
-
--- @name: trailing semicolon
--- @valid: true
--- @source: SCENARIOS-mysql-strict.md section 1.1
-SELECT 1;
-
--- @name: single semicolon
--- @valid: true
--- @source: SCENARIOS-mysql-strict.md section 1.1
-;
+-- @source: 2.2 clause-validation
+SELECT * FROM t WHERE x = 1

@@ -253,17 +253,38 @@ func (p *Parser) parseSelectStmt() (*nodes.SelectStmt, error) {
 		stmt.From = from
 	}
 
-	// WHERE clause
-	if _, ok := p.match(kwWHERE); ok {
+	// WHERE clause — requires FROM
+	if p.cur.Type == kwWHERE {
+		if stmt.From == nil {
+			return nil, &ParseError{
+				Message:  "WHERE clause requires FROM",
+				Position: p.cur.Loc,
+			}
+		}
+		p.advance()
 		where, err := p.parseExpr()
 		if err != nil {
 			return nil, err
 		}
 		stmt.Where = where
+
+		// Reject duplicate WHERE
+		if p.cur.Type == kwWHERE {
+			return nil, &ParseError{
+				Message:  "duplicate WHERE clause",
+				Position: p.cur.Loc,
+			}
+		}
 	}
 
-	// GROUP BY clause
+	// GROUP BY clause — requires FROM
 	if p.cur.Type == kwGROUP {
+		if stmt.From == nil {
+			return nil, &ParseError{
+				Message:  "GROUP BY clause requires FROM",
+				Position: p.cur.Loc,
+			}
+		}
 		p.advance()
 		if _, err := p.expect(kwBY); err != nil {
 			return nil, err
@@ -291,10 +312,25 @@ func (p *Parser) parseSelectStmt() (*nodes.SelectStmt, error) {
 				stmt.WithRollup = true
 			}
 		}
+
+		// Reject duplicate GROUP BY
+		if p.cur.Type == kwGROUP {
+			return nil, &ParseError{
+				Message:  "duplicate GROUP BY clause",
+				Position: p.cur.Loc,
+			}
+		}
 	}
 
-	// HAVING clause
-	if _, ok := p.match(kwHAVING); ok {
+	// HAVING clause — requires FROM
+	if p.cur.Type == kwHAVING {
+		if stmt.From == nil {
+			return nil, &ParseError{
+				Message:  "HAVING clause requires FROM",
+				Position: p.cur.Loc,
+			}
+		}
+		p.advance()
 		having, err := p.parseExpr()
 		if err != nil {
 			return nil, err
@@ -341,6 +377,14 @@ func (p *Parser) parseSelectStmt() (*nodes.SelectStmt, error) {
 				p.advance() // consume WITH
 				p.advance() // consume ROLLUP
 				stmt.OrderByWithRollup = true
+			}
+		}
+
+		// Reject duplicate ORDER BY
+		if p.cur.Type == kwORDER {
+			return nil, &ParseError{
+				Message:  "duplicate ORDER BY clause",
+				Position: p.cur.Loc,
 			}
 		}
 	}
@@ -500,17 +544,38 @@ func (p *Parser) parseSelectStmtBase() (*nodes.SelectStmt, error) {
 		stmt.From = from
 	}
 
-	// WHERE clause
-	if _, ok := p.match(kwWHERE); ok {
+	// WHERE clause — requires FROM
+	if p.cur.Type == kwWHERE {
+		if stmt.From == nil {
+			return nil, &ParseError{
+				Message:  "WHERE clause requires FROM",
+				Position: p.cur.Loc,
+			}
+		}
+		p.advance()
 		where, err := p.parseExpr()
 		if err != nil {
 			return nil, err
 		}
 		stmt.Where = where
+
+		// Reject duplicate WHERE
+		if p.cur.Type == kwWHERE {
+			return nil, &ParseError{
+				Message:  "duplicate WHERE clause",
+				Position: p.cur.Loc,
+			}
+		}
 	}
 
-	// GROUP BY clause
+	// GROUP BY clause — requires FROM
 	if p.cur.Type == kwGROUP {
+		if stmt.From == nil {
+			return nil, &ParseError{
+				Message:  "GROUP BY clause requires FROM",
+				Position: p.cur.Loc,
+			}
+		}
 		p.advance()
 		if _, err := p.expect(kwBY); err != nil {
 			return nil, err
@@ -538,10 +603,25 @@ func (p *Parser) parseSelectStmtBase() (*nodes.SelectStmt, error) {
 				stmt.WithRollup = true
 			}
 		}
+
+		// Reject duplicate GROUP BY
+		if p.cur.Type == kwGROUP {
+			return nil, &ParseError{
+				Message:  "duplicate GROUP BY clause",
+				Position: p.cur.Loc,
+			}
+		}
 	}
 
-	// HAVING clause
-	if _, ok := p.match(kwHAVING); ok {
+	// HAVING clause — requires FROM
+	if p.cur.Type == kwHAVING {
+		if stmt.From == nil {
+			return nil, &ParseError{
+				Message:  "HAVING clause requires FROM",
+				Position: p.cur.Loc,
+			}
+		}
+		p.advance()
 		having, err := p.parseExpr()
 		if err != nil {
 			return nil, err
@@ -588,6 +668,14 @@ func (p *Parser) parseSelectStmtBase() (*nodes.SelectStmt, error) {
 				p.advance() // consume WITH
 				p.advance() // consume ROLLUP
 				stmt.OrderByWithRollup = true
+			}
+		}
+
+		// Reject duplicate ORDER BY
+		if p.cur.Type == kwORDER {
+			return nil, &ParseError{
+				Message:  "duplicate ORDER BY clause",
+				Position: p.cur.Loc,
 			}
 		}
 	}
@@ -761,7 +849,10 @@ func (p *Parser) parseTableReference() (nodes.TableExpr, error) {
 
 	// Parse joins
 	for {
-		jt, ok := p.matchJoinType()
+		jt, ok, err := p.matchJoinType()
+		if err != nil {
+			return nil, err
+		}
 		if !ok {
 			break
 		}
@@ -841,49 +932,65 @@ func (p *Parser) parseTableReference() (nodes.TableExpr, error) {
 }
 
 // matchJoinType checks for a join keyword combination and returns the join type.
-func (p *Parser) matchJoinType() (nodes.JoinType, bool) {
+// Returns an error if a join modifier keyword (INNER, LEFT, etc.) is found but
+// the required JOIN keyword is missing.
+func (p *Parser) matchJoinType() (nodes.JoinType, bool, error) {
 	switch p.cur.Type {
 	case kwJOIN:
 		p.advance()
-		return nodes.JoinInner, true
+		return nodes.JoinInner, true, nil
 	case kwINNER:
 		p.advance()
-		p.match(kwJOIN)
-		return nodes.JoinInner, true
+		if _, err := p.expect(kwJOIN); err != nil {
+			return 0, false, err
+		}
+		return nodes.JoinInner, true, nil
 	case kwLEFT:
 		p.advance()
 		p.match(kwOUTER)
-		p.match(kwJOIN)
-		return nodes.JoinLeft, true
+		if _, err := p.expect(kwJOIN); err != nil {
+			return 0, false, err
+		}
+		return nodes.JoinLeft, true, nil
 	case kwRIGHT:
 		p.advance()
 		p.match(kwOUTER)
-		p.match(kwJOIN)
-		return nodes.JoinRight, true
+		if _, err := p.expect(kwJOIN); err != nil {
+			return 0, false, err
+		}
+		return nodes.JoinRight, true, nil
 	case kwCROSS:
 		p.advance()
-		p.match(kwJOIN)
-		return nodes.JoinCross, true
+		if _, err := p.expect(kwJOIN); err != nil {
+			return 0, false, err
+		}
+		return nodes.JoinCross, true, nil
 	case kwNATURAL:
 		p.advance()
 		// NATURAL [LEFT|RIGHT] [OUTER] JOIN
 		if _, ok := p.match(kwLEFT); ok {
 			p.match(kwOUTER)
-			p.match(kwJOIN)
-			return nodes.JoinNaturalLeft, true
+			if _, err := p.expect(kwJOIN); err != nil {
+				return 0, false, err
+			}
+			return nodes.JoinNaturalLeft, true, nil
 		}
 		if _, ok := p.match(kwRIGHT); ok {
 			p.match(kwOUTER)
-			p.match(kwJOIN)
-			return nodes.JoinNaturalRight, true
+			if _, err := p.expect(kwJOIN); err != nil {
+				return 0, false, err
+			}
+			return nodes.JoinNaturalRight, true, nil
 		}
-		p.match(kwJOIN)
-		return nodes.JoinNatural, true
+		if _, err := p.expect(kwJOIN); err != nil {
+			return 0, false, err
+		}
+		return nodes.JoinNatural, true, nil
 	case kwSTRAIGHT_JOIN:
 		p.advance()
-		return nodes.JoinStraight, true
+		return nodes.JoinStraight, true, nil
 	}
-	return 0, false
+	return 0, false, nil
 }
 
 // parseTableFactor parses a table factor: table_ref, subquery, LATERAL subquery, or parenthesized table_references.
