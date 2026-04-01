@@ -1095,4 +1095,447 @@ func TestMigrationOrdering(t *testing.T) {
 				dropPolicyIdx, dropTableIdx, opsSQL(plan))
 		}
 	})
+
+	// -----------------------------------------------------------------------
+	// Step 2.3: Dependency Lifting
+	// -----------------------------------------------------------------------
+
+	t.Run("2.3 CHECK constraint function dep lifted to owning table CREATE op", func(t *testing.T) {
+		// The constraint dep on the function is at constraint OID level, but
+		// liftDepToOp must lift it to the table's CREATE op.
+		fromSQL := ``
+		toSQL := `
+			CREATE FUNCTION is_positive(val integer) RETURNS boolean LANGUAGE sql AS $$ SELECT val > 0 $$;
+			CREATE TABLE t (id int, qty int CHECK (is_positive(qty)));
+		`
+		from, err := LoadSQL(fromSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		to, err := LoadSQL(toSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff := Diff(from, to)
+		plan := GenerateMigration(from, to, diff)
+		funcIdx := -1
+		tableIdx := -1
+		for i, op := range plan.Ops {
+			if op.Type == OpCreateFunction {
+				funcIdx = i
+			}
+			if op.Type == OpCreateTable {
+				tableIdx = i
+			}
+		}
+		if funcIdx < 0 {
+			t.Fatalf("no CREATE FUNCTION found; ops: %v", opsSQL(plan))
+		}
+		if tableIdx < 0 {
+			t.Fatalf("no CREATE TABLE found; ops: %v", opsSQL(plan))
+		}
+		if funcIdx > tableIdx {
+			t.Errorf("CREATE FUNCTION (idx %d) should be before CREATE TABLE (idx %d) via constraint lifting; ops: %v",
+				funcIdx, tableIdx, opsSQL(plan))
+		}
+	})
+
+	t.Run("2.3 DEFAULT expression sequence dep lifted to owning table CREATE op", func(t *testing.T) {
+		// Sequence dep recorded at column-default level must lift to table op.
+		fromSQL := ``
+		toSQL := `
+			CREATE SEQUENCE myseq;
+			CREATE TABLE t (id int DEFAULT nextval('myseq'));
+		`
+		from, err := LoadSQL(fromSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		to, err := LoadSQL(toSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff := Diff(from, to)
+		plan := GenerateMigration(from, to, diff)
+		seqIdx := -1
+		tableIdx := -1
+		for i, op := range plan.Ops {
+			if op.Type == OpCreateSequence {
+				seqIdx = i
+			}
+			if op.Type == OpCreateTable {
+				tableIdx = i
+			}
+		}
+		if seqIdx < 0 {
+			t.Fatalf("no CREATE SEQUENCE found; ops: %v", opsSQL(plan))
+		}
+		if tableIdx < 0 {
+			t.Fatalf("no CREATE TABLE found; ops: %v", opsSQL(plan))
+		}
+		if seqIdx > tableIdx {
+			t.Errorf("CREATE SEQUENCE (idx %d) should be before CREATE TABLE (idx %d) via default lifting; ops: %v",
+				seqIdx, tableIdx, opsSQL(plan))
+		}
+	})
+
+	t.Run("2.3 expression index function dep lifted to index CREATE op", func(t *testing.T) {
+		// An expression index depends on a function. The dep is recorded at
+		// the index OID level, and should be found directly (index has its own op).
+		fromSQL := ``
+		toSQL := `
+			CREATE FUNCTION norm(val text) RETURNS text LANGUAGE sql AS $$ SELECT lower(val) $$;
+			CREATE TABLE t (id int, name text);
+			CREATE INDEX idx_norm ON t (norm(name));
+		`
+		from, err := LoadSQL(fromSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		to, err := LoadSQL(toSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff := Diff(from, to)
+		plan := GenerateMigration(from, to, diff)
+		funcIdx := -1
+		indexIdx := -1
+		for i, op := range plan.Ops {
+			if op.Type == OpCreateFunction {
+				funcIdx = i
+			}
+			if op.Type == OpCreateIndex {
+				indexIdx = i
+			}
+		}
+		if funcIdx < 0 {
+			t.Fatalf("no CREATE FUNCTION found; ops: %v", opsSQL(plan))
+		}
+		if indexIdx < 0 {
+			t.Fatalf("no CREATE INDEX found; ops: %v", opsSQL(plan))
+		}
+		if funcIdx > indexIdx {
+			t.Errorf("CREATE FUNCTION (idx %d) should be before CREATE INDEX (idx %d); ops: %v",
+				funcIdx, indexIdx, opsSQL(plan))
+		}
+	})
+
+	t.Run("2.3 column type dep lifted to owning table CREATE op", func(t *testing.T) {
+		// Type dep is recorded at column level (SubID > 0) but must lift
+		// to the table's CREATE op.
+		fromSQL := ``
+		toSQL := `
+			CREATE TYPE status AS ENUM ('active', 'inactive');
+			CREATE TABLE t (id int, s status);
+		`
+		from, err := LoadSQL(fromSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		to, err := LoadSQL(toSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff := Diff(from, to)
+		plan := GenerateMigration(from, to, diff)
+		typeIdx := -1
+		tableIdx := -1
+		for i, op := range plan.Ops {
+			if op.Type == OpCreateType {
+				typeIdx = i
+			}
+			if op.Type == OpCreateTable {
+				tableIdx = i
+			}
+		}
+		if typeIdx < 0 {
+			t.Fatalf("no CREATE TYPE found; ops: %v", opsSQL(plan))
+		}
+		if tableIdx < 0 {
+			t.Fatalf("no CREATE TABLE found; ops: %v", opsSQL(plan))
+		}
+		if typeIdx > tableIdx {
+			t.Errorf("CREATE TYPE (idx %d) should be before CREATE TABLE (idx %d) via column type lifting; ops: %v",
+				typeIdx, tableIdx, opsSQL(plan))
+		}
+	})
+
+	t.Run("2.3 trigger function dep mapped correctly trigger has its own op", func(t *testing.T) {
+		// Trigger has its own op (OpCreateTrigger), and the dep from trigger
+		// to its function should be resolved directly without lifting.
+		fromSQL := ``
+		toSQL := `
+			CREATE FUNCTION my_fn() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END; $$;
+			CREATE TABLE t (id int);
+			CREATE TRIGGER my_trig BEFORE INSERT ON t FOR EACH ROW EXECUTE FUNCTION my_fn();
+		`
+		from, err := LoadSQL(fromSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		to, err := LoadSQL(toSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff := Diff(from, to)
+		plan := GenerateMigration(from, to, diff)
+		funcIdx := -1
+		tableIdx := -1
+		trigIdx := -1
+		for i, op := range plan.Ops {
+			if op.Type == OpCreateFunction {
+				funcIdx = i
+			}
+			if op.Type == OpCreateTable {
+				tableIdx = i
+			}
+			if op.Type == OpCreateTrigger {
+				trigIdx = i
+			}
+		}
+		if funcIdx < 0 {
+			t.Fatalf("no CREATE FUNCTION found; ops: %v", opsSQL(plan))
+		}
+		if tableIdx < 0 {
+			t.Fatalf("no CREATE TABLE found; ops: %v", opsSQL(plan))
+		}
+		if trigIdx < 0 {
+			t.Fatalf("no CREATE TRIGGER found; ops: %v", opsSQL(plan))
+		}
+		if funcIdx > trigIdx {
+			t.Errorf("CREATE FUNCTION (idx %d) should be before CREATE TRIGGER (idx %d)", funcIdx, trigIdx)
+		}
+		if tableIdx > trigIdx {
+			t.Errorf("CREATE TABLE (idx %d) should be before CREATE TRIGGER (idx %d)", tableIdx, trigIdx)
+		}
+	})
+
+	t.Run("2.3 view query table dep mapped correctly view has its own op", func(t *testing.T) {
+		// View has its own op, and the dep from view to table should be
+		// resolved directly.
+		fromSQL := ``
+		toSQL := `
+			CREATE TABLE t (id int, name text);
+			CREATE VIEW v AS SELECT id, name FROM t;
+		`
+		from, err := LoadSQL(fromSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		to, err := LoadSQL(toSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff := Diff(from, to)
+		plan := GenerateMigration(from, to, diff)
+		tableIdx := -1
+		viewIdx := -1
+		for i, op := range plan.Ops {
+			if op.Type == OpCreateTable {
+				tableIdx = i
+			}
+			if op.Type == OpCreateView {
+				viewIdx = i
+			}
+		}
+		if tableIdx < 0 {
+			t.Fatalf("no CREATE TABLE found; ops: %v", opsSQL(plan))
+		}
+		if viewIdx < 0 {
+			t.Fatalf("no CREATE VIEW found; ops: %v", opsSQL(plan))
+		}
+		if tableIdx > viewIdx {
+			t.Errorf("CREATE TABLE (idx %d) should be before CREATE VIEW (idx %d)", tableIdx, viewIdx)
+		}
+	})
+
+	t.Run("2.3 constraint FK target table dep excluded from forward sort", func(t *testing.T) {
+		// FK constraints are deferred to PhasePost, so the FK dep on the
+		// target table must not create a forward edge in PhaseMain.
+		fromSQL := ``
+		toSQL := `
+			CREATE TABLE parent (id int PRIMARY KEY);
+			CREATE TABLE child (id int, parent_id int REFERENCES parent(id));
+		`
+		from, err := LoadSQL(fromSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		to, err := LoadSQL(toSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff := Diff(from, to)
+		plan := GenerateMigration(from, to, diff)
+		lastCreateTable := -1
+		firstFK := -1
+		for i, op := range plan.Ops {
+			if op.Type == OpCreateTable {
+				lastCreateTable = i
+			}
+			if op.Type == OpAddConstraint && firstFK < 0 {
+				firstFK = i
+			}
+		}
+		if lastCreateTable < 0 {
+			t.Fatalf("no CREATE TABLE found; ops: %v", opsSQL(plan))
+		}
+		if firstFK < 0 {
+			t.Fatalf("no ADD CONSTRAINT (FK) found; ops: %v", opsSQL(plan))
+		}
+		// FK should be in PhasePost, after all PhaseMain table creates.
+		if firstFK < lastCreateTable {
+			t.Errorf("FK ADD CONSTRAINT (idx %d) should be after last CREATE TABLE (idx %d); ops: %v",
+				firstFK, lastCreateTable, opsSQL(plan))
+		}
+	})
+
+	t.Run("2.3 multiple ops sharing same OID all participate in ordering", func(t *testing.T) {
+		// When a table column is modified, both the table's existing ops and
+		// the AlterColumn ops share the same ObjOID (relation OID).
+		// Both should participate in dependency ordering.
+		fromSQL := `
+			CREATE TABLE t (id int, name text);
+			CREATE VIEW v AS SELECT id, name FROM t;
+		`
+		toSQL := `
+			CREATE TABLE t (id int, name text, extra int);
+			CREATE VIEW v AS SELECT id, name FROM t;
+		`
+		from, err := LoadSQL(fromSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		to, err := LoadSQL(toSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff := Diff(from, to)
+		plan := GenerateMigration(from, to, diff)
+		// Verify that the plan generates without panic and contains AddColumn.
+		addColIdx := -1
+		for i, op := range plan.Ops {
+			if op.Type == OpAddColumn {
+				addColIdx = i
+			}
+		}
+		if addColIdx < 0 {
+			t.Fatalf("no ADD COLUMN found; ops: %v", opsSQL(plan))
+		}
+		// No view ops should be needed since the view is unchanged.
+	})
+
+	t.Run("2.3 AlterColumn ops ordered via parent table OID relative to dependent views", func(t *testing.T) {
+		// When a column default changes on a table that a view depends on,
+		// the AlterColumn op (which uses the table's OID) should not disrupt
+		// view ordering.
+		fromSQL := `
+			CREATE TABLE t (id int, name text DEFAULT 'old');
+			CREATE VIEW v AS SELECT id, name FROM t;
+		`
+		toSQL := `
+			CREATE TABLE t (id int, name text DEFAULT 'new');
+			CREATE VIEW v AS SELECT id, name FROM t;
+		`
+		from, err := LoadSQL(fromSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		to, err := LoadSQL(toSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff := Diff(from, to)
+		plan := GenerateMigration(from, to, diff)
+		// Should succeed without panic. The AlterColumn op uses the table's
+		// OID, so the view dep on the table is correctly resolved.
+		alterIdx := -1
+		for i, op := range plan.Ops {
+			if op.Type == OpAlterColumn {
+				alterIdx = i
+			}
+		}
+		if alterIdx < 0 {
+			t.Fatalf("no ALTER COLUMN found; ops: %v", opsSQL(plan))
+		}
+	})
+
+	t.Run("2.3 dep referencing OID not in op set gracefully ignored", func(t *testing.T) {
+		// When a dep references an OID not in the current op set
+		// (e.g., a dep on a built-in type or an unchanged function),
+		// the sorting should ignore it gracefully without crashing.
+		fromSQL := ``
+		toSQL := `
+			CREATE TABLE t (id int, ts timestamptz DEFAULT now());
+		`
+		from, err := LoadSQL(fromSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		to, err := LoadSQL(toSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff := Diff(from, to)
+		plan := GenerateMigration(from, to, diff)
+		// now() is a built-in function; its OID won't be in any migration op.
+		// The plan should generate without panic.
+		tableIdx := -1
+		for i, op := range plan.Ops {
+			if op.Type == OpCreateTable {
+				tableIdx = i
+			}
+		}
+		if tableIdx < 0 {
+			t.Fatalf("no CREATE TABLE found; ops: %v", opsSQL(plan))
+		}
+	})
+
+	t.Run("2.3 op with zero ObjOID excluded from dep graph ordered by priority only", func(t *testing.T) {
+		// Ops with zero ObjOID (unpopulated metadata) should be excluded
+		// from the dependency graph and ordered by priority only.
+		// We test indirectly: a well-formed migration should not panic
+		// and should produce valid ordering even when some ops lack OIDs.
+		fromSQL := ``
+		toSQL := `
+			CREATE TABLE t1 (id int);
+			CREATE TABLE t2 (id int);
+		`
+		from, err := LoadSQL(fromSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		to, err := LoadSQL(toSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff := Diff(from, to)
+		plan := GenerateMigration(from, to, diff)
+		tableCount := 0
+		for _, op := range plan.Ops {
+			if op.Type == OpCreateTable {
+				tableCount++
+			}
+		}
+		if tableCount < 2 {
+			t.Fatalf("expected 2 CREATE TABLE ops, got %d; ops: %v", tableCount, opsSQL(plan))
+		}
+		// Verify that zero-OID ops in topoSortOps are handled:
+		// manually invoke with a synthetic zero-OID op.
+		synOps := []MigrationOp{
+			{Type: OpCreateTable, ObjOID: 0, ObjType: 'r', Priority: PriorityTable},
+			{Type: OpCreateFunction, ObjOID: 12345, ObjType: 'f', Priority: PriorityFunction},
+		}
+		sorted := topoSortOps(to, synOps, false)
+		if len(sorted) != 2 {
+			t.Fatalf("expected 2 sorted ops, got %d", len(sorted))
+		}
+		// Function (priority 4) should come before table (priority 5) when no deps.
+		if sorted[0].Type != OpCreateFunction {
+			t.Errorf("expected function first (priority 4), got %s", sorted[0].Type)
+		}
+		if sorted[1].Type != OpCreateTable {
+			t.Errorf("expected table second (priority 5), got %s", sorted[1].Type)
+		}
+	})
 }
