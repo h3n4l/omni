@@ -102,7 +102,7 @@ func (p *Parser) parseCreateTriggerStmt() (*nodes.CreateTriggerStmt, error) {
 
 	// FOR EACH ROW
 	p.match(kwFOR)
-	if p.cur.Type == kwEACH || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "each")) {
+	if p.cur.Type == kwEACH {
 		p.advance()
 	}
 	if p.cur.Type == kwROW {
@@ -110,9 +110,8 @@ func (p *Parser) parseCreateTriggerStmt() (*nodes.CreateTriggerStmt, error) {
 	}
 
 	// Optional trigger_order: { FOLLOWS | PRECEDES } other_trigger_name
-	if p.cur.Type == kwFOLLOWS || p.cur.Type == kwPRECEDES ||
-		(p.cur.Type == tokIDENT && (eqFold(p.cur.Str, "follows") || eqFold(p.cur.Str, "precedes"))) {
-		follows := p.cur.Type == kwFOLLOWS || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "follows"))
+	if p.cur.Type == kwFOLLOWS || p.cur.Type == kwPRECEDES {
+		follows := p.cur.Type == kwFOLLOWS
 		p.advance()
 		trigName, _, err := p.parseIdentifier()
 		if err != nil {
@@ -242,7 +241,7 @@ func (p *Parser) parseCreateEventStmt() (*nodes.CreateEventStmt, error) {
 		p.advance()
 		if p.cur.Type == kwON {
 			next := p.peekNext()
-			if next.Type == kwSLAVE || (next.Type == tokIDENT && eqFold(next.Str, "slave")) {
+			if next.Type == kwSLAVE {
 				p.advance()
 				p.advance()
 				stmt.Enable = "DISABLE ON SLAVE"
