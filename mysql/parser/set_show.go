@@ -241,7 +241,7 @@ func (p *Parser) parseSetPasswordStmt(start int) (*nodes.SetPasswordStmt, error)
 		p.match('=')
 
 		// Password value: either a string literal or PASSWORD('string')
-		if p.isIdentToken() && eqFold(p.cur.Str, "PASSWORD") {
+		if p.cur.Type == kwPASSWORD {
 			// PASSWORD('auth_string') form
 			p.advance() // consume PASSWORD
 			p.match('(')
@@ -440,7 +440,7 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 			if err := p.parseShowLikeOrWhere(stmt); err != nil {
 				return nil, err
 			}
-		} else if p.cur.Type == kwPROCESSLIST || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "processlist")) {
+		} else if p.cur.Type == kwPROCESSLIST {
 			stmt.Type = "FULL PROCESSLIST"
 			p.advance()
 		}
@@ -591,7 +591,7 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 
 	case kwEXTENDED:
 		p.advance() // consume EXTENDED
-		if p.cur.Type == kwINDEX || p.cur.Type == kwKEY || p.cur.Type == kwKEYS || (p.cur.Type == tokIDENT && (eqFold(p.cur.Str, "indexes") || eqFold(p.cur.Str, "keys"))) {
+		if p.cur.Type == kwINDEX || p.cur.Type == kwKEY || p.cur.Type == kwKEYS || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "indexes")) {
 			// SHOW EXTENDED {INDEX | INDEXES | KEYS} ...
 			stmt.Type = "EXTENDED INDEX"
 			p.advance()
@@ -616,7 +616,7 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 		} else if p.cur.Type == kwFULL {
 			p.advance() // consume FULL
 			// SHOW EXTENDED FULL COLUMNS ...
-			if p.cur.Type == kwCOLUMNS || p.cur.Type == kwFIELDS || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "fields")) {
+			if p.cur.Type == kwCOLUMNS || p.cur.Type == kwFIELDS {
 				stmt.Type = "EXTENDED FULL COLUMNS"
 				p.advance()
 				if _, err := p.expectFromOrIn(); err != nil {
@@ -652,7 +652,7 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 					return nil, err
 				}
 			}
-		} else if p.cur.Type == kwCOLUMNS || p.cur.Type == kwFIELDS || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "fields")) {
+		} else if p.cur.Type == kwCOLUMNS || p.cur.Type == kwFIELDS {
 			// SHOW EXTENDED COLUMNS ...
 			stmt.Type = "EXTENDED COLUMNS"
 			p.advance()
@@ -1152,7 +1152,7 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 					}
 				}
 			}
-		} else if p.cur.Type == kwPROCESSLIST || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "processlist")) {
+		} else if p.cur.Type == kwPROCESSLIST {
 			stmt.Type = "PROCESSLIST"
 			p.advance()
 		} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "triggers") {
@@ -1167,7 +1167,7 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 			if err := p.parseShowFromLikeOrWhere(stmt); err != nil {
 				return nil, err
 			}
-		} else if p.cur.Type == kwKEYS || (p.cur.Type == tokIDENT && (eqFold(p.cur.Str, "indexes") || eqFold(p.cur.Str, "keys"))) {
+		} else if p.cur.Type == kwKEYS || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "indexes")) {
 			// SHOW INDEXES|KEYS (synonyms for SHOW INDEX)
 			stmt.Type = "INDEX"
 			p.advance()
@@ -1322,7 +1322,7 @@ func (p *Parser) parseShowProfileType() string {
 		p.advance()
 		return "MEMORY"
 	}
-	if p.cur.Type == kwSOURCE || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "source")) {
+	if p.cur.Type == kwSOURCE {
 		p.advance()
 		return "SOURCE"
 	}
@@ -1492,7 +1492,7 @@ func (p *Parser) parseExplainStmt() (*nodes.ExplainStmt, error) {
 	// EXPLAIN FOR CONNECTION connection_id
 	if p.cur.Type == kwFOR {
 		p.advance() // consume FOR
-		if p.cur.Type == kwCONNECTION || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "connection")) {
+		if p.cur.Type == kwCONNECTION {
 			p.advance() // consume CONNECTION
 		}
 		if p.cur.Type == tokICONST {
