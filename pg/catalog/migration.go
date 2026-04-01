@@ -526,8 +526,11 @@ func liftDepToOp(c *Catalog, objType byte, objOID uint32, oidToIdx map[depKey][]
 
 // topoSortOps sorts migration ops using Kahn's algorithm with priority
 // tie-break. It uses catalog deps to build the adjacency graph.
-// For forward (CREATE) sorting: if dep says A depends on B, B comes before A.
-func topoSortOps(c *Catalog, ops []MigrationOp) []MigrationOp {
+// For forward (CREATE) sorting (reverse=false): if dep says A depends on B, B comes before A.
+// For reverse (DROP) sorting (reverse=true): if dep says A depends on B, A comes before B
+// (drop dependents first). Priority tie-break is negated so higher-priority objects
+// (views=8, triggers=10) are dropped before lower-priority ones (tables=5).
+func topoSortOps(c *Catalog, ops []MigrationOp, reverse bool) []MigrationOp {
 	if len(ops) == 0 {
 		return nil
 	}
@@ -562,27 +565,43 @@ func topoSortOps(c *Catalog, ops []MigrationOp) []MigrationOp {
 		}
 
 		// Forward: referenced (refIdx) must come BEFORE dependent (depIdx).
+		// Reverse: dependent (depIdx) must come BEFORE referenced (refIdx).
 		for _, refIdx := range refIdxs {
 			for _, depIdx := range depIdxs {
 				if depIdx == refIdx {
 					continue // self-reference
 				}
-				edge := [2]int{refIdx, depIdx}
+				var from, to int
+				if reverse {
+					from, to = depIdx, refIdx
+				} else {
+					from, to = refIdx, depIdx
+				}
+				edge := [2]int{from, to}
 				if edgeSeen[edge] {
 					continue
 				}
 				edgeSeen[edge] = true
-				adj[refIdx] = append(adj[refIdx], depIdx)
-				inDegree[depIdx]++
+				adj[from] = append(adj[from], to)
+				inDegree[to]++
 			}
 		}
 	}
 
 	// Kahn's algorithm with min-heap (priority, original index).
+	// For reverse sort, negate priority so higher-priority objects come first
+	// (e.g., views=8 before tables=5 → -8 < -5).
+	priOf := func(i int) int {
+		if reverse {
+			return -ops[i].Priority
+		}
+		return ops[i].Priority
+	}
+
 	h := make(migPQHeap, 0, n)
 	for i := 0; i < n; i++ {
 		if inDegree[i] == 0 {
-			h = append(h, migPQEntry{idx: i, pri: ops[i].Priority, ord: i})
+			h = append(h, migPQEntry{idx: i, pri: priOf(i), ord: i})
 		}
 	}
 	heap.Init(&h)
@@ -594,7 +613,7 @@ func topoSortOps(c *Catalog, ops []MigrationOp) []MigrationOp {
 		for _, next := range adj[e.idx] {
 			inDegree[next]--
 			if inDegree[next] == 0 {
-				heap.Push(&h, migPQEntry{idx: next, pri: ops[next].Priority, ord: next})
+				heap.Push(&h, migPQEntry{idx: next, pri: priOf(next), ord: next})
 			}
 		}
 	}
@@ -630,7 +649,7 @@ func topoSortOps(c *Catalog, ops []MigrationOp) []MigrationOp {
 }
 
 // sortMigrationOps separates ops into phases and sorts each phase.
-// PhasePre: sorted by (Priority DESC, name) — reverse sort comes in step 3.
+// PhasePre: reverse topological sort using from catalog deps (drop dependents first).
 // PhaseMain: topologically sorted using to catalog deps (forward ordering).
 // PhasePost: sorted by name for determinism.
 func sortMigrationOps(from, to *Catalog, ops []MigrationOp) []MigrationOp {
@@ -646,17 +665,12 @@ func sortMigrationOps(from, to *Catalog, ops []MigrationOp) []MigrationOp {
 		}
 	}
 
-	// PhasePre: sort by (Priority DESC, name ASC) for now.
-	// Full reverse dependency sort comes in Step 2.2.
-	sort.SliceStable(preOps, func(i, j int) bool {
-		if preOps[i].Priority != preOps[j].Priority {
-			return preOps[i].Priority > preOps[j].Priority
-		}
-		return preOps[i].ObjectName < preOps[j].ObjectName
-	})
+	// PhasePre: reverse topological sort using from catalog deps.
+	// Dependents are dropped before the objects they depend on.
+	preOps = topoSortOps(from, preOps, true)
 
 	// PhaseMain: topological sort using to catalog deps.
-	mainOps = topoSortOps(to, mainOps)
+	mainOps = topoSortOps(to, mainOps, false)
 
 	// PhasePost: sort by name for determinism.
 	sort.SliceStable(postOps, func(i, j int) bool {
