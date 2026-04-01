@@ -706,6 +706,20 @@ func (c *Catalog) DefineRelation(stmt *nodes.CreateStmt, relkind byte) error {
 	c.typeByOID[arrayOID] = arrayType
 	c.typeByName[typeKey{ns: schema.OID, name: arrayType.TypeName}] = arrayType
 
+	// Record column type dependencies for composite types.
+	// When a composite type column references another composite type, we need
+	// a dep edge so the referenced type is created first during migration.
+	// pg: src/backend/catalog/heap.c — heap_create_with_catalog (type dependencies)
+	if relkind == 'c' {
+		for _, col := range columns {
+			// Skip built-in types (OID < FirstNormalObjectId).
+			if col.TypeOID >= FirstNormalObjectId {
+				// Record: this relation depends on the type.
+				c.recordDependency('r', relOID, int32(col.AttNum), 't', col.TypeOID, 0, DepNormal)
+			}
+		}
+	}
+
 	// Process constraints (composite types have no constraints).
 	if relkind != 'c' {
 		for _, cd := range constraintDefs {

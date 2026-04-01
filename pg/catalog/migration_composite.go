@@ -24,8 +24,8 @@ func generateCompositeDDL(from, to *Catalog, diff *SchemaDiff) []MigrationOp {
 				SQL:           formatCreateCompositeType(to, entry.SchemaName, entry.Name, entry.To),
 				Transactional: true,
 				Phase:         PhaseMain,
-				ObjType:       't',
-				ObjOID:        entry.To.RowTypeOID,
+				ObjType:       'r',
+				ObjOID:        entry.To.OID,
 				Priority:      PriorityType,
 			})
 
@@ -41,8 +41,8 @@ func generateCompositeDDL(from, to *Catalog, diff *SchemaDiff) []MigrationOp {
 				SQL:           fmt.Sprintf("DROP TYPE %s", qn),
 				Transactional: true,
 				Phase:         PhasePre,
-				ObjType:       't',
-				ObjOID:        entry.From.RowTypeOID,
+				ObjType:       'r',
+				ObjOID:        entry.From.OID,
 				Priority:      PriorityType,
 			})
 
@@ -97,7 +97,7 @@ func formatCreateCompositeType(cat *Catalog, schemaName, name string, rel *Relat
 func generateCompositeAlterOps(fromCat, toCat *Catalog, entry CompositeTypeDiffEntry) []MigrationOp {
 	var ops []MigrationOp
 	qn := migrationQualifiedName(entry.SchemaName, entry.Name)
-	typeOID := entry.To.RowTypeOID
+	relOID := entry.To.OID
 
 	// Build maps of column name -> Column for both sides.
 	fromCols := make(map[string]*Column, len(entry.From.Columns))
@@ -125,8 +125,8 @@ func generateCompositeAlterOps(fromCat, toCat *Catalog, entry CompositeTypeDiffE
 			SQL:           fmt.Sprintf("ALTER TYPE %s DROP ATTRIBUTE %s", qn, quoteIdentAlways(name)),
 			Transactional: true,
 			Phase:         PhaseMain,
-			ObjType:       't',
-			ObjOID:        typeOID,
+			ObjType:       'r',
+			ObjOID:        relOID,
 			Priority:      PriorityType,
 		})
 	}
@@ -158,8 +158,8 @@ func generateCompositeAlterOps(fromCat, toCat *Catalog, entry CompositeTypeDiffE
 			SQL:           fmt.Sprintf("ALTER TYPE %s ADD ATTRIBUTE %s %s", qn, quoteIdentAlways(c.Name), typeName),
 			Transactional: true,
 			Phase:         PhaseMain,
-			ObjType:       't',
-			ObjOID:        typeOID,
+			ObjType:       'r',
+			ObjOID:        relOID,
 			Priority:      PriorityType,
 		})
 	}
@@ -180,8 +180,8 @@ func generateCompositeAlterOps(fromCat, toCat *Catalog, entry CompositeTypeDiffE
 				SQL:           fmt.Sprintf("ALTER TYPE %s ALTER ATTRIBUTE %s TYPE %s", qn, quoteIdentAlways(tc.Name), toType),
 				Transactional: true,
 				Phase:         PhaseMain,
-				ObjType:       't',
-				ObjOID:        typeOID,
+				ObjType:       'r',
+				ObjOID:        relOID,
 				Priority:      PriorityType,
 			})
 		}

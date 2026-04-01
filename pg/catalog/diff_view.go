@@ -73,6 +73,11 @@ func buildViewMap(c *Catalog) map[relKey]*Relation {
 func compareView(fromCat, toCat *Catalog, key relKey, from, to *Relation) (RelationDiffEntry, bool) {
 	changed := false
 
+	// RelKind changed (e.g., view → materialized view or vice versa).
+	if from.RelKind != to.RelKind {
+		changed = true
+	}
+
 	// Compare view definition using deparse.
 	fromDef := getViewDef(fromCat, key, from)
 	toDef := getViewDef(toCat, key, to)

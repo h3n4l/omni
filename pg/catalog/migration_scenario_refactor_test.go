@@ -128,9 +128,6 @@ func TestMigrationScenarioRefactor(t *testing.T) {
 	})
 
 	t.Run("3.2 change function signature with dependent trigger", func(t *testing.T) {
-		// [~] Production bug: generated trigger SQL uses unqualified function
-		// name that causes parse error in roundtrip.
-		t.Skip("production bug: trigger function reference generates invalid SQL in roundtrip")
 		before := `
 			CREATE TABLE t (id int PRIMARY KEY, val text);
 			CREATE FUNCTION trg_fn() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END; $$;
@@ -157,9 +154,6 @@ func TestMigrationScenarioRefactor(t *testing.T) {
 	})
 
 	t.Run("3.2 change function return type", func(t *testing.T) {
-		// [~] Production bug: uses CREATE OR REPLACE which cannot change
-		// return type; needs DROP + CREATE with dependent view recreation.
-		t.Skip("production bug: CREATE OR REPLACE cannot change function return type")
 		before := `
 			CREATE FUNCTION myfn() RETURNS int LANGUAGE sql AS $$ SELECT 1 $$;
 			CREATE VIEW v AS SELECT myfn() AS result;
@@ -242,9 +236,6 @@ func TestMigrationScenarioRefactor(t *testing.T) {
 	})
 
 	t.Run("3.3 convert regular table to partitioned", func(t *testing.T) {
-		// [~] Production bug: migration does not generate DROP+CREATE
-		// to convert a regular table to a partitioned table.
-		t.Skip("production bug: cannot convert regular table to partitioned table via migration")
 		before := `
 			CREATE TABLE orders (id int PRIMARY KEY, created_at date, total int);
 		`
@@ -255,9 +246,6 @@ func TestMigrationScenarioRefactor(t *testing.T) {
 	})
 
 	t.Run("3.3 add inheritance to existing table", func(t *testing.T) {
-		// [~] Production bug: migration does not generate proper DDL
-		// for adding inheritance to an existing table.
-		t.Skip("production bug: cannot add INHERITS to existing table via migration")
 		before := `
 			CREATE TABLE base_entity (id int PRIMARY KEY, created_at timestamp);
 			CREATE TABLE product (id int PRIMARY KEY, created_at timestamp, name text);
@@ -312,9 +300,6 @@ func TestMigrationScenarioRefactor(t *testing.T) {
 	})
 
 	t.Run("3.4 replace view with materialized view", func(t *testing.T) {
-		// [~] Production bug: diff does not detect change from regular
-		// view to materialized view (RelKind 'v' -> 'm'), produces 0 ops.
-		t.Skip("production bug: diff does not detect view-to-matview conversion")
 		before := `
 			CREATE TABLE t (id int PRIMARY KEY, name text);
 			CREATE VIEW v AS SELECT id, name FROM t;

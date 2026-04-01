@@ -128,26 +128,33 @@ func collectExprDepsFromCreateStmt(s *nodes.CreateStmt) (funcRefs, relRefs, type
 		return
 	}
 	for _, elt := range s.TableElts.Items {
-		col, ok := elt.(*nodes.ColumnDef)
-		if !ok {
-			continue
-		}
-		// Walk RawDefault (column DEFAULT expression).
-		if col.RawDefault != nil {
-			fr, rr, tr := collectExprDeps(col.RawDefault)
-			funcRefs = append(funcRefs, fr...)
-			relRefs = append(relRefs, rr...)
-			typeRefs = append(typeRefs, tr...)
-		}
-		// Walk column-level constraints.
-		if col.Constraints != nil {
-			for _, c := range col.Constraints.Items {
-				if cons, ok := c.(*nodes.Constraint); ok && cons.RawExpr != nil {
-					fr, rr, tr := collectExprDeps(cons.RawExpr)
-					funcRefs = append(funcRefs, fr...)
-					relRefs = append(relRefs, rr...)
-					typeRefs = append(typeRefs, tr...)
+		switch n := elt.(type) {
+		case *nodes.ColumnDef:
+			// Walk RawDefault (column DEFAULT expression).
+			if n.RawDefault != nil {
+				fr, rr, tr := collectExprDeps(n.RawDefault)
+				funcRefs = append(funcRefs, fr...)
+				relRefs = append(relRefs, rr...)
+				typeRefs = append(typeRefs, tr...)
+			}
+			// Walk column-level constraints.
+			if n.Constraints != nil {
+				for _, c := range n.Constraints.Items {
+					if cons, ok := c.(*nodes.Constraint); ok && cons.RawExpr != nil {
+						fr, rr, tr := collectExprDeps(cons.RawExpr)
+						funcRefs = append(funcRefs, fr...)
+						relRefs = append(relRefs, rr...)
+						typeRefs = append(typeRefs, tr...)
+					}
 				}
+			}
+		case *nodes.Constraint:
+			// Standalone table-level constraint in TableElts (e.g., CHECK).
+			if n.RawExpr != nil {
+				fr, rr, tr := collectExprDeps(n.RawExpr)
+				funcRefs = append(funcRefs, fr...)
+				relRefs = append(relRefs, rr...)
+				typeRefs = append(typeRefs, tr...)
 			}
 		}
 	}

@@ -61,10 +61,43 @@ func generateViewDDL(from, to *Catalog, diff *SchemaDiff) []MigrationOp {
 			if entry.From == nil || entry.To == nil {
 				continue
 			}
+
+			// RelKind changed between view types (e.g., view → matview or vice versa): DROP old + CREATE new.
+			// Only handle view-type RelKinds; table changes are handled by generatePartitionDDL.
+			fromIsView := entry.From.RelKind == 'v' || entry.From.RelKind == 'm'
+			toIsView := entry.To.RelKind == 'v' || entry.To.RelKind == 'm'
+			if (fromIsView || toIsView) && entry.From.RelKind != entry.To.RelKind {
+				qn := migrationQualifiedName(entry.SchemaName, entry.Name)
+				// Drop the original kind.
+				dropSQL := fmt.Sprintf("DROP VIEW %s", qn)
+				if entry.From.RelKind == 'm' {
+					dropSQL = fmt.Sprintf("DROP MATERIALIZED VIEW %s", qn)
+				}
+				ops = append(ops, MigrationOp{
+					Type:          OpDropView,
+					SchemaName:    entry.SchemaName,
+					ObjectName:    entry.Name,
+					SQL:           dropSQL,
+					Transactional: true,
+					Phase:         PhasePre,
+					ObjType:       'r',
+					ObjOID:        entry.From.OID,
+					Priority:      PriorityView,
+				})
+				// Create the new kind.
+				switch entry.To.RelKind {
+				case 'v':
+					ops = append(ops, buildCreateViewOp(to, entry))
+				case 'm':
+					ops = append(ops, buildCreateMatViewOp(to, entry))
+				}
+				continue
+			}
+
 			switch entry.To.RelKind {
 			case 'v':
 				if viewColumnsChanged(entry) {
-					// Column order/names changed — can't use CREATE OR REPLACE.
+					// Column order/names/types changed — can't use CREATE OR REPLACE.
 					qn := migrationQualifiedName(entry.SchemaName, entry.Name)
 					ops = append(ops, MigrationOp{
 						Type:          OpDropView,
@@ -288,7 +321,8 @@ func findDependentViews(c *Catalog, schemaName, viewName string) []viewRef {
 }
 
 // viewColumnsChanged returns true if existing columns were renamed, removed,
-// or reordered. Adding new columns at the end is safe for CREATE OR REPLACE.
+// reordered, or had their types changed. Adding new columns at the end is safe
+// for CREATE OR REPLACE, but type changes require DROP + CREATE.
 func viewColumnsChanged(entry RelationDiffEntry) bool {
 	if entry.From == nil || entry.To == nil {
 		return false
@@ -299,9 +333,14 @@ func viewColumnsChanged(entry RelationDiffEntry) bool {
 	if len(toCols) < len(fromCols) {
 		return true
 	}
-	// Check that existing columns kept their names and order.
+	// Check that existing columns kept their names, order, and types.
 	for i := range fromCols {
 		if fromCols[i].Name != toCols[i].Name {
+			return true
+		}
+		// Type change (e.g., function return type changed): PG cannot use
+		// CREATE OR REPLACE VIEW if a column's data type changes.
+		if fromCols[i].TypeOID != toCols[i].TypeOID {
 			return true
 		}
 	}

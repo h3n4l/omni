@@ -246,21 +246,35 @@ func wrapColumnTypeChangesWithViewOps(from, to *Catalog, diff *SchemaDiff, ops [
 			continue
 		}
 		needsViewWrap := false
-		for _, col := range rel.Columns {
-			// Column drop: PG cannot drop a column when a view depends on the table.
-			if col.Action == DiffDrop {
+
+		// RelKind change (e.g., table → partitioned) or inheritance change
+		// trigger DROP TABLE CASCADE which destroys dependent views.
+		if rel.From != nil && rel.To != nil {
+			if rel.From.RelKind != rel.To.RelKind {
 				needsViewWrap = true
-				break
 			}
-			// Column type change.
-			if col.Action != DiffModify || col.From == nil || col.To == nil {
-				continue
-			}
-			oldType := from.FormatType(col.From.TypeOID, col.From.TypeMod)
-			newType := to.FormatType(col.To.TypeOID, col.To.TypeMod)
-			if oldType != newType {
+			if !inhParentsEqual(from, to, rel.From.InhParents, rel.To.InhParents) {
 				needsViewWrap = true
-				break
+			}
+		}
+
+		if !needsViewWrap {
+			for _, col := range rel.Columns {
+				// Column drop: PG cannot drop a column when a view depends on the table.
+				if col.Action == DiffDrop {
+					needsViewWrap = true
+					break
+				}
+				// Column type change.
+				if col.Action != DiffModify || col.From == nil || col.To == nil {
+					continue
+				}
+				oldType := from.FormatType(col.From.TypeOID, col.From.TypeMod)
+				newType := to.FormatType(col.To.TypeOID, col.To.TypeMod)
+				if oldType != newType {
+					needsViewWrap = true
+					break
+				}
 			}
 		}
 		if needsViewWrap {

@@ -215,7 +215,6 @@ func TestMigrationScenarioCreate(t *testing.T) {
 	})
 
 	t.Run("1.3.4 composite type chain", func(t *testing.T) {
-		t.Skip("composite type ordering: street_addr must be created before full_addr — needs topo sort fix")
 		before := ``
 		after := `
 			CREATE TYPE street_addr AS (

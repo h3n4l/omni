@@ -29,6 +29,25 @@ func generatePartitionDDL(from, to *Catalog, diff *SchemaDiff) []MigrationOp {
 				continue
 			}
 
+			// RelKind changed between table types (e.g., regular 'r' → partitioned 'p').
+			// PG does not support ALTER TABLE to change RelKind. We must
+			// DROP + CREATE the table with a warning about data loss.
+			// Only handle table-type RelKinds; view/matview changes are handled by generateViewDDL.
+			fromIsTable := entry.From.RelKind == 'r' || entry.From.RelKind == 'p'
+			toIsTable := entry.To.RelKind == 'r' || entry.To.RelKind == 'p'
+			if fromIsTable && toIsTable && entry.From.RelKind != entry.To.RelKind {
+				ops = append(ops, buildTableRecreateOps(from, to, entry,
+					fmt.Sprintf("converting table from relkind '%c' to '%c'", entry.From.RelKind, entry.To.RelKind))...)
+				continue
+			}
+
+			// Inheritance changed: PG does not support ALTER TABLE ... INHERITS.
+			// We must DROP + CREATE the table. Only for actual tables.
+			if fromIsTable && toIsTable && !inhParentsEqual(from, to, entry.From.InhParents, entry.To.InhParents) {
+				ops = append(ops, buildTableRecreateOps(from, to, entry, "changing table inheritance")...)
+				continue
+			}
+
 			// Replica identity changed.
 			if entry.From.ReplicaIdentity != entry.To.ReplicaIdentity {
 				ops = append(ops, generateReplicaIdentityDDL(to, entry)...)
@@ -231,4 +250,62 @@ func formatInheritsClause(c *Catalog, rel *Relation) string {
 	}
 
 	return " INHERITS (" + strings.Join(parents, ", ") + ")"
+}
+
+// buildTableRecreateOps generates DROP TABLE CASCADE + CREATE TABLE + CREATE INDEX ops
+// for a table that must be recreated (e.g., RelKind change, inheritance change).
+// DROP TABLE CASCADE also destroys dependent views and indexes, so indexes must
+// be regenerated. Dependent views are handled by wrapColumnTypeChangesWithViewOps.
+func buildTableRecreateOps(from, to *Catalog, entry RelationDiffEntry, reason string) []MigrationOp {
+	var ops []MigrationOp
+	qn := migrationQualifiedName(entry.SchemaName, entry.Name)
+
+	ops = append(ops, MigrationOp{
+		Type:          OpDropTable,
+		SchemaName:    entry.SchemaName,
+		ObjectName:    entry.Name,
+		SQL:           fmt.Sprintf("DROP TABLE %s CASCADE", qn),
+		Warning:       fmt.Sprintf("%s requires DROP + CREATE (data loss): %s", qn, reason),
+		Transactional: true,
+		Phase:         PhasePre,
+		ObjType:       'r',
+		ObjOID:        entry.From.OID,
+		Priority:      PriorityTable,
+	})
+
+	ddl := FormatCreateTable(to, entry.SchemaName, entry.To)
+	ops = append(ops, MigrationOp{
+		Type:          OpCreateTable,
+		SchemaName:    entry.SchemaName,
+		ObjectName:    entry.Name,
+		SQL:           ddl,
+		Warning:       fmt.Sprintf("table %s recreated — verify data migration", qn),
+		Transactional: true,
+		Phase:         PhaseMain,
+		ObjType:       'r',
+		ObjOID:        entry.To.OID,
+		Priority:      PriorityTable,
+	})
+
+	// Recreate standalone indexes (not constraint-backed) that exist in the target.
+	indexes := to.IndexesOf(entry.To.OID)
+	for _, idx := range indexes {
+		if idx.ConstraintOID != 0 {
+			continue // managed by constraint DDL
+		}
+		sql := buildCreateIndexSQL(idx, entry.To, entry.SchemaName)
+		ops = append(ops, MigrationOp{
+			Type:          OpCreateIndex,
+			SchemaName:    entry.SchemaName,
+			ObjectName:    idx.Name,
+			SQL:           sql,
+			Transactional: true,
+			Phase:         PhaseMain,
+			ObjType:       'i',
+			ObjOID:        idx.OID,
+			Priority:      PriorityIndex,
+		})
+	}
+
+	return ops
 }
