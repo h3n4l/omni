@@ -288,7 +288,7 @@ func (p *Parser) parseRoutineCharacteristic() (*nodes.RoutineCharacteristic, boo
 			Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "LANGUAGE", Value: name,
 		}, true, nil
 
-	case p.cur.Type == kwDETERMINISTIC || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "deterministic")):
+	case p.cur.Type == kwDETERMINISTIC:
 		p.advance()
 		return &nodes.RoutineCharacteristic{
 			Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "DETERMINISTIC", Value: "YES",
@@ -297,7 +297,7 @@ func (p *Parser) parseRoutineCharacteristic() (*nodes.RoutineCharacteristic, boo
 	case p.cur.Type == kwNOT:
 		// NOT DETERMINISTIC
 		next := p.peekNext()
-		if next.Type == kwDETERMINISTIC || (next.Type == tokIDENT && eqFold(next.Str, "deterministic")) {
+		if next.Type == kwDETERMINISTIC {
 			p.advance()
 			p.advance()
 			return &nodes.RoutineCharacteristic{
@@ -308,7 +308,7 @@ func (p *Parser) parseRoutineCharacteristic() (*nodes.RoutineCharacteristic, boo
 
 	case p.cur.Type == kwSQL:
 		p.advance()
-		if p.cur.Type == kwSECURITY || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "security")) {
+		if p.cur.Type == kwSECURITY {
 			p.advance()
 			name, _, err := p.parseIdentifier()
 			if err != nil {
@@ -320,7 +320,7 @@ func (p *Parser) parseRoutineCharacteristic() (*nodes.RoutineCharacteristic, boo
 		}
 		return nil, false, nil
 
-	case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "contains"):
+	case p.cur.Type == kwCONTAINS:
 		p.advance()
 		p.match(kwSQL)
 		return &nodes.RoutineCharacteristic{
@@ -337,20 +337,20 @@ func (p *Parser) parseRoutineCharacteristic() (*nodes.RoutineCharacteristic, boo
 		}
 		return nil, false, nil
 
-	case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "reads"):
+	case p.cur.Type == kwREADS:
 		p.advance()
 		p.match(kwSQL)
-		if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "data") {
+		if p.cur.Type == kwDATA {
 			p.advance()
 		}
 		return &nodes.RoutineCharacteristic{
 			Loc: nodes.Loc{Start: start, End: p.pos()}, Name: "DATA ACCESS", Value: "READS SQL DATA",
 		}, true, nil
 
-	case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "modifies"):
+	case p.cur.Type == kwMODIFIES:
 		p.advance()
 		p.match(kwSQL)
-		if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "data") {
+		if p.cur.Type == kwDATA {
 			p.advance()
 		}
 		return &nodes.RoutineCharacteristic{
