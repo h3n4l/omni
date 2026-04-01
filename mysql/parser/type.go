@@ -353,6 +353,20 @@ func (p *Parser) parseDataType() (*nodes.DataType, error) {
 				p.advance()
 				p.parseOptionalPrecision(dt)
 				p.parseUnsignedZerofill(dt)
+			case eqFold(name, "long"):
+				// LONG / LONG VARCHAR → MEDIUMTEXT, LONG VARBINARY → MEDIUMBLOB
+				p.advance()
+				if p.cur.Type == kwVARCHAR {
+					p.advance()
+					dt.Name = "MEDIUMTEXT"
+					p.parseCharsetCollate(dt)
+				} else if p.cur.Type == kwVARBINARY {
+					p.advance()
+					dt.Name = "MEDIUMBLOB"
+				} else {
+					dt.Name = "MEDIUMTEXT"
+					p.parseCharsetCollate(dt)
+				}
 			default:
 				return nil, &ParseError{
 					Message:  "expected data type",

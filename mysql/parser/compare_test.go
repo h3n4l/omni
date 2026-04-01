@@ -575,6 +575,26 @@ func TestParseDataTypes(t *testing.T) {
 		{"FLOAT8", "{DATATYPE :loc 0 :name DOUBLE}"},
 		// DOUBLE PRECISION (regression check)
 		{"DOUBLE PRECISION", "{DATATYPE :loc 0 :name DOUBLE}"},
+
+		// Type synonyms — String & Binary (section 1.2)
+		// LONG → MEDIUMTEXT
+		{"LONG", "{DATATYPE :loc 0 :name MEDIUMTEXT}"},
+		// LONG VARCHAR → MEDIUMTEXT
+		{"LONG VARCHAR", "{DATATYPE :loc 0 :name MEDIUMTEXT}"},
+		// LONG VARBINARY → MEDIUMBLOB
+		{"LONG VARBINARY", "{DATATYPE :loc 0 :name MEDIUMBLOB}"},
+		// LONG with CHARACTER SET
+		{"LONG CHARACTER SET utf8mb4", "{DATATYPE :loc 0 :name MEDIUMTEXT :charset utf8mb4}"},
+		// LONG VARCHAR with COLLATE
+		{"LONG VARCHAR COLLATE utf8mb4_general_ci", "{DATATYPE :loc 0 :name MEDIUMTEXT :collate utf8mb4_general_ci}"},
+		// TEXT with length (regression check)
+		{"TEXT(1000)", "{DATATYPE :loc 0 :name TEXT :len 1000}"},
+		// NATIONAL CHAR (regression check)
+		{"NATIONAL CHAR(10)", "{DATATYPE :loc 0 :name CHAR :len 10 :charset utf8mb3}"},
+		// NCHAR (regression check)
+		{"NCHAR(10)", "{DATATYPE :loc 0 :name CHAR :len 10 :charset utf8mb3}"},
+		// NVARCHAR (regression check)
+		{"NVARCHAR(100)", "{DATATYPE :loc 0 :name VARCHAR :len 100 :charset utf8mb3}"},
 	}
 
 	for _, tt := range tests {
