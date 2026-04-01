@@ -1799,4 +1799,233 @@ func TestMigrationOrdering(t *testing.T) {
 				funcIdx, trigIdx, opsSQL(plan))
 		}
 	})
+
+	// -----------------------------------------------------------------------
+	// Section 3.2: Replace wrapColumnTypeChangesWithViewOps
+	// -----------------------------------------------------------------------
+
+	t.Run("3.2 column type change with dependent view", func(t *testing.T) {
+		// Changing a column type (int→bigint) when a view depends on the table.
+		// Expect: DROP VIEW, ALTER COLUMN, CREATE VIEW in correct order.
+		fromSQL := `
+			CREATE TABLE t (id int, val int);
+			CREATE VIEW v AS SELECT id, val FROM t;
+		`
+		toSQL := `
+			CREATE TABLE t (id int, val bigint);
+			CREATE VIEW v AS SELECT id, val FROM t;
+		`
+		from, err := LoadSQL(fromSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		to, err := LoadSQL(toSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff := Diff(from, to)
+		plan := GenerateMigration(from, to, diff)
+
+		dropViewIdx := -1
+		alterColIdx := -1
+		createViewIdx := -1
+		for i, op := range plan.Ops {
+			if op.Type == OpDropView && op.ObjectName == "v" {
+				dropViewIdx = i
+			}
+			if op.Type == OpAlterColumn && strings.Contains(op.SQL, "val") {
+				alterColIdx = i
+			}
+			if op.Type == OpCreateView && op.ObjectName == "v" {
+				createViewIdx = i
+			}
+		}
+		if dropViewIdx < 0 {
+			t.Fatalf("no DROP VIEW found; ops: %v", opsSQL(plan))
+		}
+		if alterColIdx < 0 {
+			t.Fatalf("no ALTER COLUMN found; ops: %v", opsSQL(plan))
+		}
+		if createViewIdx < 0 {
+			t.Fatalf("no CREATE VIEW found; ops: %v", opsSQL(plan))
+		}
+		if dropViewIdx > alterColIdx {
+			t.Errorf("DROP VIEW (idx %d) should be before ALTER COLUMN (idx %d); ops: %v",
+				dropViewIdx, alterColIdx, opsSQL(plan))
+		}
+		if alterColIdx > createViewIdx {
+			t.Errorf("ALTER COLUMN (idx %d) should be before CREATE VIEW (idx %d); ops: %v",
+				alterColIdx, createViewIdx, opsSQL(plan))
+		}
+	})
+
+	t.Run("3.2 column type change with chain of dependent views", func(t *testing.T) {
+		// v1 depends on t, v2 depends on v1. Both should be dropped and recreated.
+		fromSQL := `
+			CREATE TABLE t (id int, val int);
+			CREATE VIEW v1 AS SELECT id, val FROM t;
+			CREATE VIEW v2 AS SELECT id, val FROM v1;
+		`
+		toSQL := `
+			CREATE TABLE t (id int, val bigint);
+			CREATE VIEW v1 AS SELECT id, val FROM t;
+			CREATE VIEW v2 AS SELECT id, val FROM v1;
+		`
+		from, err := LoadSQL(fromSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		to, err := LoadSQL(toSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff := Diff(from, to)
+		plan := GenerateMigration(from, to, diff)
+
+		dropV1Idx := -1
+		dropV2Idx := -1
+		alterColIdx := -1
+		createV1Idx := -1
+		createV2Idx := -1
+		for i, op := range plan.Ops {
+			switch {
+			case op.Type == OpDropView && op.ObjectName == "v1":
+				dropV1Idx = i
+			case op.Type == OpDropView && op.ObjectName == "v2":
+				dropV2Idx = i
+			case op.Type == OpAlterColumn && strings.Contains(op.SQL, "val"):
+				alterColIdx = i
+			case op.Type == OpCreateView && op.ObjectName == "v1":
+				createV1Idx = i
+			case op.Type == OpCreateView && op.ObjectName == "v2":
+				createV2Idx = i
+			}
+		}
+		if dropV1Idx < 0 {
+			t.Fatalf("no DROP VIEW v1 found; ops: %v", opsSQL(plan))
+		}
+		if dropV2Idx < 0 {
+			t.Fatalf("no DROP VIEW v2 found; ops: %v", opsSQL(plan))
+		}
+		if alterColIdx < 0 {
+			t.Fatalf("no ALTER COLUMN found; ops: %v", opsSQL(plan))
+		}
+		if createV1Idx < 0 {
+			t.Fatalf("no CREATE VIEW v1 found; ops: %v", opsSQL(plan))
+		}
+		if createV2Idx < 0 {
+			t.Fatalf("no CREATE VIEW v2 found; ops: %v", opsSQL(plan))
+		}
+		// Both drops before alter
+		if dropV1Idx > alterColIdx {
+			t.Errorf("DROP VIEW v1 (idx %d) should be before ALTER COLUMN (idx %d); ops: %v",
+				dropV1Idx, alterColIdx, opsSQL(plan))
+		}
+		if dropV2Idx > alterColIdx {
+			t.Errorf("DROP VIEW v2 (idx %d) should be before ALTER COLUMN (idx %d); ops: %v",
+				dropV2Idx, alterColIdx, opsSQL(plan))
+		}
+		// Both creates after alter
+		if createV1Idx < alterColIdx {
+			t.Errorf("CREATE VIEW v1 (idx %d) should be after ALTER COLUMN (idx %d); ops: %v",
+				createV1Idx, alterColIdx, opsSQL(plan))
+		}
+		if createV2Idx < alterColIdx {
+			t.Errorf("CREATE VIEW v2 (idx %d) should be after ALTER COLUMN (idx %d); ops: %v",
+				createV2Idx, alterColIdx, opsSQL(plan))
+		}
+		// v2 depends on v1: v2 dropped before v1, v1 created before v2
+		if dropV2Idx > dropV1Idx {
+			t.Errorf("DROP VIEW v2 (idx %d) should be before DROP VIEW v1 (idx %d); ops: %v",
+				dropV2Idx, dropV1Idx, opsSQL(plan))
+		}
+		if createV1Idx > createV2Idx {
+			t.Errorf("CREATE VIEW v1 (idx %d) should be before CREATE VIEW v2 (idx %d); ops: %v",
+				createV1Idx, createV2Idx, opsSQL(plan))
+		}
+	})
+
+	t.Run("3.2 column type change with no dependent views", func(t *testing.T) {
+		// No views depend on the table — ALTER COLUMN only, no extra ops.
+		fromSQL := `
+			CREATE TABLE t (id int, val int);
+		`
+		toSQL := `
+			CREATE TABLE t (id int, val bigint);
+		`
+		from, err := LoadSQL(fromSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		to, err := LoadSQL(toSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff := Diff(from, to)
+		plan := GenerateMigration(from, to, diff)
+
+		hasAlterCol := false
+		for _, op := range plan.Ops {
+			if op.Type == OpAlterColumn && strings.Contains(op.SQL, "val") {
+				hasAlterCol = true
+			}
+			if op.Type == OpDropView || op.Type == OpCreateView {
+				t.Errorf("unexpected view op when no views depend on table: %s; ops: %v",
+					op.SQL, opsSQL(plan))
+			}
+		}
+		if !hasAlterCol {
+			t.Fatalf("no ALTER COLUMN found; ops: %v", opsSQL(plan))
+		}
+	})
+
+	t.Run("3.2 dependent views identified via catalog deps not string matching", func(t *testing.T) {
+		// A view references a table named "data"; another table "metadata" exists.
+		// The old string-matching approach would match "metadata" if it contained "data".
+		// Dep-based approach should only match the actual dependent view.
+		fromSQL := `
+			CREATE TABLE data (id int, val int);
+			CREATE TABLE metadata (id int, info text);
+			CREATE VIEW v_data AS SELECT id, val FROM data;
+			CREATE VIEW v_meta AS SELECT id, info FROM metadata;
+		`
+		toSQL := `
+			CREATE TABLE data (id int, val bigint);
+			CREATE TABLE metadata (id int, info text);
+			CREATE VIEW v_data AS SELECT id, val FROM data;
+			CREATE VIEW v_meta AS SELECT id, info FROM metadata;
+		`
+		from, err := LoadSQL(fromSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		to, err := LoadSQL(toSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff := Diff(from, to)
+		plan := GenerateMigration(from, to, diff)
+
+		hasDropVData := false
+		hasCreateVData := false
+		for _, op := range plan.Ops {
+			if op.Type == OpDropView && op.ObjectName == "v_data" {
+				hasDropVData = true
+			}
+			if op.Type == OpCreateView && op.ObjectName == "v_data" {
+				hasCreateVData = true
+			}
+			// v_meta should NOT be dropped/created — it doesn't depend on "data" table.
+			if (op.Type == OpDropView || op.Type == OpCreateView) && op.ObjectName == "v_meta" {
+				t.Errorf("v_meta should not be affected by data column type change: %s; ops: %v",
+					op.SQL, opsSQL(plan))
+			}
+		}
+		if !hasDropVData {
+			t.Fatalf("no DROP VIEW v_data found; ops: %v", opsSQL(plan))
+		}
+		if !hasCreateVData {
+			t.Fatalf("no CREATE VIEW v_data found; ops: %v", opsSQL(plan))
+		}
+	})
 }

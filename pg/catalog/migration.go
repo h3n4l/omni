@@ -231,16 +231,20 @@ func GenerateMigration(from, to *Catalog, diff *SchemaDiff) *MigrationPlan {
 
 
 // wrapColumnTypeChangesWithViewOps detects ALTER COLUMN TYPE operations and
-// inserts DROP VIEW before and CREATE VIEW after them for any views that
-// depend on the modified table. PG cannot alter a column type if a view
-// references that table.
+// injects synthetic DROP VIEW + CREATE VIEW ops for any views that depend on
+// the modified table (via catalog deps). PG cannot alter a column type if a
+// view references that table.
+//
+// The ops are appended (not manually positioned); sortMigrationOps handles
+// ordering via the dependency graph.
 func wrapColumnTypeChangesWithViewOps(from, to *Catalog, diff *SchemaDiff, ops []MigrationOp) []MigrationOp {
-	// Find all tables that have column type changes.
-	tablesWithTypeChange := make(map[string]bool) // "schema.table"
+	// Find OIDs of tables that have column type changes.
+	tableOIDs := make(map[uint32]bool)
 	for _, rel := range diff.Relations {
 		if rel.Action != DiffModify {
 			continue
 		}
+		hasTypeChange := false
 		for _, col := range rel.Columns {
 			if col.Action != DiffModify || col.From == nil || col.To == nil {
 				continue
@@ -248,47 +252,63 @@ func wrapColumnTypeChangesWithViewOps(from, to *Catalog, diff *SchemaDiff, ops [
 			oldType := from.FormatType(col.From.TypeOID, col.From.TypeMod)
 			newType := to.FormatType(col.To.TypeOID, col.To.TypeMod)
 			if oldType != newType {
-				tablesWithTypeChange[rel.SchemaName+"."+rel.Name] = true
+				hasTypeChange = true
+				break
+			}
+		}
+		if hasTypeChange {
+			// Look up the table OID from the `from` catalog (where deps are recorded).
+			r := from.GetRelation(rel.SchemaName, rel.Name)
+			if r != nil {
+				tableOIDs[r.OID] = true
 			}
 		}
 	}
-	if len(tablesWithTypeChange) == 0 {
+	if len(tableOIDs) == 0 {
 		return ops
 	}
 
-	// Find views that depend on these tables.
+	// Use from.deps to find views that depend on these tables (transitively).
+	// A view depends on a table if there is a dep entry where RefType='r',
+	// RefOID=tableOID, ObjType='r', and the dependent is a view (RelKind='v').
 	type viewInfo struct {
 		schema string
 		name   string
+		oid    uint32
 	}
+	seen := make(map[uint32]bool)
 	var viewsToDrop []viewInfo
-	seen := make(map[string]bool)
-	for tableKey := range tablesWithTypeChange {
-		parts := strings.SplitN(tableKey, ".", 2)
-		if len(parts) != 2 {
-			continue
-		}
-		tableName := parts[1]
-		for _, s := range to.UserSchemas() {
-			for _, rel := range s.Relations {
-				if rel.RelKind != 'v' {
-					continue
-				}
-				viewKey := s.Name + "." + rel.Name
-				if seen[viewKey] {
-					continue
-				}
-				def, err := to.GetViewDefinition(s.Name, rel.Name)
-				if err != nil {
-					continue
-				}
-				if strings.Contains(def, quoteIdentAlways(tableName)) || strings.Contains(def, tableName) {
-					viewsToDrop = append(viewsToDrop, viewInfo{schema: s.Name, name: rel.Name})
-					seen[viewKey] = true
-				}
+
+	// Collect views transitively: a view may depend on another view that
+	// depends on the table. We do a BFS over the dep graph.
+	queue := make([]uint32, 0, len(tableOIDs))
+	for oid := range tableOIDs {
+		queue = append(queue, oid)
+	}
+	for len(queue) > 0 {
+		refOID := queue[0]
+		queue = queue[1:]
+		for _, d := range from.deps {
+			if d.RefType != 'r' || d.RefOID != refOID || d.ObjType != 'r' {
+				continue
 			}
+			if seen[d.ObjOID] {
+				continue
+			}
+			rel := from.GetRelationByOID(d.ObjOID)
+			if rel == nil || rel.RelKind != 'v' {
+				continue
+			}
+			seen[d.ObjOID] = true
+			if rel.Schema == nil {
+				continue
+			}
+			viewsToDrop = append(viewsToDrop, viewInfo{schema: rel.Schema.Name, name: rel.Name, oid: rel.OID})
+			// Enqueue this view's OID for transitive dependency discovery.
+			queue = append(queue, d.ObjOID)
 		}
 	}
+
 	if len(viewsToDrop) == 0 {
 		return ops
 	}
@@ -301,17 +321,15 @@ func wrapColumnTypeChangesWithViewOps(from, to *Catalog, diff *SchemaDiff, ops [
 		return viewsToDrop[i].name < viewsToDrop[j].name
 	})
 
-	// Build drop and create ops.
-	var dropOps, createOps []MigrationOp
+	// Build drop and create ops. Resolve OIDs from `to` catalog for CREATE.
+	var extraOps []MigrationOp
+	dropViews := make(map[string]bool) // "schema.name" for dedup
 	for _, v := range viewsToDrop {
+		dropViews[v.schema+"."+v.name] = true
 		qn := migrationQualifiedName(v.schema, v.name)
-		// Resolve view OID for metadata.
-		var viewOID uint32
-		rel := to.GetRelation(v.schema, v.name)
-		if rel != nil {
-			viewOID = rel.OID
-		}
-		dropOps = append(dropOps, MigrationOp{
+
+		// Use from-catalog OID for DROP (PhasePre uses from deps).
+		extraOps = append(extraOps, MigrationOp{
 			Type:          OpDropView,
 			SchemaName:    v.schema,
 			ObjectName:    v.name,
@@ -319,12 +337,18 @@ func wrapColumnTypeChangesWithViewOps(from, to *Catalog, diff *SchemaDiff, ops [
 			Transactional: true,
 			Phase:         PhasePre,
 			ObjType:       'r',
-			ObjOID:        viewOID,
+			ObjOID:        v.oid,
 			Priority:      PriorityView,
 		})
 
+		// Use to-catalog OID for CREATE (PhaseMain uses to deps).
+		var toOID uint32
+		toRel := to.GetRelation(v.schema, v.name)
+		if toRel != nil {
+			toOID = toRel.OID
+		}
 		def, _ := to.GetViewDefinition(v.schema, v.name)
-		createOps = append(createOps, MigrationOp{
+		extraOps = append(extraOps, MigrationOp{
 			Type:          OpCreateView,
 			SchemaName:    v.schema,
 			ObjectName:    v.name,
@@ -332,7 +356,7 @@ func wrapColumnTypeChangesWithViewOps(from, to *Catalog, diff *SchemaDiff, ops [
 			Transactional: true,
 			Phase:         PhaseMain,
 			ObjType:       'r',
-			ObjOID:        viewOID,
+			ObjOID:        toOID,
 			Priority:      PriorityView,
 		})
 	}
@@ -342,11 +366,8 @@ func wrapColumnTypeChangesWithViewOps(from, to *Catalog, diff *SchemaDiff, ops [
 	for _, op := range ops {
 		skip := false
 		if op.Type == OpDropView || op.Type == OpCreateView || op.Type == OpAlterView {
-			for _, v := range viewsToDrop {
-				if op.SchemaName == v.schema && op.ObjectName == v.name {
-					skip = true
-					break
-				}
+			if dropViews[op.SchemaName+"."+op.ObjectName] {
+				skip = true
 			}
 		}
 		if !skip {
@@ -354,12 +375,8 @@ func wrapColumnTypeChangesWithViewOps(from, to *Catalog, diff *SchemaDiff, ops [
 		}
 	}
 
-	// Insert: dropOps at the beginning, createOps at the end.
-	var result []MigrationOp
-	result = append(result, dropOps...)
-	result = append(result, filteredOps...)
-	result = append(result, createOps...)
-	return result
+	// Append extra ops — sortMigrationOps handles ordering.
+	return append(filteredOps, extraOps...)
 }
 
 // resolveTypeOIDByName looks up a type OID by schema + name from a catalog.
