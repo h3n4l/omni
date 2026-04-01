@@ -165,9 +165,7 @@ func TestOracleCorpus(t *testing.T) {
 			{"DATE_ADD literal", "SELECT DATE_ADD('2024-01-01', INTERVAL 1 MONTH)", false},
 			{"DATE_SUB MINUTE", "SELECT DATE_SUB(NOW(), INTERVAL 30 MINUTE)", false},
 			{"TIMESTAMPADD", "SELECT TIMESTAMPADD(MINUTE, 30, NOW())", false},
-			// MISMATCH: omni rejects EXTRACT(HOUR FROM NOW()) but MySQL accepts.
-			// Parser lacks EXTRACT() function support.
-			{"EXTRACT", "SELECT EXTRACT(HOUR FROM NOW())", true},
+			{"EXTRACT", "SELECT EXTRACT(HOUR FROM NOW())", false},
 			{"interval in WHERE", "SELECT * FROM t WHERE created_at > NOW() - INTERVAL 7 DAY", false},
 			{"interval in BETWEEN", "SELECT * FROM t WHERE created_at BETWEEN NOW() - INTERVAL 1 MONTH AND NOW()", false},
 		}

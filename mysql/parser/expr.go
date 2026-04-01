@@ -1054,6 +1054,45 @@ func (p *Parser) parseCastExpr() (nodes.ExprNode, error) {
 	}, nil
 }
 
+// parseExtractExpr parses EXTRACT(unit FROM expr).
+//
+// Ref: https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_extract
+//
+//	EXTRACT(unit FROM expr)
+func (p *Parser) parseExtractExpr() (nodes.ExprNode, error) {
+	start := p.pos()
+	p.advance() // consume EXTRACT
+
+	if _, err := p.expect('('); err != nil {
+		return nil, err
+	}
+
+	// Parse unit keyword (DAY, HOUR, MINUTE, SECOND, MONTH, YEAR, etc.)
+	unit, _, err := p.parseIdentifier()
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := p.expect(kwFROM); err != nil {
+		return nil, err
+	}
+
+	expr, err := p.parseExpr()
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := p.expect(')'); err != nil {
+		return nil, err
+	}
+
+	return &nodes.ExtractExpr{
+		Loc:  nodes.Loc{Start: start, End: p.pos()},
+		Unit: strings.ToUpper(unit),
+		Expr: expr,
+	}, nil
+}
+
 // parseCastDataType parses data types valid in CAST expressions.
 // CAST supports a subset of types: BINARY, CHAR, DATE, DATETIME, DECIMAL, SIGNED, UNSIGNED, TIME, JSON, etc.
 func (p *Parser) parseCastDataType() (*nodes.DataType, error) {

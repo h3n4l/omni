@@ -171,6 +171,8 @@ func writeNode(sb *strings.Builder, node Node) {
 		writeExistsExpr(sb, n)
 	case *CastExpr:
 		writeCastExpr(sb, n)
+	case *ExtractExpr:
+		writeExtractExpr(sb, n)
 	case *ParenExpr:
 		writeParenExpr(sb, n)
 	case *CollateExpr:
@@ -2291,6 +2293,13 @@ func writeCastExpr(sb *strings.Builder, n *CastExpr) {
 	writeNode(sb, n.Expr)
 	sb.WriteString(" :type ")
 	writeNode(sb, n.TypeName)
+	sb.WriteString("}")
+}
+
+func writeExtractExpr(sb *strings.Builder, n *ExtractExpr) {
+	sb.WriteString("{EXTRACT")
+	fmt.Fprintf(sb, " :loc %d :unit %s :expr ", n.Loc.Start, n.Unit)
+	writeNode(sb, n.Expr)
 	sb.WriteString("}")
 }
 

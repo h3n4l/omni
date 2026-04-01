@@ -742,6 +742,16 @@ type CastExpr struct {
 func (e *CastExpr) nodeTag()  {}
 func (e *CastExpr) exprNode() {}
 
+// ExtractExpr represents EXTRACT(unit FROM expr).
+type ExtractExpr struct {
+	Loc  Loc
+	Unit string   // DAY, HOUR, MINUTE, SECOND, MONTH, YEAR, etc.
+	Expr ExprNode
+}
+
+func (e *ExtractExpr) nodeTag()  {}
+func (e *ExtractExpr) exprNode() {}
+
 // -----------------------------------------------------------------------
 // Reference and literal nodes
 // -----------------------------------------------------------------------

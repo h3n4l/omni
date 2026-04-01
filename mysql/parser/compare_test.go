@@ -887,6 +887,49 @@ func TestParseCast(t *testing.T) {
 	}
 }
 
+// TestParseExtract tests EXTRACT(unit FROM expr) parsing.
+func TestParseExtract(t *testing.T) {
+	cases := []struct {
+		sql  string
+		unit string
+	}{
+		{"SELECT EXTRACT(HOUR FROM NOW())", "HOUR"},
+		{"SELECT EXTRACT(DAY FROM '2024-01-01')", "DAY"},
+		{"SELECT EXTRACT(YEAR FROM created_at) FROM t", "YEAR"},
+		{"SELECT EXTRACT(MINUTE FROM ts)", "MINUTE"},
+		{"SELECT EXTRACT(SECOND FROM ts)", "SECOND"},
+		{"SELECT EXTRACT(MONTH FROM ts)", "MONTH"},
+	}
+	for _, tt := range cases {
+		t.Run(tt.sql, func(t *testing.T) {
+			result := ParseAndCheck(t, tt.sql)
+			if result.Len() == 0 {
+				t.Fatalf("Parse(%q) returned empty list", tt.sql)
+			}
+			// Extract the first target expression from the SELECT.
+			sel, ok := result.Items[0].(*ast.SelectStmt)
+			if !ok {
+				t.Fatalf("expected *ast.SelectStmt, got %T", result.Items[0])
+			}
+			if len(sel.TargetList) == 0 {
+				t.Fatalf("no targets in SELECT")
+			}
+			// TargetList elements may be ResTarget wrapping the actual expr.
+			var exprNode ast.ExprNode = sel.TargetList[0]
+			if rt, ok := exprNode.(*ast.ResTarget); ok {
+				exprNode = rt.Val
+			}
+			ext, ok := exprNode.(*ast.ExtractExpr)
+			if !ok {
+				t.Fatalf("expected *ast.ExtractExpr, got %T", exprNode)
+			}
+			if ext.Unit != tt.unit {
+				t.Errorf("Unit = %s, want %s", ext.Unit, tt.unit)
+			}
+		})
+	}
+}
+
 // TestParseFuncCall tests function call parsing.
 func TestParseFuncCall(t *testing.T) {
 	cases := []struct {
