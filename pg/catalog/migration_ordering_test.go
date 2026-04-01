@@ -2028,4 +2028,390 @@ func TestMigrationOrdering(t *testing.T) {
 			t.Fatalf("no CREATE VIEW v_data found; ops: %v", opsSQL(plan))
 		}
 	})
+
+	// -----------------------------------------------------------------------
+	// Step 4.1: Mixed CREATE + DROP Scenarios
+	// -----------------------------------------------------------------------
+
+	t.Run("4.1 replace table with dependent view", func(t *testing.T) {
+		// Before: old_t + view v on old_t; After: new_t + view v on new_t
+		// Expected: DROP old_t (CASCADE handles dependent view), CREATE new_t, CREATE/REPLACE VIEW
+		// The system uses DROP TABLE CASCADE which implicitly drops the dependent view,
+		// then recreates it via CREATE OR REPLACE VIEW.
+		fromSQL := `
+			CREATE TABLE old_t (id int, val text);
+			CREATE VIEW v AS SELECT id, val FROM old_t;
+		`
+		toSQL := `
+			CREATE TABLE new_t (id int, val text, extra int);
+			CREATE VIEW v AS SELECT id, val FROM new_t;
+		`
+		from, err := LoadSQL(fromSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		to, err := LoadSQL(toSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff := Diff(from, to)
+		plan := GenerateMigration(from, to, diff)
+
+		dropTableIdx := -1
+		createTableIdx := -1
+		createViewIdx := -1
+		for i, op := range plan.Ops {
+			switch {
+			case op.Type == OpDropTable:
+				dropTableIdx = i
+			case op.Type == OpCreateTable:
+				createTableIdx = i
+			case op.Type == OpCreateView || op.Type == OpAlterView:
+				createViewIdx = i
+			}
+		}
+		if dropTableIdx < 0 {
+			t.Fatalf("no DROP TABLE found; ops: %v", opsSQL(plan))
+		}
+		if createTableIdx < 0 {
+			t.Fatalf("no CREATE TABLE found; ops: %v", opsSQL(plan))
+		}
+		if createViewIdx < 0 {
+			t.Fatalf("no CREATE/ALTER VIEW found; ops: %v", opsSQL(plan))
+		}
+		// Drop before create
+		if dropTableIdx > createTableIdx {
+			t.Errorf("DROP TABLE (idx %d) should be before CREATE TABLE (idx %d); ops: %v",
+				dropTableIdx, createTableIdx, opsSQL(plan))
+		}
+		// View created/replaced after new table
+		if createTableIdx > createViewIdx {
+			t.Errorf("CREATE TABLE (idx %d) should be before CREATE VIEW (idx %d); ops: %v",
+				createTableIdx, createViewIdx, opsSQL(plan))
+		}
+	})
+
+	t.Run("4.1 function signature change with dependent trigger", func(t *testing.T) {
+		// Before: func(int) + trigger using it; After: different func + trigger
+		// The function body changes, so we expect DROP TRIGGER, DROP FUNCTION, CREATE FUNCTION, CREATE TRIGGER
+		fromSQL := `
+			CREATE TABLE t (id int);
+			CREATE FUNCTION audit_fn() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END; $$;
+			CREATE TRIGGER audit_trig BEFORE INSERT ON t FOR EACH ROW EXECUTE FUNCTION audit_fn();
+		`
+		toSQL := `
+			CREATE TABLE t (id int);
+			CREATE FUNCTION audit_fn() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE NOTICE 'changed'; RETURN NEW; END; $$;
+			CREATE TRIGGER audit_trig BEFORE INSERT ON t FOR EACH ROW EXECUTE FUNCTION audit_fn();
+		`
+		from, err := LoadSQL(fromSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		to, err := LoadSQL(toSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff := Diff(from, to)
+		plan := GenerateMigration(from, to, diff)
+
+		// At minimum, we need the function to be updated. The system may use
+		// DROP+CREATE or ALTER FUNCTION. Verify ordering is safe:
+		// any drop ops come before create ops.
+		lastDropIdx := -1
+		firstCreateIdx := len(plan.Ops)
+		hasFuncOp := false
+		for i, op := range plan.Ops {
+			if op.Type == OpDropTrigger || op.Type == OpDropFunction {
+				if i > lastDropIdx {
+					lastDropIdx = i
+				}
+			}
+			if op.Type == OpCreateTrigger || op.Type == OpCreateFunction {
+				if i < firstCreateIdx {
+					firstCreateIdx = i
+				}
+			}
+			if op.Type == OpCreateFunction || op.Type == OpAlterFunction || op.Type == OpDropFunction {
+				hasFuncOp = true
+			}
+		}
+		if !hasFuncOp {
+			t.Fatalf("no function operation found; ops: %v", opsSQL(plan))
+		}
+		// If there are both drops and creates, drops must come first
+		if lastDropIdx >= 0 && firstCreateIdx < len(plan.Ops) && lastDropIdx > firstCreateIdx {
+			t.Errorf("last DROP (idx %d) should be before first CREATE (idx %d); ops: %v",
+				lastDropIdx, firstCreateIdx, opsSQL(plan))
+		}
+	})
+
+	t.Run("4.1 trigger function identity changed triggers DROP+CREATE", func(t *testing.T) {
+		// When a trigger's function changes name, the trigger must be dropped and recreated.
+		fromSQL := `
+			CREATE TABLE t (id int);
+			CREATE FUNCTION old_fn() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END; $$;
+			CREATE TRIGGER my_trig BEFORE INSERT ON t FOR EACH ROW EXECUTE FUNCTION old_fn();
+		`
+		toSQL := `
+			CREATE TABLE t (id int);
+			CREATE FUNCTION new_fn() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END; $$;
+			CREATE TRIGGER my_trig BEFORE INSERT ON t FOR EACH ROW EXECUTE FUNCTION new_fn();
+		`
+		from, err := LoadSQL(fromSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		to, err := LoadSQL(toSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff := Diff(from, to)
+		plan := GenerateMigration(from, to, diff)
+
+		hasDropOldFn := false
+		hasCreateNewFn := false
+		dropTrigIdx := -1
+		createTrigIdx := -1
+		for i, op := range plan.Ops {
+			if op.Type == OpDropFunction {
+				hasDropOldFn = true
+			}
+			if op.Type == OpCreateFunction {
+				hasCreateNewFn = true
+			}
+			if op.Type == OpDropTrigger {
+				dropTrigIdx = i
+			}
+			if op.Type == OpCreateTrigger {
+				createTrigIdx = i
+			}
+		}
+		if !hasDropOldFn {
+			t.Fatalf("no DROP FUNCTION for old_fn found; ops: %v", opsSQL(plan))
+		}
+		if !hasCreateNewFn {
+			t.Fatalf("no CREATE FUNCTION for new_fn found; ops: %v", opsSQL(plan))
+		}
+		if dropTrigIdx < 0 {
+			t.Fatalf("no DROP TRIGGER found; ops: %v", opsSQL(plan))
+		}
+		if createTrigIdx < 0 {
+			t.Fatalf("no CREATE TRIGGER found; ops: %v", opsSQL(plan))
+		}
+		// Drop trigger before create trigger
+		if dropTrigIdx > createTrigIdx {
+			t.Errorf("DROP TRIGGER (idx %d) should be before CREATE TRIGGER (idx %d); ops: %v",
+				dropTrigIdx, createTrigIdx, opsSQL(plan))
+		}
+	})
+
+	t.Run("4.1 add new table drop unrelated table add view on new table", func(t *testing.T) {
+		// Before: old_t exists; After: old_t dropped, new_t + view v on new_t
+		// Expected: DROP old_t before CREATE new_t, view after new_t
+		fromSQL := `
+			CREATE TABLE old_t (id int, info text);
+		`
+		toSQL := `
+			CREATE TABLE new_t (id int, name text);
+			CREATE VIEW v AS SELECT id, name FROM new_t;
+		`
+		from, err := LoadSQL(fromSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		to, err := LoadSQL(toSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff := Diff(from, to)
+		plan := GenerateMigration(from, to, diff)
+
+		dropTableIdx := -1
+		createTableIdx := -1
+		createViewIdx := -1
+		for i, op := range plan.Ops {
+			switch {
+			case op.Type == OpDropTable:
+				dropTableIdx = i
+			case op.Type == OpCreateTable:
+				createTableIdx = i
+			case op.Type == OpCreateView:
+				createViewIdx = i
+			}
+		}
+		if dropTableIdx < 0 {
+			t.Fatalf("no DROP TABLE found; ops: %v", opsSQL(plan))
+		}
+		if createTableIdx < 0 {
+			t.Fatalf("no CREATE TABLE found; ops: %v", opsSQL(plan))
+		}
+		if createViewIdx < 0 {
+			t.Fatalf("no CREATE VIEW found; ops: %v", opsSQL(plan))
+		}
+		// Drop before create
+		if dropTableIdx > createTableIdx {
+			t.Errorf("DROP TABLE (idx %d) should be before CREATE TABLE (idx %d); ops: %v",
+				dropTableIdx, createTableIdx, opsSQL(plan))
+		}
+		// View after new table
+		if createTableIdx > createViewIdx {
+			t.Errorf("CREATE TABLE (idx %d) should be before CREATE VIEW (idx %d); ops: %v",
+				createTableIdx, createViewIdx, opsSQL(plan))
+		}
+	})
+
+	t.Run("4.1 enum value addition with dependent table no table change", func(t *testing.T) {
+		// Before: enum('a','b') + table using it; After: enum('a','b','c') + same table
+		// Expected: ALTER TYPE only, no table drop/create
+		fromSQL := `
+			CREATE TYPE status AS ENUM ('active', 'inactive');
+			CREATE TABLE t (id int, s status);
+		`
+		toSQL := `
+			CREATE TYPE status AS ENUM ('active', 'inactive', 'archived');
+			CREATE TABLE t (id int, s status);
+		`
+		from, err := LoadSQL(fromSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		to, err := LoadSQL(toSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff := Diff(from, to)
+		plan := GenerateMigration(from, to, diff)
+
+		hasAlterType := false
+		for _, op := range plan.Ops {
+			if op.Type == OpAlterType {
+				hasAlterType = true
+			}
+			// Table should NOT be dropped or recreated
+			if op.Type == OpDropTable || op.Type == OpCreateTable {
+				t.Errorf("table should not be dropped/created for enum value addition: %s; ops: %v",
+					op.SQL, opsSQL(plan))
+			}
+		}
+		if !hasAlterType {
+			t.Fatalf("no ALTER TYPE found; ops: %v", opsSQL(plan))
+		}
+	})
+
+	t.Run("4.1 drop table create replacement with same name", func(t *testing.T) {
+		// Before: table t with columns (id, old_col); After: table t with different columns (id, new_col)
+		// The system may emit ALTER TABLE or DROP+CREATE. Either way, ordering must be safe.
+		fromSQL := `
+			CREATE TABLE t (id int, old_col text);
+		`
+		toSQL := `
+			CREATE TABLE t (id int, new_col boolean);
+		`
+		from, err := LoadSQL(fromSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		to, err := LoadSQL(toSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff := Diff(from, to)
+		plan := GenerateMigration(from, to, diff)
+
+		// Verify the migration plan handles this correctly.
+		// The system likely emits DROP COLUMN + ADD COLUMN (or ALTER), not DROP TABLE + CREATE TABLE.
+		// Whatever it emits, drops must precede creates.
+		lastDropIdx := -1
+		firstCreateIdx := len(plan.Ops)
+		hasOp := false
+		for i, op := range plan.Ops {
+			hasOp = true
+			if op.Type == OpDropTable || op.Type == OpDropColumn {
+				if i > lastDropIdx {
+					lastDropIdx = i
+				}
+			}
+			if op.Type == OpCreateTable || op.Type == OpAddColumn {
+				if i < firstCreateIdx {
+					firstCreateIdx = i
+				}
+			}
+		}
+		if !hasOp {
+			t.Fatalf("no migration ops found; ops: %v", opsSQL(plan))
+		}
+		if lastDropIdx >= 0 && firstCreateIdx < len(plan.Ops) && lastDropIdx > firstCreateIdx {
+			t.Errorf("last DROP (idx %d) should be before first CREATE/ADD (idx %d); ops: %v",
+				lastDropIdx, firstCreateIdx, opsSQL(plan))
+		}
+	})
+
+	t.Run("4.1 column type change plus new function used by CHECK", func(t *testing.T) {
+		// Before: table t with int column, view v depending on t
+		// After: table t with bigint column, new check function, view v
+		// Expected: function created first, view dropped, column altered, view recreated
+		fromSQL := `
+			CREATE TABLE t (id int, val int);
+			CREATE VIEW v AS SELECT id, val FROM t;
+		`
+		toSQL := `
+			CREATE FUNCTION is_valid(val bigint) RETURNS boolean LANGUAGE sql AS $$ SELECT val > 0 $$;
+			CREATE TABLE t (id int, val bigint CHECK (is_valid(val)));
+			CREATE VIEW v AS SELECT id, val FROM t;
+		`
+		from, err := LoadSQL(fromSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		to, err := LoadSQL(toSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff := Diff(from, to)
+		plan := GenerateMigration(from, to, diff)
+
+		funcIdx := -1
+		dropViewIdx := -1
+		alterColIdx := -1
+		createViewIdx := -1
+		for i, op := range plan.Ops {
+			if op.Type == OpCreateFunction {
+				funcIdx = i
+			}
+			if op.Type == OpDropView {
+				dropViewIdx = i
+			}
+			if op.Type == OpAlterColumn && strings.Contains(op.SQL, "val") {
+				alterColIdx = i
+			}
+			if op.Type == OpCreateView {
+				createViewIdx = i
+			}
+		}
+		if funcIdx < 0 {
+			t.Fatalf("no CREATE FUNCTION found; ops: %v", opsSQL(plan))
+		}
+		if dropViewIdx < 0 {
+			t.Fatalf("no DROP VIEW found; ops: %v", opsSQL(plan))
+		}
+		if alterColIdx < 0 {
+			t.Fatalf("no ALTER COLUMN for val found; ops: %v", opsSQL(plan))
+		}
+		if createViewIdx < 0 {
+			t.Fatalf("no CREATE VIEW found; ops: %v", opsSQL(plan))
+		}
+		// Drop view before alter column (view depends on column type)
+		if dropViewIdx > alterColIdx {
+			t.Errorf("DROP VIEW (idx %d) should be before ALTER COLUMN (idx %d); ops: %v",
+				dropViewIdx, alterColIdx, opsSQL(plan))
+		}
+		// Alter column before recreate view
+		if alterColIdx > createViewIdx {
+			t.Errorf("ALTER COLUMN (idx %d) should be before CREATE VIEW (idx %d); ops: %v",
+				alterColIdx, createViewIdx, opsSQL(plan))
+		}
+		// Function created (can be anywhere before the table needs it, but must exist)
+		// The function is new, so it should be created in PhaseMain at or before the table ops
+	})
 }
