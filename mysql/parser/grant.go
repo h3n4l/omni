@@ -409,7 +409,7 @@ func (p *Parser) parsePrivilegeList() ([]string, bool, error) {
 	if p.cur.Type == kwALL {
 		p.advance()
 		// Optional PRIVILEGES keyword
-		if p.cur.Type == kwPRIVILEGES || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "privileges")) {
+		if p.cur.Type == kwPRIVILEGES {
 			p.advance()
 		}
 		return nil, true, nil
@@ -475,7 +475,7 @@ func (p *Parser) parsePrivilegeName() (string, error) {
 			name = "CREATE VIEW"
 		case p.cur.Type == kwTEMPORARY:
 			p.advance()
-			if p.cur.Type == kwTABLES || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "tables")) {
+			if p.cur.Type == kwTABLES {
 				p.advance()
 			}
 			name = "CREATE TEMPORARY TABLES"
@@ -509,7 +509,7 @@ func (p *Parser) parsePrivilegeName() (string, error) {
 		}
 	case "LOCK":
 		// LOCK TABLES
-		if p.cur.Type == kwTABLES || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "tables")) {
+		if p.cur.Type == kwTABLES {
 			p.advance()
 			name = "LOCK TABLES"
 		}
@@ -524,7 +524,7 @@ func (p *Parser) parsePrivilegeName() (string, error) {
 		if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "client") {
 			p.advance()
 			name = "REPLICATION CLIENT"
-		} else if p.cur.Type == kwSLAVE || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "slave")) {
+		} else if p.cur.Type == kwSLAVE {
 			p.advance()
 			name = "REPLICATION SLAVE"
 		}
@@ -1785,7 +1785,7 @@ func (p *Parser) parseUserAccountOptions(
 				if p.cur.Type == kwDEFAULT {
 					*passwordRequireCurrent = "DEFAULT"
 					p.advance()
-				} else if p.cur.Type == kwCURRENT || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "current")) {
+				} else if p.cur.Type == kwCURRENT {
 					p.advance() // consume CURRENT
 					// Check for DEFAULT or OPTIONAL after CURRENT
 					if p.cur.Type == kwDEFAULT {
@@ -1815,7 +1815,7 @@ func (p *Parser) parseUserAccountOptions(
 			if p.cur.Type == tokICONST {
 				*passwordLockTime = strconv.FormatInt(p.cur.Ival, 10)
 				p.advance()
-			} else if p.cur.Type == kwUNBOUNDED || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "unbounded")) {
+			} else if p.cur.Type == kwUNBOUNDED {
 				*passwordLockTime = "UNBOUNDED"
 				p.advance()
 			}
