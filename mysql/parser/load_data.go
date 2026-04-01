@@ -136,7 +136,7 @@ func (p *Parser) parseLoadDataStmt(start int) (*nodes.LoadDataStmt, error) {
 	}
 
 	// [{FIELDS | COLUMNS} ...]
-	if p.cur.Type == kwFIELDS || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "columns")) {
+	if p.cur.Type == kwFIELDS || p.cur.Type == kwCOLUMNS {
 		p.advance()
 		p.parseFieldsClause(stmt)
 	}

@@ -62,7 +62,7 @@ func (p *Parser) parseAlterViewStmt() (*nodes.AlterViewStmt, error) {
 	// SQL SECURITY { DEFINER | INVOKER }
 	if p.cur.Type == kwSQL {
 		p.advance()
-		if p.cur.Type == kwSECURITY || (p.isIdentToken() && eqFold(p.cur.Str, "security")) {
+		if p.cur.Type == kwSECURITY {
 			p.advance()
 			name, _, err := p.parseIdentifier()
 			if err != nil {
@@ -220,7 +220,7 @@ func (p *Parser) parseAlterEventStmt() (*nodes.AlterEventStmt, error) {
 		p.advance()
 		if p.cur.Type == kwON {
 			next := p.peekNext()
-			if next.Type == kwSLAVE || (next.Type == tokIDENT && eqFold(next.Str, "slave")) {
+			if next.Type == kwSLAVE {
 				p.advance()
 				p.advance()
 				stmt.Enable = "DISABLE ON SLAVE"

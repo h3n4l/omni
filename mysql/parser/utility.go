@@ -420,7 +420,7 @@ func (p *Parser) parseFlushOption(stmt *nodes.FlushStmt) string {
 	switch p.cur.Type {
 	case kwBINARY:
 		p.advance()
-		if p.isIdentToken() && eqFold(p.cur.Str, "logs") {
+		if p.cur.Type == kwLOGS {
 			p.advance()
 			return "BINARY LOGS"
 		}
@@ -443,13 +443,13 @@ func (p *Parser) parseFlushOption(stmt *nodes.FlushStmt) string {
 	// Check for multi-word options: ENGINE LOGS, ERROR LOGS, GENERAL LOGS, RELAY LOGS, SLOW LOGS
 	switch name {
 	case "ENGINE", "ERROR", "GENERAL", "SLOW":
-		if p.isIdentToken() && eqFold(p.cur.Str, "logs") {
+		if p.cur.Type == kwLOGS {
 			p.advance()
 			return name + " LOGS"
 		}
 		return name
 	case "RELAY":
-		if p.isIdentToken() && eqFold(p.cur.Str, "logs") {
+		if p.cur.Type == kwLOGS {
 			p.advance()
 			opt := "RELAY LOGS"
 			// Optional FOR CHANNEL channel
@@ -1843,7 +1843,7 @@ func (p *Parser) parseResourceGroupOptions(vcpus *[]nodes.VCPUSpec, threadPriori
 func (p *Parser) parseCreateResourceGroupStmt(start int) (*nodes.CreateResourceGroupStmt, error) {
 	// RESOURCE already consumed by dispatch
 	// Consume GROUP
-	if !p.isIdentToken() || !eqFold(p.cur.Str, "group") {
+	if p.cur.Type != kwGROUP {
 		return nil, &ParseError{
 			Message:  "expected GROUP after RESOURCE",
 			Position: p.cur.Loc,
@@ -1895,7 +1895,7 @@ func (p *Parser) parseCreateResourceGroupStmt(start int) (*nodes.CreateResourceG
 func (p *Parser) parseAlterResourceGroupStmt(start int) (*nodes.AlterResourceGroupStmt, error) {
 	// RESOURCE already consumed by dispatch
 	// Consume GROUP
-	if !p.isIdentToken() || !eqFold(p.cur.Str, "group") {
+	if p.cur.Type != kwGROUP {
 		return nil, &ParseError{
 			Message:  "expected GROUP after RESOURCE",
 			Position: p.cur.Loc,
@@ -1937,7 +1937,7 @@ func (p *Parser) parseAlterResourceGroupStmt(start int) (*nodes.AlterResourceGro
 func (p *Parser) parseDropResourceGroupStmt(start int) (*nodes.DropResourceGroupStmt, error) {
 	// RESOURCE already consumed by dispatch
 	// Consume GROUP
-	if !p.isIdentToken() || !eqFold(p.cur.Str, "group") {
+	if p.cur.Type != kwGROUP {
 		return nil, &ParseError{
 			Message:  "expected GROUP after RESOURCE",
 			Position: p.cur.Loc,

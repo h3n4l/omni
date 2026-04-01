@@ -479,14 +479,14 @@ func (p *Parser) parseStartReplicaStmt(start int) (*nodes.StartReplicaStmt, erro
 	}
 
 	// Optional connection options
-	for p.isIdentToken() {
+	for p.isIdentToken() || p.cur.Type == kwUSER || p.cur.Type == kwPASSWORD {
 		switch {
-		case eqFold(p.cur.Str, "USER"):
+		case p.cur.Type == kwUSER:
 			p.advance()
 			p.match('=')
 			stmt.User = p.cur.Str
 			p.advance()
-		case eqFold(p.cur.Str, "PASSWORD"):
+		case p.cur.Type == kwPASSWORD:
 			p.advance()
 			p.match('=')
 			stmt.Password = p.cur.Str
@@ -706,17 +706,17 @@ func (p *Parser) parseStartGroupReplicationStmt(start int) (*nodes.StartGroupRep
 	// Optional connection options
 	for p.isIdentToken() || p.cur.Type == kwUSER || p.cur.Type == kwPASSWORD {
 		switch {
-		case p.cur.Type == kwUSER || (p.isIdentToken() && eqFold(p.cur.Str, "USER")):
+		case p.cur.Type == kwUSER:
 			p.advance()
 			p.match('=')
 			stmt.User = p.cur.Str
 			p.advance()
-		case p.cur.Type == kwPASSWORD || (p.isIdentToken() && eqFold(p.cur.Str, "PASSWORD")):
+		case p.cur.Type == kwPASSWORD:
 			p.advance()
 			p.match('=')
 			stmt.Password = p.cur.Str
 			p.advance()
-		case p.isIdentToken() && eqFold(p.cur.Str, "DEFAULT_AUTH"):
+		case eqFold(p.cur.Str, "DEFAULT_AUTH"):
 			p.advance()
 			p.match('=')
 			stmt.DefaultAuth = p.cur.Str
