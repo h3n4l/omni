@@ -189,7 +189,7 @@ func TestMigrationScenarioTypes(t *testing.T) {
 	})
 
 	t.Run("4.3/composite referencing another composite", func(t *testing.T) {
-		t.Skip("[~] diff engine produces empty diff for composite types created from scratch — production bug")
+		t.Skip("composite type ordering: zip_code must be created before address — needs topo sort fix")
 		before := ``
 		after := `
 			CREATE TYPE zip_code AS (code text);

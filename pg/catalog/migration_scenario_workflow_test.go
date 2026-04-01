@@ -219,7 +219,6 @@ func TestMigrationScenarioWorkflow(t *testing.T) {
 	// current_tenant() function + ENABLE RLS + policies on all 3 tables.
 	// Function before policies, tables altered before policies applied.
 	t.Run("5.3/multi-tenant RLS on 3 tables", func(t *testing.T) {
-		t.Skip("production bug: false cycle detected between ALTER TABLE ENABLE RLS + AddColumn + CreatePolicy")
 		before := `
 			CREATE TABLE projects (
 				id int PRIMARY KEY,

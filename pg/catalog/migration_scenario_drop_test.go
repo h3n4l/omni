@@ -46,7 +46,6 @@ func TestMigrationScenarioDrop(t *testing.T) {
 	})
 
 	t.Run("2.1 drop function with dependent trigger", func(t *testing.T) {
-		t.Skip("[~] DROP TRIGGER generates quoted schema name that LoadSQL cannot re-parse — production bug")
 		before := `
 			CREATE TABLE t (id int);
 			CREATE FUNCTION trg_fn() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END; $$;
@@ -198,7 +197,6 @@ func TestMigrationScenarioDrop(t *testing.T) {
 	})
 
 	t.Run("2.3 drop function used by trigger keep table", func(t *testing.T) {
-		t.Skip("[~] DROP TRIGGER generates quoted schema name that LoadSQL cannot re-parse — production bug")
 		before := `
 			CREATE TABLE t (id int);
 			CREATE FUNCTION trg_fn() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END; $$;

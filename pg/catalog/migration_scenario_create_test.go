@@ -36,7 +36,6 @@ func TestMigrationScenarioCreate(t *testing.T) {
 	})
 
 	t.Run("1.1.4 create composite type from empty", func(t *testing.T) {
-		t.Skip("[~] Diff does not track composite types — diff returns empty")
 		before := ``
 		after := `
 			CREATE TYPE address AS (
@@ -218,7 +217,7 @@ func TestMigrationScenarioCreate(t *testing.T) {
 	})
 
 	t.Run("1.3.4 composite type chain", func(t *testing.T) {
-		t.Skip("[~] Diff does not track composite types — migration omits CREATE TYPE")
+		t.Skip("composite type ordering: street_addr must be created before full_addr — needs topo sort fix")
 		before := ``
 		after := `
 			CREATE TYPE street_addr AS (
@@ -506,7 +505,6 @@ func TestMigrationScenarioCreate(t *testing.T) {
 	})
 
 	t.Run("1.5.6 domain and composite type in table", func(t *testing.T) {
-		t.Skip("[~] Diff does not track composite types — migration omits CREATE TYPE")
 		before := ``
 		after := `
 			CREATE DOMAIN email_addr AS text
