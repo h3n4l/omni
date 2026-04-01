@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"container/heap"
 	"fmt"
 	"sort"
 	"strings"
@@ -225,6 +226,9 @@ func GenerateMigration(from, to *Catalog, diff *SchemaDiff) *MigrationPlan {
 	// for dependent views. PG cannot ALTER a column type when a view depends on it.
 	ops = wrapColumnTypeChangesWithViewOps(from, to, diff, ops)
 
+	// Dependency-driven ordering: sort ops by phase, then topologically within each phase.
+	ops = sortMigrationOps(from, to, ops)
+
 	return &MigrationPlan{Ops: ops}
 }
 
@@ -442,5 +446,227 @@ func phaseForOpType(opType MigrationOpType) MigrationPhase {
 		return PhasePre
 	}
 	return PhaseMain
+}
+
+// ---------------------------------------------------------------------------
+// Dependency-driven migration ordering (Step 2)
+// ---------------------------------------------------------------------------
+
+// depKey uniquely identifies a catalog object for OID-to-op mapping.
+type depKey struct {
+	objType byte
+	objOID  uint32
+}
+
+// migPQEntry is an entry in the priority queue for migration topological sort.
+type migPQEntry struct {
+	idx int // index into the ops slice
+	pri int // Priority from MigrationOp
+	ord int // original index for stable tie-break
+}
+
+// migPQHeap implements heap.Interface for Kahn's algorithm priority queue.
+// Orders by (Priority ASC, original index ASC).
+type migPQHeap []migPQEntry
+
+func (h migPQHeap) Len() int      { return len(h) }
+func (h migPQHeap) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
+func (h migPQHeap) Less(i, j int) bool {
+	if h[i].pri != h[j].pri {
+		return h[i].pri < h[j].pri
+	}
+	return h[i].ord < h[j].ord
+}
+func (h *migPQHeap) Push(x interface{}) {
+	*h = append(*h, x.(migPQEntry))
+}
+func (h *migPQHeap) Pop() interface{} {
+	old := *h
+	n := len(old)
+	e := old[n-1]
+	*h = old[:n-1]
+	return e
+}
+
+// liftDepToOp maps a DepEntry's object-side (ObjType/ObjOID) to the migration
+// op indices that own it. Constraints and indexes are lifted to their parent
+// table's op. Type references to a relation's row type are lifted to the
+// relation's op.
+func liftDepToOp(c *Catalog, objType byte, objOID uint32, oidToIdx map[depKey][]int) []int {
+	// Direct match first.
+	if idxs, ok := oidToIdx[depKey{objType, objOID}]; ok {
+		return idxs
+	}
+	// Lift constraint → owning table.
+	if objType == 'c' {
+		if con, ok := c.constraints[objOID]; ok {
+			return oidToIdx[depKey{'r', con.RelOID}]
+		}
+	}
+	// Lift index → owning table.
+	if objType == 'i' {
+		for _, idxList := range c.indexesByRel {
+			for _, idx := range idxList {
+				if idx.OID == objOID {
+					return oidToIdx[depKey{'r', idx.RelOID}]
+				}
+			}
+		}
+	}
+	// Lift type → owning relation (row type of a table/view/composite).
+	if objType == 't' {
+		for _, rel := range c.relationByOID {
+			if rel.RowTypeOID == objOID {
+				return oidToIdx[depKey{'r', rel.OID}]
+			}
+		}
+	}
+	return nil
+}
+
+// topoSortOps sorts migration ops using Kahn's algorithm with priority
+// tie-break. It uses catalog deps to build the adjacency graph.
+// For forward (CREATE) sorting: if dep says A depends on B, B comes before A.
+func topoSortOps(c *Catalog, ops []MigrationOp) []MigrationOp {
+	if len(ops) == 0 {
+		return nil
+	}
+	n := len(ops)
+
+	// Build OID → op index map (multiple ops can share an OID).
+	oidToIdx := make(map[depKey][]int)
+	for i, op := range ops {
+		if op.ObjOID != 0 {
+			key := depKey{op.ObjType, op.ObjOID}
+			oidToIdx[key] = append(oidToIdx[key], i)
+		}
+	}
+
+	// Build adjacency from catalog deps.
+	adj := make([][]int, n)
+	inDegree := make([]int, n)
+	edgeSeen := make(map[[2]int]bool) // avoid duplicate edges
+
+	for _, d := range c.deps {
+		if d.DepType == DepInternal {
+			continue
+		}
+
+		// Find ops for the dependent object (lift constraint/index → table).
+		depIdxs := liftDepToOp(c, d.ObjType, d.ObjOID, oidToIdx)
+		// Find ops for the referenced object (lift constraint/index → table).
+		refIdxs := liftDepToOp(c, d.RefType, d.RefOID, oidToIdx)
+
+		if len(depIdxs) == 0 || len(refIdxs) == 0 {
+			continue
+		}
+
+		// Forward: referenced (refIdx) must come BEFORE dependent (depIdx).
+		for _, refIdx := range refIdxs {
+			for _, depIdx := range depIdxs {
+				if depIdx == refIdx {
+					continue // self-reference
+				}
+				edge := [2]int{refIdx, depIdx}
+				if edgeSeen[edge] {
+					continue
+				}
+				edgeSeen[edge] = true
+				adj[refIdx] = append(adj[refIdx], depIdx)
+				inDegree[depIdx]++
+			}
+		}
+	}
+
+	// Kahn's algorithm with min-heap (priority, original index).
+	h := make(migPQHeap, 0, n)
+	for i := 0; i < n; i++ {
+		if inDegree[i] == 0 {
+			h = append(h, migPQEntry{idx: i, pri: ops[i].Priority, ord: i})
+		}
+	}
+	heap.Init(&h)
+
+	sorted := make([]int, 0, n)
+	for h.Len() > 0 {
+		e := heap.Pop(&h).(migPQEntry)
+		sorted = append(sorted, e.idx)
+		for _, next := range adj[e.idx] {
+			inDegree[next]--
+			if inDegree[next] == 0 {
+				heap.Push(&h, migPQEntry{idx: next, pri: ops[next].Priority, ord: next})
+			}
+		}
+	}
+
+	// If cycle detected, append remaining ops sorted by priority for now.
+	// (Full cycle handling comes in Step 4.2.)
+	if len(sorted) < n {
+		sortedSet := make(map[int]bool, len(sorted))
+		for _, idx := range sorted {
+			sortedSet[idx] = true
+		}
+		var remaining []int
+		for i := 0; i < n; i++ {
+			if !sortedSet[i] {
+				remaining = append(remaining, i)
+			}
+		}
+		sort.Slice(remaining, func(a, b int) bool {
+			pa, pb := ops[remaining[a]].Priority, ops[remaining[b]].Priority
+			if pa != pb {
+				return pa < pb
+			}
+			return remaining[a] < remaining[b]
+		})
+		sorted = append(sorted, remaining...)
+	}
+
+	result := make([]MigrationOp, n)
+	for i, idx := range sorted {
+		result[i] = ops[idx]
+	}
+	return result
+}
+
+// sortMigrationOps separates ops into phases and sorts each phase.
+// PhasePre: sorted by (Priority DESC, name) — reverse sort comes in step 3.
+// PhaseMain: topologically sorted using to catalog deps (forward ordering).
+// PhasePost: sorted by name for determinism.
+func sortMigrationOps(from, to *Catalog, ops []MigrationOp) []MigrationOp {
+	var preOps, mainOps, postOps []MigrationOp
+	for _, op := range ops {
+		switch op.Phase {
+		case PhasePre:
+			preOps = append(preOps, op)
+		case PhaseMain:
+			mainOps = append(mainOps, op)
+		case PhasePost:
+			postOps = append(postOps, op)
+		}
+	}
+
+	// PhasePre: sort by (Priority DESC, name ASC) for now.
+	// Full reverse dependency sort comes in Step 2.2.
+	sort.SliceStable(preOps, func(i, j int) bool {
+		if preOps[i].Priority != preOps[j].Priority {
+			return preOps[i].Priority > preOps[j].Priority
+		}
+		return preOps[i].ObjectName < preOps[j].ObjectName
+	})
+
+	// PhaseMain: topological sort using to catalog deps.
+	mainOps = topoSortOps(to, mainOps)
+
+	// PhasePost: sort by name for determinism.
+	sort.SliceStable(postOps, func(i, j int) bool {
+		return postOps[i].ObjectName < postOps[j].ObjectName
+	})
+
+	result := make([]MigrationOp, 0, len(ops))
+	result = append(result, preOps...)
+	result = append(result, mainOps...)
+	result = append(result, postOps...)
+	return result
 }
 
