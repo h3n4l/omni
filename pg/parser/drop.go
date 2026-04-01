@@ -307,15 +307,15 @@ func (p *Parser) parseDropOnObject(objType nodes.ObjectType) (nodes.Node, error)
 
 	missingOk := p.parseOptIfExists()
 
-	// parse name (the trigger/policy/rule name — not stored in Objects per the yacc grammar)
-	_, _ = p.parseName()
+	// parse name (the trigger/policy/rule name)
+	objName, _ := p.parseName()
 
 	// ON
 	if _, err := p.expect(ON); err != nil {
 		return nil, err
 	}
 
-	// any_name (the table name)
+	// any_name (the table name, possibly schema-qualified)
 	anyName, err := p.parseAnyName()
 	if err != nil {
 		return nil, err
@@ -323,8 +323,13 @@ func (p *Parser) parseDropOnObject(objType nodes.ObjectType) (nodes.Node, error)
 
 	behavior := p.parseOptDropBehavior()
 
+	// Build the combined list: [schema?, table, trigger/policy/rule name].
+	// The catalog expects Objects to contain sublists where the last element
+	// is the object name and the preceding elements identify the relation.
+	combined := append(anyName.Items, &nodes.String{Str: objName})
+
 	return &nodes.DropStmt{
-		Objects:    &nodes.List{Items: []nodes.Node{anyName}},
+		Objects:    &nodes.List{Items: []nodes.Node{&nodes.List{Items: combined}}},
 		RemoveType: int(objType),
 		Behavior:   behavior,
 		Missing_ok: missingOk,
