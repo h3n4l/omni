@@ -47,7 +47,7 @@ func (p *Parser) parseCreateViewStmt(orReplace bool) (*nodes.CreateViewStmt, err
 	// SQL SECURITY { DEFINER | INVOKER }
 	if p.cur.Type == kwSQL {
 		p.advance()
-		if !eqFold(p.cur.Str, "security") {
+		if p.cur.Type != kwSECURITY {
 			return nil, &ParseError{
 				Message:  "expected SECURITY after SQL",
 				Position: p.cur.Loc,

@@ -717,7 +717,7 @@ func (p *Parser) parseGeneratedColumn() (*nodes.GeneratedColumn, error) {
 	p.advance() // consume GENERATED
 
 	// Optional ALWAYS
-	if p.cur.Type == kwALWAYS || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "always")) {
+	if p.cur.Type == kwALWAYS {
 		p.advance()
 	}
 
