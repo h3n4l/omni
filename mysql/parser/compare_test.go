@@ -11744,3 +11744,94 @@ func TestAlterTablePartitionBy(t *testing.T) {
 		}
 	})
 }
+
+// ---------------------------------------------------------------------------
+// Section 2.2: Window Function Names as Reserved Words
+// ---------------------------------------------------------------------------
+
+func TestWindowFunctionNames(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		{"RANK", "SELECT RANK() OVER (ORDER BY score DESC) FROM t"},
+		{"DENSE_RANK", "SELECT DENSE_RANK() OVER (ORDER BY score DESC) FROM t"},
+		{"ROW_NUMBER", "SELECT ROW_NUMBER() OVER (ORDER BY id) FROM t"},
+		{"NTILE", "SELECT NTILE(4) OVER (ORDER BY id) FROM t"},
+		{"LAG", "SELECT LAG(val, 1) OVER (ORDER BY id) FROM t"},
+		{"LEAD", "SELECT LEAD(val, 1, 0) OVER (ORDER BY id) FROM t"},
+		{"FIRST_VALUE", "SELECT FIRST_VALUE(val) OVER (ORDER BY id) FROM t"},
+		{"LAST_VALUE", "SELECT LAST_VALUE(val) OVER (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) FROM t"},
+		{"NTH_VALUE", "SELECT NTH_VALUE(val, 2) OVER (ORDER BY id) FROM t"},
+		{"PERCENT_RANK", "SELECT PERCENT_RANK() OVER (ORDER BY score) FROM t"},
+		{"CUME_DIST", "SELECT CUME_DIST() OVER (ORDER BY score) FROM t"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ParseAndCheck(t, tt.sql)
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Section 2.3: Interval Unit Keywords
+// ---------------------------------------------------------------------------
+
+func TestIntervalUnits(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		{"DAY", "SELECT DATE_ADD(d, INTERVAL 1 DAY) FROM t"},
+		{"HOUR", "SELECT DATE_ADD(d, INTERVAL 1 HOUR) FROM t"},
+		{"MINUTE", "SELECT DATE_ADD(d, INTERVAL 1 MINUTE) FROM t"},
+		{"SECOND", "SELECT DATE_ADD(d, INTERVAL 1 SECOND) FROM t"},
+		{"MONTH", "SELECT DATE_ADD(d, INTERVAL 1 MONTH) FROM t"},
+		{"WEEK", "SELECT DATE_ADD(d, INTERVAL 1 WEEK) FROM t"},
+		{"QUARTER", "SELECT DATE_ADD(d, INTERVAL 1 QUARTER) FROM t"},
+		{"YEAR", "SELECT DATE_ADD(d, INTERVAL 1 YEAR) FROM t"},
+		{"MICROSECOND", "SELECT DATE_ADD(d, INTERVAL 1 MICROSECOND) FROM t"},
+		{"HOUR_MINUTE", "SELECT DATE_ADD(d, INTERVAL '1:30' HOUR_MINUTE) FROM t"},
+		{"DAY_SECOND", "SELECT DATE_ADD(d, INTERVAL '1 1:30:00' DAY_SECOND) FROM t"},
+		{"YEAR_MONTH", "SELECT DATE_ADD(d, INTERVAL '1-6' YEAR_MONTH) FROM t"},
+		{"HOUR_MICROSECOND", "SELECT DATE_ADD(d, INTERVAL '1:30:00.5' HOUR_MICROSECOND) FROM t"},
+		{"DAY_HOUR", "SELECT DATE_ADD(d, INTERVAL '1 12' DAY_HOUR) FROM t"},
+		{"DAY_MINUTE", "SELECT DATE_ADD(d, INTERVAL '1 12:30' DAY_MINUTE) FROM t"},
+		{"MINUTE_SECOND", "SELECT DATE_ADD(d, INTERVAL '30:00' MINUTE_SECOND) FROM t"},
+		{"MINUTE_MICROSECOND", "SELECT DATE_ADD(d, INTERVAL '30:00.5' MINUTE_MICROSECOND) FROM t"},
+		{"SECOND_MICROSECOND", "SELECT DATE_ADD(d, INTERVAL '59.999999' SECOND_MICROSECOND) FROM t"},
+		{"HOUR_SECOND", "SELECT DATE_ADD(d, INTERVAL '1:30:59' HOUR_SECOND) FROM t"},
+		{"interval_add", "SELECT d + INTERVAL 1 DAY FROM t"},
+		{"interval_sub", "SELECT d - INTERVAL 1 MONTH FROM t"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ParseAndCheck(t, tt.sql)
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Section 2.4: UTC Temporal Functions
+// ---------------------------------------------------------------------------
+
+func TestUTCTemporalFunctions(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+	}{
+		{"UTC_DATE_no_parens", "SELECT UTC_DATE"},
+		{"UTC_DATE_parens", "SELECT UTC_DATE()"},
+		{"UTC_TIME_no_parens", "SELECT UTC_TIME"},
+		{"UTC_TIME_parens", "SELECT UTC_TIME()"},
+		{"UTC_TIME_fsp", "SELECT UTC_TIME(3)"},
+		{"UTC_TIMESTAMP_no_parens", "SELECT UTC_TIMESTAMP"},
+		{"UTC_TIMESTAMP_parens", "SELECT UTC_TIMESTAMP()"},
+		{"UTC_TIMESTAMP_fsp", "SELECT UTC_TIMESTAMP(6)"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ParseAndCheck(t, tt.sql)
+		})
+	}
+}
