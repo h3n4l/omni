@@ -379,6 +379,9 @@ func (p *Parser) parsePrimaryExpr() (nodes.ExprNode, error) {
 	case kwCAST:
 		return p.parseCastExpr()
 
+	case kwEXTRACT:
+		return p.parseExtractExpr()
+
 	case kwCONVERT:
 		return p.parseConvertExpr()
 
@@ -1457,11 +1460,48 @@ func (p *Parser) parseIntervalExpr() (nodes.ExprNode, error) {
 		return nil, err
 	}
 
+	upper := strings.ToUpper(unit)
+	if !isValidIntervalUnit(upper) {
+		return nil, &ParseError{
+			Position: p.pos(),
+			Message:  "invalid INTERVAL unit: " + unit,
+		}
+	}
+
 	return &nodes.IntervalExpr{
 		Loc:   nodes.Loc{Start: start, End: p.pos()},
 		Value: val,
-		Unit:  strings.ToUpper(unit),
+		Unit:  upper,
 	}, nil
+}
+
+// validIntervalUnits is the set of valid MySQL INTERVAL unit keywords.
+var validIntervalUnits = map[string]bool{
+	"MICROSECOND":        true,
+	"SECOND":             true,
+	"MINUTE":             true,
+	"HOUR":               true,
+	"DAY":                true,
+	"WEEK":               true,
+	"MONTH":              true,
+	"QUARTER":            true,
+	"YEAR":               true,
+	"SECOND_MICROSECOND": true,
+	"MINUTE_MICROSECOND": true,
+	"MINUTE_SECOND":      true,
+	"HOUR_MICROSECOND":   true,
+	"HOUR_SECOND":        true,
+	"HOUR_MINUTE":        true,
+	"DAY_MICROSECOND":    true,
+	"DAY_SECOND":         true,
+	"DAY_MINUTE":         true,
+	"DAY_HOUR":           true,
+	"YEAR_MONTH":         true,
+}
+
+// isValidIntervalUnit returns true if unit (already uppercased) is a valid MySQL interval unit.
+func isValidIntervalUnit(unit string) bool {
+	return validIntervalUnits[unit]
 }
 
 // parseMatchExpr parses MATCH (col_list) AGAINST (expr [modifier]).

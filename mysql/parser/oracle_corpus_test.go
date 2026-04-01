@@ -197,9 +197,7 @@ func TestOracleCorpus(t *testing.T) {
 			{"reserved word col name", "CREATE TABLE t_rej5 (select INT)", true},
 			{"incomplete PARTITION BY", "ALTER TABLE t PARTITION BY", false},
 			{"RANGE no partitions", "ALTER TABLE t PARTITION BY RANGE(id)", false},
-			// MISMATCH: omni accepts INVALID_UNIT as interval unit
-			// but MySQL correctly rejects it. Parser doesn't validate interval units.
-			{"invalid interval unit", "SELECT DATE_ADD(d, INTERVAL 1 INVALID_UNIT) FROM t", true},
+			{"invalid interval unit", "SELECT DATE_ADD(d, INTERVAL 1 INVALID_UNIT) FROM t", false},
 		}
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {

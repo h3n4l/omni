@@ -545,3 +545,19 @@ func TestParseError_Section_4_4_DMLTruncation(t *testing.T) {
 		})
 	}
 }
+
+func TestParseError_InvalidIntervalUnit(t *testing.T) {
+	cases := []struct {
+		name     string
+		sql      string
+		contains string
+	}{
+		{"INVALID_UNIT", "SELECT DATE_ADD(d, INTERVAL 1 INVALID_UNIT) FROM t", "invalid INTERVAL unit"},
+		{"FOOBAR", "SELECT DATE_ADD(d, INTERVAL 1 FOOBAR) FROM t", "invalid INTERVAL unit"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			parseExpectError(t, tc.sql, tc.contains)
+		})
+	}
+}
