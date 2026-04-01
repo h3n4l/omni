@@ -204,16 +204,13 @@ func GenerateMigration(from, to *Catalog, diff *SchemaDiff) *MigrationPlan {
 	ops = append(ops, generateRangeDDL(from, to, diff)...)
 	ops = append(ops, generateSequenceDDL(from, to, diff)...)
 
-	// Split function DDL: functions that are referenced by table CHECK constraints
-	// must be created before the tables. Functions that reference tables (e.g.,
-	// RETURNS SETOF table, or body references table) must come after tables.
-	funcOps := generateFunctionDDL(from, to, diff)
-	earlyFuncOps, lateFuncOps := splitFunctionOps(to, diff, funcOps)
-	ops = append(ops, earlyFuncOps...)
+	// Function ordering is handled by the dependency-driven topological sort:
+	// functions referenced by CHECK/DEFAULT deps are placed before tables,
+	// functions with RETURNS SETOF deps are placed after tables.
+	ops = append(ops, generateFunctionDDL(from, to, diff)...)
 	ops = append(ops, generateTableDDL(from, to, diff)...)
 	ops = append(ops, generateColumnDDL(from, to, diff)...)
 	ops = append(ops, generateConstraintDDL(from, to, diff)...)
-	ops = append(ops, lateFuncOps...)
 	ops = append(ops, generateViewDDL(from, to, diff)...)
 	ops = append(ops, generateIndexDDL(from, to, diff)...)
 	ops = append(ops, generatePartitionDDL(from, to, diff)...)
@@ -232,63 +229,6 @@ func GenerateMigration(from, to *Catalog, diff *SchemaDiff) *MigrationPlan {
 	return &MigrationPlan{Ops: ops}
 }
 
-// splitFunctionOps separates function DDL into two groups:
-// - early: functions that are needed by table CHECK/DEFAULT constraints (must be created before tables)
-// - late: all other functions (may reference tables, so created after tables)
-func splitFunctionOps(to *Catalog, diff *SchemaDiff, funcOps []MigrationOp) (early, late []MigrationOp) {
-	// Collect function names referenced by CHECK constraints and DEFAULTs
-	// in tables being added or modified.
-	neededByTables := make(map[string]bool)
-	for _, rel := range diff.Relations {
-		if rel.Action != DiffAdd {
-			continue
-		}
-		if rel.To == nil {
-			continue
-		}
-		// Check constraints on the table.
-		cons := to.ConstraintsOf(rel.To.OID)
-		for _, c := range cons {
-			if c.Type == ConstraintCheck && c.CheckExpr != "" {
-				// Extract function references from CHECK expression.
-				// Simple heuristic: look for qualified function calls.
-				for _, fn := range diff.Functions {
-					if fn.Action == DiffAdd && fn.To != nil {
-						// Check if function name appears in the CHECK expression.
-						funcName := fn.To.Name
-						if strings.Contains(c.CheckExpr, funcName+"(") || strings.Contains(c.CheckExpr, funcName+" (") {
-							neededByTables[fn.Identity] = true
-						}
-					}
-				}
-			}
-		}
-		// Also check column defaults.
-		for _, col := range rel.To.Columns {
-			if col.HasDefault && col.Default != "" {
-				for _, fn := range diff.Functions {
-					if fn.Action == DiffAdd && fn.To != nil {
-						funcName := fn.To.Name
-						if strings.Contains(col.Default, funcName+"(") || strings.Contains(col.Default, funcName+" (") {
-							neededByTables[fn.Identity] = true
-						}
-					}
-				}
-			}
-		}
-	}
-
-	for _, op := range funcOps {
-		// Only CREATE operations can be early; DROP/ALTER operations must be late
-		// because they may depend on tables being dropped first (e.g., triggers).
-		if op.Type == OpCreateFunction && neededByTables[op.ObjectName] {
-			early = append(early, op)
-		} else {
-			late = append(late, op)
-		}
-	}
-	return early, late
-}
 
 // wrapColumnTypeChangesWithViewOps detects ALTER COLUMN TYPE operations and
 // inserts DROP VIEW before and CREATE VIEW after them for any views that
