@@ -575,8 +575,7 @@ func topoSortOps(c *Catalog, ops []MigrationOp, reverse bool) []MigrationOp {
 		}
 	}
 
-	// If cycle detected, append remaining ops sorted by priority for now.
-	// (Full cycle handling comes in Step 4.2.)
+	// Cycle detection: if Kahn's didn't consume all ops, there is a cycle.
 	if len(sorted) < n {
 		sortedSet := make(map[int]bool, len(sorted))
 		for _, idx := range sorted {
@@ -588,6 +587,33 @@ func topoSortOps(c *Catalog, ops []MigrationOp, reverse bool) []MigrationOp {
 				remaining = append(remaining, i)
 			}
 		}
+		// Try to break cycle by deferring CHECK constraints to PhasePost.
+		var deferred []int
+		var stillRemaining []int
+		for _, idx := range remaining {
+			op := ops[idx]
+			if op.Type == OpAddConstraint && op.ObjType == 'c' && op.Phase == PhaseMain {
+				deferred = append(deferred, idx)
+			} else {
+				stillRemaining = append(stillRemaining, idx)
+			}
+		}
+		if len(deferred) > 0 && len(stillRemaining) == 0 {
+			// All remaining ops are deferrable CHECK constraints — mark them
+			// as deferred. They will be moved to PhasePost by the caller.
+			for _, idx := range deferred {
+				ops[idx].Phase = PhasePost
+				ops[idx].Priority = PriorityFKDeferred
+			}
+			// Return only the sorted portion; deferred ops excluded.
+			result := make([]MigrationOp, 0, n)
+			for _, idx := range sorted {
+				result = append(result, ops[idx])
+			}
+			return result
+		}
+		// Unresolvable cycle: append remaining ops sorted by priority with a
+		// warning so that the migration still produces output (best-effort).
 		sort.Slice(remaining, func(a, b int) bool {
 			pa, pb := ops[remaining[a]].Priority, ops[remaining[b]].Priority
 			if pa != pb {
@@ -595,6 +621,12 @@ func topoSortOps(c *Catalog, ops []MigrationOp, reverse bool) []MigrationOp {
 			}
 			return remaining[a] < remaining[b]
 		})
+		// Tag remaining ops with a cycle warning.
+		for _, idx := range remaining {
+			if ops[idx].Warning == "" {
+				ops[idx].Warning = "unresolvable dependency cycle detected"
+			}
+		}
 		sorted = append(sorted, remaining...)
 	}
 
@@ -609,6 +641,10 @@ func topoSortOps(c *Catalog, ops []MigrationOp, reverse bool) []MigrationOp {
 // PhasePre: reverse topological sort using from catalog deps (drop dependents first).
 // PhaseMain: topologically sorted using to catalog deps (forward ordering).
 // PhasePost: sorted by name for determinism.
+//
+// If the PhaseMain sort detects a cycle, it may reclassify some ops (e.g.,
+// CHECK constraints) to PhasePost to break the cycle. Those ops are then
+// collected into postOps for the final assembly.
 func sortMigrationOps(from, to *Catalog, ops []MigrationOp) []MigrationOp {
 	var preOps, mainOps, postOps []MigrationOp
 	for _, op := range ops {
@@ -627,7 +663,32 @@ func sortMigrationOps(from, to *Catalog, ops []MigrationOp) []MigrationOp {
 	preOps = topoSortOps(from, preOps, true)
 
 	// PhaseMain: topological sort using to catalog deps.
-	mainOps = topoSortOps(to, mainOps, false)
+	// topoSortOps may reclassify ops to PhasePost to break cycles.
+	mainSorted := topoSortOps(to, mainOps, false)
+
+	// Collect any ops that were reclassified to PhasePost during cycle breaking.
+	var actualMain []MigrationOp
+	for _, op := range mainSorted {
+		if op.Phase == PhasePost {
+			postOps = append(postOps, op)
+		} else {
+			actualMain = append(actualMain, op)
+		}
+	}
+	// Also check the original mainOps for any that were mutated in-place
+	// by topoSortOps but not included in mainSorted (deferred ops excluded
+	// from the sorted result).
+	mainSortedSet := make(map[uint32]bool)
+	for _, op := range mainSorted {
+		if op.ObjOID != 0 {
+			mainSortedSet[op.ObjOID] = true
+		}
+	}
+	for _, op := range mainOps {
+		if op.Phase == PhasePost && op.ObjOID != 0 && !mainSortedSet[op.ObjOID] {
+			postOps = append(postOps, op)
+		}
+	}
 
 	// PhasePost: sort by name for determinism.
 	sort.SliceStable(postOps, func(i, j int) bool {
@@ -636,7 +697,7 @@ func sortMigrationOps(from, to *Catalog, ops []MigrationOp) []MigrationOp {
 
 	result := make([]MigrationOp, 0, len(ops))
 	result = append(result, preOps...)
-	result = append(result, mainOps...)
+	result = append(result, actualMain...)
 	result = append(result, postOps...)
 	return result
 }
