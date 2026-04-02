@@ -404,7 +404,10 @@ func (p *Parser) parsePrimaryExpr() (nodes.ExprNode, error) {
 		kwSTD, kwSTDDEV, kwSTDDEV_POP, kwSTDDEV_SAMP,
 		kwBIT_AND, kwBIT_OR, kwBIT_XOR,
 		kwJSON_ARRAYAGG, kwJSON_OBJECTAGG, kwJSON_DUALITY_OBJECT,
-		kwVAR_POP, kwVAR_SAMP, kwVARIANCE:
+		kwVAR_POP, kwVAR_SAMP, kwVARIANCE,
+		// Aggregate/scalar function keywords classified reserved in Phase 3
+		kwCOUNT, kwSUM, kwMIN, kwMAX, kwGROUP_CONCAT,
+		kwSUBSTRING, kwTRIM, kwPOSITION:
 		start := p.pos()
 		tok := p.advance()
 		name := strings.ToUpper(tok.Str)
