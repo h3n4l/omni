@@ -826,6 +826,10 @@ func (p *Parser) parseTableConstraint() (*nodes.Constraint, error) {
 		p.advance()
 		p.match(kwKEY)
 		constr.Type = nodes.ConstrPrimaryKey
+		// Optional index name (undocumented but accepted by MySQL 8.0, silently ignored)
+		if p.isIdentToken() && p.cur.Type != '(' {
+			p.parseIdent() // consume and discard — MySQL ignores PK index names
+		}
 		// Optional index type
 		p.parseIndexTypeClause(constr)
 		idxCols, err := p.parseParenIndexKeyParts()

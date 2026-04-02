@@ -3421,6 +3421,26 @@ func TestParseAlterTableAddColumn(t *testing.T) {
 		}
 	})
 
+	t.Run("add primary key with name", func(t *testing.T) {
+		// MySQL 8.0 accepts PRIMARY KEY index_name (cols) — name is silently ignored
+		stmt := parseAlterTable(t, "ALTER TABLE t ADD PRIMARY KEY pk_a (a)")
+		cmd := stmt.Commands[0]
+		if cmd.Type != ast.ATAddConstraint {
+			t.Errorf("Type = %d, want ATAddConstraint", cmd.Type)
+		}
+		if cmd.Constraint == nil || cmd.Constraint.Type != ast.ConstrPrimaryKey {
+			t.Errorf("Constraint type = %v, want ConstrPrimaryKey", cmd.Constraint)
+		}
+	})
+
+	t.Run("add constraint primary key with name", func(t *testing.T) {
+		ParseAndCheck(t, "ALTER TABLE t ADD CONSTRAINT pk_a PRIMARY KEY (a)")
+	})
+
+	t.Run("add primary key with name in create table", func(t *testing.T) {
+		ParseAndCheck(t, "CREATE TABLE t (a INT, PRIMARY KEY pk_a (a))")
+	})
+
 	t.Run("add constraint unique", func(t *testing.T) {
 		stmt := parseAlterTable(t, "ALTER TABLE t ADD UNIQUE KEY idx_email (email)")
 		cmd := stmt.Commands[0]
