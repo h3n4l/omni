@@ -407,7 +407,9 @@ func (p *Parser) parsePrimaryExpr() (nodes.ExprNode, error) {
 		kwVAR_POP, kwVAR_SAMP, kwVARIANCE,
 		// Aggregate/scalar function keywords classified reserved in Phase 3
 		kwCOUNT, kwSUM, kwMIN, kwMAX, kwGROUP_CONCAT,
-		kwSUBSTRING, kwTRIM, kwPOSITION:
+		kwSUBSTRING, kwTRIM, kwPOSITION,
+		// IF(cond, val, val) — reserved keyword also used as function
+		kwIF:
 		start := p.pos()
 		tok := p.advance()
 		name := strings.ToUpper(tok.Str)
