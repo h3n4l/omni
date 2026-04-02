@@ -1250,7 +1250,7 @@ func (p *Parser) parseCreateTablespaceStmt(start int, undo bool) (*nodes.CreateT
 			p.match('=')
 			stmt.NodeGroup = p.cur.Str
 			p.advance()
-		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "wait"):
+		case p.cur.Type == kwWAIT:
 			p.advance()
 			stmt.Wait = true
 		case p.cur.Type == kwCOMMENT:
@@ -1342,7 +1342,7 @@ func (p *Parser) parseAlterTablespaceStmt(start int, undo bool) (*nodes.AlterTab
 			p.advance()
 			p.match('=')
 			stmt.InitialSize = p.parseSizeValue()
-		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "wait"):
+		case p.cur.Type == kwWAIT:
 			p.advance()
 			stmt.Wait = true
 		case p.cur.Type == kwRENAME:
@@ -1359,10 +1359,10 @@ func (p *Parser) parseAlterTablespaceStmt(start int, undo bool) (*nodes.AlterTab
 			stmt.AutoextendSize = p.parseSizeValue()
 		case p.cur.Type == kwSET:
 			p.advance() // consume SET
-			if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "active") {
+			if p.cur.Type == kwACTIVE {
 				stmt.SetActive = true
 				p.advance()
-			} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "inactive") {
+			} else if p.cur.Type == kwINACTIVE {
 				stmt.SetInactive = true
 				p.advance()
 			}
@@ -1586,7 +1586,7 @@ func (p *Parser) parseDropServerStmt(start int) (*nodes.DropServerStmt, error) {
 func (p *Parser) parseCreateSpatialRefSysStmt(start int, orReplace bool) (*nodes.CreateSpatialRefSysStmt, error) {
 	// SPATIAL already consumed; consume REFERENCE SYSTEM
 	// Current token should be REFERENCE (as ident)
-	if !p.isIdentToken() || !eqFold(p.cur.Str, "reference") {
+	if p.cur.Type != kwREFERENCE {
 		return nil, &ParseError{
 			Message:  "expected REFERENCE after SPATIAL",
 			Position: p.cur.Loc,
@@ -1594,7 +1594,7 @@ func (p *Parser) parseCreateSpatialRefSysStmt(start int, orReplace bool) (*nodes
 	}
 	p.advance() // consume REFERENCE
 
-	if !p.isIdentToken() || !eqFold(p.cur.Str, "system") {
+	if p.cur.Type != kwSYSTEM {
 		return nil, &ParseError{
 			Message:  "expected SYSTEM after REFERENCE",
 			Position: p.cur.Loc,
@@ -1631,7 +1631,7 @@ func (p *Parser) parseCreateSpatialRefSysStmt(start int, orReplace bool) (*nodes
 			break
 		}
 		switch {
-		case eqFold(p.cur.Str, "name"):
+		case p.cur.Type == kwNAME:
 			p.advance()
 			if p.cur.Type != tokSCONST {
 				return nil, &ParseError{
@@ -1641,7 +1641,7 @@ func (p *Parser) parseCreateSpatialRefSysStmt(start int, orReplace bool) (*nodes
 			}
 			stmt.Name = p.cur.Str
 			p.advance()
-		case eqFold(p.cur.Str, "definition"):
+		case p.cur.Type == kwDEFINITION:
 			p.advance()
 			if p.cur.Type != tokSCONST {
 				return nil, &ParseError{
@@ -1651,7 +1651,7 @@ func (p *Parser) parseCreateSpatialRefSysStmt(start int, orReplace bool) (*nodes
 			}
 			stmt.Definition = p.cur.Str
 			p.advance()
-		case eqFold(p.cur.Str, "organization"):
+		case p.cur.Type == kwORGANIZATION:
 			p.advance()
 			if p.cur.Type != tokSCONST {
 				return nil, &ParseError{
@@ -1672,7 +1672,7 @@ func (p *Parser) parseCreateSpatialRefSysStmt(start int, orReplace bool) (*nodes
 			}
 			stmt.OrgSRID = p.cur.Ival
 			p.advance()
-		case eqFold(p.cur.Str, "description"):
+		case p.cur.Type == kwDESCRIPTION:
 			p.advance()
 			if p.cur.Type != tokSCONST {
 				return nil, &ParseError{
@@ -1698,7 +1698,7 @@ done_srs:
 //	DROP SPATIAL REFERENCE SYSTEM [IF EXISTS] srid
 func (p *Parser) parseDropSpatialRefSysStmt(start int) (*nodes.DropSpatialRefSysStmt, error) {
 	// SPATIAL already consumed; consume REFERENCE SYSTEM
-	if !p.isIdentToken() || !eqFold(p.cur.Str, "reference") {
+	if p.cur.Type != kwREFERENCE {
 		return nil, &ParseError{
 			Message:  "expected REFERENCE after SPATIAL",
 			Position: p.cur.Loc,
@@ -1706,7 +1706,7 @@ func (p *Parser) parseDropSpatialRefSysStmt(start int) (*nodes.DropSpatialRefSys
 	}
 	p.advance() // consume REFERENCE
 
-	if !p.isIdentToken() || !eqFold(p.cur.Str, "system") {
+	if p.cur.Type != kwSYSTEM {
 		return nil, &ParseError{
 			Message:  "expected SYSTEM after REFERENCE",
 			Position: p.cur.Loc,
@@ -2405,7 +2405,7 @@ func (p *Parser) parseCreateLogfileGroupStmt(start int) (*nodes.CreateLogfileGro
 			}
 			stmt.NodeGroup = p.cur.Str
 			p.advance()
-		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "wait"):
+		case p.cur.Type == kwWAIT:
 			p.advance()
 			stmt.Wait = true
 		case p.cur.Type == kwCOMMENT:
@@ -2480,7 +2480,7 @@ func (p *Parser) parseAlterLogfileGroupStmt(start int) (*nodes.AlterLogfileGroup
 				p.advance()
 			}
 			stmt.InitialSize = p.parseSizeValue()
-		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "wait"):
+		case p.cur.Type == kwWAIT:
 			p.advance()
 			stmt.Wait = true
 		case p.cur.Type == kwENGINE:

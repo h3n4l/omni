@@ -198,7 +198,7 @@ func (p *Parser) parseCreateEventStmt() (*nodes.CreateEventStmt, error) {
 	if _, err := p.expect(kwON); err != nil {
 		return nil, err
 	}
-	if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "schedule") {
+	if p.cur.Type == kwSCHEDULE {
 		p.advance()
 	}
 
@@ -218,7 +218,7 @@ func (p *Parser) parseCreateEventStmt() (*nodes.CreateEventStmt, error) {
 	// Optional: ON COMPLETION [NOT] PRESERVE
 	if p.cur.Type == kwON {
 		next := p.peekNext()
-		if next.Type == tokIDENT && eqFold(next.Str, "completion") {
+		if next.Type == kwCOMPLETION {
 			p.advance() // ON
 			p.advance() // COMPLETION
 			if _, ok := p.match(kwNOT); ok {
@@ -226,7 +226,7 @@ func (p *Parser) parseCreateEventStmt() (*nodes.CreateEventStmt, error) {
 			} else {
 				stmt.OnCompletion = "PRESERVE"
 			}
-			if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "preserve") {
+			if p.cur.Type == kwPRESERVE {
 				p.advance()
 			}
 		}
@@ -309,7 +309,7 @@ func (p *Parser) parseEventSchedule() (*nodes.EventSchedule, error) {
 			return nil, err
 		}
 		sched.At = expr
-	} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "every") {
+	} else if p.cur.Type == kwEVERY {
 		p.advance()
 		expr, err := p.parseExpr()
 		if err != nil {
@@ -323,7 +323,7 @@ func (p *Parser) parseEventSchedule() (*nodes.EventSchedule, error) {
 		}
 
 		// Optional STARTS
-		if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "starts") {
+		if p.cur.Type == kwSTARTS {
 			p.advance()
 			expr, err := p.parseExpr()
 			if err != nil {
@@ -333,7 +333,7 @@ func (p *Parser) parseEventSchedule() (*nodes.EventSchedule, error) {
 		}
 
 		// Optional ENDS
-		if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "ends") {
+		if p.cur.Type == kwENDS {
 			p.advance()
 			expr, err := p.parseExpr()
 			if err != nil {

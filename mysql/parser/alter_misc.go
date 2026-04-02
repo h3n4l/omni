@@ -172,7 +172,7 @@ func (p *Parser) parseAlterEventStmt() (*nodes.AlterEventStmt, error) {
 	// Optional: ON SCHEDULE
 	if p.cur.Type == kwON {
 		next := p.peekNext()
-		if next.Type == tokIDENT && eqFold(next.Str, "schedule") {
+		if next.Type == kwSCHEDULE {
 			p.advance() // ON
 			p.advance() // SCHEDULE
 			sched, err := p.parseEventSchedule()
@@ -186,7 +186,7 @@ func (p *Parser) parseAlterEventStmt() (*nodes.AlterEventStmt, error) {
 	// Optional: ON COMPLETION [NOT] PRESERVE
 	if p.cur.Type == kwON {
 		next := p.peekNext()
-		if next.Type == tokIDENT && eqFold(next.Str, "completion") {
+		if next.Type == kwCOMPLETION {
 			p.advance() // ON
 			p.advance() // COMPLETION
 			if _, ok := p.match(kwNOT); ok {
@@ -194,7 +194,7 @@ func (p *Parser) parseAlterEventStmt() (*nodes.AlterEventStmt, error) {
 			} else {
 				stmt.OnCompletion = "PRESERVE"
 			}
-			if p.isIdentToken() && eqFold(p.cur.Str, "preserve") {
+			if p.cur.Type == kwPRESERVE {
 				p.advance()
 			}
 		}

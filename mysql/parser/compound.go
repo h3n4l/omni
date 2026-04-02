@@ -357,7 +357,7 @@ func (p *Parser) parseHandlerConditionValue() (string, error) {
 	if p.cur.Type == kwSQLSTATE {
 		p.advance()
 		// Optional VALUE
-		if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "VALUE") {
+		if p.cur.Type == kwVALUE {
 			p.advance()
 		}
 		if p.cur.Type != tokSCONST {

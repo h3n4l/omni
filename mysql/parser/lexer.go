@@ -563,6 +563,31 @@ const (
 	kwISSUER
 	kwSUBJECT
 	kwCIPHER
+	kwSCHEDULE
+	kwCOMPLETION
+	kwPRESERVE
+	kwEVERY
+	kwSTARTS
+	kwENDS
+	kwVALUE
+	kwSTACKED
+	kwUNKNOWN
+	kwWAIT
+	kwACTIVE
+	kwINACTIVE
+	kwATTRIBUTE
+	kwADMIN
+	kwDESCRIPTION
+	kwORGANIZATION
+	kwREFERENCE
+	kwDEFINITION
+	kwNAME
+	kwSYSTEM
+	kwROTATE
+	kwKEYRING
+	kwTLS
+	kwSTREAM
+	kwGENERATE
 )
 
 // keywords maps lowercase keyword strings to their token types.
@@ -1087,6 +1112,31 @@ var keywords = map[string]int{
 	"issuer":              kwISSUER,
 	"subject":             kwSUBJECT,
 	"cipher":              kwCIPHER,
+	"schedule":            kwSCHEDULE,
+	"completion":          kwCOMPLETION,
+	"preserve":            kwPRESERVE,
+	"every":               kwEVERY,
+	"starts":              kwSTARTS,
+	"ends":                kwENDS,
+	"value":               kwVALUE,
+	"stacked":             kwSTACKED,
+	"unknown":             kwUNKNOWN,
+	"wait":                kwWAIT,
+	"active":              kwACTIVE,
+	"inactive":            kwINACTIVE,
+	"attribute":           kwATTRIBUTE,
+	"admin":               kwADMIN,
+	"description":         kwDESCRIPTION,
+	"organization":        kwORGANIZATION,
+	"reference":           kwREFERENCE,
+	"definition":          kwDEFINITION,
+	"name":                kwNAME,
+	"system":              kwSYSTEM,
+	"rotate":              kwROTATE,
+	"keyring":             kwKEYRING,
+	"tls":                 kwTLS,
+	"stream":              kwSTREAM,
+	"generate":            kwGENERATE,
 }
 
 // Token represents a lexical token.

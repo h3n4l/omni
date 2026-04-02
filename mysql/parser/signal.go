@@ -177,7 +177,7 @@ func (p *Parser) parseGetDiagnosticsStmt() (*nodes.GetDiagnosticsStmt, error) {
 	// Optional CURRENT | STACKED
 	if p.cur.Type == kwCURRENT {
 		p.advance()
-	} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "STACKED") {
+	} else if p.cur.Type == kwSTACKED {
 		p.advance()
 		stmt.Stacked = true
 	}
@@ -231,7 +231,7 @@ func (p *Parser) parseSignalConditionValue() (string, error) {
 		p.advance() // consume SQLSTATE
 
 		// Optional VALUE keyword
-		if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "VALUE") {
+		if p.cur.Type == kwVALUE {
 			p.advance()
 		}
 

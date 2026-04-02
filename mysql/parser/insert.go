@@ -163,7 +163,7 @@ func (p *Parser) parseInsertOrReplace(isReplace bool) (*nodes.InsertStmt, error)
 
 	default:
 		// Also accept VALUE (MySQL alias for VALUES)
-		if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "value") {
+		if p.cur.Type == kwVALUE {
 			p.advance()
 			rows, err := p.parseValuesRows()
 			if err != nil {

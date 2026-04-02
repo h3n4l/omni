@@ -1232,7 +1232,7 @@ func (p *Parser) parseIsExpr(left nodes.ExprNode) (nodes.ExprNode, error) {
 		p.advance()
 	default:
 		// IS [NOT] UNKNOWN — check for identifier "unknown"
-		if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "unknown") {
+		if p.cur.Type == kwUNKNOWN {
 			is.Test = nodes.IsUnknown
 			p.advance()
 		} else if p.cur.Type == tokEOF {

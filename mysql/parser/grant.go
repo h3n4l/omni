@@ -50,7 +50,7 @@ func (p *Parser) parseGrantStmt() (nodes.Node, error) {
 		// [WITH ADMIN OPTION]
 		if p.cur.Type == kwWITH {
 			p.advance()
-			if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "admin") {
+			if p.cur.Type == kwADMIN {
 				p.advance()
 				if p.cur.Type == kwOPTION {
 					p.advance()
@@ -282,7 +282,7 @@ func (p *Parser) parseRevokeStmt() (nodes.Node, error) {
 			// [IGNORE UNKNOWN USER]
 			if p.cur.Type == kwIGNORE {
 				p.advance()
-				if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "unknown") {
+				if p.cur.Type == kwUNKNOWN {
 					p.advance()
 				}
 				if p.cur.Type == kwUSER {
@@ -312,7 +312,7 @@ func (p *Parser) parseRevokeStmt() (nodes.Node, error) {
 		// [IGNORE UNKNOWN USER]
 		if p.cur.Type == kwIGNORE {
 			p.advance()
-			if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "unknown") {
+			if p.cur.Type == kwUNKNOWN {
 				p.advance()
 			}
 			if p.cur.Type == kwUSER {
@@ -347,7 +347,7 @@ func (p *Parser) parseRevokeStmt() (nodes.Node, error) {
 		// [IGNORE UNKNOWN USER]
 		if p.cur.Type == kwIGNORE {
 			p.advance()
-			if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "unknown") {
+			if p.cur.Type == kwUNKNOWN {
 				p.advance()
 			}
 			if p.cur.Type == kwUSER {
@@ -390,7 +390,7 @@ func (p *Parser) parseRevokeStmt() (nodes.Node, error) {
 	// [IGNORE UNKNOWN USER]
 	if p.cur.Type == kwIGNORE {
 		p.advance()
-		if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "unknown") {
+		if p.cur.Type == kwUNKNOWN {
 			p.advance()
 		}
 		if p.cur.Type == kwUSER {
@@ -1837,7 +1837,7 @@ func (p *Parser) parseUserAccountOptions(
 				p.advance()
 			}
 
-		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "attribute"):
+		case p.cur.Type == kwATTRIBUTE:
 			p.advance()
 			if p.cur.Type == tokSCONST {
 				*attribute = p.cur.Str
