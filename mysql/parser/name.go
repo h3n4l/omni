@@ -718,6 +718,13 @@ func (p *Parser) isIdentToken() bool {
 	return p.cur.Type == tokIDENT || (p.cur.Type >= 700 && !isReserved(p.cur.Type))
 }
 
+// isLabelIdentToken returns true if the current token can be used as a label identifier.
+// This matches MySQL's label_ident rule: tokIDENT + unambiguous + ambiguous_3 + ambiguous_4.
+// Excludes ambiguous_1 and ambiguous_2 keywords (e.g., BEGIN, COMMIT, END).
+func (p *Parser) isLabelIdentToken() bool {
+	return p.cur.Type == tokIDENT || (p.cur.Type >= 700 && isLabelKeyword(p.cur.Type))
+}
+
 // isVariableRef returns true if the current token is a variable reference.
 func (p *Parser) isVariableRef() bool {
 	if p.cur.Type != tokIDENT {

@@ -6926,6 +6926,44 @@ func TestParseIterate(t *testing.T) {
 	}
 }
 
+// TestLabelIdentRejectsAmbiguous2 verifies that ambiguous_2 keywords (like BEGIN)
+// cannot be used as SP labels. BEGIN is allowed as a general identifier (e.g.,
+// CREATE TABLE begin) but NOT as a label_ident.
+func TestLabelIdentRejectsAmbiguous2(t *testing.T) {
+	// BEGIN as a table name should work (general ident context).
+	ParseAndCheck(t, "CREATE TABLE begin (a INT)")
+
+	// BEGIN as an SP label should fail — ambiguous_2 is excluded from label_ident.
+	t.Run("begin as LEAVE label rejected", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("LEAVE begin")}
+		p.advance()
+		_, err := p.parseLeaveStmt()
+		if err == nil {
+			t.Fatal("expected error for LEAVE begin (BEGIN is ambiguous_2, not allowed as label)")
+		}
+	})
+
+	t.Run("begin as ITERATE label rejected", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("ITERATE begin")}
+		p.advance()
+		_, err := p.parseIterateStmt()
+		if err == nil {
+			t.Fatal("expected error for ITERATE begin (BEGIN is ambiguous_2, not allowed as label)")
+		}
+	})
+
+	t.Run("begin as block label rejected", func(t *testing.T) {
+		// In a compound context, `begin: BEGIN ... END begin` should fail
+		// because BEGIN cannot be used as a label.
+		p := &Parser{lexer: NewLexer("begin: BEGIN END begin")}
+		p.advance()
+		_, err := p.parseCompoundStmtOrStmt()
+		if err == nil {
+			t.Fatal("expected error for begin: BEGIN ... END (BEGIN is ambiguous_2, not allowed as label)")
+		}
+	})
+}
+
 func TestParseReturn(t *testing.T) {
 	tests := []struct {
 		sql  string

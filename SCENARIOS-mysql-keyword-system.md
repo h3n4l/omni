@@ -319,12 +319,12 @@ Create 5 identifier parsing functions matching MySQL's grammar hierarchy.
 
 ### 2.5 Migrate Label Ident Call Sites
 
-- [ ] BEGIN...END block label uses parseLabelIdent
-- [ ] LEAVE label uses parseLabelIdent
-- [ ] ITERATE label uses parseLabelIdent
-- [ ] `CREATE TABLE begin (a INT)` accepted — BEGIN is ambiguous_2 (allowed in ident, not in label)
-- [ ] `label1: BEGIN ... END label1` with label1=`begin` rejected — BEGIN not allowed as label
-- [ ] All compound statement tests still pass
+- [x] BEGIN...END block label uses parseLabelIdent
+- [x] LEAVE label uses parseLabelIdent
+- [x] ITERATE label uses parseLabelIdent
+- [x] `CREATE TABLE begin (a INT)` accepted — BEGIN is ambiguous_2 (allowed in ident, not in label)
+- [x] `label1: BEGIN ... END label1` with label1=`begin` rejected — BEGIN not allowed as label
+- [x] All compound statement tests still pass
 
 ### 2.6 Migrate Role Ident Call Sites
 

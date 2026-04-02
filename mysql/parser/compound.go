@@ -46,7 +46,7 @@ func (p *Parser) parseBeginEndBlock(labelName string, labelStart int) (*nodes.Be
 	}
 
 	// Optional end_label
-	if p.isIdentToken() && p.cur.Type != tokEOF {
+	if p.isLabelIdentToken() && p.cur.Type != tokEOF {
 		stmt.EndLabel = p.cur.Str
 		p.advance()
 	}
@@ -124,7 +124,7 @@ func (p *Parser) parseCompoundStmtOrStmt() (nodes.Node, error) {
 	}
 
 	// Label: check for identifier followed by ':'
-	if p.isIdentToken() && p.cur.Type != kwEND {
+	if p.isLabelIdentToken() && p.cur.Type != kwEND {
 		next := p.peekNext()
 		if next.Type == ':' {
 			name := p.cur.Str
@@ -635,7 +635,7 @@ func (p *Parser) parseWhileStmt(labelName string, labelStart int) (*nodes.WhileS
 
 	// Optional end_label
 	var endLabel string
-	if p.isIdentToken() && p.cur.Type != tokEOF && p.cur.Type != ';' {
+	if p.isLabelIdentToken() && p.cur.Type != tokEOF && p.cur.Type != ';' {
 		endLabel = p.cur.Str
 		p.advance()
 	}
@@ -689,7 +689,7 @@ func (p *Parser) parseRepeatStmt(labelName string, labelStart int) (*nodes.Repea
 
 	// Optional end_label
 	var endLabel string
-	if p.isIdentToken() && p.cur.Type != tokEOF && p.cur.Type != ';' {
+	if p.isLabelIdentToken() && p.cur.Type != tokEOF && p.cur.Type != ';' {
 		endLabel = p.cur.Str
 		p.advance()
 	}
@@ -731,7 +731,7 @@ func (p *Parser) parseLoopStmt(labelName string, labelStart int) (*nodes.LoopStm
 
 	// Optional end_label
 	var endLabel string
-	if p.isIdentToken() && p.cur.Type != tokEOF && p.cur.Type != ';' {
+	if p.isLabelIdentToken() && p.cur.Type != tokEOF && p.cur.Type != ';' {
 		endLabel = p.cur.Str
 		p.advance()
 	}
@@ -751,7 +751,7 @@ func (p *Parser) parseLeaveStmt() (*nodes.LeaveStmt, error) {
 	start := p.pos()
 	p.advance() // consume LEAVE
 
-	label, _, err := p.parseIdentifier()
+	label, _, err := p.parseLabelIdent()
 	if err != nil {
 		return nil, err
 	}
@@ -769,7 +769,7 @@ func (p *Parser) parseIterateStmt() (*nodes.IterateStmt, error) {
 	start := p.pos()
 	p.advance() // consume ITERATE
 
-	label, _, err := p.parseIdentifier()
+	label, _, err := p.parseLabelIdent()
 	if err != nil {
 		return nil, err
 	}
