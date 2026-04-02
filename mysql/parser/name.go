@@ -642,66 +642,77 @@ func (p *Parser) parseTableRefWithAlias() (*nodes.TableRef, error) {
 }
 
 // parseVariableRef parses a user variable (@var) or system variable (@@var).
-// The lexer emits these as tokIDENT with "@" or "@@" prefix in the Str.
+// The lexer emits user variables as tokIDENT with "@" prefix,
+// and system variables as tokAt2 followed by identifier/keyword tokens.
 //
 // Ref: https://dev.mysql.com/doc/refman/8.0/en/user-variables.html
 // Ref: https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html
 //
 //	variable_ref:
 //	    '@' identifier
-//	    | '@@' [GLOBAL | SESSION | LOCAL] '.' identifier
+//	    | '@@' [GLOBAL | SESSION | LOCAL] '.' identifier ['.' identifier ...]
+//	    | '@@' identifier ['.' identifier ...]
 func (p *Parser) parseVariableRef() (*nodes.VariableRef, error) {
-	if p.cur.Type != tokIDENT {
-		return nil, &ParseError{
-			Message:  "expected variable reference",
-			Position: p.cur.Loc,
-		}
-	}
+	// System variable: @@...
+	if p.cur.Type == tokAt2 {
+		start := p.cur.Loc
+		p.advance() // consume @@
 
-	tok := p.cur
-	str := tok.Str
-
-	// Check for @@ prefix (system variable)
-	if len(str) > 2 && str[0] == '@' && str[1] == '@' {
-		p.advance()
-		name := str[2:]
 		ref := &nodes.VariableRef{
-			Loc:    nodes.Loc{Start: tok.Loc},
+			Loc:    nodes.Loc{Start: start},
 			System: true,
 		}
 
-		// Check for scope prefix: @@global.var, @@session.var, @@local.var
-		if dotIdx := indexOf(name, '.'); dotIdx >= 0 {
-			scope := name[:dotIdx]
-			varName := name[dotIdx+1:]
-			switch {
-			case eqFold(scope, "global"):
-				ref.Scope = "GLOBAL"
-			case eqFold(scope, "session"):
-				ref.Scope = "SESSION"
-			case eqFold(scope, "local"):
-				ref.Scope = "LOCAL"
-			default:
-				// Not a scope, treat as qualified name
+		// Check for scope prefix: @@GLOBAL.var, @@SESSION.var, @@LOCAL.var, @@PERSIST.var
+		isScopeKeyword := p.cur.Type == kwGLOBAL || p.cur.Type == kwSESSION ||
+			p.cur.Type == kwLOCAL || p.cur.Type == kwPERSIST ||
+			(p.cur.Type == tokIDENT && eqFold(p.cur.Str, "persist_only"))
+		if isScopeKeyword {
+			// Look ahead for '.' to distinguish scope from plain variable name
+			next := p.peekNext()
+			if next.Type == '.' {
+				switch {
+				case p.cur.Type == kwGLOBAL:
+					ref.Scope = "GLOBAL"
+				case p.cur.Type == kwSESSION:
+					ref.Scope = "SESSION"
+				case p.cur.Type == kwLOCAL:
+					ref.Scope = "LOCAL"
+				case p.cur.Type == kwPERSIST:
+					ref.Scope = "PERSIST"
+				default:
+					ref.Scope = "PERSIST_ONLY"
+				}
+				p.advance() // consume scope keyword
+				p.advance() // consume '.'
+				// Parse the variable name (may be dot-separated: comp.var)
+				name, _, err := p.parseSysVarName()
+				if err != nil {
+					return nil, err
+				}
 				ref.Name = name
 				ref.Loc.End = p.pos()
 				return ref, nil
 			}
-			ref.Name = varName
-		} else {
-			ref.Name = name
 		}
 
+		// No scope — plain @@variable_name (may be dot-separated)
+		name, _, err := p.parseSysVarName()
+		if err != nil {
+			return nil, err
+		}
+		ref.Name = name
 		ref.Loc.End = p.pos()
 		return ref, nil
 	}
 
-	// Check for @ prefix (user variable)
-	if len(str) > 1 && str[0] == '@' {
+	// User variable: @name (lexer emits as tokIDENT with "@" prefix)
+	if p.cur.Type == tokIDENT && len(p.cur.Str) > 1 && p.cur.Str[0] == '@' {
+		tok := p.cur
 		p.advance()
 		ref := &nodes.VariableRef{
 			Loc:  nodes.Loc{Start: tok.Loc},
-			Name: str[1:],
+			Name: tok.Str[1:],
 		}
 		ref.Loc.End = p.pos()
 		return ref, nil
@@ -711,6 +722,25 @@ func (p *Parser) parseVariableRef() (*nodes.VariableRef, error) {
 		Message:  "expected variable reference",
 		Position: p.cur.Loc,
 	}
+}
+
+// parseSysVarName parses a system variable name, which may contain dots
+// (e.g., "validate_password.length" or "comp.var1").
+func (p *Parser) parseSysVarName() (string, int, error) {
+	name, loc, err := p.parseIdent()
+	if err != nil {
+		return "", 0, err
+	}
+	// Consume additional .ident parts for component-style variable names
+	for p.cur.Type == '.' {
+		p.advance() // consume '.'
+		part, _, err := p.parseIdent()
+		if err != nil {
+			return "", 0, err
+		}
+		name += "." + part
+	}
+	return name, loc, nil
 }
 
 // isIdentToken returns true if the current token can be used as an identifier.
@@ -734,6 +764,11 @@ func (p *Parser) isLvalueIdentToken() bool {
 
 // isVariableRef returns true if the current token is a variable reference.
 func (p *Parser) isVariableRef() bool {
+	// System variable: @@...
+	if p.cur.Type == tokAt2 {
+		return true
+	}
+	// User variable: @name (lexer emits as tokIDENT with "@" prefix)
 	if p.cur.Type != tokIDENT {
 		return false
 	}

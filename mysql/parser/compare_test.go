@@ -125,7 +125,7 @@ func TestLexerBasic(t *testing.T) {
 		{"SELECT 'hello'", []int{kwSELECT, tokSCONST}},
 		{"SELECT `col`", []int{kwSELECT, tokIDENT}},
 		{"SELECT @var", []int{kwSELECT, tokIDENT}},
-		{"SELECT @@global.var", []int{kwSELECT, tokIDENT}},
+		{"SELECT @@global.var", []int{kwSELECT, tokAt2, kwGLOBAL, '.', tokIDENT}},
 		{"1 + 2", []int{tokICONST, '+', tokICONST}},
 		{"1 <= 2", []int{tokICONST, tokLessEq, tokICONST}},
 		{"1 >= 2", []int{tokICONST, tokGreaterEq, tokICONST}},

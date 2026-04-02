@@ -31,6 +31,7 @@ const (
 	tokColonColon  // :: (not MySQL, but for compat)
 	tokJsonExtract // ->
 	tokJsonUnquote // ->>
+	tokAt2         // @@ (system variable prefix)
 )
 
 // Keyword token constants. Values start at 700.
@@ -1371,13 +1372,14 @@ func (l *Lexer) skipWhitespaceAndComments() {
 func (l *Lexer) scanVariable() Token {
 	start := l.pos
 	l.pos++ // skip first @
-	system := false
+
+	// System variable: @@ → emit tokAt2 and let the parser handle the rest
 	if l.pos < len(l.input) && l.input[l.pos] == '@' {
-		system = true
 		l.pos++ // skip second @
+		return Token{Type: tokAt2, Str: "@@", Loc: start}
 	}
 
-	// Scan variable name: can be backtick-quoted or identifier chars
+	// User variable: @name — scan the variable name as one token
 	var name string
 	if l.pos < len(l.input) && l.input[l.pos] == '`' {
 		l.pos++ // skip opening backtick
@@ -1402,11 +1404,7 @@ func (l *Lexer) scanVariable() Token {
 		name = l.input[nameStart:l.pos]
 	}
 
-	prefix := "@"
-	if system {
-		prefix = "@@"
-	}
-	return Token{Type: tokIDENT, Str: prefix + name, Loc: start}
+	return Token{Type: tokIDENT, Str: "@" + name, Loc: start}
 }
 
 func (l *Lexer) scanBacktickIdent() Token {
