@@ -248,7 +248,7 @@ func (p *Parser) parseSignalConditionValue() (string, error) {
 	}
 
 	// condition_name (identifier)
-	name, _, err := p.parseIdentifier()
+	name, _, err := p.parseIdent()
 	if err != nil {
 		return "", err
 	}
@@ -341,7 +341,7 @@ func (p *Parser) parseDiagnosticsItem() (*nodes.DiagnosticsItem, error) {
 		}
 		target = t
 	} else if p.isIdentToken() {
-		name, _, err := p.parseIdentifier()
+		name, _, err := p.parseIdent()
 		if err != nil {
 			return nil, err
 		}

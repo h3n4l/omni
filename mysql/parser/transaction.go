@@ -145,7 +145,7 @@ func (p *Parser) parseRollbackStmt() (*nodes.RollbackStmt, error) {
 		}
 
 		p.match(kwSAVEPOINT)
-		name, _, err := p.parseIdentifier()
+		name, _, err := p.parseIdent()
 		if err != nil {
 			return nil, err
 		}
@@ -193,7 +193,7 @@ func (p *Parser) parseSavepointStmt() (*nodes.SavepointStmt, error) {
 		return nil, &ParseError{Message: "collecting"}
 	}
 
-	name, _, err := p.parseIdentifier()
+	name, _, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +220,7 @@ func (p *Parser) parseReleaseSavepointStmt() (*nodes.SavepointStmt, error) {
 		return nil, &ParseError{Message: "collecting"}
 	}
 
-	name, _, err := p.parseIdentifier()
+	name, _, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}

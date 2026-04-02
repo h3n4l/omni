@@ -155,7 +155,7 @@ func (p *Parser) parseGrantStmt() (nodes.Node, error) {
 			stmt.AsUser = p.cur.Str
 			p.advance()
 		} else if p.isIdentToken() {
-			name, _, err := p.parseIdentifier()
+			name, _, err := p.parseIdent()
 			if err != nil {
 				return nil, err
 			}
@@ -168,7 +168,7 @@ func (p *Parser) parseGrantStmt() (nodes.Node, error) {
 				stmt.AsUser += "@" + p.cur.Str
 				p.advance()
 			} else if p.isIdentToken() {
-				host, _, err := p.parseIdentifier()
+				host, _, err := p.parseIdent()
 				if err != nil {
 					return nil, err
 				}
@@ -195,7 +195,7 @@ func (p *Parser) parseGrantStmt() (nodes.Node, error) {
 						stmt.WithRoleType = "ALL EXCEPT"
 						// Parse role list
 						for {
-							role, _, err := p.parseIdentifier()
+							role, _, err := p.parseIdent()
 							if err != nil {
 								return nil, err
 							}
@@ -211,7 +211,7 @@ func (p *Parser) parseGrantStmt() (nodes.Node, error) {
 				default:
 					// Role list
 					for {
-						role, _, err := p.parseIdentifier()
+						role, _, err := p.parseIdent()
 						if err != nil {
 							return nil, err
 						}
@@ -535,7 +535,7 @@ func (p *Parser) parsePrivilegeName() (string, error) {
 		p.advance()
 		var cols []string
 		for {
-			col, _, err := p.parseIdentifier()
+			col, _, err := p.parseIdent()
 			if err != nil {
 				return "", err
 			}
@@ -599,7 +599,7 @@ func (p *Parser) parseGrantTarget() (*nodes.GrantTarget, error) {
 				ref.Loc.End = p.pos()
 			} else {
 				// *.tbl_name (unusual but handle)
-				name, _, err := p.parseIdentifier()
+				name, _, err := p.parseIdent()
 				if err != nil {
 					return nil, err
 				}
@@ -631,7 +631,7 @@ func (p *Parser) parseGrantTarget() (*nodes.GrantTarget, error) {
 // Handles: db_name.* | db_name.tbl_name | tbl_name
 func (p *Parser) parseGrantPrivLevel() (*nodes.TableRef, error) {
 	start := p.pos()
-	name, _, err := p.parseIdentifier()
+	name, _, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}
@@ -648,7 +648,7 @@ func (p *Parser) parseGrantPrivLevel() (*nodes.TableRef, error) {
 			ref.Schema = name
 			ref.Name = "*"
 		} else {
-			name2, _, err := p.parseIdentifier()
+			name2, _, err := p.parseIdent()
 			if err != nil {
 				return nil, err
 			}
@@ -688,7 +688,7 @@ func (p *Parser) parseUserName() (string, error) {
 		name = p.cur.Str
 		p.advance()
 	} else if p.isIdentToken() {
-		n, _, err := p.parseIdentifier()
+		n, _, err := p.parseIdent()
 		if err != nil {
 			return "", err
 		}
@@ -708,7 +708,7 @@ func (p *Parser) parseUserName() (string, error) {
 			host = p.cur.Str
 			p.advance()
 		} else if p.isIdentToken() {
-			h, _, err := p.parseIdentifier()
+			h, _, err := p.parseIdent()
 			if err != nil {
 				return "", err
 			}
@@ -1149,7 +1149,7 @@ func (p *Parser) parseFactorAuthOption(op *nodes.FactorOp) error {
 	} else if p.cur.Type == kwWITH {
 		p.advance()
 		if p.isIdentToken() {
-			plugin, _, err := p.parseIdentifier()
+			plugin, _, err := p.parseIdent()
 			if err != nil {
 				return err
 			}
@@ -1205,7 +1205,7 @@ func (p *Parser) parseUserSpec() (*nodes.UserSpec, error) {
 		spec.Name = p.cur.Str
 		p.advance()
 	} else if p.isIdentToken() {
-		name, _, err := p.parseIdentifier()
+		name, _, err := p.parseIdent()
 		if err != nil {
 			return nil, err
 		}
@@ -1224,7 +1224,7 @@ func (p *Parser) parseUserSpec() (*nodes.UserSpec, error) {
 			spec.Host = p.cur.Str
 			p.advance()
 		} else if p.isIdentToken() {
-			host, _, err := p.parseIdentifier()
+			host, _, err := p.parseIdent()
 			if err != nil {
 				return nil, err
 			}
@@ -1300,7 +1300,7 @@ func (p *Parser) parseUserSpec() (*nodes.UserSpec, error) {
 				} else if p.cur.Type == kwWITH {
 					p.advance() // consume WITH
 					if p.isIdentToken() {
-						plugin, _, err := p.parseIdentifier()
+						plugin, _, err := p.parseIdent()
 						if err != nil {
 							return nil, err
 						}
@@ -1398,7 +1398,7 @@ func (p *Parser) parseUserAuthOption(spec *nodes.UserSpec) error {
 		// IDENTIFIED WITH auth_plugin [BY 'password' | BY RANDOM PASSWORD | AS 'hash']
 		p.advance()
 		if p.isIdentToken() {
-			plugin, _, err := p.parseIdentifier()
+			plugin, _, err := p.parseIdent()
 			if err != nil {
 				return err
 			}
@@ -1557,7 +1557,7 @@ func (p *Parser) parseRenameUserPart() (string, string, error) {
 		p.advance()
 	} else if p.isIdentToken() {
 		var err error
-		name, _, err = p.parseIdentifier()
+		name, _, err = p.parseIdent()
 		if err != nil {
 			return "", "", err
 		}
@@ -1571,7 +1571,7 @@ func (p *Parser) parseRenameUserPart() (string, string, error) {
 			p.advance()
 		} else if p.isIdentToken() {
 			var err error
-			host, _, err = p.parseIdentifier()
+			host, _, err = p.parseIdent()
 			if err != nil {
 				return "", "", err
 			}
@@ -1856,7 +1856,7 @@ func (p *Parser) parseSetResourceGroupStmt(start int) (*nodes.SetResourceGroupSt
 	p.advance() // consume RESOURCE
 	p.advance() // consume GROUP (identifier)
 
-	name, _, err := p.parseIdentifier()
+	name, _, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}

@@ -16,7 +16,7 @@ func (p *Parser) parsePrepareStmt() (*nodes.PrepareStmt, error) {
 	stmt := &nodes.PrepareStmt{Loc: nodes.Loc{Start: start}}
 
 	// Statement name
-	name, _, err := p.parseIdentifier()
+	name, _, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (p *Parser) parseExecuteStmt() (*nodes.ExecuteStmt, error) {
 	stmt := &nodes.ExecuteStmt{Loc: nodes.Loc{Start: start}}
 
 	// Statement name
-	name, _, err := p.parseIdentifier()
+	name, _, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func (p *Parser) parseDeallocateStmt() (*nodes.DeallocateStmt, error) {
 
 	stmt := &nodes.DeallocateStmt{Loc: nodes.Loc{Start: start}}
 
-	name, _, err := p.parseIdentifier()
+	name, _, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}

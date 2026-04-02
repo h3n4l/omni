@@ -151,14 +151,14 @@ func (p *Parser) parseDeleteStmt() (*nodes.DeleteStmt, error) {
 			if tblRef, ok := tables[0].(*nodes.TableRef); ok {
 				// Optional [AS] alias
 				if _, ok := p.match(kwAS); ok {
-					alias, _, err := p.parseIdentifier()
+					alias, _, err := p.parseIdent()
 					if err != nil {
 						return nil, err
 					}
 					tblRef.Alias = alias
 					tblRef.Loc.End = p.pos()
 				} else if p.cur.Type == tokIDENT {
-					alias, _, _ := p.parseIdentifier()
+					alias, _, _ := p.parseIdent()
 					tblRef.Alias = alias
 					tblRef.Loc.End = p.pos()
 				}
@@ -324,7 +324,7 @@ func (p *Parser) parseDeleteTableList() ([]nodes.TableExpr, error) {
 // handling the optional .* suffix and schema.table.* form.
 func (p *Parser) parseDeleteTableName() (*nodes.TableRef, error) {
 	start := p.pos()
-	name, _, err := p.parseIdentifier()
+	name, _, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}
@@ -346,7 +346,7 @@ func (p *Parser) parseDeleteTableName() (*nodes.TableRef, error) {
 		}
 		// schema.table or schema.table.*
 		p.advance() // consume '.'
-		name2, _, err := p.parseIdentifier()
+		name2, _, err := p.parseIdent()
 		if err != nil {
 			return nil, err
 		}

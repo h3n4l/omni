@@ -181,7 +181,7 @@ func (p *Parser) parseInsertOrReplace(isReplace bool) (*nodes.InsertStmt, error)
 	// AS row_alias [(col_alias, ...)] (MySQL 8.0.19+)
 	if p.cur.Type == kwAS {
 		p.advance()
-		alias, _, err := p.parseIdentifier()
+		alias, _, err := p.parseIdent()
 		if err != nil {
 			return nil, err
 		}
@@ -190,7 +190,7 @@ func (p *Parser) parseInsertOrReplace(isReplace bool) (*nodes.InsertStmt, error)
 			p.advance()
 			var colAliases []string
 			for {
-				name, _, err := p.parseIdentifier()
+				name, _, err := p.parseIdent()
 				if err != nil {
 					return nil, err
 				}

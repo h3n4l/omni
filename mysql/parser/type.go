@@ -445,13 +445,13 @@ func (p *Parser) parseCharsetCollate(dt *nodes.DataType) {
 	// CHARACTER SET charset_name | CHARSET charset_name
 	if _, ok := p.match(kwCHARSET); ok {
 		if p.isIdentToken() {
-			dt.Charset, _, _ = p.parseIdentifier()
+			dt.Charset, _, _ = p.parseIdent()
 		}
 	} else if p.cur.Type == kwCHARACTER {
 		p.advance()
 		if _, ok := p.match(kwSET); ok {
 			if p.isIdentToken() {
-				dt.Charset, _, _ = p.parseIdentifier()
+				dt.Charset, _, _ = p.parseIdent()
 			}
 		}
 	}
@@ -459,7 +459,7 @@ func (p *Parser) parseCharsetCollate(dt *nodes.DataType) {
 	// COLLATE collation_name
 	if _, ok := p.match(kwCOLLATE); ok {
 		if p.isIdentToken() {
-			dt.Collate, _, _ = p.parseIdentifier()
+			dt.Collate, _, _ = p.parseIdent()
 		}
 	}
 }
