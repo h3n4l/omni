@@ -899,6 +899,13 @@ func TestParseExtract(t *testing.T) {
 		{"SELECT EXTRACT(MINUTE FROM ts)", "MINUTE"},
 		{"SELECT EXTRACT(SECOND FROM ts)", "SECOND"},
 		{"SELECT EXTRACT(MONTH FROM ts)", "MONTH"},
+		// Keyword-token units: YEAR is kwYEAR (registered keyword), must be
+		// accepted via parseKeywordOrIdent.
+		{"SELECT EXTRACT(YEAR FROM ts)", "YEAR"},
+		// MICROSECOND and QUARTER are plain identifiers (tokIDENT).
+		{"SELECT EXTRACT(MICROSECOND FROM ts)", "MICROSECOND"},
+		{"SELECT EXTRACT(QUARTER FROM ts)", "QUARTER"},
+		{"SELECT EXTRACT(WEEK FROM ts)", "WEEK"},
 	}
 	for _, tt := range cases {
 		t.Run(tt.sql, func(t *testing.T) {
@@ -11884,10 +11891,28 @@ func TestIntervalUnits(t *testing.T) {
 		{"HOUR_SECOND", "SELECT DATE_ADD(d, INTERVAL '1:30:59' HOUR_SECOND) FROM t"},
 		{"interval_add", "SELECT d + INTERVAL 1 DAY FROM t"},
 		{"interval_sub", "SELECT d - INTERVAL 1 MONTH FROM t"},
+		// YEAR is a registered keyword token (kwYEAR) — parseKeywordOrIdent accepts it.
+		{"keyword_YEAR", "SELECT DATE_ADD(d, INTERVAL 1 YEAR) FROM t"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ParseAndCheck(t, tt.sql)
+		})
+	}
+}
+
+// TestIntervalUnitValidation verifies that invalid INTERVAL unit names are rejected.
+func TestIntervalUnitValidation(t *testing.T) {
+	cases := []string{
+		"SELECT DATE_ADD(d, INTERVAL 1 BOGUS) FROM t",
+		"SELECT DATE_ADD(d, INTERVAL 1 FOOBAR) FROM t",
+	}
+	for _, sql := range cases {
+		t.Run(sql, func(t *testing.T) {
+			_, err := Parse(sql)
+			if err == nil {
+				t.Fatalf("expected error for invalid interval unit, got nil")
+			}
 		})
 	}
 }
