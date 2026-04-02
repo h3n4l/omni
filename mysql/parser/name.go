@@ -344,22 +344,94 @@ func isLvalueKeyword(t int) bool {
 	return cat == kwCatUnambiguous || cat == kwCatAmbiguous1 || cat == kwCatAmbiguous2 || cat == kwCatAmbiguous3
 }
 
-// parseIdentifier parses a plain identifier (unquoted or backtick-quoted).
-// Returns the identifier string and its start position.
+// parseIdent parses an identifier matching MySQL's `ident` grammar rule.
+// Accepts tokIDENT plus all 5 non-reserved keyword categories (unambiguous,
+// ambiguous_1, ambiguous_2, ambiguous_3, ambiguous_4).
 //
+// Ref: mysql-server sql/sql_yacc.yy — ident rule
 // Ref: https://dev.mysql.com/doc/refman/8.0/en/identifiers.html
-//
-//	identifier:
-//	    unquoted_identifier
-//	    | backtick_quoted_identifier
-func (p *Parser) parseIdentifier() (string, int, error) {
+func (p *Parser) parseIdent() (string, int, error) {
 	if p.cur.Type == tokIDENT {
 		tok := p.advance()
 		return tok.Str, tok.Loc, nil
 	}
-	// Many MySQL keywords can also be used as identifiers in certain contexts.
-	// Accept non-reserved keyword tokens as identifiers, but reject reserved words.
+	// Accept non-reserved keyword tokens as identifiers.
 	if p.cur.Type >= 700 && !isReserved(p.cur.Type) {
+		tok := p.advance()
+		return tok.Str, tok.Loc, nil
+	}
+	if p.cur.Type == tokEOF {
+		return "", 0, p.syntaxErrorAtCur()
+	}
+	return "", 0, &ParseError{
+		Message:  "expected identifier",
+		Position: p.cur.Loc,
+	}
+}
+
+// parseIdentifier is a thin alias for parseIdent, preserved for gradual migration
+// of existing call sites. New code should use parseIdent directly.
+func (p *Parser) parseIdentifier() (string, int, error) {
+	return p.parseIdent()
+}
+
+// parseLabelIdent parses an identifier matching MySQL's `label_ident` grammar rule.
+// Accepts tokIDENT plus unambiguous, ambiguous_3, and ambiguous_4 keywords.
+// Excludes ambiguous_1 (not label, not role) and ambiguous_2 (not label).
+//
+// Ref: mysql-server sql/sql_yacc.yy — label_ident rule
+func (p *Parser) parseLabelIdent() (string, int, error) {
+	if p.cur.Type == tokIDENT {
+		tok := p.advance()
+		return tok.Str, tok.Loc, nil
+	}
+	if p.cur.Type >= 700 && isLabelKeyword(p.cur.Type) {
+		tok := p.advance()
+		return tok.Str, tok.Loc, nil
+	}
+	if p.cur.Type == tokEOF {
+		return "", 0, p.syntaxErrorAtCur()
+	}
+	return "", 0, &ParseError{
+		Message:  "expected identifier",
+		Position: p.cur.Loc,
+	}
+}
+
+// parseRoleIdent parses an identifier matching MySQL's `role_ident` grammar rule.
+// Accepts tokIDENT plus unambiguous, ambiguous_2, and ambiguous_4 keywords.
+// Excludes ambiguous_1 (not label, not role) and ambiguous_3 (not role).
+//
+// Ref: mysql-server sql/sql_yacc.yy — role_ident rule
+func (p *Parser) parseRoleIdent() (string, int, error) {
+	if p.cur.Type == tokIDENT {
+		tok := p.advance()
+		return tok.Str, tok.Loc, nil
+	}
+	if p.cur.Type >= 700 && isRoleKeyword(p.cur.Type) {
+		tok := p.advance()
+		return tok.Str, tok.Loc, nil
+	}
+	if p.cur.Type == tokEOF {
+		return "", 0, p.syntaxErrorAtCur()
+	}
+	return "", 0, &ParseError{
+		Message:  "expected identifier",
+		Position: p.cur.Loc,
+	}
+}
+
+// parseLvalueIdent parses an identifier matching MySQL's `lvalue_ident` grammar rule.
+// Accepts tokIDENT plus unambiguous, ambiguous_1, ambiguous_2, and ambiguous_3 keywords.
+// Excludes ambiguous_4 (system variables like GLOBAL, SESSION, LOCAL).
+//
+// Ref: mysql-server sql/sql_yacc.yy — lvalue_ident rule
+func (p *Parser) parseLvalueIdent() (string, int, error) {
+	if p.cur.Type == tokIDENT {
+		tok := p.advance()
+		return tok.Str, tok.Loc, nil
+	}
+	if p.cur.Type >= 700 && isLvalueKeyword(p.cur.Type) {
 		tok := p.advance()
 		return tok.Str, tok.Loc, nil
 	}
@@ -415,7 +487,7 @@ func (p *Parser) parseKeywordOrIdent() (string, int, error) {
 //	    | identifier '.' identifier '.' '*'
 func (p *Parser) parseColumnRef() (*nodes.ColumnRef, error) {
 	start := p.pos()
-	name, _, err := p.parseIdentifier()
+	name, _, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}
@@ -439,7 +511,7 @@ func (p *Parser) parseColumnRef() (*nodes.ColumnRef, error) {
 			return ref, nil
 		}
 
-		name2, _, err := p.parseIdentifier()
+		name2, _, err := p.parseIdent()
 		if err != nil {
 			return nil, err
 		}
@@ -458,7 +530,7 @@ func (p *Parser) parseColumnRef() (*nodes.ColumnRef, error) {
 				return ref, nil
 			}
 
-			name3, _, err := p.parseIdentifier()
+			name3, _, err := p.parseIdent()
 			if err != nil {
 				return nil, err
 			}
@@ -487,7 +559,7 @@ func (p *Parser) parseColumnRef() (*nodes.ColumnRef, error) {
 //	    | identifier '.' identifier
 func (p *Parser) parseTableRef() (*nodes.TableRef, error) {
 	start := p.pos()
-	name, _, err := p.parseIdentifier()
+	name, _, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}
@@ -508,7 +580,7 @@ func (p *Parser) parseTableRef() (*nodes.TableRef, error) {
 			return nil, &ParseError{Message: "collecting"}
 		}
 
-		name2, _, err := p.parseIdentifier()
+		name2, _, err := p.parseIdent()
 		if err != nil {
 			return nil, err
 		}
