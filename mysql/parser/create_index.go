@@ -38,7 +38,7 @@ func (p *Parser) parseCreateIndexStmt(unique bool, fulltext bool, spatial bool) 
 	}
 
 	// index_name
-	name, _, err := p.parseIdentifier()
+	name, _, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +158,7 @@ func (p *Parser) parseIndexKeyPart() (*nodes.IndexColumn, error) {
 		col.Expr = expr
 	} else {
 		// Column name
-		colName, _, err := p.parseIdentifier()
+		colName, _, err := p.parseIdent()
 		if err != nil {
 			return nil, err
 		}
@@ -280,7 +280,7 @@ func (p *Parser) parseIndexOption() (*nodes.IndexOption, bool, error) {
 		if next.Type == kwPARSER {
 			p.advance() // consume WITH
 			p.advance() // consume PARSER
-			parserName, _, err := p.parseIdentifier()
+			parserName, _, err := p.parseIdent()
 			if err != nil {
 				return nil, false, err
 			}

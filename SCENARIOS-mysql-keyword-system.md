@@ -294,16 +294,16 @@ Create 5 identifier parsing functions matching MySQL's grammar hierarchy.
 
 ### 2.3 Migrate General Ident Call Sites — DDL files
 
-- [ ] Column definition name uses parseIdent
-- [ ] Constraint name uses parseIdent
-- [ ] Index name uses parseIdent
-- [ ] Partition name uses parseIdent
-- [ ] CREATE DATABASE name uses parseIdent
-- [ ] CREATE VIEW column name uses parseIdent
-- [ ] Procedure/function parameter name uses parseIdent
-- [ ] Trigger name uses parseIdent
-- [ ] Event name uses parseIdent
-- [ ] All DDL tests still pass
+- [x] Column definition name uses parseIdent
+- [x] Constraint name uses parseIdent
+- [x] Index name uses parseIdent
+- [x] Partition name uses parseIdent
+- [x] CREATE DATABASE name uses parseIdent
+- [x] CREATE VIEW column name uses parseIdent
+- [x] Procedure/function parameter name uses parseIdent
+- [x] Trigger name uses parseIdent
+- [x] Event name uses parseIdent
+- [x] All DDL tests still pass
 
 ### 2.4 Migrate General Ident Call Sites — DML & Other files
 

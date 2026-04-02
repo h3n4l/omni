@@ -43,14 +43,14 @@ func (p *Parser) parseAlterViewStmt() (*nodes.AlterViewStmt, error) {
 		if _, err := p.expect('='); err != nil {
 			return nil, err
 		}
-		name, _, err := p.parseIdentifier()
+		name, _, err := p.parseIdent()
 		if err != nil {
 			return nil, err
 		}
 		definer := name
 		if p.cur.Type == tokIDENT && p.cur.Str == "@" {
 			p.advance()
-			host, _, err := p.parseIdentifier()
+			host, _, err := p.parseIdent()
 			if err != nil {
 				return nil, err
 			}
@@ -163,7 +163,7 @@ func (p *Parser) parseAlterEventStmt() (*nodes.AlterEventStmt, error) {
 	stmt := &nodes.AlterEventStmt{Loc: nodes.Loc{Start: start}}
 
 	// Event name
-	name, _, err := p.parseIdentifier()
+	name, _, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +204,7 @@ func (p *Parser) parseAlterEventStmt() (*nodes.AlterEventStmt, error) {
 	if p.cur.Type == kwRENAME {
 		p.advance()
 		p.match(kwTO)
-		newName, _, err := p.parseIdentifier()
+		newName, _, err := p.parseIdent()
 		if err != nil {
 			return nil, err
 		}
@@ -428,7 +428,7 @@ func (p *Parser) parseDropEventStmt() (*nodes.DropEventStmt, error) {
 	}
 
 	// Event name
-	name, _, err := p.parseIdentifier()
+	name, _, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}

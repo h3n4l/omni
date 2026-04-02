@@ -41,7 +41,7 @@ func (p *Parser) parseCreateDatabaseStmt() (*nodes.CreateDatabaseStmt, error) {
 	}
 
 	// Database name
-	name, _, err := p.parseIdentifier()
+	name, _, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func (p *Parser) parseAlterDatabaseStmt() (*nodes.AlterDatabaseStmt, error) {
 
 	// Optional database name
 	if p.isIdentToken() && p.cur.Type != kwDEFAULT && p.cur.Type != kwCHARACTER && p.cur.Type != kwCHARSET && p.cur.Type != kwCOLLATE {
-		name, _, err := p.parseIdentifier()
+		name, _, err := p.parseIdent()
 		if err != nil {
 			return nil, err
 		}
@@ -128,7 +128,7 @@ func (p *Parser) parseDropDatabaseStmt() (*nodes.DropDatabaseStmt, error) {
 	}
 
 	// Database name
-	name, _, err := p.parseIdentifier()
+	name, _, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +171,7 @@ func (p *Parser) parseDatabaseOption() (*nodes.DatabaseOption, bool, error) {
 		p.advance()
 		if _, ok := p.match(kwSET); ok {
 			p.match('=') // optional =
-			val, _, err := p.parseIdentifier()
+			val, _, err := p.parseIdent()
 			if err != nil {
 				return nil, false, err
 			}
@@ -184,7 +184,7 @@ func (p *Parser) parseDatabaseOption() (*nodes.DatabaseOption, bool, error) {
 	case p.cur.Type == kwCHARSET:
 		p.advance()
 		p.match('=') // optional =
-		val, _, err := p.parseIdentifier()
+		val, _, err := p.parseIdent()
 		if err != nil {
 			return nil, false, err
 		}
@@ -196,7 +196,7 @@ func (p *Parser) parseDatabaseOption() (*nodes.DatabaseOption, bool, error) {
 	case p.cur.Type == kwCOLLATE:
 		p.advance()
 		p.match('=') // optional =
-		val, _, err := p.parseIdentifier()
+		val, _, err := p.parseIdent()
 		if err != nil {
 			return nil, false, err
 		}

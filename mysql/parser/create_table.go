@@ -247,7 +247,7 @@ func (p *Parser) isTableConstraintStart() bool {
 //	    [ON UPDATE expr]
 func (p *Parser) parseColumnDef() (*nodes.ColumnDef, error) {
 	start := p.pos()
-	name, _, err := p.parseIdentifier()
+	name, _, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}
@@ -407,7 +407,7 @@ func (p *Parser) parseColumnOption(col *nodes.ColumnDef) (bool, error) {
 
 	case kwCOLLATE:
 		p.advance()
-		collName, _, err := p.parseIdentifier()
+		collName, _, err := p.parseIdent()
 		if err != nil {
 			return false, err
 		}
@@ -822,7 +822,7 @@ func (p *Parser) parseTableConstraint() (*nodes.Constraint, error) {
 	if _, ok := p.match(kwCONSTRAINT); ok {
 		if p.isIdentToken() && p.cur.Type != kwPRIMARY && p.cur.Type != kwUNIQUE &&
 			p.cur.Type != kwFOREIGN && p.cur.Type != kwCHECK {
-			constr.Name, _, _ = p.parseIdentifier()
+			constr.Name, _, _ = p.parseIdent()
 		}
 	}
 
@@ -847,7 +847,7 @@ func (p *Parser) parseTableConstraint() (*nodes.Constraint, error) {
 		constr.Type = nodes.ConstrUnique
 		// Optional index name
 		if p.isIdentToken() && p.cur.Type != '(' {
-			constr.Name, _, _ = p.parseIdentifier()
+			constr.Name, _, _ = p.parseIdent()
 		}
 		// Optional index type
 		p.parseIndexTypeClause(constr)
@@ -865,7 +865,7 @@ func (p *Parser) parseTableConstraint() (*nodes.Constraint, error) {
 		constr.Type = nodes.ConstrForeignKey
 		// Optional index name
 		if p.isIdentToken() && p.cur.Type != '(' {
-			constr.Name, _, _ = p.parseIdentifier()
+			constr.Name, _, _ = p.parseIdent()
 		}
 		cols, err := p.parseParenIdentList()
 		if err != nil {
@@ -942,7 +942,7 @@ func (p *Parser) parseTableConstraint() (*nodes.Constraint, error) {
 		constr.Type = nodes.ConstrIndex
 		// Optional index name
 		if p.isIdentToken() && p.cur.Type != '(' {
-			constr.Name, _, _ = p.parseIdentifier()
+			constr.Name, _, _ = p.parseIdent()
 		}
 		p.parseIndexTypeClause(constr)
 		idxCols, err := p.parseParenIndexKeyParts()
@@ -958,7 +958,7 @@ func (p *Parser) parseTableConstraint() (*nodes.Constraint, error) {
 		p.match(kwINDEX, kwKEY)
 		constr.Type = nodes.ConstrFulltextIndex
 		if p.isIdentToken() && p.cur.Type != '(' {
-			constr.Name, _, _ = p.parseIdentifier()
+			constr.Name, _, _ = p.parseIdent()
 		}
 		idxCols, err := p.parseParenIndexKeyParts()
 		if err != nil {
@@ -973,7 +973,7 @@ func (p *Parser) parseTableConstraint() (*nodes.Constraint, error) {
 		p.match(kwINDEX, kwKEY)
 		constr.Type = nodes.ConstrSpatialIndex
 		if p.isIdentToken() && p.cur.Type != '(' {
-			constr.Name, _, _ = p.parseIdentifier()
+			constr.Name, _, _ = p.parseIdent()
 		}
 		idxCols, err := p.parseParenIndexKeyParts()
 		if err != nil {
@@ -1555,7 +1555,7 @@ func (p *Parser) parsePartitionDef() (*nodes.PartitionDef, error) {
 		return nil, err
 	}
 
-	name, _, err := p.parseIdentifier()
+	name, _, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}
@@ -1661,7 +1661,7 @@ func (p *Parser) parseSubPartitionDef() (*nodes.SubPartitionDef, error) {
 	if _, err := p.expect(kwSUBPARTITION); err != nil {
 		return nil, err
 	}
-	name, _, err := p.parseIdentifier()
+	name, _, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}

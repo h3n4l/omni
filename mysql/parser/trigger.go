@@ -37,7 +37,7 @@ func (p *Parser) parseCreateTriggerStmt() (*nodes.CreateTriggerStmt, error) {
 	}
 
 	// Trigger name
-	name, _, err := p.parseIdentifier()
+	name, _, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func (p *Parser) parseCreateTriggerStmt() (*nodes.CreateTriggerStmt, error) {
 	if p.cur.Type == kwFOLLOWS || p.cur.Type == kwPRECEDES {
 		follows := p.cur.Type == kwFOLLOWS
 		p.advance()
-		trigName, _, err := p.parseIdentifier()
+		trigName, _, err := p.parseIdent()
 		if err != nil {
 			return nil, err
 		}
@@ -188,7 +188,7 @@ func (p *Parser) parseCreateEventStmt() (*nodes.CreateEventStmt, error) {
 	}
 
 	// Event name
-	name, _, err := p.parseIdentifier()
+	name, _, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}
