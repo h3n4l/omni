@@ -8476,6 +8476,45 @@ func TestParseGrantAsWithRole(t *testing.T) {
 	}
 }
 
+// TestRoleIdentRejectsAmbiguous3 verifies that ambiguous_3 keywords (like EVENT)
+// cannot be used as role names. EVENT is allowed as a general identifier (e.g.,
+// CREATE TABLE event) but NOT as a role_ident.
+func TestRoleIdentRejectsAmbiguous3(t *testing.T) {
+	// EVENT as a role in GRANT WITH ROLE should fail — ambiguous_3 is excluded from role_ident.
+	t.Run("event as WITH ROLE name rejected", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("GRANT SELECT ON db.* TO user1 AS admin WITH ROLE event")}
+		p.advance()
+		_, err := p.parseGrantStmt()
+		if err == nil {
+			t.Fatal("expected error for WITH ROLE event (EVENT is ambiguous_3, not allowed as role)")
+		}
+	})
+
+	t.Run("event as WITH ROLE ALL EXCEPT name rejected", func(t *testing.T) {
+		p := &Parser{lexer: NewLexer("GRANT SELECT ON db.* TO user1 AS admin WITH ROLE ALL EXCEPT event")}
+		p.advance()
+		_, err := p.parseGrantStmt()
+		if err == nil {
+			t.Fatal("expected error for WITH ROLE ALL EXCEPT event (EVENT is ambiguous_3, not allowed as role)")
+		}
+	})
+
+	// BEGIN (ambiguous_2) should be accepted as a role name.
+	t.Run("begin as WITH ROLE name accepted", func(t *testing.T) {
+		ParseAndCompare(t,
+			"GRANT SELECT ON db.* TO user1 AS admin WITH ROLE begin",
+			"{GRANT :loc 0 :privileges SELECT :on {GRANT_TARGET :loc 16 :name {TABLEREF :loc 16 :schema db :name *}} :to user1 :as admin :with_roles begin}",
+		)
+	})
+
+	t.Run("begin as WITH ROLE ALL EXCEPT name accepted", func(t *testing.T) {
+		ParseAndCompare(t,
+			"GRANT SELECT ON db.* TO user1 AS admin WITH ROLE ALL EXCEPT begin",
+			"{GRANT :loc 0 :privileges SELECT :on {GRANT_TARGET :loc 16 :name {TABLEREF :loc 16 :schema db :name *}} :to user1 :as admin :with_role_type ALL EXCEPT :with_roles begin}",
+		)
+	})
+}
+
 // ============================================================================
 // Batch 60: GRANT/REVOKE REQUIRE and resource limits
 // ============================================================================

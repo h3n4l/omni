@@ -195,7 +195,7 @@ func (p *Parser) parseGrantStmt() (nodes.Node, error) {
 						stmt.WithRoleType = "ALL EXCEPT"
 						// Parse role list
 						for {
-							role, _, err := p.parseIdent()
+							role, _, err := p.parseRoleIdent()
 							if err != nil {
 								return nil, err
 							}
@@ -211,7 +211,7 @@ func (p *Parser) parseGrantStmt() (nodes.Node, error) {
 				default:
 					// Role list
 					for {
-						role, _, err := p.parseIdent()
+						role, _, err := p.parseRoleIdent()
 						if err != nil {
 							return nil, err
 						}
