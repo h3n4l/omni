@@ -122,7 +122,7 @@ func (p *Parser) parseCreateViewStmt(orReplace bool) (*nodes.CreateViewStmt, err
 		}
 		if p.cur.Type == kwCHECK {
 			p.advance()
-			if eqFold(p.cur.Str, "option") {
+			if p.cur.Type == kwOPTION {
 				p.advance()
 			}
 		}

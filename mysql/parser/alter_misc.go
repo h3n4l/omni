@@ -126,7 +126,7 @@ func (p *Parser) parseAlterViewStmt() (*nodes.AlterViewStmt, error) {
 		}
 		if p.cur.Type == kwCHECK {
 			p.advance()
-			if eqFold(p.cur.Str, "option") {
+			if p.cur.Type == kwOPTION {
 				p.advance()
 			}
 		}

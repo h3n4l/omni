@@ -52,7 +52,7 @@ func (p *Parser) parseGrantStmt() (nodes.Node, error) {
 			p.advance()
 			if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "admin") {
 				p.advance()
-				if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "option") {
+				if p.cur.Type == kwOPTION {
 					p.advance()
 				}
 				stmt.WithAdmin = true
@@ -89,7 +89,7 @@ func (p *Parser) parseGrantStmt() (nodes.Node, error) {
 			p.advance()
 			if p.cur.Type == kwGRANT {
 				p.advance()
-				if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "option") {
+				if p.cur.Type == kwOPTION {
 					p.advance()
 				}
 				stmt.WithGrant = true
@@ -135,7 +135,7 @@ func (p *Parser) parseGrantStmt() (nodes.Node, error) {
 		p.advance()
 		if p.cur.Type == kwGRANT {
 			p.advance()
-			if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "option") {
+			if p.cur.Type == kwOPTION {
 				p.advance()
 			}
 			stmt.WithGrant = true
@@ -262,7 +262,7 @@ func (p *Parser) parseRevokeStmt() (nodes.Node, error) {
 		p.advance() // consume ','
 		if p.cur.Type == kwGRANT {
 			p.advance() // consume GRANT
-			if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "option") {
+			if p.cur.Type == kwOPTION {
 				p.advance() // consume OPTION
 			}
 			if _, err := p.expect(kwFROM); err != nil {
@@ -488,13 +488,13 @@ func (p *Parser) parsePrivilegeName() (string, error) {
 		case p.cur.Type == kwROLE:
 			p.advance()
 			name = "CREATE ROLE"
-		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "routine"):
+		case p.cur.Type == kwROUTINE:
 			p.advance()
 			name = "CREATE ROUTINE"
 		}
 	case "ALTER":
 		// ALTER ROUTINE
-		if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "routine") {
+		if p.cur.Type == kwROUTINE {
 			p.advance()
 			name = "ALTER ROUTINE"
 		}
@@ -1605,22 +1605,22 @@ func (p *Parser) parseRequireClause() (*nodes.RequireClause, error) {
 		case p.cur.Type == kwSSL:
 			req.SSL = true
 			p.advance()
-		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "x509"):
+		case p.cur.Type == kwX509:
 			req.X509 = true
 			p.advance()
-		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "cipher"):
+		case p.cur.Type == kwCIPHER:
 			p.advance()
 			if p.cur.Type == tokSCONST {
 				req.Cipher = p.cur.Str
 				p.advance()
 			}
-		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "issuer"):
+		case p.cur.Type == kwISSUER:
 			p.advance()
 			if p.cur.Type == tokSCONST {
 				req.Issuer = p.cur.Str
 				p.advance()
 			}
-		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "subject"):
+		case p.cur.Type == kwSUBJECT:
 			p.advance()
 			if p.cur.Type == tokSCONST {
 				req.Subject = p.cur.Str
@@ -1724,13 +1724,13 @@ func (p *Parser) parseUserAccountOptions(
 		case p.cur.Type == kwPASSWORD:
 			next := p.peekNext()
 			switch {
-			case next.Type == tokIDENT && eqFold(next.Str, "expire"):
+			case next.Type == kwEXPIRE:
 				p.advance() // consume PASSWORD
 				p.advance() // consume EXPIRE
 				if p.cur.Type == kwDEFAULT {
 					*passwordExpire = "DEFAULT"
 					p.advance()
-				} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "never") {
+				} else if p.cur.Type == kwNEVER {
 					*passwordExpire = "NEVER"
 					p.advance()
 				} else if p.cur.Type == kwINTERVAL {
@@ -1744,14 +1744,14 @@ func (p *Parser) parseUserAccountOptions(
 						p.advance()
 					}
 					// DAY
-					if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "day") {
+					if p.cur.Type == kwDAY {
 						p.advance()
 					}
 					*passwordExpire = "INTERVAL " + n + " DAY"
 				} else {
 					*passwordExpire = "EXPIRE"
 				}
-			case next.Type == tokIDENT && eqFold(next.Str, "history"):
+			case next.Type == kwHISTORY:
 				p.advance() // consume PASSWORD
 				p.advance() // consume HISTORY
 				if p.cur.Type == kwDEFAULT {
@@ -1761,7 +1761,7 @@ func (p *Parser) parseUserAccountOptions(
 					*passwordHistory = strconv.FormatInt(p.cur.Ival, 10)
 					p.advance()
 				}
-			case next.Type == tokIDENT && eqFold(next.Str, "reuse"):
+			case next.Type == kwREUSE:
 				p.advance() // consume PASSWORD
 				p.advance() // consume REUSE
 				// INTERVAL
@@ -1774,7 +1774,7 @@ func (p *Parser) parseUserAccountOptions(
 				} else if p.cur.Type == tokICONST {
 					n := strconv.FormatInt(p.cur.Ival, 10)
 					p.advance()
-					if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "day") {
+					if p.cur.Type == kwDAY {
 						p.advance()
 					}
 					*passwordReuseInterval = n + " DAY"
@@ -1791,7 +1791,7 @@ func (p *Parser) parseUserAccountOptions(
 					if p.cur.Type == kwDEFAULT {
 						*passwordRequireCurrent = "DEFAULT"
 						p.advance()
-					} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "optional") {
+					} else if p.cur.Type == kwOPTIONAL {
 						*passwordRequireCurrent = "OPTIONAL"
 						p.advance()
 					} else {
@@ -1820,7 +1820,7 @@ func (p *Parser) parseUserAccountOptions(
 				p.advance()
 			}
 
-		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "account"):
+		case p.cur.Type == kwACCOUNT:
 			p.advance() // consume ACCOUNT
 			if p.cur.Type == kwLOCK {
 				*accountLock = true

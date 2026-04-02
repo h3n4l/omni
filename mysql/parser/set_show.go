@@ -34,7 +34,7 @@ func (p *Parser) parseSetStmt() (nodes.Node, error) {
 
 	// Check for NAMES special form
 	// SET NAMES {charset_name [COLLATE collation_name] | DEFAULT}
-	if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "names") {
+	if p.cur.Type == kwNAMES {
 		p.advance() // consume NAMES
 
 		// Completion: after SET NAMES, offer charset candidates.
@@ -591,7 +591,7 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 
 	case kwEXTENDED:
 		p.advance() // consume EXTENDED
-		if p.cur.Type == kwINDEX || p.cur.Type == kwKEY || p.cur.Type == kwKEYS || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "indexes")) {
+		if p.cur.Type == kwINDEX || p.cur.Type == kwKEY || p.cur.Type == kwKEYS || p.cur.Type == kwINDEXES {
 			// SHOW EXTENDED {INDEX | INDEXES | KEYS} ...
 			stmt.Type = "EXTENDED INDEX"
 			p.advance()
@@ -821,7 +821,7 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 		if p.cur.Type == kwSTATUS {
 			stmt.Type = "ENGINE STATUS"
 			p.advance()
-		} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "mutex") {
+		} else if p.cur.Type == kwMUTEX {
 			stmt.Type = "ENGINE MUTEX"
 			p.advance()
 		}
@@ -858,7 +858,7 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 					stmt.Channel = ch
 				}
 			}
-		} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "hosts") {
+		} else if p.cur.Type == kwHOSTS {
 			stmt.Type = "REPLICAS"
 			p.advance()
 		}
@@ -893,7 +893,7 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 		p.advance() // consume BINLOG
 		stmt.Type = "BINLOG EVENTS"
 		// Expect EVENTS (as identifier since it may not be a keyword)
-		if p.cur.Type == kwEVENT || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "events")) {
+		if p.cur.Type == kwEVENT || p.cur.Type == kwEVENTS {
 			p.advance()
 		}
 		// Optional IN 'log_name'
@@ -1015,7 +1015,7 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 	case kwRELAYLOG:
 		p.advance() // consume RELAYLOG
 		stmt.Type = "RELAYLOG EVENTS"
-		if p.cur.Type == kwEVENT || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "events")) {
+		if p.cur.Type == kwEVENT || p.cur.Type == kwEVENTS {
 			p.advance()
 		}
 		// Optional IN 'log_name'
@@ -1093,7 +1093,7 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 
 	default:
 		// SHOW PROFILE [type [, type] ...] [FOR QUERY n] [LIMIT row_count [OFFSET offset]]
-		if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "profile") {
+		if p.cur.Type == kwPROFILE {
 			stmt.Type = "PROFILE"
 			p.advance() // consume PROFILE
 			if err := p.parseShowProfileOptions(stmt); err != nil {
@@ -1104,7 +1104,7 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 		}
 
 		// SHOW REPLICAS
-		if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "replicas") {
+		if p.cur.Type == kwREPLICAS {
 			stmt.Type = "REPLICAS"
 			p.advance()
 			stmt.Loc.End = p.pos()
@@ -1112,7 +1112,7 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 		}
 
 		// Handle GRANTS and PROCESSLIST as identifier-based keywords
-		if p.cur.Type == kwGRANT || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "grants")) {
+		if p.cur.Type == kwGRANT || p.cur.Type == kwGRANTS {
 			stmt.Type = "GRANTS"
 			p.advance()
 			// Optional FOR user_or_role
@@ -1155,19 +1155,19 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 		} else if p.cur.Type == kwPROCESSLIST {
 			stmt.Type = "PROCESSLIST"
 			p.advance()
-		} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "triggers") {
+		} else if p.cur.Type == kwTRIGGERS {
 			stmt.Type = "TRIGGERS"
 			p.advance()
 			if err := p.parseShowFromLikeOrWhere(stmt); err != nil {
 				return nil, err
 			}
-		} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "events") {
+		} else if p.cur.Type == kwEVENTS {
 			stmt.Type = "EVENTS"
 			p.advance()
 			if err := p.parseShowFromLikeOrWhere(stmt); err != nil {
 				return nil, err
 			}
-		} else if p.cur.Type == kwKEYS || (p.cur.Type == tokIDENT && eqFold(p.cur.Str, "indexes")) {
+		} else if p.cur.Type == kwKEYS || p.cur.Type == kwINDEXES {
 			// SHOW INDEXES|KEYS (synonyms for SHOW INDEX)
 			stmt.Type = "INDEX"
 			p.advance()
@@ -1189,7 +1189,7 @@ func (p *Parser) parseShowStmt() (*nodes.ShowStmt, error) {
 			if err := p.parseShowLikeOrWhere(stmt); err != nil {
 				return nil, err
 			}
-		} else if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "schemas") {
+		} else if p.cur.Type == kwSCHEMAS {
 			// SHOW SCHEMAS (synonym for SHOW DATABASES)
 			stmt.Type = "DATABASES"
 			p.advance()
@@ -1470,7 +1470,7 @@ func (p *Parser) parseExplainStmt() (*nodes.ExplainStmt, error) {
 	}
 
 	// Check for PARTITIONS (deprecated in 8.0 but still parsed)
-	if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "partitions") {
+	if p.cur.Type == kwPARTITIONS {
 		stmt.Partitions = true
 		p.advance()
 	}

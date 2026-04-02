@@ -1427,7 +1427,7 @@ func (p *Parser) parsePartitionClause() (*nodes.PartitionClause, error) {
 	}
 
 	// PARTITIONS num
-	if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "partitions") {
+	if p.cur.Type == kwPARTITIONS {
 		p.advance()
 		if p.cur.Type == tokICONST {
 			part.NumParts = int(p.cur.Ival)

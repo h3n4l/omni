@@ -538,6 +538,31 @@ const (
 	kwMEDIUM
 	kwCHANGED
 	kwCODE
+	kwEVENTS
+	kwINDEXES
+	kwGRANTS
+	kwTRIGGERS
+	kwSCHEMAS
+	kwPARTITIONS
+	kwHOSTS
+	kwMUTEX
+	kwPROFILE
+	kwREPLICAS
+	kwNAMES
+	kwACCOUNT
+	kwOPTION
+	kwPROXY
+	kwROUTINE
+	kwEXPIRE
+	kwNEVER
+	kwDAY
+	kwHISTORY
+	kwREUSE
+	kwOPTIONAL
+	kwX509
+	kwISSUER
+	kwSUBJECT
+	kwCIPHER
 )
 
 // keywords maps lowercase keyword strings to their token types.
@@ -1037,6 +1062,31 @@ var keywords = map[string]int{
 	"medium":              kwMEDIUM,
 	"changed":             kwCHANGED,
 	"code":                kwCODE,
+	"events":              kwEVENTS,
+	"indexes":             kwINDEXES,
+	"grants":              kwGRANTS,
+	"triggers":            kwTRIGGERS,
+	"schemas":             kwSCHEMAS,
+	"partitions":          kwPARTITIONS,
+	"hosts":               kwHOSTS,
+	"mutex":               kwMUTEX,
+	"profile":             kwPROFILE,
+	"replicas":            kwREPLICAS,
+	"names":               kwNAMES,
+	"account":             kwACCOUNT,
+	"option":              kwOPTION,
+	"proxy":               kwPROXY,
+	"routine":             kwROUTINE,
+	"expire":              kwEXPIRE,
+	"never":               kwNEVER,
+	"day":                 kwDAY,
+	"history":             kwHISTORY,
+	"reuse":               kwREUSE,
+	"optional":            kwOPTIONAL,
+	"x509":                kwX509,
+	"issuer":              kwISSUER,
+	"subject":             kwSUBJECT,
+	"cipher":              kwCIPHER,
 }
 
 // Token represents a lexical token.
