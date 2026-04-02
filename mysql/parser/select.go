@@ -253,14 +253,8 @@ func (p *Parser) parseSelectStmt() (*nodes.SelectStmt, error) {
 		stmt.From = from
 	}
 
-	// WHERE clause — requires FROM
+	// WHERE clause — MySQL allows WHERE without FROM (e.g., SELECT 1 WHERE 1=1)
 	if p.cur.Type == kwWHERE {
-		if stmt.From == nil {
-			return nil, &ParseError{
-				Message:  "WHERE clause requires FROM",
-				Position: p.cur.Loc,
-			}
-		}
 		p.advance()
 		where, err := p.parseExpr()
 		if err != nil {
@@ -277,14 +271,8 @@ func (p *Parser) parseSelectStmt() (*nodes.SelectStmt, error) {
 		}
 	}
 
-	// GROUP BY clause — requires FROM
+	// GROUP BY clause — MySQL allows GROUP BY without FROM
 	if p.cur.Type == kwGROUP {
-		if stmt.From == nil {
-			return nil, &ParseError{
-				Message:  "GROUP BY clause requires FROM",
-				Position: p.cur.Loc,
-			}
-		}
 		p.advance()
 		if _, err := p.expect(kwBY); err != nil {
 			return nil, err
@@ -322,14 +310,8 @@ func (p *Parser) parseSelectStmt() (*nodes.SelectStmt, error) {
 		}
 	}
 
-	// HAVING clause — requires FROM
+	// HAVING clause — MySQL allows HAVING without FROM
 	if p.cur.Type == kwHAVING {
-		if stmt.From == nil {
-			return nil, &ParseError{
-				Message:  "HAVING clause requires FROM",
-				Position: p.cur.Loc,
-			}
-		}
 		p.advance()
 		having, err := p.parseExpr()
 		if err != nil {
@@ -544,14 +526,8 @@ func (p *Parser) parseSelectStmtBase() (*nodes.SelectStmt, error) {
 		stmt.From = from
 	}
 
-	// WHERE clause — requires FROM
+	// WHERE clause — MySQL allows WHERE without FROM (e.g., SELECT 1 WHERE 1=1)
 	if p.cur.Type == kwWHERE {
-		if stmt.From == nil {
-			return nil, &ParseError{
-				Message:  "WHERE clause requires FROM",
-				Position: p.cur.Loc,
-			}
-		}
 		p.advance()
 		where, err := p.parseExpr()
 		if err != nil {
@@ -568,14 +544,8 @@ func (p *Parser) parseSelectStmtBase() (*nodes.SelectStmt, error) {
 		}
 	}
 
-	// GROUP BY clause — requires FROM
+	// GROUP BY clause — MySQL allows GROUP BY without FROM
 	if p.cur.Type == kwGROUP {
-		if stmt.From == nil {
-			return nil, &ParseError{
-				Message:  "GROUP BY clause requires FROM",
-				Position: p.cur.Loc,
-			}
-		}
 		p.advance()
 		if _, err := p.expect(kwBY); err != nil {
 			return nil, err
@@ -613,14 +583,8 @@ func (p *Parser) parseSelectStmtBase() (*nodes.SelectStmt, error) {
 		}
 	}
 
-	// HAVING clause — requires FROM
+	// HAVING clause — MySQL allows HAVING without FROM
 	if p.cur.Type == kwHAVING {
-		if stmt.From == nil {
-			return nil, &ParseError{
-				Message:  "HAVING clause requires FROM",
-				Position: p.cur.Loc,
-			}
-		}
 		p.advance()
 		having, err := p.parseExpr()
 		if err != nil {
