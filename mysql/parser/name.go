@@ -4,76 +4,142 @@ import (
 	nodes "github.com/bytebase/omni/mysql/ast"
 )
 
-// reservedKeywords is the set of MySQL 8.0 reserved words that cannot be used
-// as unquoted identifiers. These must be backtick-quoted when used as names.
+// keywordCategory classifies MySQL 8.0 keywords into 6 categories matching
+// the sql_yacc.yy grammar's identifier context rules.
 //
 // Ref: https://dev.mysql.com/doc/refman/8.0/en/keywords.html
-var reservedKeywords = map[int]bool{
-	kwSELECT:    true,
-	kwINSERT:    true,
-	kwUPDATE:    true,
-	kwDELETE:    true,
-	kwFROM:      true,
-	kwWHERE:     true,
-	kwCREATE:    true,
-	kwDROP:      true,
-	kwALTER:     true,
-	kwTABLE:     true,
-	kwINTO:      true,
-	kwVALUES:    true,
-	kwSET:       true,
-	kwJOIN:      true,
-	kwLEFT:      true,
-	kwRIGHT:     true,
-	kwINNER:     true,
-	kwOUTER:     true,
-	kwON:        true,
-	kwAND:       true,
-	kwOR:        true,
-	kwNOT:       true,
-	kwNULL:      true,
-	kwTRUE:      true,
-	kwFALSE:     true,
-	kwIN:        true,
-	kwBETWEEN:   true,
-	kwLIKE:      true,
-	kwORDER:     true,
-	kwGROUP:     true,
-	kwBY:        true,
-	kwHAVING:    true,
-	kwLIMIT:     true,
-	kwAS:        true,
-	kwIS:        true,
-	kwEXISTS_KW: true,
-	kwCASE:      true,
-	kwWHEN:      true,
-	kwTHEN:      true,
-	kwELSE:      true,
-	kwEND:       true,
-	kwIF:        true,
-	kwFOR:       true,
-	kwWHILE:     true,
-	kwINDEX:     true,
-	kwKEY:       true,
-	kwPRIMARY:   true,
-	kwFOREIGN:   true,
-	kwREFERENCES: true,
-	kwCONSTRAINT: true,
-	kwUNIQUE:    true,
-	kwCHECK:     true,
-	kwDEFAULT:   true,
-	kwCOLUMN:    true,
-	kwADD:       true,
-	kwCHANGE:    true,
-	kwMODIFY:    true,
-	kwRENAME:    true,
-	kwGRANT:     true,
-	kwREVOKE:    true,
-	kwALL:       true,
-	kwDISTINCT:  true,
-	kwUNION:     true,
-	kwINTERSECT: true,
-	kwEXCEPT:    true,
+// Ref: mysql-server sql/sql_yacc.yy (ident, label_ident, role_ident, lvalue_ident rules)
+type keywordCategory int
+
+const (
+	kwCatReserved    keywordCategory = iota // Cannot be used as identifiers without quoting
+	kwCatUnambiguous                        // ident_keywords_unambiguous — allowed in all identifier contexts
+	kwCatAmbiguous1                         // ident_keywords_ambiguous_1_roles_and_labels — NOT allowed as label or role
+	kwCatAmbiguous2                         // ident_keywords_ambiguous_2_labels — NOT allowed as label
+	kwCatAmbiguous3                         // ident_keywords_ambiguous_3_roles — NOT allowed as role
+	kwCatAmbiguous4                         // ident_keywords_ambiguous_4_system_variables — NOT allowed as lvalue
+)
+
+// keywordCategories maps keyword token types to their category. Keywords not
+// present in this map are not registered keywords (they lex as tokIDENT).
+//
+// All 65 original reserved keywords are migrated here with kwCatReserved.
+// All other registered keywords default to kwCatUnambiguous and will be
+// refined to their correct ambiguous category in later sections.
+var keywordCategories = map[int]keywordCategory{
+	kwSELECT:     kwCatReserved,
+	kwINSERT:     kwCatReserved,
+	kwUPDATE:     kwCatReserved,
+	kwDELETE:     kwCatReserved,
+	kwFROM:       kwCatReserved,
+	kwWHERE:      kwCatReserved,
+	kwCREATE:     kwCatReserved,
+	kwDROP:       kwCatReserved,
+	kwALTER:      kwCatReserved,
+	kwTABLE:      kwCatReserved,
+	kwINTO:       kwCatReserved,
+	kwVALUES:     kwCatReserved,
+	kwSET:        kwCatReserved,
+	kwJOIN:       kwCatReserved,
+	kwLEFT:       kwCatReserved,
+	kwRIGHT:      kwCatReserved,
+	kwINNER:      kwCatReserved,
+	kwOUTER:      kwCatReserved,
+	kwON:         kwCatReserved,
+	kwAND:        kwCatReserved,
+	kwOR:         kwCatReserved,
+	kwNOT:        kwCatReserved,
+	kwNULL:       kwCatReserved,
+	kwTRUE:       kwCatReserved,
+	kwFALSE:      kwCatReserved,
+	kwIN:         kwCatReserved,
+	kwBETWEEN:    kwCatReserved,
+	kwLIKE:       kwCatReserved,
+	kwORDER:      kwCatReserved,
+	kwGROUP:      kwCatReserved,
+	kwBY:         kwCatReserved,
+	kwHAVING:     kwCatReserved,
+	kwLIMIT:      kwCatReserved,
+	kwAS:         kwCatReserved,
+	kwIS:         kwCatReserved,
+	kwEXISTS_KW:  kwCatReserved,
+	kwCASE:       kwCatReserved,
+	kwWHEN:       kwCatReserved,
+	kwTHEN:       kwCatReserved,
+	kwELSE:       kwCatReserved,
+	kwEND:        kwCatReserved,
+	kwIF:         kwCatReserved,
+	kwFOR:        kwCatReserved,
+	kwWHILE:      kwCatReserved,
+	kwINDEX:      kwCatReserved,
+	kwKEY:        kwCatReserved,
+	kwPRIMARY:    kwCatReserved,
+	kwFOREIGN:    kwCatReserved,
+	kwREFERENCES: kwCatReserved,
+	kwCONSTRAINT: kwCatReserved,
+	kwUNIQUE:     kwCatReserved,
+	kwCHECK:      kwCatReserved,
+	kwDEFAULT:    kwCatReserved,
+	kwCOLUMN:     kwCatReserved,
+	kwADD:        kwCatReserved,
+	kwCHANGE:     kwCatReserved,
+	kwMODIFY:     kwCatReserved,
+	kwRENAME:     kwCatReserved,
+	kwGRANT:      kwCatReserved,
+	kwREVOKE:     kwCatReserved,
+	kwALL:        kwCatReserved,
+	kwDISTINCT:   kwCatReserved,
+	kwUNION:      kwCatReserved,
+	kwINTERSECT:  kwCatReserved,
+	kwEXCEPT:     kwCatReserved,
+}
+
+// isReserved returns true if the token type is a reserved keyword that cannot
+// be used as an unquoted identifier.
+func isReserved(t int) bool {
+	cat, ok := keywordCategories[t]
+	return ok && cat == kwCatReserved
+}
+
+// isIdentKeyword returns true if the token type is a non-reserved keyword that
+// can be used as an identifier. This covers all 5 non-reserved categories:
+// unambiguous, ambiguous_1, ambiguous_2, ambiguous_3, and ambiguous_4.
+func isIdentKeyword(t int) bool {
+	cat, ok := keywordCategories[t]
+	return ok && cat != kwCatReserved
+}
+
+// isLabelKeyword returns true if the token type is a non-reserved keyword that
+// can be used as a statement label. Includes: unambiguous, ambiguous_3, ambiguous_4.
+// Excludes: ambiguous_1 (not label, not role), ambiguous_2 (not label).
+func isLabelKeyword(t int) bool {
+	cat, ok := keywordCategories[t]
+	if !ok {
+		return false
+	}
+	return cat == kwCatUnambiguous || cat == kwCatAmbiguous3 || cat == kwCatAmbiguous4
+}
+
+// isRoleKeyword returns true if the token type is a non-reserved keyword that
+// can be used as a role name. Includes: unambiguous, ambiguous_2, ambiguous_4.
+// Excludes: ambiguous_1 (not label, not role), ambiguous_3 (not role).
+func isRoleKeyword(t int) bool {
+	cat, ok := keywordCategories[t]
+	if !ok {
+		return false
+	}
+	return cat == kwCatUnambiguous || cat == kwCatAmbiguous2 || cat == kwCatAmbiguous4
+}
+
+// isLvalueKeyword returns true if the token type is a non-reserved keyword that
+// can be used as an lvalue (SET target). Includes: unambiguous, ambiguous_1, ambiguous_2, ambiguous_3.
+// Excludes: ambiguous_4 (system variables like GLOBAL, SESSION, LOCAL).
+func isLvalueKeyword(t int) bool {
+	cat, ok := keywordCategories[t]
+	if !ok {
+		return false
+	}
+	return cat == kwCatUnambiguous || cat == kwCatAmbiguous1 || cat == kwCatAmbiguous2 || cat == kwCatAmbiguous3
 }
 
 // parseIdentifier parses a plain identifier (unquoted or backtick-quoted).
@@ -91,7 +157,7 @@ func (p *Parser) parseIdentifier() (string, int, error) {
 	}
 	// Many MySQL keywords can also be used as identifiers in certain contexts.
 	// Accept non-reserved keyword tokens as identifiers, but reject reserved words.
-	if p.cur.Type >= 700 && !reservedKeywords[p.cur.Type] {
+	if p.cur.Type >= 700 && !isReserved(p.cur.Type) {
 		tok := p.advance()
 		return tok.Str, tok.Loc, nil
 	}
@@ -100,6 +166,37 @@ func (p *Parser) parseIdentifier() (string, int, error) {
 	}
 	return "", 0, &ParseError{
 		Message:  "expected identifier",
+		Position: p.cur.Loc,
+	}
+}
+
+// parseKeywordOrIdent parses an identifier or ANY keyword token (including reserved words).
+// Use this in contexts where the grammar expects a fixed enum value, action word, or
+// option name that may collide with reserved keywords. Examples:
+//   - ALGORITHM = DEFAULT/INSTANT/INPLACE/COPY
+//   - LOCK = NONE/SHARED/EXCLUSIVE
+//   - REQUIRE_TABLE_PRIMARY_KEY_CHECK = ON/OFF/STREAM/GENERATE
+//   - ALTER INSTANCE action words: ROTATE/RELOAD/ENABLE/DISABLE
+//   - INTERVAL units: DAY/HOUR/MINUTE/SECOND (and compound forms)
+//   - EXTRACT units, EXPLAIN FORMAT values, etc.
+//
+// This matches MySQL's grammar behavior where specific productions explicitly
+// list keyword tokens as valid alternatives (e.g., ON_SYM in option values).
+func (p *Parser) parseKeywordOrIdent() (string, int, error) {
+	if p.cur.Type == tokIDENT {
+		tok := p.advance()
+		return tok.Str, tok.Loc, nil
+	}
+	// Accept ANY keyword token, including reserved words.
+	if p.cur.Type >= 700 {
+		tok := p.advance()
+		return tok.Str, tok.Loc, nil
+	}
+	if p.cur.Type == tokEOF {
+		return "", 0, p.syntaxErrorAtCur()
+	}
+	return "", 0, &ParseError{
+		Message:  "expected identifier or keyword",
 		Position: p.cur.Loc,
 	}
 }
@@ -344,7 +441,7 @@ func (p *Parser) parseVariableRef() (*nodes.VariableRef, error) {
 
 // isIdentToken returns true if the current token can be used as an identifier.
 func (p *Parser) isIdentToken() bool {
-	return p.cur.Type == tokIDENT || (p.cur.Type >= 700 && !reservedKeywords[p.cur.Type])
+	return p.cur.Type == tokIDENT || (p.cur.Type >= 700 && !isReserved(p.cur.Type))
 }
 
 // isVariableRef returns true if the current token is a variable reference.

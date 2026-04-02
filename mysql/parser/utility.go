@@ -2007,8 +2007,8 @@ func (p *Parser) parseAlterInstanceStmt(start int) (*nodes.AlterInstanceStmt, er
 			stmt.NoRollbackOnError = true
 			continue
 		}
-		if p.isIdentToken() || p.cur.Type >= 700 {
-			name, _, _ := p.parseIdentifier()
+		if p.cur.Type == tokIDENT || p.cur.Type >= 700 {
+			name, _, _ := p.parseKeywordOrIdent()
 			words = append(words, name)
 		} else {
 			break

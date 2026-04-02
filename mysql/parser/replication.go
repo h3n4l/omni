@@ -149,8 +149,9 @@ func (p *Parser) parseReplicationSourceOption() (*nodes.ReplicationOption, error
 		opt.Value = "NULL"
 		p.advance()
 	default:
-		// Identifier value (e.g., STREAM, ON, OFF, GENERATE, LOCAL)
-		val, _, err := p.parseIdentifier()
+		// Identifier or keyword value (e.g., STREAM, ON, OFF, GENERATE, LOCAL).
+		// Must accept reserved keywords like ON/OFF in this context.
+		val, _, err := p.parseKeywordOrIdent()
 		if err != nil {
 			return nil, err
 		}
@@ -436,7 +437,7 @@ func (p *Parser) parseStartReplicaStmt(start int) (*nodes.StartReplicaStmt, erro
 	// Optional UNTIL
 	if p.isIdentToken() && eqFold(p.cur.Str, "UNTIL") {
 		p.advance() // consume UNTIL
-		untilName, _, err := p.parseIdentifier()
+		untilName, _, err := p.parseKeywordOrIdent()
 		if err != nil {
 			return nil, err
 		}
@@ -452,7 +453,7 @@ func (p *Parser) parseStartReplicaStmt(start int) (*nodes.StartReplicaStmt, erro
 				stmt.UntilValue = p.cur.Str
 				p.advance()
 			} else {
-				val, _, err := p.parseIdentifier()
+				val, _, err := p.parseKeywordOrIdent()
 				if err != nil {
 					return nil, err
 				}
@@ -462,7 +463,7 @@ func (p *Parser) parseStartReplicaStmt(start int) (*nodes.StartReplicaStmt, erro
 			if eqFold(untilName, "SOURCE_LOG_FILE") || eqFold(untilName, "MASTER_LOG_FILE") || eqFold(untilName, "RELAY_LOG_FILE") {
 				if p.cur.Type == ',' {
 					p.advance() // consume ','
-					posName, _, err := p.parseIdentifier()
+					posName, _, err := p.parseKeywordOrIdent()
 					if err != nil {
 						return nil, err
 					}
