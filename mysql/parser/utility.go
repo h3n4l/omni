@@ -457,7 +457,7 @@ func (p *Parser) parseFlushOption(stmt *nodes.FlushStmt) string {
 			// Optional FOR CHANNEL channel
 			if p.cur.Type == kwFOR {
 				p.advance() // consume FOR
-				if p.isIdentToken() && eqFold(p.cur.Str, "channel") {
+				if p.cur.Type == kwCHANNEL {
 					p.advance() // consume CHANNEL
 					if p.isIdentToken() || p.cur.Type == tokSCONST {
 						if p.cur.Type == tokSCONST {

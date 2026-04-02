@@ -345,16 +345,16 @@ Create 5 identifier parsing functions matching MySQL's grammar hierarchy.
 
 Option values, enum values, and action words that should accept ANY keyword including reserved.
 
-- [ ] ALGORITHM = value (UNDEFINED/MERGE/TEMPTABLE/DEFAULT/INSTANT/INPLACE/COPY) uses parseKeywordOrIdent
-- [ ] LOCK = value (DEFAULT/NONE/SHARED/EXCLUSIVE) uses parseKeywordOrIdent
-- [ ] SQL SECURITY value (DEFINER/INVOKER) uses parseKeywordOrIdent
-- [ ] MATCH type (FULL/PARTIAL/SIMPLE) uses parseKeywordOrIdent
-- [ ] USING index type (BTREE/HASH) uses parseKeywordOrIdent
-- [ ] RETURNS type for loadable function (STRING/INTEGER/REAL) uses parseKeywordOrIdent
-- [ ] LANGUAGE value (SQL) uses parseKeywordOrIdent
-- [ ] RESOURCE GROUP TYPE value (SYSTEM/USER) uses parseKeywordOrIdent
-- [ ] consumeOptionValue fallback uses parseKeywordOrIdent
-- [ ] All DDL option tests still pass
+- [x] ALGORITHM = value (UNDEFINED/MERGE/TEMPTABLE/DEFAULT/INSTANT/INPLACE/COPY) uses parseKeywordOrIdent
+- [x] LOCK = value (DEFAULT/NONE/SHARED/EXCLUSIVE) uses parseKeywordOrIdent
+- [x] SQL SECURITY value (DEFINER/INVOKER) uses parseKeywordOrIdent
+- [x] MATCH type (FULL/PARTIAL/SIMPLE) uses parseKeywordOrIdent
+- [x] USING index type (BTREE/HASH) uses parseKeywordOrIdent
+- [x] RETURNS type for loadable function (STRING/INTEGER/REAL) uses parseKeywordOrIdent
+- [x] LANGUAGE value (SQL) uses parseKeywordOrIdent
+- [x] RESOURCE GROUP TYPE value (SYSTEM/USER) uses parseKeywordOrIdent
+- [x] consumeOptionValue fallback uses parseKeywordOrIdent
+- [x] All DDL option tests still pass
 
 ### 2.9 Migrate Any-Keyword Call Sites — Replication & Utility
 
@@ -386,137 +386,137 @@ Replace all eqFold string matching with keyword token matching, file by file. Ea
 
 ### 3.1 eqFold Migration — type.go
 
-- [ ] `eqFold("geometry")` → kwGEOMETRY token check
-- [ ] `eqFold("point")` → kwPOINT token check
-- [ ] `eqFold("linestring")` → kwLINESTRING token check
-- [ ] `eqFold("polygon")` → kwPOLYGON token check
-- [ ] `eqFold("multipoint")` → kwMULTIPOINT token check
-- [ ] `eqFold("multilinestring")` → kwMULTILINESTRING token check
-- [ ] `eqFold("multipolygon")` → kwMULTIPOLYGON token check
-- [ ] `eqFold("geometrycollection")` → kwGEOMETRYCOLLECTION token check
-- [ ] `eqFold("serial")` → kwSERIAL token check
-- [ ] `eqFold("national")` → kwNATIONAL token check
-- [ ] `eqFold("nchar")` → kwNCHAR token check
-- [ ] `eqFold("nvarchar")` → kwNVARCHAR token check
-- [ ] `eqFold("signed")` → kwSIGNED token check
-- [ ] `eqFold("precision")` → kwPRECISION token check
-- [ ] `eqFold("long")` → kwLONG token check
-- [ ] `eqFold("int1")`...`eqFold("int8")` → keyword token checks
-- [ ] `eqFold("middleint")` → kwMIDDLEINT token check
-- [ ] `eqFold("float4")`/`eqFold("float8")` → keyword token checks
-- [ ] `eqFold("srid")` → kwSRID token check
-- [ ] Zero eqFold calls remain in type.go for registered keywords
-- [ ] All data type tests still pass
+- [x] `eqFold("geometry")` → kwGEOMETRY token check
+- [x] `eqFold("point")` → kwPOINT token check
+- [x] `eqFold("linestring")` → kwLINESTRING token check
+- [x] `eqFold("polygon")` → kwPOLYGON token check
+- [x] `eqFold("multipoint")` → kwMULTIPOINT token check
+- [x] `eqFold("multilinestring")` → kwMULTILINESTRING token check
+- [x] `eqFold("multipolygon")` → kwMULTIPOLYGON token check
+- [x] `eqFold("geometrycollection")` → kwGEOMETRYCOLLECTION token check
+- [x] `eqFold("serial")` → kwSERIAL token check
+- [x] `eqFold("national")` → kwNATIONAL token check
+- [x] `eqFold("nchar")` → kwNCHAR token check
+- [x] `eqFold("nvarchar")` → kwNVARCHAR token check
+- [x] `eqFold("signed")` → kwSIGNED token check
+- [x] `eqFold("precision")` → kwPRECISION token check
+- [x] `eqFold("long")` → kwLONG token check — NOTE: int1-int8, middleint, float4/float8 are NOT registered keywords; eqFold correctly remains for these type aliases
+- [x] `eqFold("int1")`...`eqFold("int8")` → keyword token checks — N/A: not registered keywords, eqFold retained
+- [x] `eqFold("middleint")` → kwMIDDLEINT token check — N/A: not a registered keyword, eqFold retained
+- [x] `eqFold("float4")`/`eqFold("float8")` → keyword token checks — N/A: not registered keywords, eqFold retained
+- [x] `eqFold("srid")` → kwSRID token check
+- [x] Zero eqFold calls remain in type.go for registered keywords
+- [x] All data type tests still pass
 
 ### 3.2 eqFold Migration — create_table.go
 
-- [ ] `eqFold("enforced")` → kwENFORCED token check
-- [ ] `eqFold("less")` → kwLESS token check
-- [ ] `eqFold("than")` → kwTHAN token check
-- [ ] `eqFold("maxvalue")` → kwMAXVALUE token check
-- [ ] `eqFold("subpartitions")` → kwSUBPARTITIONS token check
-- [ ] `eqFold("leaves")` → kwLEAVES token check
-- [ ] `eqFold("action")` → kwACTION token check
-- [ ] `eqFold("partial")` → kwPARTIAL token check
-- [ ] All table option eqFold patterns migrated to keyword tokens where applicable
-- [ ] Zero eqFold calls for registered keywords remain in create_table.go
-- [ ] All CREATE TABLE tests still pass
+- [x] `eqFold("enforced")` → kwENFORCED token check
+- [x] `eqFold("less")` → kwLESS token check
+- [x] `eqFold("than")` → kwTHAN token check
+- [x] `eqFold("maxvalue")` → kwMAXVALUE token check
+- [x] `eqFold("subpartitions")` → kwSUBPARTITIONS token check
+- [x] `eqFold("leaves")` → kwLEAVES token check
+- [x] `eqFold("action")` → kwACTION token check
+- [x] `eqFold("partial")` → kwPARTIAL token check
+- [x] All table option eqFold patterns migrated to keyword tokens where applicable — remaining eqFold in create_table.go is for non-keyword option strings (engine_attribute, secondary_engine_attribute, key_block_size, etc.)
+- [x] Zero eqFold calls for registered keywords remain in create_table.go
+- [x] All CREATE TABLE tests still pass
 
 ### 3.3 eqFold Migration — grant.go
 
-- [ ] `eqFold("account")` → kwACCOUNT token check
-- [ ] `eqFold("option")` → kwOPTION token check
-- [ ] `eqFold("proxy")` → kwPROXY token check
-- [ ] `eqFold("routine")` → kwROUTINE token check
-- [ ] `eqFold("expire")` → kwEXPIRE token check
-- [ ] `eqFold("never")` → kwNEVER token check
-- [ ] `eqFold("day")` → kwDAY token check
-- [ ] `eqFold("history")` → kwHISTORY token check
-- [ ] `eqFold("reuse")` → kwREUSE token check
-- [ ] `eqFold("x509")` → kwX509 token check
-- [ ] `eqFold("issuer")` → kwISSUER token check
-- [ ] `eqFold("subject")` → kwSUBJECT token check
-- [ ] `eqFold("cipher")` → kwCIPHER token check
-- [ ] `eqFold("attribute")` → kwATTRIBUTE token check
-- [ ] All remaining grant.go eqFold patterns for registered keywords migrated
-- [ ] Zero eqFold calls for registered keywords remain in grant.go
-- [ ] All GRANT/USER tests still pass
+- [x] `eqFold("account")` → kwACCOUNT token check
+- [x] `eqFold("option")` → kwOPTION token check
+- [x] `eqFold("proxy")` → kwPROXY token check — NOTE: 2 remaining eqFold for "PROXY" compare against extracted string array, not current token
+- [x] `eqFold("routine")` → kwROUTINE token check
+- [x] `eqFold("expire")` → kwEXPIRE token check
+- [x] `eqFold("never")` → kwNEVER token check
+- [x] `eqFold("day")` → kwDAY token check
+- [x] `eqFold("history")` → kwHISTORY token check
+- [x] `eqFold("reuse")` → kwREUSE token check
+- [x] `eqFold("x509")` → kwX509 token check
+- [x] `eqFold("issuer")` → kwISSUER token check
+- [x] `eqFold("subject")` → kwSUBJECT token check
+- [x] `eqFold("cipher")` → kwCIPHER token check
+- [x] `eqFold("attribute")` → kwATTRIBUTE token check
+- [x] All remaining grant.go eqFold patterns for registered keywords migrated — `eqFold("tablespace")` fixed to kwTABLESPACE token check
+- [x] Zero eqFold calls for registered keywords remain in grant.go — remaining eqFold is for non-keyword strings (max_queries_per_hour, factor, initiate, registration, etc.) and extracted-string PROXY comparison
+- [x] All GRANT/USER tests still pass
 
 ### 3.4 eqFold Migration — utility.go
 
-- [ ] `eqFold("schedule")` → kwSCHEDULE token check
-- [ ] `eqFold("completion")` → kwCOMPLETION token check
-- [ ] `eqFold("preserve")` → kwPRESERVE token check
-- [ ] `eqFold("every")` → kwEVERY token check
-- [ ] `eqFold("starts")` → kwSTARTS token check
-- [ ] `eqFold("ends")` → kwENDS token check
-- [ ] `eqFold("rotate")` → kwROTATE token check
-- [ ] `eqFold("keyring")` → kwKEYRING token check
-- [ ] `eqFold("tls")` → kwTLS token check
-- [ ] `eqFold("concurrent")` → kwCONCURRENT token check
-- [ ] `eqFold("work")` → kwWORK token check
-- [ ] `eqFold("export")` → kwEXPORT token check
-- [ ] `eqFold("upgrade")` → kwUPGRADE token check
-- [ ] `eqFold("fast")`/`eqFold("medium")`/`eqFold("changed")` → keyword token checks
-- [ ] All remaining utility.go eqFold patterns for registered keywords migrated
-- [ ] Zero eqFold calls for registered keywords remain in utility.go
-- [ ] All utility tests still pass
+- [x] `eqFold("schedule")` → kwSCHEDULE token check
+- [x] `eqFold("completion")` → kwCOMPLETION token check
+- [x] `eqFold("preserve")` → kwPRESERVE token check
+- [x] `eqFold("every")` → kwEVERY token check
+- [x] `eqFold("starts")` → kwSTARTS token check
+- [x] `eqFold("ends")` → kwENDS token check
+- [x] `eqFold("rotate")` → kwROTATE token check
+- [x] `eqFold("keyring")` → kwKEYRING token check
+- [x] `eqFold("tls")` → kwTLS token check
+- [x] `eqFold("concurrent")` → kwCONCURRENT token check
+- [x] `eqFold("work")` → kwWORK token check
+- [x] `eqFold("export")` → kwEXPORT token check
+- [x] `eqFold("upgrade")` → kwUPGRADE token check
+- [x] `eqFold("fast")`/`eqFold("medium")`/`eqFold("changed")` → keyword token checks
+- [x] All remaining utility.go eqFold patterns for registered keywords migrated — `eqFold("channel")` fixed to kwCHANNEL token check
+- [x] Zero eqFold calls for registered keywords remain in utility.go — remaining eqFold is for non-keyword compound option strings (histogram, buckets, autoextend_size, initial_size, etc.)
+- [x] All utility tests still pass
 
 ### 3.5 eqFold Migration — set_show.go
 
-- [ ] `eqFold("events")` → kwEVENTS token check
-- [ ] `eqFold("indexes")` → kwINDEXES token check
-- [ ] `eqFold("grants")` → kwGRANTS token check
-- [ ] `eqFold("triggers")` → kwTRIGGERS token check
-- [ ] `eqFold("schemas")` → kwSCHEMAS token check
-- [ ] `eqFold("partitions")` → kwPARTITIONS token check
-- [ ] `eqFold("hosts")` → kwHOSTS token check
-- [ ] `eqFold("mutex")` → kwMUTEX token check
-- [ ] `eqFold("profile")` → kwPROFILE token check
-- [ ] `eqFold("replicas")` → kwREPLICAS token check
-- [ ] `eqFold("format")` → kwFORMAT token check
-- [ ] `eqFold("names")` → kwNAMES token check
-- [ ] `eqFold("code")` → kwCODE token check
-- [ ] `eqFold("xml")` → kwXML token check
-- [ ] Zero eqFold calls for registered keywords remain in set_show.go
-- [ ] All SHOW/SET tests still pass
+- [x] `eqFold("events")` → kwEVENTS token check
+- [x] `eqFold("indexes")` → kwINDEXES token check
+- [x] `eqFold("grants")` → kwGRANTS token check
+- [x] `eqFold("triggers")` → kwTRIGGERS token check
+- [x] `eqFold("schemas")` → kwSCHEMAS token check
+- [x] `eqFold("partitions")` → kwPARTITIONS token check
+- [x] `eqFold("hosts")` → kwHOSTS token check
+- [x] `eqFold("mutex")` → kwMUTEX token check
+- [x] `eqFold("profile")` → kwPROFILE token check
+- [x] `eqFold("replicas")` → kwREPLICAS token check
+- [x] `eqFold("format")` → kwFORMAT token check
+- [x] `eqFold("names")` → kwNAMES token check
+- [x] `eqFold("code")` → kwCODE token check
+- [x] `eqFold("xml")` → kwXML token check
+- [x] Zero eqFold calls for registered keywords remain in set_show.go — remaining eqFold is for persist_only (not a keyword) and isIdentLike helper (used for non-keyword profile option names)
+- [x] All SHOW/SET tests still pass
 
 ### 3.6 eqFold Migration — replication.go & trigger.go & signal.go
 
-- [ ] All replication.go eqFold patterns for registered keywords migrated
-- [ ] `eqFold("stream")` → kwSTREAM token check
-- [ ] `eqFold("generate")` → kwGENERATE token check
-- [ ] All trigger.go eqFold patterns for registered keywords migrated (interval units in event scheduling)
-- [ ] All signal.go eqFold patterns migrated (`value`, `stacked`)
-- [ ] Zero eqFold calls for registered keywords remain in these files
-- [ ] All replication/trigger/signal tests still pass
+- [x] All replication.go eqFold patterns for registered keywords migrated — `eqFold("UNTIL")` fixed to kwUNTIL token check
+- [x] `eqFold("stream")` → kwSTREAM token check
+- [x] `eqFold("generate")` → kwGENERATE token check
+- [x] All trigger.go eqFold patterns for registered keywords migrated (interval units in event scheduling)
+- [x] All signal.go eqFold patterns migrated (`value`, `stacked`)
+- [x] Zero eqFold calls for registered keywords remain in these files — remaining eqFold in replication.go is for non-keyword compound strings (IGNORE_SERVER_IDS, REPLICATE_REWRITE_DB, SQL_AFTER_MTS_GAPS, SOURCE_LOG_FILE, DEFAULT_AUTH, PLUGIN_DIR, IO_THREAD, SQL_THREAD)
+- [x] All replication/trigger/signal tests still pass
 
 ### 3.7 eqFold Migration — expr.go & compound.go & remaining files
 
-- [ ] All expr.go eqFold patterns for registered keywords migrated
-- [ ] All compound.go eqFold patterns migrated
-- [ ] All create_function.go remaining eqFold patterns migrated
-- [ ] All create_index.go remaining eqFold patterns migrated
-- [ ] All create_view.go remaining eqFold patterns migrated
-- [ ] All alter_table.go remaining eqFold patterns migrated
-- [ ] All alter_misc.go remaining eqFold patterns migrated
-- [ ] All load_data.go remaining eqFold patterns migrated
-- [ ] All transaction.go eqFold patterns migrated
-- [ ] All insert.go eqFold patterns migrated
-- [ ] All select.go eqFold patterns migrated (e.g., `of` in FOR UPDATE OF)
-- [ ] All stmt.go eqFold patterns migrated (e.g., `reference` in CREATE SRS)
-- [ ] Zero eqFold calls for registered keywords remain across entire parser
-- [ ] All tests still pass
+- [x] All expr.go eqFold patterns for registered keywords migrated — zero eqFold in expr.go
+- [x] All compound.go eqFold patterns migrated — zero eqFold in compound.go
+- [x] All create_function.go remaining eqFold patterns migrated — zero eqFold in create_function.go
+- [x] All create_index.go remaining eqFold patterns migrated — remaining eqFold is for non-keyword option strings (KEY_BLOCK_SIZE, ENGINE_ATTRIBUTE, SECONDARY_ENGINE_ATTRIBUTE)
+- [x] All create_view.go remaining eqFold patterns migrated — zero eqFold in create_view.go
+- [x] All alter_table.go remaining eqFold patterns migrated — remaining eqFold is for non-keyword strings (secondary_load, secondary_unload)
+- [x] All alter_misc.go remaining eqFold patterns migrated — zero eqFold in alter_misc.go
+- [x] All load_data.go remaining eqFold patterns migrated — zero eqFold in load_data.go
+- [x] All transaction.go eqFold patterns migrated — zero eqFold in transaction.go
+- [x] All insert.go eqFold patterns migrated — zero eqFold in insert.go
+- [x] All select.go eqFold patterns migrated — zero eqFold in select.go
+- [x] All stmt.go eqFold patterns migrated — `eqFold("reference")` fixed to kwREFERENCE token check; remaining eqFold is for non-keyword GROUP_REPLICATION and extracted-string current_user comparison
+- [x] Zero eqFold calls for registered keywords remain across entire parser (95 eqFold calls remain, all for non-keyword strings)
+- [x] All tests still pass
 
 ### 3.8 Completeness Audit
 
-- [ ] Every MySQL 8.0 keyword in sql_yacc.yy that appears in omni's parser is registered as a keyword token
-- [ ] Every registered keyword has the correct 6-category classification matching sql_yacc.yy
-- [ ] Zero eqFold calls remain for strings that are registered keywords
-- [ ] eqFold calls only remain for: (a) non-keyword compound option strings (key_block_size, max_rows, replication options, etc.), (b) option-name dispatch patterns in create_table.go where post-parse string matching is used, (c) `@@`-prefixed variable scope parsing in name.go (lexer emits `@@global.var` as single token)
-- [ ] Oracle corpus: `CREATE TABLE select (a INT)` correctly rejected
-- [ ] Oracle corpus: `CREATE TABLE t (select INT)` correctly rejected
-- [ ] Oracle corpus: `CREATE TABLE t (rank INT)` correctly rejected (rank is reserved)
-- [ ] Oracle corpus: `CREATE TABLE t (status INT)` correctly accepted (status is non-reserved)
-- [ ] Oracle corpus: `CREATE TABLE begin (a INT)` correctly accepted (begin is ambiguous_2, allowed as ident)
-- [ ] Full test suite passes with zero regressions
+- [x] Every MySQL 8.0 keyword in sql_yacc.yy that appears in omni's parser is registered as a keyword token
+- [x] Every registered keyword has the correct 6-category classification matching sql_yacc.yy
+- [x] Zero eqFold calls remain for strings that are registered keywords — verified: 95 eqFold calls remain, all for non-keyword strings
+- [x] eqFold calls only remain for: (a) non-keyword compound option strings (key_block_size, max_rows, replication options, etc.), (b) option-name dispatch patterns in create_table.go where post-parse string matching is used, (c) `@@`-prefixed variable scope parsing in name.go (lexer emits `@@global.var` as single token)
+- [~] Oracle corpus: `CREATE TABLE select (a INT)` correctly rejected — known mismatch: omni accepts, MySQL rejects (strictness enforcement pending)
+- [~] Oracle corpus: `CREATE TABLE t (select INT)` correctly rejected — known mismatch: omni accepts, MySQL rejects (strictness enforcement pending)
+- [~] Oracle corpus: `CREATE TABLE t (rank INT)` correctly rejected (rank is reserved) — rank registered as reserved; strictness enforcement pending
+- [x] Oracle corpus: `CREATE TABLE t (status INT)` correctly accepted (status is non-reserved)
+- [x] Oracle corpus: `CREATE TABLE begin (a INT)` correctly accepted (begin is ambiguous_2, allowed as ident) — verified in compare_test.go
+- [x] Full test suite passes with zero regressions

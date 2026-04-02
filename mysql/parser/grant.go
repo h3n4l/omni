@@ -479,7 +479,7 @@ func (p *Parser) parsePrivilegeName() (string, error) {
 				p.advance()
 			}
 			name = "CREATE TEMPORARY TABLES"
-		case p.cur.Type == tokIDENT && eqFold(p.cur.Str, "tablespace"):
+		case p.cur.Type == kwTABLESPACE:
 			p.advance()
 			name = "CREATE TABLESPACE"
 		case p.cur.Type == kwUSER:

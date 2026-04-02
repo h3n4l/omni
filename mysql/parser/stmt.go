@@ -455,7 +455,7 @@ func (p *Parser) parseCreateDispatch() (nodes.Node, error) {
 	case kwSPATIAL:
 		p.advance()
 		// Distinguish SPATIAL REFERENCE SYSTEM from SPATIAL INDEX
-		if p.isIdentToken() && eqFold(p.cur.Str, "reference") {
+		if p.cur.Type == kwREFERENCE {
 			return p.parseCreateSpatialRefSysStmt(start, orReplace)
 		}
 		return p.parseCreateIndexStmt(false, false, true)

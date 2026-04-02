@@ -437,7 +437,7 @@ func (p *Parser) parseStartReplicaStmt(start int) (*nodes.StartReplicaStmt, erro
 	p.parseThreadTypes(stmt)
 
 	// Optional UNTIL
-	if p.isIdentToken() && eqFold(p.cur.Str, "UNTIL") {
+	if p.cur.Type == kwUNTIL {
 		p.advance() // consume UNTIL
 		untilName, _, err := p.parseKeywordOrIdent()
 		if err != nil {
