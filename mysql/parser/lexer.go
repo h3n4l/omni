@@ -502,6 +502,21 @@ const (
 	kwSQLEXCEPTION
 	kwSQLSTATE
 	kwSQLWARNING
+	kwGEOMETRY
+	kwPOINT
+	kwLINESTRING
+	kwPOLYGON
+	kwMULTIPOINT
+	kwMULTILINESTRING
+	kwMULTIPOLYGON
+	kwGEOMETRYCOLLECTION
+	kwSERIAL
+	kwNATIONAL
+	kwNCHAR
+	kwNVARCHAR
+	kwSIGNED
+	kwPRECISION
+	kwSRID
 )
 
 // keywords maps lowercase keyword strings to their token types.
@@ -965,6 +980,21 @@ var keywords = map[string]int{
 	"sqlexception":        kwSQLEXCEPTION,
 	"sqlstate":            kwSQLSTATE,
 	"sqlwarning":          kwSQLWARNING,
+	"geometry":            kwGEOMETRY,
+	"point":               kwPOINT,
+	"linestring":          kwLINESTRING,
+	"polygon":             kwPOLYGON,
+	"multipoint":          kwMULTIPOINT,
+	"multilinestring":     kwMULTILINESTRING,
+	"multipolygon":        kwMULTIPOLYGON,
+	"geometrycollection":  kwGEOMETRYCOLLECTION,
+	"serial":              kwSERIAL,
+	"national":            kwNATIONAL,
+	"nchar":               kwNCHAR,
+	"nvarchar":            kwNVARCHAR,
+	"signed":              kwSIGNED,
+	"precision":           kwPRECISION,
+	"srid":                kwSRID,
 }
 
 // Token represents a lexical token.

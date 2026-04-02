@@ -1122,7 +1122,7 @@ func (p *Parser) parseCastDataType() (*nodes.DataType, error) {
 	start := p.pos()
 
 	// SIGNED [INTEGER]
-	if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "signed") {
+	if p.cur.Type == kwSIGNED {
 		p.advance()
 		p.match(kwINTEGER)
 		p.match(kwINT)

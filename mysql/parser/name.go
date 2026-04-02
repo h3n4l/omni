@@ -176,6 +176,23 @@ var keywordCategories = map[int]keywordCategory{
 	kwSPATIAL:            kwCatReserved,
 	kwFULLTEXT:           kwCatReserved,
 	kwOUTFILE:            kwCatReserved,
+	kwGEOMETRY:           kwCatUnambiguous,
+	kwPOINT:              kwCatUnambiguous,
+	kwLINESTRING:         kwCatUnambiguous,
+	kwPOLYGON:            kwCatUnambiguous,
+	kwMULTIPOINT:         kwCatUnambiguous,
+	kwMULTILINESTRING:    kwCatUnambiguous,
+	kwMULTIPOLYGON:       kwCatUnambiguous,
+	kwGEOMETRYCOLLECTION: kwCatUnambiguous,
+	kwSERIAL:             kwCatUnambiguous,
+	kwNATIONAL:           kwCatUnambiguous,
+	kwNCHAR:              kwCatUnambiguous,
+	kwNVARCHAR:           kwCatUnambiguous,
+	kwSIGNED:             kwCatAmbiguous2,
+	kwPRECISION:          kwCatUnambiguous,
+	kwBOOL:               kwCatUnambiguous,
+	kwBOOLEAN:            kwCatUnambiguous,
+	kwSRID:               kwCatUnambiguous,
 }
 
 // isReserved returns true if the token type is a reserved keyword that cannot

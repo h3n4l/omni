@@ -97,7 +97,7 @@ func (p *Parser) parseDataType() (*nodes.DataType, error) {
 		dt.Name = "DOUBLE"
 		p.advance()
 		// DOUBLE PRECISION is a synonym
-		if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "precision") {
+		if p.cur.Type == kwPRECISION {
 			p.advance()
 		}
 		p.parseOptionalPrecision(dt)
@@ -262,57 +262,61 @@ func (p *Parser) parseDataType() (*nodes.DataType, error) {
 		dt.Name = "JSON"
 		p.advance()
 
+	// Spatial types
+	case kwGEOMETRY, kwPOINT, kwLINESTRING, kwPOLYGON,
+		kwMULTIPOINT, kwMULTILINESTRING, kwMULTIPOLYGON,
+		kwGEOMETRYCOLLECTION:
+		dt.Name = p.cur.Str
+		p.advance()
+
+	// SERIAL → BIGINT UNSIGNED AUTO_INCREMENT UNIQUE
+	case kwSERIAL:
+		dt.Name = p.cur.Str
+		p.advance()
+
+	// NATIONAL CHAR / NATIONAL VARCHAR → utf8mb3 character set
+	case kwNATIONAL:
+		p.advance()
+		if p.cur.Type == kwCHAR {
+			dt.Name = "CHAR"
+			dt.Charset = "utf8mb3"
+			p.advance()
+			p.parseOptionalLength(dt)
+			p.parseCharsetCollate(dt)
+		} else if p.cur.Type == kwVARCHAR {
+			dt.Name = "VARCHAR"
+			dt.Charset = "utf8mb3"
+			p.advance()
+			p.parseOptionalLength(dt)
+			p.parseCharsetCollate(dt)
+		} else {
+			return nil, &ParseError{
+				Message:  "expected CHAR or VARCHAR after NATIONAL",
+				Position: p.cur.Loc,
+			}
+		}
+
+	// NCHAR → CHAR with utf8mb3 charset
+	case kwNCHAR:
+		dt.Name = "CHAR"
+		dt.Charset = "utf8mb3"
+		p.advance()
+		p.parseOptionalLength(dt)
+		p.parseCharsetCollate(dt)
+
+	// NVARCHAR → VARCHAR with utf8mb3 charset
+	case kwNVARCHAR:
+		dt.Name = "VARCHAR"
+		dt.Charset = "utf8mb3"
+		p.advance()
+		p.parseOptionalLength(dt)
+		p.parseCharsetCollate(dt)
+
 	default:
-		// Handle identifier-based types: GEOMETRY, POINT, LINESTRING, POLYGON, etc.
+		// Handle identifier-based types: INT1-INT8, MIDDLEINT, FLOAT4/8, LONG
 		if p.cur.Type == tokIDENT {
 			name := p.cur.Str
 			switch {
-			case eqFold(name, "geometry"),
-				eqFold(name, "point"),
-				eqFold(name, "linestring"),
-				eqFold(name, "polygon"),
-				eqFold(name, "multipoint"),
-				eqFold(name, "multilinestring"),
-				eqFold(name, "multipolygon"),
-				eqFold(name, "geometrycollection"),
-				eqFold(name, "serial"):
-				dt.Name = name
-				p.advance()
-			case eqFold(name, "national"):
-				// NATIONAL CHAR / NATIONAL VARCHAR → utf8mb3 character set
-				p.advance()
-				if p.cur.Type == kwCHAR {
-					dt.Name = "CHAR"
-					dt.Charset = "utf8mb3"
-					p.advance()
-					p.parseOptionalLength(dt)
-					p.parseCharsetCollate(dt)
-				} else if p.cur.Type == kwVARCHAR {
-					dt.Name = "VARCHAR"
-					dt.Charset = "utf8mb3"
-					p.advance()
-					p.parseOptionalLength(dt)
-					p.parseCharsetCollate(dt)
-				} else {
-					return nil, &ParseError{
-						Message:  "expected CHAR or VARCHAR after NATIONAL",
-						Position: p.cur.Loc,
-					}
-				}
-			case eqFold(name, "nchar"):
-				// NCHAR → CHAR with utf8mb3 charset
-				dt.Name = "CHAR"
-				dt.Charset = "utf8mb3"
-				p.advance()
-				p.parseOptionalLength(dt)
-				p.parseCharsetCollate(dt)
-			case eqFold(name, "nvarchar"):
-				// NVARCHAR → VARCHAR with utf8mb3 charset
-				dt.Name = "VARCHAR"
-				dt.Charset = "utf8mb3"
-				p.advance()
-				p.parseOptionalLength(dt)
-				p.parseCharsetCollate(dt)
 			case eqFold(name, "int1"):
 				dt.Name = "TINYINT"
 				p.advance()
@@ -425,8 +429,8 @@ func (p *Parser) parseOptionalPrecision(dt *nodes.DataType) {
 // parseUnsignedZerofill parses optional SIGNED, UNSIGNED, and ZEROFILL modifiers.
 // SIGNED is the default for all numeric types, so we accept and ignore it.
 func (p *Parser) parseUnsignedZerofill(dt *nodes.DataType) {
-	// SIGNED is not a keyword — it appears as tokIDENT.
-	if p.cur.Type == tokIDENT && eqFold(p.cur.Str, "signed") {
+	// SIGNED is a keyword token (kwSIGNED) — accept and ignore it (it's the default).
+	if p.cur.Type == kwSIGNED {
 		p.advance()
 	} else if _, ok := p.match(kwUNSIGNED); ok {
 		dt.Unsigned = true

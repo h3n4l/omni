@@ -297,10 +297,12 @@ func (p *Parser) isColumnConstraintStart() bool {
 		return true
 	}
 	if p.cur.Type == tokIDENT {
-		if eqFold(p.cur.Str, "engine_attribute") || eqFold(p.cur.Str, "secondary_engine_attribute") ||
-			eqFold(p.cur.Str, "srid") {
+		if eqFold(p.cur.Str, "engine_attribute") || eqFold(p.cur.Str, "secondary_engine_attribute") {
 			return true
 		}
+	}
+	if p.cur.Type == kwSRID {
+		return true
 	}
 	return false
 }
@@ -572,15 +574,6 @@ func (p *Parser) parseColumnOption(col *nodes.ColumnDef) (bool, error) {
 			})
 			return true, nil
 		}
-		if eqFold(optName, "srid") {
-			p.advance()
-			if p.cur.Type != tokICONST {
-				return false, nil
-			}
-			col.TypeName.SRID = int(p.cur.Ival)
-			p.advance()
-			return true, nil
-		}
 		if eqFold(optName, "secondary_engine_attribute") {
 			p.advance()
 			p.match('=')
@@ -597,6 +590,17 @@ func (p *Parser) parseColumnOption(col *nodes.ColumnDef) (bool, error) {
 			})
 			return true, nil
 		}
+	}
+
+	// SRID column option (now lexes as kwSRID keyword token)
+	if p.cur.Type == kwSRID {
+		p.advance()
+		if p.cur.Type != tokICONST {
+			return false, nil
+		}
+		col.TypeName.SRID = int(p.cur.Ival)
+		p.advance()
+		return true, nil
 	}
 
 	return false, nil
