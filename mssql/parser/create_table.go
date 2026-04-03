@@ -7,6 +7,32 @@ import (
 	nodes "github.com/bytebase/omni/mssql/ast"
 )
 
+// createTableOptions defines the valid option names for CREATE TABLE ... WITH (...).
+// Derived from SqlScriptDOM TSql170.g createTableOption rule.
+var createTableOptions = newOptionSet(
+	kwMEMORY_OPTIMIZED,
+	kwDISTRIBUTION,
+	kwPARTITION,
+	kwCLUSTERED,
+	kwHEAP,
+).withIdents(
+	"DATA_COMPRESSION",
+	"XML_COMPRESSION",
+	"FILETABLE_DIRECTORY",
+	"FILETABLE_COLLATE_FILENAME",
+	"FILETABLE_PRIMARY_KEY_CONSTRAINT_NAME",
+	"FILETABLE_STREAMID_UNIQUE_CONSTRAINT_NAME",
+	"FILETABLE_FULLPATH_UNIQUE_CONSTRAINT_NAME",
+	"DURABILITY",
+	"REMOTE_DATA_ARCHIVE",
+	"SYSTEM_VERSIONING",
+	"LEDGER",
+	"LOCATION",
+	"DATA_DELETION",
+	"DATA_RETENTION",
+	"LOCK_ESCALATION",
+)
+
 // parseCreateTableStmt parses a CREATE TABLE statement.
 //
 // BNF: mssql/parser/bnf/create-table-transact-sql.bnf
@@ -300,7 +326,7 @@ func (p *Parser) parseTableOptions() (*nodes.List, error) {
 // parseOneTableOption parses a single NAME = VALUE table option.
 func (p *Parser) parseOneTableOption() (*nodes.TableOption, error) {
 	loc := p.pos()
-	if !p.isAnyKeywordIdent() {
+	if !p.isValidOption(createTableOptions) {
 		return nil, nil
 	}
 	name := strings.ToUpper(p.cur.Str)
