@@ -136,7 +136,7 @@ func (p *Parser) parseAlterDatabaseStmt() (*nodes.AlterDatabaseStmt, error) {
 			p.advance() // consume REBUILD
 			stmt.Action = "REBUILD"
 			stmt.SubAction = "LOG"
-			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LOG") {
+			if p.cur.Type == kwLOG {
 				p.advance() // consume LOG
 			}
 			// Optional ON <filespec>
@@ -274,7 +274,7 @@ func (p *Parser) parseAlterDatabaseSetOption() string {
 
 	// QUERY_STORE special handling: CLEAR [ALL]
 	if key == "QUERY_STORE" {
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CLEAR") {
+		if p.cur.Type == kwCLEAR {
 			p.advance()
 			if p.cur.Type == kwALL {
 				p.advance()
@@ -291,12 +291,12 @@ func (p *Parser) parseAlterDatabaseSetOption() string {
 
 		// Handle sub-options in parens: CHANGE_TRACKING = ON (...), QUERY_STORE = ON (...), etc.
 		if (key == "CHANGE_TRACKING" || key == "QUERY_STORE" || key == "ACCELERATED_DATABASE_RECOVERY") &&
-			strings.EqualFold(val, "ON") && p.cur.Type == '(' {
+			val == "ON" && p.cur.Type == '(' {
 			subOpts := p.parseAlterDatabaseSubOptions()
 			return key + "=ON(" + subOpts + ")"
 		}
 		// QUERY_STORE = OFF (FORCED)
-		if key == "QUERY_STORE" && strings.EqualFold(val, "OFF") && p.cur.Type == '(' {
+		if key == "QUERY_STORE" && val == "OFF" && p.cur.Type == '(' {
 			subOpts := p.parseAlterDatabaseSubOptions()
 			return key + "=OFF(" + subOpts + ")"
 		}
@@ -396,7 +396,7 @@ func (p *Parser) parseAlterDatabaseSetHadr() string {
 		switch sub {
 		case "AVAILABILITY":
 			// AVAILABILITY GROUP = group_name
-			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "GROUP") {
+			if p.cur.Type == kwGROUP {
 				p.advance() // consume GROUP
 			}
 			if p.cur.Type == '=' {
@@ -475,10 +475,10 @@ func (p *Parser) parseAlterDatabaseSubOptions() string {
 		if p.cur.Type == '=' {
 			p.advance()
 			key += "=" + p.parseAlterDatabaseOptionValue()
-		} else if p.cur.Type == kwON || (p.isIdentLike() && matchesKeywordCI(p.cur.Str, "ON")) {
+		} else if p.cur.Type == kwON {
 			key += "=ON"
 			p.advance()
-		} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "OFF") {
+		} else if p.cur.Type == kwOFF {
 			key += "=OFF"
 			p.advance()
 		}
@@ -508,19 +508,19 @@ func (p *Parser) parseAlterDatabaseTermination() string {
 		switch kw {
 		case "ROLLBACK":
 			p.advance() // consume ROLLBACK
-			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "IMMEDIATE") {
+			if p.cur.Type == kwIMMEDIATE {
 				p.advance()
 				return "ROLLBACK IMMEDIATE"
 			}
 			// ROLLBACK AFTER number [SECONDS]
-			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AFTER") {
+			if p.cur.Type == kwAFTER {
 				p.advance() // consume AFTER
 				result := "ROLLBACK AFTER"
 				if p.cur.Type == tokICONST {
 					result += " " + p.cur.Str
 					p.advance()
 				}
-				if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SECONDS") {
+				if p.cur.Type == kwSECONDS {
 					result += " SECONDS"
 					p.advance()
 				}
@@ -647,14 +647,14 @@ func (p *Parser) parseAlterDatabaseAdd(stmt *nodes.AlterDatabaseStmt) {
 		// TO FILEGROUP filegroup_name
 		if p.cur.Type == kwTO {
 			p.advance() // consume TO
-			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "FILEGROUP") {
+			if p.cur.Type == kwFILEGROUP {
 				p.advance() // consume FILEGROUP
 				if id, ok := p.parseIdentifier(); ok {
 					stmt.TargetName = id
 				}
 			}
 		}
-	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LOG") {
+	} else if p.cur.Type == kwLOG {
 		p.advance() // consume LOG
 		if p.cur.Type == kwFILE {
 			p.advance() // consume FILE
@@ -674,7 +674,7 @@ func (p *Parser) parseAlterDatabaseAdd(stmt *nodes.AlterDatabaseStmt) {
 			}
 		}
 		stmt.FileSpecs = &nodes.List{Items: files}
-	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "FILEGROUP") {
+	} else if p.cur.Type == kwFILEGROUP {
 		p.advance() // consume FILEGROUP
 		stmt.SubAction = "FILEGROUP"
 		if id, ok := p.parseIdentifier(); ok {
@@ -683,10 +683,10 @@ func (p *Parser) parseAlterDatabaseAdd(stmt *nodes.AlterDatabaseStmt) {
 		// CONTAINS FILESTREAM | CONTAINS MEMORY_OPTIMIZED_DATA
 		if p.cur.Type == kwCONTAINS {
 			p.advance() // consume CONTAINS
-			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "FILESTREAM") {
+			if p.cur.Type == kwFILESTREAM {
 				stmt.Options = &nodes.List{Items: []nodes.Node{&nodes.String{Str: "CONTAINS FILESTREAM"}}}
 				p.advance()
-			} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "MEMORY_OPTIMIZED_DATA") {
+			} else if p.cur.Type == kwMEMORY_OPTIMIZED_DATA {
 				stmt.Options = &nodes.List{Items: []nodes.Node{&nodes.String{Str: "CONTAINS MEMORY_OPTIMIZED_DATA"}}}
 				p.advance()
 			}
@@ -702,7 +702,7 @@ func (p *Parser) parseAlterDatabaseModify(stmt *nodes.AlterDatabaseStmt) {
 		if p.cur.Type == '(' {
 			stmt.FileSpecs = &nodes.List{Items: []nodes.Node{p.parseDatabaseFileSpec()}}
 		}
-	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "NAME") {
+	} else if p.cur.Type == kwNAME {
 		p.advance() // consume NAME
 		stmt.SubAction = "NAME"
 		if p.cur.Type == '=' {
@@ -711,7 +711,7 @@ func (p *Parser) parseAlterDatabaseModify(stmt *nodes.AlterDatabaseStmt) {
 				stmt.NewName = id
 			}
 		}
-	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "FILEGROUP") {
+	} else if p.cur.Type == kwFILEGROUP {
 		p.advance() // consume FILEGROUP
 		stmt.SubAction = "FILEGROUP"
 		// filegroup_name
@@ -728,7 +728,7 @@ func (p *Parser) parseAlterDatabaseModify(stmt *nodes.AlterDatabaseStmt) {
 		// [ WITH MANUAL_CUTOVER ]
 		if p.cur.Type == kwWITH {
 			p.advance() // consume WITH
-			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "MANUAL_CUTOVER") {
+			if p.cur.Type == kwMANUAL_CUTOVER {
 				stmt.Termination = "MANUAL_CUTOVER"
 				p.advance()
 			}
@@ -744,7 +744,7 @@ func (p *Parser) parseAlterDatabaseModifyFilegroupOption(stmt *nodes.AlterDataba
 		return
 	}
 	// NAME = new_name
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "NAME") {
+	if p.cur.Type == kwNAME {
 		p.advance() // consume NAME
 		if p.cur.Type == '=' {
 			p.advance() // consume =
@@ -773,7 +773,7 @@ func (p *Parser) parseAlterDatabaseRemove(stmt *nodes.AlterDatabaseStmt) {
 		if id, ok := p.parseIdentifier(); ok {
 			stmt.TargetName = id
 		}
-	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "FILEGROUP") {
+	} else if p.cur.Type == kwFILEGROUP {
 		p.advance() // consume FILEGROUP
 		stmt.SubAction = "FILEGROUP"
 		if id, ok := p.parseIdentifier(); ok {
@@ -833,7 +833,7 @@ func (p *Parser) parseAlterIndexStmt() (*nodes.AlterIndexStmt, error) {
 	}
 
 	// Parse PARTITION = { partition_number | ALL }
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "PARTITION") {
+	if p.cur.Type == kwPARTITION {
 		p.advance() // consume PARTITION
 		p.match('=')
 		if p.cur.Type == kwALL {
@@ -958,7 +958,7 @@ func (p *Parser) parseAlterIndexOptions() (*nodes.List, error) {
 			// DATA_COMPRESSION / XML_COMPRESSION may have ON PARTITIONS (...)
 			if p.cur.Type == kwON {
 				next := p.peekNext()
-				if next.Str != "" && matchesKeywordCI(next.Str, "PARTITIONS") {
+				if next.Type == kwPARTITIONS {
 					p.advance() // consume ON
 					p.advance() // consume PARTITIONS
 					if p.cur.Type == '(' {
@@ -981,7 +981,7 @@ func (p *Parser) parseAlterIndexOptions() (*nodes.List, error) {
 			}
 
 			// MAX_DURATION may have MINUTES suffix
-			if strings.HasPrefix(name, "MAX_DURATION") && p.isIdentLike() && matchesKeywordCI(p.cur.Str, "MINUTES") {
+			if strings.HasPrefix(name, "MAX_DURATION") && p.cur.Type == kwMINUTES {
 				p.advance()
 			}
 		} else if p.cur.Type == tokSCONST || p.cur.Type == tokICONST || p.cur.Type == tokFCONST {

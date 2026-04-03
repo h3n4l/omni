@@ -99,42 +99,42 @@ func (p *Parser) parseDropExternalStmt() (*nodes.SecurityStmt, error) {
 	}
 
 	// DATA SOURCE | TABLE | FILE FORMAT
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "DATA") {
+	if p.cur.Type == kwDATA {
 		p.advance() // consume DATA
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SOURCE") {
+		if p.cur.Type == kwSOURCE {
 			p.advance() // consume SOURCE
 		}
 		stmt.ObjectType = "EXTERNAL DATA SOURCE"
 	} else if p.cur.Type == kwTABLE {
 		p.advance() // consume TABLE
 		stmt.ObjectType = "EXTERNAL TABLE"
-	} else if p.cur.Type == kwFILE || (p.isIdentLike() && matchesKeywordCI(p.cur.Str, "FILE")) {
+	} else if p.cur.Type == kwFILE {
 		p.advance() // consume FILE
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "FORMAT") {
+		if p.cur.Type == kwFORMAT {
 			p.advance() // consume FORMAT
 		}
 		stmt.ObjectType = "EXTERNAL FILE FORMAT"
-	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "RESOURCE") {
+	} else if p.cur.Type == kwRESOURCE {
 		p.advance() // consume RESOURCE
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "POOL") {
+		if p.cur.Type == kwPOOL {
 			p.advance() // consume POOL
 		}
 		stmt.ObjectType = "EXTERNAL RESOURCE POOL"
-	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LIBRARY") {
+	} else if p.cur.Type == kwLIBRARY {
 		p.advance() // consume LIBRARY
 		return p.parseDropExternalLibraryStmt()
-	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LANGUAGE") {
+	} else if p.cur.Type == kwLANGUAGE {
 		p.advance() // consume LANGUAGE
 		return p.parseDropExternalLanguageStmt()
-	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "MODEL") {
+	} else if p.cur.Type == kwMODEL {
 		p.advance() // consume MODEL
 		return p.parseDropExternalModelStmt()
-	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "STREAM") {
+	} else if p.cur.Type == kwSTREAM {
 		p.advance() // consume STREAM
 		stmt.ObjectType = "EXTERNAL STREAM"
-	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "STREAMING") {
+	} else if p.cur.Type == kwSTREAMING {
 		p.advance() // consume STREAMING
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "JOB") {
+		if p.cur.Type == kwJOB {
 			p.advance() // consume JOB
 		}
 		stmt.ObjectType = "EXTERNAL STREAMING JOB"
@@ -156,7 +156,7 @@ func (p *Parser) parseDropExternalStmt() (*nodes.SecurityStmt, error) {
 	}
 
 	// optional AUTHORIZATION owner_name (for DROP EXTERNAL LIBRARY)
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AUTHORIZATION") {
+	if p.cur.Type == kwAUTHORIZATION {
 		p.advance()
 		if p.isIdentLike() {
 			p.advance()
@@ -375,7 +375,7 @@ func (p *Parser) parseCreateExternalLibraryStmt() (*nodes.SecurityStmt, error) {
 	}
 
 	// AUTHORIZATION owner_name
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AUTHORIZATION") {
+	if p.cur.Type == kwAUTHORIZATION {
 		p.advance()
 		if p.isIdentLike() {
 			p.advance()
@@ -443,7 +443,7 @@ func (p *Parser) parseAlterExternalLibraryStmt() (*nodes.SecurityStmt, error) {
 	}
 
 	// AUTHORIZATION owner_name
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AUTHORIZATION") {
+	if p.cur.Type == kwAUTHORIZATION {
 		p.advance()
 		if p.isIdentLike() {
 			p.advance()
@@ -452,7 +452,7 @@ func (p *Parser) parseAlterExternalLibraryStmt() (*nodes.SecurityStmt, error) {
 
 	// SET (CONTENT = ...) or ADD/REMOVE
 	var fileSpecOpts []nodes.Node
-	if p.cur.Type == kwSET || (p.isIdentLike() && (matchesKeywordCI(p.cur.Str, "ADD") || matchesKeywordCI(p.cur.Str, "REMOVE"))) {
+	if p.cur.Type == kwSET || p.cur.Type == kwADD || p.cur.Type == kwREMOVE {
 		p.advance()
 		if p.cur.Type == '(' {
 			fileSpecOpts = append(fileSpecOpts, p.parseExternalFileSpec()...)
@@ -509,7 +509,7 @@ func (p *Parser) parseCreateExternalLanguageStmt() (*nodes.SecurityStmt, error) 
 	}
 
 	// AUTHORIZATION owner_name
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AUTHORIZATION") {
+	if p.cur.Type == kwAUTHORIZATION {
 		p.advance()
 		if p.isIdentLike() {
 			p.advance()
@@ -577,7 +577,7 @@ func (p *Parser) parseAlterExternalLanguageStmt() (*nodes.SecurityStmt, error) {
 	}
 
 	// AUTHORIZATION owner_name
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AUTHORIZATION") {
+	if p.cur.Type == kwAUTHORIZATION {
 		p.advance()
 		if p.isIdentLike() {
 			p.advance()
@@ -586,14 +586,14 @@ func (p *Parser) parseAlterExternalLanguageStmt() (*nodes.SecurityStmt, error) {
 
 	// SET | ADD | REMOVE PLATFORM
 	var fileSpecOpts []nodes.Node
-	if p.cur.Type == kwSET || (p.isIdentLike() && matchesKeywordCI(p.cur.Str, "ADD")) {
+	if p.cur.Type == kwSET || p.cur.Type == kwADD {
 		p.advance()
 		if p.cur.Type == '(' {
 			fileSpecOpts = append(fileSpecOpts, p.parseExternalFileSpec()...)
 		}
-	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "REMOVE") {
+	} else if p.cur.Type == kwREMOVE {
 		p.advance() // consume REMOVE
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "PLATFORM") {
+		if p.cur.Type == kwPLATFORM {
 			p.advance() // consume PLATFORM
 		}
 		if p.isIdentLike() {
@@ -631,7 +631,7 @@ func (p *Parser) parseDropExternalLibraryStmt() (*nodes.SecurityStmt, error) {
 	}
 
 	// optional AUTHORIZATION owner_name
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AUTHORIZATION") {
+	if p.cur.Type == kwAUTHORIZATION {
 		p.advance()
 		if p.isIdentLike() {
 			p.advance()
