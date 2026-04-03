@@ -7,6 +7,53 @@ import (
 	nodes "github.com/bytebase/omni/mssql/ast"
 )
 
+// setOptions defines the valid option names for SET <option> ON/OFF/value statements.
+// This combines:
+//   - Predicate SET options (from SqlScriptDOM PredicateSetOptionsHelper — 25 options)
+//   - General SET commands (from SqlScriptDOM GeneralSetCommandTypeHelper — 7 options)
+//   - SET ROWCOUNT / SET TEXTSIZE / SET STATISTICS (keyword-based)
+var setOptions = newOptionSet(
+	// Registered keywords that are valid SET options:
+	kwNOCOUNT,    // SET NOCOUNT ON/OFF
+	kwXACT_ABORT, // SET XACT_ABORT ON/OFF
+	kwROWCOUNT,   // SET ROWCOUNT n
+	kwTEXTSIZE,   // SET TEXTSIZE n
+	kwSTATISTICS, // SET STATISTICS IO/TIME/PROFILE/XML ON/OFF
+	kwLANGUAGE,   // SET LANGUAGE ...
+).withIdents(
+	// Predicate SET options (scanned as identifiers):
+	"QUOTED_IDENTIFIER",
+	"CONCAT_NULL_YIELDS_NULL",
+	"CURSOR_CLOSE_ON_COMMIT",
+	"ARITHABORT",
+	"ARITHIGNORE",
+	"FMTONLY",
+	"NOEXEC",
+	"NUMERIC_ROUNDABORT",
+	"PARSEONLY",
+	"ANSI_DEFAULTS",
+	"ANSI_NULL_DFLT_OFF",
+	"ANSI_NULL_DFLT_ON",
+	"ANSI_NULLS",
+	"ANSI_PADDING",
+	"ANSI_WARNINGS",
+	"FORCEPLAN",
+	"SHOWPLAN_ALL",
+	"SHOWPLAN_TEXT",
+	"SHOWPLAN_XML",
+	"IMPLICIT_TRANSACTIONS",
+	"REMOTE_PROC_TRANSACTIONS",
+	"DISABLE_DEF_CNST_CHK",
+	"NO_BROWSETABLE",
+	// General SET commands (scanned as identifiers):
+	"DATEFORMAT",
+	"DATEFIRST",
+	"DEADLOCK_PRIORITY",
+	"LOCK_TIMEOUT",
+	"QUERY_GOVERNOR_COST_LIMIT",
+	"CONTEXT_INFO",
+)
+
 // parseDeclareStmt parses a DECLARE statement.
 //
 // BNF: mssql/parser/bnf/declare-local-variable-transact-sql.bnf
@@ -345,10 +392,8 @@ func (p *Parser) parseSetOptionStmt(loc int) (*nodes.SetOptionStmt, error) {
 		return stmt, nil
 	}
 
-	// Generic option name
-	if p.isAnyKeywordIdent() || p.cur.Type == kwNOCOUNT || p.cur.Type == kwXACT_ABORT ||
-		p.cur.Type == kwROWCOUNT || p.cur.Type == kwTEXTSIZE ||
-		p.cur.Type == kwSTATISTICS {
+	// Generic option name — validated against setOptions
+	if p.isValidOption(setOptions) {
 		stmt.Option = strings.ToUpper(p.cur.Str)
 		p.advance()
 
@@ -370,6 +415,8 @@ func (p *Parser) parseSetOptionStmt(loc int) (*nodes.SetOptionStmt, error) {
 			// Could be SET ROWCOUNT n, SET LANGUAGE ..., SET DATEFORMAT ..., etc.
 			stmt.Value, _ = p.parseExpr()
 		}
+	} else {
+		return nil, p.newParseError(p.cur.Loc, "expected SET option name")
 	}
 
 	stmt.Loc.End = p.prevEnd()
