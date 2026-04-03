@@ -107,7 +107,7 @@ func (p *Parser) parseCreateDatabaseStmt() (*nodes.CreateDatabaseStmt, error) {
 	stmt.Name = name
 
 	// CONTAINMENT = { NONE | PARTIAL }
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CONTAINMENT") {
+	if p.cur.Type == kwCONTAINMENT {
 		p.advance() // consume CONTAINMENT
 		p.match('=')
 		if id, ok := p.parseIdentifier(); ok {
@@ -155,7 +155,7 @@ func (p *Parser) parseCreateDatabaseStmt() (*nodes.CreateDatabaseStmt, error) {
 		}
 
 		// [ , <filegroup> [ , ...n ] ]
-		for p.isIdentLike() && matchesKeywordCI(p.cur.Str, "FILEGROUP") {
+		for p.cur.Type == kwFILEGROUP {
 			fg := p.parseDatabaseFilegroup()
 			if stmt.Filegroups == nil {
 				stmt.Filegroups = &nodes.List{}
@@ -164,14 +164,14 @@ func (p *Parser) parseCreateDatabaseStmt() (*nodes.CreateDatabaseStmt, error) {
 			// consume optional comma before next FILEGROUP
 			if p.cur.Type == ',' {
 				next := p.peekNext()
-				if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "FILEGROUP") {
+				if next.Type == kwFILEGROUP {
 					p.advance()
 				}
 			}
 		}
 
 		// LOG ON <filespec> [ , ...n ]
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LOG") {
+		if p.cur.Type == kwLOG {
 			next := p.peekNext()
 			if next.Type == kwON {
 				p.advance() // consume LOG
@@ -194,10 +194,10 @@ func (p *Parser) parseCreateDatabaseStmt() (*nodes.CreateDatabaseStmt, error) {
 		// FOR ATTACH / FOR ATTACH_REBUILD_LOG / AS SNAPSHOT OF
 		if p.cur.Type == kwFOR {
 			p.advance() // consume FOR
-			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "ATTACH_REBUILD_LOG") {
+			if p.cur.Type == kwATTACH_REBUILD_LOG {
 				p.advance()
 				stmt.ForAttachRebuildLog = true
-			} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "ATTACH") {
+			} else if p.cur.Type == kwATTACH {
 				p.advance()
 				stmt.ForAttach = true
 				// WITH <attach_database_option>
@@ -211,7 +211,7 @@ func (p *Parser) parseCreateDatabaseStmt() (*nodes.CreateDatabaseStmt, error) {
 		if p.cur.Type == kwAS {
 			p.advance() // consume AS
 			// SNAPSHOT
-			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SNAPSHOT") {
+			if p.cur.Type == kwSNAPSHOT {
 				p.advance() // consume SNAPSHOT
 				// OF
 				if p.cur.Type == kwOF {
@@ -282,7 +282,7 @@ func (p *Parser) parseDatabaseFileSpec() *nodes.DatabaseFileSpec {
 				spec.Size = p.parseSizeValue()
 			case "MAXSIZE":
 				p.match('=')
-				if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "UNLIMITED") {
+				if p.cur.Type == kwUNLIMITED {
 					spec.MaxSizeUnlimited = true
 					p.advance()
 				} else {
@@ -367,10 +367,10 @@ func (p *Parser) parseDatabaseFilegroup() *nodes.DatabaseFilegroup {
 	// [ CONTAINS FILESTREAM ] [ DEFAULT ] | CONTAINS MEMORY_OPTIMIZED_DATA
 	if p.cur.Type == kwCONTAINS {
 		p.advance() // consume CONTAINS
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "FILESTREAM") {
+		if p.cur.Type == kwFILESTREAM {
 			fg.ContainsFilestream = true
 			p.advance()
-		} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "MEMORY_OPTIMIZED_DATA") {
+		} else if p.cur.Type == kwMEMORY_OPTIMIZED_DATA {
 			fg.ContainsMemoryOptimized = true
 			p.advance()
 		}
@@ -475,10 +475,10 @@ func (p *Parser) parseOneDatabaseOption() *nodes.DatabaseOption {
 	if p.cur.Type == '=' {
 		p.advance() // consume =
 		opt.Value = p.parseDatabaseOptionValue()
-	} else if p.cur.Type == kwON || (p.isIdentLike() && matchesKeywordCI(p.cur.Str, "ON")) {
+	} else if p.cur.Type == kwON {
 		opt.Value = "ON"
 		p.advance()
-	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "OFF") {
+	} else if p.cur.Type == kwOFF {
 		opt.Value = "OFF"
 		p.advance()
 	}
@@ -487,7 +487,7 @@ func (p *Parser) parseOneDatabaseOption() *nodes.DatabaseOption {
 	if key == "PERSISTENT_LOG_BUFFER" && opt.Value == "ON" && p.cur.Type == '(' {
 		p.advance() // consume (
 		for p.cur.Type != ')' && p.cur.Type != tokEOF {
-			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "DIRECTORY_NAME") {
+			if p.cur.Type == kwDIRECTORY_NAME {
 				p.advance() // consume DIRECTORY_NAME
 				if p.cur.Type == '=' {
 					p.advance()
