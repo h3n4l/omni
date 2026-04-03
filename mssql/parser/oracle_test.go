@@ -83,7 +83,7 @@ func (o *parserOracle) canParse(sql string) (bool, error) {
 }
 
 // TestKeywordOracleOptionPositions verifies whether omni's option parsing
-// is too permissive compared to SQL Server.
+// is too permissive compared to SQL Server across all major option positions.
 func TestKeywordOracleOptionPositions(t *testing.T) {
 	oracle := startParserOracle(t)
 
@@ -91,26 +91,160 @@ func TestKeywordOracleOptionPositions(t *testing.T) {
 		name string
 		sql  string
 	}{
-		// Index options — valid
-		{"index FILLFACTOR valid", "CREATE INDEX ix ON dbo.t(a) WITH (FILLFACTOR = 80)"},
-		{"index PAD_INDEX valid", "CREATE INDEX ix ON dbo.t(a) WITH (PAD_INDEX = ON, FILLFACTOR = 80)"},
-		{"index IGNORE_DUP_KEY valid", "CREATE INDEX ix ON dbo.t(a) WITH (IGNORE_DUP_KEY = OFF)"},
-		{"index STATISTICS_NORECOMPUTE valid", "CREATE INDEX ix ON dbo.t(a) WITH (STATISTICS_NORECOMPUTE = ON)"},
-		// Index options — invalid (core keywords as option names)
-		{"index SELECT invalid", "CREATE INDEX ix ON dbo.t(a) WITH (SELECT = 1)"},
-		{"index FROM invalid", "CREATE INDEX ix ON dbo.t(a) WITH (FROM = 1)"},
-		{"index WHERE invalid", "CREATE INDEX ix ON dbo.t(a) WITH (WHERE = 1)"},
-		{"index DROP invalid", "CREATE INDEX ix ON dbo.t(a) WITH (DROP = ON)"},
-		// SET options — valid
-		{"SET ANSI_NULLS valid", "SET ANSI_NULLS ON"},
-		{"SET QUOTED_IDENTIFIER valid", "SET QUOTED_IDENTIFIER OFF"},
-		{"SET ARITHABORT valid", "SET ARITHABORT ON"},
-		// SET options — invalid
-		{"SET SELECT invalid", "SET SELECT ON"},
-		{"SET FROM invalid", "SET FROM OFF"},
-		{"SET WHERE invalid", "SET WHERE ON"},
-		{"SET CREATE invalid", "SET CREATE ON"},
-		{"SET INSERT invalid", "SET INSERT OFF"},
+		// ================================================================
+		// 1. Index options: CREATE INDEX ix ON t(a) WITH (...)
+		// ================================================================
+		{"index/FILLFACTOR_valid", "CREATE INDEX ix ON dbo.t(a) WITH (FILLFACTOR = 80)"},
+		{"index/PAD_INDEX_valid", "CREATE INDEX ix ON dbo.t(a) WITH (PAD_INDEX = ON)"},
+		{"index/SELECT_invalid", "CREATE INDEX ix ON dbo.t(a) WITH (SELECT = 1)"},
+		{"index/FROM_invalid", "CREATE INDEX ix ON dbo.t(a) WITH (FROM = 1)"},
+
+		// ================================================================
+		// 2. SET predicate options: SET <option> ON/OFF
+		// ================================================================
+		{"set_predicate/ANSI_NULLS_valid", "SET ANSI_NULLS ON"},
+		{"set_predicate/QUOTED_IDENTIFIER_valid", "SET QUOTED_IDENTIFIER OFF"},
+		{"set_predicate/ARITHABORT_valid", "SET ARITHABORT ON"},
+		{"set_predicate/SELECT_invalid", "SET SELECT ON"},
+		{"set_predicate/FROM_invalid", "SET FROM OFF"},
+
+		// ================================================================
+		// 3. Database SET options: ALTER DATABASE db SET <option>
+		// ================================================================
+		{"db_set/RECOVERY_SIMPLE_valid", "ALTER DATABASE testdb SET RECOVERY SIMPLE"},
+		{"db_set/READ_ONLY_valid", "ALTER DATABASE testdb SET READ_ONLY"},
+		{"db_set/ANSI_NULLS_valid", "ALTER DATABASE testdb SET ANSI_NULLS ON"},
+		{"db_set/SELECT_invalid", "ALTER DATABASE testdb SET SELECT ON"},
+		{"db_set/FROM_invalid", "ALTER DATABASE testdb SET FROM OFF"},
+
+		// ================================================================
+		// 4. Table hints: SELECT * FROM t WITH (<hint>)
+		// ================================================================
+		{"table_hint/NOLOCK_valid", "SELECT * FROM dbo.t WITH (NOLOCK)"},
+		{"table_hint/ROWLOCK_valid", "SELECT * FROM dbo.t WITH (ROWLOCK)"},
+		{"table_hint/HOLDLOCK_valid", "SELECT * FROM dbo.t WITH (HOLDLOCK)"},
+		{"table_hint/SELECT_invalid", "SELECT * FROM dbo.t WITH (SELECT)"},
+		{"table_hint/FROM_invalid", "SELECT * FROM dbo.t WITH (FROM)"},
+
+		// ================================================================
+		// 5. Query hints: SELECT ... OPTION (<hint>)
+		// ================================================================
+		{"query_hint/RECOMPILE_valid", "SELECT * FROM dbo.t OPTION (RECOMPILE)"},
+		{"query_hint/MAXDOP_valid", "SELECT * FROM dbo.t OPTION (MAXDOP 1)"},
+		{"query_hint/SELECT_invalid", "SELECT * FROM dbo.t OPTION (SELECT)"},
+		{"query_hint/FROM_invalid", "SELECT * FROM dbo.t OPTION (FROM)"},
+
+		// ================================================================
+		// 6. Cursor options: DECLARE c CURSOR <options> FOR SELECT 1
+		// ================================================================
+		{"cursor/FAST_FORWARD_valid", "DECLARE c CURSOR FAST_FORWARD FOR SELECT 1"},
+		{"cursor/SCROLL_valid", "DECLARE c CURSOR SCROLL FOR SELECT 1"},
+		{"cursor/STATIC_valid", "DECLARE c CURSOR STATIC FOR SELECT 1"},
+		{"cursor/SELECT_invalid", "DECLARE c CURSOR SELECT FOR SELECT 1"},
+		{"cursor/FROM_invalid", "DECLARE c CURSOR FROM FOR SELECT 1"},
+
+		// ================================================================
+		// 7. DBCC options: DBCC CHECKDB WITH (<option>)
+		// ================================================================
+		{"dbcc/NO_INFOMSGS_valid", "DBCC CHECKDB WITH (NO_INFOMSGS)"},
+		{"dbcc/ALL_ERRORMSGS_valid", "DBCC CHECKDB WITH (ALL_ERRORMSGS)"},
+		{"dbcc/SELECT_invalid", "DBCC CHECKDB WITH (SELECT)"},
+		{"dbcc/FROM_invalid", "DBCC CHECKDB WITH (FROM)"},
+
+		// ================================================================
+		// 8. Backup options: BACKUP DATABASE ... WITH (<option>)
+		// ================================================================
+		{"backup/COMPRESSION_valid", "BACKUP DATABASE testdb TO DISK = '/tmp/test.bak' WITH COMPRESSION"},
+		{"backup/INIT_valid", "BACKUP DATABASE testdb TO DISK = '/tmp/test.bak' WITH INIT"},
+		{"backup/SELECT_invalid", "BACKUP DATABASE testdb TO DISK = '/tmp/test.bak' WITH SELECT"},
+		{"backup/FROM_invalid", "BACKUP DATABASE testdb TO DISK = '/tmp/test.bak' WITH FROM"},
+
+		// ================================================================
+		// 9. Restore options: RESTORE DATABASE ... WITH (<option>)
+		// ================================================================
+		{"restore/NORECOVERY_valid", "RESTORE DATABASE testdb FROM DISK = '/tmp/test.bak' WITH NORECOVERY"},
+		{"restore/REPLACE_valid", "RESTORE DATABASE testdb FROM DISK = '/tmp/test.bak' WITH REPLACE"},
+		{"restore/SELECT_invalid", "RESTORE DATABASE testdb FROM DISK = '/tmp/test.bak' WITH SELECT"},
+		{"restore/FROM_invalid", "RESTORE DATABASE testdb FROM DISK = '/tmp/test.bak' WITH FROM"},
+
+		// ================================================================
+		// 10. FOR XML options: SELECT 1 FOR XML RAW, <option>
+		// ================================================================
+		{"for_xml/ELEMENTS_valid", "SELECT 1 AS val FOR XML RAW, ELEMENTS"},
+		{"for_xml/ROOT_valid", "SELECT 1 AS val FOR XML RAW, ROOT('r')"},
+		{"for_xml/SELECT_invalid", "SELECT 1 AS val FOR XML RAW, SELECT"},
+		{"for_xml/FROM_invalid", "SELECT 1 AS val FOR XML RAW, FROM"},
+
+		// ================================================================
+		// 11. FOR JSON options: SELECT 1 FOR JSON PATH, <option>
+		// ================================================================
+		{"for_json/ROOT_valid", "SELECT 1 AS val FOR JSON PATH, ROOT('r')"},
+		{"for_json/WITHOUT_ARRAY_WRAPPER_valid", "SELECT 1 AS val FOR JSON PATH, WITHOUT_ARRAY_WRAPPER"},
+		{"for_json/SELECT_invalid", "SELECT 1 AS val FOR JSON PATH, SELECT"},
+		{"for_json/FROM_invalid", "SELECT 1 AS val FOR JSON PATH, FROM"},
+
+		// ================================================================
+		// 12. Bulk insert options: BULK INSERT t FROM 'x' WITH (<option>)
+		// ================================================================
+		{"bulk_insert/FIELDTERMINATOR_valid", "BULK INSERT dbo.t FROM '/tmp/data.csv' WITH (FIELDTERMINATOR = ',')"},
+		{"bulk_insert/ROWTERMINATOR_valid", "BULK INSERT dbo.t FROM '/tmp/data.csv' WITH (ROWTERMINATOR = '\\n')"},
+		{"bulk_insert/SELECT_invalid", "BULK INSERT dbo.t FROM '/tmp/data.csv' WITH (SELECT = 1)"},
+		{"bulk_insert/FROM_invalid", "BULK INSERT dbo.t FROM '/tmp/data.csv' WITH (FROM = 1)"},
+
+		// ================================================================
+		// 13. CREATE TABLE options (memory-optimized): WITH (<option>)
+		// ================================================================
+		{"create_table/MEMORY_OPTIMIZED_valid", "CREATE TABLE dbo.t_mem (a INT NOT NULL PRIMARY KEY NONCLUSTERED) WITH (MEMORY_OPTIMIZED = ON)"},
+		{"create_table/DURABILITY_valid", "CREATE TABLE dbo.t_dur (a INT NOT NULL PRIMARY KEY NONCLUSTERED) WITH (MEMORY_OPTIMIZED = ON, DURABILITY = SCHEMA_AND_DATA)"},
+		{"create_table/SELECT_invalid", "CREATE TABLE dbo.t_bad1 (a INT) WITH (SELECT = ON)"},
+		{"create_table/FROM_invalid", "CREATE TABLE dbo.t_bad2 (a INT) WITH (FROM = ON)"},
+
+		// ================================================================
+		// 14. Procedure options: CREATE PROC p WITH <option> AS SELECT 1
+		// ================================================================
+		{"proc/RECOMPILE_valid", "CREATE PROCEDURE dbo.p_recomp WITH RECOMPILE AS SELECT 1"},
+		{"proc/ENCRYPTION_valid", "CREATE PROCEDURE dbo.p_enc WITH ENCRYPTION AS SELECT 1"},
+		{"proc/SELECT_invalid", "CREATE PROCEDURE dbo.p_bad1 WITH SELECT AS SELECT 1"},
+		{"proc/FROM_invalid", "CREATE PROCEDURE dbo.p_bad2 WITH FROM AS SELECT 1"},
+
+		// ================================================================
+		// 15. Trigger options: CREATE TRIGGER tr ON t WITH <option> FOR INSERT AS ...
+		// ================================================================
+		{"trigger/ENCRYPTION_valid", "CREATE TRIGGER dbo.tr_enc ON dbo.t WITH ENCRYPTION FOR INSERT AS SELECT 1"},
+		{"trigger/SELECT_invalid", "CREATE TRIGGER dbo.tr_bad1 ON dbo.t WITH SELECT FOR INSERT AS SELECT 1"},
+		{"trigger/FROM_invalid", "CREATE TRIGGER dbo.tr_bad2 ON dbo.t WITH FROM FOR INSERT AS SELECT 1"},
+
+		// ================================================================
+		// 16. View options: CREATE VIEW v WITH <option> AS SELECT 1
+		// ================================================================
+		{"view/SCHEMABINDING_valid", "CREATE VIEW dbo.v_sb WITH SCHEMABINDING AS SELECT 1 AS val"},
+		{"view/ENCRYPTION_valid", "CREATE VIEW dbo.v_enc WITH ENCRYPTION AS SELECT 1 AS val"},
+		{"view/SELECT_invalid", "CREATE VIEW dbo.v_bad1 WITH SELECT AS SELECT 1 AS val"},
+		{"view/FROM_invalid", "CREATE VIEW dbo.v_bad2 WITH FROM AS SELECT 1 AS val"},
+
+		// ================================================================
+		// 17. Fulltext index options
+		// ================================================================
+		{"fulltext/CHANGE_TRACKING_valid", "CREATE FULLTEXT INDEX ON dbo.t (a) KEY INDEX ix WITH (CHANGE_TRACKING = AUTO)"},
+		{"fulltext/SELECT_invalid", "CREATE FULLTEXT INDEX ON dbo.t (a) KEY INDEX ix WITH (SELECT = ON)"},
+
+		// ================================================================
+		// 18. Service broker options
+		// ================================================================
+		{"broker/ENCRYPTION_valid", "CREATE MESSAGE TYPE msg VALIDATION = NONE"},
+		{"broker/SELECT_invalid", "CREATE SERVICE svc ON QUEUE dbo.q (SELECT)"},
+
+		// ================================================================
+		// 19. Availability group options
+		// ================================================================
+		{"ag/AUTOMATED_BACKUP_PREFERENCE_valid", "CREATE AVAILABILITY GROUP ag WITH (AUTOMATED_BACKUP_PREFERENCE = SECONDARY)"},
+		{"ag/SELECT_invalid", "CREATE AVAILABILITY GROUP ag WITH (SELECT = ON)"},
+
+		// ================================================================
+		// 20. Endpoint options
+		// ================================================================
+		{"endpoint/STATE_valid", "CREATE ENDPOINT ep STATE = STARTED AS TCP (LISTENER_PORT = 5022) FOR DATABASE_MIRRORING (ROLE = PARTNER)"},
+		{"endpoint/SELECT_invalid", "CREATE ENDPOINT ep SELECT = STARTED AS TCP (LISTENER_PORT = 5022) FOR DATABASE_MIRRORING (ROLE = PARTNER)"},
 	}
 
 	for _, tc := range tests {
