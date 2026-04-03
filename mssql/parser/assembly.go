@@ -75,7 +75,7 @@ func (p *Parser) parseCreateAssemblyStmt() (*nodes.CreateAssemblyStmt, error) {
 	// WITH PERMISSION_SET = { SAFE | EXTERNAL_ACCESS | UNSAFE }
 	if p.cur.Type == kwWITH {
 		p.advance()
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "PERMISSION_SET") {
+		if p.cur.Type == kwPERMISSION_SET {
 			p.advance()
 			if p.cur.Type == '=' {
 				p.advance()
@@ -127,7 +127,7 @@ func (p *Parser) parseAlterAssemblyStmt() (*nodes.AlterAssemblyStmt, error) {
 	var actions []nodes.Node
 
 	// FROM ...
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "FROM") {
+	if p.cur.Type == kwFROM {
 		p.advance()
 		if p.cur.Type == tokSCONST {
 			actions = append(actions, &nodes.String{Str: "FROM=" + p.cur.Str})
@@ -147,7 +147,7 @@ func (p *Parser) parseAlterAssemblyStmt() (*nodes.AlterAssemblyStmt, error) {
 					opt += "=" + strings.ToUpper(p.cur.Str)
 					p.advance()
 				}
-			} else if opt == "UNCHECKED" && p.isIdentLike() && matchesKeywordCI(p.cur.Str, "DATA") {
+			} else if opt == "UNCHECKED" && p.cur.Type == kwDATA {
 				// UNCHECKED DATA (two-word option)
 				opt = "UNCHECKED DATA"
 				p.advance()
@@ -162,7 +162,7 @@ func (p *Parser) parseAlterAssemblyStmt() (*nodes.AlterAssemblyStmt, error) {
 	// DROP FILE
 	if p.cur.Type == kwDROP {
 		p.advance()
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "FILE") {
+		if p.cur.Type == kwFILE {
 			p.advance()
 			actions = append(actions, &nodes.String{Str: "DROP FILE"})
 			// consume file list
@@ -177,14 +177,14 @@ func (p *Parser) parseAlterAssemblyStmt() (*nodes.AlterAssemblyStmt, error) {
 
 	// ADD FILE FROM
 	if _, ok := p.match(kwADD); ok {
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "FILE") {
+		if p.cur.Type == kwFILE {
 			p.advance()
 			actions = append(actions, &nodes.String{Str: "ADD FILE"})
-			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "FROM") {
+			if p.cur.Type == kwFROM {
 				p.advance()
 				for p.cur.Type == tokSCONST {
 					p.advance()
-					if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AS") {
+					if p.cur.Type == kwAS {
 						p.advance()
 						if p.cur.Type == tokSCONST || p.isIdentLike() {
 							p.advance()

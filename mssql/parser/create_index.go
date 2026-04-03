@@ -152,7 +152,7 @@ func (p *Parser) parseCreateIndexStmt(unique bool) (*nodes.CreateIndexStmt, erro
 	}
 
 	// FILESTREAM_ON { filestream_filegroup_name | partition_scheme_name | "NULL" }
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "FILESTREAM_ON") {
+	if p.cur.Type == kwFILESTREAM_ON {
 		p.advance()
 		if p.isIdentLike() || p.cur.Type == tokSCONST {
 			stmt.FilestreamOn = p.cur.Str
@@ -248,7 +248,7 @@ func (p *Parser) parseCreateXmlIndexStmt(primary bool) (*nodes.CreateXmlIndexStm
 	}
 
 	// USING XML INDEX parent_index_name (secondary only)
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "USING") {
+	if p.cur.Type == kwUSING {
 		p.advance() // consume USING
 		p.match(kwXML)
 		p.match(kwINDEX)
@@ -314,7 +314,7 @@ func (p *Parser) parseCreateSelectiveXmlIndexStmt() (*nodes.CreateSelectiveXmlIn
 	// WITH XMLNAMESPACES (...)
 	if p.cur.Type == kwWITH {
 		p.advance()
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "XMLNAMESPACES") {
+		if p.cur.Type == kwXMLNAMESPACES {
 			p.advance()
 			if p.cur.Type == '(' {
 				var err error
@@ -406,7 +406,7 @@ func (p *Parser) parseCreateSpatialIndexStmt() (*nodes.CreateSpatialIndexStmt, e
 	}
 
 	// USING tessellation_scheme
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "USING") {
+	if p.cur.Type == kwUSING {
 		p.advance() // consume USING
 		if p.isIdentLike() {
 			stmt.Using = p.cur.Str
@@ -500,7 +500,7 @@ func (p *Parser) parseCreateAggregateStmt() (*nodes.CreateAggregateStmt, error) 
 	// EXTERNAL NAME assembly_qualified_name
 	if p.cur.Type == kwEXTERNAL {
 		p.advance()
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "NAME") {
+		if p.cur.Type == kwNAME {
 			p.advance()
 		}
 		// Read dotted name: assembly.class[.method]

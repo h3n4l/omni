@@ -22,7 +22,7 @@ func (p *Parser) parseCreateXmlSchemaCollectionStmt() (*nodes.CreateXmlSchemaCol
 	stmt.Name , _ = p.parseTableRef()
 
 	// AS Expression
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AS") {
+	if p.cur.Type == kwAS {
 		p.advance()
 	}
 	stmt.XmlSchemaNamespaces, _ = p.parseExpr()

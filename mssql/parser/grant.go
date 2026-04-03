@@ -339,7 +339,7 @@ func (p *Parser) parsePrivilegeList() *nodes.List {
 
 		// Handle multi-word privileges: ALTER ANY xxx, CREATE xxx, VIEW xxx, etc.
 		// Also ALL PRIVILEGES
-		if name == "ALL" && p.isIdentLike() && matchesKeywordCI(p.cur.Str, "PRIVILEGES") {
+		if name == "ALL" && p.cur.Type == kwPRIVILEGES {
 			p.advance()
 			name = "ALL PRIVILEGES"
 		} else if (name == "ALTER" || name == "CREATE" || name == "VIEW" || name == "CONTROL" ||

@@ -95,14 +95,13 @@ func (p *Parser) parseAlterSchemaStmt() (*nodes.AlterSchemaStmt, error) {
 	// Optional entity_type ::
 	if p.isIdentLike() {
 		next := p.peekNext()
-		entityType := p.cur.Str
 		if next.Type == tokCOLONCOLON {
-			switch {
-			case strings.EqualFold(entityType, "OBJECT"):
+			switch p.cur.Type {
+			case kwOBJECT:
 				p.advance()
 				p.advance()
 				stmt.TransferType = "OBJECT"
-			case strings.EqualFold(entityType, "TYPE"):
+			case kwTYPE:
 				p.advance()
 				p.advance()
 				stmt.TransferType = "TYPE"

@@ -207,14 +207,16 @@ func (p *Parser) parseStatisticsWithOptions() *nodes.List {
 	for {
 		if p.isIdentLike() || p.cur.Type == kwFULL || p.cur.Type == kwNOCOUNT {
 			opt := strings.ToUpper(p.cur.Str)
+			isSample := p.cur.Type == kwSAMPLE
+			isResample := p.cur.Type == kwRESAMPLE
 			p.advance()
 			// Handle SAMPLE number PERCENT|ROWS
-			if strings.EqualFold(opt, "SAMPLE") {
+			if isSample {
 				p.parseExpr() // number
 				if p.isIdentLike() {
 					p.advance() // PERCENT or ROWS
 				}
-			} else if strings.EqualFold(opt, "RESAMPLE") {
+			} else if isResample {
 				// RESAMPLE [ ON PARTITIONS ( { partition_number | range } [ ,...n ] ) ]
 				if p.cur.Type == kwON {
 					p.advance() // ON
@@ -224,7 +226,7 @@ func (p *Parser) parseStatisticsWithOptions() *nodes.List {
 							for p.cur.Type != ')' && p.cur.Type != tokEOF {
 								p.parseExpr() // partition number
 								// TO for range
-								if p.isIdentLike() && strings.EqualFold(p.cur.Str, "TO") {
+								if p.cur.Type == kwTO {
 									p.advance()
 									p.parseExpr()
 								}

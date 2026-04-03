@@ -2,8 +2,6 @@
 package parser
 
 import (
-	"strings"
-
 	nodes "github.com/bytebase/omni/mssql/ast"
 )
 
@@ -160,20 +158,15 @@ func (p *Parser) parseCreateMaterializedViewStmt() (*nodes.CreateMaterializedVie
 		}
 
 		for p.cur.Type != ')' && p.cur.Type != tokEOF {
-			ident, ok := p.parseIdentifier()
-			if !ok {
-				break
-			}
-			switch {
-			case strings.EqualFold(ident, "DISTRIBUTION"):
+			switch p.cur.Type {
+			case kwDISTRIBUTION:
+				p.advance() // consume DISTRIBUTION
 				if _, err := p.expect('='); err != nil {
 					return nil, err
 				}
-				distType, ok := p.parseIdentifier()
-				if !ok {
-					break
-				}
-				if strings.EqualFold(distType, "HASH") {
+				switch p.cur.Type {
+				case kwHASH:
+					p.advance() // consume HASH
 					stmt.Distribution = "HASH"
 					if _, err := p.expect('('); err != nil {
 						return nil, err
@@ -193,11 +186,17 @@ func (p *Parser) parseCreateMaterializedViewStmt() (*nodes.CreateMaterializedVie
 						return nil, err
 					}
 					stmt.HashColumns = &nodes.List{Items: cols}
-				} else if strings.EqualFold(distType, "ROUND_ROBIN") {
+				case kwROUND_ROBIN:
+					p.advance() // consume ROUND_ROBIN
 					stmt.Distribution = "ROUND_ROBIN"
+				default:
+					p.parseIdentifier() // consume unknown distribution type
 				}
-			case strings.EqualFold(ident, "FOR_APPEND"):
+			case kwFOR_APPEND:
+				p.advance() // consume FOR_APPEND
 				stmt.ForAppend = true
+			default:
+				p.parseIdentifier() // consume unknown option
 			}
 			if _, ok := p.match(','); !ok {
 				break

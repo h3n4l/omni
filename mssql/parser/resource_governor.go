@@ -371,7 +371,7 @@ func (p *Parser) parseResourceGovernorOptions() *nodes.List {
 				// USING pool_name or EXTERNAL ext_pool_name (no = sign)
 				val = strings.ToUpper(p.cur.Str)
 				p.advance()
-			} else if name == "RESET" && p.isIdentLike() && matchesKeywordCI(p.cur.Str, "STATISTICS") {
+			} else if name == "RESET" && p.cur.Type == kwSTATISTICS {
 				// RESET STATISTICS
 				val = strings.ToUpper(p.cur.Str)
 				p.advance()
@@ -491,12 +491,12 @@ func (p *Parser) parseResourceGovernorQualifiedValue() string {
 func (p *Parser) parseResourceGovernorAffinityValue() []nodes.Node {
 	var opts []nodes.Node
 
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SCHEDULER") {
+	if p.cur.Type == kwSCHEDULER {
 		p.advance() // consume SCHEDULER
 		if p.cur.Type == '=' {
 			p.advance()
 		}
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AUTO") {
+		if p.cur.Type == kwAUTO {
 			opts = append(opts, &nodes.String{Str: "AFFINITY=SCHEDULER=AUTO"})
 			p.advance()
 		} else if p.cur.Type == '(' {
@@ -505,7 +505,7 @@ func (p *Parser) parseResourceGovernorAffinityValue() []nodes.Node {
 			p.match(')')
 			opts = append(opts, &nodes.String{Str: "AFFINITY=SCHEDULER=(" + rangeStr + ")"})
 		}
-	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "NUMANODE") {
+	} else if p.cur.Type == kwNUMANODE {
 		p.advance() // consume NUMANODE
 		if p.cur.Type == '=' {
 			p.advance()

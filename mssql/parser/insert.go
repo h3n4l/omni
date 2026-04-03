@@ -2,8 +2,6 @@
 package parser
 
 import (
-	"strings"
-
 	nodes "github.com/bytebase/omni/mssql/ast"
 )
 
@@ -271,5 +269,5 @@ func (p *Parser) parseOutputClause() (*nodes.OutputClause, error) {
 // isOutputKeyword checks if the current token is the OUTPUT keyword.
 // This is used to detect OUTPUT clause in INSERT, UPDATE, DELETE.
 func (p *Parser) isOutputKeyword() bool {
-	return p.cur.Type == kwOUTPUT && !strings.EqualFold(p.cur.Str, "out")
+	return p.cur.Type == kwOUTPUT
 }

@@ -296,7 +296,7 @@ func (p *Parser) parseServerConfigProcessAffinity() ([]nodes.Node, error) {
 	}
 
 	optLoc := p.pos()
-	key := p.cur.Str // CPU or NUMANODE
+	key := strings.ToUpper(p.cur.Str) // CPU or NUMANODE
 	p.advance()
 
 	// Consume =
