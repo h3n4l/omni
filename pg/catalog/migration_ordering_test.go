@@ -1718,6 +1718,47 @@ func TestMigrationOrdering(t *testing.T) {
 		}
 	})
 
+	t.Run("3.1 sql function body referencing table placed after table", func(t *testing.T) {
+		// A LANGUAGE sql function whose body SELECTs FROM a table should be
+		// ordered after the table, even though function priority (4) < table (5).
+		fromSQL := ``
+		toSQL := `
+			CREATE TABLE orders (id int, user_id int, quantity int);
+			CREATE FUNCTION get_order_count(uid integer) RETURNS bigint
+			    LANGUAGE sql STABLE AS 'SELECT count(*) FROM orders WHERE user_id = uid';
+		`
+		from, err := LoadSQL(fromSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		to, err := LoadSQL(toSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diff := Diff(from, to)
+		plan := GenerateMigration(from, to, diff)
+		tableIdx := -1
+		funcIdx := -1
+		for i, op := range plan.Ops {
+			if op.Type == OpCreateTable {
+				tableIdx = i
+			}
+			if op.Type == OpCreateFunction {
+				funcIdx = i
+			}
+		}
+		if tableIdx < 0 {
+			t.Fatalf("no CREATE TABLE found; ops: %v", opsSQL(plan))
+		}
+		if funcIdx < 0 {
+			t.Fatalf("no CREATE FUNCTION found; ops: %v", opsSQL(plan))
+		}
+		if tableIdx > funcIdx {
+			t.Errorf("CREATE TABLE (idx %d) should be before function referencing it (idx %d); ops: %v",
+				tableIdx, funcIdx, opsSQL(plan))
+		}
+	})
+
 	t.Run("3.1 no string-matching heuristic used for function ordering", func(t *testing.T) {
 		// Verify that a function whose name is a substring of a CHECK expression
 		// function is NOT incorrectly forced before the table. Only OID deps matter.

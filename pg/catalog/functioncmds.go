@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	nodes "github.com/bytebase/omni/pg/ast"
+	"github.com/bytebase/omni/pg/parser"
 )
 
 // UserProc represents a user-defined function or procedure.
@@ -593,7 +594,103 @@ func (c *Catalog) CreateFunctionStmt(stmt *nodes.CreateFunctionStmt) error {
 		}
 	}
 
+	// Record dependencies from SQL function body.
+	// pg: src/backend/catalog/pg_proc.c — ProcedureCreate
+	//   if (languageObjectId == SQLlanguageId && prosqlbody)
+	//       recordDependencyOnExpr(&myself, prosqlbody, NIL, DEPENDENCY_NORMAL);
+	//
+	// For LANGUAGE sql functions, parse the body and extract table/function
+	// references so the migration toposort orders tables before functions
+	// that reference them.
+	if strings.EqualFold(language, "sql") && body != "" {
+		c.recordFuncBodyDeps(procOID, body)
+	}
+
 	return nil
+}
+
+// recordFuncBodyDeps parses a SQL function body and records dependencies on
+// tables referenced within it. Extracts relation names from the raw AST
+// rather than doing full semantic analysis, because function bodies may
+// reference function parameters that the analyzer doesn't know about.
+// Silently ignores parse errors to avoid blocking catalog loading.
+func (c *Catalog) recordFuncBodyDeps(funcOID uint32, body string) {
+	stmts, err := parser.Parse(body)
+	if err != nil || stmts == nil {
+		return
+	}
+	for _, stmt := range stmts.Items {
+		raw, ok := stmt.(*nodes.RawStmt)
+		if !ok {
+			continue
+		}
+		c.recordDepsFromNode('f', funcOID, raw.Stmt)
+	}
+}
+
+// recordDepsFromNode walks an AST node tree and records dependencies for
+// any RangeVar (table reference) found. This is a lightweight alternative
+// to full semantic analysis that works even when the query contains
+// unresolvable references (e.g., function parameters).
+func (c *Catalog) recordDepsFromNode(objType byte, objOID uint32, n nodes.Node) {
+	if n == nil {
+		return
+	}
+	switch v := n.(type) {
+	case *nodes.RangeVar:
+		c.recordDepsOnRangeVar(objType, objOID, v)
+	case *nodes.SelectStmt:
+		if v.FromClause != nil {
+			for _, from := range v.FromClause.Items {
+				c.recordDepsFromNode(objType, objOID, from)
+			}
+		}
+		c.recordDepsFromNode(objType, objOID, v.WhereClause)
+		if v.Larg != nil {
+			c.recordDepsFromNode(objType, objOID, v.Larg)
+		}
+		if v.Rarg != nil {
+			c.recordDepsFromNode(objType, objOID, v.Rarg)
+		}
+		if v.WithClause != nil {
+			for _, cte := range v.WithClause.Ctes.Items {
+				c.recordDepsFromNode(objType, objOID, cte)
+			}
+		}
+	case *nodes.CommonTableExpr:
+		c.recordDepsFromNode(objType, objOID, v.Ctequery)
+	case *nodes.JoinExpr:
+		c.recordDepsFromNode(objType, objOID, v.Larg)
+		c.recordDepsFromNode(objType, objOID, v.Rarg)
+	case *nodes.RangeSubselect:
+		c.recordDepsFromNode(objType, objOID, v.Subquery)
+	case *nodes.SubLink:
+		c.recordDepsFromNode(objType, objOID, v.Subselect)
+	case *nodes.InsertStmt:
+		c.recordDepsFromNode(objType, objOID, v.Relation)
+		c.recordDepsFromNode(objType, objOID, v.SelectStmt)
+	case *nodes.UpdateStmt:
+		c.recordDepsFromNode(objType, objOID, v.Relation)
+		if v.FromClause != nil {
+			for _, from := range v.FromClause.Items {
+				c.recordDepsFromNode(objType, objOID, from)
+			}
+		}
+	case *nodes.DeleteStmt:
+		c.recordDepsFromNode(objType, objOID, v.Relation)
+	}
+}
+
+// recordDepsOnRangeVar resolves a RangeVar to a catalog relation and records
+// a dependency if found.
+func (c *Catalog) recordDepsOnRangeVar(objType byte, objOID uint32, rv *nodes.RangeVar) {
+	if rv == nil {
+		return
+	}
+	_, rel, err := c.findRelation(rv.Schemaname, rv.Relname)
+	if err == nil && rel != nil {
+		c.recordDependency(objType, objOID, 0, 'r', rel.OID, 0, DepNormal)
+	}
 }
 
 // CreateCast registers a user-defined cast.

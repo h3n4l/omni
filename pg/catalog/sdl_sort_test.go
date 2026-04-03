@@ -96,6 +96,19 @@ func TestSDLPriorityLayerOrdering(t *testing.T) {
 			},
 		},
 		{
+			name: "tables created before sql functions that reference them in body",
+			sql: `
+				CREATE FUNCTION get_user_count() RETURNS bigint
+				    LANGUAGE sql AS 'SELECT count(*) FROM users';
+				CREATE TABLE users (id int, name text);
+			`,
+			check: func(t *testing.T, c *Catalog) {
+				if c.GetRelation("public", "users") == nil {
+					t.Fatal("table users not found")
+				}
+			},
+		},
+		{
 			name: "tables created before indexes on them",
 			sql: `
 				CREATE INDEX idx ON t (id);
