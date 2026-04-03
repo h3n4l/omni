@@ -31,6 +31,14 @@ type Loc struct {
 	End   int // exclusive end byte offset, 0 if not yet set
 }
 
+// LocStart returns the start byte offset.
+// This method enables field promotion: any struct with a Loc field
+// automatically gets LocStart() without explicit implementation.
+func (l Loc) LocStart() int { return l.Start }
+
+// LocEnd returns the end byte offset.
+func (l Loc) LocEnd() int { return l.End }
+
 // List is a generic list of nodes.
 type List struct {
 	Items []Node
