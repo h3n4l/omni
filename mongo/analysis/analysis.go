@@ -242,13 +242,23 @@ func analyzeSp(s *ast.SpStatement) *StatementAnalysis {
 	return a
 }
 
+// hasExplainCursor checks if any cursor method in the chain is "explain".
+func hasExplainCursor(s *ast.CollectionStatement) bool {
+	for _, cm := range s.CursorMethods {
+		if cm.Method == "explain" {
+			return true
+		}
+	}
+	return false
+}
+
 func analyzeCollection(s *ast.CollectionStatement) *StatementAnalysis {
 	a := &StatementAnalysis{
 		MethodName: s.Method,
 		Collection: s.Collection,
 	}
 
-	if s.Explain {
+	if s.Explain || hasExplainCursor(s) {
 		a.Operation = OpExplain
 		return a
 	}
