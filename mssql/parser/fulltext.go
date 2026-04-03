@@ -7,6 +7,20 @@ import (
 	nodes "github.com/bytebase/omni/mssql/ast"
 )
 
+// fulltextIndexWithOptions defines valid option names for CREATE FULLTEXT INDEX ... WITH.
+// Matches SqlScriptDOM fulltext index options: CHANGE_TRACKING, STOPLIST, SEARCH (PROPERTY LIST).
+var fulltextIndexWithOptions = newOptionSet(kwCHANGE_TRACKING, kwSTOPLIST, kwSEARCH)
+
+// fulltextCatalogWithOptions defines valid option names for CREATE FULLTEXT CATALOG ... WITH.
+// Only ACCENT_SENSITIVITY is valid here.
+var fulltextCatalogWithOptions = newOptionSet(kwACCENT_SENSITIVITY)
+
+// fulltextCatalogActions defines valid action keywords for ALTER FULLTEXT CATALOG.
+var fulltextCatalogActions = newOptionSet(kwREBUILD, kwREORGANIZE, kwAS)
+
+// searchPropertyListWithOptions defines valid option names for ALTER SEARCH PROPERTY LIST ... WITH.
+var searchPropertyListWithOptions = newOptionSet().withIdents("PROPERTY_SET_GUID", "PROPERTY_INT_ID", "PROPERTY_DESCRIPTION")
+
 // parseCreateFulltextIndexStmt parses a CREATE FULLTEXT INDEX statement.
 //
 // BNF: mssql/parser/bnf/create-fulltext-index-transact-sql.bnf
@@ -145,7 +159,7 @@ func (p *Parser) parseCreateFulltextIndexStmt() (*nodes.CreateFulltextIndexStmt,
 		}
 		var opts []nodes.Node
 		for (useParens && p.cur.Type != ')') || (!useParens && p.cur.Type != ';' && p.cur.Type != tokEOF && p.cur.Type != kwGO) {
-			if p.isAnyKeywordIdent() {
+			if p.isValidOption(fulltextIndexWithOptions) {
 				opt := strings.ToUpper(p.cur.Str)
 				p.advance()
 				if p.cur.Type == '=' {
@@ -481,7 +495,7 @@ func (p *Parser) parseCreateFulltextCatalogStmt() (*nodes.CreateFulltextCatalogS
 	// WITH ACCENT_SENSITIVITY
 	if p.cur.Type == kwWITH {
 		p.advance()
-		if p.isAnyKeywordIdent() {
+		if p.isValidOption(fulltextCatalogWithOptions) {
 			opt := strings.ToUpper(p.cur.Str)
 			p.advance()
 			if p.cur.Type == '=' {
@@ -790,7 +804,7 @@ func (p *Parser) parseAlterSearchPropertyListStmt() (*nodes.AlterSearchPropertyL
 			if p.cur.Type == '(' {
 				p.advance()
 				for p.cur.Type != ')' && p.cur.Type != tokEOF {
-					if p.isAnyKeywordIdent() {
+					if p.isValidOption(searchPropertyListWithOptions) {
 						key := strings.ToUpper(p.cur.Str)
 						p.advance()
 						if p.cur.Type == '=' {
@@ -884,7 +898,7 @@ func (p *Parser) parseAlterFulltextCatalogStmt() (*nodes.AlterFulltextCatalogStm
 	}
 
 	// Action: REBUILD, REORGANIZE, AS DEFAULT
-	if p.isAnyKeywordIdent() {
+	if p.isValidOption(fulltextCatalogActions) {
 		action := strings.ToUpper(p.cur.Str)
 		p.advance()
 		if action == "AS" && p.cur.Type == kwDEFAULT {
