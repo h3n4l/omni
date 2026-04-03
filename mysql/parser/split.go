@@ -243,9 +243,8 @@ func Split(sql string) []Segment {
 			i = skipHashComment(sql, i)
 
 		// BEGIN — increment depth unless it's a transaction (BEGIN WORK, BEGIN alone, XA BEGIN).
-		// Known limitation: "BEGIN\nSELECT 1;\nCOMMIT;" (transaction without semicolon
-		// after BEGIN) is indistinguishable from a compound block at the lexical level.
-		// In practice this is rare — batch scripts use "BEGIN;" with semicolons.
+		// Note: "BEGIN" without semicolon followed by another statement is invalid MySQL
+		// syntax, so we don't need to handle that case.
 		case (b == 'b' || b == 'B') && matchWord(sql, i, "BEGIN"):
 			endOfWord := skipToEndOfWord(sql, i)
 			next := nextWordAfter(sql, endOfWord)
