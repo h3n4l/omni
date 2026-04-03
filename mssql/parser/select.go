@@ -1932,6 +1932,42 @@ func (p *Parser) parseIndexValue() (nodes.Node, error) {
 	return &nodes.String{Str: ""}, nil
 }
 
+// queryHintForceDisableSuffix defines valid suffixes after FORCE/DISABLE in query hints.
+// FORCE ORDER is handled separately; the remaining are EXTERNALPUSHDOWN and SCALEOUTEXECUTION.
+var queryHintForceDisableSuffix = newOptionSet().withIdents(
+	"EXTERNALPUSHDOWN",
+	"SCALEOUTEXECUTION",
+)
+
+// queryHintParameterizationMode defines valid modes after PARAMETERIZATION.
+var queryHintParameterizationMode = newOptionSet().withIdents(
+	"SIMPLE",
+	"FORCED",
+)
+
+// queryHintDefaultNames defines valid hint names for the default (name = value) path
+// in OPTION clauses. These are hints from SqlScriptDOM that are not handled by
+// dedicated switch cases (RECOMPILE, OPTIMIZE, LOOP/HASH/MERGE, CONCAT, ORDER,
+// FORCE, MAXDOP, MAXRECURSION, FAST, QUERYTRACEON, EXPAND, KEEP, KEEPFIXED,
+// ROBUST, PARAMETERIZATION, USE, DISABLE, TABLE are all handled above).
+//
+// From MonoOptimizerHintHelper: IGNORE_NONCLUSTERED_COLUMNSTORE_INDEX, NO_PERFORMANCE_SPOOL
+// From IntegerOptimizerHintHelper: CARDINALITY_TUNER_LIMIT
+// From DoubleOptimizerHintHelper: MAX_GRANT_PERCENT, MIN_GRANT_PERCENT
+// From StringOptimizerHintHelper: LABEL
+// From PlanOptimizerHintHelper: SHRINKDB, ALTERCOLUMN, CHECKCONSTRAINTS
+var queryHintDefaultNames = newOptionSet().withIdents(
+	"IGNORE_NONCLUSTERED_COLUMNSTORE_INDEX",
+	"NO_PERFORMANCE_SPOOL",
+	"CARDINALITY_TUNER_LIMIT",
+	"MAX_GRANT_PERCENT",
+	"MIN_GRANT_PERCENT",
+	"LABEL",
+	"SHRINKDB",
+	"ALTERCOLUMN",
+	"CHECKCONSTRAINTS",
+)
+
 // parseOptionClause parses OPTION ( query_hint [,...n] ).
 //
 // Ref: https://learn.microsoft.com/en-us/sql/t-sql/queries/option-clause-transact-sql
@@ -2108,7 +2144,7 @@ func (p *Parser) parseQueryHint() (nodes.Node, error) {
 		if p.cur.Type == kwORDER {
 			p.advance()
 			return &nodes.QueryHint{Kind: "FORCE ORDER", Loc: nodes.Loc{Start: loc, End: p.prevEnd()}}, nil
-		} else if p.isAnyKeywordIdent() {
+		} else if p.isValidOption(queryHintForceDisableSuffix) {
 			suffix := strings.ToUpper(p.cur.Str)
 			p.advance()
 			return &nodes.QueryHint{Kind: "FORCE " + suffix, Loc: nodes.Loc{Start: loc, End: p.prevEnd()}}, nil
@@ -2202,7 +2238,7 @@ func (p *Parser) parseQueryHint() (nodes.Node, error) {
 	case p.cur.Type == kwPARAMETERIZATION:
 		p.advance()
 		hint := &nodes.QueryHint{Kind: "PARAMETERIZATION", Loc: nodes.Loc{Start: loc, End: -1}}
-		if p.isAnyKeywordIdent() {
+		if p.isValidOption(queryHintParameterizationMode) {
 			hint.StrValue = strings.ToUpper(p.cur.Str)
 			p.advance()
 		}
@@ -2247,7 +2283,7 @@ func (p *Parser) parseQueryHint() (nodes.Node, error) {
 
 	case p.cur.Type == kwDISABLE:
 		p.advance()
-		if p.isAnyKeywordIdent() {
+		if p.isValidOption(queryHintForceDisableSuffix) {
 			suffix := strings.ToUpper(p.cur.Str)
 			p.advance()
 			return &nodes.QueryHint{Kind: "DISABLE " + suffix, Loc: nodes.Loc{Start: loc, End: p.prevEnd()}}, nil
@@ -2292,8 +2328,8 @@ func (p *Parser) parseQueryHint() (nodes.Node, error) {
 		return &nodes.QueryHint{Kind: "TABLE", Loc: nodes.Loc{Start: loc, End: p.prevEnd()}}, nil
 
 	default:
-		// Unknown hint with name = value pattern (e.g., MAX_GRANT_PERCENT = 10)
-		if p.isAnyKeywordIdent() {
+		// Known hint with name = value pattern (e.g., MAX_GRANT_PERCENT = 10)
+		if p.isValidOption(queryHintDefaultNames) {
 			name := strings.ToUpper(p.cur.Str)
 			p.advance()
 			hint := &nodes.QueryHint{Kind: name, Loc: nodes.Loc{Start: loc, End: -1}}
