@@ -81,7 +81,7 @@ func (p *Parser) parseMergeStmt() (*nodes.MergeStmt, error) {
 	}
 
 	// USING source (USING is not a reserved keyword)
-	if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "using") {
+	if p.isIdentLike() && strings.EqualFold(p.cur.Str, "using") {
 		p.advance()
 		// Completion: after USING → table_ref
 		if p.collectMode() {
@@ -182,24 +182,24 @@ func (p *Parser) parseMergeWhenClause() (*nodes.MergeWhenClause, error) {
 	if p.cur.Type == kwNOT {
 		p.advance() // consume NOT
 		// MATCHED [BY TARGET] or MATCHED BY SOURCE
-		if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "matched") {
+		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "matched") {
 			p.advance()
 		}
 		wc.Matched = false
 
 		// BY TARGET or BY SOURCE
 		if _, ok := p.match(kwBY); ok {
-			if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "target") {
+			if p.isIdentLike() && strings.EqualFold(p.cur.Str, "target") {
 				p.advance()
 				wc.ByTarget = true
-			} else if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "source") {
+			} else if p.isIdentLike() && strings.EqualFold(p.cur.Str, "source") {
 				p.advance()
 				wc.ByTarget = false
 			}
 		} else {
 			wc.ByTarget = true // default NOT MATCHED means BY TARGET
 		}
-	} else if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "matched") {
+	} else if p.isIdentLike() && strings.EqualFold(p.cur.Str, "matched") {
 		p.advance()
 		wc.Matched = true
 	}

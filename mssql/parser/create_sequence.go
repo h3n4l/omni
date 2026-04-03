@@ -161,6 +161,6 @@ func (p *Parser) parseSequenceOptions(stmt *nodes.CreateSequenceStmt, isAlter bo
 // token matching the given string case-insensitively, without consuming tokens.
 func (p *Parser) isNextIdentCI(s string) bool {
 	next := p.peekNext()
-	return (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) &&
+	return p.isIdentLikeToken(next) &&
 		strings.EqualFold(next.Str, s)
 }

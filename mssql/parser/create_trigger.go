@@ -202,7 +202,7 @@ func (p *Parser) parseCreateTriggerStmt(orAlter bool) (*nodes.CreateTriggerStmt,
 	// [ WITH APPEND ] (for DML triggers)
 	if p.cur.Type == kwWITH {
 		next := p.peekNext()
-		if next.Type == tokIDENT && strings.EqualFold(next.Str, "APPEND") {
+		if p.isIdentLikeToken(next) && strings.EqualFold(next.Str, "APPEND") {
 			p.advance() // WITH
 			p.advance() // APPEND
 			stmt.WithAppend = true

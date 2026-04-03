@@ -6,7 +6,8 @@ import (
 )
 
 // isIdentLike returns true if the current token can be used as an identifier.
-// In T-SQL, most keywords can also be used as identifiers in certain contexts.
+// In T-SQL, context keywords can be used as identifiers but Core keywords cannot
+// (unless bracket-quoted). Use isAnyKeywordIdent() for positions that accept all keywords.
 // The tokIDENT type already includes [bracketed] and "quoted" identifiers.
 func (p *Parser) isIdentLike() bool {
 	if p.cur.Type == tokIDENT {
@@ -25,7 +26,7 @@ func (p *Parser) isAnyKeywordIdent() bool {
 		return true
 	}
 	// Any keyword token can be used as a label/alias
-	return p.cur.Type >= kwADD && p.cur.Str != ""
+	return p.cur.Type >= kwACCENT_SENSITIVITY && p.cur.Str != ""
 }
 
 // parseIdentifier consumes and returns the current token as an identifier string.

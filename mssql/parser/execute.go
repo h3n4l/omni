@@ -207,11 +207,11 @@ func (p *Parser) parseExecAtClause(stmt *nodes.ExecStmt) {
 	// DATA_SOURCE keyword
 	if p.isIdentLike() && strings.EqualFold(p.cur.Str, "DATA_SOURCE") {
 		p.advance() // consume DATA_SOURCE
-		if p.isIdentLike() || p.cur.Type == tokIDENT {
+		if p.isIdentLike() {
 			stmt.AtDataSource = p.cur.Str
 			p.advance()
 		}
-	} else if p.isIdentLike() || p.cur.Type == tokIDENT {
+	} else if p.isIdentLike() {
 		stmt.AtServer = p.cur.Str
 		p.advance()
 	}
@@ -341,7 +341,7 @@ func (p *Parser) parseExecArg() *nodes.ExecArg {
 	}
 
 	// Check for OUTPUT/OUT
-	if p.cur.Type == kwOUTPUT || (p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "out")) {
+	if p.cur.Type == kwOUTPUT || (p.isIdentLike() && strings.EqualFold(p.cur.Str, "out")) {
 		arg.Output = true
 		p.advance()
 	}

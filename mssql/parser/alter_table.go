@@ -253,7 +253,7 @@ func (p *Parser) parseAlterTableAdd() ([]nodes.Node, error) {
 	}
 
 	// ADD PERIOD FOR SYSTEM_TIME (start_col, end_col)
-	if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "PERIOD") {
+	if p.isIdentLike() && strings.EqualFold(p.cur.Str, "PERIOD") {
 		return p.parseAlterTableAddPeriod()
 	}
 
@@ -376,7 +376,7 @@ func (p *Parser) parseAlterTableDrop() ([]nodes.Node, error) {
 	var actions []nodes.Node
 
 	// DROP PERIOD FOR SYSTEM_TIME
-	if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "PERIOD") {
+	if p.isIdentLike() && strings.EqualFold(p.cur.Str, "PERIOD") {
 		loc := p.pos()
 		p.advance() // consume PERIOD
 		if p.cur.Type == kwFOR {

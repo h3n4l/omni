@@ -161,7 +161,7 @@ func (p *Parser) parseCreateProcedureStmt(orAlter bool) (*nodes.CreateProcedureS
 func (p *Parser) parseMethodSpecifier() string {
 	var parts []string
 	for {
-		if p.isIdentLike() || p.cur.Type == tokIDENT {
+		if p.isIdentLike() {
 			parts = append(parts, p.cur.Str)
 			p.advance()
 		} else {
@@ -517,7 +517,7 @@ func (p *Parser) parseParamDef() (*nodes.ParamDef, error) {
 	}
 
 	// OUTPUT / OUT
-	if p.cur.Type == kwOUTPUT || (p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "out")) {
+	if p.cur.Type == kwOUTPUT || (p.isIdentLike() && strings.EqualFold(p.cur.Str, "out")) {
 		param.Output = true
 		p.advance()
 	}

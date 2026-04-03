@@ -399,7 +399,7 @@ func (p *Parser) parseWaitForStmt() (*nodes.WaitForStmt, error) {
 		stmt.WaitType = "DELAY"
 		p.advance()
 		stmt.Value, _ = p.parseExpr()
-	} else if p.cur.Type == kwTIME || (p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "time")) {
+	} else if p.cur.Type == kwTIME || (p.isIdentLike() && strings.EqualFold(p.cur.Str, "time")) {
 		stmt.WaitType = "TIME"
 		p.advance()
 		stmt.Value, _ = p.parseExpr()

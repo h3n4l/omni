@@ -183,7 +183,7 @@ func (p *Parser) parseStmt() (nodes.StmtNode, error) {
 		// Check for USE FEDERATION
 		{
 			next := p.peekNext()
-			if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "FEDERATION") {
+			if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "FEDERATION") {
 				loc := p.pos()
 				p.advance() // consume USE
 				p.advance() // consume FEDERATION
@@ -492,7 +492,7 @@ func (p *Parser) parseCreateStmt() (nodes.StmtNode, error) {
 		// Check for AS CLONE OF
 		if p.cur.Type == kwAS {
 			next := p.peekNext()
-			if next.Type == tokIDENT && strings.EqualFold(next.Str, "CLONE") {
+			if p.isIdentLikeToken(next) && strings.EqualFold(next.Str, "CLONE") {
 				p.advance() // consume AS
 				cloneStmt, err := p.parseCreateTableCloneStmt(tableName)
 				if err != nil {
@@ -736,7 +736,7 @@ func (p *Parser) parseCreateStmt() (nodes.StmtNode, error) {
 		// Check for APPLICATION ROLE (context-sensitive keyword)
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "APPLICATION") {
 			next := p.peekNext()
-			if next.Type == kwROLE || (next.Type >= kwADD && matchesKeywordCI(next.Str, "ROLE")) {
+			if next.Type == kwROLE || (next.Type >= kwACCENT_SENSITIVITY && matchesKeywordCI(next.Str, "ROLE")) {
 				p.advance() // consume APPLICATION
 				stmt, err := p.parseSecurityApplicationRoleStmt("CREATE")
 				if err != nil {
@@ -1465,7 +1465,7 @@ func (p *Parser) parseAlterStmt() (nodes.StmtNode, error) {
 		// Check for APPLICATION ROLE (context-sensitive keyword)
 		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "APPLICATION") {
 			next := p.peekNext()
-			if next.Type == kwROLE || (next.Type >= kwADD && matchesKeywordCI(next.Str, "ROLE")) {
+			if next.Type == kwROLE || (next.Type >= kwACCENT_SENSITIVITY && matchesKeywordCI(next.Str, "ROLE")) {
 				p.advance() // consume APPLICATION
 				stmt, err := p.parseSecurityApplicationRoleStmt("ALTER")
 				if err != nil {
@@ -2042,7 +2042,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 		return stmt, nil
 	default:
 		// Check for DROP APPLICATION ROLE
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "APPLICATION") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "APPLICATION") {
 			p.advance() // consume DROP
 			p.advance() // consume APPLICATION
 			stmt, err := p.parseSecurityApplicationRoleStmt("DROP")
@@ -2053,7 +2053,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			return stmt, nil
 		}
 		// DROP ENDPOINT
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "ENDPOINT") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "ENDPOINT") {
 			p.advance() // consume DROP
 			p.advance() // consume ENDPOINT
 			stmt, err := p.parseDropEndpointStmt()
@@ -2064,7 +2064,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			return stmt, nil
 		}
 		// DROP SERVER AUDIT [SPECIFICATION] / DROP SERVER ROLE
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "SERVER") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "SERVER") {
 			p.advance() // consume DROP
 			p.advance() // consume SERVER
 			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AUDIT") {
@@ -2097,7 +2097,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			return nil, nil
 		}
 		// DROP SERVICE BROKER objects
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "MESSAGE") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "MESSAGE") {
 			p.advance() // consume DROP
 			p.advance() // consume MESSAGE
 			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "TYPE") {
@@ -2110,7 +2110,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			stmt.Loc.Start = loc
 			return stmt, nil
 		}
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "CONTRACT") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "CONTRACT") {
 			p.advance() // consume DROP
 			p.advance() // consume CONTRACT
 			stmt, err := p.parseDropServiceBrokerStmt("CONTRACT")
@@ -2120,7 +2120,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			stmt.Loc.Start = loc
 			return stmt, nil
 		}
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "QUEUE") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "QUEUE") {
 			p.advance() // consume DROP
 			p.advance() // consume QUEUE
 			stmt, err := p.parseDropServiceBrokerStmt("QUEUE")
@@ -2130,7 +2130,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			stmt.Loc.Start = loc
 			return stmt, nil
 		}
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "SERVICE") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "SERVICE") {
 			p.advance() // consume DROP
 			p.advance() // consume SERVICE
 			stmt, err := p.parseDropServiceBrokerStmt("SERVICE")
@@ -2140,7 +2140,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			stmt.Loc.Start = loc
 			return stmt, nil
 		}
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "ROUTE") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "ROUTE") {
 			p.advance() // consume DROP
 			p.advance() // consume ROUTE
 			stmt, err := p.parseDropServiceBrokerStmt("ROUTE")
@@ -2150,7 +2150,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			stmt.Loc.Start = loc
 			return stmt, nil
 		}
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "REMOTE") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "REMOTE") {
 			p.advance() // consume DROP
 			p.advance() // consume REMOTE
 			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SERVICE") {
@@ -2166,7 +2166,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			stmt.Loc.Start = loc
 			return stmt, nil
 		}
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "BROKER") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "BROKER") {
 			p.advance() // consume DROP
 			p.advance() // consume BROKER
 			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "PRIORITY") {
@@ -2191,7 +2191,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			return stmt, nil
 		}
 		// DROP AVAILABILITY GROUP
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "AVAILABILITY") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "AVAILABILITY") {
 			p.advance() // consume DROP
 			p.advance() // consume AVAILABILITY
 			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "GROUP") {
@@ -2205,7 +2205,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			return stmt, nil
 		}
 		// DROP EVENT NOTIFICATION / EVENT SESSION
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "EVENT") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "EVENT") {
 			p.advance() // consume DROP
 			p.advance() // consume EVENT
 			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "NOTIFICATION") {
@@ -2229,7 +2229,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			return nil, nil
 		}
 		// DROP CRYPTOGRAPHIC PROVIDER
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "CRYPTOGRAPHIC") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "CRYPTOGRAPHIC") {
 			p.advance() // consume DROP
 			stmt, err := p.parseSecurityKeyStmt("DROP")
 			if err != nil {
@@ -2239,7 +2239,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			return stmt, nil
 		}
 		// DROP WORKLOAD GROUP / DROP WORKLOAD CLASSIFIER
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "WORKLOAD") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "WORKLOAD") {
 			p.advance() // consume DROP
 			p.advance() // consume WORKLOAD
 			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CLASSIFIER") {
@@ -2262,7 +2262,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			return stmt, nil
 		}
 		// DROP RESOURCE POOL
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "RESOURCE") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "RESOURCE") {
 			p.advance() // consume DROP
 			p.advance() // consume RESOURCE
 			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "POOL") {
@@ -2277,7 +2277,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			return nil, nil
 		}
 		// DROP SECURITY POLICY
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "SECURITY") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "SECURITY") {
 			p.advance() // consume DROP
 			p.advance() // consume SECURITY
 			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "POLICY") {
@@ -2292,7 +2292,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			return nil, nil
 		}
 		// DROP SENSITIVITY CLASSIFICATION
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "SENSITIVITY") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "SENSITIVITY") {
 			p.advance() // consume DROP
 			p.advance() // consume SENSITIVITY
 			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CLASSIFICATION") {
@@ -2306,7 +2306,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			return stmt, nil
 		}
 		// DROP [COUNTER] SIGNATURE
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) &&
+		if p.isIdentLikeToken(next) &&
 			(matchesKeywordCI(next.Str, "SIGNATURE") || matchesKeywordCI(next.Str, "COUNTER")) {
 			p.advance() // consume DROP
 			isCounter := false
@@ -2327,7 +2327,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			return nil, nil
 		}
 		// DROP FULLTEXT STOPLIST
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "FULLTEXT") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "FULLTEXT") {
 			// Peek further: need to distinguish FULLTEXT STOPLIST from FULLTEXT INDEX/CATALOG
 			// FULLTEXT INDEX/CATALOG are handled in parseDropStmt, but STOPLIST is a separate stmt type
 			p.advance() // consume DROP
@@ -2388,7 +2388,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			return dropStmt, nil
 		}
 		// DROP AGGREGATE
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "AGGREGATE") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "AGGREGATE") {
 			p.advance() // consume DROP
 			p.advance() // consume AGGREGATE
 			stmt, err := p.parseDropAggregateStmt()
@@ -2399,7 +2399,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			return stmt, nil
 		}
 		// DROP SEARCH PROPERTY LIST
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "SEARCH") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "SEARCH") {
 			p.advance() // consume DROP
 			p.advance() // consume SEARCH
 			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "PROPERTY") {
@@ -2417,7 +2417,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			return nil, nil
 		}
 		// DROP MASTER KEY
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "MASTER") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "MASTER") {
 			p.advance() // consume DROP
 			stmt, err := p.parseSecurityKeyStmt("DROP")
 			if err != nil {
@@ -2427,7 +2427,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			return stmt, nil
 		}
 		// DROP SYMMETRIC KEY
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "SYMMETRIC") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "SYMMETRIC") {
 			p.advance() // consume DROP
 			stmt, err := p.parseSecurityKeyStmt("DROP")
 			if err != nil {
@@ -2437,7 +2437,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			return stmt, nil
 		}
 		// DROP ASYMMETRIC KEY
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "ASYMMETRIC") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "ASYMMETRIC") {
 			p.advance() // consume DROP
 			stmt, err := p.parseSecurityKeyStmt("DROP")
 			if err != nil {
@@ -2447,7 +2447,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			return stmt, nil
 		}
 		// DROP CERTIFICATE
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "CERTIFICATE") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "CERTIFICATE") {
 			p.advance() // consume DROP
 			stmt, err := p.parseSecurityKeyStmt("DROP")
 			if err != nil {
@@ -2457,7 +2457,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			return stmt, nil
 		}
 		// DROP CREDENTIAL
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "CREDENTIAL") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "CREDENTIAL") {
 			p.advance() // consume DROP
 			stmt, err := p.parseSecurityKeyStmt("DROP")
 			if err != nil {
@@ -2467,7 +2467,7 @@ func (p *Parser) parseDropOrSecurityStmt() (nodes.StmtNode, error) {
 			return stmt, nil
 		}
 		// DROP FEDERATION
-		if (next.Type == tokIDENT || (next.Type >= kwADD && next.Str != "")) && matchesKeywordCI(next.Str, "FEDERATION") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "FEDERATION") {
 			p.advance() // consume DROP
 			p.advance() // consume FEDERATION
 			stmt, err := p.parseDropFederationStmt()

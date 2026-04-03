@@ -390,7 +390,7 @@ func (p *Parser) parseSetClause() (*nodes.SetExpr, error) {
 		}
 
 		// Check for .WRITE(expression, @Offset, @Length) form
-		if p.cur.Type == '.' && p.peekNext().Type == tokIDENT {
+		if p.cur.Type == '.' && p.isIdentLikeToken(p.peekNext()) {
 			next := p.peekNext()
 			if strings.EqualFold(next.Str, "WRITE") {
 				p.advance() // consume .
@@ -450,7 +450,7 @@ func (p *Parser) parseSetTarget() (*nodes.ColumnRef, error) {
 	if p.cur.Type == '.' {
 		next := p.peekNext()
 		// Don't consume if it's .WRITE (handled separately)
-		if next.Type == tokIDENT && strings.EqualFold(next.Str, "WRITE") {
+		if p.isIdentLikeToken(next) && strings.EqualFold(next.Str, "WRITE") {
 			return ref, nil
 		}
 		p.advance()

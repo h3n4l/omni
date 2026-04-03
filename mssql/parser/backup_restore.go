@@ -374,7 +374,7 @@ func (p *Parser) parseBackupRestoreFileList() (*nodes.List, error) {
 			// If next token after comma is FILE, FILEGROUP, PAGE, READ_WRITE_FILEGROUPS, consume comma
 			next := p.peekNext()
 			if next.Type == kwFILE ||
-				(next.Type == tokIDENT && (strings.EqualFold(next.Str, "FILEGROUP") ||
+				(p.isIdentLikeToken(next) && (strings.EqualFold(next.Str, "FILEGROUP") ||
 					strings.EqualFold(next.Str, "PAGE") ||
 					strings.EqualFold(next.Str, "READ_WRITE_FILEGROUPS"))) {
 				p.advance() // consume comma
@@ -652,7 +652,7 @@ func (p *Parser) parseOneBackupRestoreOption() (*nodes.BackupRestoreOption, erro
 		if p.cur.Type == '=' {
 			p.advance()
 			if p.cur.Type == tokICONST || p.cur.Type == tokFCONST ||
-				p.cur.Type == tokSCONST || (p.cur.Type == tokIDENT && p.cur.Str[0] == '@') {
+				p.cur.Type == tokSCONST || (p.isIdentLike() && p.cur.Str[0] == '@') {
 				opt.Value = p.cur.Str
 				p.advance()
 			}

@@ -266,7 +266,7 @@ func (p *Parser) parseDropStmt() (*nodes.DropStmt, error) {
 		p.advance()
 	} else if p.cur.Type == kwRESTRICT {
 		p.advance()
-	} else if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "cascade") {
+	} else if p.isIdentLike() && strings.EqualFold(p.cur.Str, "cascade") {
 		p.advance()
 	}
 

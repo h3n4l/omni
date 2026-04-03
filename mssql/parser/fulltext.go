@@ -416,7 +416,7 @@ func (p *Parser) parseAlterFulltextIndexStmt() (*nodes.AlterFulltextIndexStmt, e
 func (p *Parser) parseWithNoPopulation() bool {
 	if p.cur.Type == kwWITH {
 		next := p.peekNext()
-		if next.Type == tokIDENT && matchesKeywordCI(next.Str, "NO") {
+		if p.isIdentLikeToken(next) && matchesKeywordCI(next.Str, "NO") {
 			p.advance() // consume WITH
 			p.advance() // consume NO
 			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "POPULATION") {

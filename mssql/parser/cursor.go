@@ -384,7 +384,7 @@ func (p *Parser) parseDeallocateCursorStmt() (*nodes.DeallocateCursorStmt, error
 // matchIdentCI checks if the current token is an identifier-like token matching
 // the given string (case-insensitive). If it matches, consume and return true.
 func (p *Parser) matchIdentCI(s string) bool {
-	if p.isIdentLike() && strings.EqualFold(p.cur.Str, s) {
+	if p.isAnyKeywordIdent() && strings.EqualFold(p.cur.Str, s) {
 		p.advance()
 		return true
 	}

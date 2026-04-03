@@ -263,7 +263,7 @@ func (p *Parser) parseSelectStmt() (*nodes.SelectStmt, error) {
 			return nil, err
 		}
 		// Consume optional ROWS/ROW
-		if p.cur.Type == kwROWS || (p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "row")) {
+		if p.cur.Type == kwROWS || (p.isIdentLike() && strings.EqualFold(p.cur.Str, "row")) {
 			p.advance()
 		}
 		// FETCH NEXT n ROWS ONLY
@@ -271,7 +271,7 @@ func (p *Parser) parseSelectStmt() (*nodes.SelectStmt, error) {
 			fetchLoc := p.pos()
 			p.advance()
 			// NEXT or FIRST
-			if p.cur.Type == tokIDENT && (strings.EqualFold(p.cur.Str, "next") || strings.EqualFold(p.cur.Str, "first")) {
+			if p.isIdentLike() && (strings.EqualFold(p.cur.Str, "next") || strings.EqualFold(p.cur.Str, "first")) {
 				p.advance()
 			}
 			count, err := p.parseExpr()
@@ -279,11 +279,11 @@ func (p *Parser) parseSelectStmt() (*nodes.SelectStmt, error) {
 				return nil, err
 			}
 			// ROWS/ROW
-			if p.cur.Type == kwROWS || (p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "row")) {
+			if p.cur.Type == kwROWS || (p.isIdentLike() && strings.EqualFold(p.cur.Str, "row")) {
 				p.advance()
 			}
 			// ONLY
-			if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "only") {
+			if p.isIdentLike() && strings.EqualFold(p.cur.Str, "only") {
 				p.advance()
 			}
 			stmt.FetchClause = &nodes.FetchClause{
@@ -587,7 +587,7 @@ func (p *Parser) parseTopClause() (*nodes.TopClause, error) {
 	// WITH TIES
 	if p.cur.Type == kwWITH {
 		next := p.peekNext()
-		if next.Type == tokIDENT && strings.EqualFold(next.Str, "ties") {
+		if p.isIdentLikeToken(next) && strings.EqualFold(next.Str, "ties") {
 			p.advance() // consume WITH
 			p.advance() // consume TIES
 			tc.WithTies = true
@@ -627,7 +627,7 @@ func (p *Parser) parseTargetList() (*nodes.List, error) {
 				target.Name = p.cur.Str
 				p.advance()
 			}
-		} else if p.cur.Type == tokIDENT {
+		} else if p.isIdentLike() && !p.isStatementStart() && !p.isSelectClauseIdent() {
 			target.Name = p.cur.Str
 			p.advance()
 		}
@@ -1099,7 +1099,7 @@ func (p *Parser) parseOptionalAlias() string {
 		return ""
 	}
 	// Bare alias - only if it's an identifier and NOT a clause keyword
-	if p.cur.Type == tokIDENT && !p.isSelectClauseIdent() {
+	if p.isIdentLike() && !p.isSelectClauseIdent() {
 		name := p.cur.Str
 		p.advance()
 		return name
@@ -1110,6 +1110,10 @@ func (p *Parser) parseOptionalAlias() string {
 // isSelectClauseIdent returns true if the current identifier token is a contextual
 // keyword that starts a SELECT clause and should not be consumed as a bare alias.
 func (p *Parser) isSelectClauseIdent() bool {
+	// Check for WINDOW keyword token or identifier
+	if p.cur.Type == kwWINDOW {
+		return true
+	}
 	if p.cur.Type != tokIDENT {
 		return false
 	}
@@ -1387,7 +1391,7 @@ func (p *Parser) parseGroupByList() (*nodes.List, error) {
 		// GROUPING SETS (...)
 		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "GROUPING") {
 			next := p.peekNext()
-			if next.Type == tokIDENT && strings.EqualFold(next.Str, "SETS") {
+			if p.isIdentLikeToken(next) && strings.EqualFold(next.Str, "SETS") {
 				loc := p.pos()
 				p.advance() // consume GROUPING
 				p.advance() // consume SETS
@@ -1551,7 +1555,7 @@ func (p *Parser) parseWindowClause() (*nodes.List, error) {
 		}
 
 		// Optional existing_window_name (must be an ident not followed by keyword like PARTITION, ORDER)
-		if p.cur.Type == tokIDENT && p.cur.Type != kwPARTITION && p.cur.Type != kwORDER &&
+		if p.isIdentLike() && p.cur.Type != kwPARTITION && p.cur.Type != kwORDER &&
 			p.cur.Type != kwROWS && p.cur.Type != kwRANGE && p.cur.Type != kwGROUPS {
 			// Check if this looks like a reference name (ident not a keyword)
 			if !strings.EqualFold(p.cur.Str, "PARTITION") &&

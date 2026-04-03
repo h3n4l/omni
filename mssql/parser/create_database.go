@@ -652,5 +652,5 @@ func (p *Parser) isIdentLikeToken(tok Token) bool {
 	if tok.Type == tokIDENT {
 		return true
 	}
-	return tok.Type >= kwADD && tok.Str != ""
+	return tok.Type >= kwACCENT_SENSITIVITY && tok.Str != ""
 }

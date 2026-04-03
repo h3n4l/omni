@@ -22,11 +22,8 @@ func (p *Parser) parseDataType() (*nodes.DataType, error) {
 
 	// Get type name - could be keyword (INT, VARCHAR, etc.) or identifier
 	var name string
-	if p.cur.Type == tokIDENT {
-		name = p.cur.Str
-		p.advance()
-	} else if p.cur.Type >= kwADD && p.cur.Str != "" {
-		// Keywords used as type names
+	if p.isAnyKeywordIdent() {
+		// Accept identifiers and any keyword as a type name (e.g., INT, VARCHAR, etc.)
 		name = p.cur.Str
 		p.advance()
 	} else {

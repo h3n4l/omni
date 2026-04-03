@@ -56,15 +56,15 @@ func (p *Parser) parseCreateTableStmt() (*nodes.CreateTableStmt, error) {
 	// Note: AS CLONE OF is handled at the dispatch level (parser.go)
 	if p.cur.Type == kwAS {
 		next := p.peekNext()
-		if next.Type == tokIDENT && strings.EqualFold(next.Str, "node") {
+		if p.isIdentLikeToken(next) && strings.EqualFold(next.Str, "node") {
 			p.advance() // AS
 			p.advance() // NODE
 			stmt.IsNode = true
-		} else if next.Type == tokIDENT && strings.EqualFold(next.Str, "edge") {
+		} else if p.isIdentLikeToken(next) && strings.EqualFold(next.Str, "edge") {
 			p.advance() // AS
 			p.advance() // EDGE
 			stmt.IsEdge = true
-		} else if next.Type == tokIDENT && strings.EqualFold(next.Str, "filetable") {
+		} else if p.isIdentLikeToken(next) && strings.EqualFold(next.Str, "filetable") {
 			p.advance() // AS
 			p.advance() // FILETABLE
 			stmt.IsFileTable = true
@@ -94,12 +94,12 @@ func (p *Parser) parseCreateTableStmt() (*nodes.CreateTableStmt, error) {
 
 	for p.cur.Type != ')' && p.cur.Type != tokEOF {
 		// Check for PERIOD FOR SYSTEM_TIME
-		if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "period") {
+		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "period") {
 			if p.peekNext().Type == kwFOR {
 				p.advance() // PERIOD
 				p.advance() // FOR
 				// SYSTEM_TIME
-				if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "system_time") {
+				if p.isIdentLike() && strings.EqualFold(p.cur.Str, "system_time") {
 					p.advance()
 				}
 				// ( start_col , end_col )
@@ -203,7 +203,7 @@ func (p *Parser) parseCreateTableStmt() (*nodes.CreateTableStmt, error) {
 	}
 
 	// TEXTIMAGE_ON filegroup
-	if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "textimage_on") {
+	if p.isIdentLike() && strings.EqualFold(p.cur.Str, "textimage_on") {
 		p.advance()
 		if p.isIdentLike() {
 			stmt.TextImageOn = p.cur.Str
@@ -212,7 +212,7 @@ func (p *Parser) parseCreateTableStmt() (*nodes.CreateTableStmt, error) {
 	}
 
 	// FILESTREAM_ON filegroup
-	if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "filestream_on") {
+	if p.isIdentLike() && strings.EqualFold(p.cur.Str, "filestream_on") {
 		p.advance()
 		if p.isIdentLike() {
 			stmt.FilestreamOn = p.cur.Str
@@ -233,11 +233,11 @@ func (p *Parser) parseCreateTableStmt() (*nodes.CreateTableStmt, error) {
 	// AS NODE | AS EDGE (graph tables) -- can also appear after closing paren
 	if !stmt.IsNode && !stmt.IsEdge && !stmt.IsFileTable && p.cur.Type == kwAS {
 		next := p.peekNext()
-		if next.Type == tokIDENT && strings.EqualFold(next.Str, "node") {
+		if p.isIdentLikeToken(next) && strings.EqualFold(next.Str, "node") {
 			p.advance() // AS
 			p.advance() // NODE
 			stmt.IsNode = true
-		} else if next.Type == tokIDENT && strings.EqualFold(next.Str, "edge") {
+		} else if p.isIdentLikeToken(next) && strings.EqualFold(next.Str, "edge") {
 			p.advance() // AS
 			p.advance() // EDGE
 			stmt.IsEdge = true
@@ -461,7 +461,7 @@ func (p *Parser) parseColumnDef() (*nodes.ColumnDef, error) {
 		}
 		persisted := false
 		notNull := false
-		if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "persisted") {
+		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "persisted") {
 			persisted = true
 			p.advance()
 			// [ NOT NULL ]
@@ -544,14 +544,14 @@ func (p *Parser) parseColumnDef() (*nodes.ColumnDef, error) {
 		consumed := false
 
 		// FILESTREAM
-		if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "filestream") {
+		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "filestream") {
 			col.Filestream = true
 			p.advance()
 			consumed = true
 		}
 
 		// SPARSE
-		if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "sparse") {
+		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "sparse") {
 			col.Sparse = true
 			p.advance()
 			consumed = true
@@ -565,14 +565,14 @@ func (p *Parser) parseColumnDef() (*nodes.ColumnDef, error) {
 		}
 
 		// HIDDEN (standalone, not after GENERATED ALWAYS)
-		if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "hidden") {
+		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "hidden") {
 			col.Hidden = true
 			p.advance()
 			consumed = true
 		}
 
 		// MASKED WITH (FUNCTION = 'mask_function')
-		if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "masked") {
+		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "masked") {
 			p.advance() // MASKED
 			if p.cur.Type == kwWITH {
 				p.advance() // WITH
@@ -596,7 +596,7 @@ func (p *Parser) parseColumnDef() (*nodes.ColumnDef, error) {
 		}
 
 		// ENCRYPTED WITH (...)
-		if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "encrypted") {
+		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "encrypted") {
 			encWith, encErr := p.parseEncryptedWith()
 			if encErr != nil {
 				return nil, encErr
@@ -606,14 +606,14 @@ func (p *Parser) parseColumnDef() (*nodes.ColumnDef, error) {
 		}
 
 		// GENERATED ALWAYS AS { ROW | TRANSACTION_ID | SEQUENCE_NUMBER } { START | END } [ HIDDEN ]
-		if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "generated") {
+		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "generated") {
 			genAlways, genErr := p.parseGeneratedAlways()
 			if genErr != nil {
 				return nil, genErr
 			}
 			col.GeneratedAlways = genAlways
 			// GENERATED ALWAYS ... HIDDEN
-			if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "hidden") {
+			if p.isIdentLike() && strings.EqualFold(p.cur.Str, "hidden") {
 				col.Hidden = true
 				p.advance()
 			}
@@ -834,7 +834,7 @@ func (p *Parser) parseGeneratedAlways() (*nodes.GeneratedAlwaysSpec, error) {
 	}
 
 	// ALWAYS
-	if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "always") {
+	if p.isIdentLike() && strings.EqualFold(p.cur.Str, "always") {
 		p.advance()
 	}
 
@@ -1304,9 +1304,9 @@ func (p *Parser) parseRefAction() nodes.ReferentialAction {
 		}
 	}
 	// NO ACTION
-	if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "no") {
+	if p.isIdentLike() && strings.EqualFold(p.cur.Str, "no") {
 		p.advance()
-		if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "action") {
+		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "action") {
 			p.advance()
 		}
 		return nodes.RefActNoAction
@@ -1451,7 +1451,7 @@ trailingOptions:
 	}
 
 	// [ FILESTREAM_ON { ... } ]
-	if p.cur.Type == tokIDENT && strings.EqualFold(p.cur.Str, "filestream_on") {
+	if p.isIdentLike() && strings.EqualFold(p.cur.Str, "filestream_on") {
 		p.advance()
 		if p.isIdentLike() {
 			idx.FilestreamOn = p.cur.Str
