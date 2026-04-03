@@ -71,7 +71,7 @@ func (p *Parser) parseAlterServerRoleStmt() (*nodes.SecurityStmt, error) {
 	if p.cur.Type == kwADD {
 		optLoc := p.pos()
 		p.advance() // consume ADD
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "MEMBER") {
+		if p.cur.Type == kwMEMBER {
 			p.advance() // consume MEMBER
 		}
 		if member, ok := p.parseIdentifier(); ok {
@@ -80,7 +80,7 @@ func (p *Parser) parseAlterServerRoleStmt() (*nodes.SecurityStmt, error) {
 	} else if p.cur.Type == kwDROP {
 		optLoc := p.pos()
 		p.advance() // consume DROP
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "MEMBER") {
+		if p.cur.Type == kwMEMBER {
 			p.advance() // consume MEMBER
 		}
 		if member, ok := p.parseIdentifier(); ok {
@@ -193,70 +193,70 @@ func (p *Parser) parseAlterServerConfigurationStmt() (*nodes.AlterServerConfigur
 	// Determine the option type by looking at the first keyword(s)
 	var opts []nodes.Node
 
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "PROCESS") {
+	if p.cur.Type == kwPROCESS {
 		p.advance() // consume PROCESS
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AFFINITY") {
+		if p.cur.Type == kwAFFINITY {
 			p.advance() // consume AFFINITY
 		}
 		stmt.OptionType = "PROCESS AFFINITY"
 		opts, _ = p.parseServerConfigProcessAffinity()
-	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "DIAGNOSTICS") {
+	} else if p.cur.Type == kwDIAGNOSTICS {
 		p.advance() // consume DIAGNOSTICS
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LOG") {
+		if p.cur.Type == kwLOG {
 			p.advance() // consume LOG
 		}
 		stmt.OptionType = "DIAGNOSTICS LOG"
 		opts, _ = p.parseServerConfigDiagnosticsLog()
-	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "FAILOVER") {
+	} else if p.cur.Type == kwFAILOVER {
 		p.advance() // consume FAILOVER
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CLUSTER") {
+		if p.cur.Type == kwCLUSTER {
 			p.advance() // consume CLUSTER
 		}
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "PROPERTY") {
+		if p.cur.Type == kwPROPERTY {
 			p.advance() // consume PROPERTY
 		}
 		stmt.OptionType = "FAILOVER CLUSTER PROPERTY"
 		opts, _ = p.parseServerConfigFailoverClusterProperty()
-	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "HADR") {
+	} else if p.cur.Type == kwHADR {
 		p.advance() // consume HADR
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CLUSTER") {
+		if p.cur.Type == kwCLUSTER {
 			p.advance() // consume CLUSTER
 		}
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CONTEXT") {
+		if p.cur.Type == kwCONTEXT {
 			p.advance() // consume CONTEXT
 		}
 		stmt.OptionType = "HADR CLUSTER CONTEXT"
 		opts, _ = p.parseServerConfigHadrCluster()
-	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "BUFFER") {
+	} else if p.cur.Type == kwBUFFER {
 		p.advance() // consume BUFFER
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "POOL") {
+		if p.cur.Type == kwPOOL {
 			p.advance() // consume POOL
 		}
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "EXTENSION") {
+		if p.cur.Type == kwEXTENSION {
 			p.advance() // consume EXTENSION
 		}
 		stmt.OptionType = "BUFFER POOL EXTENSION"
 		opts, _ = p.parseServerConfigBufferPoolExtension()
-	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SOFTNUMA") {
+	} else if p.cur.Type == kwSOFTNUMA {
 		p.advance() // consume SOFTNUMA
 		stmt.OptionType = "SOFTNUMA"
 		opts, _ = p.parseServerConfigOnOff()
-	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "MEMORY_OPTIMIZED") {
+	} else if p.cur.Type == kwMEMORY_OPTIMIZED {
 		p.advance() // consume MEMORY_OPTIMIZED
 		stmt.OptionType = "MEMORY_OPTIMIZED"
 		opts, _ = p.parseServerConfigMemoryOptimized()
-	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "HARDWARE_OFFLOAD") {
+	} else if p.cur.Type == kwHARDWARE_OFFLOAD {
 		p.advance() // consume HARDWARE_OFFLOAD
 		stmt.OptionType = "HARDWARE_OFFLOAD"
 		opts, _ = p.parseServerConfigOnOff()
-	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "EXTERNAL") {
+	} else if p.cur.Type == kwEXTERNAL {
 		p.advance() // consume EXTERNAL
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AUTHENTICATION") {
+		if p.cur.Type == kwAUTHENTICATION {
 			p.advance() // consume AUTHENTICATION
 		}
 		stmt.OptionType = "EXTERNAL AUTHENTICATION"
 		opts, _ = p.parseServerConfigExternalAuthentication()
-	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SUSPEND_FOR_SNAPSHOT_BACKUP") {
+	} else if p.cur.Type == kwSUSPEND_FOR_SNAPSHOT_BACKUP {
 		p.advance() // consume SUSPEND_FOR_SNAPSHOT_BACKUP
 		stmt.OptionType = "SUSPEND_FOR_SNAPSHOT_BACKUP"
 		opts, _ = p.parseServerConfigSuspendForSnapshotBackup()
@@ -305,7 +305,7 @@ func (p *Parser) parseServerConfigProcessAffinity() ([]nodes.Node, error) {
 	}
 
 	// Check for AUTO
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AUTO") {
+	if p.cur.Type == kwAUTO {
 		p.advance()
 		opts = append(opts, &nodes.ServerConfigOption{Name: key, Value: "AUTO", Loc: nodes.Loc{Start: optLoc, End: p.prevEnd()}})
 		return opts, nil
@@ -399,7 +399,7 @@ func (p *Parser) parseServerConfigDiagnosticsLog() ([]nodes.Node, error) {
 		val := p.cur.Str
 		p.advance()
 		// Check for MB suffix (MAX_SIZE)
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "MB") {
+		if p.cur.Type == kwMB {
 			val += " MB"
 			p.advance()
 		}
@@ -479,7 +479,7 @@ func (p *Parser) parseServerConfigHadrCluster() ([]nodes.Node, error) {
 		val := "'" + p.cur.Str + "'"
 		p.advance()
 		opts = append(opts, &nodes.ServerConfigOption{Name: "CONTEXT", Value: val, Loc: nodes.Loc{Start: optLoc, End: p.prevEnd()}})
-	} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LOCAL") {
+	} else if p.cur.Type == kwLOCAL {
 		p.advance()
 		opts = append(opts, &nodes.ServerConfigOption{Name: "CONTEXT", Value: "LOCAL", Loc: nodes.Loc{Start: optLoc, End: p.prevEnd()}})
 	}
@@ -518,20 +518,20 @@ func (p *Parser) parseServerConfigBufferPoolExtension() ([]nodes.Node, error) {
 					break // unexpected token - stop parsing options
 				}
 				subLoc := p.pos()
-				key := p.cur.Str // FILENAME or SIZE
+				keyType := p.cur.Type
 				p.advance()
 
 				if p.cur.Type == '=' {
 					p.advance() // consume =
 				}
 
-				if matchesKeywordCI(key, "FILENAME") {
+				if keyType == kwFILENAME {
 					if p.cur.Type == tokSCONST {
 						val := "'" + p.cur.Str + "'"
 						p.advance()
 						opts = append(opts, &nodes.ServerConfigOption{Name: "FILENAME", Value: val, Loc: nodes.Loc{Start: subLoc, End: p.prevEnd()}})
 					}
-				} else if matchesKeywordCI(key, "SIZE") {
+				} else if keyType == kwSIZE {
 					if p.cur.Type == tokICONST || p.cur.Type == tokFCONST {
 						val := p.cur.Str
 						p.advance()
@@ -599,7 +599,8 @@ func (p *Parser) parseServerConfigMemoryOptimized() ([]nodes.Node, error) {
 	}
 
 	optLoc := p.pos()
-	key := p.cur.Str
+	key := strings.ToUpper(p.cur.Str)
+	keyType := p.cur.Type
 	p.advance()
 
 	// Consume =
@@ -612,9 +613,9 @@ func (p *Parser) parseServerConfigMemoryOptimized() ([]nodes.Node, error) {
 		opts = append(opts, &nodes.ServerConfigOption{Name: key, Value: "ON", Loc: nodes.Loc{Start: optLoc, End: p.prevEnd()}})
 
 		// Check for (RESOURCE_POOL = 'pool_name') -- only for TEMPDB_METADATA
-		if matchesKeywordCI(key, "TEMPDB_METADATA") && p.cur.Type == '(' {
+		if keyType == kwTEMPDB_METADATA && p.cur.Type == '(' {
 			p.advance() // consume (
-			if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "RESOURCE_POOL") {
+			if p.cur.Type == kwRESOURCE_POOL {
 				subLoc := p.pos()
 				p.advance() // consume RESOURCE_POOL
 				if p.cur.Type == '=' {
@@ -672,7 +673,7 @@ func (p *Parser) parseServerConfigSuspendForSnapshotBackup() ([]nodes.Node, erro
 			if !p.isIdentLike() {
 				break // unexpected token
 			}
-			if matchesKeywordCI(p.cur.Str, "GROUP") {
+			if p.cur.Type == kwGROUP {
 				subLoc := p.pos()
 				p.advance() // consume GROUP
 				if p.cur.Type == '=' {
@@ -696,7 +697,7 @@ func (p *Parser) parseServerConfigSuspendForSnapshotBackup() ([]nodes.Node, erro
 					}
 					opts = append(opts, &nodes.ServerConfigOption{Name: "GROUP", Value: strings.Join(dbs, ", "), Loc: nodes.Loc{Start: subLoc, End: p.prevEnd()}})
 				}
-			} else if matchesKeywordCI(p.cur.Str, "MODE") {
+			} else if p.cur.Type == kwMODE {
 				subLoc := p.pos()
 				p.advance() // consume MODE
 				if p.cur.Type == '=' {
