@@ -236,7 +236,7 @@ func (p *Parser) parseReconfigureStmt() (*nodes.ReconfigureStmt, error) {
 	// WITH OVERRIDE
 	if p.cur.Type == kwWITH {
 		next := p.peekNext()
-		if next.Str != "" && strings.EqualFold(next.Str, "OVERRIDE") {
+		if next.Type == kwOVERRIDE {
 			p.advance() // WITH
 			p.advance() // OVERRIDE
 			stmt.WithOverride = true
@@ -285,17 +285,17 @@ func (p *Parser) parseKillStmt() (nodes.StmtNode, error) {
 	p.advance() // consume KILL
 
 	// Check for KILL QUERY NOTIFICATION SUBSCRIPTION
-	if p.isIdentLike() && strings.EqualFold(p.cur.Str, "QUERY") {
+	if p.cur.Type == kwQUERY {
 		next := p.peekNext()
-		if next.Str != "" && strings.EqualFold(next.Str, "NOTIFICATION") {
+		if next.Type == kwNOTIFICATION {
 			return p.parseKillQueryNotificationStmt(loc)
 		}
 	}
 
 	// Check for KILL STATS JOB job_id
-	if p.isIdentLike() && strings.EqualFold(p.cur.Str, "STATS") {
+	if p.cur.Type == kwSTATS {
 		next := p.peekNext()
-		if next.Str != "" && strings.EqualFold(next.Str, "JOB") {
+		if next.Type == kwJOB {
 			return p.parseKillStatsJobStmt(loc)
 		}
 	}
@@ -310,7 +310,7 @@ func (p *Parser) parseKillStmt() (nodes.StmtNode, error) {
 	// WITH { STATUSONLY | COMMIT | ROLLBACK }
 	if p.cur.Type == kwWITH {
 		p.advance()
-		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "STATUSONLY") {
+		if p.cur.Type == kwSTATUSONLY {
 			p.advance()
 			stmt.StatusOnly = true
 		} else if p.cur.Type == kwCOMMIT {
@@ -355,7 +355,7 @@ func (p *Parser) parseKillQueryNotificationStmt(loc int) (*nodes.KillQueryNotifi
 	p.advance() // consume NOTIFICATION
 
 	// consume SUBSCRIPTION
-	if p.isIdentLike() && strings.EqualFold(p.cur.Str, "SUBSCRIPTION") {
+	if p.cur.Type == kwSUBSCRIPTION {
 		p.advance()
 	}
 
@@ -473,7 +473,7 @@ func (p *Parser) parseWritetextStmt() (*nodes.WritetextStmt, error) {
 	// WITH LOG
 	if p.cur.Type == kwWITH {
 		next := p.peekNext()
-		if next.Str != "" && strings.EqualFold(next.Str, "LOG") {
+		if next.Type == kwLOG {
 			p.advance() // WITH
 			p.advance() // LOG
 			stmt.WithLog = true
@@ -538,7 +538,7 @@ func (p *Parser) parseUpdatetextStmt() (*nodes.UpdatetextStmt, error) {
 	// WITH LOG
 	if p.cur.Type == kwWITH {
 		next := p.peekNext()
-		if next.Str != "" && strings.EqualFold(next.Str, "LOG") {
+		if next.Type == kwLOG {
 			p.advance()
 			p.advance()
 			stmt.WithLog = true
@@ -785,10 +785,10 @@ func (p *Parser) parseAlterDatabaseScopedConfigStmt() (*nodes.SecurityStmt, erro
 	var opts []nodes.Node
 
 	// CLEAR PROCEDURE_CACHE [plan_handle]
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "CLEAR") {
+	if p.cur.Type == kwCLEAR {
 		p.advance() // consume CLEAR
 		optStr := "CLEAR"
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "PROCEDURE_CACHE") {
+		if p.cur.Type == kwPROCEDURE_CACHE {
 			optStr += " PROCEDURE_CACHE"
 			p.advance()
 		}
@@ -803,7 +803,7 @@ func (p *Parser) parseAlterDatabaseScopedConfigStmt() (*nodes.SecurityStmt, erro
 		forSecondary := false
 		if p.cur.Type == kwFOR {
 			next := p.peekNext()
-			if next.Str != "" && matchesKeywordCI(next.Str, "SECONDARY") {
+			if next.Type == kwSECONDARY {
 				p.advance() // consume FOR
 				p.advance() // consume SECONDARY
 				forSecondary = true
@@ -1164,7 +1164,7 @@ func (p *Parser) parseRenameStmt() (*nodes.RenameStmt, error) {
 	}
 
 	// OBJECT or DATABASE
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "OBJECT") {
+	if p.cur.Type == kwOBJECT {
 		stmt.ObjectType = "OBJECT"
 		p.advance()
 	} else if p.cur.Type == kwDATABASE {
@@ -1181,7 +1181,7 @@ func (p *Parser) parseRenameStmt() (*nodes.RenameStmt, error) {
 	stmt.Name , _ = p.parseTableRef()
 
 	// Check for COLUMN rename variant
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "COLUMN") {
+	if p.cur.Type == kwCOLUMN {
 		p.advance() // consume COLUMN
 		if p.isIdentLike() || p.cur.Type == '[' {
 			stmt.ColumnName = p.cur.Str
@@ -1319,7 +1319,7 @@ func (p *Parser) parseCreateTableCloneStmt(name *nodes.TableRef) (*nodes.CreateT
 	stmt.SourceName , _ = p.parseTableRef()
 
 	// Optional AT 'point_in_time'
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AT") {
+	if p.cur.Type == kwAT {
 		p.advance() // consume AT
 		if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
 			stmt.AtTime = p.cur.Str
@@ -1506,7 +1506,7 @@ func (p *Parser) parseCreateRemoteTableAsSelectStmt() (*nodes.CreateRemoteTableA
 	stmt.Name , _ = p.parseTableRef()
 
 	// AT ('<connection_string>')
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "AT") {
+	if p.cur.Type == kwAT {
 		p.advance() // consume AT
 		if p.cur.Type == '(' {
 			p.advance() // consume '('
@@ -1604,7 +1604,7 @@ func (p *Parser) parseAlterFederationStmt() (*nodes.AlterFederationStmt, error) 
 	}
 
 	// SPLIT AT or DROP AT
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "SPLIT") {
+	if p.cur.Type == kwSPLIT {
 		p.advance() // consume SPLIT
 		p.matchIdentCI("AT")
 		stmt.Kind = "SPLIT"
@@ -1613,10 +1613,10 @@ func (p *Parser) parseAlterFederationStmt() (*nodes.AlterFederationStmt, error) 
 		p.matchIdentCI("AT")
 		p.match('(')
 		// LOW or HIGH
-		if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "LOW") {
+		if p.cur.Type == kwLOW {
 			stmt.Kind = "DROP LOW"
 			p.advance()
-		} else if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "HIGH") {
+		} else if p.cur.Type == kwHIGH {
 			stmt.Kind = "DROP HIGH"
 			p.advance()
 		}
@@ -1679,7 +1679,7 @@ func (p *Parser) parseUseFederationStmt() (*nodes.UseFederationStmt, error) {
 	}
 
 	// ROOT or federation_name
-	if p.isIdentLike() && matchesKeywordCI(p.cur.Str, "ROOT") {
+	if p.cur.Type == kwROOT {
 		stmt.IsRoot = true
 		p.advance() // consume ROOT
 		p.match(kwWITH)

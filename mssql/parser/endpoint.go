@@ -157,7 +157,7 @@ func (p *Parser) parseEndpointOptions() *nodes.List {
 				p.advance()
 			}
 
-		case p.isIdentLike() && strings.EqualFold(p.cur.Str, "STATE"):
+		case p.cur.Type == kwSTATE:
 			optLoc := p.pos()
 			p.advance()
 			if p.cur.Type == '=' {
@@ -171,11 +171,11 @@ func (p *Parser) parseEndpointOptions() *nodes.List {
 		case p.cur.Type == kwAS:
 			optLoc := p.pos()
 			p.advance()
-			if p.isIdentLike() && strings.EqualFold(p.cur.Str, "TCP") {
+			if p.cur.Type == kwTCP {
 				opts = append(opts, &nodes.EndpointOption{Name: "AS", Value: "TCP", Loc: nodes.Loc{Start: optLoc, End: p.prevEnd()}})
 				p.advance()
 				p.parseEndpointProtocolTCPOptions(&opts)
-			} else if p.isIdentLike() && strings.EqualFold(p.cur.Str, "HTTP") {
+			} else if p.cur.Type == kwHTTP {
 				opts = append(opts, &nodes.EndpointOption{Name: "AS", Value: "HTTP", Loc: nodes.Loc{Start: optLoc, End: p.prevEnd()}})
 				p.advance()
 				p.parseEndpointProtocolHTTPOptions(&opts)
@@ -194,13 +194,13 @@ func (p *Parser) parseEndpointOptions() *nodes.List {
 				// Check for multi-word payload types
 				if payloadType == "SERVICE" {
 					p.advance()
-					if p.isIdentLike() && strings.EqualFold(p.cur.Str, "BROKER") {
+					if p.cur.Type == kwBROKER {
 						payloadType = "SERVICE_BROKER"
 						p.advance()
 					}
 				} else if payloadType == "DATABASE" {
 					p.advance()
-					if p.isIdentLike() && strings.EqualFold(p.cur.Str, "MIRRORING") {
+					if p.cur.Type == kwMIRRORING {
 						payloadType = "DATABASE_MIRRORING"
 						p.advance()
 					}
@@ -261,7 +261,7 @@ func (p *Parser) parseEndpointProtocolTCPOptions(opts *[]nodes.Node) {
 			continue
 		}
 
-		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "LISTENER_PORT") {
+		if p.cur.Type == kwLISTENER_PORT {
 			optLoc := p.pos()
 			p.advance()
 			if p.cur.Type == '=' {
@@ -271,13 +271,13 @@ func (p *Parser) parseEndpointProtocolTCPOptions(opts *[]nodes.Node) {
 				*opts = append(*opts, &nodes.EndpointOption{Name: "LISTENER_PORT", Value: p.cur.Str, Loc: nodes.Loc{Start: optLoc, End: p.prevEnd()}})
 				p.advance()
 			}
-		} else if p.isIdentLike() && strings.EqualFold(p.cur.Str, "LISTENER_IP") {
+		} else if p.cur.Type == kwLISTENER_IP {
 			optLoc := p.pos()
 			p.advance()
 			if p.cur.Type == '=' {
 				p.advance()
 			}
-			if p.isIdentLike() && strings.EqualFold(p.cur.Str, "ALL") {
+			if p.cur.Type == kwALL {
 				*opts = append(*opts, &nodes.EndpointOption{Name: "LISTENER_IP", Value: "ALL", Loc: nodes.Loc{Start: optLoc, End: p.prevEnd()}})
 				p.advance()
 			} else if p.cur.Type == '(' {
@@ -488,7 +488,7 @@ func (p *Parser) parseEndpointPayloadOptions(payloadType string, opts *[]nodes.N
 		}
 
 		switch {
-		case p.isIdentLike() && strings.EqualFold(p.cur.Str, "AUTHENTICATION"):
+		case p.cur.Type == kwAUTHENTICATION:
 			optLoc := p.pos()
 			p.advance()
 			if p.cur.Type == '=' {
@@ -497,7 +497,7 @@ func (p *Parser) parseEndpointPayloadOptions(payloadType string, opts *[]nodes.N
 			authStr := p.parseEndpointAuthentication()
 			*opts = append(*opts, &nodes.EndpointOption{Name: "AUTHENTICATION", Value: authStr, Loc: nodes.Loc{Start: optLoc, End: p.prevEnd()}})
 
-		case p.isIdentLike() && strings.EqualFold(p.cur.Str, "ENCRYPTION"):
+		case p.cur.Type == kwENCRYPTION:
 			optLoc := p.pos()
 			p.advance()
 			if p.cur.Type == '=' {
@@ -506,7 +506,7 @@ func (p *Parser) parseEndpointPayloadOptions(payloadType string, opts *[]nodes.N
 			encStr := p.parseEndpointEncryption(payloadType)
 			*opts = append(*opts, &nodes.EndpointOption{Name: "ENCRYPTION", Value: encStr, Loc: nodes.Loc{Start: optLoc, End: p.prevEnd()}})
 
-		case p.isIdentLike() && strings.EqualFold(p.cur.Str, "MESSAGE_FORWARDING"):
+		case p.cur.Type == kwMESSAGE_FORWARDING:
 			optLoc := p.pos()
 			p.advance()
 			if p.cur.Type == '=' {
@@ -517,7 +517,7 @@ func (p *Parser) parseEndpointPayloadOptions(payloadType string, opts *[]nodes.N
 				p.advance()
 			}
 
-		case p.isIdentLike() && strings.EqualFold(p.cur.Str, "MESSAGE_FORWARD_SIZE"):
+		case p.cur.Type == kwMESSAGE_FORWARD_SIZE:
 			optLoc := p.pos()
 			p.advance()
 			if p.cur.Type == '=' {
@@ -581,7 +581,7 @@ func (p *Parser) parseEndpointPayloadOptions(payloadType string, opts *[]nodes.N
 func (p *Parser) parseEndpointAuthentication() string {
 	var parts []string
 
-	if p.isIdentLike() && strings.EqualFold(p.cur.Str, "WINDOWS") {
+	if p.cur.Type == kwWINDOWS {
 		parts = append(parts, "WINDOWS")
 		p.advance()
 		// Optional auth method: NTLM | KERBEROS | NEGOTIATE
@@ -593,21 +593,21 @@ func (p *Parser) parseEndpointAuthentication() string {
 			}
 		}
 		// Optional CERTIFICATE after WINDOWS
-		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "CERTIFICATE") {
+		if p.cur.Type == kwCERTIFICATE {
 			p.advance()
 			if p.isIdentLike() {
 				parts = append(parts, "CERTIFICATE", p.cur.Str)
 				p.advance()
 			}
 		}
-	} else if p.isIdentLike() && strings.EqualFold(p.cur.Str, "CERTIFICATE") {
+	} else if p.cur.Type == kwCERTIFICATE {
 		p.advance()
 		if p.isIdentLike() {
 			parts = append(parts, "CERTIFICATE", p.cur.Str)
 			p.advance()
 		}
 		// Optional WINDOWS after CERTIFICATE
-		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "WINDOWS") {
+		if p.cur.Type == kwWINDOWS {
 			parts = append(parts, "WINDOWS")
 			p.advance()
 			if p.isIdentLike() {
@@ -654,7 +654,7 @@ func (p *Parser) parseEndpointEncryption(payloadType string) string {
 
 	// SUPPORTED or REQUIRED may have ALGORITHM clause
 	if val == "SUPPORTED" || val == "REQUIRED" {
-		if p.isIdentLike() && strings.EqualFold(p.cur.Str, "ALGORITHM") {
+		if p.cur.Type == kwALGORITHM {
 			p.advance()
 			if p.isIdentLike() {
 				alg1 := strings.ToUpper(p.cur.Str)

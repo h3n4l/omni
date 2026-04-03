@@ -1086,6 +1086,10 @@ func (p *Parser) consumeAnyIdent() string {
 	}
 	if p.cur.Str != "" {
 		s = p.cur.Str
+		// Keyword tokens store Str as lowercase; uppercase to match SQL convention.
+		if p.cur.Type >= kwADD {
+			s = strings.ToUpper(s)
+		}
 	} else {
 		// Map keyword token back to string
 		switch p.cur.Type {
