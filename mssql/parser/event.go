@@ -27,7 +27,7 @@ func (p *Parser) parseCreateEventNotificationStmt() (*nodes.SecurityStmt, error)
 	}
 
 	// event_notification_name
-	if p.isIdentLike() || p.cur.Type == tokSCONST {
+	if p.isAnyKeywordIdent() || p.cur.Type == tokSCONST {
 		stmt.Name = p.cur.Str
 		p.advance()
 	}
@@ -56,7 +56,7 @@ func (p *Parser) parseDropEventNotificationStmt() (*nodes.SecurityStmt, error) {
 	}
 
 	// notification_name [ ,...n ]
-	if p.isIdentLike() || p.cur.Type == tokSCONST {
+	if p.isAnyKeywordIdent() || p.cur.Type == tokSCONST {
 		stmt.Name = p.cur.Str
 		p.advance()
 	}
@@ -94,13 +94,13 @@ func (p *Parser) parseEventNotificationOptions() *nodes.List {
 				opt.Scope = "QUEUE"
 				p.advance()
 				queueName := ""
-				if p.isIdentLike() || p.cur.Type == tokSCONST {
+				if p.isAnyKeywordIdent() || p.cur.Type == tokSCONST {
 					queueName = p.cur.Str
 					p.advance()
 				}
 				for p.cur.Type == '.' {
 					p.advance()
-					if p.isIdentLike() || p.cur.Type == tokSCONST {
+					if p.isAnyKeywordIdent() || p.cur.Type == tokSCONST {
 						queueName += "." + p.cur.Str
 						p.advance()
 					}
@@ -116,7 +116,7 @@ func (p *Parser) parseEventNotificationOptions() *nodes.List {
 		case p.cur.Type == kwFOR:
 			p.advance()
 			for {
-				if p.isIdentLike() || p.cur.Type == tokSCONST {
+				if p.isAnyKeywordIdent() || p.cur.Type == tokSCONST {
 					opt.Events = append(opt.Events, strings.ToUpper(p.cur.Str))
 					p.advance()
 				}
@@ -142,7 +142,7 @@ func (p *Parser) parseEventNotificationOptions() *nodes.List {
 			// Handle commas between notification names for DROP
 			if p.cur.Type == ',' {
 				p.advance()
-				if p.isIdentLike() || p.cur.Type == tokSCONST {
+				if p.isAnyKeywordIdent() || p.cur.Type == tokSCONST {
 					opt.ExtraNames = append(opt.ExtraNames, p.cur.Str)
 					p.advance()
 				}
@@ -204,7 +204,7 @@ func (p *Parser) parseCreateEventSessionStmt() (*nodes.SecurityStmt, error) {
 	}
 
 	// event_session_name
-	if p.isIdentLike() || p.cur.Type == tokSCONST {
+	if p.isAnyKeywordIdent() || p.cur.Type == tokSCONST {
 		stmt.Name = p.cur.Str
 		p.advance()
 	}
@@ -248,7 +248,7 @@ func (p *Parser) parseAlterEventSessionStmt() (*nodes.SecurityStmt, error) {
 	}
 
 	// event_session_name
-	if p.isIdentLike() || p.cur.Type == tokSCONST {
+	if p.isAnyKeywordIdent() || p.cur.Type == tokSCONST {
 		stmt.Name = p.cur.Str
 		p.advance()
 	}
@@ -277,7 +277,7 @@ func (p *Parser) parseDropEventSessionStmt() (*nodes.SecurityStmt, error) {
 	}
 
 	// event_session_name
-	if p.isIdentLike() || p.cur.Type == tokSCONST {
+	if p.isAnyKeywordIdent() || p.cur.Type == tokSCONST {
 		stmt.Name = p.cur.Str
 		p.advance()
 	}
@@ -340,7 +340,7 @@ func (p *Parser) parseEventSessionBody() *nodes.List {
 		} else if p.cur.Type == kwSTATE {
 			p.advance()
 			p.match('=')
-			if p.isIdentLike() {
+			if p.isAnyKeywordIdent() {
 				opts = append(opts, &nodes.String{Str: "STATE=" + strings.ToUpper(p.cur.Str)})
 				p.advance()
 			}
@@ -349,14 +349,14 @@ func (p *Parser) parseEventSessionBody() *nodes.List {
 			if p.cur.Type == '(' {
 				p.advance()
 				for p.cur.Type != ')' && p.cur.Type != tokEOF {
-					if p.isIdentLike() || p.cur.Type == kwON || p.cur.Type == kwOFF {
+					if p.isAnyKeywordIdent() || p.cur.Type == kwON || p.cur.Type == kwOFF {
 						optName := strings.ToUpper(p.cur.Str)
 						p.advance()
 						if p.cur.Type == '=' {
 							p.advance()
 							// Value could be: number [KB|MB|SECONDS], identifier, ON/OFF
 							val := ""
-							if p.isIdentLike() || p.cur.Type == tokICONST || p.cur.Type == tokSCONST ||
+							if p.isAnyKeywordIdent() || p.cur.Type == tokICONST || p.cur.Type == tokSCONST ||
 								p.cur.Type == kwON || p.cur.Type == kwOFF {
 								val = strings.ToUpper(p.cur.Str)
 								p.advance()
@@ -411,7 +411,7 @@ func (p *Parser) parseEventSessionEventSpec(prefix string) []nodes.Node {
 				// SET { attribute = value [ , ...n ] }
 				p.advance()
 				for {
-					if !p.isIdentLike() {
+					if !p.isAnyKeywordIdent() {
 						break
 					}
 					attrName := p.cur.Str
@@ -481,7 +481,7 @@ func (p *Parser) parseEventSessionTargetSpec(prefix string) []nodes.Node {
 		if p.cur.Type == kwSET {
 			p.advance()
 			for {
-				if !p.isIdentLike() && p.cur.Type != tokSCONST {
+				if !p.isAnyKeywordIdent() && p.cur.Type != tokSCONST {
 					break
 				}
 				paramName := p.cur.Str
@@ -523,7 +523,7 @@ func (p *Parser) parseEventSessionValue() string {
 	case p.cur.Type == kwOFF:
 		p.advance()
 		return "OFF"
-	case p.isIdentLike():
+	case p.isAnyKeywordIdent():
 		val := p.cur.Str
 		p.advance()
 		return val
@@ -637,13 +637,13 @@ func (p *Parser) parseEventSessionPredicateFactor() string {
 // parseEventSessionDottedName consumes a dotted name like package.event_name or [guid].package.name.
 func (p *Parser) parseEventSessionDottedName() string {
 	name := ""
-	if p.isIdentLike() || p.cur.Type == tokSCONST || p.cur.Type == tokICONST {
+	if p.isAnyKeywordIdent() || p.cur.Type == tokSCONST || p.cur.Type == tokICONST {
 		name = p.cur.Str
 		p.advance()
 	}
 	for p.cur.Type == '.' {
 		p.advance()
-		if p.isIdentLike() || p.cur.Type == tokSCONST || p.cur.Type == tokICONST {
+		if p.isAnyKeywordIdent() || p.cur.Type == tokSCONST || p.cur.Type == tokICONST {
 			name += "." + p.cur.Str
 			p.advance()
 		}

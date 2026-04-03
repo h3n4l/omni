@@ -96,7 +96,7 @@ func (p *Parser) parseBulkInsertStmt() (*nodes.BulkInsertStmt, error) {
 //   - KEY = 'string_value'
 //   - ORDER ( column [ ASC | DESC ] [ ,...n ] )
 func (p *Parser) parseBulkInsertOption() nodes.Node {
-	if !p.isIdentLike() && p.cur.Type != kwFILE {
+	if !p.isAnyKeywordIdent() && p.cur.Type != kwFILE {
 		return nil
 	}
 
@@ -108,7 +108,7 @@ func (p *Parser) parseBulkInsertOption() nodes.Node {
 		p.advance() // consume '('
 		var parts []string
 		for p.cur.Type != ')' && p.cur.Type != tokEOF {
-			if p.isIdentLike() {
+			if p.isAnyKeywordIdent() {
 				col := p.cur.Str
 				p.advance()
 				// Optional ASC/DESC
@@ -146,7 +146,7 @@ func (p *Parser) parseBulkInsertOption() nodes.Node {
 			valStr = p.cur.Str
 			p.advance()
 		default:
-			if p.isIdentLike() {
+			if p.isAnyKeywordIdent() {
 				valStr = p.cur.Str
 				p.advance()
 			}

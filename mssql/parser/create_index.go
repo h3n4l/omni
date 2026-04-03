@@ -137,7 +137,7 @@ func (p *Parser) parseCreateIndexStmt(unique bool) (*nodes.CreateIndexStmt, erro
 
 	// ON { partition_scheme_name ( column_name ) | filegroup_name | default }
 	if _, ok := p.match(kwON); ok {
-		if p.isIdentLike() || p.cur.Type == kwDEFAULT {
+		if p.isAnyKeywordIdent() || p.cur.Type == kwDEFAULT {
 			stmt.OnFileGroup = p.cur.Str
 			p.advance()
 			// partition_scheme_name ( column_name )
@@ -154,7 +154,7 @@ func (p *Parser) parseCreateIndexStmt(unique bool) (*nodes.CreateIndexStmt, erro
 	// FILESTREAM_ON { filestream_filegroup_name | partition_scheme_name | "NULL" }
 	if p.cur.Type == kwFILESTREAM_ON {
 		p.advance()
-		if p.isIdentLike() || p.cur.Type == tokSCONST {
+		if p.isAnyKeywordIdent() || p.cur.Type == tokSCONST {
 			stmt.FilestreamOn = p.cur.Str
 			p.advance()
 			// partition_scheme_name ( column_name )
@@ -257,7 +257,7 @@ func (p *Parser) parseCreateXmlIndexStmt(primary bool) (*nodes.CreateXmlIndexStm
 
 		// FOR VALUE|PATH|PROPERTY
 		if _, ok := p.match(kwFOR); ok {
-			if p.isIdentLike() {
+			if p.isAnyKeywordIdent() {
 				stmt.SecondaryFor = p.cur.Str
 				p.advance()
 			}
@@ -408,7 +408,7 @@ func (p *Parser) parseCreateSpatialIndexStmt() (*nodes.CreateSpatialIndexStmt, e
 	// USING tessellation_scheme
 	if p.cur.Type == kwUSING {
 		p.advance() // consume USING
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			stmt.Using = p.cur.Str
 			p.advance()
 		}
@@ -424,7 +424,7 @@ func (p *Parser) parseCreateSpatialIndexStmt() (*nodes.CreateSpatialIndexStmt, e
 
 	// ON filegroup
 	if _, ok := p.match(kwON); ok {
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			stmt.OnFileGroup = p.cur.Str
 			p.advance()
 		}
@@ -505,13 +505,13 @@ func (p *Parser) parseCreateAggregateStmt() (*nodes.CreateAggregateStmt, error) 
 		}
 		// Read dotted name: assembly.class[.method]
 		var parts []string
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			parts = append(parts, p.cur.Str)
 			p.advance()
 		}
 		for {
 			if _, ok := p.match('.'); ok {
-				if p.isIdentLike() {
+				if p.isAnyKeywordIdent() {
 					parts = append(parts, p.cur.Str)
 					p.advance()
 				}
@@ -652,7 +652,7 @@ func (p *Parser) parseCreateJsonIndexStmt() (*nodes.CreateJsonIndexStmt, error) 
 
 	// ON filegroup
 	if _, ok := p.match(kwON); ok {
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			stmt.OnFileGroup = p.cur.Str
 			p.advance()
 		}
@@ -716,7 +716,7 @@ func (p *Parser) parseCreateVectorIndexStmt() (*nodes.CreateVectorIndexStmt, err
 
 	// ON filegroup
 	if _, ok := p.match(kwON); ok {
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			stmt.OnFileGroup = p.cur.Str
 			p.advance()
 		}

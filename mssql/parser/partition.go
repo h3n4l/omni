@@ -23,7 +23,7 @@ func (p *Parser) parseCreatePartitionFunctionStmt() (*nodes.CreatePartitionFunct
 	}
 
 	// Name
-	if p.isIdentLike() {
+	if p.isAnyKeywordIdent() {
 		stmt.Name = p.cur.Str
 		p.advance()
 	}
@@ -89,7 +89,7 @@ func (p *Parser) parseAlterPartitionFunctionStmt() (*nodes.AlterPartitionFunctio
 	}
 
 	// Name
-	if p.isIdentLike() {
+	if p.isAnyKeywordIdent() {
 		stmt.Name = p.cur.Str
 		p.advance()
 	}
@@ -101,7 +101,7 @@ func (p *Parser) parseAlterPartitionFunctionStmt() (*nodes.AlterPartitionFunctio
 	}
 
 	// SPLIT or MERGE
-	if p.isIdentLike() {
+	if p.isAnyKeywordIdent() {
 		stmt.Action = strings.ToUpper(p.cur.Str)
 		p.advance()
 	}
@@ -136,7 +136,7 @@ func (p *Parser) parseCreatePartitionSchemeStmt() (*nodes.CreatePartitionSchemeS
 	}
 
 	// Name
-	if p.isIdentLike() {
+	if p.isAnyKeywordIdent() {
 		stmt.Name = p.cur.Str
 		p.advance()
 	}
@@ -148,7 +148,7 @@ func (p *Parser) parseCreatePartitionSchemeStmt() (*nodes.CreatePartitionSchemeS
 	if p.cur.Type == kwPARTITION {
 		p.advance()
 	}
-	if p.isIdentLike() {
+	if p.isAnyKeywordIdent() {
 		stmt.FunctionName = p.cur.Str
 		p.advance()
 	}
@@ -167,7 +167,7 @@ func (p *Parser) parseCreatePartitionSchemeStmt() (*nodes.CreatePartitionSchemeS
 		p.advance()
 		var fgs []nodes.Node
 		for p.cur.Type != ')' && p.cur.Type != tokEOF {
-			if p.isIdentLike() || p.cur.Type == kwPRIMARY {
+			if p.isAnyKeywordIdent() || p.cur.Type == kwPRIMARY {
 				fgname := p.cur.Str
 				p.advance()
 				if allTo && len(fgs) == 0 {
@@ -204,7 +204,7 @@ func (p *Parser) parseAlterPartitionSchemeStmt() (*nodes.AlterPartitionSchemeStm
 	}
 
 	// Name
-	if p.isIdentLike() {
+	if p.isAnyKeywordIdent() {
 		stmt.Name = p.cur.Str
 		p.advance()
 	}
@@ -216,7 +216,7 @@ func (p *Parser) parseAlterPartitionSchemeStmt() (*nodes.AlterPartitionSchemeStm
 	if p.cur.Type == kwUSED {
 		p.advance()
 	}
-	if p.isIdentLike() {
+	if p.isAnyKeywordIdent() {
 		stmt.FileGroup = p.cur.Str
 		p.advance()
 	}

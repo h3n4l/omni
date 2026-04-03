@@ -39,7 +39,7 @@ func (p *Parser) parseDataType() (*nodes.DataType, error) {
 	if p.cur.Type == '.' {
 		p.advance()
 		dt.Schema = name
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			dt.Name = p.cur.Str
 			p.advance()
 		}

@@ -230,7 +230,7 @@ func (p *Parser) parseSecurityLoginStmt(action string) (*nodes.SecurityStmt, err
 	} else if p.cur.Type == kwFROM {
 		optLoc := p.pos()
 		p.advance() // consume FROM
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			src := strings.ToUpper(p.cur.Str)
 			switch src {
 			case "WINDOWS":
@@ -451,7 +451,7 @@ func (p *Parser) parseSecurityPrincipalWithOptions() []nodes.Node {
 	var opts []nodes.Node
 
 	for {
-		if !p.isIdentLike() {
+		if !p.isAnyKeywordIdent() {
 			break
 		}
 
@@ -479,7 +479,7 @@ func (p *Parser) parseSecurityPrincipalWithOptions() []nodes.Node {
 			} else if p.cur.Type == kwOFF {
 				opt.Value = "OFF"
 				p.advance()
-			} else if p.isIdentLike() {
+			} else if p.isAnyKeywordIdent() {
 				upper := strings.ToUpper(p.cur.Str)
 				if upper == "ON" {
 					opt.Value = "ON"
@@ -581,7 +581,7 @@ func (p *Parser) parseExecuteAsStmt() (*nodes.SecurityStmt, error) {
 	// = 'name'
 	if p.cur.Type == '=' {
 		p.advance()
-		if p.cur.Type == tokSCONST || p.isIdentLike() {
+		if p.cur.Type == tokSCONST || p.isAnyKeywordIdent() {
 			stmt.Name = p.cur.Str
 			p.advance()
 		}
@@ -704,7 +704,7 @@ func (p *Parser) parseAlterAuthorizationStmt() (*nodes.SecurityStmt, error) {
 				p.advance()
 				opts = append(opts, &nodes.String{Str: "SCHEMA OWNER"})
 			}
-		} else if p.isIdentLike() || p.cur.Type == tokSCONST {
+		} else if p.isAnyKeywordIdent() || p.cur.Type == tokSCONST {
 			opts = append(opts, &nodes.String{Str: p.cur.Str})
 			p.advance()
 		}
@@ -728,7 +728,7 @@ func (p *Parser) parseAlterAuthorizationStmt() (*nodes.SecurityStmt, error) {
 // SYMMETRIC KEY, ASYMMETRIC KEY, AVAILABILITY GROUP, SERVER ROLE
 func (p *Parser) tryParseAlterAuthEntityType() string {
 	// For single-word entity types, check if next token is ':'
-	if (p.isIdentLike() || p.cur.Type == kwDATABASE || p.cur.Type == kwXML ||
+	if (p.isAnyKeywordIdent() || p.cur.Type == kwDATABASE || p.cur.Type == kwXML ||
 		p.cur.Type == kwROLE || p.cur.Type == kwSCHEMA || p.cur.Type == kwTYPE) &&
 		p.peekNext().Type == tokCOLONCOLON {
 		word := strings.ToUpper(p.cur.Str)
@@ -736,7 +736,7 @@ func (p *Parser) tryParseAlterAuthEntityType() string {
 		return word
 	}
 	// For multi-word entity types: check first word, then peek second
-	if p.isIdentLike() || p.cur.Type == kwXML || p.cur.Type == kwSCHEMA {
+	if p.isAnyKeywordIdent() || p.cur.Type == kwXML || p.cur.Type == kwSCHEMA {
 		first := strings.ToUpper(p.cur.Str)
 		switch first {
 		case "XML":
@@ -779,7 +779,7 @@ func (p *Parser) tryParseMultiWordEntityType(first string, remaining []string) s
 	p.advance()
 	parts := []string{first}
 	for _, word := range remaining {
-		if (p.isIdentLike() || p.cur.Type == kwSCHEMA || p.cur.Type == kwTYPE) &&
+		if (p.isAnyKeywordIdent() || p.cur.Type == kwSCHEMA || p.cur.Type == kwTYPE) &&
 			p.cur.Type == lookupKeyword(word) {
 			parts = append(parts, strings.ToUpper(p.cur.Str))
 			p.advance()
@@ -797,7 +797,7 @@ func (p *Parser) parseAlterAuthEntityName() string {
 		if p.cur.Type == kwTO {
 			break
 		}
-		if p.isIdentLike() || p.cur.Type == kwDATABASE || p.cur.Type == kwXML ||
+		if p.isAnyKeywordIdent() || p.cur.Type == kwDATABASE || p.cur.Type == kwXML ||
 			p.cur.Type == kwROLE || p.cur.Type == kwSCHEMA || p.cur.Type == kwTYPE {
 			parts = append(parts, p.cur.Str)
 		} else if p.cur.Type == '.' {

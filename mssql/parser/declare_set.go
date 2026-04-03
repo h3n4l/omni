@@ -346,14 +346,14 @@ func (p *Parser) parseSetOptionStmt(loc int) (*nodes.SetOptionStmt, error) {
 	}
 
 	// Generic option name
-	if p.isIdentLike() || p.cur.Type == kwNOCOUNT || p.cur.Type == kwXACT_ABORT ||
+	if p.isAnyKeywordIdent() || p.cur.Type == kwNOCOUNT || p.cur.Type == kwXACT_ABORT ||
 		p.cur.Type == kwROWCOUNT || p.cur.Type == kwTEXTSIZE ||
 		p.cur.Type == kwSTATISTICS {
 		stmt.Option = strings.ToUpper(p.cur.Str)
 		p.advance()
 
 		// STATISTICS IO|TIME|PROFILE|XML (multi-word option)
-		if stmt.Option == "STATISTICS" && p.isIdentLike() {
+		if stmt.Option == "STATISTICS" && p.isAnyKeywordIdent() {
 			stmt.Option = stmt.Option + " " + strings.ToUpper(p.cur.Str)
 			p.advance()
 		}

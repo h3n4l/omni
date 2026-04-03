@@ -26,7 +26,7 @@ func (p *Parser) isAnyKeywordIdent() bool {
 		return true
 	}
 	// Any keyword token can be used as a label/alias
-	return p.cur.Type >= kwACCENT_SENSITIVITY && p.cur.Str != ""
+	return p.cur.Type >= kwABSENT && p.cur.Str != ""
 }
 
 // parseIdentifier consumes and returns the current token as an identifier string.

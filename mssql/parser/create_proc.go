@@ -161,7 +161,7 @@ func (p *Parser) parseCreateProcedureStmt(orAlter bool) (*nodes.CreateProcedureS
 func (p *Parser) parseMethodSpecifier() string {
 	var parts []string
 	for {
-		if p.isIdentLike() || p.cur.Type == tokIDENT {
+		if p.isAnyKeywordIdent() || p.cur.Type == tokIDENT {
 			parts = append(parts, p.cur.Str)
 			p.advance()
 		} else {
@@ -594,7 +594,7 @@ func (p *Parser) parseRoutineOption() *nodes.String {
 		if p.cur.Type == tokSCONST {
 			principal = p.cur.Str
 			p.advance()
-		} else if p.isIdentLike() {
+		} else if p.isAnyKeywordIdent() {
 			principal = p.cur.Str
 			p.advance()
 		}
@@ -643,7 +643,7 @@ func (p *Parser) parseRoutineOption() *nodes.String {
 	}
 
 	// Simple identifier options: RECOMPILE, ENCRYPTION, VIEW_METADATA, NATIVE_COMPILATION, INLINE
-	if p.isIdentLike() {
+	if p.isAnyKeywordIdent() {
 		s := strings.ToUpper(p.cur.Str)
 		switch s {
 		case "RECOMPILE", "ENCRYPTION", "VIEW_METADATA", "NATIVE_COMPILATION":

@@ -37,6 +37,8 @@ const (
 	tokXOREQUAL   // ^=
 
 	// Keywords start here. T-SQL keywords (case-insensitive).
+	kwABSENT
+	kwABSOLUTE
 	kwACCENT_SENSITIVITY
 	kwACTION
 	kwACTIVATION
@@ -49,6 +51,7 @@ const (
 	kwALL_SPARSE_COLUMNS
 	kwALTER
 	kwALWAYS
+	kwASSEMBLY
 	kwAND
 	kwANY
 	kwAPPEND
@@ -66,17 +69,21 @@ const (
 	kwAUTO
 	kwAVAILABILITY
 	kwBACKUP
+	kwBASE64
 	kwBEFORE
 	kwBEGIN
 	kwBETWEEN
+	kwBINARY
 	kwBINDING
 	kwBLOCK
 	kwBREAK
 	kwBROKER
 	kwBROWSE
+	kwBUCKET_COUNT
 	kwBUFFER
 	kwBULK
 	kwBY
+	kwCACHE
 	kwCALLED
 	kwCALLER
 	kwCASCADE
@@ -127,6 +134,7 @@ const (
 	kwCUBE
 	kwCURRENT
 	kwCURRENT_DATE
+	kwCYCLE
 	kwCURRENT_TIME
 	kwCURRENT_TIMESTAMP
 	kwCURRENT_USER
@@ -142,6 +150,7 @@ const (
 	kwDECRYPTION
 	kwDEFAULT
 	kwDELAY
+	kwDELAYED_DURABILITY
 	kwDELETE
 	kwDENY
 	kwDEPENDENTS
@@ -158,7 +167,9 @@ const (
 	kwDOUBLE
 	kwDROP
 	kwDUMP
+	kwDYNAMIC
 	kwEDGE
+	kwELEMENTS
 	kwELSE
 	kwENABLE
 	kwENCRYPTED
@@ -180,6 +191,7 @@ const (
 	kwFAILOVER
 	kwFAN_IN
 	kwFAST
+	kwFAST_FORWARD
 	kwFEDERATION
 	kwFETCH
 	kwFILE
@@ -191,6 +203,7 @@ const (
 	kwFILETABLE_NAMESPACE
 	kwFILLFACTOR
 	kwFILTER
+	kwFILTERING
 	kwFIRST
 	kwFOLLOWING
 	kwFOR
@@ -199,6 +212,7 @@ const (
 	kwFORCE_FAILOVER_ALLOW_DATA_LOSS
 	kwFOREIGN
 	kwFORMAT
+	kwFORWARD_ONLY
 	kwFREETEXT
 	kwFREETEXTTABLE
 	kwFROM
@@ -208,6 +222,7 @@ const (
 	kwGB
 	kwGENERATED
 	kwGET
+	kwGLOBAL
 	kwGO
 	kwGOTO
 	kwGOVERNOR
@@ -235,9 +250,12 @@ const (
 	kwIMMEDIATE
 	kwIN
 	kwINCLUDE
+	kwINCLUDE_NULL_VALUES
+	kwINCREMENT
 	kwINDEX
 	kwINNER
 	kwINPUT
+	kwINSENSITIVE
 	kwINSERT
 	kwINSTEAD
 	kwINTERSECT
@@ -252,8 +270,10 @@ const (
 	kwKEEPFIXED
 	kwKEY
 	kwKEYS
+	kwKEYSET
 	kwKILL
 	kwLANGUAGE
+	kwLAST
 	kwLEFT
 	kwLEVEL
 	kwLIBRARY
@@ -269,16 +289,19 @@ const (
 	kwLOCAL
 	kwLOG
 	kwLOGIN
+	kwLOGON
 	kwLOOP
 	kwLOW
 	kwMANUAL
 	kwMANUAL_CUTOVER
+	kwMARK
 	kwMASKED
 	kwMASTER
 	kwMATCHED
 	kwMATERIALIZED
 	kwMAX
 	kwMAX_QUEUE_READERS
+	kwMAXVALUE
 	kwMAXDOP
 	kwMAXRECURSION
 	kwMB
@@ -290,6 +313,7 @@ const (
 	kwMESSAGE_FORWARD_SIZE
 	kwMESSAGE_FORWARDING
 	kwMINUTES
+	kwMINVALUE
 	kwMIRROR
 	kwMIRRORING
 	kwMODE
@@ -308,6 +332,7 @@ const (
 	kwNOLOCK
 	kwNONCLUSTERED
 	kwNONE
+	kwNORESET
 	kwNOT
 	kwNOTIFICATION
 	kwNOWAIT
@@ -330,6 +355,7 @@ const (
 	kwOPENROWSET
 	kwOPENXML
 	kwOPTIMIZE
+	kwOPTIMISTIC
 	kwOPTION
 	kwOR
 	kwORDER
@@ -363,6 +389,7 @@ const (
 	kwPREDICT
 	kwPRIMARY
 	kwPRINT
+	kwPRIOR
 	kwPRIORITY
 	kwPRIVILEGES
 	kwPROC
@@ -380,6 +407,7 @@ const (
 	kwRANGE
 	kwRAW
 	kwREAD
+	kwREAD_ONLY
 	kwREAD_WRITE_FILEGROUPS
 	kwREADONLY
 	kwREADTEXT
@@ -391,11 +419,13 @@ const (
 	kwREGENERATE
 	kwRELATED_CONVERSATION
 	kwRELATED_CONVERSATION_GROUP
+	kwRELATIVE
 	kwREMOTE
 	kwREMOVE
 	kwRENAME
 	kwREORGANIZE
 	kwREPEATABLE
+	kwRESET
 	kwREPLICA
 	kwREPLICATION
 	kwRESAMPLE
@@ -430,6 +460,8 @@ const (
 	kwSCHEMA
 	kwSCHEMABINDING
 	kwSCHEME
+	kwSCROLL
+	kwSCROLL_LOCKS
 	kwSCOPED
 	kwSEARCH
 	kwSECONDARY
@@ -445,6 +477,7 @@ const (
 	kwSEMIJOIN
 	kwSEND
 	kwSENSITIVITY
+	kwSEQUENCE
 	kwSENT
 	kwSERIALIZABLE
 	kwSERVER
@@ -467,6 +500,7 @@ const (
 	kwSPLIT
 	kwSTART
 	kwSTATE
+	kwSTATIC
 	kwSTATISTICAL_SEMANTICS
 	kwSTATISTICS
 	kwSTATS
@@ -480,6 +514,7 @@ const (
 	kwSUSPEND_FOR_SNAPSHOT_BACKUP
 	kwSWITCH
 	kwSYMMETRIC
+	kwSYNONYM
 	kwSYSTEM
 	kwSYSTEM_TIME
 	kwSYSTEM_USER
@@ -501,6 +536,7 @@ const (
 	kwTOP
 	kwTRAN
 	kwTRANSACTION
+	kwTRANSFER
 	kwTRIGGER
 	kwTRUNCATE
 	kwTRY
@@ -508,6 +544,7 @@ const (
 	kwTRY_CONVERT
 	kwTSEQUAL
 	kwTYPE
+	kwTYPE_WARNING
 	kwUNBOUNDED
 	kwUNCOMMITTED
 	kwUNDEFINED
@@ -540,12 +577,17 @@ const (
 	kwWITH
 	kwWITHIN
 	kwWITHOUT
+	kwWITHOUT_ARRAY_WRAPPER
+	kwWORK
 	kwWORKLOAD
 	kwWRITE
 	kwWRITETEXT
 	kwXACT_ABORT
 	kwXML
+	kwXMLDATA
 	kwXMLNAMESPACES
+	kwXMLSCHEMA
+	kwXSINIL
 	kwZONE
 )
 
@@ -667,10 +709,10 @@ func init() {
 		"sets": kwSETS, "setuser": kwSETUSER, "shutdown": kwSHUTDOWN, "signature": kwSIGNATURE,
 		"size": kwSIZE, "snapshot": kwSNAPSHOT, "softnuma": kwSOFTNUMA, "some": kwSOME,
 		"source": kwSOURCE, "sparse": kwSPARSE, "spatial": kwSPATIAL, "specification": kwSPECIFICATION,
-		"split": kwSPLIT, "start": kwSTART, "state": kwSTATE, "statistical_semantics": kwSTATISTICAL_SEMANTICS,
+		"split": kwSPLIT, "start": kwSTART, "state": kwSTATE, "static": kwSTATIC, "statistical_semantics": kwSTATISTICAL_SEMANTICS,
 		"statistics": kwSTATISTICS, "stats": kwSTATS, "status": kwSTATUS, "statusonly": kwSTATUSONLY,
 		"stop": kwSTOP, "stoplist": kwSTOPLIST, "stream": kwSTREAM, "streaming": kwSTREAMING,
-		"subscription": kwSUBSCRIPTION, "suspend_for_snapshot_backup": kwSUSPEND_FOR_SNAPSHOT_BACKUP, "switch": kwSWITCH, "symmetric": kwSYMMETRIC,
+		"subscription": kwSUBSCRIPTION, "suspend_for_snapshot_backup": kwSUSPEND_FOR_SNAPSHOT_BACKUP, "switch": kwSWITCH, "symmetric": kwSYMMETRIC, "synonym": kwSYNONYM,
 		"system": kwSYSTEM, "system_time": kwSYSTEM_TIME, "system_user": kwSYSTEM_USER,
 		"table": kwTABLE, "tablesample": kwTABLESAMPLE, "target": kwTARGET, "tb": kwTB,
 		"tcp": kwTCP, "tempdb_metadata": kwTEMPDB_METADATA, "textimage_on": kwTEXTIMAGE_ON, "textsize": kwTEXTSIZE,
@@ -678,7 +720,7 @@ func init() {
 		"timeout": kwTIMEOUT, "timer": kwTIMER, "to": kwTO, "top": kwTOP,
 		"tran": kwTRAN, "transaction": kwTRANSACTION, "trigger": kwTRIGGER, "truncate": kwTRUNCATE,
 		"try": kwTRY, "try_cast": kwTRY_CAST, "try_convert": kwTRY_CONVERT, "tsequal": kwTSEQUAL,
-		"type": kwTYPE,
+		"type": kwTYPE, "type_warning": kwTYPE_WARNING,
 		"unbounded": kwUNBOUNDED, "uncommitted": kwUNCOMMITTED, "undefined": kwUNDEFINED, "union": kwUNION,
 		"unique": kwUNIQUE, "unknown": kwUNKNOWN, "unlimited": kwUNLIMITED, "unlock": kwUNLOCK,
 		"unpivot": kwUNPIVOT, "update": kwUPDATE, "updatetext": kwUPDATETEXT, "url": kwURL,
@@ -687,9 +729,26 @@ func init() {
 		"vector": kwVECTOR, "view": kwVIEW, "views": kwVIEWS,
 		"waitfor": kwWAITFOR, "when": kwWHEN, "where": kwWHERE, "while": kwWHILE,
 		"window": kwWINDOW, "windows": kwWINDOWS, "with": kwWITH, "within": kwWITHIN,
-		"without": kwWITHOUT, "workload": kwWORKLOAD, "write": kwWRITE, "writetext": kwWRITETEXT,
-		"xact_abort": kwXACT_ABORT, "xml": kwXML, "xmlnamespaces": kwXMLNAMESPACES,
+		"without": kwWITHOUT, "without_array_wrapper": kwWITHOUT_ARRAY_WRAPPER, "work": kwWORK, "workload": kwWORKLOAD, "write": kwWRITE, "writetext": kwWRITETEXT,
+		"xact_abort": kwXACT_ABORT, "xml": kwXML, "xmldata": kwXMLDATA, "xmlnamespaces": kwXMLNAMESPACES, "xmlschema": kwXMLSCHEMA, "xsinil": kwXSINIL,
 		"zone": kwZONE,
+		// Newly registered context keywords (cursor, XML, transaction, federation, etc.)
+		"absent": kwABSENT, "absolute": kwABSOLUTE, "assembly": kwASSEMBLY,
+		"base64": kwBASE64, "binary": kwBINARY, "bucket_count": kwBUCKET_COUNT,
+		"delayed_durability": kwDELAYED_DURABILITY, "dynamic": kwDYNAMIC,
+		"elements": kwELEMENTS,
+		"fast_forward": kwFAST_FORWARD, "filtering": kwFILTERING, "forward_only": kwFORWARD_ONLY,
+		"global": kwGLOBAL,
+		"include_null_values": kwINCLUDE_NULL_VALUES, "insensitive": kwINSENSITIVE,
+		"keyset": kwKEYSET,
+		"mark": kwMARK,
+		"noreset": kwNORESET,
+		"optimistic": kwOPTIMISTIC,
+		"read_only": kwREAD_ONLY, "relative": kwRELATIVE, "reset": kwRESET,
+		"cache": kwCACHE, "cycle": kwCYCLE, "increment": kwINCREMENT,
+		"last": kwLAST, "logon": kwLOGON, "maxvalue": kwMAXVALUE, "minvalue": kwMINVALUE,
+		"prior": kwPRIOR, "transfer": kwTRANSFER,
+		"scroll": kwSCROLL, "scroll_locks": kwSCROLL_LOCKS, "sequence": kwSEQUENCE,
 	}
 }
 
@@ -712,6 +771,8 @@ type Keyword struct {
 
 // keywordClassification maps keyword token types to their classification.
 var keywordClassification = map[int]Keyword{
+		kwABSENT: {Name: "ABSENT", Token: kwABSENT, Category: ContextKeyword},
+		kwABSOLUTE: {Name: "ABSOLUTE", Token: kwABSOLUTE, Category: ContextKeyword},
 		kwACCENT_SENSITIVITY: {Name: "ACCENT_SENSITIVITY", Token: kwACCENT_SENSITIVITY, Category: ContextKeyword},
 		kwACTION: {Name: "ACTION", Token: kwACTION, Category: ContextKeyword},
 		kwACTIVATION: {Name: "ACTIVATION", Token: kwACTIVATION, Category: ContextKeyword},
@@ -724,6 +785,7 @@ var keywordClassification = map[int]Keyword{
 		kwALL_SPARSE_COLUMNS: {Name: "ALL_SPARSE_COLUMNS", Token: kwALL_SPARSE_COLUMNS, Category: ContextKeyword},
 		kwALTER: {Name: "ALTER", Token: kwALTER, Category: CoreKeyword},
 		kwALWAYS: {Name: "ALWAYS", Token: kwALWAYS, Category: ContextKeyword},
+		kwASSEMBLY: {Name: "ASSEMBLY", Token: kwASSEMBLY, Category: ContextKeyword},
 		kwAND: {Name: "AND", Token: kwAND, Category: CoreKeyword},
 		kwANY: {Name: "ANY", Token: kwANY, Category: CoreKeyword},
 		kwAPPEND: {Name: "APPEND", Token: kwAPPEND, Category: ContextKeyword},
@@ -741,14 +803,18 @@ var keywordClassification = map[int]Keyword{
 		kwAUTO: {Name: "AUTO", Token: kwAUTO, Category: ContextKeyword},
 		kwAVAILABILITY: {Name: "AVAILABILITY", Token: kwAVAILABILITY, Category: ContextKeyword},
 		kwBACKUP: {Name: "BACKUP", Token: kwBACKUP, Category: CoreKeyword},
+		kwBASE64: {Name: "BASE64", Token: kwBASE64, Category: ContextKeyword},
 		kwBEFORE: {Name: "BEFORE", Token: kwBEFORE, Category: ContextKeyword},
 		kwBEGIN: {Name: "BEGIN", Token: kwBEGIN, Category: CoreKeyword},
 		kwBETWEEN: {Name: "BETWEEN", Token: kwBETWEEN, Category: CoreKeyword},
+		kwBINARY: {Name: "BINARY", Token: kwBINARY, Category: ContextKeyword},
 		kwBINDING: {Name: "BINDING", Token: kwBINDING, Category: ContextKeyword},
 		kwBLOCK: {Name: "BLOCK", Token: kwBLOCK, Category: ContextKeyword},
 		kwBREAK: {Name: "BREAK", Token: kwBREAK, Category: CoreKeyword},
 		kwBROKER: {Name: "BROKER", Token: kwBROKER, Category: ContextKeyword},
 		kwBROWSE: {Name: "BROWSE", Token: kwBROWSE, Category: CoreKeyword},
+		kwBUCKET_COUNT: {Name: "BUCKET_COUNT", Token: kwBUCKET_COUNT, Category: ContextKeyword},
+		kwCACHE: {Name: "CACHE", Token: kwCACHE, Category: ContextKeyword},
 		kwBUFFER: {Name: "BUFFER", Token: kwBUFFER, Category: ContextKeyword},
 		kwBULK: {Name: "BULK", Token: kwBULK, Category: CoreKeyword},
 		kwBY: {Name: "BY", Token: kwBY, Category: CoreKeyword},
@@ -801,6 +867,7 @@ var keywordClassification = map[int]Keyword{
 		kwCRYPTOGRAPHIC: {Name: "CRYPTOGRAPHIC", Token: kwCRYPTOGRAPHIC, Category: ContextKeyword},
 		kwCUBE: {Name: "CUBE", Token: kwCUBE, Category: ContextKeyword},
 		kwCURRENT: {Name: "CURRENT", Token: kwCURRENT, Category: CoreKeyword},
+		kwCYCLE: {Name: "CYCLE", Token: kwCYCLE, Category: ContextKeyword},
 		kwCURRENT_DATE: {Name: "CURRENT_DATE", Token: kwCURRENT_DATE, Category: CoreKeyword},
 		kwCURRENT_TIME: {Name: "CURRENT_TIME", Token: kwCURRENT_TIME, Category: CoreKeyword},
 		kwCURRENT_TIMESTAMP: {Name: "CURRENT_TIMESTAMP", Token: kwCURRENT_TIMESTAMP, Category: CoreKeyword},
@@ -817,6 +884,7 @@ var keywordClassification = map[int]Keyword{
 		kwDECRYPTION: {Name: "DECRYPTION", Token: kwDECRYPTION, Category: ContextKeyword},
 		kwDEFAULT: {Name: "DEFAULT", Token: kwDEFAULT, Category: CoreKeyword},
 		kwDELAY: {Name: "DELAY", Token: kwDELAY, Category: ContextKeyword},
+		kwDELAYED_DURABILITY: {Name: "DELAYED_DURABILITY", Token: kwDELAYED_DURABILITY, Category: ContextKeyword},
 		kwDELETE: {Name: "DELETE", Token: kwDELETE, Category: CoreKeyword},
 		kwDENY: {Name: "DENY", Token: kwDENY, Category: CoreKeyword},
 		kwDEPENDENTS: {Name: "DEPENDENTS", Token: kwDEPENDENTS, Category: ContextKeyword},
@@ -833,7 +901,9 @@ var keywordClassification = map[int]Keyword{
 		kwDOUBLE: {Name: "DOUBLE", Token: kwDOUBLE, Category: CoreKeyword},
 		kwDROP: {Name: "DROP", Token: kwDROP, Category: CoreKeyword},
 		kwDUMP: {Name: "DUMP", Token: kwDUMP, Category: ContextKeyword},
+		kwDYNAMIC: {Name: "DYNAMIC", Token: kwDYNAMIC, Category: ContextKeyword},
 		kwEDGE: {Name: "EDGE", Token: kwEDGE, Category: ContextKeyword},
+		kwELEMENTS: {Name: "ELEMENTS", Token: kwELEMENTS, Category: ContextKeyword},
 		kwELSE: {Name: "ELSE", Token: kwELSE, Category: CoreKeyword},
 		kwENABLE: {Name: "ENABLE", Token: kwENABLE, Category: ContextKeyword},
 		kwENCRYPTED: {Name: "ENCRYPTED", Token: kwENCRYPTED, Category: ContextKeyword},
@@ -855,6 +925,7 @@ var keywordClassification = map[int]Keyword{
 		kwFAILOVER: {Name: "FAILOVER", Token: kwFAILOVER, Category: ContextKeyword},
 		kwFAN_IN: {Name: "FAN_IN", Token: kwFAN_IN, Category: ContextKeyword},
 		kwFAST: {Name: "FAST", Token: kwFAST, Category: ContextKeyword},
+		kwFAST_FORWARD: {Name: "FAST_FORWARD", Token: kwFAST_FORWARD, Category: ContextKeyword},
 		kwFEDERATION: {Name: "FEDERATION", Token: kwFEDERATION, Category: ContextKeyword},
 		kwFETCH: {Name: "FETCH", Token: kwFETCH, Category: CoreKeyword},
 		kwFILE: {Name: "FILE", Token: kwFILE, Category: CoreKeyword},
@@ -866,6 +937,7 @@ var keywordClassification = map[int]Keyword{
 		kwFILETABLE_NAMESPACE: {Name: "FILETABLE_NAMESPACE", Token: kwFILETABLE_NAMESPACE, Category: ContextKeyword},
 		kwFILLFACTOR: {Name: "FILLFACTOR", Token: kwFILLFACTOR, Category: CoreKeyword},
 		kwFILTER: {Name: "FILTER", Token: kwFILTER, Category: ContextKeyword},
+		kwFILTERING: {Name: "FILTERING", Token: kwFILTERING, Category: ContextKeyword},
 		kwFIRST: {Name: "FIRST", Token: kwFIRST, Category: ContextKeyword},
 		kwFOLLOWING: {Name: "FOLLOWING", Token: kwFOLLOWING, Category: ContextKeyword},
 		kwFOR: {Name: "FOR", Token: kwFOR, Category: CoreKeyword},
@@ -874,6 +946,7 @@ var keywordClassification = map[int]Keyword{
 		kwFORCE_FAILOVER_ALLOW_DATA_LOSS: {Name: "FORCE_FAILOVER_ALLOW_DATA_LOSS", Token: kwFORCE_FAILOVER_ALLOW_DATA_LOSS, Category: ContextKeyword},
 		kwFOREIGN: {Name: "FOREIGN", Token: kwFOREIGN, Category: CoreKeyword},
 		kwFORMAT: {Name: "FORMAT", Token: kwFORMAT, Category: ContextKeyword},
+		kwFORWARD_ONLY: {Name: "FORWARD_ONLY", Token: kwFORWARD_ONLY, Category: ContextKeyword},
 		kwFREETEXT: {Name: "FREETEXT", Token: kwFREETEXT, Category: CoreKeyword},
 		kwFREETEXTTABLE: {Name: "FREETEXTTABLE", Token: kwFREETEXTTABLE, Category: CoreKeyword},
 		kwFROM: {Name: "FROM", Token: kwFROM, Category: CoreKeyword},
@@ -883,6 +956,7 @@ var keywordClassification = map[int]Keyword{
 		kwGB: {Name: "GB", Token: kwGB, Category: ContextKeyword},
 		kwGENERATED: {Name: "GENERATED", Token: kwGENERATED, Category: ContextKeyword},
 		kwGET: {Name: "GET", Token: kwGET, Category: ContextKeyword},
+		kwGLOBAL: {Name: "GLOBAL", Token: kwGLOBAL, Category: ContextKeyword},
 		kwGO: {Name: "GO", Token: kwGO, Category: ContextKeyword},
 		kwGOTO: {Name: "GOTO", Token: kwGOTO, Category: CoreKeyword},
 		kwGOVERNOR: {Name: "GOVERNOR", Token: kwGOVERNOR, Category: ContextKeyword},
@@ -910,9 +984,12 @@ var keywordClassification = map[int]Keyword{
 		kwIMMEDIATE: {Name: "IMMEDIATE", Token: kwIMMEDIATE, Category: ContextKeyword},
 		kwIN: {Name: "IN", Token: kwIN, Category: CoreKeyword},
 		kwINCLUDE: {Name: "INCLUDE", Token: kwINCLUDE, Category: ContextKeyword},
+		kwINCLUDE_NULL_VALUES: {Name: "INCLUDE_NULL_VALUES", Token: kwINCLUDE_NULL_VALUES, Category: ContextKeyword},
+		kwINCREMENT: {Name: "INCREMENT", Token: kwINCREMENT, Category: ContextKeyword},
 		kwINDEX: {Name: "INDEX", Token: kwINDEX, Category: CoreKeyword},
 		kwINNER: {Name: "INNER", Token: kwINNER, Category: CoreKeyword},
 		kwINPUT: {Name: "INPUT", Token: kwINPUT, Category: ContextKeyword},
+		kwINSENSITIVE: {Name: "INSENSITIVE", Token: kwINSENSITIVE, Category: ContextKeyword},
 		kwINSERT: {Name: "INSERT", Token: kwINSERT, Category: CoreKeyword},
 		kwINSTEAD: {Name: "INSTEAD", Token: kwINSTEAD, Category: ContextKeyword},
 		kwINTERSECT: {Name: "INTERSECT", Token: kwINTERSECT, Category: CoreKeyword},
@@ -927,6 +1004,8 @@ var keywordClassification = map[int]Keyword{
 		kwKEEPFIXED: {Name: "KEEPFIXED", Token: kwKEEPFIXED, Category: ContextKeyword},
 		kwKEY:  {Name: "KEY", Token: kwKEY, Category: CoreKeyword},
 		kwKEYS: {Name: "KEYS", Token: kwKEYS, Category: ContextKeyword},
+		kwKEYSET: {Name: "KEYSET", Token: kwKEYSET, Category: ContextKeyword},
+		kwLAST: {Name: "LAST", Token: kwLAST, Category: ContextKeyword},
 		kwKILL: {Name: "KILL", Token: kwKILL, Category: CoreKeyword},
 		kwLANGUAGE: {Name: "LANGUAGE", Token: kwLANGUAGE, Category: ContextKeyword},
 		kwLEFT: {Name: "LEFT", Token: kwLEFT, Category: CoreKeyword},
@@ -944,15 +1023,18 @@ var keywordClassification = map[int]Keyword{
 		kwLOCAL: {Name: "LOCAL", Token: kwLOCAL, Category: ContextKeyword},
 		kwLOG: {Name: "LOG", Token: kwLOG, Category: ContextKeyword},
 		kwLOGIN: {Name: "LOGIN", Token: kwLOGIN, Category: ContextKeyword},
+		kwLOGON: {Name: "LOGON", Token: kwLOGON, Category: ContextKeyword},
 		kwLOOP: {Name: "LOOP", Token: kwLOOP, Category: ContextKeyword},
 		kwLOW: {Name: "LOW", Token: kwLOW, Category: ContextKeyword},
 		kwMANUAL: {Name: "MANUAL", Token: kwMANUAL, Category: ContextKeyword},
 		kwMANUAL_CUTOVER: {Name: "MANUAL_CUTOVER", Token: kwMANUAL_CUTOVER, Category: ContextKeyword},
+		kwMARK: {Name: "MARK", Token: kwMARK, Category: ContextKeyword},
 		kwMASKED: {Name: "MASKED", Token: kwMASKED, Category: ContextKeyword},
 		kwMASTER: {Name: "MASTER", Token: kwMASTER, Category: ContextKeyword},
 		kwMATCHED: {Name: "MATCHED", Token: kwMATCHED, Category: ContextKeyword},
 		kwMATERIALIZED: {Name: "MATERIALIZED", Token: kwMATERIALIZED, Category: ContextKeyword},
 		kwMAX: {Name: "MAX", Token: kwMAX, Category: ContextKeyword},
+		kwMAXVALUE: {Name: "MAXVALUE", Token: kwMAXVALUE, Category: ContextKeyword},
 		kwMAX_QUEUE_READERS: {Name: "MAX_QUEUE_READERS", Token: kwMAX_QUEUE_READERS, Category: ContextKeyword},
 		kwMAXDOP: {Name: "MAXDOP", Token: kwMAXDOP, Category: ContextKeyword},
 		kwMAXRECURSION: {Name: "MAXRECURSION", Token: kwMAXRECURSION, Category: ContextKeyword},
@@ -965,6 +1047,7 @@ var keywordClassification = map[int]Keyword{
 		kwMESSAGE_FORWARD_SIZE: {Name: "MESSAGE_FORWARD_SIZE", Token: kwMESSAGE_FORWARD_SIZE, Category: ContextKeyword},
 		kwMESSAGE_FORWARDING: {Name: "MESSAGE_FORWARDING", Token: kwMESSAGE_FORWARDING, Category: ContextKeyword},
 		kwMINUTES: {Name: "MINUTES", Token: kwMINUTES, Category: ContextKeyword},
+		kwMINVALUE: {Name: "MINVALUE", Token: kwMINVALUE, Category: ContextKeyword},
 		kwMIRROR: {Name: "MIRROR", Token: kwMIRROR, Category: ContextKeyword},
 		kwMIRRORING: {Name: "MIRRORING", Token: kwMIRRORING, Category: ContextKeyword},
 		kwMODE: {Name: "MODE", Token: kwMODE, Category: ContextKeyword},
@@ -983,6 +1066,7 @@ var keywordClassification = map[int]Keyword{
 		kwNOLOCK: {Name: "NOLOCK", Token: kwNOLOCK, Category: ContextKeyword},
 		kwNONCLUSTERED: {Name: "NONCLUSTERED", Token: kwNONCLUSTERED, Category: CoreKeyword},
 		kwNONE: {Name: "NONE", Token: kwNONE, Category: ContextKeyword},
+		kwNORESET: {Name: "NORESET", Token: kwNORESET, Category: ContextKeyword},
 		kwNOT: {Name: "NOT", Token: kwNOT, Category: CoreKeyword},
 		kwNOTIFICATION: {Name: "NOTIFICATION", Token: kwNOTIFICATION, Category: ContextKeyword},
 		kwNOWAIT: {Name: "NOWAIT", Token: kwNOWAIT, Category: ContextKeyword},
@@ -1005,6 +1089,7 @@ var keywordClassification = map[int]Keyword{
 		kwOPENROWSET: {Name: "OPENROWSET", Token: kwOPENROWSET, Category: CoreKeyword},
 		kwOPENXML: {Name: "OPENXML", Token: kwOPENXML, Category: CoreKeyword},
 		kwOPTIMIZE: {Name: "OPTIMIZE", Token: kwOPTIMIZE, Category: ContextKeyword},
+		kwOPTIMISTIC: {Name: "OPTIMISTIC", Token: kwOPTIMISTIC, Category: ContextKeyword},
 		kwOPTION: {Name: "OPTION", Token: kwOPTION, Category: CoreKeyword},
 		kwOR: {Name: "OR", Token: kwOR, Category: CoreKeyword},
 		kwORDER: {Name: "ORDER", Token: kwORDER, Category: CoreKeyword},
@@ -1038,6 +1123,7 @@ var keywordClassification = map[int]Keyword{
 		kwPREDICT: {Name: "PREDICT", Token: kwPREDICT, Category: ContextKeyword},
 		kwPRIMARY: {Name: "PRIMARY", Token: kwPRIMARY, Category: CoreKeyword},
 		kwPRINT: {Name: "PRINT", Token: kwPRINT, Category: CoreKeyword},
+		kwPRIOR: {Name: "PRIOR", Token: kwPRIOR, Category: ContextKeyword},
 		kwPRIORITY: {Name: "PRIORITY", Token: kwPRIORITY, Category: ContextKeyword},
 		kwPRIVILEGES: {Name: "PRIVILEGES", Token: kwPRIVILEGES, Category: ContextKeyword},
 		kwPROC: {Name: "PROC", Token: kwPROC, Category: CoreKeyword},
@@ -1055,6 +1141,7 @@ var keywordClassification = map[int]Keyword{
 		kwRANGE: {Name: "RANGE", Token: kwRANGE, Category: ContextKeyword},
 		kwRAW: {Name: "RAW", Token: kwRAW, Category: ContextKeyword},
 		kwREAD: {Name: "READ", Token: kwREAD, Category: CoreKeyword},
+		kwREAD_ONLY: {Name: "READ_ONLY", Token: kwREAD_ONLY, Category: ContextKeyword},
 		kwREAD_WRITE_FILEGROUPS: {Name: "READ_WRITE_FILEGROUPS", Token: kwREAD_WRITE_FILEGROUPS, Category: ContextKeyword},
 		kwREADONLY: {Name: "READONLY", Token: kwREADONLY, Category: ContextKeyword},
 		kwREADTEXT: {Name: "READTEXT", Token: kwREADTEXT, Category: CoreKeyword},
@@ -1066,11 +1153,13 @@ var keywordClassification = map[int]Keyword{
 		kwREGENERATE: {Name: "REGENERATE", Token: kwREGENERATE, Category: ContextKeyword},
 		kwRELATED_CONVERSATION: {Name: "RELATED_CONVERSATION", Token: kwRELATED_CONVERSATION, Category: ContextKeyword},
 		kwRELATED_CONVERSATION_GROUP: {Name: "RELATED_CONVERSATION_GROUP", Token: kwRELATED_CONVERSATION_GROUP, Category: ContextKeyword},
+		kwRELATIVE: {Name: "RELATIVE", Token: kwRELATIVE, Category: ContextKeyword},
 		kwREMOTE: {Name: "REMOTE", Token: kwREMOTE, Category: ContextKeyword},
 		kwREMOVE: {Name: "REMOVE", Token: kwREMOVE, Category: ContextKeyword},
 		kwRENAME: {Name: "RENAME", Token: kwRENAME, Category: ContextKeyword},
 		kwREORGANIZE: {Name: "REORGANIZE", Token: kwREORGANIZE, Category: ContextKeyword},
 		kwREPEATABLE: {Name: "REPEATABLE", Token: kwREPEATABLE, Category: ContextKeyword},
+		kwRESET: {Name: "RESET", Token: kwRESET, Category: ContextKeyword},
 		kwREPLICA: {Name: "REPLICA", Token: kwREPLICA, Category: ContextKeyword},
 		kwREPLICATION: {Name: "REPLICATION", Token: kwREPLICATION, Category: CoreKeyword},
 		kwRESAMPLE: {Name: "RESAMPLE", Token: kwRESAMPLE, Category: ContextKeyword},
@@ -1105,6 +1194,8 @@ var keywordClassification = map[int]Keyword{
 		kwSCHEMA: {Name: "SCHEMA", Token: kwSCHEMA, Category: CoreKeyword},
 		kwSCHEMABINDING: {Name: "SCHEMABINDING", Token: kwSCHEMABINDING, Category: ContextKeyword},
 		kwSCHEME: {Name: "SCHEME", Token: kwSCHEME, Category: ContextKeyword},
+		kwSCROLL: {Name: "SCROLL", Token: kwSCROLL, Category: ContextKeyword},
+		kwSCROLL_LOCKS: {Name: "SCROLL_LOCKS", Token: kwSCROLL_LOCKS, Category: ContextKeyword},
 		kwSCOPED: {Name: "SCOPED", Token: kwSCOPED, Category: ContextKeyword},
 		kwSEARCH: {Name: "SEARCH", Token: kwSEARCH, Category: ContextKeyword},
 		kwSECONDARY: {Name: "SECONDARY", Token: kwSECONDARY, Category: ContextKeyword},
@@ -1119,6 +1210,7 @@ var keywordClassification = map[int]Keyword{
 		kwSEMANTICSIMILARITYTABLE: {Name: "SEMANTICSIMILARITYTABLE", Token: kwSEMANTICSIMILARITYTABLE, Category: CoreKeyword},
 		kwSEMIJOIN: {Name: "SEMIJOIN", Token: kwSEMIJOIN, Category: ContextKeyword},
 		kwSEND: {Name: "SEND", Token: kwSEND, Category: ContextKeyword},
+		kwSEQUENCE: {Name: "SEQUENCE", Token: kwSEQUENCE, Category: ContextKeyword},
 		kwSENSITIVITY: {Name: "SENSITIVITY", Token: kwSENSITIVITY, Category: ContextKeyword},
 		kwSENT: {Name: "SENT", Token: kwSENT, Category: ContextKeyword},
 		kwSERIALIZABLE: {Name: "SERIALIZABLE", Token: kwSERIALIZABLE, Category: ContextKeyword},
@@ -1142,6 +1234,7 @@ var keywordClassification = map[int]Keyword{
 		kwSPLIT: {Name: "SPLIT", Token: kwSPLIT, Category: ContextKeyword},
 		kwSTART: {Name: "START", Token: kwSTART, Category: ContextKeyword},
 		kwSTATE: {Name: "STATE", Token: kwSTATE, Category: ContextKeyword},
+		kwSTATIC: {Name: "STATIC", Token: kwSTATIC, Category: ContextKeyword},
 		kwSTATISTICAL_SEMANTICS: {Name: "STATISTICAL_SEMANTICS", Token: kwSTATISTICAL_SEMANTICS, Category: ContextKeyword},
 		kwSTATISTICS: {Name: "STATISTICS", Token: kwSTATISTICS, Category: CoreKeyword},
 		kwSTATS: {Name: "STATS", Token: kwSTATS, Category: ContextKeyword},
@@ -1155,6 +1248,7 @@ var keywordClassification = map[int]Keyword{
 		kwSUSPEND_FOR_SNAPSHOT_BACKUP: {Name: "SUSPEND_FOR_SNAPSHOT_BACKUP", Token: kwSUSPEND_FOR_SNAPSHOT_BACKUP, Category: ContextKeyword},
 		kwSWITCH: {Name: "SWITCH", Token: kwSWITCH, Category: ContextKeyword},
 		kwSYMMETRIC: {Name: "SYMMETRIC", Token: kwSYMMETRIC, Category: ContextKeyword},
+		kwSYNONYM: {Name: "SYNONYM", Token: kwSYNONYM, Category: ContextKeyword},
 		kwSYSTEM: {Name: "SYSTEM", Token: kwSYSTEM, Category: ContextKeyword},
 		kwSYSTEM_TIME: {Name: "SYSTEM_TIME", Token: kwSYSTEM_TIME, Category: ContextKeyword},
 		kwSYSTEM_USER: {Name: "SYSTEM_USER", Token: kwSYSTEM_USER, Category: CoreKeyword},
@@ -1176,6 +1270,7 @@ var keywordClassification = map[int]Keyword{
 		kwTOP: {Name: "TOP", Token: kwTOP, Category: CoreKeyword},
 		kwTRAN: {Name: "TRAN", Token: kwTRAN, Category: CoreKeyword},
 		kwTRANSACTION: {Name: "TRANSACTION", Token: kwTRANSACTION, Category: CoreKeyword},
+		kwTRANSFER: {Name: "TRANSFER", Token: kwTRANSFER, Category: ContextKeyword},
 		kwTRIGGER: {Name: "TRIGGER", Token: kwTRIGGER, Category: CoreKeyword},
 		kwTRUNCATE: {Name: "TRUNCATE", Token: kwTRUNCATE, Category: CoreKeyword},
 		kwTRY: {Name: "TRY", Token: kwTRY, Category: ContextKeyword},
@@ -1183,6 +1278,7 @@ var keywordClassification = map[int]Keyword{
 		kwTRY_CONVERT: {Name: "TRY_CONVERT", Token: kwTRY_CONVERT, Category: CoreKeyword},
 		kwTSEQUAL: {Name: "TSEQUAL", Token: kwTSEQUAL, Category: CoreKeyword},
 		kwTYPE: {Name: "TYPE", Token: kwTYPE, Category: ContextKeyword},
+		kwTYPE_WARNING: {Name: "TYPE_WARNING", Token: kwTYPE_WARNING, Category: ContextKeyword},
 		kwUNBOUNDED: {Name: "UNBOUNDED", Token: kwUNBOUNDED, Category: ContextKeyword},
 		kwUNCOMMITTED: {Name: "UNCOMMITTED", Token: kwUNCOMMITTED, Category: ContextKeyword},
 		kwUNDEFINED: {Name: "UNDEFINED", Token: kwUNDEFINED, Category: ContextKeyword},
@@ -1215,12 +1311,17 @@ var keywordClassification = map[int]Keyword{
 		kwWITH: {Name: "WITH", Token: kwWITH, Category: CoreKeyword},
 		kwWITHIN: {Name: "WITHIN", Token: kwWITHIN, Category: ContextKeyword},
 		kwWITHOUT: {Name: "WITHOUT", Token: kwWITHOUT, Category: ContextKeyword},
+		kwWITHOUT_ARRAY_WRAPPER: {Name: "WITHOUT_ARRAY_WRAPPER", Token: kwWITHOUT_ARRAY_WRAPPER, Category: ContextKeyword},
+		kwWORK: {Name: "WORK", Token: kwWORK, Category: ContextKeyword},
 		kwWORKLOAD: {Name: "WORKLOAD", Token: kwWORKLOAD, Category: ContextKeyword},
 		kwWRITE: {Name: "WRITE", Token: kwWRITE, Category: ContextKeyword},
 		kwWRITETEXT: {Name: "WRITETEXT", Token: kwWRITETEXT, Category: CoreKeyword},
 		kwXACT_ABORT: {Name: "XACT_ABORT", Token: kwXACT_ABORT, Category: ContextKeyword},
 		kwXML: {Name: "XML", Token: kwXML, Category: ContextKeyword},
+		kwXMLDATA: {Name: "XMLDATA", Token: kwXMLDATA, Category: ContextKeyword},
 		kwXMLNAMESPACES: {Name: "XMLNAMESPACES", Token: kwXMLNAMESPACES, Category: ContextKeyword},
+		kwXMLSCHEMA: {Name: "XMLSCHEMA", Token: kwXMLSCHEMA, Category: ContextKeyword},
+		kwXSINIL: {Name: "XSINIL", Token: kwXSINIL, Category: ContextKeyword},
 		kwZONE: {Name: "ZONE", Token: kwZONE, Category: ContextKeyword},
 }
 

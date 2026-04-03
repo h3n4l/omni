@@ -109,7 +109,7 @@ func (p *Parser) parseDropStmt() (*nodes.DropStmt, error) {
 		stmt.ObjectType = nodes.DropRule
 		p.advance()
 	default:
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			switch strings.ToUpper(p.cur.Str) {
 			case "SEQUENCE":
 				stmt.ObjectType = nodes.DropSequence
@@ -128,7 +128,7 @@ func (p *Parser) parseDropStmt() (*nodes.DropStmt, error) {
 		// Check for PARTITION FUNCTION/SCHEME
 		if p.cur.Type == kwPARTITION {
 			p.advance() // consume PARTITION
-			if p.isIdentLike() {
+			if p.isAnyKeywordIdent() {
 				switch strings.ToUpper(p.cur.Str) {
 				case "FUNCTION":
 					stmt.ObjectType = nodes.DropPartitionFunction

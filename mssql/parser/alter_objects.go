@@ -99,8 +99,8 @@ func (p *Parser) parseAlterDatabaseStmt() (*nodes.AlterDatabaseStmt, error) {
 		Loc: nodes.Loc{Start: loc, End: -1},
 	}
 
-	// Database name or CURRENT
-	if p.isIdentLike() {
+	// Database name or CURRENT (CURRENT is a Core keyword)
+	if p.isAnyKeywordIdent() {
 		stmt.Name = p.cur.Str
 		p.advance()
 	}
@@ -120,7 +120,7 @@ func (p *Parser) parseAlterDatabaseStmt() (*nodes.AlterDatabaseStmt, error) {
 		p.advance() // consume ADD
 		stmt.Action = "ADD"
 		p.parseAlterDatabaseAdd(stmt)
-	} else if p.isIdentLike() {
+	} else if p.isAnyKeywordIdent() {
 		action := strings.ToUpper(p.cur.Str)
 		switch action {
 		case "MODIFY":
@@ -221,7 +221,8 @@ func (p *Parser) parseAlterDatabaseSetOption() string {
 		return ""
 	}
 
-	if !p.isIdentLike() && p.cur.Type != kwSET {
+	// Option names can be context keywords or Core keywords (e.g., CURRENT, SET)
+	if !p.isAnyKeywordIdent() && p.cur.Type != kwSET {
 		return ""
 	}
 
@@ -256,7 +257,7 @@ func (p *Parser) parseAlterDatabaseSetOption() string {
 			val := p.parseAlterDatabaseOptionValue()
 			return "WITNESS=" + val
 		}
-		if p.isIdentLike() || p.cur.Type == kwOFF {
+		if p.isAnyKeywordIdent() {
 			val := strings.ToUpper(p.cur.Str)
 			p.advance()
 			return "WITNESS=" + val
@@ -316,14 +317,15 @@ func (p *Parser) parseAlterDatabaseSetOption() string {
 		}
 		return key + "=ON"
 	}
-	if p.isIdentLike() {
+	// Accept any keyword or identifier as option value (FULL, OFF, CHECKSUM, etc.)
+	if p.isAnyKeywordIdent() {
 		val := strings.ToUpper(p.cur.Str)
 		p.advance()
 		// Handle TARGET_RECOVERY_TIME = 60 SECONDS (already consumed the number via =)
 		// Here it's like "RECOVERY FULL" or "AUTO_CLOSE OFF" or "TARGET_RECOVERY_TIME 60"
 		if key == "TARGET_RECOVERY_TIME" {
 			// val is the number, check for unit
-			if p.isIdentLike() {
+			if p.isAnyKeywordIdent() {
 				unit := strings.ToUpper(p.cur.Str)
 				if unit == "SECONDS" || unit == "MINUTES" {
 					p.advance()
@@ -355,13 +357,13 @@ func (p *Parser) parseAlterDatabaseSetPartner() string {
 		val := p.parseAlterDatabaseOptionValue()
 		return "PARTNER=" + val
 	}
-	if p.isIdentLike() || p.cur.Type == kwOFF {
+	if p.isAnyKeywordIdent() {
 		sub := strings.ToUpper(p.cur.Str)
 		p.advance()
 		switch sub {
 		case "SAFETY":
 			// SAFETY { FULL | OFF }
-			if p.isIdentLike() || p.cur.Type == kwOFF {
+			if p.isAnyKeywordIdent() {
 				val := strings.ToUpper(p.cur.Str)
 				p.advance()
 				return "PARTNER SAFETY=" + val
@@ -390,7 +392,7 @@ func (p *Parser) parseAlterDatabaseSetPartner() string {
 //
 //	SET HADR { AVAILABILITY GROUP = group_name | OFF | SUSPEND | RESUME }
 func (p *Parser) parseAlterDatabaseSetHadr() string {
-	if p.isIdentLike() {
+	if p.isAnyKeywordIdent() {
 		sub := strings.ToUpper(p.cur.Str)
 		p.advance()
 		switch sub {
@@ -430,7 +432,7 @@ func (p *Parser) parseAlterDatabaseOptionValue() string {
 		val := p.cur.Str
 		p.advance()
 		// Check for unit suffix (SECONDS, MINUTES, DAYS, HOURS)
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			unit := strings.ToUpper(p.cur.Str)
 			switch unit {
 			case "SECONDS", "MINUTES", "DAYS", "HOURS":
@@ -440,15 +442,8 @@ func (p *Parser) parseAlterDatabaseOptionValue() string {
 		}
 		return val
 	}
-	if p.cur.Type == kwON {
-		p.advance()
-		return "ON"
-	}
-	if p.cur.Type == kwOFF {
-		p.advance()
-		return "OFF"
-	}
-	if p.isIdentLike() {
+	// Accept any keyword or identifier as an option value (ON, OFF, FULL, etc.)
+	if p.isAnyKeywordIdent() {
 		val := strings.ToUpper(p.cur.Str)
 		p.advance()
 		return val
@@ -463,7 +458,7 @@ func (p *Parser) parseAlterDatabaseSubOptions() string {
 	for p.cur.Type != ')' && p.cur.Type != tokEOF {
 		// key
 		key := ""
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			key = strings.ToUpper(p.cur.Str)
 			p.advance()
 		} else if p.cur.Type == tokICONST || p.cur.Type == tokFCONST {
@@ -503,7 +498,7 @@ func (p *Parser) parseAlterDatabaseSubOptions() string {
 //	  | ROLLBACK IMMEDIATE
 //	  | NO_WAIT
 func (p *Parser) parseAlterDatabaseTermination() string {
-	if p.isIdentLike() {
+	if p.isAnyKeywordIdent() {
 		kw := strings.ToUpper(p.cur.Str)
 		switch kw {
 		case "ROLLBACK":
@@ -569,7 +564,7 @@ func (p *Parser) parseAlterDatabaseUnknownOption() string {
 	}
 
 	// Keyword or identifier
-	if p.isIdentLike() || p.cur.Type == kwON || p.cur.Type == kwOFF || p.cur.Type == kwSET || p.cur.Type == kwALL {
+	if p.isAnyKeywordIdent() {
 		key := strings.ToUpper(p.cur.Str)
 		p.advance()
 		// Check for = value
@@ -598,14 +593,6 @@ func (p *Parser) parseAlterDatabaseUnknownOption() string {
 
 // parseAlterDatabaseUnknownOptionValue parses a single value in an unknown option context.
 func (p *Parser) parseAlterDatabaseUnknownOptionValue() string {
-	if p.cur.Type == kwON {
-		p.advance()
-		return "ON"
-	}
-	if p.cur.Type == kwOFF {
-		p.advance()
-		return "OFF"
-	}
 	if p.cur.Type == tokICONST || p.cur.Type == tokFCONST {
 		val := p.cur.Str
 		p.advance()
@@ -616,7 +603,8 @@ func (p *Parser) parseAlterDatabaseUnknownOptionValue() string {
 		p.advance()
 		return val
 	}
-	if p.isIdentLike() {
+	// Accept any keyword or identifier as an option value (ON, OFF, FULL, etc.)
+	if p.isAnyKeywordIdent() {
 		val := strings.ToUpper(p.cur.Str)
 		p.advance()
 		return val
@@ -754,7 +742,7 @@ func (p *Parser) parseAlterDatabaseModifyFilegroupOption(stmt *nodes.AlterDataba
 		}
 		return
 	}
-	if p.isIdentLike() {
+	if p.isAnyKeywordIdent() {
 		opt := strings.ToUpper(p.cur.Str)
 		switch opt {
 		case "READ_ONLY", "READ_WRITE", "READONLY", "READWRITE",
@@ -808,7 +796,7 @@ func (p *Parser) parseAlterIndexStmt() (*nodes.AlterIndexStmt, error) {
 	}
 
 	// Index name or ALL
-	if p.isIdentLike() {
+	if p.isAnyKeywordIdent() {
 		stmt.IndexName = p.cur.Str
 		p.advance()
 	}
@@ -827,7 +815,7 @@ func (p *Parser) parseAlterIndexStmt() (*nodes.AlterIndexStmt, error) {
 	if p.cur.Type == kwSET {
 		stmt.Action = "SET"
 		p.advance()
-	} else if p.isIdentLike() {
+	} else if p.isAnyKeywordIdent() {
 		stmt.Action = strings.ToUpper(p.cur.Str)
 		p.advance()
 	}
@@ -896,7 +884,7 @@ func (p *Parser) parseAlterIndexOptions() (*nodes.List, error) {
 		}
 
 		// Parse option_name = value
-		if p.isIdentLike() || p.cur.Type == kwON || p.cur.Type == kwOFF {
+		if p.isAnyKeywordIdent() {
 			name := strings.ToUpper(p.cur.Str)
 			p.advance()
 
@@ -930,7 +918,7 @@ func (p *Parser) parseAlterIndexOptions() (*nodes.List, error) {
 				} else if p.cur.Type == tokICONST || p.cur.Type == tokFCONST {
 					val = p.cur.Str
 					p.advance()
-				} else if p.isIdentLike() {
+				} else if p.isAnyKeywordIdent() {
 					val = strings.ToUpper(p.cur.Str)
 					p.advance()
 				} else if p.cur.Type == '(' {

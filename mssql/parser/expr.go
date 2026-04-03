@@ -449,7 +449,7 @@ func (p *Parser) parseCollateExpr(expr nodes.ExprNode) (nodes.ExprNode, error) {
 	// Collation name is an identifier (may contain underscores, numbers)
 	// or the special keyword database_default
 	var collation string
-	if p.isIdentLike() {
+	if p.isAnyKeywordIdent() {
 		collation = p.cur.Str
 		p.advance()
 	} else {
@@ -713,7 +713,7 @@ func (p *Parser) parsePrimary() (nodes.ExprNode, error) {
 		return p.parseIdentExpr()
 	default:
 		// Context keywords can be used as identifiers in T-SQL.
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			return p.parseIdentExpr()
 		}
 		return nil, nil
@@ -1319,7 +1319,7 @@ func (p *Parser) parseOverClause() (*nodes.OverClause, error) {
 	p.advance() // consume OVER
 
 	// OVER window_name (reference to named window, no parentheses)
-	if p.cur.Type != '(' && p.isIdentLike() {
+	if p.cur.Type != '(' && p.isAnyKeywordIdent() {
 		over := &nodes.OverClause{
 			WindowName: p.cur.Str,
 			Loc:        nodes.Loc{Start: loc, End: p.prevEnd()},

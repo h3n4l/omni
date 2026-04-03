@@ -35,7 +35,7 @@ func (p *Parser) parseCreateStatisticsStmt() (*nodes.CreateStatisticsStmt, error
 	}
 
 	// Statistics name
-	if p.isIdentLike() {
+	if p.isAnyKeywordIdent() {
 		stmt.Name = p.cur.Str
 		p.advance()
 	}
@@ -54,7 +54,7 @@ func (p *Parser) parseCreateStatisticsStmt() (*nodes.CreateStatisticsStmt, error
 		p.advance()
 		var cols []nodes.Node
 		for p.cur.Type != ')' && p.cur.Type != tokEOF {
-			if p.isIdentLike() {
+			if p.isAnyKeywordIdent() {
 				cols = append(cols, &nodes.String{Str: p.cur.Str})
 				p.advance()
 			}
@@ -130,7 +130,7 @@ func (p *Parser) parseUpdateStatisticsStmt() (*nodes.UpdateStatisticsStmt, error
 		p.advance()
 		var names []nodes.Node
 		for p.cur.Type != ')' && p.cur.Type != tokEOF {
-			if p.isIdentLike() {
+			if p.isAnyKeywordIdent() {
 				names = append(names, &nodes.String{Str: p.cur.Str})
 				p.advance()
 			}
@@ -146,7 +146,7 @@ func (p *Parser) parseUpdateStatisticsStmt() (*nodes.UpdateStatisticsStmt, error
 				stmt.Name = s.Str
 			}
 		}
-	} else if p.isIdentLike() && p.cur.Type != kwWITH {
+	} else if p.isAnyKeywordIdent() && p.cur.Type != kwWITH {
 		stmt.Name = p.cur.Str
 		p.advance()
 	}
@@ -177,7 +177,7 @@ func (p *Parser) parseDropStatisticsStmt() (*nodes.DropStatisticsStmt, error) {
 	var names []nodes.Node
 	for {
 		// Each name is [schema.]table.stats_name (two or three-part dot-separated)
-		if !p.isIdentLike() {
+		if !p.isAnyKeywordIdent() {
 			break
 		}
 		// Collect all dotted parts
@@ -185,7 +185,7 @@ func (p *Parser) parseDropStatisticsStmt() (*nodes.DropStatisticsStmt, error) {
 		p.advance()
 		for p.cur.Type == '.' {
 			p.advance()
-			if p.isIdentLike() {
+			if p.isAnyKeywordIdent() {
 				parts = parts + "." + p.cur.Str
 				p.advance()
 			}
@@ -205,7 +205,7 @@ func (p *Parser) parseDropStatisticsStmt() (*nodes.DropStatisticsStmt, error) {
 func (p *Parser) parseStatisticsWithOptions() *nodes.List {
 	var opts []nodes.Node
 	for {
-		if p.isIdentLike() || p.cur.Type == kwFULL || p.cur.Type == kwNOCOUNT {
+		if p.isAnyKeywordIdent() || p.cur.Type == kwFULL || p.cur.Type == kwNOCOUNT {
 			opt := strings.ToUpper(p.cur.Str)
 			isSample := p.cur.Type == kwSAMPLE
 			isResample := p.cur.Type == kwRESAMPLE
@@ -213,7 +213,7 @@ func (p *Parser) parseStatisticsWithOptions() *nodes.List {
 			// Handle SAMPLE number PERCENT|ROWS
 			if isSample {
 				p.parseExpr() // number
-				if p.isIdentLike() {
+				if p.isAnyKeywordIdent() {
 					p.advance() // PERCENT or ROWS
 				}
 			} else if isResample {
@@ -241,7 +241,7 @@ func (p *Parser) parseStatisticsWithOptions() *nodes.List {
 			} else if p.cur.Type == '=' {
 				// key = value (e.g., INCREMENTAL = ON, MAXDOP = 4, AUTO_DROP = ON)
 				p.advance()
-				if p.isIdentLike() || p.cur.Type == kwON || p.cur.Type == kwOFF {
+				if p.isAnyKeywordIdent() || p.cur.Type == kwON || p.cur.Type == kwOFF {
 					p.advance()
 				} else {
 					p.parseExpr()

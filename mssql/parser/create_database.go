@@ -262,7 +262,7 @@ func (p *Parser) parseDatabaseFileSpec() *nodes.DatabaseFileSpec {
 
 	// Parse comma-separated key=value pairs inside parens
 	for p.cur.Type != ')' && p.cur.Type != tokEOF {
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			key := strings.ToUpper(p.cur.Str)
 			p.advance() // consume key
 			switch key {
@@ -323,7 +323,7 @@ func (p *Parser) parseSizeValue() *nodes.SizeValue {
 	if p.cur.Type == tokICONST || p.cur.Type == tokFCONST {
 		sv.Value = p.cur.Str
 		p.advance()
-	} else if p.isIdentLike() {
+	} else if p.isAnyKeywordIdent() {
 		// Could be a bare identifier like a number
 		sv.Value = p.cur.Str
 		p.advance()
@@ -335,7 +335,7 @@ func (p *Parser) parseSizeValue() *nodes.SizeValue {
 	if p.cur.Type == '%' {
 		sv.Unit = "%"
 		p.advance()
-	} else if p.isIdentLike() {
+	} else if p.isAnyKeywordIdent() {
 		unit := strings.ToUpper(p.cur.Str)
 		switch unit {
 		case "KB", "MB", "GB", "TB":
@@ -428,7 +428,7 @@ func (p *Parser) parseDatabaseWithOptions() *nodes.List {
 	var opts []nodes.Node
 
 	for {
-		if !p.isIdentLike() {
+		if !p.isAnyKeywordIdent() {
 			break
 		}
 
@@ -452,7 +452,7 @@ func (p *Parser) parseDatabaseWithOptions() *nodes.List {
 
 // parseOneDatabaseOption parses a single CREATE DATABASE WITH option.
 func (p *Parser) parseOneDatabaseOption() *nodes.DatabaseOption {
-	if !p.isIdentLike() {
+	if !p.isAnyKeywordIdent() {
 		return nil
 	}
 
@@ -525,14 +525,14 @@ func (p *Parser) parseDatabaseFilestreamOption() *nodes.DatabaseOption {
 	if p.cur.Type == '(' {
 		p.advance() // consume (
 		for p.cur.Type != ')' && p.cur.Type != tokEOF {
-			if p.isIdentLike() {
+			if p.isAnyKeywordIdent() {
 				subKey := strings.ToUpper(p.cur.Str)
 				p.advance() // consume sub-key
 				if p.cur.Type == '=' {
 					p.advance() // consume =
 					switch subKey {
 					case "NON_TRANSACTED_ACCESS":
-						if p.isIdentLike() || p.cur.Type == kwOFF {
+						if p.isAnyKeywordIdent() || p.cur.Type == kwOFF {
 							opt.FilestreamAccess = strings.ToUpper(p.cur.Str)
 							p.advance()
 						}
@@ -546,7 +546,7 @@ func (p *Parser) parseDatabaseFilestreamOption() *nodes.DatabaseOption {
 						}
 					default:
 						// unknown sub-option, skip value
-						if p.isIdentLike() || p.cur.Type == tokSCONST {
+						if p.isAnyKeywordIdent() || p.cur.Type == tokSCONST {
 							p.advance()
 						}
 					}
@@ -581,7 +581,7 @@ func (p *Parser) parseDatabaseOptionValue() string {
 		p.advance()
 		return "ON"
 	}
-	if p.isIdentLike() {
+	if p.isAnyKeywordIdent() {
 		val := strings.ToUpper(p.cur.Str)
 		p.advance()
 		return val
@@ -607,7 +607,7 @@ func (p *Parser) parseDatabaseOptionValue() string {
 func (p *Parser) parseDatabaseAttachOptions() *nodes.List {
 	var opts []nodes.Node
 	for {
-		if !p.isIdentLike() {
+		if !p.isAnyKeywordIdent() {
 			break
 		}
 		key := strings.ToUpper(p.cur.Str)
@@ -652,5 +652,5 @@ func (p *Parser) isIdentLikeToken(tok Token) bool {
 	if tok.Type == tokIDENT {
 		return true
 	}
-	return tok.Type >= kwACCENT_SENSITIVITY && tok.Str != ""
+	return tok.Type >= kwABSENT && tok.Str != ""
 }

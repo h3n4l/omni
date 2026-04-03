@@ -623,7 +623,7 @@ func (p *Parser) parseTargetList() (*nodes.List, error) {
 		}
 		// Check for alias: AS name or just name (but not keywords that start clauses)
 		if _, ok := p.match(kwAS); ok {
-			if p.isIdentLike() {
+			if p.isAnyKeywordIdent() {
 				target.Name = p.cur.Str
 				p.advance()
 			}
@@ -1091,7 +1091,7 @@ func (p *Parser) parseTableValuedFunction(ref *nodes.TableRef) (nodes.TableExpr,
 // parseOptionalAlias parses an optional alias (AS name or just name).
 func (p *Parser) parseOptionalAlias() string {
 	if _, ok := p.match(kwAS); ok {
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			name := p.cur.Str
 			p.advance()
 			return name
@@ -1237,7 +1237,7 @@ func (p *Parser) parseForClause() (*nodes.ForClause, error) {
 			return nil, errCollecting
 		}
 		// RAW, AUTO, EXPLICIT, PATH
-		if p.isIdentLike() || p.cur.Type == kwRAW || p.cur.Type == kwPATH {
+		if p.isAnyKeywordIdent() || p.cur.Type == kwRAW || p.cur.Type == kwPATH {
 			fc.SubMode = strings.ToUpper(p.cur.Str)
 			p.advance()
 			// RAW('ElementName') or PATH('ElementName')
@@ -1263,7 +1263,7 @@ func (p *Parser) parseForClause() (*nodes.ForClause, error) {
 			return nil, errCollecting
 		}
 		// AUTO or PATH
-		if p.isIdentLike() || p.cur.Type == kwPATH {
+		if p.isAnyKeywordIdent() || p.cur.Type == kwPATH {
 			fc.SubMode = strings.ToUpper(p.cur.Str)
 			p.advance()
 		}
@@ -1553,7 +1553,7 @@ func (p *Parser) parseWindowClause() (*nodes.List, error) {
 		// Optional existing_window_name (must be an ident not followed by keyword like PARTITION, ORDER)
 		if p.cur.Type != kwPARTITION && p.cur.Type != kwORDER &&
 			p.cur.Type != kwROWS && p.cur.Type != kwRANGE && p.cur.Type != kwGROUPS &&
-			p.cur.Type != ')' && p.isIdentLike() {
+			p.cur.Type != ')' && p.isAnyKeywordIdent() {
 			next := p.peekNext()
 			// If next token is a clause keyword or ), this is a refname
 			if next.Type == kwPARTITION || next.Type == kwORDER ||
@@ -1807,7 +1807,7 @@ func (p *Parser) parseTableHint() (*nodes.TableHint, error) {
 	}
 
 	// All remaining hints are identifiers (not lexer keywords)
-	if !p.isIdentLike() {
+	if !p.isAnyKeywordIdent() {
 		return nil, nil
 	}
 
@@ -2071,7 +2071,7 @@ func (p *Parser) parseQueryHint() (nodes.Node, error) {
 		if p.cur.Type == kwORDER {
 			p.advance()
 			return &nodes.QueryHint{Kind: "FORCE ORDER", Loc: nodes.Loc{Start: loc, End: p.prevEnd()}}, nil
-		} else if p.isIdentLike() {
+		} else if p.isAnyKeywordIdent() {
 			suffix := strings.ToUpper(p.cur.Str)
 			p.advance()
 			return &nodes.QueryHint{Kind: "FORCE " + suffix, Loc: nodes.Loc{Start: loc, End: p.prevEnd()}}, nil
@@ -2165,7 +2165,7 @@ func (p *Parser) parseQueryHint() (nodes.Node, error) {
 	case p.cur.Type == kwPARAMETERIZATION:
 		p.advance()
 		hint := &nodes.QueryHint{Kind: "PARAMETERIZATION", Loc: nodes.Loc{Start: loc, End: -1}}
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			hint.StrValue = strings.ToUpper(p.cur.Str)
 			p.advance()
 		}
@@ -2210,7 +2210,7 @@ func (p *Parser) parseQueryHint() (nodes.Node, error) {
 
 	case p.cur.Type == kwDISABLE:
 		p.advance()
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			suffix := strings.ToUpper(p.cur.Str)
 			p.advance()
 			return &nodes.QueryHint{Kind: "DISABLE " + suffix, Loc: nodes.Loc{Start: loc, End: p.prevEnd()}}, nil
@@ -2256,7 +2256,7 @@ func (p *Parser) parseQueryHint() (nodes.Node, error) {
 
 	default:
 		// Unknown hint with name = value pattern (e.g., MAX_GRANT_PERCENT = 10)
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			name := strings.ToUpper(p.cur.Str)
 			p.advance()
 			hint := &nodes.QueryHint{Kind: name, Loc: nodes.Loc{Start: loc, End: -1}}

@@ -187,7 +187,7 @@ func (p *Parser) parseCreateTableStmt() (*nodes.CreateTableStmt, error) {
 	// ON { partition_scheme_name ( partition_column_name ) | filegroup | "default" }
 	if p.cur.Type == kwON {
 		p.advance()
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			name := p.cur.Str
 			p.advance()
 			if p.cur.Type == '(' {
@@ -205,7 +205,7 @@ func (p *Parser) parseCreateTableStmt() (*nodes.CreateTableStmt, error) {
 	// TEXTIMAGE_ON filegroup
 	if p.cur.Type == kwTEXTIMAGE_ON {
 		p.advance()
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			stmt.TextImageOn = p.cur.Str
 			p.advance()
 		}
@@ -214,7 +214,7 @@ func (p *Parser) parseCreateTableStmt() (*nodes.CreateTableStmt, error) {
 	// FILESTREAM_ON filegroup
 	if p.cur.Type == kwFILESTREAM_ON {
 		p.advance()
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			stmt.FilestreamOn = p.cur.Str
 			p.advance()
 		}
@@ -300,7 +300,7 @@ func (p *Parser) parseTableOptions() (*nodes.List, error) {
 // parseOneTableOption parses a single NAME = VALUE table option.
 func (p *Parser) parseOneTableOption() (*nodes.TableOption, error) {
 	loc := p.pos()
-	if !p.isIdentLike() {
+	if !p.isAnyKeywordIdent() {
 		return nil, nil
 	}
 	name := strings.ToUpper(p.cur.Str)
@@ -320,7 +320,7 @@ func (p *Parser) parseOneTableOption() (*nodes.TableOption, error) {
 
 	// SYSTEM_VERSIONING = ON [ ( ... ) ]
 	if name == "SYSTEM_VERSIONING" {
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			opt.Value = strings.ToUpper(p.cur.Str)
 			p.advance()
 		}
@@ -328,7 +328,7 @@ func (p *Parser) parseOneTableOption() (*nodes.TableOption, error) {
 		if opt.Value == "ON" && p.cur.Type == '(' {
 			p.advance()
 			for p.cur.Type != ')' && p.cur.Type != tokEOF {
-				if p.isIdentLike() {
+				if p.isAnyKeywordIdent() {
 					subName := strings.ToUpper(p.cur.Str)
 					p.advance()
 					if p.cur.Type == '=' {
@@ -338,20 +338,20 @@ func (p *Parser) parseOneTableOption() (*nodes.TableOption, error) {
 					case "HISTORY_TABLE":
 						// schema.table - collect dotted name
 						var parts []string
-						if p.isIdentLike() {
+						if p.isAnyKeywordIdent() {
 							parts = append(parts, p.cur.Str)
 							p.advance()
 						}
 						for p.cur.Type == '.' {
 							p.advance()
-							if p.isIdentLike() {
+							if p.isAnyKeywordIdent() {
 								parts = append(parts, p.cur.Str)
 								p.advance()
 							}
 						}
 						opt.HistoryTable = strings.Join(parts, ".")
 					case "DATA_CONSISTENCY_CHECK":
-						if p.isIdentLike() {
+						if p.isAnyKeywordIdent() {
 							opt.DataConsistencyCheck = strings.ToUpper(p.cur.Str)
 							p.advance()
 						}
@@ -369,7 +369,7 @@ func (p *Parser) parseOneTableOption() (*nodes.TableOption, error) {
 							p.advance()
 						} else if p.cur.Type == kwOFF {
 							p.advance()
-						} else if p.isIdentLike() {
+						} else if p.isAnyKeywordIdent() {
 							p.advance()
 						} else if p.cur.Type == tokICONST {
 							p.advance()
@@ -384,7 +384,7 @@ func (p *Parser) parseOneTableOption() (*nodes.TableOption, error) {
 		}
 	} else {
 		// Simple NAME = VALUE
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			opt.Value = strings.ToUpper(p.cur.Str)
 			p.advance()
 		} else if p.cur.Type == kwON {
@@ -678,7 +678,7 @@ func (p *Parser) parseColumnDef() (*nodes.ColumnDef, error) {
 		// COLLATE
 		if p.cur.Type == kwCOLLATE {
 			p.advance()
-			if p.isIdentLike() {
+			if p.isAnyKeywordIdent() {
 				col.Collation = p.cur.Str
 				p.advance()
 			}
@@ -782,7 +782,7 @@ func (p *Parser) parseEncryptedWith() (*nodes.EncryptedWithSpec, error) {
 	p.advance()
 
 	for p.cur.Type != ')' && p.cur.Type != tokEOF {
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			optName := strings.ToUpper(p.cur.Str)
 			p.advance()
 			if p.cur.Type == '=' {
@@ -790,12 +790,12 @@ func (p *Parser) parseEncryptedWith() (*nodes.EncryptedWithSpec, error) {
 			}
 			switch optName {
 			case "COLUMN_ENCRYPTION_KEY":
-				if p.isIdentLike() {
+				if p.isAnyKeywordIdent() {
 					spec.ColumnEncryptionKey = p.cur.Str
 					p.advance()
 				}
 			case "ENCRYPTION_TYPE":
-				if p.isIdentLike() {
+				if p.isAnyKeywordIdent() {
 					spec.EncryptionType = strings.ToUpper(p.cur.Str)
 					p.advance()
 				}
@@ -805,7 +805,7 @@ func (p *Parser) parseEncryptedWith() (*nodes.EncryptedWithSpec, error) {
 					p.advance()
 				}
 			default:
-				if p.isIdentLike() || p.cur.Type == tokSCONST {
+				if p.isAnyKeywordIdent() || p.cur.Type == tokSCONST {
 					p.advance()
 				}
 			}
@@ -844,14 +844,14 @@ func (p *Parser) parseGeneratedAlways() (*nodes.GeneratedAlwaysSpec, error) {
 	}
 
 	// ROW | TRANSACTION_ID | SEQUENCE_NUMBER
-	if p.isIdentLike() {
+	if p.isAnyKeywordIdent() {
 		kind := strings.ToUpper(p.cur.Str)
 		p.advance()
 		spec.Kind = kind
 	}
 
 	// START | END
-	if p.isIdentLike() {
+	if p.isAnyKeywordIdent() {
 		startEnd := strings.ToUpper(p.cur.Str)
 		if startEnd == "START" || startEnd == "END" {
 			spec.StartEnd = startEnd
@@ -1056,7 +1056,7 @@ func (p *Parser) parseConstraintOnFilegroup(cd *nodes.ConstraintDef) {
 		return
 	}
 	p.advance()
-	if p.isIdentLike() {
+	if p.isAnyKeywordIdent() {
 		name := p.cur.Str
 		p.advance()
 		if p.cur.Type == '(' {
@@ -1436,7 +1436,7 @@ trailingOptions:
 	// [ ON { partition_scheme_name ( column_name ) | filegroup_name | default } ]
 	if p.cur.Type == kwON {
 		p.advance()
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			fg := p.cur.Str
 			p.advance()
 			if p.cur.Type == '(' {
@@ -1453,7 +1453,7 @@ trailingOptions:
 	// [ FILESTREAM_ON { ... } ]
 	if p.cur.Type == kwFILESTREAM_ON {
 		p.advance()
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			idx.FilestreamOn = p.cur.Str
 			p.advance()
 		}
@@ -1793,7 +1793,7 @@ func (p *Parser) parseCTASOption() (*nodes.TableOption, error) {
 		if p.cur.Type == '=' {
 			p.advance()
 		}
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			distType := strings.ToUpper(p.cur.Str)
 			p.advance()
 			if distType == "HASH" && p.cur.Type == '(' {

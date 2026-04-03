@@ -356,7 +356,7 @@ func (p *Parser) parseGotoStmt() (*nodes.GotoStmt, error) {
 	p.advance() // consume GOTO
 
 	label := ""
-	if p.isIdentLike() {
+	if p.isAnyKeywordIdent() {
 		label = p.cur.Str
 		p.advance()
 	}

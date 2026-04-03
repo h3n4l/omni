@@ -79,7 +79,7 @@ func (p *Parser) parseCreateAvailabilityGroupStmt() (*nodes.SecurityStmt, error)
 	}
 
 	// group_name
-	if p.isIdentLike() || p.cur.Type == tokSCONST {
+	if p.isAnyKeywordIdent() || p.cur.Type == tokSCONST {
 		stmt.Name = p.cur.Str
 		p.advance()
 	}
@@ -173,7 +173,7 @@ func (p *Parser) parseAlterAvailabilityGroupStmt() (*nodes.SecurityStmt, error) 
 	}
 
 	// group_name
-	if p.isIdentLike() || p.cur.Type == tokSCONST {
+	if p.isAnyKeywordIdent() || p.cur.Type == tokSCONST {
 		stmt.Name = p.cur.Str
 		p.advance()
 	}
@@ -202,7 +202,7 @@ func (p *Parser) parseDropAvailabilityGroupStmt() (*nodes.SecurityStmt, error) {
 	}
 
 	// group_name
-	if p.isIdentLike() || p.cur.Type == tokSCONST {
+	if p.isAnyKeywordIdent() || p.cur.Type == tokSCONST {
 		stmt.Name = p.cur.Str
 		p.advance()
 	}
@@ -240,7 +240,7 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 			if p.cur.Type == kwDATABASE {
 				p.advance()
 				var dbs []string
-				for p.isIdentLike() || p.cur.Type == tokSCONST {
+				for p.isAnyKeywordIdent() || p.cur.Type == tokSCONST {
 					dbs = append(dbs, p.cur.Str)
 					p.advance()
 					if p.cur.Type == ',' {
@@ -282,7 +282,7 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 			p.advance() // consume ADD
 			if p.cur.Type == kwDATABASE {
 				p.advance()
-				if p.isIdentLike() || p.cur.Type == tokSCONST {
+				if p.isAnyKeywordIdent() || p.cur.Type == tokSCONST {
 					dbName := p.cur.Str
 					p.advance()
 					opts = append(opts, newAGOpt("ADD DATABASE", dbName, nodes.Loc{Start: start, End: p.prevEnd()}))
@@ -305,7 +305,7 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 			p.advance() // consume REMOVE
 			if p.cur.Type == kwDATABASE {
 				p.advance()
-				if p.isIdentLike() || p.cur.Type == tokSCONST {
+				if p.isAnyKeywordIdent() || p.cur.Type == tokSCONST {
 					dbName := p.cur.Str
 					p.advance()
 					opts = append(opts, newAGOpt("REMOVE DATABASE", dbName, nodes.Loc{Start: start, End: p.prevEnd()}))
@@ -404,7 +404,7 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 		case p.cur.Type == ',':
 			p.advance() // skip commas
 
-		case p.isIdentLike() || p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST || p.cur.Type == tokICONST:
+		case p.isAnyKeywordIdent() || p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST || p.cur.Type == tokICONST:
 			key := strings.ToUpper(p.cur.Str)
 			if p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST {
 				key = "'" + p.cur.Str + "'"
@@ -412,7 +412,7 @@ func (p *Parser) parseAvailabilityGroupOptions() *nodes.List {
 			p.advance()
 			if p.cur.Type == '=' {
 				p.advance() // consume '='
-				if p.isIdentLike() || p.cur.Type == tokSCONST || p.cur.Type == tokICONST || p.cur.Type == tokFCONST ||
+				if p.isAnyKeywordIdent() || p.cur.Type == tokSCONST || p.cur.Type == tokICONST || p.cur.Type == tokFCONST ||
 					p.cur.Type == kwON || p.cur.Type == kwOFF || p.cur.Type == kwNULL {
 					val := strings.ToUpper(p.cur.Str)
 					if p.cur.Type == tokSCONST {
@@ -610,7 +610,7 @@ func (p *Parser) parseAGParenTuple() string {
 
 // isAGOptionToken returns true if the current token can be part of an AG option key or value.
 func (p *Parser) isAGOptionToken() bool {
-	return p.isIdentLike() ||
+	return p.isAnyKeywordIdent() ||
 		p.cur.Type == tokSCONST || p.cur.Type == tokNSCONST ||
 		p.cur.Type == tokICONST || p.cur.Type == tokFCONST ||
 		p.cur.Type == kwON || p.cur.Type == kwOFF ||

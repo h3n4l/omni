@@ -32,7 +32,7 @@ func (p *Parser) parseCreateAssemblyStmt() (*nodes.CreateAssemblyStmt, error) {
 	}
 
 	// Name
-	if p.isIdentLike() {
+	if p.isAnyKeywordIdent() {
 		stmt.Name = p.cur.Str
 		p.advance()
 	}
@@ -40,7 +40,7 @@ func (p *Parser) parseCreateAssemblyStmt() (*nodes.CreateAssemblyStmt, error) {
 	// AUTHORIZATION owner
 	if p.cur.Type == kwAUTHORIZATION {
 		p.advance()
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			stmt.Authorization = p.cur.Str
 			p.advance()
 		}
@@ -80,7 +80,7 @@ func (p *Parser) parseCreateAssemblyStmt() (*nodes.CreateAssemblyStmt, error) {
 			if p.cur.Type == '=' {
 				p.advance()
 			}
-			if p.isIdentLike() {
+			if p.isAnyKeywordIdent() {
 				stmt.PermissionSet = strings.ToUpper(p.cur.Str)
 				p.advance()
 			}
@@ -119,7 +119,7 @@ func (p *Parser) parseAlterAssemblyStmt() (*nodes.AlterAssemblyStmt, error) {
 	}
 
 	// Name
-	if p.isIdentLike() {
+	if p.isAnyKeywordIdent() {
 		stmt.Name = p.cur.Str
 		p.advance()
 	}
@@ -138,12 +138,12 @@ func (p *Parser) parseAlterAssemblyStmt() (*nodes.AlterAssemblyStmt, error) {
 	// WITH PERMISSION_SET | VISIBILITY | UNCHECKED DATA
 	if p.cur.Type == kwWITH {
 		p.advance()
-		for p.isIdentLike() {
+		for p.isAnyKeywordIdent() {
 			opt := strings.ToUpper(p.cur.Str)
 			p.advance()
 			if p.cur.Type == '=' {
 				p.advance()
-				if p.isIdentLike() || p.cur.Type == kwON || p.cur.Type == kwOFF {
+				if p.isAnyKeywordIdent() || p.cur.Type == kwON || p.cur.Type == kwOFF {
 					opt += "=" + strings.ToUpper(p.cur.Str)
 					p.advance()
 				}
@@ -166,7 +166,7 @@ func (p *Parser) parseAlterAssemblyStmt() (*nodes.AlterAssemblyStmt, error) {
 			p.advance()
 			actions = append(actions, &nodes.String{Str: "DROP FILE"})
 			// consume file list
-			for p.isIdentLike() || p.cur.Type == tokSCONST || p.cur.Type == kwALL {
+			for p.isAnyKeywordIdent() || p.cur.Type == tokSCONST || p.cur.Type == kwALL {
 				p.advance()
 				if _, ok := p.match(','); !ok {
 					break
@@ -186,7 +186,7 @@ func (p *Parser) parseAlterAssemblyStmt() (*nodes.AlterAssemblyStmt, error) {
 					p.advance()
 					if p.cur.Type == kwAS {
 						p.advance()
-						if p.cur.Type == tokSCONST || p.isIdentLike() {
+						if p.cur.Type == tokSCONST || p.isAnyKeywordIdent() {
 							p.advance()
 						}
 					}

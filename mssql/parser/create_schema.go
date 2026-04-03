@@ -93,7 +93,7 @@ func (p *Parser) parseAlterSchemaStmt() (*nodes.AlterSchemaStmt, error) {
 	p.matchIdentCI("TRANSFER")
 
 	// Optional entity_type ::
-	if p.isIdentLike() {
+	if p.isAnyKeywordIdent() {
 		next := p.peekNext()
 		if next.Type == tokCOLONCOLON {
 			switch p.cur.Type {

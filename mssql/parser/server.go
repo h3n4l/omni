@@ -89,7 +89,7 @@ func (p *Parser) parseAlterServerRoleStmt() (*nodes.SecurityStmt, error) {
 	} else if p.cur.Type == kwWITH {
 		p.advance() // consume WITH
 		for {
-			if !p.isIdentLike() {
+			if !p.isAnyKeywordIdent() {
 				break
 			}
 			optLoc := p.pos()
@@ -262,7 +262,7 @@ func (p *Parser) parseAlterServerConfigurationStmt() (*nodes.AlterServerConfigur
 		opts, _ = p.parseServerConfigSuspendForSnapshotBackup()
 	} else {
 		// Unknown option type - record the keyword and skip to statement boundary
-		if p.isIdentLike() {
+		if p.isAnyKeywordIdent() {
 			stmt.OptionType = strings.ToUpper(p.cur.Str)
 			p.advance()
 		} else {
@@ -291,7 +291,7 @@ func (p *Parser) parseServerConfigProcessAffinity() ([]nodes.Node, error) {
 	var opts []nodes.Node
 
 	// Expect CPU or NUMANODE
-	if !p.isIdentLike() {
+	if !p.isAnyKeywordIdent() {
 		return opts, nil
 	}
 
@@ -366,7 +366,7 @@ func (p *Parser) parseServerConfigDiagnosticsLog() ([]nodes.Node, error) {
 	}
 
 	// PATH / MAX_SIZE / MAX_FILES
-	if !p.isIdentLike() {
+	if !p.isAnyKeywordIdent() {
 		return opts, nil
 	}
 
@@ -425,7 +425,7 @@ func (p *Parser) parseServerConfigDiagnosticsLog() ([]nodes.Node, error) {
 func (p *Parser) parseServerConfigFailoverClusterProperty() ([]nodes.Node, error) {
 	var opts []nodes.Node
 
-	if !p.isIdentLike() {
+	if !p.isAnyKeywordIdent() {
 		return opts, nil
 	}
 
@@ -514,7 +514,7 @@ func (p *Parser) parseServerConfigBufferPoolExtension() ([]nodes.Node, error) {
 					p.advance() // consume comma separator
 					continue
 				}
-				if !p.isIdentLike() {
+				if !p.isAnyKeywordIdent() {
 					break // unexpected token - stop parsing options
 				}
 				subLoc := p.pos()
@@ -536,7 +536,7 @@ func (p *Parser) parseServerConfigBufferPoolExtension() ([]nodes.Node, error) {
 						val := p.cur.Str
 						p.advance()
 						// Check for KB/MB/GB suffix
-						if p.isIdentLike() {
+						if p.isAnyKeywordIdent() {
 							upper := strings.ToUpper(p.cur.Str)
 							if upper == "KB" || upper == "MB" || upper == "GB" {
 								val += " " + upper
@@ -594,7 +594,7 @@ func (p *Parser) parseServerConfigMemoryOptimized() ([]nodes.Node, error) {
 	}
 
 	// TEMPDB_METADATA or HYBRID_BUFFER_POOL
-	if !p.isIdentLike() {
+	if !p.isAnyKeywordIdent() {
 		return opts, nil
 	}
 
@@ -670,7 +670,7 @@ func (p *Parser) parseServerConfigSuspendForSnapshotBackup() ([]nodes.Node, erro
 				p.advance() // consume comma between GROUP and MODE
 				continue
 			}
-			if !p.isIdentLike() {
+			if !p.isAnyKeywordIdent() {
 				break // unexpected token
 			}
 			if p.cur.Type == kwGROUP {
@@ -703,7 +703,7 @@ func (p *Parser) parseServerConfigSuspendForSnapshotBackup() ([]nodes.Node, erro
 				if p.cur.Type == '=' {
 					p.advance() // consume =
 				}
-				if p.isIdentLike() {
+				if p.isAnyKeywordIdent() {
 					val := p.cur.Str
 					p.advance()
 					opts = append(opts, &nodes.ServerConfigOption{Name: "MODE", Value: val, Loc: nodes.Loc{Start: subLoc, End: p.prevEnd()}})
@@ -746,7 +746,7 @@ func (p *Parser) parseServerConfigExternalAuthentication() ([]nodes.Node, error)
 				p.advance()
 				continue
 			}
-			if !p.isIdentLike() {
+			if !p.isAnyKeywordIdent() {
 				break
 			}
 			subLoc := p.pos()
@@ -758,7 +758,7 @@ func (p *Parser) parseServerConfigExternalAuthentication() ([]nodes.Node, error)
 					val := "'" + p.cur.Str + "'"
 					p.advance()
 					opts = append(opts, &nodes.ServerConfigOption{Name: key, Value: val, Loc: nodes.Loc{Start: subLoc, End: p.prevEnd()}})
-				} else if p.isIdentLike() {
+				} else if p.isAnyKeywordIdent() {
 					opts = append(opts, &nodes.ServerConfigOption{Name: key, Value: p.cur.Str, Loc: nodes.Loc{Start: subLoc, End: p.prevEnd()}})
 					p.advance()
 				}
