@@ -900,6 +900,45 @@ func (p *Parser) parseAlterIndexStmt() (*nodes.AlterIndexStmt, error) {
 	return stmt, nil
 }
 
+// indexOptions defines the valid option names for index WITH clauses.
+// Derived from SqlScriptDOM IndexOptionHelper + IndexStateOption + spatial/JSON/vector options.
+var indexOptions = newOptionSet(
+	kwFILLFACTOR,     // FILLFACTOR = N
+	kwMAXDOP,         // MAXDOP = N
+	kwBUCKET_COUNT,   // BUCKET_COUNT = N (hash indexes)
+	kwLOB_COMPACTION, // LOB_COMPACTION = ON|OFF
+	kwORDER,          // ORDER (columnstore)
+	kwTYPE,           // TYPE (vector indexes)
+).withIdents(
+	// indexStateOption — on/off options parsed via IndexOptionHelper
+	"PAD_INDEX",
+	"SORT_IN_TEMPDB",
+	"STATISTICS_NORECOMPUTE",
+	"STATISTICS_INCREMENTAL",
+	"DROP_EXISTING",
+	"ALLOW_ROW_LOCKS",
+	"ALLOW_PAGE_LOCKS",
+	"IGNORE_DUP_KEY",
+	"ONLINE",
+	"RESUMABLE",
+	"COMPRESS_ALL_ROW_GROUPS",
+	"OPTIMIZE_FOR_SEQUENTIAL_KEY",
+	// expression-valued options
+	"MAX_DURATION",
+	"DATA_COMPRESSION",
+	"XML_COMPRESSION",
+	"COMPRESSION_DELAY",
+	"WAIT_AT_LOW_PRIORITY",
+	// spatial index options
+	"BOUNDING_BOX",
+	"GRIDS",
+	"CELLS_PER_OBJECT",
+	// JSON index options
+	"OPTIMIZE_FOR_ARRAY_SEARCH",
+	// vector index options
+	"METRIC",
+)
+
 // parseAlterIndexOptions parses a parenthesized list of index options.
 //
 // <rebuild_index_option> / <reorganize_option> / <set_index_option> ::=
@@ -932,8 +971,8 @@ func (p *Parser) parseAlterIndexOptions() (*nodes.List, error) {
 			continue
 		}
 
-		// Parse option_name = value
-		if p.isAnyKeywordIdent() {
+		// Parse option_name = value (validated against known index options)
+		if p.isValidOption(indexOptions) {
 			name := strings.ToUpper(p.cur.Str)
 			p.advance()
 
@@ -1026,8 +1065,8 @@ func (p *Parser) parseAlterIndexOptions() (*nodes.List, error) {
 			opts.Items = append(opts.Items, &nodes.String{Str: p.cur.Str})
 			p.advance()
 		} else {
-			// Unknown token, skip
-			p.advance()
+			// Unknown token in option list — reject
+			return nil, p.unexpectedToken()
 		}
 	}
 

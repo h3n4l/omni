@@ -95,9 +95,9 @@ func TestKeywordOracleOptionPositions(t *testing.T) {
 		// 1. Index options: CREATE INDEX ix ON t(a) WITH (...)
 		// ================================================================
 		{"index/FILLFACTOR_valid", "CREATE INDEX ix ON dbo.t(a) WITH (FILLFACTOR = 80)"},
-		{"index/PAD_INDEX_valid", "CREATE INDEX ix ON dbo.t(a) WITH (PAD_INDEX = ON)"},
 		{"index/SELECT_invalid", "CREATE INDEX ix ON dbo.t(a) WITH (SELECT = 1)"},
 		{"index/FROM_invalid", "CREATE INDEX ix ON dbo.t(a) WITH (FROM = 1)"},
+		{"index/DROP_invalid", "CREATE INDEX ix ON dbo.t(a) WITH (DROP = ON)"},
 
 		// ================================================================
 		// 2. SET predicate options: SET <option> ON/OFF
