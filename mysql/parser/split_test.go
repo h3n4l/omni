@@ -125,6 +125,112 @@ func TestSplitDelimiter(t *testing.T) {
 	}
 }
 
+func TestSplitQuotingAndComments(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+		want []string
+	}{
+		{
+			name: "semicolon in single-quoted string",
+			sql:  "SELECT 'a;b'; SELECT 1;",
+			want: []string{"SELECT 'a;b'", " SELECT 1"},
+		},
+		{
+			name: "semicolon in double-quoted string",
+			sql:  `SELECT "a;b"; SELECT 1;`,
+			want: []string{`SELECT "a;b"`, " SELECT 1"},
+		},
+		{
+			name: "semicolon in backtick identifier",
+			sql:  "SELECT `a;b`; SELECT 1;",
+			want: []string{"SELECT `a;b`", " SELECT 1"},
+		},
+		{
+			name: "escaped single quote with backslash",
+			sql:  `SELECT 'it\'s'; SELECT 1;`,
+			want: []string{`SELECT 'it\'s'`, " SELECT 1"},
+		},
+		{
+			name: "escaped single quote with double",
+			sql:  "SELECT 'it''s'; SELECT 1;",
+			want: []string{"SELECT 'it''s'", " SELECT 1"},
+		},
+		{
+			name: "semicolon in block comment",
+			sql:  "SELECT /* ; */ 1; SELECT 2;",
+			want: []string{"SELECT /* ; */ 1", " SELECT 2"},
+		},
+		{
+			name: "semicolon in line comment --",
+			sql:  "SELECT 1 -- ;\n; SELECT 2;",
+			want: []string{"SELECT 1 -- ;\n", " SELECT 2"},
+		},
+		{
+			name: "semicolon in hash comment",
+			sql:  "SELECT 1 # ;\n; SELECT 2;",
+			want: []string{"SELECT 1 # ;\n", " SELECT 2"},
+		},
+		{
+			name: "nested block comments",
+			sql:  "SELECT /* /* ; */ */ 1; SELECT 2;",
+			want: []string{"SELECT /* /* ; */ */ 1", " SELECT 2"},
+		},
+		{
+			name: "-- without space is not comment",
+			sql:  "SELECT 1--2; SELECT 3;",
+			want: []string{"SELECT 1--2", " SELECT 3"},
+		},
+		{
+			name: "conditional comment",
+			sql:  "SELECT /*!50000 1, */ 2; SELECT 3;",
+			want: []string{"SELECT /*!50000 1, */ 2", " SELECT 3"},
+		},
+		{
+			name: "CRLF line endings",
+			sql:  "SELECT 1;\r\nSELECT 2;",
+			want: []string{"SELECT 1", "\r\nSELECT 2"},
+		},
+		{
+			name: "Unicode in identifiers",
+			sql:  "SELECT * FROM 表名; SELECT 1;",
+			want: []string{"SELECT * FROM 表名", " SELECT 1"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			segs := Split(tt.sql)
+			var got []string
+			for _, s := range segs {
+				got = append(got, s.Text)
+			}
+			if len(got) == 0 {
+				got = nil
+			}
+			if len(got) != len(tt.want) {
+				t.Fatalf("got %d segments, want %d\n  got:  %q\n  want: %q",
+					len(got), len(tt.want), got, tt.want)
+			}
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Errorf("seg[%d] = %q, want %q", i, got[i], tt.want[i])
+				}
+			}
+		})
+	}
+}
+
+func TestSplitByteOffsets(t *testing.T) {
+	sql := "SELECT 1; SELECT 2; SELECT 3;"
+	segs := Split(sql)
+	for _, s := range segs {
+		got := sql[s.ByteStart:s.ByteEnd]
+		if got != s.Text {
+			t.Errorf("sql[%d:%d] = %q, but Text = %q", s.ByteStart, s.ByteEnd, got, s.Text)
+		}
+	}
+}
+
 func TestSplitSimple(t *testing.T) {
 	tests := []struct {
 		sql  string
