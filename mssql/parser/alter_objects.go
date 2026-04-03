@@ -109,7 +109,9 @@ func (p *Parser) parseAlterDatabaseStmt() (*nodes.AlterDatabaseStmt, error) {
 	if p.cur.Type == kwSET {
 		p.advance() // consume SET
 		stmt.Action = "SET"
-		p.parseAlterDatabaseSetOptions(stmt)
+		if err := p.parseAlterDatabaseSetOptions(stmt); err != nil {
+			return nil, err
+		}
 	} else if p.cur.Type == kwCOLLATE {
 		p.advance() // consume COLLATE
 		stmt.Action = "COLLATE"
@@ -177,7 +179,8 @@ func (p *Parser) parseAlterDatabaseStmt() (*nodes.AlterDatabaseStmt, error) {
 }
 
 // parseAlterDatabaseSetOptions parses SET <option_spec> [,...n] [WITH <termination>].
-func (p *Parser) parseAlterDatabaseSetOptions(stmt *nodes.AlterDatabaseStmt) {
+// Returns a syntax error if no valid option follows SET.
+func (p *Parser) parseAlterDatabaseSetOptions(stmt *nodes.AlterDatabaseStmt) error {
 	var opts []nodes.Node
 
 	for {
@@ -194,16 +197,62 @@ func (p *Parser) parseAlterDatabaseSetOptions(stmt *nodes.AlterDatabaseStmt) {
 		}
 	}
 
-	if len(opts) > 0 {
-		stmt.Options = &nodes.List{Items: opts}
+	// ALTER DATABASE ... SET requires at least one valid option.
+	if len(opts) == 0 {
+		return p.syntaxErrorAtCur()
 	}
+
+	stmt.Options = &nodes.List{Items: opts}
 
 	// WITH <termination>
 	if p.cur.Type == kwWITH {
 		p.advance() // consume WITH
 		stmt.Termination = p.parseAlterDatabaseTermination()
 	}
+	return nil
 }
+
+// dbSetOptions is the valid option set for ALTER DATABASE SET <option>.
+// Derived from SqlScriptDOM: SimpleDbOptionsHelper, OnOffSimpleDbOptionsHelper,
+// DatabaseOptionKindHelper, RecoveryDbOptionsHelper, PageVerifyDbOptionsHelper,
+// PartnerDbOptionsHelper, and special-case options (HADR, WITNESS, etc.).
+var dbSetOptions = newOptionSet(
+	// Registered keywords that are valid database SET options.
+	kwENCRYPTION,
+	kwCHANGE_TRACKING,
+	kwCONTAINMENT,
+	kwPARAMETERIZATION,
+	kwDELAYED_DURABILITY,
+	kwFILESTREAM,
+	kwHADR,
+	kwREAD_ONLY,
+	kwOFFLINE,
+).withIdents(
+	// SimpleDbOptionsHelper — standalone keywords (no value).
+	"ONLINE", "EMERGENCY",
+	"SINGLE_USER", "MULTI_USER", "RESTRICTED_USER",
+	"READ_WRITE",
+	"ENABLE_BROKER", "DISABLE_BROKER", "NEW_BROKER", "ERROR_BROKER_CONVERSATIONS",
+	// OnOffSimpleDbOptionsHelper — ON/OFF options.
+	"CURSOR_CLOSE_ON_COMMIT", "AUTO_CLOSE", "AUTO_CREATE_STATISTICS", "AUTO_SHRINK",
+	"AUTO_UPDATE_STATISTICS", "ANSI_NULL_DEFAULT", "ANSI_NULLS", "ANSI_PADDING",
+	"ANSI_WARNINGS", "ARITHABORT", "CONCAT_NULL_YIELDS_NULL", "NUMERIC_ROUNDABORT",
+	"QUOTED_IDENTIFIER", "RECURSIVE_TRIGGERS", "TORN_PAGE_DETECTION",
+	"DB_CHAINING", "TRUSTWORTHY", "AUTO_UPDATE_STATISTICS_ASYNC",
+	"DATE_CORRELATION_OPTIMIZATION", "ALLOW_SNAPSHOT_ISOLATION", "READ_COMMITTED_SNAPSHOT",
+	"SUPPLEMENTAL_LOGGING", "HONOR_BROKER_PRIORITY", "VARDECIMAL_STORAGE_FORMAT",
+	"NESTED_TRIGGERS", "TRANSFORM_NOISE_WORDS", "MEMORY_OPTIMIZED_ELEVATE_TO_SNAPSHOT",
+	"MIXED_PAGE_ALLOCATION", "TEMPORAL_HISTORY_RETENTION", "DATA_RETENTION", "LEDGER",
+	// DatabaseOptionKindHelper — = value options.
+	"COMPATIBILITY_LEVEL", "DEFAULT_FULLTEXT_LANGUAGE", "DEFAULT_LANGUAGE",
+	"TWO_DIGIT_YEAR_CUTOFF", "EDITION", "SERVICE_OBJECTIVE",
+	"QUERY_STORE", "CATALOG_COLLATION", "AUTOMATIC_TUNING",
+	// Other special handlers.
+	"RECOVERY", "PAGE_VERIFY", "TARGET_RECOVERY_TIME",
+	"ACCELERATED_DATABASE_RECOVERY", "PARTNER", "WITNESS",
+	"CURSOR_DEFAULT", "OPTIMIZED_LOCKING",
+	// Additional (MANUAL_CUTOVER, PERFORM_CUTOVER are handled at ALTER DATABASE level, not SET level).
+)
 
 // parseAlterDatabaseSetOption parses a single SET option and returns it as a string.
 // Returns empty string if no option can be parsed.
@@ -221,8 +270,8 @@ func (p *Parser) parseAlterDatabaseSetOption() string {
 		return ""
 	}
 
-	// Option names can be context keywords or Core keywords (e.g., CURRENT, SET)
-	if !p.isAnyKeywordIdent() && p.cur.Type != kwSET {
+	// Validate option name against the known set from SqlScriptDOM.
+	if !p.isValidOption(dbSetOptions) {
 		return ""
 	}
 
