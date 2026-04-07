@@ -110,6 +110,29 @@ func TestSDLComplexMultiObject(t *testing.T) {
 			},
 		},
 		{
+			// Reproducer for the bytebase sync-schema bug: bytebase emits SDL
+			// that contains both `CREATE EXTENSION ... WITH SCHEMA ... VERSION`
+			// and a follow-up `COMMENT ON EXTENSION ...`. Before the parser fix
+			// LoadSDL would fail with `syntax error at or near
+			// "pg_stat_statements"` because EXTENSION was missing from
+			// tryParseObjectTypeName. The exact SDL string below is what
+			// bytebase produces for the metadata database (pg_stat_statements
+			// is installed there). The catalog itself no-ops both statements
+			// — pgddl does not track extensions — so the assertion is purely
+			// "this parses without error and the catalog accepts it".
+			name: "CREATE EXTENSION + COMMENT ON EXTENSION (bytebase reproducer)",
+			sql: `CREATE EXTENSION IF NOT EXISTS "pg_stat_statements" WITH SCHEMA "public" VERSION '1.10';
+
+COMMENT ON EXTENSION "pg_stat_statements" IS 'track planning and execution statistics of all SQL statements executed';
+`,
+			check: func(t *testing.T, c *Catalog) {
+				// Catalog no-ops extensions, so there is nothing to assert
+				// beyond "LoadSDL did not error". Reaching this callback at
+				// all proves the parser-side regression is gone.
+				_ = c
+			},
+		},
+		{
 			name: "multiple schemas with cross-schema references",
 			sql: `
 				CREATE VIEW app.user_view AS SELECT id, email FROM app.users;
