@@ -48,6 +48,20 @@ func makeCommentStmtSchema(name string, comment *string) *nodes.CommentStmt {
 	return stmt
 }
 
+// makeCommentStmtExtension builds a COMMENT ON EXTENSION statement.
+// EXTENSION uses the upstream gram.y `object_type_name name` shape (single ColId),
+// so Object is a *nodes.String, not a *nodes.List.
+func makeCommentStmtExtension(name string, comment *string) *nodes.CommentStmt {
+	stmt := &nodes.CommentStmt{
+		Objtype: nodes.OBJECT_EXTENSION,
+		Object:  &nodes.String{Str: name},
+	}
+	if comment != nil {
+		stmt.Comment = *comment
+	}
+	return stmt
+}
+
 // makeCommentStmtIndex builds a COMMENT ON INDEX statement.
 func makeCommentStmtIndex(schema, name string, comment *string) *nodes.CommentStmt {
 	return makeCommentStmtTable(nodes.OBJECT_INDEX, schema, name, comment)
@@ -165,6 +179,25 @@ func TestCommentOnSchema(t *testing.T) {
 	got, ok := c.GetComment('n', PublicNamespace, 0)
 	if !ok || got != "the public schema" {
 		t.Errorf("comment: got %q, ok=%v", got, ok)
+	}
+}
+
+// TestCommentOnExtension is the catalog-side regression for COMMENT ON EXTENSION.
+// pgddl does not track extensions, so the catalog no-ops the comment — what we
+// are guarding here is that OBJECT_EXTENSION stays in the no-op switch arm in
+// CommentObject and does not start erroring out. The parser-side regression
+// (LoadSDL/LoadSQL accepting the syntax) lives in sdl_test.go and
+// sdl_integration_test.go.
+func TestCommentOnExtension(t *testing.T) {
+	c := New()
+	comment := "track planning and execution statistics of all SQL statements executed"
+	if err := c.CommentObject(makeCommentStmtExtension("pg_stat_statements", &comment)); err != nil {
+		t.Fatalf("CommentObject(EXTENSION): %v", err)
+	}
+
+	// Removing the comment (nil) should also be a no-op error-wise.
+	if err := c.CommentObject(makeCommentStmtExtension("pg_stat_statements", nil)); err != nil {
+		t.Fatalf("CommentObject(EXTENSION, remove): %v", err)
 	}
 }
 

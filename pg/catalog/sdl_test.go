@@ -90,6 +90,16 @@ CREATE TRIGGER trg BEFORE INSERT ON t FOR EACH ROW EXECUTE FUNCTION trg_fn();`,
 			sql:  "CREATE TABLE t (id int); COMMENT ON TABLE t IS 'my table';",
 		},
 		{
+			// Parser-side regression for COMMENT ON EXTENSION. The catalog
+			// no-ops OBJECT_EXTENSION (pgddl does not track extensions); the
+			// only thing being asserted here is that the parser accepts the
+			// upstream `COMMENT ON object_type_name name` shape for EXTENSION,
+			// which it did not before — it would error with
+			// `syntax error at or near "pg_stat_statements"`.
+			name: "valid COMMENT ON EXTENSION (no preceding CREATE EXTENSION)",
+			sql:  `COMMENT ON EXTENSION "pg_stat_statements" IS 'track planning and execution statistics of all SQL statements executed';`,
+		},
+		{
 			name: "valid GRANT",
 			sql:  "CREATE TABLE t (id int); GRANT SELECT ON t TO PUBLIC;",
 		},

@@ -560,6 +560,11 @@ func (p *Parser) parseCommentText() string {
 }
 
 // tryParseObjectTypeName tries to parse object_type_name.
+//
+// Mirrors upstream gram.y `object_type_name` (= `drop_type_name` + DATABASE,
+// ROLE, SUBSCRIPTION, TABLESPACE). The non-EXTENSION drop_type_name entries
+// that omni does not yet handle here ([PROCEDURAL] LANGUAGE) are tracked
+// separately.
 func (p *Parser) tryParseObjectTypeName() (int64, bool) {
 	switch p.cur.Type {
 	case SCHEMA:
@@ -583,6 +588,9 @@ func (p *Parser) tryParseObjectTypeName() (int64, bool) {
 	case SERVER:
 		p.advance()
 		return int64(nodes.OBJECT_FOREIGN_SERVER), true
+	case EXTENSION:
+		p.advance()
+		return int64(nodes.OBJECT_EXTENSION), true
 	}
 	return 0, false
 }
