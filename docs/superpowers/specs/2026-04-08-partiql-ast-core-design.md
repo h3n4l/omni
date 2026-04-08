@@ -109,7 +109,7 @@ partiql/ast/
 └── ast_test.go    # unit tests for tag dispatch + Loc handling
 ```
 
-Splitting `parsenodes.go` into 7 thematic files (vs cosmosdb's single file) because PartiQL has ~3× the node count and the grammar categories are very distinct. Each file targets ≤ ~400 lines.
+Splitting `parsenodes.go` into 6 thematic files (`literals.go`, `exprs.go`, `stmts.go`, `tableexprs.go`, `types.go`, `patterns.go`) plus the foundation `node.go` and the utility `outfuncs.go` — vs cosmosdb's single `parsenodes.go`. The split is justified because PartiQL has ~3× the node count and the grammar categories are very distinct. Each file targets ≤ ~400 lines.
 
 ### D5. Single `TypeRef` for all type names
 
@@ -151,7 +151,7 @@ Out of scope. Go type switches are sufficient for the parser, the future analyze
 
 ## Type taxonomy
 
-Around **70 node types** across the 7 thematic files, plus `node.go` and `outfuncs.go`. Tagged ★ marks PartiQL-unique features.
+Around **73 node types** across the 6 thematic files, plus `node.go` and `outfuncs.go`. Tagged ★ marks PartiQL-unique features.
 
 ### `literals.go` (9 types, all `ExprNode`)
 
@@ -377,7 +377,7 @@ This costs nothing at runtime and catches the multi-interface contracts.
 
 ### 2. `TestGetLoc` — `Loc` round-trip
 
-Table-driven, one row per node type (~70 rows). Construct an instance with `Loc{Start: 10, End: 20}`, call `GetLoc()`, assert `{10, 20}`.
+Table-driven, one row per node type (~73 rows). Construct an instance with `Loc{Start: 10, End: 20}`, call `GetLoc()`, assert `{10, 20}`.
 
 ### 3. `TestNodeToString` — `outfuncs.go` smoke (golden assertions)
 
@@ -397,7 +397,7 @@ Walks every exported type in the package, checks it implements `Node`, and calls
 
 The `ast-core` DAG node is **done** when:
 
-1. All ~70 node types defined across `node.go`, `literals.go`, `stmts.go`, `exprs.go`, `tableexprs.go`, `types.go`, `patterns.go`, and `outfuncs.go`
+1. All ~73 node types defined across `node.go`, `literals.go`, `stmts.go`, `exprs.go`, `tableexprs.go`, `types.go`, `patterns.go`, and `outfuncs.go`
 2. Every node has a doc comment naming the grammar rule(s) from `analysis.md` that it represents
 3. Every node implements `nodeTag()` and `GetLoc() Loc`
 4. Every node implements at least one sub-interface (`StmtNode`, `ExprNode`, `TableExpr`, `PathStep`, `TypeName`, `PatternNode`) — except small clause helpers (`TargetEntry`, `CaseWhen`, `LetBinding`, `GroupByClause`, `GroupByItem`, `OrderByItem`, `SetAssignment`, `OnConflict`, `OnConflictTarget`, `ReturningClause`, `ReturningItem`, `WindowSpec`, `TuplePair`, `PivotProjection`, `PatternQuantifier`, `PatternSelector`) which are bare `Node`
