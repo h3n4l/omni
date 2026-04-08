@@ -2865,6 +2865,7 @@ package ast
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 )
@@ -2892,6 +2893,15 @@ func NodeToString(n Node) string {
 // textual representation to sb.
 func writeNode(sb *strings.Builder, n Node) {
 	if n == nil {
+		sb.WriteString("<nil>")
+		return
+	}
+	// Detect typed-nil pointers (e.g. (*VarRef)(nil) wrapped in a Node
+	// interface). The plain `n == nil` check above only catches an
+	// untyped nil interface; the reflection check is needed by the
+	// TestNodeToString_AllNodesCovered safety net which constructs
+	// zero-value parent nodes whose pointer fields are typed nil.
+	if rv := reflect.ValueOf(n); rv.Kind() == reflect.Pointer && rv.IsNil() {
 		sb.WriteString("<nil>")
 		return
 	}
@@ -3488,15 +3498,24 @@ func writeNode(sb *strings.Builder, n Node) {
 		sb.WriteString("]}")
 	case *NodePattern:
 		sb.WriteString("NodePattern{")
+		first := true
+		sep := func() {
+			if !first {
+				sb.WriteString(" ")
+			}
+			first = false
+		}
 		if v.Variable != nil {
+			sep()
 			sb.WriteString("Variable:")
 			writeNode(sb, v.Variable)
-			sb.WriteString(" ")
 		}
 		if len(v.Labels) > 0 {
-			fmt.Fprintf(sb, "Labels:[%s] ", strings.Join(v.Labels, " "))
+			sep()
+			fmt.Fprintf(sb, "Labels:[%s]", strings.Join(v.Labels, " "))
 		}
 		if v.Where != nil {
+			sep()
 			sb.WriteString("Where:")
 			writeNode(sb, v.Where)
 		}

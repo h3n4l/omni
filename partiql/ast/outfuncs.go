@@ -36,7 +36,7 @@ func writeNode(sb *strings.Builder, n Node) {
 	// Detect typed-nil pointers (e.g. (*VarRef)(nil) wrapped in a Node
 	// interface). The plain `n == nil` check above only catches an
 	// untyped nil interface.
-	if rv := reflect.ValueOf(n); rv.Kind() == reflect.Ptr && rv.IsNil() {
+	if rv := reflect.ValueOf(n); rv.Kind() == reflect.Pointer && rv.IsNil() {
 		sb.WriteString("<nil>")
 		return
 	}
