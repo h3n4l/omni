@@ -14,6 +14,17 @@ import (
 
 var _ Node = (*List)(nil)
 
+// Literals — all implement ExprNode.
+var _ ExprNode = (*StringLit)(nil)
+var _ ExprNode = (*NumberLit)(nil)
+var _ ExprNode = (*BoolLit)(nil)
+var _ ExprNode = (*NullLit)(nil)
+var _ ExprNode = (*MissingLit)(nil)
+var _ ExprNode = (*DateLit)(nil)
+var _ ExprNode = (*TimeLit)(nil)
+var _ ExprNode = (*TimestampLit)(nil)
+var _ ExprNode = (*IonLit)(nil)
+
 // ---------------------------------------------------------------------------
 // TestGetLoc — table-driven Loc round-trip.
 //
@@ -27,6 +38,15 @@ func TestGetLoc(t *testing.T) {
 		node Node
 	}{
 		{"List", &List{Loc: Loc{Start: 10, End: 20}}},
+		{"StringLit", &StringLit{Loc: Loc{Start: 10, End: 20}}},
+		{"NumberLit", &NumberLit{Loc: Loc{Start: 10, End: 20}}},
+		{"BoolLit", &BoolLit{Loc: Loc{Start: 10, End: 20}}},
+		{"NullLit", &NullLit{Loc: Loc{Start: 10, End: 20}}},
+		{"MissingLit", &MissingLit{Loc: Loc{Start: 10, End: 20}}},
+		{"DateLit", &DateLit{Loc: Loc{Start: 10, End: 20}}},
+		{"TimeLit", &TimeLit{Loc: Loc{Start: 10, End: 20}}},
+		{"TimestampLit", &TimestampLit{Loc: Loc{Start: 10, End: 20}}},
+		{"IonLit", &IonLit{Loc: Loc{Start: 10, End: 20}}},
 	}
 
 	for _, tc := range cases {
