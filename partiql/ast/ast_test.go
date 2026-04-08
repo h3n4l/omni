@@ -99,6 +99,14 @@ var _ Node = (*OnConflictTarget)(nil)
 var _ Node = (*ReturningClause)(nil)
 var _ Node = (*ReturningItem)(nil)
 
+// Graph patterns (patterns.go).
+var _ ExprNode = (*MatchExpr)(nil)
+var _ PatternNode = (*GraphPattern)(nil)
+var _ PatternNode = (*NodePattern)(nil)
+var _ PatternNode = (*EdgePattern)(nil)
+var _ Node = (*PatternQuantifier)(nil)
+var _ Node = (*PatternSelector)(nil)
+
 // ---------------------------------------------------------------------------
 // TestGetLoc — table-driven Loc round-trip.
 //
@@ -178,6 +186,12 @@ func TestGetLoc(t *testing.T) {
 		{"OnConflictTarget", &OnConflictTarget{Loc: Loc{Start: 10, End: 20}}},
 		{"ReturningClause", &ReturningClause{Loc: Loc{Start: 10, End: 20}}},
 		{"ReturningItem", &ReturningItem{Loc: Loc{Start: 10, End: 20}}},
+		{"MatchExpr", &MatchExpr{Loc: Loc{Start: 10, End: 20}}},
+		{"GraphPattern", &GraphPattern{Loc: Loc{Start: 10, End: 20}}},
+		{"NodePattern", &NodePattern{Loc: Loc{Start: 10, End: 20}}},
+		{"EdgePattern", &EdgePattern{Loc: Loc{Start: 10, End: 20}}},
+		{"PatternQuantifier", &PatternQuantifier{Loc: Loc{Start: 10, End: 20}}},
+		{"PatternSelector", &PatternSelector{Loc: Loc{Start: 10, End: 20}}},
 	}
 
 	for _, tc := range cases {
