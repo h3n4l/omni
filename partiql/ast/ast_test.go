@@ -44,6 +44,23 @@ var _ ExprNode = (*CoalesceExpr)(nil)
 var _ ExprNode = (*NullIfExpr)(nil)
 var _ Node = (*WindowSpec)(nil)
 
+// Paths, vars, params, subqueries, collection literals, path steps (exprs.go).
+var _ ExprNode = (*PathExpr)(nil)
+var _ TableExpr = (*PathExpr)(nil)
+var _ ExprNode = (*VarRef)(nil)
+var _ TableExpr = (*VarRef)(nil)
+var _ ExprNode = (*ParamRef)(nil)
+var _ ExprNode = (*SubLink)(nil)
+var _ TableExpr = (*SubLink)(nil)
+var _ ExprNode = (*ListLit)(nil)
+var _ ExprNode = (*BagLit)(nil)
+var _ ExprNode = (*TupleLit)(nil)
+var _ Node = (*TuplePair)(nil)
+var _ PathStep = (*DotStep)(nil)
+var _ PathStep = (*AllFieldsStep)(nil)
+var _ PathStep = (*IndexStep)(nil)
+var _ PathStep = (*WildcardStep)(nil)
+
 // ---------------------------------------------------------------------------
 // TestGetLoc — table-driven Loc round-trip.
 //
@@ -81,6 +98,18 @@ func TestGetLoc(t *testing.T) {
 		{"CoalesceExpr", &CoalesceExpr{Loc: Loc{Start: 10, End: 20}}},
 		{"NullIfExpr", &NullIfExpr{Loc: Loc{Start: 10, End: 20}}},
 		{"WindowSpec", &WindowSpec{Loc: Loc{Start: 10, End: 20}}},
+		{"PathExpr", &PathExpr{Loc: Loc{Start: 10, End: 20}}},
+		{"VarRef", &VarRef{Loc: Loc{Start: 10, End: 20}}},
+		{"ParamRef", &ParamRef{Loc: Loc{Start: 10, End: 20}}},
+		{"SubLink", &SubLink{Loc: Loc{Start: 10, End: 20}}},
+		{"ListLit", &ListLit{Loc: Loc{Start: 10, End: 20}}},
+		{"BagLit", &BagLit{Loc: Loc{Start: 10, End: 20}}},
+		{"TupleLit", &TupleLit{Loc: Loc{Start: 10, End: 20}}},
+		{"TuplePair", &TuplePair{Loc: Loc{Start: 10, End: 20}}},
+		{"DotStep", &DotStep{Loc: Loc{Start: 10, End: 20}}},
+		{"AllFieldsStep", &AllFieldsStep{Loc: Loc{Start: 10, End: 20}}},
+		{"IndexStep", &IndexStep{Loc: Loc{Start: 10, End: 20}}},
+		{"WildcardStep", &WildcardStep{Loc: Loc{Start: 10, End: 20}}},
 	}
 
 	for _, tc := range cases {

@@ -468,3 +468,174 @@ type WindowSpec struct {
 
 func (*WindowSpec) nodeTag()      {}
 func (n *WindowSpec) GetLoc() Loc { return n.Loc }
+
+// ===========================================================================
+// Paths, variables, parameters, subqueries
+//
+// PathExpr, VarRef, and SubLink also implement TableExpr because PartiQL's
+// FROM grammar accepts the same productions as scalar expressions.
+// ===========================================================================
+
+// PathExpr represents a chained path navigation: root.field[idx].field[*].
+// Root is the base expression (typically a VarRef); Steps are the chained
+// path operations from PathStep.
+//
+// Grammar: exprPrimary#ExprPrimaryPath (exprPrimary pathStep+)
+type PathExpr struct {
+	Root  ExprNode
+	Steps []PathStep
+	Loc   Loc
+}
+
+func (*PathExpr) nodeTag()      {}
+func (n *PathExpr) GetLoc() Loc { return n.Loc }
+func (*PathExpr) exprNode()     {}
+func (*PathExpr) tableExpr()    {} // PartiQL FROM accepts path expressions
+
+// VarRef represents an identifier reference. AtPrefixed distinguishes
+// `@id` (true) from bare `id` (false). CaseSensitive distinguishes
+// `"X"` (true, double-quoted) from `X` (false, unquoted).
+//
+// Grammar: varRefExpr
+type VarRef struct {
+	Name          string
+	AtPrefixed    bool
+	CaseSensitive bool
+	Loc           Loc
+}
+
+func (*VarRef) nodeTag()      {}
+func (n *VarRef) GetLoc() Loc { return n.Loc }
+func (*VarRef) exprNode()     {}
+func (*VarRef) tableExpr()    {} // a bare identifier in FROM is a VarRef
+
+// ParamRef represents a positional `?` parameter.
+//
+// Grammar: parameter
+type ParamRef struct {
+	Loc Loc
+}
+
+func (*ParamRef) nodeTag()      {}
+func (n *ParamRef) GetLoc() Loc { return n.Loc }
+func (*ParamRef) exprNode()     {}
+
+// SubLink represents a parenthesized SELECT used as a value expression
+// or as a FROM source. Stmt is the inner statement (a SelectStmt or
+// SetOpStmt).
+//
+// Grammar: exprTerm#ExprTermWrappedQuery (PAREN_LEFT expr PAREN_RIGHT)
+type SubLink struct {
+	Stmt StmtNode
+	Loc  Loc
+}
+
+func (*SubLink) nodeTag()      {}
+func (n *SubLink) GetLoc() Loc { return n.Loc }
+func (*SubLink) exprNode()     {}
+func (*SubLink) tableExpr()    {}
+
+// ===========================================================================
+// Collection literals
+// ===========================================================================
+
+// ListLit represents an ordered list literal: [expr, expr, …].
+//
+// Grammar: array
+type ListLit struct {
+	Items []ExprNode
+	Loc   Loc
+}
+
+func (*ListLit) nodeTag()      {}
+func (n *ListLit) GetLoc() Loc { return n.Loc }
+func (*ListLit) exprNode()     {}
+
+// BagLit represents an unordered bag literal: <<expr, expr, …>>. PartiQL-unique.
+//
+// Grammar: bag
+type BagLit struct {
+	Items []ExprNode
+	Loc   Loc
+}
+
+func (*BagLit) nodeTag()      {}
+func (n *BagLit) GetLoc() Loc { return n.Loc }
+func (*BagLit) exprNode()     {}
+
+// TupleLit represents a tuple/struct literal: {key: value, …}. PartiQL-unique.
+//
+// Grammar: tuple
+type TupleLit struct {
+	Pairs []*TuplePair
+	Loc   Loc
+}
+
+func (*TupleLit) nodeTag()      {}
+func (n *TupleLit) GetLoc() Loc { return n.Loc }
+func (*TupleLit) exprNode()     {}
+
+// TuplePair represents one `key: value` entry in a tuple literal.
+// Bare Node — appears only inside TupleLit.Pairs.
+//
+// Grammar: pair
+type TuplePair struct {
+	Key   ExprNode
+	Value ExprNode
+	Loc   Loc
+}
+
+func (*TuplePair) nodeTag()      {}
+func (n *TuplePair) GetLoc() Loc { return n.Loc }
+
+// ===========================================================================
+// Path steps — implement PathStep
+// ===========================================================================
+
+// DotStep represents `.field`. CaseSensitive is true for `."Field"`
+// (the field name was quoted) and false for unquoted `.field`.
+//
+// Grammar: pathStep#PathStepDotExpr
+type DotStep struct {
+	Field         string
+	CaseSensitive bool
+	Loc           Loc
+}
+
+func (*DotStep) nodeTag()      {}
+func (n *DotStep) GetLoc() Loc { return n.Loc }
+func (*DotStep) pathStep()     {}
+
+// AllFieldsStep represents `.*` — the all-fields wildcard.
+//
+// Grammar: pathStep#PathStepDotAll
+type AllFieldsStep struct {
+	Loc Loc
+}
+
+func (*AllFieldsStep) nodeTag()      {}
+func (n *AllFieldsStep) GetLoc() Loc { return n.Loc }
+func (*AllFieldsStep) pathStep()     {}
+
+// IndexStep represents `[expr]` — index/key by an expression.
+//
+// Grammar: pathStep#PathStepIndexExpr
+type IndexStep struct {
+	Index ExprNode
+	Loc   Loc
+}
+
+func (*IndexStep) nodeTag()      {}
+func (n *IndexStep) GetLoc() Loc { return n.Loc }
+func (*IndexStep) pathStep()     {}
+
+// WildcardStep represents `[*]` — all-elements wildcard.
+//
+// Grammar: pathStep#PathStepIndexAll
+type WildcardStep struct {
+	Loc Loc
+}
+
+func (*WildcardStep) nodeTag()      {}
+func (n *WildcardStep) GetLoc() Loc { return n.Loc }
+func (*WildcardStep) pathStep()     {}
