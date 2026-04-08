@@ -67,6 +67,9 @@ var _ TableExpr = (*AliasedSource)(nil)
 var _ TableExpr = (*JoinExpr)(nil)
 var _ TableExpr = (*UnpivotExpr)(nil)
 
+// Type names (types.go).
+var _ TypeName = (*TypeRef)(nil)
+
 // ---------------------------------------------------------------------------
 // TestGetLoc — table-driven Loc round-trip.
 //
@@ -120,6 +123,7 @@ func TestGetLoc(t *testing.T) {
 		{"AliasedSource", &AliasedSource{Loc: Loc{Start: 10, End: 20}}},
 		{"JoinExpr", &JoinExpr{Loc: Loc{Start: 10, End: 20}}},
 		{"UnpivotExpr", &UnpivotExpr{Loc: Loc{Start: 10, End: 20}}},
+		{"TypeRef", &TypeRef{Loc: Loc{Start: 10, End: 20}}},
 	}
 
 	for _, tc := range cases {
