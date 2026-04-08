@@ -24,6 +24,14 @@ var _ ExprNode = (*DateLit)(nil)
 var _ ExprNode = (*TimeLit)(nil)
 var _ ExprNode = (*IonLit)(nil)
 
+// Operators & predicates (exprs.go).
+var _ ExprNode = (*BinaryExpr)(nil)
+var _ ExprNode = (*UnaryExpr)(nil)
+var _ ExprNode = (*InExpr)(nil)
+var _ ExprNode = (*BetweenExpr)(nil)
+var _ ExprNode = (*LikeExpr)(nil)
+var _ ExprNode = (*IsExpr)(nil)
+
 // ---------------------------------------------------------------------------
 // TestGetLoc — table-driven Loc round-trip.
 //
@@ -45,6 +53,12 @@ func TestGetLoc(t *testing.T) {
 		{"DateLit", &DateLit{Loc: Loc{Start: 10, End: 20}}},
 		{"TimeLit", &TimeLit{Loc: Loc{Start: 10, End: 20}}},
 		{"IonLit", &IonLit{Loc: Loc{Start: 10, End: 20}}},
+		{"BinaryExpr", &BinaryExpr{Loc: Loc{Start: 10, End: 20}}},
+		{"UnaryExpr", &UnaryExpr{Loc: Loc{Start: 10, End: 20}}},
+		{"InExpr", &InExpr{Loc: Loc{Start: 10, End: 20}}},
+		{"BetweenExpr", &BetweenExpr{Loc: Loc{Start: 10, End: 20}}},
+		{"LikeExpr", &LikeExpr{Loc: Loc{Start: 10, End: 20}}},
+		{"IsExpr", &IsExpr{Loc: Loc{Start: 10, End: 20}}},
 	}
 
 	for _, tc := range cases {
