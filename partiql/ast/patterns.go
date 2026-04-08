@@ -38,14 +38,14 @@ type EdgeDirection int
 // `edgeWSpec` (lines 360–368) and `edgeAbbrev` (lines 376–381). Each value
 // maps to the bare grammar symbol via String().
 const (
-	EdgeDirInvalid              EdgeDirection = iota
-	EdgeDirRight                              // ->          edgeWSpec#EdgeSpecRight
-	EdgeDirLeft                               // <-          edgeWSpec#EdgeSpecLeft
-	EdgeDirUndirected                         // ~           edgeWSpec#EdgeSpecUndirected
-	EdgeDirLeftOrRight                        // <->         edgeWSpec#EdgeSpecBidirectional
-	EdgeDirLeftOrUndirected                   // <~          edgeWSpec#EdgeSpecUndirectedLeft
-	EdgeDirRightOrUndirected                  // ~>          edgeWSpec#EdgeSpecUndirectedRight
-	EdgeDirUndirectedBidirectional            // -           edgeWSpec#EdgeSpecUndirectedBidirectional (any of right/left/undirected)
+	EdgeDirInvalid                 EdgeDirection = iota
+	EdgeDirRight                                 // ->          edgeWSpec#EdgeSpecRight
+	EdgeDirLeft                                  // <-          edgeWSpec#EdgeSpecLeft
+	EdgeDirUndirected                            // ~           edgeWSpec#EdgeSpecUndirected
+	EdgeDirLeftOrRight                           // <->         edgeWSpec#EdgeSpecBidirectional
+	EdgeDirLeftOrUndirected                      // <~          edgeWSpec#EdgeSpecUndirectedLeft
+	EdgeDirRightOrUndirected                     // ~>          edgeWSpec#EdgeSpecUndirectedRight
+	EdgeDirUndirectedBidirectional               // -           edgeWSpec#EdgeSpecUndirectedBidirectional (any of right/left/undirected)
 )
 
 func (d EdgeDirection) String() string {
