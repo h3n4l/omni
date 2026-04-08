@@ -151,21 +151,24 @@ Out of scope. Go type switches are sufficient for the parser, the future analyze
 
 ## Type taxonomy
 
-Around **73 node types** across the 6 thematic files, plus `node.go` and `outfuncs.go`. Tagged ★ marks PartiQL-unique features.
+Around **72 node types** across the 6 thematic files, plus `node.go` and `outfuncs.go`. Tagged ★ marks PartiQL-unique features.
 
-### `literals.go` (9 types, all `ExprNode`)
+### `literals.go` (8 types, all `ExprNode`)
 
-| Node | Fields | Grammar |
-|------|--------|---------|
-| `StringLit` | `Val string` | `'…'` and `"…"` strings |
-| `NumberLit` | `Val string` (raw text preserved) | integer / decimal / scientific |
-| `BoolLit` | `Val bool` | `TRUE` / `FALSE` |
-| `NullLit` | — | `NULL` |
-| `MissingLit` ★ | — | `MISSING` |
-| `DateLit` | `Val string` | `DATE 'YYYY-MM-DD'` |
-| `TimeLit` | `Val string`, `Precision *int`, `WithTimeZone bool` | `TIME [(p)] [WITH TIME ZONE] '…'` |
-| `TimestampLit` | `Val string`, `Precision *int`, `WithTimeZone bool` | `TIMESTAMP [(p)] [WITH TIME ZONE] '…'` |
-| `IonLit` ★ | `Text string` (verbatim backtick contents) | `` ` … ` `` |
+Each type maps to one alternative of the `literal` rule in `PartiQLParser.g4` lines 661–672.
+
+| Node | Fields | Grammar (`literal#…`) |
+|------|--------|----------------------|
+| `StringLit` | `Val string` | `LiteralString` (`LITERAL_STRING`) |
+| `NumberLit` | `Val string` (raw text preserved) | `LiteralInteger` / `LiteralDecimal` |
+| `BoolLit` | `Val bool` | `LiteralTrue` / `LiteralFalse` |
+| `NullLit` | — | `LiteralNull` |
+| `MissingLit` ★ | — | `LiteralMissing` |
+| `DateLit` | `Val string` | `LiteralDate` (`DATE LITERAL_STRING`) |
+| `TimeLit` | `Val string`, `Precision *int`, `WithTimeZone bool` | `LiteralTime` (`TIME [(p)] [WITH TIME ZONE] LITERAL_STRING`) |
+| `IonLit` ★ | `Text string` (verbatim backtick contents) | `LiteralIon` (`ION_CLOSURE`) |
+
+**Note:** PartiQL does **not** have a `TIMESTAMP '…'` literal in the grammar (the `literal` rule has no `TIMESTAMP` alternative). `TIMESTAMP` only appears as a type-name keyword in the `type` rule (line 677), where it is used by `CAST` and DDL. An earlier draft of this spec listed a `TimestampLit` node type by mistake; it has been removed because no parser production would ever produce it.
 
 ### `stmts.go` — top-level statements (`StmtNode`)
 
@@ -348,7 +351,7 @@ Every grammar area in `analysis.md`'s "Full Coverage Target" maps to ≥1 node t
 | Collection literals (list/bag/tuple) | `ListLit`, `BagLit`, `TupleLit`, `TuplePair` |
 | Subqueries | `SubLink` |
 | Type system (full PartiQL type list) | `TypeRef` |
-| Date/time literals (DATE/TIME/TIMESTAMP) | `DateLit`, `TimeLit`, `TimestampLit` |
+| Date/time literals (DATE/TIME) | `DateLit`, `TimeLit` (TIMESTAMP is a type-name only — see literals.go note) |
 | Ion backtick literals | `IonLit` |
 | Graph pattern matching (MATCH, nodes/edges/quantifiers/selectors/restrictors) | `MatchExpr`, `GraphPattern`, `NodePattern`, `EdgePattern`, `PatternQuantifier`, `PatternSelector` |
 | EXEC | `ExecStmt` |
@@ -377,7 +380,7 @@ This costs nothing at runtime and catches the multi-interface contracts.
 
 ### 2. `TestGetLoc` — `Loc` round-trip
 
-Table-driven, one row per node type (~73 rows). Construct an instance with `Loc{Start: 10, End: 20}`, call `GetLoc()`, assert `{10, 20}`.
+Table-driven, one row per node type (~72 rows). Construct an instance with `Loc{Start: 10, End: 20}`, call `GetLoc()`, assert `{10, 20}`.
 
 ### 3. `TestNodeToString` — `outfuncs.go` smoke (golden assertions)
 
@@ -435,7 +438,7 @@ Missed grammar features are caught the first time an example fails — there is 
 
 The `ast-core` DAG node is **done** when:
 
-1. All ~73 node types defined across `node.go`, `literals.go`, `stmts.go`, `exprs.go`, `tableexprs.go`, `types.go`, `patterns.go`, and `outfuncs.go`
+1. All ~72 node types defined across `node.go`, `literals.go`, `stmts.go`, `exprs.go`, `tableexprs.go`, `types.go`, `patterns.go`, and `outfuncs.go`
 2. Every node has a doc comment naming the grammar rule(s) from `analysis.md` that it represents
 3. Every node implements `nodeTag()` and `GetLoc() Loc`
 4. Every node implements at least one sub-interface (`StmtNode`, `ExprNode`, `TableExpr`, `PathStep`, `TypeName`, `PatternNode`) — except small clause helpers (`TargetEntry`, `CaseWhen`, `LetBinding`, `GroupByClause`, `GroupByItem`, `OrderByItem`, `SetAssignment`, `OnConflict`, `OnConflictTarget`, `ReturningClause`, `ReturningItem`, `WindowSpec`, `TuplePair`, `PivotProjection`, `PatternQuantifier`, `PatternSelector`) which are bare `Node`
